@@ -20,8 +20,8 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 ## Backlog (from PLAN / CRITIC / start spec)
 
 - Done: Prowler ASFF, PingCastle XML, Amass JSON, Greenbone, osquery, TruffleHog, Falco, compose, schema/redact tests, hostile
-- Next: Fleet file-drop polish
-- Done this window: SARIF, cloud ASFF, HK/Lynis, testssl/Maester, k8s, nmap, BloodHound CE file-drop
+- Next: Nuclei JSON file-drop polish (no live nuclei)
+- Done this window: SARIF, cloud ASFF, HK/Lynis, testssl/Maester, k8s, nmap, BloodHound CE, Fleet file-drop
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

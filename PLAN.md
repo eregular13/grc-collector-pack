@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 40 BloodHound CE file-drop harden stands (SharpHound `data[]` / Properties / mapped Aces; no LDAP). nmap / k8s / testssl / Maester stand. No slot inflation. No live AD or network scans. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 41 Fleet file-drop harden stands (hosts/policies fail-only; no Fleet API). BloodHound CE / nmap / k8s / testssl / Maester stand. No slot inflation. No live scans. No fake compose pass.
 
 ## STOP rules
 

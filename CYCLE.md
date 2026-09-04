@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 41 — Fleet file-drop harden (2026-09-04)
+
+host-wazuh parses Fleet `hosts` / `data.hosts` / a single `host`, plus failing `policies` under `in/wazuh/`. Offline/MIA → coverage gap. `disk_encryption_enabled=false` and MDM enrollment Off map to CISO/POA&M. Passing policies silent. Empty `hosts` / `policies` invent nothing. No Fleet API / fleetctl / osqueryi. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **216**. Labs green (counts unchanged vs cycle 40). Compose ABSENT. BloodHound CE cycle 40 and nmap cycle 39 stand.
+
+```json
+{"pytest": 216, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 65, "vulns": 17, "poam": 66}, "farm_lab": {"assets": 64, "findings": 65, "poam": 66, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 66, "poam": 66, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 74, "poam": 69, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 40 — BloodHound CE file-drop harden (2026-09-04)
 
 identity-ad parses SharpHound CE `data[]` + `Properties` / `ObjectIdentifier` / mapped `Aces`, plus existing `data.nodes` / `data.edges`. Empty `data` / empty `Members` invent nothing. High rows map to CISO/POA&M (DCSync, GenericAll, roastable SPN, AS-REP, unconstrained delegation, Backup Operators). No LDAP / BloodHound run. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **212**. Labs green (counts unchanged vs cycle 39). Compose ABSENT. nmap cycle 39 stands.
