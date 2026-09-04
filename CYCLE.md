@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 50 — WhatWeb file-drop polish (2026-09-04)
+
+easm parses operator-landed WhatWeb `--log-json` (`target` + `plugins`, `{data}` wrap, JSONL) under `in/easm/`. Admin/login titles and interesting paths only. Empty / Home / generic nginx invent nothing. Demo `whatweb.json` attaches admin-login high to existing `admin.example.com` (assets unchanged; findings/poam +1). No live HTTP; collector does not run whatweb. whatweb stays file_drop. Catalog **not inflated**. pytest **258**. Labs green. Compose ABSENT. SaaS cycle 49 and Nessus cycle 48 stand.
+
+```json
+{"pytest": 258, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 73, "vulns": 18, "evidence": 27, "poam": 75}, "farm_lab": {"assets": 64, "findings": 73, "poam": 75, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 74, "vulns": 18, "poam": 75, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 82, "vulns": 18, "poam": 78, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 49 — SaaS file-drop polish (2026-09-04)
 
 saas-idp parses operator-landed ScubaGear / Okta / Maester / Graph exports under `in/saas/`. Failed/high only (`Results` / wrappers / JSONL). Pass / Skip / Info / empty invent nothing. Inactive Okta MFA_ENROLL maps to POA&M. Standing Global Administrator (Scuba PIM + Graph export) maps to POA&M. No Graph or Okta API. Demo `scuba-wrap.json` attaches MFA high to existing `contoso.onmicrosoft.com` (assets unchanged; findings/poam +1). scuba / okta-logs stay file_drop. Maester invoke stays BYO. Catalog **not inflated**. pytest **255**. Labs green. Compose ABSENT. Nessus cycle 48 and cycles 44–47 stand.

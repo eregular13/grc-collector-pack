@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 49 SaaS file-drop polish stands (Scuba/Okta/Maester Failed/high only; no Graph/Okta API). Nessus cycle 48 and cycles 44–47 stand. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 50 WhatWeb file-drop polish stands (admin/login only; no live HTTP). SaaS cycle 49 and Nessus cycle 48 stand. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 
