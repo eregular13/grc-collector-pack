@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 35 — cloud file-drop harden (2026-09-04)
+
+`cloud-prowler` accepts Prowler JSON/ASFF (`ProductFields`, string or dict Severity) and ScoutSuite `services.*.findings` under `in/cloud/`. Finding `ref_id` is check+resource so two buckets stay two rows. High FAIL maps to CISO/POA&M when obvious (public S3 / AllUsers, IAM AdministratorAccess, root MFA, SG `0.0.0.0/0`, public RDS, unencrypted S3/EBS). Demo ASFF adds `demo-asff-open`. Empty `in/` still loads fixtures including `prowler-asff.json` + `scoutsuite.json`. ScoutSuite stays file_drop; Prowler invoke stays BYO. Catalog **not inflated**. No cloud API calls. pytest **187**. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 187, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 63, "vulns": 16, "poam": 63}, "farm_lab": {"assets": 64, "findings": 63, "poam": 63, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 64, "poam": 63, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 72, "poam": 66, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 34 — SARIF file-drop parsers (2026-09-04)
 
 `vuln-scan` and `code-secrets` accept `in/vuln/*.sarif` / `in/code/*.sarif`. Shared `shared/sarif.py`. Demo fixture `fixtures/demo/vuln/demo.sarif` (command-injection, high). High SARIF rules map to control_map / POA&M. Empty `in/` still falls back to existing fixtures plus the new SARIF. Catalog **not inflated**. farm/SLOTS.md + OPERATOR document file_drop → these parsers. Docs/e2e stand. pytest **184**. Labs green. Compose ABSENT.
