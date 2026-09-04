@@ -186,6 +186,8 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     slots = handle_jsonrpc({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "farm_slots"}})
     result = slots["result"]
     assert result["tool"] == "farm_slots"
+    assert result["scope_gated"] is True
+    assert "DEMO" in result["client"]
     assert result["count"] >= 95
     assert result["wired_count"] >= 21
     assert result["file_drop_count"] >= 70
