@@ -314,6 +314,8 @@ def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
         if not src_dir.is_dir():
             continue
         for path in src_dir.iterdir():
+            if path.name in {"plan.json", "summary.json"}:
+                continue
             if path.suffix.lower() in suffixes and path.is_file():
                 target = sensor_dir / f"dropbox-{stage_name}-{path.name}"
                 shutil.copy2(path, target)

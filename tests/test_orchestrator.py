@@ -268,10 +268,12 @@ def test_missing_stages_deepen_defaults_false(tmp_path: Path) -> None:
 def test_ingest_copies_gnmap_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     orch = tmp_path / "orch"
     (orch / "discover").mkdir(parents=True)
+    (orch / "deepen").mkdir(parents=True)
     (orch / "discover" / "shard.gnmap").write_text(
         "Host: 10.20.30.5 (app-01.demo.internal)\tPorts: 22/open/tcp//ssh///\n",
         encoding="utf-8",
     )
+    (orch / "deepen" / "plan.json").write_text("{}\n", encoding="utf-8")
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(orch))
     dest = tmp_path / "in"
     scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
@@ -279,3 +281,4 @@ def test_ingest_copies_gnmap_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     copied = dest / "nmap" / "dropbox-discover-shard.gnmap"
     assert copied.is_file()
     assert str(copied) in marker["copied"]
+    assert not (dest / "vuln" / "dropbox-deepen-plan.json").exists()

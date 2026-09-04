@@ -1,6 +1,6 @@
-cycle: 17
+cycle: 18
 phase: DONE
-item: PRIVATE-FARM-LAYOUT
+item: PRIVATE-FARM-CATALOG
 critic_score: 8/10
 open_p0:
 open_p1:

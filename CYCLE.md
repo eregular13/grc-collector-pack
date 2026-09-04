@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 18 — private farm catalog + adapters + conductor (2026-09-04)
+
+`farm/SLOTS.yaml` is a 48-slot tool-zoo catalog (discover/deepen/external/endpoint/identity/cloud/k8s/secrets) with binary, SCOPE key, output glob → `in/<sensor>/`, license_class, default_batch. 13 wired adapter stubs (plan-only if missing; PATH stub tests). `farm/OPERATOR.md` is the install → mount → quiet→loud path. Compose adds short-lived discover/deepen/ingest workers on an internal network. Orchestrator stage graph: plan → shard → discover → destroy → deepen → destroy → ingest → grc_export. Status prints allow_tools ∩ PATH ∩ SLOTS. Conductor lists 8 SCOPE-gated tools and invokes plan/status/farm_slots over JSON-RPC (no FastMCP, no Hexstrike). Layer C untouched. Ingest skips plan.json so pack `in/` stays gitkeep. Wrap dead.
+
+pytest **147 passed, 1 skipped**. `make lab` 62/62/15/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64 demo true. `make dropbox-compose` scanner_free true, status absent.
+
+```json
+{"pytest": 147, "pytest_skipped": 1, "assets": 62, "findings": 62, "evidences": 24, "poam": 61, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "compose_lab_reason": "docker CLI not on PATH", "scanner_free": true, "farm_slots": 48, "wired_adapters": 13, "wrap": "review-only"}
+```
+
 ## cycle 17 — private farm layout (Layer A) (2026-09-04)
 
 `farm/` is a private operator drop-box: README + `SLOTS.yaml` + scanner-free Dockerfile/compose skeleton. Tools arrive via host PATH, `FARM_TOOL_BIN` bind-mount, or image tags Reid builds. Not Hub soup. Binaries not vendored. Same static apt/embed asserts cover `farm/Dockerfile` + `farm/docker-compose.yml`. Layer C 10 collectors untouched/parse-only. Integrity stop: farm is private. Wrap dead.
