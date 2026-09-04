@@ -128,6 +128,104 @@ def test_trufflehog_jsonl() -> None:
     assert "ghp_" not in blob
 
 
+def test_gitleaks_json_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = code_secrets.parse_file(DEMO / "code" / "gitleaks.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert any("services/payments/config.py" in (r.get("assets") or []) for r in findings)
+    blob = str(recs)
+    assert "AKIAIOSFODNN7EXAMPLE" not in blob
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "credential" in mapped["control_name"].lower() or "secret" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_gitleaks_results_wrapper(tmp_path) -> None:
+    dest = tmp_path / "gitleaks-wrap.json"
+    dest.write_text(
+        """{"results":[{"RuleID":"generic-api-key","Description":"Generic API Key",
+        "File":"services/payments/config.py","StartLine":12}]}""",
+        encoding="utf-8",
+    )
+    recs = code_secrets.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any("generic-api-key" in r["description"] for r in findings)
+    assert any(r["kind"] == "asset" and r["name"] == "services/payments/config.py" for r in recs)
+
+
+def test_trufflehog_results_wrapper(tmp_path) -> None:
+    dest = tmp_path / "hog-wrap.json"
+    dest.write_text(
+        """{"results":[{"DetectorName":"AWS","Verified":false,
+        "SourceMetadata":{"Data":{"Filesystem":{"file":"infra/terraform.tfvars"}}}}]}""",
+        encoding="utf-8",
+    )
+    recs = code_secrets.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any("TruffleHog AWS" in r["name"] for r in findings)
+    assert any(r["kind"] == "asset" and r["name"] == "infra/terraform.tfvars" for r in recs)
+
+
+def test_checkov_failed_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = code_secrets.parse_file(DEMO / "code" / "checkov.json")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "infra/terraform.tfvars" in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "CKV_AWS_20" in findings[0]["description"]
+    assert "versioning" not in findings[0]["name"].lower()
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "public" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_empty_code_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-code.json"
+    dest.write_text("[]", encoding="utf-8")
+    assert code_secrets.parse_file(dest) == []
+    dest.write_text("""{"findings":[],"leaks":[],"results":[]}""", encoding="utf-8")
+    assert code_secrets.parse_file(dest) == []
+    dest.write_text(
+        """{"check_type":"terraform","results":{"failed_checks":[],"passed_checks":[{"check_id":"CKV_AWS_21","check_name":"ok","file_path":"/infra/x.tf"}]}}""",
+        encoding="utf-8",
+    )
+    assert code_secrets.parse_file(dest) == []
+
+
+def test_empty_in_still_loads_code(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-code"))
+    (tmp_path / "empty-code" / "code").mkdir(parents=True)
+    files, demo = load_inputs("code-secrets", (".json", ".jsonl", ".sarif"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "gitleaks.json" in names
+    assert "trufflehog.jsonl" in names
+    assert "checkov.json" in names
+
+
+def test_code_secrets_no_live_scan() -> None:
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "collectors" / "code_secrets.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "gitleaks detect" not in src
+    assert "checkov -" not in src
+    assert "semgrep --" not in src
+    assert "trufflehog git" not in src
+    assert "socket.socket" not in src
+
+
 def test_cloud_custodian() -> None:
     recs = cloud_prowler.parse_file(DEMO / "cloud" / "custodian.json")
     assert any(r["kind"] == "asset" and r["name"] == "demo-unencrypted-tmp" for r in recs)

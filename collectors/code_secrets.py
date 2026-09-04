@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Parse Gitleaks / Semgrep / Trivy FS. Secrets are redacted."""
+"""Parse Gitleaks / TruffleHog / Semgrep / Checkov / Trivy FS. Secrets are redacted.
+
+Parse-only. Does not run gitleaks, trufflehog, semgrep, or checkov.
+"""
 
 from __future__ import annotations
 
@@ -22,20 +25,98 @@ def _load(path: Path) -> Any:
         return rows if rows else {}
 
 
+def _rel_path(raw: Any) -> str:
+    text = str(raw or "repo").strip()
+    while text.startswith("./") or text.startswith("/"):
+        text = text[1:].lstrip("/") if text.startswith("/") else text[2:]
+    return text or "repo"
+
+
+def _is_trufflehog_row(row: Any) -> bool:
+    if not isinstance(row, dict):
+        return False
+    return bool(row.get("DetectorName") or row.get("detector_name") or row.get("Detector"))
+
+
 def _trufflehog(payload: Any) -> list[dict[str, Any]]:
+    if _is_trufflehog_row(payload):
+        return [payload]  # type: ignore[list-item]
     if isinstance(payload, list):
-        return [x for x in payload if isinstance(x, dict) and x.get("DetectorName")]
-    if isinstance(payload, dict) and payload.get("DetectorName"):
+        return [x for x in payload if _is_trufflehog_row(x)]
+    if isinstance(payload, dict):
+        for key in ("results", "Found", "findings", "leaks"):
+            raw = payload.get(key)
+            if isinstance(raw, list):
+                rows = [x for x in raw if _is_trufflehog_row(x)]
+                if rows:
+                    return rows
+    return []
+
+
+def _is_gitleaks_row(row: Any) -> bool:
+    if not isinstance(row, dict):
+        return False
+    return bool(
+        row.get("RuleID")
+        or row.get("RuleId")
+        or row.get("Secret")
+        or row.get("Fingerprint")
+    )
+
+
+def _gitleaks(payload: Any) -> list[dict[str, Any]]:
+    if _is_gitleaks_row(payload):
+        return [payload]  # type: ignore[list-item]
+    if isinstance(payload, list):
+        return [x for x in payload if _is_gitleaks_row(x)]
+    if isinstance(payload, dict):
+        for key in ("findings", "leaks", "results"):
+            raw = payload.get(key)
+            if isinstance(raw, list):
+                rows = [x for x in raw if _is_gitleaks_row(x)]
+                if rows:
+                    return rows
+    return []
+
+
+def _is_checkov(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("check_type") or payload.get("check_types"):
+        return True
+    results = payload.get("results") or payload.get("Results")
+    if isinstance(results, dict) and any(
+        k in results
+        for k in ("failed_checks", "passed_checks", "skipped_checks", "failed", "passed")
+    ):
+        return True
+    return isinstance(payload.get("failed_checks"), list)
+
+
+def _checkov_reports(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [x for x in payload if _is_checkov(x)]
+    if _is_checkov(payload):
         return [payload]
     return []
 
 
-def _gitleaks(payload: Any) -> list[dict[str, Any]]:
-    if isinstance(payload, list):
-        return [x for x in payload if isinstance(x, dict) and (x.get("RuleID") or x.get("Secret"))]
-    if isinstance(payload, dict) and isinstance(payload.get("findings"), list):
-        return [x for x in payload["findings"] if isinstance(x, dict)]
-    return []
+def _checkov_failed(report: dict[str, Any]) -> list[dict[str, Any]]:
+    results = report.get("results") or report.get("Results")
+    raw: Any = []
+    if isinstance(results, dict):
+        raw = results.get("failed_checks") or results.get("failed") or []
+    elif isinstance(report.get("failed_checks"), list):
+        raw = report["failed_checks"]
+    out: list[dict[str, Any]] = []
+    for row in raw if isinstance(raw, list) else []:
+        if not isinstance(row, dict):
+            continue
+        sev = str(row.get("severity") or row.get("Severity") or "high").strip().lower()
+        if sev in {"info", "informational", "passed", "skip", "skipped"}:
+            continue
+        out.append(row)
+    return out
 
 
 def parse_file(path: Path) -> list[dict]:
@@ -111,6 +192,42 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"line": leak.get("StartLine")},
                 )
             )
+        return records
+
+    reports = _checkov_reports(payload)
+    if reports:
+        for report in reports:
+            for hit in _checkov_failed(report):
+                fpath = _rel_path(
+                    hit.get("file_path")
+                    or hit.get("file_abs_path")
+                    or hit.get("repo_file_path")
+                    or hit.get("file")
+                    or "repo"
+                )
+                add_asset(fpath)
+                cid = str(hit.get("check_id") or hit.get("bc_check_id") or "checkov")
+                title = str(hit.get("check_name") or hit.get("check_id") or "Checkov finding")
+                resource = str(hit.get("resource") or "")
+                sev = str(hit.get("severity") or hit.get("Severity") or "high")
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, f"{cid}-{fpath}-{resource}"),
+                        name=title,
+                        description=(
+                            f"{cid} {title} resource={resource} file={fpath} "
+                            "(Checkov file-drop; not a live IaC scan)"
+                        ),
+                        severity=sev,
+                        category="iac",
+                        assets=[fpath],
+                        labels=LABELS + ["checkov"],
+                        collected_at=now,
+                        extra={"check_id": cid, "resource": resource},
+                    )
+                )
         return records
 
     if isinstance(payload, dict) and is_sarif(payload):

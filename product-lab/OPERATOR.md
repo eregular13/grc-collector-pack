@@ -49,7 +49,7 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 | `in/identity/` | BloodHound CE / SharpHound JSON (`data.nodes`/`data.edges` or `Properties`/`ObjectIdentifier`/`Aces`; empty data invents nothing), PingCastle XML, CIS-CAT/XCCDF XML/JSON (fail only), HardeningKitty Audit CSV (Failed/warning only; does not invent Windows findings) |
 | `in/easm/` | Subfinder / Amass / httpx JSON or JSONL (arrays and wrappers; failed httpx silent; empty invents nothing; no live DNS/HTTP), testssl JSON (same HIGH-only parse as `in/vuln/`) |
 | `in/k8s/` | Kubescape JSON, kube-bench JSON (`Controls[].tests[].results[]`), Falco JSONL. Parse-only — no kubectl / live cluster. |
-| `in/code/` | Gitleaks, Semgrep, Trivy FS, TruffleHog, SARIF |
+| `in/code/` | Gitleaks / TruffleHog / Semgrep / Checkov JSON or JSONL (wrappers OK; Checkov failed only; empty invents nothing; secrets redacted; no live tools), Trivy FS, SARIF |
 | `in/saas/` | ScubaGear, Maester (Failed only), Graph `directoryRoles` export (file-drop; no Graph API), Okta |
 
 If a folder is empty, that collector uses `fixtures/demo/<sensor>/` and marks `demo`. Parse failure on one file does not invent hosts; fixture fallback only if the whole collector produced nothing.

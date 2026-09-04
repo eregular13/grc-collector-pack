@@ -121,6 +121,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             or "publicly" in text
             or "public list" in text
             or "public get" in text
+            or "public read" in text
+            or "allows public" in text
         )
         and ("s3" in text or "bucket" in text)
     ):

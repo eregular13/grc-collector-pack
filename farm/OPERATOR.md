@@ -101,10 +101,18 @@ hosts and exposure findings only — the collector never runs `nmap`. Discover
 may land DEMO stub gnmap from `farm/tool-bin/lab/nmap`. Open 445 / 3389 / 23
 map to existing SMB / RDP / Telnet POA&M rows.
 
-kube-bench / kubescape / gitleaks are **file_drop** (never subprocess). Drop
-Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL only. Layer C does
-not run `kubectl` or talk to a cluster. High rows map to CISO/POA&M when
-obvious (privileged, anonymous-auth, privilege escalation, hostNetwork).
+kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
+subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
+only. Layer C does not run `kubectl` or talk to a cluster. High rows map to
+CISO/POA&M when obvious (privileged, anonymous-auth, privilege escalation,
+hostNetwork).
+
+Gitleaks / TruffleHog / Semgrep / Checkov JSON or JSONL is file-drop ingest
+under `in/code/`. Layer C parses arrays and `{findings|leaks|results}`
+wrappers. Checkov failed_checks only — passed/INFO silent. Empty exports
+invent nothing. Secrets are redacted. High rows map to existing CISO/POA&M
+(credential rotate, public S3 / public ACL). The collector never runs
+those binaries.
 
 Nuclei **JSON/JSONL** is file-drop ingest under `in/vuln/`. Layer C parses
 JSONL, a single object, an array, or a `{results|matches|findings}` wrapper.

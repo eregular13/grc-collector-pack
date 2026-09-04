@@ -307,6 +307,24 @@ def test_hk_and_lynis_high_map_to_poam_not_cve() -> None:
         assert "CVE-" not in mapped["recommended_fix"]
 
 
+def test_checkov_public_acl_maps_to_poam() -> None:
+    rec = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id="CODE-ckv",
+        name="S3 Bucket has an ACL defined which allows public READ access.",
+        description="CKV_AWS_20 S3 Bucket has an ACL defined which allows public READ access. resource=aws_s3_bucket.demo",
+        severity="high",
+        category="iac",
+        assets=["infra/terraform.tfvars"],
+        extra={"check_id": "CKV_AWS_20", "resource": "aws_s3_bucket.demo"},
+    )
+    mapped = map_finding(rec)
+    assert mapped["include_poam"] is True
+    assert "public" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
 def test_sarif_sql_injection_maps_to_poam() -> None:
     rec = make_record(
         kind="finding",
