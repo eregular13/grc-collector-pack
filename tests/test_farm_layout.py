@@ -16,6 +16,23 @@ ROOT = Path(__file__).resolve().parents[1]
 FARM = ROOT / "farm"
 
 
+def test_farm_quickstart_and_root_readme() -> None:
+    qs = (FARM / "QUICKSTART.md").read_text(encoding="utf-8")
+    assert len(qs.splitlines()) <= 40
+    assert "DEMO" in qs
+    assert "client estate" in qs.lower() or "≠ client" in qs
+    assert "SCOPE" in qs
+    assert "make farm-toolbin-e2e" in qs
+    assert "--live" in qs
+    assert "CISO" in qs or "ciso" in qs
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "## Private drop-box farm" in readme
+    assert "farm/QUICKSTART.md" in readme
+    assert "ARCHITECTURE.md" in readme
+    assert "Layer" in readme
+    assert "not a client estate" in readme.lower()
+
+
 def test_farm_readme_is_private_not_hub() -> None:
     text = (FARM / "README.md").read_text(encoding="utf-8")
     assert "Not a public Docker Hub" in text or "not a public" in text.lower()

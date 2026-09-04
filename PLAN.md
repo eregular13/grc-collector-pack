@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep `make farm-toolbin-e2e` green; conductor `farm_toolbin_status` + MCP snippets. No slot inflation. No live internet. No fake compose pass.
+Until 16:00 PT: keep e2e green; QUICKSTART + honest stamps. No slot inflation. No live internet. No fake compose pass.
 
 ## STOP rules
 

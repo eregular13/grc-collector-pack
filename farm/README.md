@@ -2,7 +2,7 @@
 
 **Not a public Docker Hub soup.** This directory is a drop-box farm Reid (or the operator) runs **under written SCOPE** on a consented box. The public pack stays parse-only (Layer C). Do not publish these compose files or private image tags as a scanner appliance.
 
-See `dropbox/ARCHITECTURE.md` **Layer A** (BYO tool zoo) and `farm/OPERATOR.md` for the install → mount → orchestrate path. Layer B (orchestrator brakes) already schedules allowlisted PATH tools. This farm compose documents **short-lived worker isolation** (discover / deepen / ingest volumes + internal network).
+See `dropbox/ARCHITECTURE.md` **Layer A** (BYO tool zoo), `farm/QUICKSTART.md` (consent → e2e → CISO zip), and `farm/OPERATOR.md` for the install → mount → orchestrate path. Layer B (orchestrator brakes) already schedules allowlisted PATH tools. This farm compose documents **short-lived worker isolation** (discover / deepen / ingest volumes + internal network).
 
 ## What lives here
 
@@ -11,6 +11,7 @@ See `dropbox/ARCHITECTURE.md` **Layer A** (BYO tool zoo) and `farm/OPERATOR.md` 
 | `SLOTS.yaml` | 95+ adapter slots (id, binary, stage, SCOPE key, output glob, license). **No binaries.** |
 | `SLOTS.md` | Category counts: wired vs file_drop. |
 | `adapters/` | Thin callable stubs for wired slots. Plan-only if missing. |
+| `QUICKSTART.md` | ≤40-line consent → SCOPE → tool-bin → e2e → CISO zip. |
 | `OPERATOR.md` | How Reid installs tools, mounts `FARM_TOOL_BIN`, runs quiet→loud. |
 | `INTEGRITY.md` | Brakes defaults table (SCOPE, deepen, workers, batch, timeout). |
 | `Dockerfile` | Orchestrator worker only (`python:3.12-slim` + COPY). No `apt`. |

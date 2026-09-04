@@ -60,6 +60,16 @@ Or `make lab` (`PYTHON=python` on Windows, `python3` on Linux) or `scripts/lab.s
 
 Consented drop-box (internal + external → `in/`): `dropbox/OPERATOR.md`. `make dropbox-lab` is fixtures + demo overlays, not a client estate.
 
+## Private drop-box farm
+
+Consented operator path — not the public parse-only pack. Three layers
+([dropbox/ARCHITECTURE.md](dropbox/ARCHITECTURE.md)): **Layer A** BYO tools
+under written SCOPE, **Layer B** orchestrator brakes, **Layer C** ten
+parse-only collectors.
+Short runbook: [farm/QUICKSTART.md](farm/QUICKSTART.md).
+`make farm-toolbin-e2e` is DEMO stubs (`demo: true`) — **not a client estate**.
+Real `--live` only on a consented drop box with tools you installed.
+
 Overnight improve ticks: `LOOP.md` (every 30 minutes until 07:00 Pacific). Each tick reads STATUS / FAULTS / CRITIC and adds one parser or test, then re-labs.
 
 ## Outputs

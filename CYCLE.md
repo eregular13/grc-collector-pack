@@ -1,5 +1,9 @@
 # CYCLE log
 
+## cycle 33 — operator UX + honesty docs (2026-09-04)
+
+`farm/QUICKSTART.md` (27 lines): consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box. Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE. STATUS + product-lab/EXECUTIVE stamp **111 / 32 / 30**, pytest **179**, e2e 63/63 poam 61. DEMO ≠ client estate. Catalog **not inflated**. Cycles 31–32 stand.
+
 ## cycle 32 — conductor farm_toolbin_status + MCP snippets (2026-09-04)
 
 Conductor adds `farm_toolbin_status` (FARM_TOOL_BIN resolve: present/missing/demo_stub for wired invoke). `tools/call` `orchestrator_plan` returns per-stage `will_run`. OPERATOR.md + operator_mcp_interface.md have Cursor `.cursor/mcp.json` and Claude Desktop snippets; `scripts/mcp_stdio.sh` starts from repo root. Catalog **not inflated**. Cycle 31 e2e stands. No live internet. No fake compose. pytest **179**. Labs green. Compose ABSENT.

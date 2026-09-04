@@ -13,6 +13,8 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
+**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **179 passed, 1 skipped**. `make farm-toolbin-e2e` **63 / 63 / 15 / 24** poam 61, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
+
 - **Host lab:** Linux VM. `python3 -m pytest tests -q` → **179 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
@@ -45,6 +47,8 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 **Recommendation:** ship as a parse-only collector pack plus a gated drop-box. Do not market wrap, CIDR spray, or a client estate from empty `in/` / DEMO SCOPE.
 
 ## Delta (this pass, 2026-09-04)
+
+**Cycle 33 — operator UX docs:** `farm/QUICKSTART.md` (consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box). Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE three layers. STATUS + this brief stamp **111 / 32 / 30**, pytest **179**, e2e 63/63 poam 61. DEMO ≠ client estate. Catalog unchanged. Compose **runtime** still ABSENT.
 
 **Cycle 32 — conductor polish:** `farm_toolbin_status` (present/missing/demo_stub). `orchestrator_plan` returns per-stage `will_run`. Cursor + Claude Desktop snippets from repo root (`scripts/mcp_stdio.sh`). Catalog **111** (32 / 30 / 81). Cycle 31 e2e stands. Compose **runtime** still ABSENT.
 
