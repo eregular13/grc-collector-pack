@@ -1,0 +1,16 @@
+{
+  "scanResult": [
+    {
+      "targetHost": "dev-api.example.com",
+      "ip": "203.0.113.20",
+      "vulnerabilities": [
+        {
+          "id": "heartbleed",
+          "severity": "HIGH",
+          "cve": "CVE-2014-0160",
+          "finding": "Heartbleed still offered on TLS"
+        }
+      ]
+    }
+  ]
+}

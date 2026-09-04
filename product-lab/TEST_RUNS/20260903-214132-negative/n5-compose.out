@@ -1,0 +1,175 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 4.73kB done
+#1 DONE 0.0s
+
+#2 [grc-loader internal] load build definition from Dockerfile
+#2 transferring dockerfile: 348B done
+#2 DONE 0.0s
+
+#3 [identity-ad internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.5s
+
+#4 [identity-ad internal] load .dockerignore
+#4 transferring context: 174B done
+#4 DONE 0.0s
+
+#5 [inventory-nmap 1/3] FROM docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#5 resolve docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea 0.0s done
+#5 DONE 0.0s
+
+#6 [code-secrets internal] load build context
+#6 transferring context: 46.43kB 0.0s done
+#6 DONE 0.0s
+
+#7 [code-secrets 2/3] WORKDIR /app
+#7 CACHED
+
+#8 [vuln-scan 3/3] COPY . .
+#8 DONE 0.1s
+
+#9 [identity-ad] exporting to image
+#9 exporting layers 0.1s done
+#9 exporting manifest sha256:e85e9dee6a17ead221a0a86d0de0a541a0ead85abe45356d749402415183e568
+#9 exporting manifest sha256:e85e9dee6a17ead221a0a86d0de0a541a0ead85abe45356d749402415183e568 0.1s done
+#9 exporting config sha256:6d0d73b3433b79ffc2cd4d4e9a01841e44c7d89ab48c7eee068c6423b170e501
+#9 exporting config sha256:6d0d73b3433b79ffc2cd4d4e9a01841e44c7d89ab48c7eee068c6423b170e501 0.1s done
+#9 exporting attestation manifest sha256:874ba0a2d385d043be132fc265686f13eb310489e1f009384bdc7318fa8aec8e
+#9 exporting attestation manifest sha256:874ba0a2d385d043be132fc265686f13eb310489e1f009384bdc7318fa8aec8e 0.2s done
+#9 exporting manifest list sha256:54c98dd1dca69bf4a7a6e3ef015524ef0eac07f235ce8137e16d1d93e2ec6610
+#9 exporting manifest list sha256:54c98dd1dca69bf4a7a6e3ef015524ef0eac07f235ce8137e16d1d93e2ec6610 0.1s done
+#9 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#9 unpacking to docker.io/library/grc-collector-pack:local
+#9 unpacking to docker.io/library/grc-collector-pack:local 0.1s done
+#9 DONE 0.9s
+
+#10 [code-secrets] exporting to image
+#10 exporting layers 0.1s done
+#10 exporting manifest sha256:b69d6b5dbe9f33691bef4cbe870f09be973dd9b1fcf5da8989aa2a2076a72076 0.1s done
+#10 exporting config sha256:8b325e423d91d7f0edb01c2c50751ed1e0762f1b914641f7e20f1b7d657f37dc 0.1s done
+#10 exporting attestation manifest sha256:ec26d9ecdbd52651d809c0fe8c209eb2577eda521e72611d7d83b7cd0d32e980 0.1s done
+#10 exporting manifest list sha256:07a7ecbf7c9a10e73393f4bec04799b10c575dbe2174aa0031fea6803b7ff619 0.1s done
+#10 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#10 unpacking to docker.io/library/grc-collector-pack:local 0.1s done
+#10 DONE 0.9s
+
+#11 [host-wazuh] exporting to image
+#11 exporting layers 0.1s done
+#11 exporting manifest sha256:1fcba32eb4f89f5f60b2311dbe95ed9f4dd0f5572adeaf5a6366126759e3c269 0.1s done
+#11 exporting config sha256:b4630acbf6ac87fcec293c9d2b5055cdf188b08f34f4ba9eb36df3a9ec1af3eb 0.1s done
+#11 exporting attestation manifest sha256:c326d5383d13e83c639921ba4afea7211c3532753cd702a4dc3c6eceb704eccd 0.2s done
+#11 exporting manifest list sha256:582908cccf0775a864f8f33314ba85401e785d9553f9d1ade1728757ae679fba 0.1s done
+#11 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#11 unpacking to docker.io/library/grc-collector-pack:local 0.1s done
+#11 DONE 0.9s
+
+#12 [inventory-nmap] exporting to image
+#12 exporting layers 0.1s done
+#12 exporting manifest sha256:aace07c7dbdec8d26e3f6276c601b401c347531d89ef42d94c6e04ceeff8f10b 0.1s done
+#12 exporting config sha256:2537da588f9056f680bf440d82924273cee3482c487a31c63bd0e95948ed73a7 0.1s done
+#12 exporting attestation manifest sha256:1c9c07b99d0cb59b3bc3466d2a3b3c38c073d7d34bc021cc956c1144fc48fc4f 0.2s done
+#12 exporting manifest list sha256:2874c52faa65b9c648d57cf6b3b80ccbe908102c2636b8205f483e8078c36ac8 0.1s done
+#12 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#12 unpacking to docker.io/library/grc-collector-pack:local 0.1s done
+#12 DONE 0.9s
+
+#13 [grc-loader] exporting to image
+#13 exporting layers 0.1s done
+#13 exporting manifest sha256:3a1eea851eb7f752060af5c5cb56176b7ba65c5f13ceb9cc35f4a7aa0871c3b6 0.1s done
+#13 exporting config sha256:2e263330a551a4b2c1fd7bbec2f33fc560a54a027c79a401555105a603372e71 0.1s done
+#13 exporting attestation manifest sha256:b2941857a140022cc0c161ff4f04a93aa858cb21b90aff1cdeae71effd8f01bd 0.2s done
+#13 exporting manifest list sha256:dd8ddb0879d03f39c2544633e988d02732e157df4661dea15a1bebecf6199aa7 0.1s done
+#13 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#13 unpacking to docker.io/library/grc-collector-pack:local 0.1s done
+#13 DONE 1.0s
+
+#14 [cloud-prowler] exporting to image
+#14 exporting layers 0.1s done
+#14 exporting manifest sha256:049b3fc343e86b0ba453ab6d4a54a3dd4dc5f174dacc37c62f91159fbf76260a 0.1s done
+#14 exporting config sha256:938334cd8a68063a15479706cf260dd9ee87d9eef52d27505cb307250ecbce01 0.1s done
+#14 exporting attestation manifest sha256:1512e132d64216b345cb40d5fd55adab687bb7dd0ba828142f0635e2e5745293 0.2s done
+#14 exporting manifest list sha256:ab354b12d39fa109e63c84979f83d71c148b2b2aee6df480a7c549285f331a98 0.1s done
+#14 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#14 unpacking to docker.io/library/grc-collector-pack:local 0.2s done
+#14 DONE 1.0s
+
+#15 [vuln-scan] exporting to image
+#15 exporting layers 0.1s done
+#15 exporting manifest sha256:2b87aab78d4bc38c9da5c9cf1c82212c0440e2bad3ebbc648fadf05f1183c7db 0.1s done
+#15 exporting config sha256:dd2a0926ca49b2703ef2154f0561d4e91ca5d8e1604c9a259279b84587a1a57a 0.1s done
+#15 exporting attestation manifest sha256:cbe3984c8524b9263550105719005fcae0e39a83298a93553098b363b4e0275a 0.2s done
+#15 exporting manifest list sha256:33d2a0b574bdd343bbaaa3f644838f2b7797df1c85237d4b881a3c50f533bb0e 0.1s done
+#15 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#15 unpacking to docker.io/library/grc-collector-pack:local 0.2s done
+#15 DONE 1.0s
+
+#16 [k8s-kubescape] exporting to image
+#16 exporting layers 0.1s done
+#16 exporting manifest sha256:652056c828710fe3dadb575c59c4c975a101e6d6c0ed221e6acc277ffc60fbb2 0.1s done
+#16 exporting config sha256:9f84d22f40de488204d3a0dfdc0f57c8cd0e97471d7599bbdb242cb46b6b8de8 0.1s done
+#16 exporting attestation manifest sha256:e5e02f8231e021132fae2ee000167aead5dc0fa360dfdfb14c2f57547e1bc21d 0.1s done
+#16 exporting manifest list sha256:82f3226a184f9467d6687a064751ee02ae7887fbeb249c09c1769af6b66bbca7 0.1s done
+#16 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#16 unpacking to docker.io/library/grc-collector-pack:local 0.2s done
+#16 DONE 1.0s
+
+#17 [saas-idp] exporting to image
+#17 exporting layers 0.1s done
+#17 exporting manifest sha256:f775b03d0c7a9d53d3d395e2ef7fe6c0cdec87afc50ce7e648af3eca7b957a02 0.1s done
+#17 exporting config sha256:843beb727b4a5186811c9a86d96090ad77d6d0a9faba139556f6196237a2da39 0.1s done
+#17 exporting attestation manifest sha256:272a11240f368206b839cf758f0b4865624ae65d5ee14c1ec545b9c83275a728 0.1s done
+#17 exporting manifest list sha256:5ee5c203fe13e5c2f19c3e2e326d6f9ee91c750708f7f89aedbbaf414291ce93 0.1s done
+#17 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#17 unpacking to docker.io/library/grc-collector-pack:local 0.2s done
+#17 DONE 1.0s
+
+#18 [easm] exporting to image
+#18 exporting layers 0.1s done
+#18 exporting manifest sha256:55f8f35efbd94fb838d3bef950ba28cee10c4b0aa828db6b72c0afb61ee7d293 0.1s done
+#18 exporting config sha256:945b23d8535f46883a9544c46a43b36607d321913350bd954c4014403de027dd 0.1s done
+#18 exporting attestation manifest sha256:546acf7f3b3d9e8557ca5e03363f1f6331a76e249d700713a9f8bd452ba497ad 0.1s done
+#18 exporting manifest list sha256:64944e1655c1a365bce02edea7e56cb9b5698866c528553b0bd261613169aaa4 0.1s done
+#18 naming to docker.io/library/grc-collector-pack:local 0.0s done
+#18 unpacking to docker.io/library/grc-collector-pack:local 0.2s done
+#18 DONE 1.1s
+
+#19 [code-secrets] resolving provenance for metadata file
+#19 DONE 0.4s
+
+#20 [host-wazuh] resolving provenance for metadata file
+#20 DONE 0.3s
+
+#21 [inventory-nmap] resolving provenance for metadata file
+#21 DONE 0.4s
+
+#22 [vuln-scan] resolving provenance for metadata file
+#22 DONE 0.3s
+
+#23 [easm] resolving provenance for metadata file
+#23 DONE 0.2s
+
+#24 [saas-idp] resolving provenance for metadata file
+#24 DONE 0.2s
+
+#25 [grc-loader] resolving provenance for metadata file
+#25 DONE 0.2s
+
+#26 [cloud-prowler] resolving provenance for metadata file
+#26 DONE 0.1s
+
+#27 [k8s-kubescape] resolving provenance for metadata file
+#27 DONE 0.0s
+
+#28 [identity-ad] resolving provenance for metadata file
+#28 DONE 0.0s
+Attaching to cloud-prowler-1, code-secrets-1, easm-1, grc-loader-1, host-wazuh-1, identity-ad-1, inventory-nmap-1, k8s-kubescape-1, saas-idp-1, vuln-scan-1
+[Khost-wazuh-1 exited with code 0
+[Kvuln-scan-1 exited with code 0
+[Kcloud-prowler-1 exited with code 0
+[Ksaas-idp-1 exited with code 0
+[Keasm-1 exited with code 0
+[Kk8s-kubescape-1 exited with code 0
+[Kinventory-nmap-1 exited with code 0
+[Kcode-secrets-1 exited with code 0
+[Kidentity-ad-1 exited with code 0
+grc-loader-1      | {"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "applied_controls": 74, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T04:41:43Z"}
+[Kgrc-loader-1 exited with code 0

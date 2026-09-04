@@ -1,0 +1,19 @@
+[
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Generic API Key",
+    "File": "services/payments/config.py",
+    "Secret": "AKIAIOSFODNN7EXAMPLE",
+    "Match": "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE",
+    "StartLine": 12,
+    "Entropy": 3.5
+  },
+  {
+    "RuleID": "generic-secret",
+    "Description": "Generic Secret",
+    "File": "deploy/.env.sample",
+    "Secret": "super-secret-demo-value-not-real",
+    "Match": "SECRET=super-secret-demo-value-not-real",
+    "StartLine": 3
+  }
+]

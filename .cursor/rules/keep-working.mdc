@@ -1,0 +1,8 @@
+---
+description: Keep building until DONE.md is GREEN
+alwaysApply: true
+---
+Ending the turn is forbidden unless DONE.md line 1 is GREEN.
+After any code change, run the lab yourself.
+Graph: PLAN → BUILD → SELF-CHECK → LAB → CRITIC → FIX → REGRESSION LAB.
+Resume from STATUS.md. Do not rebuild from scratch.

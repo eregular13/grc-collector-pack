@@ -1,0 +1,2 @@
+{"DetectorName":"AWS","Verified":false,"SourceMetadata":{"Data":{"Filesystem":{"file":"infra/terraform.tfvars","line":4}}},"Raw":"AKIAIOSFODNN7EXAMPLE"}
+{"DetectorName":"Github","Verified":true,"SourceMetadata":{"Data":{"Git":{"file":"scripts/deploy.sh","line":9}}},"Raw":"ghp_demoNotARealTokenValue0001"}

@@ -1,0 +1,23 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {"driver": {"name": "Semgrep"}},
+      "results": [
+        {
+          "ruleId": "python.lang.security.audit.sql-injection",
+          "level": "error",
+          "message": {"text": "Possible SQL injection via string format"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "services/payments/query.py"},
+                "region": {"startLine": 41}
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+C:\Users\R\grc-collector-pack\in\cloud\.gitkeep
+C:\Users\R\grc-collector-pack\in\code\.gitkeep
+C:\Users\R\grc-collector-pack\in\easm\.gitkeep
+C:\Users\R\grc-collector-pack\in\identity\.gitkeep
+C:\Users\R\grc-collector-pack\in\k8s\.gitkeep
+C:\Users\R\grc-collector-pack\in\nmap\.gitkeep
+C:\Users\R\grc-collector-pack\in\saas\.gitkeep
+C:\Users\R\grc-collector-pack\in\vuln\.gitkeep
+C:\Users\R\grc-collector-pack\in\wazuh\.gitkeep

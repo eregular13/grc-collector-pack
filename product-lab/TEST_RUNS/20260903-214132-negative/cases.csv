@@ -1,0 +1,27 @@
+"name","command","exit","duration","pass","notes"
+"N1-empty-in","Get-ChildItem in -Recurse; compose1/compose2 already green","0","00:00:00.0191224","True","in files: C:\Users\R\grc-collector-pack\in\cloud\.gitkeep, C:\Users\R\grc-collector-pack\in\code\.gitkeep, C:\Users\R\grc-collector-pack\in\easm\.gitkeep, C:\Users\R\grc-collector-pack\in\identity\.gitkeep, C:\Users\R\grc-collector-pack\in\k8s\.gitkeep, C:\Users\R\grc-collector-pack\in\nmap\.gitkeep, C:\Users\R\grc-collector-pack\in\saas\.gitkeep, C:\Users\R\grc-collector-pack\in\vuln\.gitkeep, C:\Users\R\grc-collector-pack\in\wazuh\.gitkeep"
+"N2-two-loaders","python collectors/grc_loader.py & python collectors/grc_loader.py","0","00:00:00.4292820","False","loader_exits=/ rows=62 unique=62 header_ok=True sha_before=4CFAB51E09CF findings_before=1AECE32684FA"
+"N3-live-scan-no-sockets","GRC_LIVE_SCAN=1 python n3_socket_probe.py","0","00:00:01.0163852","True","{""assets"": 62, ""findings"": 59, ""vulnerabilities"": 15, ""evidences"": 10, ""applied_controls"": 74, ""risk_scenarios"": 74, ""incidents"": 58, ""risks_proposed"": 57, ""ocsf"": 59, ""canonical"": 137, ""demo"": true, ""generated_at"": ""2026-09-04T04:41:33Z""}
+SOCKET_HITS 0
+OK"
+"N4-push-no-flags","bash ./push_ciso.sh ; bash ./push_riskready.sh (flags default 0)","0","00:00:02.0418950","True","ciso=[CISO_PUSH=0; dry run, not pushing] rr=[RISKREADY_PUSH=0; dry run, not pushing]"
+"N5-truncated-cloud","write in/cloud/bad-truncated.json; docker compose up --build --exit-code-from grc-loader; delete bad file","0","00:00:08.0860865","True","{
+  ""assets"": 62,
+  ""findings"": 59,
+  ""vulnerabilities"": 15,
+  ""evidences"": 10,
+  ""applied_controls"": 74,
+  ""risk_scenarios"": 74,
+  ""incidents"": 58,
+  ""risks_proposed"": 57,
+  ""ocsf"": 59,
+  ""canonical"": 137,
+  ""demo"": true,
+  ""generated_at"": ""2026-09-04T04:41:43Z""
+}"
+"N6a-missing-OUT_DIR","OUT_DIR=product-lab/tmp/missing-out python -c grc_loader.main()","1","00:00:01.0235486","True","created=False exit=1 (loader mkdir parents; not an explicit fail) out="
+"N6b-unset-OUT_DIR","unset OUT_DIR; grc_loader.load()","1","00:00:01.0116292","True","falls back to repo/out; exit=1 "
+"N6c-readonly-out","OUT_DIR=product-lab/tmp/readonly-out (write denied) python grc_loader","1","00:00:01.0215633","True","explicit_fail=True err=File ""<string>"", line 1
+    import
+          ^
+SyntaxError: Expected one or more names after 'import'"

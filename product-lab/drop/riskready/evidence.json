@@ -1,0 +1,82 @@
+[
+  {
+    "title": "cloud-prowler collector run",
+    "description": "Canonical records ingested from cloud-prowler at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "cloud-prowler"
+  },
+  {
+    "title": "code-secrets collector run",
+    "description": "Canonical records ingested from code-secrets at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "code-secrets"
+  },
+  {
+    "title": "easm collector run",
+    "description": "Canonical records ingested from easm at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "easm"
+  },
+  {
+    "title": "host-wazuh collector run",
+    "description": "Canonical records ingested from host-wazuh at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "host-wazuh"
+  },
+  {
+    "title": "identity-ad collector run",
+    "description": "Canonical records ingested from identity-ad at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "identity-ad"
+  },
+  {
+    "title": "inventory-nmap collector run",
+    "description": "Canonical records ingested from inventory-nmap at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "inventory-nmap"
+  },
+  {
+    "title": "k8s-kubescape collector run",
+    "description": "Canonical records ingested from k8s-kubescape at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "k8s-kubescape"
+  },
+  {
+    "title": "saas-idp collector run",
+    "description": "Canonical records ingested from saas-idp at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "saas-idp"
+  },
+  {
+    "title": "vuln-scan collector run",
+    "description": "Canonical records ingested from vuln-scan at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "vuln-scan"
+  },
+  {
+    "title": "grc-loader run",
+    "description": "Normalized 137 canonical records at 2026-09-04T04:42:07Z",
+    "evidenceType": "TECHNICAL",
+    "sourceType": "SENSOR",
+    "status": "DRAFT",
+    "source": "grc-loader"
+  }
+]

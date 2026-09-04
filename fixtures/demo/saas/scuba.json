@@ -1,0 +1,36 @@
+{
+  "Results": [
+    {
+      "Tenant": "contoso.onmicrosoft.com",
+      "ProductName": "AAD",
+      "Requirement": "Legacy authentication protocols disabled",
+      "Result": "Fail",
+      "Details": "M365 legacy auth (IMAP/SMTP basic) still enabled",
+      "Severity": "high"
+    },
+    {
+      "Tenant": "contoso.onmicrosoft.com",
+      "ProductName": "AAD",
+      "Requirement": "Privileged roles use PIM",
+      "Result": "Fail",
+      "Details": "Global Administrator assigned permanently",
+      "Severity": "critical"
+    },
+    {
+      "Tenant": "contoso.onmicrosoft.com",
+      "ProductName": "SharePoint",
+      "Requirement": "External sharing restricted",
+      "Result": "Fail",
+      "Details": "Anyone links enabled on default site",
+      "Severity": "medium"
+    },
+    {
+      "Tenant": "contoso.onmicrosoft.com",
+      "ProductName": "AAD",
+      "Requirement": "Security defaults or CA policies",
+      "Result": "Pass",
+      "Details": "Conditional Access baseline present",
+      "Severity": "low"
+    }
+  ]
+}

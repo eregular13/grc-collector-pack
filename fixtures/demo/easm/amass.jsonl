@@ -1,0 +1,2 @@
+{"name":"vpn.example.com","domain":"example.com","tag":"cert","source":"amass"}
+{"name":"intranet.example.com","domain":"example.com","tag":"dns","source":"amass"}

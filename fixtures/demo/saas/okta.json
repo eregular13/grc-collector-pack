@@ -1,0 +1,32 @@
+{
+  "org": "example.okta.com",
+  "users": [
+    {
+      "id": "00u1admin",
+      "profile": {"login": "it-admin@example.com", "firstName": "IT", "lastName": "Admin"},
+      "status": "ACTIVE",
+      "roles": ["SUPER_ADMIN"]
+    },
+    {
+      "id": "00u2user",
+      "profile": {"login": "jane@example.com"},
+      "status": "ACTIVE",
+      "roles": []
+    }
+  ],
+  "policies": [
+    {
+      "id": "pol-mfa-admins",
+      "type": "MFA_ENROLL",
+      "name": "Admins MFA",
+      "status": "INACTIVE",
+      "description": "Okta admin MFA enrollment disabled"
+    },
+    {
+      "id": "pol-password",
+      "type": "PASSWORD",
+      "name": "Default password",
+      "status": "ACTIVE"
+    }
+  ]
+}

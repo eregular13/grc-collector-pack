@@ -1,0 +1,3 @@
+﻿cd C:\Users\R\grc-collector-pack
+docker compose config --services
+docker compose up --build --exit-code-from grc-loader

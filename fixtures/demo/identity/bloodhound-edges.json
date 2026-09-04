@@ -1,0 +1,35 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "objectid": "S-1-5-21-1000-2000-3000-1107",
+        "kind": "User",
+        "label": "HELPDesk",
+        "properties": {"name": "HELPDESK@CORP.LOCAL"}
+      },
+      {
+        "objectid": "S-1-5-21-1000-2000-3000-1000",
+        "kind": "Domain",
+        "label": "CORP",
+        "properties": {"name": "CORP.LOCAL"}
+      }
+    ],
+    "edges": [
+      {
+        "kind": "GenericAll",
+        "start": "HELPDESK@CORP.LOCAL",
+        "end": "DOMAIN ADMINS@CORP.LOCAL"
+      },
+      {
+        "kind": "DCSync",
+        "start": "SVC-SQL@CORP.LOCAL",
+        "end": "CORP.LOCAL"
+      },
+      {
+        "kind": "AdminTo",
+        "start": "HELPDESK@CORP.LOCAL",
+        "end": "DC01.CORP.LOCAL"
+      }
+    ]
+  }
+}

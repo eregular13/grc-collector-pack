@@ -1,0 +1,2552 @@
+﻿[
+    {
+        "Id": "b019f16331fbe63a8030c58ed42c099e929f6b4ce4632d258659bb3a93d2b39a",
+        "Created": "2026-09-03T05:00:04.994116205Z",
+        "Path": "python",
+        "Args": [
+            "collectors/cloud_prowler.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.864042468Z",
+            "FinishedAt": "2026-09-03T05:00:06.25518722Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/b019f16331fbe63a8030c58ed42c099e929f6b4ce4632d258659bb3a93d2b39a/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/b019f16331fbe63a8030c58ed42c099e929f6b4ce4632d258659bb3a93d2b39a/hostname",
+        "HostsPath": "/var/lib/docker/containers/b019f16331fbe63a8030c58ed42c099e929f6b4ce4632d258659bb3a93d2b39a/hosts",
+        "LogPath": "/var/lib/docker/containers/b019f16331fbe63a8030c58ed42c099e929f6b4ce4632d258659bb3a93d2b39a/b019f16331fbe63a8030c58ed42c099e929f6b4ce4632d258659bb3a93d2b39a-json.log",
+        "Name": "/grc-collector-pack-cloud-prowler-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "b019f16331fb",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "GRC_LIVE_SCAN=0",
+                "GRC_PERIMETER=IT Environment",
+                "IN_DIR=/in",
+                "DRY_RUN=1",
+                "CISO_PUSH=0",
+                "PYTHONPATH=/app",
+                "GRC_DOMAIN=Global",
+                "RISKREADY_PUSH=0",
+                "OUT_DIR=/out",
+                "FIXTURES_DIR=/fixtures/demo",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/cloud_prowler.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "daaacb53dc6c9397a4652eed184d345688cd4cb3897bc08bb6e824ded43bfeb6",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "cloud-prowler-1",
+                "com.docker.compose.service": "cloud-prowler",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-cloud-prowler-1",
+                        "cloud-prowler"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-cloud-prowler-1",
+                        "cloud-prowler",
+                        "b019f16331fb"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "79b30ce823d0d42a438dcba775fa71f1479b941a74caee7cb59f59709c09131b",
+        "Created": "2026-09-03T05:00:04.981957892Z",
+        "Path": "python",
+        "Args": [
+            "collectors/inventory_nmap.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.85516112Z",
+            "FinishedAt": "2026-09-03T05:00:06.309949152Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/79b30ce823d0d42a438dcba775fa71f1479b941a74caee7cb59f59709c09131b/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/79b30ce823d0d42a438dcba775fa71f1479b941a74caee7cb59f59709c09131b/hostname",
+        "HostsPath": "/var/lib/docker/containers/79b30ce823d0d42a438dcba775fa71f1479b941a74caee7cb59f59709c09131b/hosts",
+        "LogPath": "/var/lib/docker/containers/79b30ce823d0d42a438dcba775fa71f1479b941a74caee7cb59f59709c09131b/79b30ce823d0d42a438dcba775fa71f1479b941a74caee7cb59f59709c09131b-json.log",
+        "Name": "/grc-collector-pack-inventory-nmap-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro",
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "79b30ce823d0",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "GRC_LIVE_SCAN=0",
+                "CISO_PUSH=0",
+                "GRC_PERIMETER=IT Environment",
+                "GRC_DOMAIN=Global",
+                "FIXTURES_DIR=/fixtures/demo",
+                "PYTHONPATH=/app",
+                "RISKREADY_PUSH=0",
+                "OUT_DIR=/out",
+                "DRY_RUN=1",
+                "IN_DIR=/in",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/inventory_nmap.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "50f7cedef2fa9eb4d44e0b49443fd31614183a777459a894ef12606853bdaf0f",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "inventory-nmap-1",
+                "com.docker.compose.service": "inventory-nmap",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-inventory-nmap-1",
+                        "inventory-nmap"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-inventory-nmap-1",
+                        "inventory-nmap",
+                        "79b30ce823d0"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "a0149d2d21b0a079a96387e608121635015f4b11d375f1bbae30157368547f01",
+        "Created": "2026-09-03T05:00:04.980371752Z",
+        "Path": "python",
+        "Args": [
+            "collectors/vuln_scan.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.869608547Z",
+            "FinishedAt": "2026-09-03T05:00:06.284303961Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/a0149d2d21b0a079a96387e608121635015f4b11d375f1bbae30157368547f01/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/a0149d2d21b0a079a96387e608121635015f4b11d375f1bbae30157368547f01/hostname",
+        "HostsPath": "/var/lib/docker/containers/a0149d2d21b0a079a96387e608121635015f4b11d375f1bbae30157368547f01/hosts",
+        "LogPath": "/var/lib/docker/containers/a0149d2d21b0a079a96387e608121635015f4b11d375f1bbae30157368547f01/a0149d2d21b0a079a96387e608121635015f4b11d375f1bbae30157368547f01-json.log",
+        "Name": "/grc-collector-pack-vuln-scan-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "a0149d2d21b0",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "GRC_DOMAIN=Global",
+                "IN_DIR=/in",
+                "PYTHONPATH=/app",
+                "RISKREADY_PUSH=0",
+                "GRC_PERIMETER=IT Environment",
+                "FIXTURES_DIR=/fixtures/demo",
+                "OUT_DIR=/out",
+                "GRC_LIVE_SCAN=0",
+                "CISO_PUSH=0",
+                "DRY_RUN=1",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/vuln_scan.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "c4b338902976d3f48451b74b190e548b60e4fe2745de64a4126ec68b13315178",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "vuln-scan-1",
+                "com.docker.compose.service": "vuln-scan",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-vuln-scan-1",
+                        "vuln-scan"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-vuln-scan-1",
+                        "vuln-scan",
+                        "a0149d2d21b0"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "a73db71fc17f9276f1abd8d09b3e9f42ff1f721b2c4298bb6e967190691194f2",
+        "Created": "2026-09-03T05:00:05.001143269Z",
+        "Path": "python",
+        "Args": [
+            "collectors/host_wazuh.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.884261017Z",
+            "FinishedAt": "2026-09-03T05:00:06.234346537Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/a73db71fc17f9276f1abd8d09b3e9f42ff1f721b2c4298bb6e967190691194f2/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/a73db71fc17f9276f1abd8d09b3e9f42ff1f721b2c4298bb6e967190691194f2/hostname",
+        "HostsPath": "/var/lib/docker/containers/a73db71fc17f9276f1abd8d09b3e9f42ff1f721b2c4298bb6e967190691194f2/hosts",
+        "LogPath": "/var/lib/docker/containers/a73db71fc17f9276f1abd8d09b3e9f42ff1f721b2c4298bb6e967190691194f2/a73db71fc17f9276f1abd8d09b3e9f42ff1f721b2c4298bb6e967190691194f2-json.log",
+        "Name": "/grc-collector-pack-host-wazuh-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro",
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "a73db71fc17f",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PYTHONPATH=/app",
+                "OUT_DIR=/out",
+                "IN_DIR=/in",
+                "GRC_PERIMETER=IT Environment",
+                "DRY_RUN=1",
+                "GRC_DOMAIN=Global",
+                "FIXTURES_DIR=/fixtures/demo",
+                "RISKREADY_PUSH=0",
+                "GRC_LIVE_SCAN=0",
+                "CISO_PUSH=0",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/host_wazuh.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "af15ff62ae8903d4bc51a98e59edb8aef8d085576bc55c3cdf93619399b47be5",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "host-wazuh-1",
+                "com.docker.compose.service": "host-wazuh",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-host-wazuh-1",
+                        "host-wazuh"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-host-wazuh-1",
+                        "host-wazuh",
+                        "a73db71fc17f"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "8d963242c00603b5b5de0e3975c60c387cb56b79e0d12c3bc91bdf0fcf7ded95",
+        "Created": "2026-09-03T05:00:04.994525019Z",
+        "Path": "python",
+        "Args": [
+            "collectors/identity_ad.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.861683401Z",
+            "FinishedAt": "2026-09-03T05:00:06.323537157Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/8d963242c00603b5b5de0e3975c60c387cb56b79e0d12c3bc91bdf0fcf7ded95/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/8d963242c00603b5b5de0e3975c60c387cb56b79e0d12c3bc91bdf0fcf7ded95/hostname",
+        "HostsPath": "/var/lib/docker/containers/8d963242c00603b5b5de0e3975c60c387cb56b79e0d12c3bc91bdf0fcf7ded95/hosts",
+        "LogPath": "/var/lib/docker/containers/8d963242c00603b5b5de0e3975c60c387cb56b79e0d12c3bc91bdf0fcf7ded95/8d963242c00603b5b5de0e3975c60c387cb56b79e0d12c3bc91bdf0fcf7ded95-json.log",
+        "Name": "/grc-collector-pack-identity-ad-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "8d963242c006",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "GRC_PERIMETER=IT Environment",
+                "IN_DIR=/in",
+                "DRY_RUN=1",
+                "OUT_DIR=/out",
+                "RISKREADY_PUSH=0",
+                "GRC_LIVE_SCAN=0",
+                "PYTHONPATH=/app",
+                "FIXTURES_DIR=/fixtures/demo",
+                "GRC_DOMAIN=Global",
+                "CISO_PUSH=0",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/identity_ad.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "71653fb1b6691d8e98bb02a8dfa9334a3b6eaf652d1839991cfb72b9651b6542",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "identity-ad-1",
+                "com.docker.compose.service": "identity-ad",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-identity-ad-1",
+                        "identity-ad"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-identity-ad-1",
+                        "identity-ad",
+                        "8d963242c006"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "20c18a779e62b089749a38814ca7ce661c76ae5d2725fc307db81e140b29f5e8",
+        "Created": "2026-09-03T05:00:04.994543448Z",
+        "Path": "python",
+        "Args": [
+            "collectors/easm.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.914318577Z",
+            "FinishedAt": "2026-09-03T05:00:06.375210497Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/20c18a779e62b089749a38814ca7ce661c76ae5d2725fc307db81e140b29f5e8/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/20c18a779e62b089749a38814ca7ce661c76ae5d2725fc307db81e140b29f5e8/hostname",
+        "HostsPath": "/var/lib/docker/containers/20c18a779e62b089749a38814ca7ce661c76ae5d2725fc307db81e140b29f5e8/hosts",
+        "LogPath": "/var/lib/docker/containers/20c18a779e62b089749a38814ca7ce661c76ae5d2725fc307db81e140b29f5e8/20c18a779e62b089749a38814ca7ce661c76ae5d2725fc307db81e140b29f5e8-json.log",
+        "Name": "/grc-collector-pack-easm-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "20c18a779e62",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "OUT_DIR=/out",
+                "PYTHONPATH=/app",
+                "DRY_RUN=1",
+                "RISKREADY_PUSH=0",
+                "CISO_PUSH=0",
+                "IN_DIR=/in",
+                "GRC_DOMAIN=Global",
+                "GRC_PERIMETER=IT Environment",
+                "GRC_LIVE_SCAN=0",
+                "FIXTURES_DIR=/fixtures/demo",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/easm.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "023b7aebc6167978fa64a8e82916ffc1287cc51b75d28d2391afb398aabbc348",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "easm-1",
+                "com.docker.compose.service": "easm",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-easm-1",
+                        "easm"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-easm-1",
+                        "easm",
+                        "20c18a779e62"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "38cf52e92a93614c68393199d8a4d164b06ecae20544cc62a96534febebd9183",
+        "Created": "2026-09-03T05:00:04.978261392Z",
+        "Path": "python",
+        "Args": [
+            "collectors/k8s_kubescape.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.903719417Z",
+            "FinishedAt": "2026-09-03T05:00:06.354064114Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/38cf52e92a93614c68393199d8a4d164b06ecae20544cc62a96534febebd9183/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/38cf52e92a93614c68393199d8a4d164b06ecae20544cc62a96534febebd9183/hostname",
+        "HostsPath": "/var/lib/docker/containers/38cf52e92a93614c68393199d8a4d164b06ecae20544cc62a96534febebd9183/hosts",
+        "LogPath": "/var/lib/docker/containers/38cf52e92a93614c68393199d8a4d164b06ecae20544cc62a96534febebd9183/38cf52e92a93614c68393199d8a4d164b06ecae20544cc62a96534febebd9183-json.log",
+        "Name": "/grc-collector-pack-k8s-kubescape-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "38cf52e92a93",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "GRC_LIVE_SCAN=0",
+                "RISKREADY_PUSH=0",
+                "OUT_DIR=/out",
+                "GRC_DOMAIN=Global",
+                "CISO_PUSH=0",
+                "DRY_RUN=1",
+                "GRC_PERIMETER=IT Environment",
+                "FIXTURES_DIR=/fixtures/demo",
+                "PYTHONPATH=/app",
+                "IN_DIR=/in",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/k8s_kubescape.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "f7d4be6e8ad02b6f371d199c040710d6e53671db07db43e23085cc12e3b742f2",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "k8s-kubescape-1",
+                "com.docker.compose.service": "k8s-kubescape",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-k8s-kubescape-1",
+                        "k8s-kubescape"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-k8s-kubescape-1",
+                        "k8s-kubescape",
+                        "38cf52e92a93"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "68025f4c14c22b67f664eb03857238d226b4a70b71646fb542ec42cb3218d6d8",
+        "Created": "2026-09-03T05:00:04.969947186Z",
+        "Path": "python",
+        "Args": [
+            "collectors/code_secrets.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.87451253Z",
+            "FinishedAt": "2026-09-03T05:00:06.329942779Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/68025f4c14c22b67f664eb03857238d226b4a70b71646fb542ec42cb3218d6d8/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/68025f4c14c22b67f664eb03857238d226b4a70b71646fb542ec42cb3218d6d8/hostname",
+        "HostsPath": "/var/lib/docker/containers/68025f4c14c22b67f664eb03857238d226b4a70b71646fb542ec42cb3218d6d8/hosts",
+        "LogPath": "/var/lib/docker/containers/68025f4c14c22b67f664eb03857238d226b4a70b71646fb542ec42cb3218d6d8/68025f4c14c22b67f664eb03857238d226b4a70b71646fb542ec42cb3218d6d8-json.log",
+        "Name": "/grc-collector-pack-code-secrets-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro",
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "68025f4c14c2",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "GRC_PERIMETER=IT Environment",
+                "GRC_DOMAIN=Global",
+                "CISO_PUSH=0",
+                "FIXTURES_DIR=/fixtures/demo",
+                "GRC_LIVE_SCAN=0",
+                "RISKREADY_PUSH=0",
+                "OUT_DIR=/out",
+                "IN_DIR=/in",
+                "PYTHONPATH=/app",
+                "DRY_RUN=1",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/code_secrets.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "1166fade5a7f52df5f3add4c8656c2c6c4e1be74b7f25b6b1a68cc9d2091773b",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "code-secrets-1",
+                "com.docker.compose.service": "code-secrets",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-code-secrets-1",
+                        "code-secrets"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-code-secrets-1",
+                        "code-secrets",
+                        "68025f4c14c2"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "d59c32e519f67cab337a0433cc0d45b092291868351d2106aed169fe2c341d6e",
+        "Created": "2026-09-03T05:00:04.99563204Z",
+        "Path": "python",
+        "Args": [
+            "collectors/saas_idp.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:05.896617646Z",
+            "FinishedAt": "2026-09-03T05:00:06.33191593Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/d59c32e519f67cab337a0433cc0d45b092291868351d2106aed169fe2c341d6e/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/d59c32e519f67cab337a0433cc0d45b092291868351d2106aed169fe2c341d6e/hostname",
+        "HostsPath": "/var/lib/docker/containers/d59c32e519f67cab337a0433cc0d45b092291868351d2106aed169fe2c341d6e/hosts",
+        "LogPath": "/var/lib/docker/containers/d59c32e519f67cab337a0433cc0d45b092291868351d2106aed169fe2c341d6e/d59c32e519f67cab337a0433cc0d45b092291868351d2106aed169fe2c341d6e-json.log",
+        "Name": "/grc-collector-pack-saas-idp-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "d59c32e519f6",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "CISO_PUSH=0",
+                "RISKREADY_PUSH=0",
+                "FIXTURES_DIR=/fixtures/demo",
+                "DRY_RUN=1",
+                "PYTHONPATH=/app",
+                "GRC_PERIMETER=IT Environment",
+                "GRC_DOMAIN=Global",
+                "IN_DIR=/in",
+                "OUT_DIR=/out",
+                "GRC_LIVE_SCAN=0",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/saas_idp.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "c4bf9b9db0cc2b4e467d0d733826bc5b8bea8e600746c1c0ba0dece1926562ed",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "saas-idp-1",
+                "com.docker.compose.service": "saas-idp",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-saas-idp-1",
+                        "saas-idp"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-saas-idp-1",
+                        "saas-idp",
+                        "d59c32e519f6"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "b3232a80627697db8df7070e347adc995d64483a8fb623e64d88e3ae7b3b4cc7",
+        "Created": "2026-09-03T05:00:05.579093744Z",
+        "Path": "python",
+        "Args": [
+            "collectors/grc_loader.py"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-03T05:00:07.094928667Z",
+            "FinishedAt": "2026-09-03T05:00:07.379110717Z"
+        },
+        "Image": "sha256:fea2f40f38a48a6f7afd6d4c35dd005829ca22c495b25396c1b3cc5703fb512d",
+        "ResolvConfPath": "/var/lib/docker/containers/b3232a80627697db8df7070e347adc995d64483a8fb623e64d88e3ae7b3b4cc7/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/b3232a80627697db8df7070e347adc995d64483a8fb623e64d88e3ae7b3b4cc7/hostname",
+        "HostsPath": "/var/lib/docker/containers/b3232a80627697db8df7070e347adc995d64483a8fb623e64d88e3ae7b3b4cc7/hosts",
+        "LogPath": "/var/lib/docker/containers/b3232a80627697db8df7070e347adc995d64483a8fb623e64d88e3ae7b3b4cc7/b3232a80627697db8df7070e347adc995d64483a8fb623e64d88e3ae7b3b4cc7-json.log",
+        "Name": "/grc-collector-pack-grc-loader-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "C:\\Users\\R\\grc-collector-pack\\in:/in:ro",
+                "C:\\Users\\R\\grc-collector-pack\\out:/out:rw",
+                "C:\\Users\\R\\grc-collector-pack\\fixtures:/fixtures:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "grc-collector-pack_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\fixtures",
+                "Destination": "/fixtures",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\in",
+                "Destination": "/in",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "C:\\Users\\R\\grc-collector-pack\\out",
+                "Destination": "/out",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "b3232a806276",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "FIXTURES_DIR=/fixtures/demo",
+                "RISKREADY_PUSH=0",
+                "PYTHONPATH=/app",
+                "CISO_PUSH=0",
+                "DRY_RUN=1",
+                "GRC_PERIMETER=IT Environment",
+                "GRC_DOMAIN=Global",
+                "GRC_LIVE_SCAN=0",
+                "OUT_DIR=/out",
+                "IN_DIR=/in",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.14",
+                "PYTHON_SHA256=5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1"
+            ],
+            "Cmd": [
+                "python",
+                "collectors/grc_loader.py"
+            ],
+            "Image": "grc-collector-pack:local",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "b77c328c3058fad7b8258e0ad8f1a0dc86d99a0b6339a393d7b99ff9ade561f5",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "inventory-nmap:service_completed_successfully:false,easm:service_completed_successfully:false,k8s-kubescape:service_completed_successfully:false,code-secrets:service_completed_successfully:false,saas-idp:service_completed_successfully:false,identity-ad:service_completed_successfully:false,vuln-scan:service_completed_successfully:false,host-wazuh:service_completed_successfully:false,cloud-prowler:service_completed_successfully:false",
+                "com.docker.compose.image": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "grc-collector-pack",
+                "com.docker.compose.project.config_files": "C:\\Users\\R\\grc-collector-pack\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "C:\\Users\\R\\grc-collector-pack",
+                "com.docker.compose.replace": "grc-loader-1",
+                "com.docker.compose.service": "grc-loader",
+                "com.docker.compose.version": "5.5.0"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "grc-collector-pack_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "grc-collector-pack-grc-loader-1",
+                        "grc-loader"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9e49e5ba5fb44128a306ac12ac6a2aa188209cbca6a1d16e1cb105d57f322b7e",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "grc-collector-pack-grc-loader-1",
+                        "grc-loader",
+                        "b3232a806276"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:a16cbd4214bf1486433c7f5079e2c629f3d5aab00ec2a5083c12c7a46da48630",
+            "size": 1433,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]

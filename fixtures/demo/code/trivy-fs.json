@@ -1,0 +1,25 @@
+{
+  "Results": [
+    {
+      "Target": "package-lock.json",
+      "Class": "lang-pkgs",
+      "Type": "npm",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2023-44270",
+          "PkgName": "postcss",
+          "Severity": "MEDIUM",
+          "Title": "postcss line return parsing",
+          "Description": "Affected lockfile dependency."
+        },
+        {
+          "VulnerabilityID": "CVE-2022-25883",
+          "PkgName": "semver",
+          "Severity": "HIGH",
+          "Title": "semver regular expression DoS",
+          "Description": "ReDoS in npm semver."
+        }
+      ]
+    }
+  ]
+}

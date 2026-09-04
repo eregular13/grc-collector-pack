@@ -1,0 +1,26 @@
+N1-empty-in	True	0	00:00:00.0191224	in files: C:\Users\R\grc-collector-pack\in\cloud\.gitkeep, C:\Users\R\grc-collector-pack\in\code\.gitkeep, C:\Users\R\grc-collector-pack\in\easm\.gitkeep, C:\Users\R\grc-collector-pack\in\identity\.gitkeep, C:\Users\R\grc-collector-pack\in\k8s\.gitkeep, C:\Users\R\grc-collector-pack\in\nmap\.gitkeep, C:\Users\R\grc-collector-pack\in\saas\.gitkeep, C:\Users\R\grc-collector-pack\in\vuln\.gitkeep, C:\Users\R\grc-collector-pack\in\wazuh\.gitkeep
+N2-two-loaders	False	0	00:00:00.4292820	loader_exits=/ rows=62 unique=62 header_ok=True sha_before=4CFAB51E09CF findings_before=1AECE32684FA
+N3-live-scan-no-sockets	True	0	00:00:01.0163852	{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "applied_controls": 74, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T04:41:33Z"}
+SOCKET_HITS 0
+OK
+N4-push-no-flags	True	0	00:00:02.0418950	ciso=[CISO_PUSH=0; dry run, not pushing] rr=[RISKREADY_PUSH=0; dry run, not pushing]
+N5-truncated-cloud	True	0	00:00:08.0860865	{
+  "assets": 62,
+  "findings": 59,
+  "vulnerabilities": 15,
+  "evidences": 10,
+  "applied_controls": 74,
+  "risk_scenarios": 74,
+  "incidents": 58,
+  "risks_proposed": 57,
+  "ocsf": 59,
+  "canonical": 137,
+  "demo": true,
+  "generated_at": "2026-09-04T04:41:43Z"
+}
+N6a-missing-OUT_DIR	True	1	00:00:01.0235486	created=False exit=1 (loader mkdir parents; not an explicit fail) out=
+N6b-unset-OUT_DIR	True	1	00:00:01.0116292	falls back to repo/out; exit=1 
+N6c-readonly-out	True	1	00:00:01.0215633	explicit_fail=True err=File "<string>", line 1
+    import
+          ^
+SyntaxError: Expected one or more names after 'import'

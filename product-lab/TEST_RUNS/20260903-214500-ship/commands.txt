@@ -1,0 +1,9 @@
+﻿cd C:\Users\R\grc-collector-pack
+docker version
+docker compose version
+docker ps -a
+docker compose ps
+powershell -ExecutionPolicy Bypass -File .\scripts\lab.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\lab.ps1
+docker compose up --build --exit-code-from grc-loader
+docker compose up --build --exit-code-from grc-loader

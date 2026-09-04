@@ -1,0 +1,47 @@
+{
+  "written_at": "2026-09-04T04:45:00Z",
+  "written_at_pt": "2026-09-03T21:45:00-07:00",
+  "repo": "C:\\Users\\R\\grc-collector-pack",
+  "cycle": 8,
+  "pytest": {"passed": 39, "failed": 0},
+  "host_lab": "pass",
+  "host_lab_runs": [
+    {"stamp": "20260903-213934-host1", "exit": 0, "duration_s": 3.036, "verdict": "pass"},
+    {"stamp": "20260903-213949-host2", "exit": 0, "duration_s": 3.042, "verdict": "pass", "asset_rows": 62, "asset_unique_ref_id": 62}
+  ],
+  "compose_lab": "pass",
+  "compose_lab_runs": [
+    {"stamp": "20260903-214007-compose1", "exit": 0, "duration_s": 8.063, "services": 10, "loader_exit": 0},
+    {"stamp": "20260903-214026-compose2", "exit": 0, "duration_s": 7.078, "services": 10, "loader_exit": 0}
+  ],
+  "sink": {"present": false, "url": null, "risks_proposed_posted": false, "note": "NO SINK ON THIS REPO. Host :18080 is C:\\GRC Collector mock_sink, not contacted."},
+  "counts": {
+    "assets": 62,
+    "findings": 59,
+    "vulnerabilities": 15,
+    "evidences": 10,
+    "applied_controls": 74,
+    "risk_scenarios": 74,
+    "incidents": 58,
+    "risks_proposed": 57,
+    "ocsf": 59,
+    "canonical": 137,
+    "demo": true,
+    "generated_at": "2026-09-04T04:42:07Z"
+  },
+  "faults": [
+    {
+      "id": "PL-OUTDIR-MKDIR",
+      "severity": "P2",
+      "summary": "OUT_DIR set to a nonexistent path mkdir's an empty estate (0 assets) instead of failing closed. Unset OUT_DIR is fine. Read-only OUT_DIR fails closed."
+    }
+  ],
+  "next_product_gaps": [
+    "in/ is .gitkeep only — demo estate, not a client",
+    "evidence 10 vs findings 59 — thin evidence",
+    "no mock sink on this checkout",
+    "this tree is behind C:\\GRC Collector (do not merge those trees in this sprint unless asked)",
+    "no run_docker_lab.ps1 / run_facet_docker.ps1 here",
+    "typo'd OUT_DIR succeeds with zeros (P2)"
+  ]
+}

@@ -1,0 +1,748 @@
+[
+  {
+    "ref_id": "CLD-s3-encryption-missing",
+    "name": "Cloud Custodian s3-encryption-missing",
+    "description": "S3 bucket without default encryption",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "demo-unencrypted-tmp"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-s3-bucket-server-side-encryption-enabled",
+    "name": "S3 bucket server-side encryption",
+    "description": "ASFF export: encryption not enforced on demo-public-assets.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "arn:aws:s3:::demo-public-assets"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-s3-bucket-public-access",
+    "name": "S3 bucket prohibits public access",
+    "description": "Bucket ACL and policy allow public List/Get.",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "demo-public-assets"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-iam-user-administrator-access",
+    "name": "IAM user does not have AdministratorAccess",
+    "description": "User has AdministratorAccess attached directly.",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "iam-admin-breakglass"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-iam-root-mfa-enabled",
+    "name": "Root account MFA enabled",
+    "description": "Root user has no MFA device.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "root"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-ec2-securitygroup-allow-ingress-from-internet-to",
+    "name": "Default security group restricts all traffic",
+    "description": "Default SG allows 0.0.0.0/0 on all ports.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "sg-default"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-cloudtrail-multi-region-enabled",
+    "name": "CloudTrail multi-region trail exists",
+    "description": "No multi-region CloudTrail trail.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "acct-123456789012"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-rds-instance-no-public-access",
+    "name": "RDS instance not publicly accessible",
+    "description": "RDS instance PubliclyAccessible=true.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "rds-app-prod"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-s3-bucket-allusers-read",
+    "name": "ScoutSuite Bucket readable by AllUsers",
+    "description": "Bucket readable by AllUsers",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "demo-scout-public"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CLD-aws-iam-user-mfa",
+    "name": "IAM users should have MFA",
+    "description": "User nomega has no MFA device",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "iam-user-nomega"
+    ],
+    "source": "cloud-prowler",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-generic-api-key-services-payments-config-py",
+    "name": "Generic API Key",
+    "description": "Secret rule generic-api-key in services/payments/config.py:12 value=[REDACTED]",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "services/payments/config.py"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-generic-secret-deploy-env-sample",
+    "name": "Generic Secret",
+    "description": "Secret rule generic-secret in deploy/.env.sample:3 value=[REDACTED]",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "deploy/.env.sample"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-python-lang-security-audit-hardcoded-password",
+    "name": "Hardcoded credential assigned to variable",
+    "description": "Hardcoded credential assigned to variable",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "services/payments/config.py"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-python-lang-security-audit-sql-injection",
+    "name": "Possible SQL injection via string format",
+    "description": "Possible SQL injection via string format",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "services/payments/query.py"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-cve-2022-25883",
+    "name": "semver regular expression DoS",
+    "description": "ReDoS in npm semver.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "package-lock.json"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-trufflehog-aws-infra-terraform-tfvars",
+    "name": "TruffleHog AWS",
+    "description": "AWS secret in infra/terraform.tfvars value=[REDACTED] verified=False",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "infra/terraform.tfvars"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "CODE-trufflehog-github-scripts-deploy-sh",
+    "name": "TruffleHog Github",
+    "description": "Github secret in scripts/deploy.sh value=[REDACTED] verified=True",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "scripts/deploy.sh"
+    ],
+    "source": "code-secrets",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "EASM-vpn-example-com",
+    "name": "Sensitive external hostname vpn.example.com",
+    "description": "vpn.example.com is exposed on the public perimeter.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "vpn.example.com"
+    ],
+    "source": "easm",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "EASM-admin-example-com",
+    "name": "Sensitive external hostname admin.example.com",
+    "description": "admin.example.com is exposed on the public perimeter.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "admin.example.com"
+    ],
+    "source": "easm",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "EASM-dev-api-example-com",
+    "name": "Sensitive external hostname dev-api.example.com",
+    "description": "dev-api.example.com is exposed on the public perimeter.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "dev-api.example.com"
+    ],
+    "source": "easm",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "WAZ-coverage-db-01",
+    "name": "Wazuh agent disconnected: db-01",
+    "description": "Endpoint db-01 is disconnected; coverage gap.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "db-01"
+    ],
+    "source": "host-wazuh",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "WAZ-alert-17001",
+    "name": "sshd: brute force trying to get access",
+    "description": "sshd: brute force trying to get access",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "web-01"
+    ],
+    "source": "host-wazuh",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "WAZ-coverage-fleet-laptop-07",
+    "name": "Wazuh agent disconnected: fleet-laptop-07",
+    "description": "Endpoint fleet-laptop-07 is disconnected; coverage gap.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "fleet-laptop-07"
+    ],
+    "source": "host-wazuh",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "WAZ-coverage-jump-unmanaged",
+    "name": "Wazuh agent disconnected: jump-unmanaged",
+    "description": "Endpoint jump-unmanaged is never_connected; coverage gap.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "jump-unmanaged"
+    ],
+    "source": "host-wazuh",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-genericall-helpdeskcorp-local-domain-adminscorp-",
+    "name": "BloodHound GenericAll",
+    "description": "Full control over the object. HELPDESK@CORP.LOCAL -> DOMAIN ADMINS@CORP.LOCAL",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "HELPDESK@CORP.LOCAL",
+      "DOMAIN ADMINS@CORP.LOCAL"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-dcsync-svc-sqlcorp-local-corp-local",
+    "name": "BloodHound DCSync",
+    "description": "Principal can replicate directory secrets. SVC-SQL@CORP.LOCAL -> CORP.LOCAL",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "SVC-SQL@CORP.LOCAL",
+      "CORP.LOCAL"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-adminto-helpdeskcorp-local-dc01-corp-local",
+    "name": "BloodHound AdminTo",
+    "description": "Principal has local admin on the target. HELPDESK@CORP.LOCAL -> DC01.CORP.LOCAL",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "HELPDESK@CORP.LOCAL",
+      "DC01.CORP.LOCAL"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-backup-operators-privileged-group-backup-operato",
+    "name": "Backup Operators privileged group",
+    "description": "Members can dump SAM / seize privileged files.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "BACKUP OPERATORS@CORP.LOCAL"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-roastable-spn-svc-sqlcorp-local",
+    "name": "Roastable SPN",
+    "description": "SVC-SQL@CORP.LOCAL has an SPN and is kerberoastable.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "SVC-SQL@CORP.LOCAL"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-entra-ga-without-pim-gacontoso-onmicrosoft-com",
+    "name": "Entra GA without PIM",
+    "description": "ga@contoso.onmicrosoft.com is Global Administrator without PIM eligibility.",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "ga@contoso.onmicrosoft.com"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-unconstrained-delegation-dc01-corp-local",
+    "name": "Unconstrained delegation",
+    "description": "DC01.CORP.LOCAL has unconstrained Kerberos delegation.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "DC01.CORP.LOCAL"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-hk-1-1",
+    "name": "HardeningKitty Enforce password history",
+    "description": "Enforce password history result=failed recommended=24 actual=[REDACTED]",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "win-dc01"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-hk-18-9",
+    "name": "HardeningKitty Disable LM hash storage",
+    "description": "Disable LM hash storage result=failed recommended=Enabled actual=[REDACTED]",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "win-dc01"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-roastable-spn-svc-krbtgt-roast",
+    "name": "Roastable SPN",
+    "description": "SVC-KRBTGT-ROAST has an SPN and is kerberoastable.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "SVC-KRBTGT-ROAST"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "ID-as-rep-roastable-account-svc-krbtgt-roast",
+    "name": "AS-REP roastable account",
+    "description": "SVC-KRBTGT-ROAST does not require Kerberos preauth.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "SVC-KRBTGT-ROAST"
+    ],
+    "source": "identity-ad",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "NMAP-legacy-ftp-corp-local-21",
+    "name": "FTP exposed",
+    "description": "legacy-ftp.corp.local has open TCP/21 (ftp).",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "legacy-ftp.corp.local"
+    ],
+    "source": "inventory-nmap",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "NMAP-dc-corp-local-445",
+    "name": "SMB 445 exposed",
+    "description": "dc.corp.local has open TCP/445 (microsoft-ds).",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "dc.corp.local"
+    ],
+    "source": "inventory-nmap",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "NMAP-telnet-legacy-corp-local-23",
+    "name": "Telnet exposed",
+    "description": "telnet-legacy.corp.local has open TCP/23 (telnet).",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "telnet-legacy.corp.local"
+    ],
+    "source": "inventory-nmap",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "NMAP-filesrv-corp-local-445",
+    "name": "SMB 445 exposed",
+    "description": "filesrv.corp.local has open TCP/445 (microsoft-ds).",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "filesrv.corp.local"
+    ],
+    "source": "inventory-nmap",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-launch-privileged-container",
+    "name": "Launch Privileged Container",
+    "description": "Privileged container started",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "payments-worker",
+      "prod-cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-1-2-1",
+    "name": "Anonymous authentication is not enabled",
+    "description": "Anonymous authentication is not enabled",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-5-2-1",
+    "name": "Minimize the admission of privileged containers",
+    "description": "Minimize the admission of privileged containers",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-c-0057",
+    "name": "Privileged container",
+    "description": "Pod payments-worker runs privileged=true",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "prod-cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-c-0013",
+    "name": "Anonymous Kubernetes API access",
+    "description": "anonymous-auth=true on kube-apiserver",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "prod-cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-c-0034",
+    "name": "Allow privilege escalation",
+    "description": "allowPrivilegeEscalation not set false",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "prod-cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "K8S-c-0041",
+    "name": "HostNetwork access",
+    "description": "DaemonSet uses hostNetwork",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "prod-cluster"
+    ],
+    "source": "k8s-kubescape",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "SAAS-graph-ga-gacontoso-onmicrosoft-com",
+    "name": "Entra Global Administrator via Graph",
+    "description": "ga@contoso.onmicrosoft.com holds Global Administrator (Microsoft Graph export)",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "ga@contoso.onmicrosoft.com",
+      "contoso.onmicrosoft.com"
+    ],
+    "source": "saas-idp",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "SAAS-mt-1035",
+    "name": "Maester MT.1035",
+    "description": "Privileged users should have phishing-resistant MFA",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "contoso.onmicrosoft.com"
+    ],
+    "source": "saas-idp",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "SAAS-admins-mfa",
+    "name": "Okta admin MFA gap",
+    "description": "Okta admin MFA enrollment disabled",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "example.okta.com"
+    ],
+    "source": "saas-idp",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "SAAS-legacy-authentication-protocols-disabled",
+    "name": "Legacy authentication protocols disabled",
+    "description": "M365 legacy auth (IMAP/SMTP basic) still enabled",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "contoso.onmicrosoft.com"
+    ],
+    "source": "saas-idp",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "SAAS-privileged-roles-use-pim",
+    "name": "Privileged roles use PIM",
+    "description": "Global Administrator assigned permanently",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "contoso.onmicrosoft.com"
+    ],
+    "source": "saas-idp",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "VULN-1-3-6-1-4-1-25623-1-0-103234",
+    "name": "OpenSSL Heartbleed",
+    "description": "TLS heartbeat read overrun on web-01.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "10.0.0.30"
+    ],
+    "source": "vuln-scan",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "VULN-cve-2021-44228",
+    "name": "Apache Log4j RCE",
+    "description": "Log4Shell JNDI lookup",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "https://app.corp.local"
+    ],
+    "source": "vuln-scan",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "VULN-cve-2023-44487",
+    "name": "HTTP/2 Rapid Reset",
+    "description": "HTTP/2 rapid reset DoS",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "https://dev-api.example.com"
+    ],
+    "source": "vuln-scan",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "VULN-cve-2014-0160",
+    "name": "heartbleed",
+    "description": "Heartbleed still offered on TLS",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "dev-api.example.com"
+    ],
+    "source": "vuln-scan",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "VULN-cve-2024-3094",
+    "name": "xz-utils supply chain backdoor",
+    "description": "Malicious code in xz-utils liblzma.",
+    "likelihood": "ALMOST_CERTAIN",
+    "impact": "SEVERE",
+    "severity": "critical",
+    "assets": [
+      "app-server:latest"
+    ],
+    "source": "vuln-scan",
+    "treatment": "mitigate"
+  },
+  {
+    "ref_id": "VULN-cve-2023-38545",
+    "name": "curl SOCKS heap overflow",
+    "description": "Heap buffer overflow in curl SOCKS handshake.",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "app-server:latest"
+    ],
+    "source": "vuln-scan",
+    "treatment": "mitigate"
+  }
+]

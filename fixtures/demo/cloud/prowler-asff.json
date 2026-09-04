@@ -1,0 +1,15 @@
+{
+  "Findings": [
+    {
+      "Id": "prowler-asff-s3-encrypt",
+      "GeneratorId": "s3_bucket_server_side_encryption_enabled",
+      "Title": "S3 bucket server-side encryption",
+      "Description": "ASFF export: encryption not enforced on demo-public-assets.",
+      "Severity": {"Label": "HIGH"},
+      "Compliance": {"Status": "FAILED"},
+      "Resources": [
+        {"Id": "arn:aws:s3:::demo-public-assets", "Type": "AwsS3Bucket"}
+      ]
+    }
+  ]
+}

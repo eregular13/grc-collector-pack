@@ -1,0 +1,3 @@
+# Nmap 7.94 scan
+Host: 10.0.0.60 (legacy-ftp.corp.local)	Status: Up
+Host: 10.0.0.60 (legacy-ftp.corp.local)	Ports: 21/open/tcp//ftp///, 80/open/tcp//http///

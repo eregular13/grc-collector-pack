@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "C:\Users\R\grc-collector-pack\product-lab\tmp\n6c_readonly.py", line 8, in <module>
+    print(g.load())
+          ~~~~~~^^
+  File "C:\Users\R\grc-collector-pack\collectors\grc_loader.py", line 259, in load
+    _write_csv(out_ciso / "assets.csv", ASSETS_HEADER, ciso_assets)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\R\grc-collector-pack\collectors\grc_loader.py", line 133, in _write_csv
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\Users\\R\\grc-collector-pack\\product-lab\\tmp\\readonly-out\\ciso-assistant'

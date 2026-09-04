@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "control": "aws_iam_user_mfa",
+      "title": "IAM users should have MFA",
+      "status": "alarm",
+      "severity": "high",
+      "resource": "iam-user-nomega",
+      "arn": "arn:aws:iam::123456789012:user/nomega",
+      "service": "iam",
+      "reason": "User nomega has no MFA device"
+    }
+  ]
+}

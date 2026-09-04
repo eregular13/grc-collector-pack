@@ -1,0 +1,61 @@
+﻿CONTAINER ID   IMAGE                            COMMAND                  CREATED              STATUS                            PORTS                                           NAMES
+277db0744356   grc-facet-matrix                 "python tests/run_faΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-matrix-1
+394bda137604   grc-facet-push_probe             "python tests/hit_moΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-push_probe-1
+623379ea7c71   c22de1d108ed                     "python tests/mock_gΓÇª"   About a minute ago   Exited (137) About a minute ago                                                   grc-facet-facet_sink-1
+d30436a7942b   grc-facet-live_vuln              "python collectors/vΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_vuln-1
+a2e11c2dcd31   grc-facet-live_code              "python collectors/cΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_code-1
+2840d0372fd1   grc-facet-live_saas              "python collectors/sΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_saas-1
+580435f5462e   grc-facet-live_cloud             "python collectors/cΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_cloud-1
+c97bd390aa20   grc-facet-live_identity          "python collectors/iΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_identity-1
+372e1b72ed38   grc-facet-live_wazuh             "python collectors/hΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_wazuh-1
+62bf4009f5df   grc-facet-live_easm              "python collectors/eΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_easm-1
+4cc6bdb021f6   grc-facet-live_nmap              "python collectors/iΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_nmap-1
+8e11c9188d34   grc-facet-live_k8s               "python collectors/kΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-live_k8s-1
+560c815a34fe   grc-facet-safety                 "python -m pytest teΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-safety-1
+d9c790d775d0   grc-facet-iso_lab                "sh -c 'mkdir -p /paΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_lab-1
+b9cb3b40473e   grc-facet-iso_loader             "python collectors/gΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_loader-1
+ebc0ebc4ca34   grc-facet-iso_code               "python collectors/cΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_code-1
+02fe33f7e072   grc-facet-iso_easm               "python collectors/eΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_easm-1
+bf98178ff4ef   grc-facet-iso_wazuh              "python collectors/hΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_wazuh-1
+3793c1f118f6   grc-facet-iso_cloud              "python collectors/cΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_cloud-1
+7ff5b1ca4227   grc-facet-iso_vuln               "python collectors/vΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_vuln-1
+c4b0e665b981   grc-facet-iso_saas               "python collectors/sΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_saas-1
+945fe06fb1e5   grc-facet-iso_nmap               "python collectors/iΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_nmap-1
+614e6369e098   grc-facet-iso_identity           "python collectors/iΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_identity-1
+0beb444c49e7   grc-facet-iso_k8s                "python collectors/kΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-facet-iso_k8s-1
+f301b3451701   grc-collector-lab                "sh -c 'python -m pyΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-lab-1
+afc399ef7614   grc-collector-grc_loader         "python collectors/gΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-grc_loader-1
+043fafe51218   grc-collector-saas_idp           "python collectors/sΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-saas_idp-1
+cfb9c8c4d809   grc-collector-inventory_nmap     "python collectors/iΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-inventory_nmap-1
+fb9dcab23899   grc-collector-easm               "python collectors/eΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-easm-1
+87d7a606a081   grc-collector-vuln_scan          "python collectors/vΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-vuln_scan-1
+2dc8068ebb9e   grc-collector-code_secrets       "python collectors/cΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-code_secrets-1
+df7fbcdb7c67   grc-collector-k8s_kubescape      "python collectors/kΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-k8s_kubescape-1
+4621a6f16338   grc-collector-identity_ad        "python collectors/iΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-identity_ad-1
+ffb912391d47   grc-collector-host_wazuh         "python collectors/hΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-host_wazuh-1
+e837480351c9   grc-collector-cloud_prowler      "python collectors/cΓÇª"   About a minute ago   Exited (0) About a minute ago                                                     grc-collector-cloud_prowler-1
+665fc3bd96d0   grc-collector-mock_sink          "python tests/mock_gΓÇª"   11 minutes ago       Up 11 minutes                     0.0.0.0:18080->8080/tcp, [::]:18080->8080/tcp   grc-collector-mock_sink-1
+b3232a806276   grc-collector-pack:local         "python collectors/gΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-grc-loader-1
+a73db71fc17f   grc-collector-pack:local         "python collectors/hΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-host-wazuh-1
+d59c32e519f6   grc-collector-pack:local         "python collectors/sΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-saas-idp-1
+20c18a779e62   grc-collector-pack:local         "python collectors/eΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-easm-1
+8d963242c006   grc-collector-pack:local         "python collectors/iΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-identity-ad-1
+b019f16331fb   grc-collector-pack:local         "python collectors/cΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-cloud-prowler-1
+79b30ce823d0   grc-collector-pack:local         "python collectors/iΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-inventory-nmap-1
+a0149d2d21b0   grc-collector-pack:local         "python collectors/vΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-vuln-scan-1
+38cf52e92a93   grc-collector-pack:local         "python collectors/kΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-k8s-kubescape-1
+68025f4c14c2   grc-collector-pack:local         "python collectors/cΓÇª"   24 hours ago         Exited (0) 24 hours ago                                                           grc-collector-pack-code-secrets-1
+5c21e52d4ed1   localgrokloop-agent              "python -m main"         2 months ago         Exited (137) 2 days ago                                                           localgrokloop-agent-1
+99a5b9c68b2a   chromadb/chroma:1.0.15           "dumb-init -- chromaΓÇª"   2 months ago         Exited (143) 2 days ago                                                           localgrokloop-chromadb-1
+0adb473d6bd7   bkimminich/juice-shop            "/nodejs/bin/node /jΓÇª"   2 months ago         Exited (255) 2 days ago           0.0.0.0:3000->3000/tcp                          aegis-juice
+713c48704606   aegiscontrolplane-controlplane   "streamlit run app.pΓÇª"   2 months ago         Exited (0) 2 days ago                                                             aegis-controlplane
+d829332b800a   kalilinux/kali-rolling           "tail -f /dev/null"      2 months ago         Exited (137) 2 days ago                                                           aegis-kali
+f296325bab50   qdrant/qdrant:latest             "./entrypoint.sh"        2 months ago         Exited (143) 2 days ago                                                           aegis-qdrant
+27d2e0538dab   vulnerables/web-dvwa             "/main.sh"               2 months ago         Exited (137) 2 days ago                                                           aegis-target
+964b4b7a73db   localgrokloop-dashboard          "streamlit run app.pΓÇª"   2 months ago         Exited (0) 2 months ago                                                           localgrokloop-dashboard-1
+dad67a8b3d13   redis:7-alpine                   "docker-entrypoint.sΓÇª"   2 months ago         Exited (0) 2 days ago                                                             localgrokloop-redis-1
+13704e844b71   searxng/searxng:latest           "/usr/local/searxng/ΓÇª"   2 months ago         Exited (0) 2 days ago                                                             localgrokloop-searxng-1
+6dc0c77679f9   postgres:16                      "docker-entrypoint.sΓÇª"   2 months ago         Created                                                                           aegis-postgres-1
+84539c2765d9   ollama/ollama                    "/bin/ollama serve"      2 months ago         Exited (255) 2 months ago         0.0.0.0:11434->11434/tcp                        aegis-ollama-1
+2acc2677c0fe   postgres:17-alpine               "docker-entrypoint.sΓÇª"   2 months ago         Created                                                                           aegis-offsec-research-postgres-1
+2cb5c9ae691e   postgres:17-alpine               "docker-entrypoint.sΓÇª"   2 months ago         Exited (255) 2 months ago         127.0.0.1:5432->5432/tcp                        authorized-assessment-platform-postgres-1

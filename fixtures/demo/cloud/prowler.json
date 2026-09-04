@@ -1,0 +1,100 @@
+{
+  "findings": [
+    {
+      "CheckID": "s3_bucket_public_access",
+      "CheckTitle": "S3 bucket prohibits public access",
+      "Status": "FAIL",
+      "Severity": "critical",
+      "ResourceId": "demo-public-assets",
+      "ResourceArn": "arn:aws:s3:::demo-public-assets",
+      "Description": "Bucket ACL and policy allow public List/Get.",
+      "ServiceName": "s3",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "iam_user_administrator_access",
+      "CheckTitle": "IAM user does not have AdministratorAccess",
+      "Status": "FAIL",
+      "Severity": "critical",
+      "ResourceId": "iam-admin-breakglass",
+      "ResourceArn": "arn:aws:iam::123456789012:user/breakglass-admin",
+      "Description": "User has AdministratorAccess attached directly.",
+      "ServiceName": "iam",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "iam_root_mfa_enabled",
+      "CheckTitle": "Root account MFA enabled",
+      "Status": "FAIL",
+      "Severity": "high",
+      "ResourceId": "root",
+      "ResourceArn": "arn:aws:iam::123456789012:root",
+      "Description": "Root user has no MFA device.",
+      "ServiceName": "iam",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "ec2_securitygroup_allow_ingress_from_internet_to_any_port",
+      "CheckTitle": "Default security group restricts all traffic",
+      "Status": "FAIL",
+      "Severity": "high",
+      "ResourceId": "sg-default",
+      "ResourceArn": "arn:aws:ec2:us-east-1:123456789012:security-group/sg-012345",
+      "Description": "Default SG allows 0.0.0.0/0 on all ports.",
+      "ServiceName": "ec2",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "cloudtrail_multi_region_enabled",
+      "CheckTitle": "CloudTrail multi-region trail exists",
+      "Status": "FAIL",
+      "Severity": "high",
+      "ResourceId": "acct-123456789012",
+      "ResourceArn": "arn:aws:cloudtrail:us-east-1:123456789012:trail/none",
+      "Description": "No multi-region CloudTrail trail.",
+      "ServiceName": "cloudtrail",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "rds_instance_no_public_access",
+      "CheckTitle": "RDS instance not publicly accessible",
+      "Status": "FAIL",
+      "Severity": "high",
+      "ResourceId": "rds-app-prod",
+      "ResourceArn": "arn:aws:rds:us-east-1:123456789012:db:app-prod",
+      "Description": "RDS instance PubliclyAccessible=true.",
+      "ServiceName": "rds",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "ec2_ebs_default_encryption",
+      "CheckTitle": "EBS default encryption enabled",
+      "Status": "FAIL",
+      "Severity": "medium",
+      "ResourceId": "vol-jump",
+      "ResourceArn": "arn:aws:ec2:us-east-1:123456789012:volume/vol-0abc",
+      "Description": "EBS volume unencrypted.",
+      "ServiceName": "ec2",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    },
+    {
+      "CheckID": "s3_bucket_default_encryption",
+      "CheckTitle": "S3 default encryption",
+      "Status": "PASS",
+      "Severity": "medium",
+      "ResourceId": "demo-private-logs",
+      "ResourceArn": "arn:aws:s3:::demo-private-logs",
+      "Description": "Bucket uses SSE-S3.",
+      "ServiceName": "s3",
+      "Region": "us-east-1",
+      "AccountId": "123456789012"
+    }
+  ]
+}

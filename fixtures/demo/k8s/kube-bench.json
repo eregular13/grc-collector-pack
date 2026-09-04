@@ -1,0 +1,16 @@
+{
+  "Controls": [
+    {
+      "id": "1.2.1",
+      "text": "Anonymous authentication is not enabled",
+      "status": "FAIL",
+      "severity": "HIGH"
+    },
+    {
+      "id": "5.2.1",
+      "text": "Minimize the admission of privileged containers",
+      "status": "FAIL",
+      "severity": "HIGH"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "hosts": [
+    {
+      "hostname": "fleet-laptop-07",
+      "status": "offline",
+      "platform": "darwin",
+      "primary_ip": "10.0.4.17"
+    },
+    {
+      "hostname": "fleet-build-01",
+      "status": "online",
+      "platform": "ubuntu",
+      "primary_ip": "10.0.4.8"
+    }
+  ]
+}

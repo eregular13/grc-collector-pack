@@ -1,0 +1,38 @@
+{
+  "data": {
+    "affected_items": [
+      {
+        "id": "000",
+        "name": "wazuh-manager",
+        "status": "active",
+        "ip": "10.0.0.2",
+        "os": {"name": "Ubuntu", "version": "22.04"},
+        "lastKeepAlive": "2026-09-01T20:00:00Z"
+      },
+      {
+        "id": "001",
+        "name": "web-01",
+        "status": "active",
+        "ip": "10.0.0.30",
+        "os": {"name": "Ubuntu", "version": "22.04"},
+        "lastKeepAlive": "2026-09-01T20:01:00Z"
+      },
+      {
+        "id": "002",
+        "name": "db-01",
+        "status": "disconnected",
+        "ip": "10.0.0.40",
+        "os": {"name": "Windows", "version": "2019"},
+        "lastKeepAlive": "2026-08-20T04:11:00Z"
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "id": "17001",
+      "rule": {"id": "5710", "description": "sshd: brute force trying to get access", "level": 10},
+      "agent": {"name": "web-01"},
+      "severity": "high"
+    }
+  ]
+}

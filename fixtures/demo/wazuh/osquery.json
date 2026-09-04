@@ -1,0 +1,14 @@
+{
+  "osquery": [
+    {
+      "name": "system_info",
+      "columns": {"hostname": "laptop-04", "uuid": "demo-uuid-04"},
+      "status": "active"
+    },
+    {
+      "name": "system_info",
+      "columns": {"hostname": "jump-unmanaged", "uuid": "demo-uuid-99"},
+      "status": "never_connected"
+    }
+  ]
+}

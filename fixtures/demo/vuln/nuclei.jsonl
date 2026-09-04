@@ -1,0 +1,4 @@
+{"template-id":"CVE-2021-44228","info":{"name":"Apache Log4j RCE","severity":"critical","description":"Log4Shell JNDI lookup"},"host":"https://app.corp.local","matched-at":"https://app.corp.local","ip":"10.0.0.30"}
+
+{"template-id":"CVE-2023-44487","info":{"name":"HTTP/2 Rapid Reset","severity":"high","description":"HTTP/2 rapid reset DoS"},"host":"https://dev-api.example.com","matched-at":"https://dev-api.example.com","ip":"203.0.113.20"}
+{"template-id":"exposed-panel","info":{"name":"Exposed admin panel","severity":"medium","description":"Unauthenticated admin UI"},"host":"http://10.0.0.20","matched-at":"http://10.0.0.20/admin"}

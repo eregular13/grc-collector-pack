@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GRC Collector Pack</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Sensors + normalizer · MIT · 127.0.0.1 only</p>
+      <h1>GRC Collector Pack</h1>
+    </div>
+    <div class="top-actions">
+      <span id="demo-pill" class="pill hidden">Demo estate</span>
+      <span class="pill quiet">Never POSTs /api/risks</span>
+      <button type="button" id="btn-refresh">Refresh estate</button>
+      <a class="button" href="/export.zip">Download drop zip</a>
+    </div>
+  </header>
+
+  <section id="status-bar" class="status">Loading estate…</section>
+
+  <section id="kpis" class="kpis"></section>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" data-tab="findings" class="on">Findings</button>
+    <button type="button" data-tab="assets">Assets</button>
+    <button type="button" data-tab="vulns">Vulnerabilities</button>
+    <button type="button" data-tab="proposed">Proposed risks</button>
+    <button type="button" data-tab="evidence">Evidence</button>
+  </nav>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Filter this table…" autocomplete="off">
+    <select id="sev">
+      <option value="">All severities</option>
+      <option value="critical">critical</option>
+      <option value="high">high</option>
+      <option value="medium">medium</option>
+      <option value="low">low</option>
+    </select>
+  </div>
+
+  <p id="proposed-note" class="banner hidden">
+    These rows are <strong>proposals on disk</strong> (`risks_proposed.json`). This product will not create risks in RiskReady.
+  </p>
+
+  <main>
+    <div id="table-wrap"></div>
+  </main>
+
+  <footer>
+    <p>CISO Assistant CSVs and RiskReady JSON are in the drop zip. Import with clica / UI. High and critical stay proposed until a human acts.</p>
+    <p id="paths" class="mono"></p>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

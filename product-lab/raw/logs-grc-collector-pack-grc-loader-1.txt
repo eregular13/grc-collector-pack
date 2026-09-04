@@ -1,0 +1,2 @@
+﻿{"assets": 62, "findings": 58, "vulnerabilities": 15, "evidences": 10, "applied_controls": 73, "risk_scenarios": 73, "incidents": 57, "risks_proposed": 56, "ocsf": 58, "canonical": 136, "demo": true, "generated_at": "2026-09-03T05:00:07Z"}
+

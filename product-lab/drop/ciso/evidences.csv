@@ -1,0 +1,11 @@
+name,description
+cloud-prowler collector run,Canonical records ingested from cloud-prowler at 2026-09-04T04:42:07Z
+code-secrets collector run,Canonical records ingested from code-secrets at 2026-09-04T04:42:07Z
+easm collector run,Canonical records ingested from easm at 2026-09-04T04:42:07Z
+host-wazuh collector run,Canonical records ingested from host-wazuh at 2026-09-04T04:42:07Z
+identity-ad collector run,Canonical records ingested from identity-ad at 2026-09-04T04:42:07Z
+inventory-nmap collector run,Canonical records ingested from inventory-nmap at 2026-09-04T04:42:07Z
+k8s-kubescape collector run,Canonical records ingested from k8s-kubescape at 2026-09-04T04:42:07Z
+saas-idp collector run,Canonical records ingested from saas-idp at 2026-09-04T04:42:07Z
+vuln-scan collector run,Canonical records ingested from vuln-scan at 2026-09-04T04:42:07Z
+grc-loader run,Normalized 137 canonical records at 2026-09-04T04:42:07Z

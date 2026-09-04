@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": ".cursor/hooks/keep_going.cmd",
+        "loop_limit": 24
+      }
+    ]
+  }
+}

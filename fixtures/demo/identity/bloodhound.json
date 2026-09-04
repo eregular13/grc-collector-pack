@@ -1,0 +1,65 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "objectid": "S-1-5-32-551",
+        "kind": "Group",
+        "label": "BACKUP OPERATORS",
+        "properties": {
+          "name": "BACKUP OPERATORS@CORP.LOCAL",
+          "highvalue": true,
+          "description": "Backup Operators can read SAM and seize files"
+        }
+      },
+      {
+        "objectid": "S-1-5-21-1000-2000-3000-1103",
+        "kind": "User",
+        "label": "SVC-SQL",
+        "properties": {
+          "name": "SVC-SQL@CORP.LOCAL",
+          "hasspn": true,
+          "serviceprincipalnames": ["MSSQLSvc/db.corp.local:1433"],
+          "dontreqpreauth": false,
+          "description": "Roastable SQL service account"
+        }
+      },
+      {
+        "objectid": "S-1-5-21-1000-2000-3000-512",
+        "kind": "Group",
+        "label": "DOMAIN ADMINS",
+        "properties": {
+          "name": "DOMAIN ADMINS@CORP.LOCAL",
+          "highvalue": true
+        }
+      },
+      {
+        "objectid": "aad-ga-001",
+        "kind": "AZUser",
+        "label": "Entra Global Admin",
+        "properties": {
+          "name": "ga@contoso.onmicrosoft.com",
+          "displayname": "Breakglass GA",
+          "roles": ["Global Administrator"],
+          "pimEligible": false,
+          "description": "Entra GA without PIM"
+        }
+      },
+      {
+        "objectid": "S-1-5-21-1000-2000-3000-2100",
+        "kind": "Computer",
+        "label": "DC01",
+        "properties": {
+          "name": "DC01.CORP.LOCAL",
+          "unconstraineddelegation": true
+        }
+      }
+    ],
+    "edges": [
+      {
+        "kind": "MemberOf",
+        "start": "S-1-5-21-1000-2000-3000-1103",
+        "end": "S-1-5-32-551"
+      }
+    ]
+  }
+}

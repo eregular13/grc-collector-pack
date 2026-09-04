@@ -1,0 +1,4 @@
+.......................................                                  [100%]
+39 passed in 0.11s
+{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "applied_controls": 74, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T04:39:51Z"}
+lab_outputs: PASS

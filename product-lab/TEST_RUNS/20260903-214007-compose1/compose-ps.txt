@@ -1,0 +1,11 @@
+﻿NAME                                  IMAGE                      COMMAND                  SERVICE          CREATED         STATUS                     PORTS
+grc-collector-pack-cloud-prowler-1    grc-collector-pack:local   "python collectors/cΓÇª"   cloud-prowler    4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-code-secrets-1     grc-collector-pack:local   "python collectors/cΓÇª"   code-secrets     4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-easm-1             grc-collector-pack:local   "python collectors/eΓÇª"   easm             4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-grc-loader-1       grc-collector-pack:local   "python collectors/gΓÇª"   grc-loader       3 seconds ago   Exited (0) 1 second ago    
+grc-collector-pack-host-wazuh-1       grc-collector-pack:local   "python collectors/hΓÇª"   host-wazuh       4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-identity-ad-1      grc-collector-pack:local   "python collectors/iΓÇª"   identity-ad      4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-inventory-nmap-1   grc-collector-pack:local   "python collectors/iΓÇª"   inventory-nmap   4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-k8s-kubescape-1    grc-collector-pack:local   "python collectors/kΓÇª"   k8s-kubescape    4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-saas-idp-1         grc-collector-pack:local   "python collectors/sΓÇª"   saas-idp         4 seconds ago   Exited (0) 2 seconds ago   
+grc-collector-pack-vuln-scan-1        grc-collector-pack:local   "python collectors/vΓÇª"   vuln-scan        4 seconds ago   Exited (0) 2 seconds ago   

@@ -1,0 +1,16 @@
+ref_id,name,description,status,severity,assets,applied_controls
+CODE-generic-api-key-services-payments-config-py,Generic API Key,Secret rule generic-api-key in services/payments/config.py:12 value=[REDACTED],Exploitable,Critical,services/payments/config.py,CTL-code-generic-api-key-services-payments-config-py
+CODE-generic-secret-deploy-env-sample,Generic Secret,Secret rule generic-secret in deploy/.env.sample:3 value=[REDACTED],Exploitable,Critical,deploy/.env.sample,CTL-code-generic-secret-deploy-env-sample
+CODE-python-lang-security-audit-hardcoded-password,Hardcoded credential assigned to variable,Hardcoded credential assigned to variable,Exploitable,High,services/payments/config.py,CTL-code-python-lang-security-audit-hardcoded-passwo
+CODE-python-lang-security-audit-sql-injection,Possible SQL injection via string format,Possible SQL injection via string format,Exploitable,High,services/payments/query.py,CTL-code-python-lang-security-audit-sql-injection
+CODE-cve-2023-44270,postcss line return parsing,Affected lockfile dependency.,Exploitable,Medium,package-lock.json,CTL-code-cve-2023-44270
+CODE-cve-2022-25883,semver regular expression DoS,ReDoS in npm semver.,Exploitable,High,package-lock.json,CTL-code-cve-2022-25883
+CODE-trufflehog-aws-infra-terraform-tfvars,TruffleHog AWS,AWS secret in infra/terraform.tfvars value=[REDACTED] verified=False,Exploitable,High,infra/terraform.tfvars,CTL-code-trufflehog-aws-infra-terraform-tfvars
+CODE-trufflehog-github-scripts-deploy-sh,TruffleHog Github,Github secret in scripts/deploy.sh value=[REDACTED] verified=True,Exploitable,Critical,scripts/deploy.sh,CTL-code-trufflehog-github-scripts-deploy-sh
+VULN-1-3-6-1-4-1-25623-1-0-103234,OpenSSL Heartbleed,TLS heartbeat read overrun on web-01.,Exploitable,High,10.0.0.30,CTL-vuln-1-3-6-1-4-1-25623-1-0-103234
+VULN-cve-2021-44228,Apache Log4j RCE,Log4Shell JNDI lookup,Exploitable,Critical,https://app.corp.local,CTL-vuln-cve-2021-44228
+VULN-cve-2023-44487,HTTP/2 Rapid Reset,HTTP/2 rapid reset DoS,Exploitable,High,https://dev-api.example.com,CTL-vuln-cve-2023-44487
+VULN-exposed-panel,Exposed admin panel,Unauthenticated admin UI,Exploitable,Medium,http://10.0.0.20,CTL-vuln-exposed-panel
+VULN-cve-2014-0160,heartbleed,Heartbleed still offered on TLS,Exploitable,High,dev-api.example.com,CTL-vuln-cve-2014-0160
+VULN-cve-2024-3094,xz-utils supply chain backdoor,Malicious code in xz-utils liblzma.,Exploitable,Critical,app-server:latest,CTL-vuln-cve-2024-3094
+VULN-cve-2023-38545,curl SOCKS heap overflow,Heap buffer overflow in curl SOCKS handshake.,Exploitable,High,app-server:latest,CTL-vuln-cve-2023-38545

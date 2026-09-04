@@ -1,0 +1,587 @@
+[
+  {
+    "title": "sshd: brute force trying to get access",
+    "description": "sshd: brute force trying to get access",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "host-wazuh",
+    "relatedAssets": [
+      "web-01"
+    ]
+  },
+  {
+    "title": "Cloud Custodian s3-encryption-missing",
+    "description": "S3 bucket without default encryption",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "demo-unencrypted-tmp"
+    ]
+  },
+  {
+    "title": "S3 bucket server-side encryption",
+    "description": "ASFF export: encryption not enforced on demo-public-assets.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "arn:aws:s3:::demo-public-assets"
+    ]
+  },
+  {
+    "title": "S3 bucket prohibits public access",
+    "description": "Bucket ACL and policy allow public List/Get.",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "demo-public-assets"
+    ]
+  },
+  {
+    "title": "IAM user does not have AdministratorAccess",
+    "description": "User has AdministratorAccess attached directly.",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "iam-admin-breakglass"
+    ]
+  },
+  {
+    "title": "Root account MFA enabled",
+    "description": "Root user has no MFA device.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "root"
+    ]
+  },
+  {
+    "title": "Default security group restricts all traffic",
+    "description": "Default SG allows 0.0.0.0/0 on all ports.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "sg-default"
+    ]
+  },
+  {
+    "title": "CloudTrail multi-region trail exists",
+    "description": "No multi-region CloudTrail trail.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "acct-123456789012"
+    ]
+  },
+  {
+    "title": "RDS instance not publicly accessible",
+    "description": "RDS instance PubliclyAccessible=true.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "rds-app-prod"
+    ]
+  },
+  {
+    "title": "ScoutSuite Bucket readable by AllUsers",
+    "description": "Bucket readable by AllUsers",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "demo-scout-public"
+    ]
+  },
+  {
+    "title": "IAM users should have MFA",
+    "description": "User nomega has no MFA device",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "cloud-prowler",
+    "relatedAssets": [
+      "iam-user-nomega"
+    ]
+  },
+  {
+    "title": "Generic API Key",
+    "description": "Secret rule generic-api-key in services/payments/config.py:12 value=[REDACTED]",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "services/payments/config.py"
+    ]
+  },
+  {
+    "title": "Generic Secret",
+    "description": "Secret rule generic-secret in deploy/.env.sample:3 value=[REDACTED]",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "deploy/.env.sample"
+    ]
+  },
+  {
+    "title": "Hardcoded credential assigned to variable",
+    "description": "Hardcoded credential assigned to variable",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "services/payments/config.py"
+    ]
+  },
+  {
+    "title": "Possible SQL injection via string format",
+    "description": "Possible SQL injection via string format",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "services/payments/query.py"
+    ]
+  },
+  {
+    "title": "semver regular expression DoS",
+    "description": "ReDoS in npm semver.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "package-lock.json"
+    ]
+  },
+  {
+    "title": "TruffleHog AWS",
+    "description": "AWS secret in infra/terraform.tfvars value=[REDACTED] verified=False",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "infra/terraform.tfvars"
+    ]
+  },
+  {
+    "title": "TruffleHog Github",
+    "description": "Github secret in scripts/deploy.sh value=[REDACTED] verified=True",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "code-secrets",
+    "relatedAssets": [
+      "scripts/deploy.sh"
+    ]
+  },
+  {
+    "title": "Sensitive external hostname vpn.example.com",
+    "description": "vpn.example.com is exposed on the public perimeter.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "easm",
+    "relatedAssets": [
+      "vpn.example.com"
+    ]
+  },
+  {
+    "title": "Sensitive external hostname admin.example.com",
+    "description": "admin.example.com is exposed on the public perimeter.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "easm",
+    "relatedAssets": [
+      "admin.example.com"
+    ]
+  },
+  {
+    "title": "Sensitive external hostname dev-api.example.com",
+    "description": "dev-api.example.com is exposed on the public perimeter.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "easm",
+    "relatedAssets": [
+      "dev-api.example.com"
+    ]
+  },
+  {
+    "title": "Wazuh agent disconnected: db-01",
+    "description": "Endpoint db-01 is disconnected; coverage gap.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "host-wazuh",
+    "relatedAssets": [
+      "db-01"
+    ]
+  },
+  {
+    "title": "sshd: brute force trying to get access",
+    "description": "sshd: brute force trying to get access",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "host-wazuh",
+    "relatedAssets": [
+      "web-01"
+    ]
+  },
+  {
+    "title": "Wazuh agent disconnected: fleet-laptop-07",
+    "description": "Endpoint fleet-laptop-07 is disconnected; coverage gap.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "host-wazuh",
+    "relatedAssets": [
+      "fleet-laptop-07"
+    ]
+  },
+  {
+    "title": "Wazuh agent disconnected: jump-unmanaged",
+    "description": "Endpoint jump-unmanaged is never_connected; coverage gap.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "host-wazuh",
+    "relatedAssets": [
+      "jump-unmanaged"
+    ]
+  },
+  {
+    "title": "BloodHound GenericAll",
+    "description": "Full control over the object. HELPDESK@CORP.LOCAL -> DOMAIN ADMINS@CORP.LOCAL",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "HELPDESK@CORP.LOCAL",
+      "DOMAIN ADMINS@CORP.LOCAL"
+    ]
+  },
+  {
+    "title": "BloodHound DCSync",
+    "description": "Principal can replicate directory secrets. SVC-SQL@CORP.LOCAL -> CORP.LOCAL",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "SVC-SQL@CORP.LOCAL",
+      "CORP.LOCAL"
+    ]
+  },
+  {
+    "title": "BloodHound AdminTo",
+    "description": "Principal has local admin on the target. HELPDESK@CORP.LOCAL -> DC01.CORP.LOCAL",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "HELPDESK@CORP.LOCAL",
+      "DC01.CORP.LOCAL"
+    ]
+  },
+  {
+    "title": "Backup Operators privileged group",
+    "description": "Members can dump SAM / seize privileged files.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "BACKUP OPERATORS@CORP.LOCAL"
+    ]
+  },
+  {
+    "title": "Roastable SPN",
+    "description": "SVC-SQL@CORP.LOCAL has an SPN and is kerberoastable.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "SVC-SQL@CORP.LOCAL"
+    ]
+  },
+  {
+    "title": "Entra GA without PIM",
+    "description": "ga@contoso.onmicrosoft.com is Global Administrator without PIM eligibility.",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "ga@contoso.onmicrosoft.com"
+    ]
+  },
+  {
+    "title": "Unconstrained delegation",
+    "description": "DC01.CORP.LOCAL has unconstrained Kerberos delegation.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "DC01.CORP.LOCAL"
+    ]
+  },
+  {
+    "title": "HardeningKitty Enforce password history",
+    "description": "Enforce password history result=failed recommended=24 actual=[REDACTED]",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "win-dc01"
+    ]
+  },
+  {
+    "title": "HardeningKitty Disable LM hash storage",
+    "description": "Disable LM hash storage result=failed recommended=Enabled actual=[REDACTED]",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "win-dc01"
+    ]
+  },
+  {
+    "title": "Roastable SPN",
+    "description": "SVC-KRBTGT-ROAST has an SPN and is kerberoastable.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "SVC-KRBTGT-ROAST"
+    ]
+  },
+  {
+    "title": "AS-REP roastable account",
+    "description": "SVC-KRBTGT-ROAST does not require Kerberos preauth.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "identity-ad",
+    "relatedAssets": [
+      "SVC-KRBTGT-ROAST"
+    ]
+  },
+  {
+    "title": "FTP exposed",
+    "description": "legacy-ftp.corp.local has open TCP/21 (ftp).",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "inventory-nmap",
+    "relatedAssets": [
+      "legacy-ftp.corp.local"
+    ]
+  },
+  {
+    "title": "SMB 445 exposed",
+    "description": "dc.corp.local has open TCP/445 (microsoft-ds).",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "inventory-nmap",
+    "relatedAssets": [
+      "dc.corp.local"
+    ]
+  },
+  {
+    "title": "Telnet exposed",
+    "description": "telnet-legacy.corp.local has open TCP/23 (telnet).",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "inventory-nmap",
+    "relatedAssets": [
+      "telnet-legacy.corp.local"
+    ]
+  },
+  {
+    "title": "SMB 445 exposed",
+    "description": "filesrv.corp.local has open TCP/445 (microsoft-ds).",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "inventory-nmap",
+    "relatedAssets": [
+      "filesrv.corp.local"
+    ]
+  },
+  {
+    "title": "Launch Privileged Container",
+    "description": "Privileged container started",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "payments-worker",
+      "prod-cluster"
+    ]
+  },
+  {
+    "title": "Anonymous authentication is not enabled",
+    "description": "Anonymous authentication is not enabled",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "cluster"
+    ]
+  },
+  {
+    "title": "Minimize the admission of privileged containers",
+    "description": "Minimize the admission of privileged containers",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "cluster"
+    ]
+  },
+  {
+    "title": "Privileged container",
+    "description": "Pod payments-worker runs privileged=true",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "prod-cluster"
+    ]
+  },
+  {
+    "title": "Anonymous Kubernetes API access",
+    "description": "anonymous-auth=true on kube-apiserver",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "prod-cluster"
+    ]
+  },
+  {
+    "title": "Allow privilege escalation",
+    "description": "allowPrivilegeEscalation not set false",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "prod-cluster"
+    ]
+  },
+  {
+    "title": "HostNetwork access",
+    "description": "DaemonSet uses hostNetwork",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "k8s-kubescape",
+    "relatedAssets": [
+      "prod-cluster"
+    ]
+  },
+  {
+    "title": "Entra Global Administrator via Graph",
+    "description": "ga@contoso.onmicrosoft.com holds Global Administrator (Microsoft Graph export)",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "saas-idp",
+    "relatedAssets": [
+      "ga@contoso.onmicrosoft.com",
+      "contoso.onmicrosoft.com"
+    ]
+  },
+  {
+    "title": "Maester MT.1035",
+    "description": "Privileged users should have phishing-resistant MFA",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "saas-idp",
+    "relatedAssets": [
+      "contoso.onmicrosoft.com"
+    ]
+  },
+  {
+    "title": "Okta admin MFA gap",
+    "description": "Okta admin MFA enrollment disabled",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "saas-idp",
+    "relatedAssets": [
+      "example.okta.com"
+    ]
+  },
+  {
+    "title": "Legacy authentication protocols disabled",
+    "description": "M365 legacy auth (IMAP/SMTP basic) still enabled",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "saas-idp",
+    "relatedAssets": [
+      "contoso.onmicrosoft.com"
+    ]
+  },
+  {
+    "title": "Privileged roles use PIM",
+    "description": "Global Administrator assigned permanently",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "saas-idp",
+    "relatedAssets": [
+      "contoso.onmicrosoft.com"
+    ]
+  },
+  {
+    "title": "OpenSSL Heartbleed",
+    "description": "TLS heartbeat read overrun on web-01.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "vuln-scan",
+    "relatedAssets": [
+      "10.0.0.30"
+    ]
+  },
+  {
+    "title": "Apache Log4j RCE",
+    "description": "Log4Shell JNDI lookup",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "vuln-scan",
+    "relatedAssets": [
+      "https://app.corp.local"
+    ]
+  },
+  {
+    "title": "HTTP/2 Rapid Reset",
+    "description": "HTTP/2 rapid reset DoS",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "vuln-scan",
+    "relatedAssets": [
+      "https://dev-api.example.com"
+    ]
+  },
+  {
+    "title": "heartbleed",
+    "description": "Heartbleed still offered on TLS",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "vuln-scan",
+    "relatedAssets": [
+      "dev-api.example.com"
+    ]
+  },
+  {
+    "title": "xz-utils supply chain backdoor",
+    "description": "Malicious code in xz-utils liblzma.",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "source": "vuln-scan",
+    "relatedAssets": [
+      "app-server:latest"
+    ]
+  },
+  {
+    "title": "curl SOCKS heap overflow",
+    "description": "Heap buffer overflow in curl SOCKS handshake.",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "vuln-scan",
+    "relatedAssets": [
+      "app-server:latest"
+    ]
+  }
+]

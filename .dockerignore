@@ -1,0 +1,12 @@
+.git
+.venv
+venv
+__pycache__
+.pytest_cache
+out/raw
+out/canonical
+out/ciso-assistant
+out/riskready
+out/ocsf
+*.pyc
+.cursor

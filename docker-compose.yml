@@ -1,0 +1,102 @@
+services:
+  cloud-prowler:
+    build: .
+    image: grc-collector-pack:local
+    command: ["python", "collectors/cloud_prowler.py"]
+    environment: &grcenv
+      PYTHONPATH: /app
+      DRY_RUN: "1"
+      GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      OUT_DIR: /out
+      IN_DIR: /in
+      FIXTURES_DIR: /fixtures/demo
+      GRC_DOMAIN: Global
+      GRC_PERIMETER: IT Environment
+    volumes: &grcvol
+      - ./in:/in:ro
+      - ./out:/out
+      - ./fixtures:/fixtures:ro
+
+  inventory-nmap:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/inventory_nmap.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  vuln-scan:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/vuln_scan.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  host-wazuh:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/host_wazuh.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  identity-ad:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/identity_ad.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  easm:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/easm.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  k8s-kubescape:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/k8s_kubescape.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  code-secrets:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/code_secrets.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  saas-idp:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/saas_idp.py"]
+    environment: *grcenv
+    volumes: *grcvol
+
+  grc-loader:
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "collectors/grc_loader.py"]
+    environment: *grcenv
+    volumes: *grcvol
+    depends_on:
+      cloud-prowler:
+        condition: service_completed_successfully
+      inventory-nmap:
+        condition: service_completed_successfully
+      vuln-scan:
+        condition: service_completed_successfully
+      host-wazuh:
+        condition: service_completed_successfully
+      identity-ad:
+        condition: service_completed_successfully
+      easm:
+        condition: service_completed_successfully
+      k8s-kubescape:
+        condition: service_completed_successfully
+      code-secrets:
+        condition: service_completed_successfully
+      saas-idp:
+        condition: service_completed_successfully

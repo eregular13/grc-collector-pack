@@ -1,0 +1,6 @@
+vpn.example.com
+dev-api.example.com
+www.example.com
+mail.example.com
+staging.example.com
+admin.example.com

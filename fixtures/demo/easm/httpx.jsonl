@@ -1,0 +1,6 @@
+{"host":"vpn.example.com","url":"https://vpn.example.com","status_code":200,"title":"SSL VPN","tech":["ivanti"]}
+{"host":"dev-api.example.com","url":"https://dev-api.example.com","status_code":200,"title":"Dev API","tech":["nginx"]}
+{"host":"www.example.com","url":"https://www.example.com","status_code":200,"title":"Example","tech":["cloudflare"]}
+{"host":"mail.example.com","url":"https://mail.example.com","status_code":200,"title":"Webmail","tech":["owa"]}
+{"host":"staging.example.com","url":"https://staging.example.com","status_code":401,"title":"Staging","tech":["k8s"]}
+{"host":"admin.example.com","url":"https://admin.example.com","status_code":200,"title":"Admin","tech":["okta"]}

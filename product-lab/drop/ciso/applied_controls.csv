@@ -1,0 +1,75 @@
+ref_id,name,description,domain,status,category,priority,csf_function
+CTL-cld-s3-encryption-missing,Remediate: Cloud Custodian s3-encryption-missing,S3 bucket without default encryption,Global,to_do,technical,1,protect
+CTL-cld-s3-bucket-server-side-encryption-enabled,Remediate: S3 bucket server-side encryption,ASFF export: encryption not enforced on demo-public-assets.,Global,to_do,technical,1,protect
+CTL-cld-s3-bucket-public-access,Remediate: S3 bucket prohibits public access,Bucket ACL and policy allow public List/Get.,Global,to_do,technical,1,respond
+CTL-cld-iam-user-administrator-access,Remediate: IAM user does not have AdministratorAccess,User has AdministratorAccess attached directly.,Global,to_do,technical,1,respond
+CTL-cld-iam-root-mfa-enabled,Remediate: Root account MFA enabled,Root user has no MFA device.,Global,to_do,technical,1,protect
+CTL-cld-ec2-securitygroup-allow-ingress-from-interne,Remediate: Default security group restricts all traffic,Default SG allows 0.0.0.0/0 on all ports.,Global,to_do,technical,1,protect
+CTL-cld-cloudtrail-multi-region-enabled,Remediate: CloudTrail multi-region trail exists,No multi-region CloudTrail trail.,Global,to_do,technical,1,protect
+CTL-cld-rds-instance-no-public-access,Remediate: RDS instance not publicly accessible,RDS instance PubliclyAccessible=true.,Global,to_do,technical,1,protect
+CTL-cld-ec2-ebs-default-encryption,Remediate: EBS default encryption enabled,EBS volume unencrypted.,Global,to_do,technical,2,protect
+CTL-cld-s3-bucket-allusers-read,Remediate: ScoutSuite Bucket readable by AllUsers,Bucket readable by AllUsers,Global,to_do,technical,1,respond
+CTL-cld-aws-iam-user-mfa,Remediate: IAM users should have MFA,User nomega has no MFA device,Global,to_do,technical,1,protect
+CTL-easm-vpn-example-com,Remediate: Sensitive external hostname vpn.example.com,vpn.example.com is exposed on the public perimeter.,Global,to_do,technical,1,protect
+CTL-easm-admin-example-com,Remediate: Sensitive external hostname admin.example.com,admin.example.com is exposed on the public perimeter.,Global,to_do,technical,1,protect
+CTL-easm-dev-api-example-com,Remediate: Sensitive external hostname dev-api.example.com,dev-api.example.com is exposed on the public perimeter.,Global,to_do,technical,1,protect
+CTL-easm-staging-example-com,Remediate: Sensitive external hostname staging.example.com,staging.example.com is exposed on the public perimeter.,Global,to_do,technical,2,protect
+CTL-waz-coverage-db-01,Remediate: Wazuh agent disconnected: db-01,Endpoint db-01 is disconnected; coverage gap.,Global,to_do,technical,1,protect
+CTL-waz-alert-17001,Remediate: sshd: brute force trying to get access,sshd: brute force trying to get access,Global,to_do,technical,1,protect
+CTL-waz-coverage-fleet-laptop-07,Remediate: Wazuh agent disconnected: fleet-laptop-07,Endpoint fleet-laptop-07 is disconnected; coverage gap.,Global,to_do,technical,1,protect
+CTL-waz-coverage-jump-unmanaged,Remediate: Wazuh agent disconnected: jump-unmanaged,Endpoint jump-unmanaged is never_connected; coverage gap.,Global,to_do,technical,1,protect
+CTL-id-genericall-helpdeskcorp-local-domain-adminsco,Remediate: BloodHound GenericAll,Full control over the object. HELPDESK@CORP.LOCAL -> DOMAIN ADMINS@CORP.LOCAL,Global,to_do,technical,1,respond
+CTL-id-dcsync-svc-sqlcorp-local-corp-local,Remediate: BloodHound DCSync,Principal can replicate directory secrets. SVC-SQL@CORP.LOCAL -> CORP.LOCAL,Global,to_do,technical,1,respond
+CTL-id-adminto-helpdeskcorp-local-dc01-corp-local,Remediate: BloodHound AdminTo,Principal has local admin on the target. HELPDESK@CORP.LOCAL -> DC01.CORP.LOCAL,Global,to_do,technical,1,protect
+CTL-id-backup-operators-privileged-group-backup-oper,Remediate: Backup Operators privileged group,Members can dump SAM / seize privileged files.,Global,to_do,technical,1,protect
+CTL-id-roastable-spn-svc-sqlcorp-local,Remediate: Roastable SPN,SVC-SQL@CORP.LOCAL has an SPN and is kerberoastable.,Global,to_do,technical,1,protect
+CTL-id-high-value-identity-domain-adminscorp-local,Remediate: High-value identity,DOMAIN ADMINS@CORP.LOCAL is marked high-value.,Global,to_do,technical,2,protect
+CTL-id-entra-ga-without-pim-gacontoso-onmicrosoft-co,Remediate: Entra GA without PIM,ga@contoso.onmicrosoft.com is Global Administrator without PIM eligibility.,Global,to_do,technical,1,respond
+CTL-id-unconstrained-delegation-dc01-corp-local,Remediate: Unconstrained delegation,DC01.CORP.LOCAL has unconstrained Kerberos delegation.,Global,to_do,technical,1,protect
+CTL-id-hk-1-1,Remediate: HardeningKitty Enforce password history,Enforce password history result=failed recommended=24 actual=[REDACTED],Global,to_do,technical,1,protect
+CTL-id-hk-18-9,Remediate: HardeningKitty Disable LM hash storage,Disable LM hash storage result=failed recommended=Enabled actual=[REDACTED],Global,to_do,technical,1,protect
+CTL-id-high-value-identity-domain-admins,Remediate: High-value identity,Domain Admins is marked high-value.,Global,to_do,technical,2,protect
+CTL-id-roastable-spn-svc-krbtgt-roast,Remediate: Roastable SPN,SVC-KRBTGT-ROAST has an SPN and is kerberoastable.,Global,to_do,technical,1,protect
+CTL-id-as-rep-roastable-account-svc-krbtgt-roast,Remediate: AS-REP roastable account,SVC-KRBTGT-ROAST does not require Kerberos preauth.,Global,to_do,technical,1,protect
+CTL-nmap-legacy-ftp-corp-local-21,Remediate: FTP exposed,legacy-ftp.corp.local has open TCP/21 (ftp).,Global,to_do,technical,1,protect
+CTL-nmap-legacy-ftp-corp-local-80,Remediate: HTTP exposed,legacy-ftp.corp.local has open TCP/80 (http).,Global,to_do,technical,3,identify
+CTL-nmap-dc-corp-local-88,Remediate: Open port 88/kerberos-sec,dc.corp.local has open TCP/88 (kerberos-sec).,Global,to_do,technical,3,identify
+CTL-nmap-dc-corp-local-135,Remediate: Open port 135/msrpc,dc.corp.local has open TCP/135 (msrpc).,Global,to_do,technical,3,identify
+CTL-nmap-dc-corp-local-389,Remediate: Open port 389/ldap,dc.corp.local has open TCP/389 (ldap).,Global,to_do,technical,3,identify
+CTL-nmap-dc-corp-local-445,Remediate: SMB 445 exposed,dc.corp.local has open TCP/445 (microsoft-ds).,Global,to_do,technical,1,protect
+CTL-nmap-dc-corp-local-3389,Remediate: RDP exposed,dc.corp.local has open TCP/3389 (ms-wbt-server).,Global,to_do,technical,2,protect
+CTL-nmap-telnet-legacy-corp-local-23,Remediate: Telnet exposed,telnet-legacy.corp.local has open TCP/23 (telnet).,Global,to_do,technical,1,respond
+CTL-nmap-telnet-legacy-corp-local-80,Remediate: HTTP exposed,telnet-legacy.corp.local has open TCP/80 (http).,Global,to_do,technical,3,identify
+CTL-nmap-web-01-corp-local-80,Remediate: HTTP exposed,web-01.corp.local has open TCP/80 (http).,Global,to_do,technical,3,identify
+CTL-nmap-10-0-0-40-22,Remediate: SSH exposed,10.0.0.40 has open TCP/22 (ssh).,Global,to_do,technical,3,identify
+CTL-nmap-filesrv-corp-local-445,Remediate: SMB 445 exposed,filesrv.corp.local has open TCP/445 (microsoft-ds).,Global,to_do,technical,1,protect
+CTL-nmap-filesrv-corp-local-139,Remediate: Open port 139/netbios-ssn,filesrv.corp.local has open TCP/139 (netbios-ssn).,Global,to_do,technical,3,identify
+CTL-k8s-write-below-binary-dir,Remediate: Write below binary dir,File below a known binary directory opened for writing (user=root pod=payments-worker),Global,to_do,technical,2,protect
+CTL-k8s-launch-privileged-container,Remediate: Launch Privileged Container,Privileged container started,Global,to_do,technical,1,respond
+CTL-k8s-1-2-1,Remediate: Anonymous authentication is not enabled,Anonymous authentication is not enabled,Global,to_do,technical,1,protect
+CTL-k8s-5-2-1,Remediate: Minimize the admission of privileged containers,Minimize the admission of privileged containers,Global,to_do,technical,1,protect
+CTL-k8s-c-0057,Remediate: Privileged container,Pod payments-worker runs privileged=true,Global,to_do,technical,1,respond
+CTL-k8s-c-0013,Remediate: Anonymous Kubernetes API access,anonymous-auth=true on kube-apiserver,Global,to_do,technical,1,respond
+CTL-k8s-c-0034,Remediate: Allow privilege escalation,allowPrivilegeEscalation not set false,Global,to_do,technical,1,protect
+CTL-k8s-c-0041,Remediate: HostNetwork access,DaemonSet uses hostNetwork,Global,to_do,technical,1,protect
+CTL-saas-graph-ga-gacontoso-onmicrosoft-com,Remediate: Entra Global Administrator via Graph,ga@contoso.onmicrosoft.com holds Global Administrator (Microsoft Graph export),Global,to_do,technical,1,respond
+CTL-saas-mt-1035,Remediate: Maester MT.1035,Privileged users should have phishing-resistant MFA,Global,to_do,technical,1,protect
+CTL-saas-admins-mfa,Remediate: Okta admin MFA gap,Okta admin MFA enrollment disabled,Global,to_do,technical,1,respond
+CTL-saas-legacy-authentication-protocols-disabled,Remediate: Legacy authentication protocols disabled,M365 legacy auth (IMAP/SMTP basic) still enabled,Global,to_do,technical,1,protect
+CTL-saas-privileged-roles-use-pim,Remediate: Privileged roles use PIM,Global Administrator assigned permanently,Global,to_do,technical,1,respond
+CTL-saas-external-sharing-restricted,Remediate: External sharing restricted,Anyone links enabled on default site,Global,to_do,technical,2,protect
+CTL-code-generic-api-key-services-payments-config-py,Remediate: Generic API Key,Secret rule generic-api-key in services/payments/config.py:12 value=[REDACTED],Global,to_do,technical,1,respond
+CTL-code-generic-secret-deploy-env-sample,Remediate: Generic Secret,Secret rule generic-secret in deploy/.env.sample:3 value=[REDACTED],Global,to_do,technical,1,respond
+CTL-code-python-lang-security-audit-hardcoded-passwo,Remediate: Hardcoded credential assigned to variable,Hardcoded credential assigned to variable,Global,to_do,technical,1,protect
+CTL-code-python-lang-security-audit-sql-injection,Remediate: Possible SQL injection via string format,Possible SQL injection via string format,Global,to_do,technical,1,protect
+CTL-code-cve-2023-44270,Remediate: postcss line return parsing,Affected lockfile dependency.,Global,to_do,technical,2,protect
+CTL-code-cve-2022-25883,Remediate: semver regular expression DoS,ReDoS in npm semver.,Global,to_do,technical,1,protect
+CTL-code-trufflehog-aws-infra-terraform-tfvars,Remediate: TruffleHog AWS,AWS secret in infra/terraform.tfvars value=[REDACTED] verified=False,Global,to_do,technical,1,protect
+CTL-code-trufflehog-github-scripts-deploy-sh,Remediate: TruffleHog Github,Github secret in scripts/deploy.sh value=[REDACTED] verified=True,Global,to_do,technical,1,respond
+CTL-vuln-1-3-6-1-4-1-25623-1-0-103234,Remediate: OpenSSL Heartbleed,TLS heartbeat read overrun on web-01.,Global,to_do,technical,1,protect
+CTL-vuln-cve-2021-44228,Remediate: Apache Log4j RCE,Log4Shell JNDI lookup,Global,to_do,technical,1,respond
+CTL-vuln-cve-2023-44487,Remediate: HTTP/2 Rapid Reset,HTTP/2 rapid reset DoS,Global,to_do,technical,1,protect
+CTL-vuln-exposed-panel,Remediate: Exposed admin panel,Unauthenticated admin UI,Global,to_do,technical,2,protect
+CTL-vuln-cve-2014-0160,Remediate: heartbleed,Heartbleed still offered on TLS,Global,to_do,technical,1,protect
+CTL-vuln-cve-2024-3094,Remediate: xz-utils supply chain backdoor,Malicious code in xz-utils liblzma.,Global,to_do,technical,1,respond
+CTL-vuln-cve-2023-38545,Remediate: curl SOCKS heap overflow,Heap buffer overflow in curl SOCKS handshake.,Global,to_do,technical,1,protect

@@ -1,0 +1,10 @@
+﻿inventory-nmap
+saas-idp
+vuln-scan
+cloud-prowler
+code-secrets
+easm
+host-wazuh
+identity-ad
+k8s-kubescape
+grc-loader
