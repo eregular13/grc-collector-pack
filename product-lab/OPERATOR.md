@@ -42,7 +42,7 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 
 | Folder | Accepts |
 |---|---|
-| `in/cloud/` | Prowler, Prowler ASFF, Cloud Custodian, Steampipe, ScoutSuite |
+| `in/cloud/` | Prowler JSON, Prowler ASFF (`Findings` / list / object), ScoutSuite `services.*.findings`, Cloud Custodian, Steampipe. Parse-only — no cloud API calls. |
 | `in/nmap/` | Nmap XML, Nmap `-oG` |
 | `in/vuln/` | Nuclei JSONL, Trivy, Greenbone, testssl |
 | `in/wazuh/` | Wazuh agents/alerts, osquery, Fleet |

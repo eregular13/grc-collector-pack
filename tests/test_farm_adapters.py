@@ -91,6 +91,10 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert f"Total: {counts['total']}" in md
     assert "By category" in md
     assert "Ingest map (Layer C)" in md
+    assert "Cloud file-drop" in md
+    assert "in/cloud/" in md
+    assert "ScoutSuite" in md
+    assert "ASFF" in md
     assert "SARIF file-drop" in md
     assert "in/vuln/*.sarif" in md
     for sensor in LAYER_C_SENSORS:

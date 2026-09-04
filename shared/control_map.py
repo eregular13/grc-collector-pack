@@ -36,6 +36,8 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("service"),
             extra.get("rule"),
             extra.get("cve"),
+            extra.get("check_id"),
+            extra.get("arn"),
         )
     ).lower()
 
@@ -95,9 +97,62 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "This is a posture finding, not a specific TLS CVE."
         )
         key_medium = True
-    elif "public" in text and ("s3" in text or "bucket" in text):
+    elif (
+        (
+            "public access" in text
+            or "public-access" in text
+            or "allusers" in text
+            or "public acl" in text
+            or "publicly" in text
+            or "public list" in text
+            or "public get" in text
+        )
+        and ("s3" in text or "bucket" in text)
+    ):
         name = "Block public object-storage access"
         fix = "Remove public ACL/policy on the bucket. Keep the object private unless a documented exception exists."
+    elif "administratoraccess" in text.replace(" ", "").replace("_", "").replace("-", ""):
+        name = "Remove standing IAM AdministratorAccess"
+        fix = (
+            "Detach AdministratorAccess from users. Prefer a role or break-glass group. "
+            "This is an IAM posture finding, not a CVE."
+        )
+    elif "root" in text and "mfa" in text:
+        name = "Require MFA on the cloud root account"
+        fix = (
+            "Enable MFA on the root account. Prefer a hardware key. "
+            "This is an identity posture finding, not a CVE."
+        )
+    elif ("0.0.0.0/0" in text or "0.0.0.0 / 0" in text) and any(
+        tok in text
+        for tok in ("security group", "security_group", "securitygroup", "ingress", "sg-")
+    ):
+        name = "Restrict security-group ingress from the internet"
+        fix = (
+            "Remove 0.0.0.0/0 ingress. Allow only required CIDRs or prefix lists. "
+            "This is a network-exposure finding, not a CVE."
+        )
+    elif "rds" in text and ("public" in text or "publiclyaccessible" in text.replace(" ", "").replace("_", "").replace("-", "")):
+        name = "Disable public accessibility on RDS"
+        fix = (
+            "Set PubliclyAccessible=false and place the instance in private subnets. "
+            "This is an exposure finding, not a CVE."
+        )
+    elif (
+        "s3" in text or "bucket" in text or "ebs" in text
+    ) and (
+        "unencrypted" in text
+        or "not encrypted" in text
+        or "encryption not" in text
+        or "without default encryption" in text
+        or "default_encryption" in text
+        or "defaultencryption" in text.replace(" ", "").replace("_", "").replace("-", "")
+    ):
+        name = "Enable encryption at rest on cloud storage"
+        fix = (
+            "Enable default encryption (SSE-S3/SSE-KMS or EBS encryption). "
+            "This is a posture finding, not a CVE."
+        )
     elif "sql-injection" in text or "sqli" in text or "sql injection" in text:
         name = "Stop SQL injection in the application"
         fix = (

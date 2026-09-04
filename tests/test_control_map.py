@@ -113,6 +113,63 @@ def test_admin_share_is_key_poam() -> None:
     assert "CVE-" not in mapped["recommended_fix"]
 
 
+def test_cloud_high_findings_map_to_poam_not_cve() -> None:
+    cases = [
+        (
+            "S3 bucket allows public access",
+            "Bucket demo-asff-open AllUsers public-access.",
+            {"check_id": "s3_bucket_public_access", "service": "s3", "arn": "arn:aws:s3:::demo-asff-open"},
+            "public",
+        ),
+        (
+            "IAM user does not have AdministratorAccess",
+            "User has AdministratorAccess attached directly.",
+            {"check_id": "iam_user_administrator_access", "service": "iam"},
+            "administrator",
+        ),
+        (
+            "Root account MFA enabled",
+            "Root user has no MFA device.",
+            {"check_id": "iam_root_mfa_enabled", "service": "iam"},
+            "mfa",
+        ),
+        (
+            "Default security group restricts all traffic",
+            "Default SG allows 0.0.0.0/0 on all ports.",
+            {"check_id": "ec2_securitygroup_allow_ingress_from_internet_to_any_port", "service": "ec2"},
+            "security-group",
+        ),
+        (
+            "RDS instance not publicly accessible",
+            "RDS instance PubliclyAccessible=true.",
+            {"check_id": "rds_instance_no_public_access", "service": "rds"},
+            "rds",
+        ),
+        (
+            "S3 bucket server-side encryption",
+            "ASFF export: encryption not enforced on demo-logs.",
+            {"check_id": "s3_bucket_default_encryption", "service": "s3"},
+            "encryption",
+        ),
+    ]
+    for name, desc, extra, needle in cases:
+        rec = make_record(
+            kind="finding",
+            source="cloud-prowler",
+            ref_id="CLD-cloud-map",
+            name=name,
+            description=desc,
+            severity="high",
+            category="cloud-misconfiguration",
+            assets=["demo-cloud"],
+            extra=extra,
+        )
+        mapped = map_finding(rec)
+        assert mapped["include_poam"] is True, name
+        assert needle in mapped["control_name"].lower(), (name, mapped["control_name"])
+        assert "CVE-" not in mapped["recommended_fix"]
+
+
 def test_sarif_sql_injection_maps_to_poam() -> None:
     rec = make_record(
         kind="finding",

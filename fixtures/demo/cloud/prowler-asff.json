@@ -10,6 +10,22 @@
       "Resources": [
         {"Id": "arn:aws:s3:::demo-public-assets", "Type": "AwsS3Bucket"}
       ]
+    },
+    {
+      "Id": "prowler-s3-public-asff-demo",
+      "GeneratorId": "s3_bucket_public_access",
+      "Title": "S3 bucket allows public access",
+      "Description": "Bucket demo-asff-open has a public-access block disabled and is reachable by AllUsers.",
+      "Severity": "HIGH",
+      "Compliance": {"Status": "FAILED"},
+      "ProductFields": {
+        "ProwlerCheckID": "s3_bucket_public_access",
+        "ProwlerServiceName": "s3",
+        "Provider": "aws"
+      },
+      "Resources": [
+        {"Id": "arn:aws:s3:::demo-asff-open", "Type": "AwsS3Bucket"}
+      ]
     }
   ]
 }

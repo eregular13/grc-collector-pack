@@ -101,6 +101,13 @@ Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.
 
+Prowler / ScoutSuite **cloud** is file-drop ingest under `in/cloud/`: land
+Prowler JSON, Prowler ASFF, or ScoutSuite `services.*.findings` JSON (Custodian
+and Steampipe also parse). Layer C does not call AWS/GCP/Azure APIs. High FAIL
+rows map to CISO/POA&M when the check is obvious. Prowler *invoke* is separate
+BYO (`allow_tools`) only if the binary is already on PATH. ScoutSuite stays
+`file_drop` even if `scout` is on PATH.
+
 ## Orchestrator + conductor
 
 Stage graph (quiet→loud): `plan → shard → discover → destroy → deepen (2–5) → destroy → external (plan-only) → ingest → grc_export`

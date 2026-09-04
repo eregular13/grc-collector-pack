@@ -12,6 +12,11 @@ def test_prowler_asff() -> None:
     assert findings
     assert findings[0]["severity"] == "high"
     assert any("demo-public-assets" in str(r.get("assets")) for r in recs)
+    assert any("demo-asff-open" in str(r.get("assets")) for r in recs)
+    public = next(r for r in findings if "demo-asff-open" in str(r.get("assets")))
+    assert public["extra"].get("check_id") == "s3_bucket_public_access"
+    assert public["extra"].get("service") == "s3"
+    assert public["severity"] == "high"
 
 
 def test_pingcastle_xml() -> None:
@@ -138,6 +143,63 @@ def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> Non
     assert "demo.sarif" in names
 
 
+def test_minimal_asff_productfields_and_severity_string(tmp_path) -> None:
+    from shared.control_map import map_finding
+
+    dest = tmp_path / "minimal.asff.json"
+    dest.write_text(
+        """{
+  "Findings": [
+    {
+      "Id": "asff-min-1",
+      "GeneratorId": "ignored-generator",
+      "Title": "S3 bucket allows public access",
+      "Description": "demo-asff-min is reachable by AllUsers.",
+      "Severity": "HIGH",
+      "Compliance": {"Status": "FAILED"},
+      "ProductFields": {
+        "ProwlerCheckID": "s3_bucket_public_access",
+        "ProwlerServiceName": "s3"
+      },
+      "Resources": [
+        {"Id": "arn:aws:s3:::demo-asff-min", "Type": "AwsS3Bucket"}
+      ]
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    recs = cloud_prowler.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    hit = findings[0]
+    assert hit["severity"] == "high"
+    assert hit["extra"].get("check_id") == "s3_bucket_public_access"
+    assert hit["extra"].get("service") == "s3"
+    assert "demo-asff-min" in str(hit.get("assets"))
+    mapped = map_finding(hit)
+    assert mapped["include_poam"] is True
+    assert "public" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_empty_in_still_loads_cloud_asff_and_scoutsuite(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-cloud"))
+    (tmp_path / "empty-cloud" / "cloud").mkdir(parents=True)
+    files, demo = load_inputs("cloud-prowler", (".json",))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "prowler-asff.json" in names
+    assert "scoutsuite.json" in names
+    recs = []
+    for path in files:
+        recs.extend(cloud_prowler.parse_file(path))
+    assert any(r["kind"] == "finding" for r in recs)
+
+
 def test_hardeningkitty_csv() -> None:
     recs = identity_ad.parse_file(DEMO / "identity" / "hardeningkitty.csv")
     findings = [r for r in recs if r["kind"] == "finding"]
@@ -180,9 +242,18 @@ def test_httpx_jsonl() -> None:
 
 
 def test_scoutsuite() -> None:
+    from shared.control_map import map_finding
+
     recs = cloud_prowler.parse_file(DEMO / "cloud" / "scoutsuite.json")
     assert any(r["kind"] == "asset" and "demo-scout-public" in r["name"] for r in recs)
-    assert any("ScoutSuite" in r["name"] for r in recs if r["kind"] == "finding")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any("ScoutSuite" in r["name"] for r in findings)
+    assert any(r["extra"].get("service") == "s3" for r in findings)
+    assert any("s3" in r["name"] for r in findings)
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "public" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
 
 
 def test_falco_jsonl() -> None:

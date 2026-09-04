@@ -13,28 +13,47 @@ SOURCE = "cloud-prowler"
 LABELS = ["cloud", "prowler"]
 
 
+def _asff_severity(item: dict[str, Any]) -> str:
+    sev = item.get("Severity")
+    if isinstance(sev, dict):
+        label = sev.get("Label") or sev.get("Normalized") or ""
+        return str(label) or "medium"
+    if sev:
+        return str(sev)
+    return "medium"
+
+
 def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
     """Normalize AWS Security Finding Format (Prowler ASFF export) to Prowler keys."""
-    sev_obj = item.get("Severity") if isinstance(item.get("Severity"), dict) else {}
     resources = item.get("Resources") if isinstance(item.get("Resources"), list) else []
     res0 = resources[0] if resources and isinstance(resources[0], dict) else {}
     compliance = item.get("Compliance") if isinstance(item.get("Compliance"), dict) else {}
+    pf = item.get("ProductFields") if isinstance(item.get("ProductFields"), dict) else {}
     status = str(compliance.get("Status") or item.get("Status") or "")
     if status.upper() in {"FAILED", "FAIL"}:
         status = "FAIL"
     elif status.upper() in {"PASSED", "PASS"}:
         status = "PASS"
     rtype = str(res0.get("Type") or "")
-    service = rtype.replace("Aws", "").split("::")[0] or "cloud"
-    if "S3" in rtype:
-        service = "s3"
-    elif "Iam" in rtype or "IAM" in rtype:
-        service = "iam"
+    service = str(pf.get("ProwlerServiceName") or "")
+    if not service:
+        service = rtype.replace("Aws", "").split("::")[0] or "cloud"
+        if "S3" in rtype:
+            service = "s3"
+        elif "Iam" in rtype or "IAM" in rtype:
+            service = "iam"
+    check_id = (
+        pf.get("ProwlerCheckID")
+        or pf.get("ControlId")
+        or item.get("GeneratorId")
+        or item.get("Id")
+        or "asff"
+    )
     return {
-        "CheckID": item.get("GeneratorId") or item.get("Id") or "asff",
+        "CheckID": check_id,
         "CheckTitle": item.get("Title") or item.get("GeneratorId") or "asff",
         "Status": status,
-        "Severity": sev_obj.get("Label") or item.get("Severity") or "medium",
+        "Severity": _asff_severity(item),
         "ResourceId": res0.get("Id") or item.get("Id") or "resource",
         "ResourceArn": res0.get("Id") or "",
         "Description": item.get("Description") or item.get("Title") or "",
@@ -101,12 +120,12 @@ def _scoutsuite_findings(payload: Any) -> list[dict[str, Any]]:
                 out.append(
                     {
                         "CheckID": str(fid),
-                        "CheckTitle": f"ScoutSuite {item.get('description') or fid}",
+                        "CheckTitle": f"ScoutSuite {svc_name}: {item.get('description') or fid}",
                         "Status": "FAIL",
                         "Severity": sev,
                         "ResourceId": str(rid),
                         "ResourceArn": str(rid),
-                        "Description": str(item.get("description") or fid),
+                        "Description": f"{svc_name} {item.get('description') or fid}",
                         "ServiceName": str(svc_name),
                     }
                 )
@@ -215,7 +234,12 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     assets=[rid],
                     labels=LABELS + [service],
                     collected_at=now,
-                    extra={"check_id": check, "arn": arn, "status": status or "FAIL"},
+                    extra={
+                        "check_id": check,
+                        "arn": arn,
+                        "status": status or "FAIL",
+                        "service": service,
+                    },
                 )
             )
     return records

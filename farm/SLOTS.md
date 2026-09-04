@@ -44,6 +44,19 @@ File-drop only (never subprocess even if on PATH): amass, checkov, ffuf, gobuste
 
 LICENSE-LOCK names stay file_drop and are never subprocessed.
 
+## Cloud file-drop (Layer C)
+
+Drop **Prowler** JSON or **ASFF** (`Findings` array / list / single object)
+and **ScoutSuite** `services.*.findings` JSON under `in/cloud/`. Optional
+same-folder drops: Cloud Custodian and Steampipe. Parse-only — no AWS/GCP/Azure
+API calls, no live cloud scan. High FAIL rows map to CISO/POA&M when the title
+or check id is obvious (public S3 / AllUsers, IAM AdministratorAccess, root MFA,
+SG `0.0.0.0/0`, public RDS, unencrypted S3/EBS). Empty `in/` still loads demo
+`fixtures/demo/cloud/` (including `prowler-asff.json` and `scoutsuite.json`).
+Prowler *invoke* is separate BYO (`allow_tools`) when the binary is on PATH;
+this path is file-drop ingest. ScoutSuite stays file_drop-only.
+No new catalog slots.
+
 ## SARIF file-drop (Layer C)
 
 nuclei / semgrep / trivy stay file_drop (this repo does not run them).
