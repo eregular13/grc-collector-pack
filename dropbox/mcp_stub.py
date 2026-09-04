@@ -37,6 +37,18 @@ OPERATOR_TOOLS = (
     "export_ciso_poam",
 )
 
+TOOL_DESC = {
+    "scope_status": "SCOPE gate: client, window, stages, allow_tools ∩ PATH.",
+    "orchestrator_plan": "Plan-only orchestrate. Never implies --live.",
+    "orchestrator_status": "Stage graph, last integrity stop, shard/batch counters.",
+    "stage_discover": "Quiet discover. Live BYO only if allowlisted + on PATH.",
+    "stage_deepen": "Gated deepen. Refuses unless stages.deepen is true.",
+    "stage_ingest": "Copy artifacts into in/. Does not scan.",
+    "farm_slots": "Private SLOTS catalog counts. No binaries.",
+    "farm_slot_status": "Full slot matrix. Optional category filter.",
+    "export_ciso_poam": "Paths to CISO CSVs and poam.csv. Owner/due stay blank.",
+}
+
 # Substrings that must never become callable tools.
 REFUSED_ATTACK = (
     "hexstrike",
@@ -80,11 +92,11 @@ def farm_slots() -> dict[str, Any]:
     }
 
 
-def farm_slot_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
+def farm_slot_status_tool(scope_path: Path | None = None, category: str | None = None) -> dict[str, Any]:
     from farm.adapters.catalog import farm_slot_status, invoke_slots, wired_slots
 
     scope = load_scope(scope_path)
-    matrix = farm_slot_status(scope.allow_tools)
+    matrix = farm_slot_status(scope.allow_tools, category=category)
     return {
         "tool": "farm_slot_status",
         "ok": True,
@@ -92,12 +104,33 @@ def farm_slot_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         "plan_only": True,
         "scope_gated": True,
         "client": scope.client_name,
+        "category": category or "",
         "count": len(matrix),
         "wired_count": len(wired_slots()),
         "invoke_count": len(invoke_slots()),
         "matrix": matrix,
         "demo": "DEMO" in scope.client_name.upper(),
     }
+
+
+def tools_list_entries() -> list[dict[str, Any]]:
+    """Stable tools/list payload. Order is OPERATOR_TOOLS, never sorted."""
+    tools: list[dict[str, Any]] = []
+    for name in OPERATOR_TOOLS:
+        props: dict[str, Any] = {}
+        if name == "farm_slot_status":
+            props["category"] = {
+                "type": "string",
+                "description": "Optional slot category filter (discover, inventory, identity, …).",
+            }
+        tools.append(
+            {
+                "name": name,
+                "description": TOOL_DESC[name],
+                "inputSchema": {"type": "object", "properties": props},
+            }
+        )
+    return tools
 
 
 def refuse_attack_name(name: str) -> None:
@@ -112,6 +145,7 @@ def dispatch(
     *,
     live: bool = False,
     scope_path: Path | str | None = None,
+    arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run one operator tool. Deepen stays fail-closed. Live still BYO-only."""
     refuse_attack_name(name)
@@ -119,6 +153,7 @@ def dispatch(
     if tool not in OPERATOR_TOOLS:
         raise GateError(f"unknown operator tool {name!r}")
     path = Path(scope_path) if scope_path else None
+    extra = arguments if isinstance(arguments, dict) else {}
     if tool == "scope_status":
         return scope_status(scope_path=path)
     if tool == "orchestrator_plan":
@@ -134,7 +169,8 @@ def dispatch(
     if tool == "farm_slots":
         return farm_slots()
     if tool == "farm_slot_status":
-        return farm_slot_status_tool(scope_path=path)
+        cat = extra.get("category")
+        return farm_slot_status_tool(scope_path=path, category=str(cat) if cat else None)
     return export_ciso_poam()
 
 
@@ -283,17 +319,14 @@ def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None)
             },
         }
     if method == "tools/list":
-        tools = [
-            {"name": name, "description": f"SCOPE-gated operator tool {name}", "inputSchema": {"type": "object"}}
-            for name in OPERATOR_TOOLS
-        ]
-        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": tools}}
+        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": tools_list_entries()}}
     if method == "tools/call":
         params = req.get("params") if isinstance(req.get("params"), dict) else {}
         name = str(params.get("name") or "")
+        arguments = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
         try:
             refuse_attack_name(name)
-            result = dispatch(name, live=False, scope_path=scope_path)
+            result = dispatch(name, live=False, scope_path=scope_path, arguments=arguments)
             return {"jsonrpc": "2.0", "id": rid, "result": result}
         except GateError as exc:
             return {"jsonrpc": "2.0", "id": rid, "error": {"code": 2, "message": str(exc)}}

@@ -59,15 +59,20 @@ python3 -m dropbox mcp farm_slot_status
 python3 -m dropbox mcp stage_discover    # plan-only
 ```
 
-Claude / Cursor MCP snippet:
+Cursor reads **`.cursor/mcp.json`** in the project (or `~/.cursor/mcp.json`
+for a user-global entry). The conductor is **`dropbox.mcp_stub`** JSON-RPC
+on stdin/stdout — **not** hosted FastMCP. `cwd` **and** `PYTHONPATH` must
+be the **repo root** so `python3 -m dropbox.mcp_stub` resolves.
 
 ```json
 {
   "mcpServers": {
-    "evergreen-dropbox": {
+    "grc-dropbox": {
       "command": "python3",
       "args": ["-m", "dropbox.mcp_stub", "serve", "--stdio"],
+      "cwd": "/absolute/path/to/grc-collector-pack",
       "env": {
+        "PYTHONPATH": "/absolute/path/to/grc-collector-pack",
         "DROPBOX_LIVE": "0",
         "GRC_LIVE_SCAN": "0",
         "CISO_PUSH": "0",
@@ -77,6 +82,15 @@ Claude / Cursor MCP snippet:
   }
 }
 ```
+
+`tools/list` returns the nine operator tools in **fixed** `OPERATOR_TOOLS`
+order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
+`stage_discover`, `stage_deepen`, `stage_ingest`, `farm_slots`,
+`farm_slot_status`, `export_ciso_poam`). `farm_slot_status` accepts an
+optional `{ "category": "discover" }` argument.
+
+Live deepen stays fail-closed (`DROPBOX_LIVE=0`) unless the operator
+explicitly allowlists tools. Do not point this at public Layer C.
 
 ## Do not
 

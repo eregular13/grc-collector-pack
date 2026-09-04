@@ -134,11 +134,17 @@ def test_mcp_serve_lists_tools_no_hexstrike() -> None:
 
 
 def test_jsonrpc_tools_list_and_refuse_exploit() -> None:
-    from dropbox.mcp_stub import handle_jsonrpc
+    from dropbox.mcp_stub import handle_jsonrpc, tools_list_entries
 
     listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = [t["name"] for t in listed["result"]["tools"]]
     assert names == list(OPERATOR_TOOLS)
+    again = handle_jsonrpc({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})
+    names_again = [t["name"] for t in again["result"]["tools"]]
+    assert names_again == names == list(OPERATOR_TOOLS)
+    assert tools_list_entries() == listed["result"]["tools"]
+    status = next(t for t in listed["result"]["tools"] if t["name"] == "farm_slot_status")
+    assert "category" in status["inputSchema"]["properties"]
     bad = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "Metasploit"}}
     )
@@ -187,6 +193,21 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     nuclei = next(row for row in matrix["result"]["matrix"] if row["slot"] == "nuclei")
     assert nuclei["invoke"] is False
     assert nuclei["state"] == "file_drop"
+    assert result["invoke_count"] >= 28
+    assert result["wired_count"] >= 28
+    discover = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "tools/call",
+            "params": {"name": "farm_slot_status", "arguments": {"category": "discover"}},
+        }
+    )
+    assert discover["result"]["tool"] == "farm_slot_status"
+    assert discover["result"]["category"] == "discover"
+    assert discover["result"]["count"] >= 1
+    assert all(row["category"] == "discover" for row in discover["result"]["matrix"])
+    assert {row["slot"] for row in discover["result"]["matrix"]} <= names
     for tool, tid in (("stage_discover", 9), ("stage_deepen", 10), ("stage_ingest", 11)):
         body = handle_jsonrpc(
             {"jsonrpc": "2.0", "id": tid, "method": "tools/call", "params": {"name": tool}}

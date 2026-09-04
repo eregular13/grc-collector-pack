@@ -9,9 +9,13 @@ import pytest
 
 from dropbox.scope import FORBIDDEN_TOOLS, GateError
 from farm.adapters.catalog import (
+    FILE_DROP_ONLY,
+    LAYER_C_SENSORS,
     LICENSE_CLASSES,
     REQUIRED_FIELDS,
+    audit_output_globs,
     catalog_summary,
+    farm_slot_status,
     invoke_slots,
     load_slots,
     render_slots_md,
@@ -70,6 +74,15 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert counts["wired"] == len(wired)
     assert counts["invoke"] == len(invoke)
     assert "openssl" in invoke and "nslookup" in invoke
+    assert len(invoke) >= 28
+    assert "ping" in invoke and "traceroute" in invoke
+    assert "journal-export" in invoke and "kubectl" in invoke
+    assert "snmpwalk" in invoke
+    assert audit_output_globs() == []
+    for name in FILE_DROP_ONLY:
+        assert name in slots
+        assert slots[name].get("invoke") is False
+        assert slots[name].get("scope_key") == "file_drop"
     md = (FARM / "SLOTS.md").read_text(encoding="utf-8")
     assert f"Total: {counts['total']}" in md
     assert "By category" in md
@@ -122,7 +135,23 @@ def test_wired_slots_invoke_path_stubs(tmp_path: Path, monkeypatch: pytest.Monke
     dest_root = tmp_path / "out"
     for name, slot in invoke.items():
         dest = dest_root / f"{name}.out"
+        named_only = {
+            "ping",
+            "traceroute",
+            "tracepath",
+            "host",
+            "getent",
+            "snmpwalk",
+            "httpx",
+            "dig",
+            "whois",
+            "sslscan",
+            "openssl",
+            "nslookup",
+        }
         target = "vpn.example.com" if slot["stage"] == "external" else "10.20.30.0/24"
+        if name in named_only:
+            target = "vpn.example.com"
         if name in {"nmap", "rustscan", "naabu"}:
             target = "10.20.30.0/24"
         result = run_slot(name, dest, allow, target=target, timeout=8, live=True)
@@ -198,3 +227,39 @@ def test_file_drop_stubs_and_license_lock_never_subprocess(
         with pytest.raises(GateError, match="LICENSE-LOCK"):
             argv_for(name, f"/stub/{name}", ".", 8)
     assert not marker.exists()
+
+
+def test_named_host_slots_refuse_cidr() -> None:
+    for name in ("ping", "traceroute", "tracepath", "host", "getent", "snmpwalk"):
+        with pytest.raises(GateError, match="wildcard/CIDR"):
+            argv_for(name, f"/stub/{name}", "10.20.30.0/24", 8)
+        argv = argv_for(name, f"/stub/{name}", "vpn.example.com", 8)
+        assert argv[0] == f"/stub/{name}"
+        assert "10.20.30.0/24" not in argv
+
+
+def test_file_drop_only_never_gets_argv(tmp_path: Path) -> None:
+    dest = tmp_path / "x.out"
+    for name in FILE_DROP_ONLY:
+        with pytest.raises(GateError, match="file_drop only"):
+            argv_for(name, f"/stub/{name}", "vpn.example.com", 8)
+        result = run_slot(name, dest, [name], target="vpn.example.com", live=True)
+        assert result["ran"] is False
+        assert result["subprocess"] is False
+        assert result["mode"] == "file_drop"
+
+
+def test_farm_slot_status_filters_category() -> None:
+    rows = farm_slot_status(["nmap", "ss"], category="discover")
+    assert rows
+    assert all(row["category"] == "discover" for row in rows)
+    names = {row["slot"] for row in rows}
+    assert "nmap" in names
+    assert "ping" in names
+    assert "prowler" not in names
+
+
+def test_layer_c_sensor_dirs_exist() -> None:
+    for sensor in LAYER_C_SENSORS:
+        path = ROOT / "in" / sensor
+        assert path.is_dir(), path

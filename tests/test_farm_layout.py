@@ -23,6 +23,16 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "written SCOPE" in op
     assert "quiet" in op.lower()
     assert "mcpServers" in op or "dropbox.mcp_stub" in op
+    assert '"cwd"' in op
+    assert "PYTHONPATH" in op
+    assert ".cursor/mcp.json" in op
+    integrity = (FARM / "INTEGRITY.md").read_text(encoding="utf-8")
+    assert "## Brakes defaults" in integrity
+    assert "`max_workers`" in integrity
+    assert "2–5" in integrity or "2-5" in integrity
+    assert "host_timeout_sec" in integrity
+    assert "0.0.0.0/0" in integrity
+    assert "review-only" in integrity.lower()
 
 
 def test_farm_slots_are_adapters_not_binaries() -> None:

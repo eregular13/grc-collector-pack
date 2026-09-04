@@ -11,6 +11,12 @@ from dropbox.yaml_lite import load_yaml
 FARM_ROOT = Path(__file__).resolve().parents[1]
 SLOTS_PATH = FARM_ROOT / "SLOTS.yaml"
 LICENSE_CLASSES = frozenset({"use_dont_ship", "commercial_byo", "oss_byo"})
+LAYER_C_SENSORS = frozenset(
+    {"cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas"}
+)
+FILE_DROP_ONLY = frozenset(
+    {"nikto", "gobuster", "ffuf", "amass", "subfinder", "scoutsuite", "checkov"}
+)
 REQUIRED_FIELDS = (
     "id",
     "binary",
@@ -42,6 +48,10 @@ def load_slots() -> dict[str, dict[str, Any]]:
         row = dict(raw)
         if "invoke" not in row:
             row["invoke"] = bool(row.get("wired")) and row.get("scope_key") == "allow_tools"
+        if key in FILE_DROP_ONLY:
+            row["wired"] = False
+            row["invoke"] = False
+            row["scope_key"] = "file_drop"
         out[str(key)] = row
     return out
 
@@ -78,7 +88,11 @@ def slot_matrix(allow_tools: list[str], which=None) -> list[dict[str, Any]]:
     return rows
 
 
-def farm_slot_status(allow_tools: list[str] | None = None, which=None) -> list[dict[str, Any]]:
+def farm_slot_status(
+    allow_tools: list[str] | None = None,
+    which=None,
+    category: str | None = None,
+) -> list[dict[str, Any]]:
     """Full SLOTS matrix: wired / invoke / PATH / allowlist. Never downloads."""
     import shutil
 
@@ -108,12 +122,31 @@ def farm_slot_status(allow_tools: list[str] | None = None, which=None) -> list[d
                 "on_path": on_path,
                 "license_class": str(slot.get("license_class") or ""),
                 "scope_key": str(slot.get("scope_key") or ""),
+                "category": str(slot.get("category") or slot.get("stage") or ""),
                 "sensor": slot.get("sensor"),
                 "output_glob": slot.get("output_glob"),
                 "state": state,
             }
         )
+    if category:
+        want = str(category).strip().lower()
+        rows = [row for row in rows if str(row.get("category") or "").lower() == want]
     return rows
+
+
+def audit_output_globs() -> list[str]:
+    """Return slots whose output_glob is not in/<Layer-C-sensor>/…"""
+    hits: list[str] = []
+    for name, slot in load_slots().items():
+        glob = str(slot.get("output_glob") or "")
+        sensor = str(slot.get("sensor") or "")
+        if sensor not in LAYER_C_SENSORS:
+            hits.append(f"{name}: sensor {sensor!r} is not a Layer C dir")
+            continue
+        prefix = f"in/{sensor}/"
+        if not glob.startswith(prefix):
+            hits.append(f"{name}: output_glob {glob!r} does not land in {prefix}")
+    return hits
 
 
 def catalog_summary() -> dict[str, Any]:

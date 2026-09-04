@@ -602,13 +602,13 @@ slots:
     binary: kubectl
     stage: k8s
     category: k8s
-    scope_key: file_drop
+    scope_key: allow_tools
     sensor: k8s
     output_glob: in/k8s/*.json
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    hook: farm.adapters.kubectl
     vendored: false
   kube-hunter:
     id: kube-hunter
@@ -746,13 +746,13 @@ slots:
     binary: snmpwalk
     stage: discover
     category: discover
-    scope_key: file_drop
+    scope_key: allow_tools
     sensor: nmap
     output_glob: in/nmap/*.txt
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    hook: farm.adapters.snmpwalk
     vendored: false
   wapiti:
     id: wapiti
@@ -967,13 +967,13 @@ slots:
     binary: journalctl
     stage: endpoint
     category: endpoint
-    scope_key: file_drop
+    scope_key: allow_tools
     sensor: wazuh
     output_glob: in/wazuh/*.txt
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    hook: farm.adapters.journalctl
     vendored: false
   chkrootkit:
     id: chkrootkit
@@ -1377,4 +1377,69 @@ slots:
     default_batch: 1
     wired: false
     hook: file-drop
+    vendored: false
+  ping:
+    id: ping
+    binary: ping
+    stage: discover
+    category: discover
+    scope_key: allow_tools
+    sensor: nmap
+    output_glob: in/nmap/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.ping
+    vendored: false
+  traceroute:
+    id: traceroute
+    binary: traceroute
+    stage: discover
+    category: discover
+    scope_key: allow_tools
+    sensor: nmap
+    output_glob: in/nmap/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.traceroute
+    vendored: false
+  tracepath:
+    id: tracepath
+    binary: tracepath
+    stage: discover
+    category: discover
+    scope_key: allow_tools
+    sensor: nmap
+    output_glob: in/nmap/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.tracepath
+    vendored: false
+  host:
+    id: host
+    binary: host
+    stage: external
+    category: external
+    scope_key: allow_tools
+    sensor: easm
+    output_glob: in/easm/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.host
+    vendored: false
+  getent:
+    id: getent
+    binary: getent
+    stage: discover
+    category: discover
+    scope_key: allow_tools
+    sensor: nmap
+    output_glob: in/nmap/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.getent
     vendored: false

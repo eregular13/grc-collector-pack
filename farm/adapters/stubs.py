@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from dropbox.orchestrator import byo
 from dropbox.scope import FORBIDDEN_TOOLS, GateError, is_open_internet_cidr
-from farm.adapters.catalog import load_slots
+from farm.adapters.catalog import FILE_DROP_ONLY, load_slots
 
 Which = Callable[[str], str | None]
 
@@ -41,6 +41,8 @@ def argv_for(slot_id: str, exe: str, target: str, timeout: int) -> list[str]:
     timeout = max(1, int(timeout))
     if name in NEVER_SUBPROCESS:
         raise GateError(f"LICENSE-LOCK: farm adapter refuses {name!r}")
+    if name in FILE_DROP_ONLY:
+        raise GateError(f"file_drop only: farm adapter refuses {name!r}")
     if name == "nmap":
         return byo.nmap_quiet_argv(exe, target, timeout)
     if name in {"nessus", "nessuscli"}:
@@ -87,6 +89,28 @@ def argv_for(slot_id: str, exe: str, target: str, timeout: int) -> list[str]:
         return [exe, "s_client", "-connect", f"{host}:443", "-brief"]
     if name == "nslookup":
         return [exe, _named_host(target, "nslookup")]
+    if name == "ping":
+        host = _named_host(target, "ping")
+        if is_open_internet_cidr(target):
+            raise GateError("ping refuses 0.0.0.0/0")
+        return [exe, "-c", "2", "-W", "2", host]
+    if name == "traceroute":
+        host = _named_host(target, "traceroute")
+        return [exe, "-n", "-w", "1", "-m", "5", host]
+    if name == "tracepath":
+        host = _named_host(target, "tracepath")
+        return [exe, "-n", "-m", "5", host]
+    if name == "host":
+        return [exe, _named_host(target, "host")]
+    if name == "getent":
+        return [exe, "hosts", _named_host(target, "getent")]
+    if name in {"journal-export", "journalctl"}:
+        return [exe, "-n", "20", "--no-pager"]
+    if name == "kubectl":
+        return [exe, "version", "--client", "-o", "yaml"]
+    if name == "snmpwalk":
+        host = _named_host(target, "snmpwalk")
+        return [exe, "-v2c", "-c", "public", "-t", "1", "-r", "0", host, "sysName.0"]
     raise GateError(f"no adapter argv for slot {slot_id!r}")
 
 
@@ -117,6 +141,13 @@ def run_slot(
         "invoke": bool(slot.get("invoke")),
         "subprocess": False,
     }
+    if name in FILE_DROP_ONLY or binary in FILE_DROP_ONLY:
+        return {
+            **base,
+            "mode": "file_drop",
+            "tool_ready": False,
+            "skip_reason": "file-drop only (never subprocess)",
+        }
     if slot.get("wired") is True and slot.get("invoke") is False:
         return {
             **base,

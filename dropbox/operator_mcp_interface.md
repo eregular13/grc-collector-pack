@@ -11,7 +11,7 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `stage_deepen` | `deepen_stage` | **Refuses** unless `stages.deepen: true`. Hosts = discover-live or `deepen_hosts` |
 | `stage_ingest` | `ingest_stage` | Copies artifacts into `in/`. Does not scan |
 | `farm_slots` | `farm/SLOTS.yaml` | Catalog + wired adapters. No binaries |
-| `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Plan-only |
+| `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Optional `{ "category": "discover" }`. Plan-only |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` | Paths only. Does not invent owner/due |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
@@ -23,19 +23,29 @@ python3 -m dropbox mcp serve
 python3 -c "from dropbox.mcp_stub import dispatch; print(dispatch('scope_status'))"
 ```
 
-Claude / Cursor MCP snippet (private box, `DROPBOX_LIVE=0`):
+Cursor `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user). `cwd`
+and `PYTHONPATH` must be the repo root. Private box, `DROPBOX_LIVE=0`:
 
 ```json
 {
   "mcpServers": {
-    "evergreen-dropbox": {
+    "grc-dropbox": {
       "command": "python3",
       "args": ["-m", "dropbox.mcp_stub", "serve", "--stdio"],
-      "env": {"DROPBOX_LIVE": "0", "GRC_LIVE_SCAN": "0", "RISKREADY_PUSH": "0"}
+      "cwd": "/absolute/path/to/grc-collector-pack",
+      "env": {
+        "PYTHONPATH": "/absolute/path/to/grc-collector-pack",
+        "DROPBOX_LIVE": "0",
+        "GRC_LIVE_SCAN": "0",
+        "RISKREADY_PUSH": "0"
+      }
     }
   }
 }
 ```
+
+`tools/list` order is stable (`OPERATOR_TOOLS`). `farm_slot_status` may
+filter with `params.arguments.category`.
 
 ## JSON-RPC examples (stdio stub)
 
@@ -51,6 +61,10 @@ Claude / Cursor MCP snippet (private box, `DROPBOX_LIVE=0`):
 
 ```json
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"scope_status"}}
+```
+
+```json
+{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"farm_slot_status","arguments":{"category":"discover"}}}
 ```
 
 ```json
