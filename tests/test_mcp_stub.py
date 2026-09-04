@@ -284,7 +284,24 @@ def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     (tmp_path / "out" / "poam").mkdir(parents=True)
     (tmp_path / "out" / "poam" / "poam.csv").write_text("weakness,owner,due\nsmb,,\n", encoding="utf-8")
-    data = dispatch("export_ciso_poam")
+    data = dispatch("export_ciso_poam", scope_path=SCOPE)
     assert data["posted"] is False
     assert data["owner_due"].startswith("blank")
+    assert data["scope_gated"] is True
+    assert data["wrap"] == "review-only"
+    assert "DEMO" in data["client"]
     assert any(p.endswith("poam.csv") for p in data["files"])
+
+
+def test_farm_slots_and_export_refuse_without_scope(tmp_path: Path) -> None:
+    empty = tmp_path / "SCOPE.yaml"
+    empty.write_text("", encoding="utf-8")
+    for name in ("farm_slots", "export_ciso_poam", "orchestrator_status", "stage_discover"):
+        with pytest.raises(GateError, match="SCOPE"):
+            dispatch(name, scope_path=empty)
+    slots = dispatch("farm_slots", scope_path=SCOPE)
+    assert slots["scope_gated"] is True
+    assert "DEMO" in slots["client"]
+    assert slots["brakes"]["wrap"].startswith("push_riskready")
+    assert "evergreen_assessment_mcp" in slots["brakes"]["pack_truth"]
+    assert "nmap/nessus not default" in slots["brakes"]["free_day_scope"]

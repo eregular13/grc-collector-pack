@@ -46,10 +46,10 @@ TOOL_DESC = {
     "stage_discover": "Quiet discover. Live BYO only if allowlisted + on PATH.",
     "stage_deepen": "Gated deepen. Refuses unless stages.deepen is true.",
     "stage_ingest": "Copy artifacts into in/. Does not scan.",
-    "farm_slots": "Private SLOTS catalog counts. No binaries.",
+    "farm_slots": "Private SLOTS catalog counts under written SCOPE. No binaries.",
     "farm_slot_status": "Full slot matrix. Optional category filter.",
     "farm_toolbin_status": "FARM_TOOL_BIN resolve for wired invoke slots: present/missing/demo_stub.",
-    "export_ciso_poam": "Paths to CISO CSVs and poam.csv. Owner/due stay blank.",
+    "export_ciso_poam": "SCOPE-gated paths to CISO CSVs and poam.csv. Owner/due stay blank.",
 }
 
 # Substrings that must never become callable tools.
@@ -71,7 +71,7 @@ def _slot_matrix(allow_tools: list[str]) -> list[dict[str, Any]]:
     return slot_matrix(allow_tools)
 
 
-def farm_slots() -> dict[str, Any]:
+def farm_slots(scope_path: Path | None = None) -> dict[str, Any]:
     from farm.adapters.catalog import (
         brakes_defaults,
         catalog_summary,
@@ -81,6 +81,7 @@ def farm_slots() -> dict[str, Any]:
         wired_slots,
     )
 
+    scope = load_scope(scope_path)
     data = load_catalog()
     wired = wired_slots()
     invoke = invoke_slots()
@@ -101,6 +102,8 @@ def farm_slots() -> dict[str, Any]:
         "brakes": brakes_defaults(),
         "counts": counts,
         "scope_gated": True,
+        "client": scope.client_name,
+        "demo": "DEMO" in scope.client_name.upper(),
     }
 
 
@@ -243,13 +246,13 @@ def dispatch(
     if tool == "stage_ingest":
         return stage_ingest(scope_path=path)
     if tool == "farm_slots":
-        return farm_slots()
+        return farm_slots(scope_path=path)
     if tool == "farm_slot_status":
         cat = extra.get("category")
         return farm_slot_status_tool(scope_path=path, category=str(cat) if cat else None)
     if tool == "farm_toolbin_status":
         return farm_toolbin_status_tool(scope_path=path)
-    return export_ciso_poam()
+    return export_ciso_poam(scope_path=path)
 
 
 def scope_status(scope_path: Path | None = None) -> dict[str, Any]:
@@ -346,10 +349,11 @@ def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
     return _annotate_stage(marker, "stage_ingest", live=False)
 
 
-def export_ciso_poam() -> dict[str, Any]:
+def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
     """Point at existing CISO/POA&M files. Does not invent owner or due."""
     import os
 
+    scope = load_scope(scope_path)
     raw = os.environ.get("OUT_DIR")
     root = Path(raw) if raw else Path(__file__).resolve().parents[1] / "out"
     ciso = root / "ciso-assistant"
@@ -368,6 +372,10 @@ def export_ciso_poam() -> dict[str, Any]:
         "files": files,
         "owner_due": "blank — human fills",
         "posted": False,
+        "scope_gated": True,
+        "client": scope.client_name,
+        "demo": "DEMO" in scope.client_name.upper(),
+        "wrap": "review-only",
     }
 
 
