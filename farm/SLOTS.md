@@ -173,6 +173,19 @@ Parse-only — this repo never subprocesses nikto and does not probe
 HTTP. Empty `in/` still loads `fixtures/demo/vuln/nikto.txt`.
 nikto stays file_drop. No new catalog slots.
 
+## Nessus file-drop (Layer C)
+
+Drop an operator-landed **NessusClientData** / `.nessus` XML under
+`in/vuln/` (`ReportHost` / `ReportItem`). High/Critical rows only,
+plus key Medium already patterned (SMB 445, RDP 3389, Telnet, TLS 1.0).
+Info/Low and empty `Report` invent nothing. Farm DEMO tool-bin `.txt`
+stubs (`NessusClientData` comment, no `ReportHost`) are not exports
+and invent nothing. High rows map to CISO/POA&M when the title is
+obvious (SMB, RDP, TLS). Parse-only — Layer C never runs a Nessus
+binary and never calls a Nessus API. nessus / nessuscli *invoke* is
+separate BYO (`allow_tools` + PATH). Empty `in/` still loads
+`fixtures/demo/vuln/demo.nessus`. No new catalog slots.
+
 ## Secrets / IaC file-drop (Layer C)
 
 Drop **Gitleaks** / **TruffleHog** / **Semgrep** / **Checkov** JSON or

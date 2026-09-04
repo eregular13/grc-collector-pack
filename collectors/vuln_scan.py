@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, Nikto, or SARIF.
+"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, Nikto, Nessus XML, or SARIF.
 
-Parse-only. Does not run nuclei, nikto, or any live HTTP probe.
+Parse-only. Does not run nuclei, nikto, or Nessus, and does not call a Nessus API.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
 from shared.nikto import parse_nikto
 from shared.sarif import iter_sarif_results, load_sarif
@@ -188,6 +189,37 @@ def parse_file(path: Path) -> list[dict]:
             )
         return records
 
+    nessus = parse_nessus(path)
+    if nessus is not None:
+        for row in nessus:
+            host = str(row.get("host") or "unknown")
+            add_asset(host)
+            plugin = str(row.get("plugin_id") or "nessus")
+            port = str(row.get("port") or "")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"nessus-{plugin}-{host}-{port}"),
+                    name=str(row.get("name") or plugin),
+                    description=(
+                        f"{row.get('description') or row.get('name')} "
+                        "(Nessus file-drop; not a live scan)"
+                    ),
+                    severity=row.get("severity") or "high",
+                    category="vulnerability",
+                    assets=[host],
+                    labels=LABELS + ["nessus"],
+                    collected_at=now,
+                    extra={
+                        "port": port,
+                        "service": row.get("service") or "",
+                        "id": plugin,
+                    },
+                )
+            )
+        return records
+
     nuclei = _nuclei_rows(path)
     if nuclei:
         for row in nuclei:
@@ -307,7 +339,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".jsonl", ".sarif", ".txt", ".xml"), parse_file)
+    run_collector(SOURCE, (".json", ".jsonl", ".sarif", ".txt", ".xml", ".nessus"), parse_file)
 
 
 if __name__ == "__main__":

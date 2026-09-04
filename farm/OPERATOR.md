@@ -125,6 +125,13 @@ security headers stay silent. Empty exports invent nothing. High admin
 login / directory-index rows map to existing CISO/POA&M. The collector
 never runs nikto and does not probe HTTP.
 
+Nessus **`.nessus` / NessusClientData XML** is file-drop ingest under
+`in/vuln/`. Layer C parses `ReportHost` / `ReportItem` (High/Critical, plus
+key Medium SMB/RDP/TLS). Empty reports invent nothing. Farm DEMO tool-bin
+`.txt` stubs are not Nessus exports. The collector never runs a Nessus
+binary and never calls a Nessus API. nessus / nessuscli *invoke* stays
+BYO (`allow_tools` + PATH) on a consented box — separate from this parse.
+
 Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.

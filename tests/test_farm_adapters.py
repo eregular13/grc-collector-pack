@@ -124,6 +124,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "template_id" in md
     assert "Nikto file-drop" in md
     assert "niktoscan" in md
+    assert "Nessus file-drop" in md
+    assert "ReportHost" in md
+    assert "demo.nessus" in md
     assert "Secrets / IaC file-drop" in md
     assert "failed_checks" in md
     assert "SARIF file-drop" in md

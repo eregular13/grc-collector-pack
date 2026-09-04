@@ -591,6 +591,8 @@ def test_vuln_scan_no_nuclei_subprocess() -> None:
     assert "Popen" not in src
     assert "nuclei -" not in src
     assert "nikto -" not in src
+    assert "nessuscli scan" not in src
+    assert "nessuscli --" not in src
     assert "socket.socket" not in src
 
 
@@ -656,17 +658,88 @@ def test_empty_nikto_invents_nothing(tmp_path) -> None:
     assert vuln_scan.parse_file(dest) == []
 
 
+def test_nessus_xml_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = vuln_scan.parse_file(DEMO / "vuln" / "demo.nessus")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "http://10.0.0.20" in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "SMB" in findings[0]["name"]
+    assert "Scan Information" not in str(recs)
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "smb" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_nessus_key_medium_rdp(tmp_path) -> None:
+    dest = tmp_path / "rdp.nessus"
+    dest.write_text(
+        """<NessusClientData_v2><Report name="t">
+        <ReportHost name="http://10.0.0.20">
+        <ReportItem port="3389" svc_name="msrdp" protocol="tcp" severity="2"
+         pluginID="58453" pluginName="Remote Desktop Protocol Server">
+        <risk_factor>Medium</risk_factor>
+        <description>RDP is reachable.</description>
+        </ReportItem>
+        <ReportItem port="80" svc_name="www" protocol="tcp" severity="2"
+         pluginID="10107" pluginName="HTTP Server Type and Version">
+        <risk_factor>Medium</risk_factor>
+        <description>Banner only.</description>
+        </ReportItem>
+        </ReportHost></Report></NessusClientData_v2>""",
+        encoding="utf-8",
+    )
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["extra"].get("port") == "3389"
+
+
+def test_empty_nessus_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty.nessus"
+    dest.write_text("<NessusClientData_v2><Report name='t'></Report></NessusClientData_v2>", encoding="utf-8")
+    assert vuln_scan.parse_file(dest) == []
+    dest.write_text(
+        """<NessusClientData_v2><Report name="t"><ReportHost name="http://10.0.0.20">
+        <ReportItem port="0" severity="0" pluginID="19506" pluginName="Nessus Scan Information">
+        <risk_factor>None</risk_factor></ReportItem>
+        </ReportHost></Report></NessusClientData_v2>""",
+        encoding="utf-8",
+    )
+    assert vuln_scan.parse_file(dest) == []
+
+
+def test_nessus_parser_no_live() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    for rel in ("collectors/vuln_scan.py", "shared/nessus.py"):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "nessuscli scan" not in src
+        assert "nessuscli --" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
 def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> None:
     from shared.io_util import load_inputs
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
     (tmp_path / "empty-in" / "vuln").mkdir(parents=True)
-    files, demo = load_inputs("vuln-scan", (".json", ".jsonl", ".sarif", ".txt", ".xml"))
+    files, demo = load_inputs(
+        "vuln-scan", (".json", ".jsonl", ".sarif", ".txt", ".xml", ".nessus")
+    )
     assert demo is True
     names = {p.name for p in files}
     assert "nuclei.jsonl" in names
     assert "demo.sarif" in names
     assert "nikto.txt" in names
+    assert "demo.nessus" in names
 
 
 def test_minimal_asff_productfields_and_severity_string(tmp_path) -> None:
