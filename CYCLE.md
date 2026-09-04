@@ -2,7 +2,11 @@
 
 ## cycle 32 — conductor farm_toolbin_status + MCP snippets (2026-09-04)
 
-Conductor adds `farm_toolbin_status` (FARM_TOOL_BIN resolve: present/missing/demo_stub for wired invoke). `tools/call` `orchestrator_plan` returns per-stage `will_run`. OPERATOR.md + operator_mcp_interface.md have Cursor `.cursor/mcp.json` and Claude Desktop snippets; `scripts/mcp_stdio.sh` starts from repo root. Catalog **not inflated**. Cycle 31 e2e stands. No live internet. No fake compose.
+Conductor adds `farm_toolbin_status` (FARM_TOOL_BIN resolve: present/missing/demo_stub for wired invoke). `tools/call` `orchestrator_plan` returns per-stage `will_run`. OPERATOR.md + operator_mcp_interface.md have Cursor `.cursor/mcp.json` and Claude Desktop snippets; `scripts/mcp_stdio.sh` starts from repo root. Catalog **not inflated**. Cycle 31 e2e stands. No live internet. No fake compose. pytest **179**. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 179, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
 
 ## cycle 31 — farm-toolbin-e2e quiet→loud DEMO (2026-09-04)
 
