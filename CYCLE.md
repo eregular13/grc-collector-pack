@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 52 — masscan file-drop polish (2026-09-04)
+
+inventory-nmap parses operator-landed masscan `-oX` XML and `-oJ` JSON under `in/nmap/`. Open ports only. Empty `ports` / empty `nmaprun` invent nothing. 445 / 3389 / 23 map to existing SMB / RDP / Telnet POA&M. Demo `masscan.xml` attaches RDP 3389 to existing `filesrv.corp.local` (assets unchanged; findings/poam +1). Collector does not run masscan. Slot stays `file_drop` / `use_dont_ship`. Catalog **not inflated**. pytest **265**. Labs green. Compose ABSENT. sslscan cycle 51 stands.
+
+```json
+{"pytest": 265, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 74, "vulns": 19, "evidence": 27, "poam": 77}, "farm_lab": {"assets": 64, "findings": 74, "poam": 77, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 75, "vulns": 19, "poam": 77, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 83, "vulns": 19, "poam": 80, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 51 — sslscan file-drop polish (2026-09-04)
 
 vuln-scan / easm parse operator-landed sslscan XML (`ssltest` / `protocol`) or text (`SSL/TLS Protocols`) under `in/vuln/` or `in/easm/`. Weak/failed only (TLS 1.0, SSLv2/v3, Heartbleed, weak ciphers). Empty / TLS 1.2-only invent nothing. This is **not** testssl JSON (cycle 37) — a separate parse. Demo `sslscan.xml` attaches TLS 1.0 to existing `vpn.example.com` (vulnerability row, not a finding; poam +1; assets unchanged). No live sslscan. sslscan *invoke* stays BYO. Catalog **not inflated**. pytest **262**. Labs green. Compose ABSENT. WhatWeb cycle 50 and SaaS cycle 49 stand.
