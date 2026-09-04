@@ -1,6 +1,6 @@
-# CRITIC — cycle 67 (Hephaestus SCOPE example opt-in)
+# CRITIC — cycle 68 (Farm SOP honesty)
 
-**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. No new parsers. Client `SCOPE.example.yaml` no longer default-allowlists nmap/nessus. Invoke stays signed SCOPE only. `FARM_TOOL_BIN` never resolves or spawns LICENSE-LOCK scanners. RiskReady wrap stays **dead** forever (no login / no assets / no incidents / no evidence POST — not only `/api/risks`). Farm SOP never points at a RiskReady write. STATUS `wrap: review-only`. Paying-day **FAIL**. Compose **ABSENT** (hole, not a PASS). DEMO ≠ client. Hexstrike pattern-only. USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`) remains pack truth — MCP stub is not. Scanner-free + wrap-dead hold because rails 1–3 hold. Host lab 64/79/19/27 poam 82. e2e 64/80/19 poam 82 demo true. pytest **310**.
+**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. No new parsers. Farm OPERATOR / QUICKSTART / INTEGRITY now lock DEMO ≠ client, free-day SCOPE hole closed (`SCOPE.example.yaml` does not allowlist nmap/nessus), RiskReady never in SOP, USB `evergreen_assessment_mcp` = pack truth, `dropbox.mcp_stub` = conductor UX only. Cycle 67 rails stay locked. Wrap **dead**. Paying-day **FAIL**. Compose **ABSENT** (hole, not a PASS). Hexstrike pattern-only. Host lab 64/79/19/27 poam 82. e2e 64/80/19 poam 82 demo true. pytest **310**.
 
 −1 compose runtime still absent (no Docker CLI).  
 −1 stubs are DEMO, not real nmap/nessus.

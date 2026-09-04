@@ -1,6 +1,6 @@
-cycle: 67
+cycle: 68
 phase: DONE
-item: HEPHAESTUS-SCOPE-EXAMPLE
+item: FARM-SOP-HONESTY
 critic_score: 8/10
 open_p0:
 open_p1:

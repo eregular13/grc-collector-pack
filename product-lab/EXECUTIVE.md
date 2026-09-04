@@ -2,7 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 67):** Hephaestus SCOPE example opt-in.
+**This window (cycle 68):** Farm SOP honesty. OPERATOR / QUICKSTART /
+INTEGRITY lock DEMO ≠ client, `SCOPE.example.yaml` does not allowlist
+nmap/nessus (free-day closed), RiskReady never in SOP, USB
+`evergreen_assessment_mcp` remains pack truth, `dropbox.mcp_stub` is
+conductor UX only. Wrap stays **dead**. STATUS `wrap: review-only`.
+Paying-day **FAIL**. Compose **ABSENT**. Catalog unchanged. Cycle 67
+rails stay locked.
+
+**Cycle 67 (stands):** Hephaestus SCOPE example opt-in.
 `SCOPE.example.yaml` no longer default-allowlists nmap/nessus. Invoke
 only under signed SCOPE.allow_tools — never free-day live. Wrap stays
 **dead** forever — no login, no assets/incidents/evidence POST, not only
@@ -94,11 +102,11 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
-**Deltas vs cycle 66:** lab counts unchanged (honesty tests only).
-pytest **309→310**. Catalog / wrap / compose / paying-day / LICENSE-LOCK
+**Deltas vs cycle 67:** lab counts and pytest **310** unchanged (SOP
+asserts only). Catalog / wrap / compose / paying-day / LICENSE-LOCK
 will_run unchanged. Paying-day remains **FAIL**. Compose remains **ABSENT**.
-Wrap remains review-only / dead. `SCOPE.example.yaml` no longer
-default-allowlists nmap/nessus.
+Wrap remains review-only / dead. Farm SOP copy-paste can no longer
+reopen the free-day nmap/nessus hole.
 
 **Deltas vs cycle 58 (enum4linux-ng, still standing):** host/farm findings
 **76→78**, POA&M **79→81** (demo null session + Domain Admins on existing
