@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 16 — dropbox compose scanner-free + honest ABSENT (2026-09-04)
+
+`dropbox/scanner_free.py` + `tests/test_compose_scanner_free.py` fail if nmap/nessus/nuclei/openvas/gvm reappear as apt/pip/wget/FROM in `Dockerfile` or compose files. `make dropbox-compose` always runs those statics. This VM: **compose_lab: absent** (`docker CLI not on PATH`) — not a fake pass. Runtime path (internal+external demo/dry + image `command -v` probe) is implemented for when Docker is present. CISO `product-lab/drop/MANIFEST` refreshed to current empty-`in/` hashes (62/62/24 poam 61). Wrap dead.
+
+pytest **136 passed, 1 skipped** (honest compose runtime skip). `make lab` 62/62/15/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64 demo true. `make dropbox-compose` scanner_free true, status absent.
+
+```json
+{"pytest": 136, "pytest_skipped": 1, "assets": 62, "findings": 62, "evidences": 24, "poam": 61, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "compose_lab_reason": "docker CLI not on PATH", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 15 — MCP serve, worker teardown, external named-only (2026-09-04)
 
 `python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools (no FastMCP, no Hexstrike). Discover/deepen destroy workers on timeout/failure; status prints timeout, batch overflow, scope miss. External SCOPE refuses wildcards and CIDRs. testssl/curl BYO adapters parallel to nmap. Telnet POA&M golden. Owner/due blank. Wrap dead.

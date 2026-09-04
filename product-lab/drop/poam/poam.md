@@ -18,6 +18,7 @@ Owner and due are blank — a human fills them. No invented dates.
 | Sensitive external hostname vpn.example.com | vpn.example.com | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Limit the exposed service on vpn.example.com to required networks. Confirm the listener is still needed. | open |
 | Sensitive external hostname admin.example.com | admin.example.com | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Limit the exposed service on admin.example.com to required networks. Confirm the listener is still needed. | open |
 | Sensitive external hostname dev-api.example.com | dev-api.example.com | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Limit the exposed service on dev-api.example.com to required networks. Confirm the listener is still needed. | open |
+| TLS weak cipher: vpn.example.com | vpn.example.com | medium | cpg_2_W,csf_PR,csf_protect | Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. This is a posture finding, not a specific TLS CVE. | open |
 | Wazuh agent disconnected: db-01 | db-01 | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Endpoint db-01 is disconnected; coverage gap. | open |
 | sshd: brute force trying to get access | web-01 | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | sshd: brute force trying to get access | open |
 | Wazuh agent disconnected: fleet-laptop-07 | fleet-laptop-07 | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Endpoint fleet-laptop-07 is disconnected; coverage gap. | open |
@@ -35,7 +36,9 @@ Owner and due are blank — a human fills them. No invented dates.
 | AS-REP roastable account | SVC-KRBTGT-ROAST | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | SVC-KRBTGT-ROAST does not require Kerberos preauth. | open |
 | FTP exposed | legacy-ftp.corp.local | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Disable FTP (TCP/21) or replace with SFTP/FTPS. Restrict any remaining listener to a management VLAN. | open |
 | SMB 445 exposed | filesrv.corp.local | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Restrict TCP/445 (SMB) to required admin or file-share hosts. Confirm SMBv1 is disabled on the endpoint. This finding is an open-port exposure, not a dialect or CVE. | open |
+| Administrative share exposed on filesrv.corp.local (C$/ADMIN$) | filesrv.corp.local | medium | cpg_2_W,csf_PR,csf_protect | Disable or ACL C$/ADMIN$/IPC$ so they are not reachable off the admin network. Confirm SMBv1 is disabled. This is a share-exposure finding, not a CVE. | open |
 | SMB 445 exposed | dc.corp.local | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Restrict TCP/445 (SMB) to required admin or file-share hosts. Confirm SMBv1 is disabled on the endpoint. This finding is an open-port exposure, not a dialect or CVE. | open |
+| Administrative share exposed on dc.corp.local (C$/ADMIN$) | dc.corp.local | medium | cpg_2_W,csf_PR,csf_protect | Disable or ACL C$/ADMIN$/IPC$ so they are not reachable off the admin network. Confirm SMBv1 is disabled. This is a share-exposure finding, not a CVE. | open |
 | RDP exposed | dc.corp.local | medium | cpg_2_W,csf_PR,csf_protect | Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE. | open |
 | Telnet exposed | telnet-legacy.corp.local | critical | cpg_2_W,cpg_1_E,csf_RS,csf_respond | Disable Telnet (TCP/23). Use SSH or an approved jump host. Do not leave cleartext remote admin on the network. | open |
 | Launch Privileged Container | payments-worker|prod-cluster | critical | cpg_2_W,cpg_1_E,csf_RS,csf_respond | Privileged container started | open |

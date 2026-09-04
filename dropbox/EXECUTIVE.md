@@ -15,7 +15,7 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 | `make lab` (empty pack `in/` → fixtures) | 62 | 62 | 15 | 24 | 61 | true |
 | `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 68 | 71 | 15 | 24 | 64 | true |
 
-pytest **132**. `demo: true` on dropbox-lab is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** (no Nmap/Nessus): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `python3 -m dropbox status` shows stage graph, last integrity stop, timeout / batch overflow / scope miss brakes, and allow_tools ∩ PATH (curl present; nmap/nessus missing). `python3 -m dropbox.mcp_stub serve` lists the seven operator tools and exits.
+pytest **136 passed, 1 skipped**. `demo: true` on dropbox-lab is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** (no Nmap/Nessus): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Image/compose files have no nmap/nessus/nuclei/openvas packages.
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 

@@ -1,11 +1,13 @@
-cycle: 15
+cycle: 16
 phase: DONE
-item: MCP-SERVE-WORKER-EXTERNAL
+item: COMPOSE-SCANNER-FREE
 critic_score: 8/10
 open_p0:
 open_p1:
 host_lab: pass
 dropbox_lab: pass
 compose_lab: absent
+compose_lab_reason: docker CLI not on PATH
+scanner_free: true
 sink: absent
-next_action: BYO nmap/nessus/testssl only on a consented box; MCP serve is stdio list-only
+next_action: BYO nmap/nessus only on a consented box; compose runtime when Docker is present
