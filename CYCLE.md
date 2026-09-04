@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 44 — EASM file-drop polish (2026-09-04)
+
+easm parses httpx / Amass / Subfinder JSON, JSONL, and `{results|hosts|data}` wrappers under `in/easm/`. httpx `failed:true` and empty arrays invent nothing. Sensitive perimeter names and admin/login titles map to existing POA&M. Demo `httpx.json` attaches to existing `admin.example.com` (failed vpn row silent). No live DNS/HTTP; no amass/httpx/subfinder subprocess. Catalog **not inflated**. pytest **229**. Labs green (assets unchanged; findings/poam +1). Compose ABSENT. CIS-CAT/osquery cycle 43 and cycles 39–42 stand.
+
+```json
+{"pytest": 229, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 68, "vulns": 17, "poam": 69}, "farm_lab": {"assets": 64, "findings": 68, "poam": 69, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 69, "poam": 69, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 77, "poam": 72, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 43 — CIS-CAT / osquery file-drop polish (2026-09-04)
 
 host-wazuh parses CIS-CAT / XCCDF JSON+XML and osquery failing `queries` under `in/wazuh/`. identity-ad also parses CIS-CAT so the existing `cis-cat` slot glob (`in/identity/*.xml`) works. Failed only; Pass silent. Empty `results` / `queries` invent nothing. SSH PermitRootLogin and disk encryption map to existing POA&M. Demo fixtures attach to existing `jump-unmanaged` (assets unchanged; findings/poam +2). No CIS-CAT binary, no osqueryi. Catalog **not inflated**. pytest **224**. Labs green. Compose ABSENT. Cycles 39–42 stand.

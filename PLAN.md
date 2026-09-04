@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 43 CIS-CAT / osquery file-drop polish stands (fail only; no CIS-CAT binary / osqueryi). Nuclei / Fleet / BloodHound CE / nmap / k8s stand. No slot inflation. No live tools/APIs. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 44 EASM file-drop polish stands (httpx/amass/subfinder JSON; failed silent; no live DNS/HTTP). CIS-CAT/osquery / Nuclei / Fleet / BloodHound CE / nmap / k8s stand. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 
