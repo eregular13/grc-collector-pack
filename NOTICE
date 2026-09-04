@@ -1,0 +1,11 @@
+Nmap / Npcap: USE on Reid’s drop box under signed consent if allowlisted and present on PATH.
+Do not ship, embed, apt-get, or redistribute Nmap/Npcap in this product image or public pack (NPSL OEM).
+
+Nessus / OpenVAS / GVM / Nuclei: BYO only. Never embed.
+
+RiskReady: LICENSE-LOCK stay-out. This pack never wraps, logs in, or POSTs to RiskReady APIs
+(`/api/auth/login`, `/itsm/assets`, `/evidence`, `/incidents`, `/api/risks`).
+`out/riskready/*.json` is human-review export only. `push_riskready.sh` is fail-closed.
+
+SimpleRisk Core is the client leave-behind (MPL-2.0): POA&M-shaped export / docs they can import.
+CISO Assistant (Intuitem) is Reid-side system of record via CSV / clica.

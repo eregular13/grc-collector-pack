@@ -2,7 +2,7 @@
 
 [![lab](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml/badge.svg)](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml)
 
-The product is a **local operator console** plus ten collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest. This is not CISO Assistant and not RiskReady.
+The product is a **local operator console** plus ten collectors that emit **CISO Assistant Community** CSVs (system of record) and a SimpleRisk-shaped POA&M export. RiskReady JSON may exist for human review; the wrap is disabled. This is not CISO Assistant, not SimpleRisk, and not RiskReady.
 
 Double-click `Start-GRC-Pack.cmd` or, from the clone root:
 
@@ -13,6 +13,12 @@ python -m product
 Then open **http://127.0.0.1:18765/**. You get the estate (assets, findings, vulns, proposed risks), a refresh that re-runs collectors on local files, and a drop zip for import. The console binds localhost only. It never POSTs `/api/risks`.
 
 This is not a GRC platform and not an eleventh Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`. Demo fixtures only until you drop files in `in/`.
+
+Three layers stay separate:
+
+1. **Tool zoo** — allowlisted scanners Reid installs on a drop box he owns, under signed SCOPE. This repo does not embed Nmap, Nessus, Nuclei, or OpenVAS.
+2. **Orchestrator (brakes)** — `python -m dropbox.orchestrator`. Quiet discover, destroy workers, deepen in batches of 2–5, then ingest. Plan-only if binaries are missing. See `dropbox/OPERATOR.md`.
+3. **Ingest pack** — the ten collectors + localhost console. Parse dropped files. No live scan in containers. CISO Assistant is the findings SoR (CSV / clica). SimpleRisk leave-behind is the POA&M export. RiskReady wrap is disabled (LICENSE-LOCK).
 
 See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs/PUBLIC_CLONE.md).
 

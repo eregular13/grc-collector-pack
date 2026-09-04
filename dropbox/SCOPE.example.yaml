@@ -1,0 +1,26 @@
+# Lab example only. Not a customer estate. Signed+attested so plan and fixture run work.
+client_legal_name: Contoso Lab LLC
+named_contact: Alex Lab
+consent_attested: true
+signed: true
+window_start: 2026-09-03T00:00:00Z
+window_end: 2026-09-10T23:59:59Z
+profiles: both
+internal:
+  cidrs: ["10.9.9.0/24"]
+  hosts: ["10.9.9.10"]
+  endpoints: []
+external:
+  hostnames: ["vpn.example.test"]
+  urls: ["https://dev-api.example.test"]
+allow_tools: ["nmap", "nessus", "testssl", "lynis", "hardeningkitty", "prowler", "maester", "curl", "ss"]
+batch:
+  discover_shard_size: 16
+  deepen_batch_size: 3
+  max_concurrent_discover: 2
+  max_concurrent_deepen: 1
+integrity:
+  timeout_seconds: 300
+  max_runtime_seconds: 7200
+  refuse_if_unsigned: true
+  refuse_if_empty_targets: true

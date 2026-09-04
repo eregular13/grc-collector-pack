@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evergreen drop-box SCOPE",
+  "type": "object",
+  "required": [
+    "client_legal_name",
+    "named_contact",
+    "consent_attested",
+    "window_start",
+    "window_end",
+    "allow_tools"
+  ],
+  "properties": {
+    "client_legal_name": { "type": "string" },
+    "named_contact": { "type": "string" },
+    "consent_attested": { "type": "boolean" },
+    "signed": { "type": "boolean" },
+    "window_start": { "type": "string" },
+    "window_end": { "type": "string" },
+    "profiles": { "enum": ["internal", "external", "both"] },
+    "internal": {
+      "type": "object",
+      "properties": {
+        "cidrs": { "type": "array", "items": { "type": "string" } },
+        "hosts": { "type": "array", "items": { "type": "string" } },
+        "endpoints": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "external": {
+      "type": "object",
+      "properties": {
+        "hostnames": { "type": "array", "items": { "type": "string" } },
+        "urls": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "allow_tools": { "type": "array", "items": { "type": "string" } },
+    "batch": {
+      "type": "object",
+      "properties": {
+        "discover_shard_size": { "type": "integer", "minimum": 1 },
+        "deepen_batch_size": { "type": "integer", "minimum": 2, "maximum": 5 },
+        "max_concurrent_discover": { "type": "integer", "minimum": 1 },
+        "max_concurrent_deepen": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "properties": {
+        "timeout_seconds": { "type": "integer" },
+        "max_runtime_seconds": { "type": "integer" },
+        "refuse_if_unsigned": { "type": "boolean" },
+        "refuse_if_empty_targets": { "type": "boolean" }
+      }
+    }
+  }
+}

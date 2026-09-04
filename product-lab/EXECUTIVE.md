@@ -1,12 +1,33 @@
-# Executive brief — grc-collector-pack product lab
+# Executive — assessment engine (this GitHub tree)
 
-**Date:** 2026-09-03 21:45 America/Los_Angeles  
-**Subject:** Docker stack on this Windows host is shippable as a **demo file emitter**. It is not a live GRC platform and not `C:\GRC Collector`.
+**Date:** 2026-09-03 22:50 America/Los_Angeles  
+**Tree:** `C:\Users\R\grc-collector-pack` = https://github.com/eregular13/grc-collector-pack  
+**Not proven here:** `C:\GRC Collector` overnight lab; Hermes verify-cron.
 
-An auditor can reproduce the lab: Docker Desktop 4.89.0 is up; `scripts\lab.ps1` passed **twice** (pytest **39**, 3.0 s, exit 0); `docker compose up --build --exit-code-from grc-loader` passed **twice** (8.1 s / 7.1 s, loader exit 0). Live counts: **62 assets, 59 findings, 15 vulns, 10 evidence**. Unique `ref_id`s match row counts. No process POSTed `/api/risks`.
+## What is real
 
-The product is ten one-shot containers, one image, no published ports. Outputs are CISO Assistant CSVs and RiskReady JSON under `out/` and `product-lab/drop/`. High/critical stay in `risks_proposed.json` on disk.
+- Parse pack: ten collectors, localhost console `python -m product` on 127.0.0.1:18765.
+- Host lab + compose: 62 assets / 59 findings / 24 evidence / POA&M rows from findings.
+- RiskReady wrap is **dead**. `push_riskready.sh` never POSTs, including login/assets/incidents, even if PUSH=1.
+- Drop-box orchestrator: SCOPE schema, plan-only without nmap/nessus, fixture quiet→loud→ingest, deepen batches capped at 5, workers destroyed after stage.
+- CISO SoR path: CSVs + clica. POA&M CSV/JSON in `out/poam/` (owner/milestone blank). Golden SMBv1 map → CPG_2_W.
 
-This checkout has **no mock sink**. `:18080` on the host belongs to another repo and was not used. `in/` is `.gitkeep` only — this is a **demo estate**, not a client. Evidence (10) is thinner than findings (59). A misspelled `OUT_DIR` currently mkdir’s an empty tree instead of failing closed.
+## What is fixture / BYO
 
-**Recommendation:** ship as a collector pack with those labels. Do not market it as a connected GRC or as the larger `C:\GRC Collector` tree (more tests / more assets). Next product work is a sink and real `in/` drops, not more parsers.
+- Empty `in/` is demo fixtures, not a client estate.
+- `noop_discover` live hosts are synthetic.
+- Nmap/Nessus run only if allowlisted **and** on PATH **and** SCOPE is signed; this pack never installs them.
+- No mock GRC sink on this compose project.
+
+## Commands
+
+```powershell
+python -m pytest tests -q
+powershell -ExecutionPolicy Bypass -File .\scripts\lab.ps1
+python -m dropbox.orchestrator plan --scope dropbox/SCOPE.example.yaml
+python -m product
+```
+
+## Next
+
+Operator MCP as a later wrap around this CLI. Not a public attack API. Quote remediation from POA&M + CISO SoR after HITL.

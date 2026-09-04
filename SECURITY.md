@@ -14,7 +14,9 @@ The console opens no outbound HTTP. It never POSTs `/api/risks`.
 
 ## Push scripts
 
-Dual-gate: `CISO_PUSH` / `RISKREADY_PUSH` default `0`, and `DRY_RUN` default `1`. Live POST (if both gates flipped) is limited to CISO assets/evidences and RiskReady assets/evidence/incidents. **Never** `POST /api/risks`. High/critical stay in `risks_proposed.json` for a human.
+CISO: `CISO_PUSH` default `0` and `DRY_RUN` default `1`. If both gates flip, REST is `/api/assets/` and `/api/evidences/` only. **Never** `POST /api/risks`.
+
+RiskReady: LICENSE-LOCK stay-out. `push_riskready.sh` never POSTs login, assets, evidence, incidents, or `/api/risks`, even when `RISKREADY_PUSH=1` and `DRY_RUN=0`. `out/riskready/` is human-review JSON only. See `NOTICE`.
 
 ## Demo data
 
