@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 15 — MCP serve, worker teardown, external named-only (2026-09-04)
+
+`python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools (no FastMCP, no Hexstrike). Discover/deepen destroy workers on timeout/failure; status prints timeout, batch overflow, scope miss. External SCOPE refuses wildcards and CIDRs. testssl/curl BYO adapters parallel to nmap. Telnet POA&M golden. Owner/due blank. Wrap dead.
+
+pytest **132**. `make lab` 62/62/15/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64 demo true. Plan-only 3 shards / 2 batches / destroyed=3.
+
+```json
+{"pytest": 132, "assets": 62, "findings": 62, "evidences": 24, "poam": 61, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "wrap": "review-only"}
+```
+
 ## cycle 14 — three layers + Hexstrike-pattern stub + DEMO E2E (2026-09-04)
 
 Architecture documented (A BYO / B brakes / C parse-only). Hexstrike is UX pattern only — `mcp_stub.py` SCOPE-gated, no vendor submodule, no exploit API. Internal+external DEMO scripts stamp honest DEMO labels through in/ → POA&M → CISO. BYO adapters actually invoke allowlisted PATH stubs. Status CLI prints stage graph, last integrity stop, allow_tools ∩ PATH. POA&M goldens: TLS weak cipher, admin shares, open RDP (owner/due blank). Dropbox-lab `demo: true`.

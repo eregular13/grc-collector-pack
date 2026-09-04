@@ -13,7 +13,7 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **126 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **132 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
 {"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T14:24:35Z"}
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/`. Three layers: BYO tools un
 
 ## Delta (this pass, 2026-09-04)
 
-Three-layer architecture (`ARCHITECTURE.md`): A BYO zoo · B orchestrator brakes · C parse-only 10 containers. Hexstrike-pattern operator MCP stub only (`HEXSTRIKE.md`, `mcp_stub.py`) — no vendor, no exploit API. Internal/external DEMO scripts leave gnmap/httpx with honest DEMO labels through POA&M/CISO. Adapters invoke stub PATH binaries when allowlisted; missing → plan-only; non-allowlisted never invoked. Status CLI: stage graph, last integrity stop, allow_tools ∩ PATH. POA&M goldens for TLS weak cipher / admin shares / open RDP (`cpg_`/`csf_`, owner/due blank). pytest **111 → 126**. Findings 59→62, POA&M 58→61 (empty `in/`). Dropbox-lab demo flag now true.
+`python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools (JSON-RPC examples in `operator_mcp_interface.md`; no FastMCP/Hexstrike). Workers destroyed on timeout/failure; status names timeout, batch overflow, scope miss. External SCOPE refuses wildcards and CIDRs. testssl/curl BYO stubs parallel to nmap. Telnet POA&M golden; owner/due blank. pytest **126 → 132**. Lab counts unchanged (62/62/24 poam 61 empty `in/`; dropbox-lab 68/71/24 poam 64).
 
-Remaining gaps: Docker/compose still absent here. Operator MCP is a CLI stub, not a hosted conductor. Live BYO still plan-only on this VM (nmap/nessus missing). No paying-day PASS. USB evergreen-assessment not copied.
+Remaining gaps: Docker/compose still absent here. MCP serve is list-only stdio, not a hosted FastMCP conductor. Live BYO still plan-only on this VM (nmap/nessus/testssl missing). No paying-day PASS. USB evergreen-assessment not copied.

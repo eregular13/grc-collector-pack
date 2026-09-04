@@ -1,6 +1,6 @@
-cycle: 14
+cycle: 15
 phase: DONE
-item: ARCH-HEXSTRIKE-DEMO-E2E
+item: MCP-SERVE-WORKER-EXTERNAL
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,4 +8,4 @@ host_lab: pass
 dropbox_lab: pass
 compose_lab: absent
 sink: absent
-next_action: BYO nmap/nessus only on a consented box; MCP stub is operator hooks not a Hexstrike server
+next_action: BYO nmap/nessus/testssl only on a consented box; MCP serve is stdio list-only
