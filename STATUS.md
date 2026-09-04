@@ -1,6 +1,6 @@
-cycle: 22
+cycle: 23
 phase: DONE
-item: FARM-INVOKE-30
+item: FARM-INGEST-MAP
 critic_score: 8/10
 open_p0:
 open_p1:

@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 23 — Layer C ingest map on SLOTS.md (2026-09-04)
+
+`farm/SLOTS.md` now includes an **Ingest map (Layer C)** table: every slot lands in `in/cloud|nmap|vuln|wazuh|identity|easm|k8s|code|saas`. `ingest_map()` sums to 111. FILE_DROP_ONLY names listed. No theater parsers. Catalog unchanged: **111 / 32 / 30 / 81**.
+
+pytest **153 passed, 1 skipped**. `make farm-lab` 62/62/24 poam 61. compose_lab absent.
+
+```json
+{"pytest": 153, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "ingest_audit": [], "farm_lab": "pass", "host_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 22 — hostname PATH stub hits 30 invoke (2026-09-04)
 
 Sixth real OS PATH stub (`hostname -f`, discover-adjacent, `in/nmap/`). Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. Cycle 20’s 105 named slots stand. No fake padding. Labs unchanged.

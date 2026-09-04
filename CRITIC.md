@@ -1,6 +1,6 @@
-# CRITIC — cycle 22 (PATH-invoke 30)
+# CRITIC — cycle 23 (ingest map)
 
-**8/10** — zero P0/P1. Cycle 20’s 105 named slots stand. Six real OS PATH stubs this window (ping / traceroute / tracepath / host / getent / hostname) plus journalctl / kubectl client / snmpwalk rewires. **32 wired / 30 invoke / 81 file_drop** of **111**. nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. `farm/INTEGRITY.md` brakes table. Labs green.
+**8/10** — zero P0/P1. Cycle 20’s 105 named slots stand. **32 wired / 30 invoke / 81 file_drop** of **111**. `SLOTS.md` now publishes the Layer C ingest map (`in/<sensor>/` counts). Every glob still audits clean. Conductor `tools/list` stable; `farm_slot_status` filters by category. `farm/INTEGRITY.md` brakes table. Labs green.
 
 −1 compose runtime still absent (no Docker CLI).  
 −1 live BYO still plan-only here (nmap/nessus missing). 30 invoke adapters ≠ 100 running binaries.

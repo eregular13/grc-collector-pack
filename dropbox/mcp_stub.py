@@ -69,7 +69,7 @@ def _slot_matrix(allow_tools: list[str]) -> list[dict[str, Any]]:
 
 
 def farm_slots() -> dict[str, Any]:
-    from farm.adapters.catalog import catalog_summary, invoke_slots, load_catalog, wired_slots
+    from farm.adapters.catalog import catalog_summary, ingest_map, invoke_slots, load_catalog, wired_slots
 
     data = load_catalog()
     wired = wired_slots()
@@ -87,6 +87,7 @@ def farm_slots() -> dict[str, Any]:
         "invoke_count": counts["invoke"],
         "file_drop_count": counts["file_drop"],
         "by_category": counts["by_category"],
+        "by_sensor": ingest_map(),
         "counts": counts,
         "scope_gated": True,
     }

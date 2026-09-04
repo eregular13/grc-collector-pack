@@ -25,6 +25,6 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
-**Delta (cycle 22):** PATH-invoke **30**. Added `hostname`. Cycle 21 already rewired journalctl / kubectl client / snmpwalk and added ping / traceroute / tracepath / host / getent. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Layer C untouched.
+**Delta (cycle 23):** `SLOTS.md` publishes the Layer C ingest map (sensor-dir counts). PATH-invoke still **30**. Cycle 21–22 rewired journalctl / kubectl / snmpwalk and added ping / traceroute / tracepath / host / getent / hostname. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Layer C untouched.
 
 Not a paying-day PASS. USB evergreen-assessment was not copied.
