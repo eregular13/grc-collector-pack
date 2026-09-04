@@ -20,7 +20,10 @@ Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit,
 ```bash
 python3 -m dropbox.mcp_stub serve            # print the operator tools and exit
 python3 -m dropbox.mcp_stub serve --stdio    # JSON-RPC loop (Claude/Cursor)
-python3 -m dropbox mcp serve
+python3 -m dropbox.mcp_stub serve --once     # one JSON-RPC line on stdin
+python3 -m dropbox mcp serve                 # same catalog (not FastMCP / not USB pack truth)
+python3 -m dropbox mcp serve --stdio         # same JSON-RPC loop
+python3 -m dropbox mcp serve --once          # same one-line JSON-RPC
 python3 -m dropbox mcp farm_toolbin_status
 python3 -c "from dropbox.mcp_stub import dispatch; print(dispatch('scope_status'))"
 ```

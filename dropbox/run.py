@@ -132,7 +132,16 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     if args.tool == "serve":
         from dropbox.mcp_stub import serve
 
-        return serve(["--list"])
+        extra: list[str] = []
+        if getattr(args, "stdio", False):
+            extra.append("--stdio")
+        elif getattr(args, "once", False):
+            extra.append("--once")
+        else:
+            extra.append("--list")
+        if args.scope:
+            extra.extend(["--scope", args.scope])
+        return serve(extra)
     from dropbox.mcp_stub import dispatch
 
     result = dispatch(args.tool, live=False, scope_path=Path(args.scope) if args.scope else None)
@@ -199,8 +208,10 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     st.set_defaults(func=cmd_status)
     mcp = sub.add_parser("mcp", help="operator MCP stub (SCOPE-gated; no attack API)")
-    mcp.add_argument("tool", help="scope_status|orchestrator_plan|orchestrator_status|stage_*|farm_slots|farm_slot_status|farm_toolbin_status|export_ciso_poam")
+    mcp.add_argument("tool", help="serve|scope_status|orchestrator_plan|orchestrator_status|stage_*|farm_slots|farm_slot_status|farm_toolbin_status|export_ciso_poam")
     mcp.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
+    mcp.add_argument("--stdio", action="store_true", help="JSON-RPC stdio loop (serve only)")
+    mcp.add_argument("--once", action="store_true", help="one JSON-RPC line on stdin (serve only)")
     mcp.set_defaults(func=cmd_mcp)
     return p
 

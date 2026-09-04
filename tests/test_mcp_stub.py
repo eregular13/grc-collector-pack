@@ -295,6 +295,79 @@ def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.Monk
     assert any(p.endswith("poam.csv") for p in data["files"])
 
 
+def _rpc_once(argv: list[str], req: dict, *, cwd: Path | None = None) -> dict:
+    import json
+    import subprocess
+
+    proc = subprocess.run(
+        argv,
+        input=json.dumps(req) + "\n",
+        cwd=str(cwd or ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    return json.loads(proc.stdout)
+
+
+def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Path) -> None:
+    """Process e2e: serve --once/--stdio initialize, stable tools/list, SCOPE refuse."""
+    import json
+    import subprocess
+
+    init = _rpc_once(
+        ["python3", "-m", "dropbox.mcp_stub", "serve", "--once"],
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    )
+    assert init["result"]["serverInfo"]["name"] == "dropbox-operator-mcp"
+    assert "hexstrike" not in json.dumps(init).lower()
+
+    listed = _rpc_once(
+        ["python3", "-m", "dropbox.mcp_stub", "serve", "--once"],
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+    )
+    names = [t["name"] for t in listed["result"]["tools"]]
+    assert names == list(OPERATOR_TOOLS)
+    for banned in ("AIExploitGenerator", "Metasploit", "msfconsole", "hexstrike_run"):
+        assert banned not in names
+
+    stdio = subprocess.run(
+        ["python3", "-m", "dropbox.mcp_stub", "serve", "--stdio"],
+        input=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n",
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert stdio.returncode == 0, stdio.stderr
+    assert json.loads(stdio.stdout)["result"]["serverInfo"]["name"] == "dropbox-operator-mcp"
+
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("", encoding="utf-8")
+    unsigned = tmp_path / "unsigned.yaml"
+    unsigned.write_text(
+        "client:\n  name: X\nconsent:\n  attestation_path: missing.md\n"
+        "  attestation_sha256: 00dead\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+        encoding="utf-8",
+    )
+    call = {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "scope_status"}}
+    for scope in (empty, unsigned):
+        body = _rpc_once(
+            ["python3", "-m", "dropbox", "mcp", "serve", "--once", "--scope", str(scope)],
+            call,
+        )
+        assert body.get("error"), body
+        msg = body["error"]["message"]
+        assert "SCOPE" in msg or "consent" in msg or "attestation" in msg
+
+    blob = (ROOT / "dropbox" / "mcp_stub.py").read_text(encoding="utf-8")
+    assert "evergreen_assessment_mcp" not in blob
+    assert "does not submodule hexstrike-ai" in blob
+
+
 def test_farm_slots_and_export_refuse_without_scope(tmp_path: Path) -> None:
     empty = tmp_path / "SCOPE.yaml"
     empty.write_text("", encoding="utf-8")

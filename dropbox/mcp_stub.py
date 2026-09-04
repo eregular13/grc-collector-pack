@@ -437,11 +437,21 @@ def _stdio_loop(*, scope_path: Path | str | None = None) -> int:
     return 0
 
 
+def _scope_from_argv(args: list[str]) -> Path | None:
+    if "--scope" not in args:
+        return None
+    idx = args.index("--scope")
+    if idx + 1 >= len(args) or args[idx + 1].startswith("-"):
+        return None
+    return Path(args[idx + 1])
+
+
 def serve(argv: list[str] | None = None) -> int:
     """List operator tools, or speak JSON-RPC on stdin (--once / --stdio)."""
     args = list(argv or [])
+    scope_path = _scope_from_argv(args)
     if "--stdio" in args:
-        return _stdio_loop()
+        return _stdio_loop(scope_path=scope_path)
     if "--once" in args:
         raw = sys.stdin.readline()
         if raw.strip():
@@ -450,7 +460,7 @@ def serve(argv: list[str] | None = None) -> int:
             except json.JSONDecodeError as exc:
                 print(json.dumps({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(exc)}}))
                 return 1
-            print(json.dumps(handle_jsonrpc(req), default=str))
+            print(json.dumps(handle_jsonrpc(req, scope_path=scope_path), default=str))
             return 0
     print(json.dumps(tool_catalog(), indent=2))
     return 0
