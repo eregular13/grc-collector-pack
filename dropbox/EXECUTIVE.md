@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 81):** deadline freeze / verify-green / no-diff (16:00 America/Los_Angeles). Full lab suite re-run clean. No code change. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 80; pytest **320**.
+
 **Delta (cycle 80):** verify-green / no-diff. Full lab suite re-run clean. No code change. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 79; pytest **320**.
 
 **Delta (cycle 79):** conductor stdio MCP e2e. `python3 -m dropbox mcp serve` forwards `--stdio` / `--once` / `--scope`. Process tests cover initialize, stable `OPERATOR_TOOLS` list, and `tools/call` refuse on empty/unsigned SCOPE. Hexstrike pattern-only. Stub is conductor UX, not USB `evergreen_assessment_mcp`. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 78 counts; pytest **320**.

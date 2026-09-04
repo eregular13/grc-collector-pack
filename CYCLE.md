@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 81 — deadline freeze / verify-green / no-diff (2026-09-04 16:00 PT)
+
+Afternoon orchestrator-build freeze. Full lab suite re-run. No regression. No code change. Catalog **111 / 32 / 30 / 81**. pytest **320**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. Compose ABSENT (`docker CLI not on PATH`). Paying-day FAIL. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. DEMO ≠ client. No new parsers.
+
+```json
+{"pytest": 320, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none", "freeze": "2026-09-04T16:00-07:00"}
+```
+
 ## cycle 80 — verify-green / no-diff (2026-09-04)
 
 Full lab suite re-run. No regression. No code change. Catalog **111 / 32 / 30 / 81**. pytest **320**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. Compose ABSENT (`docker CLI not on PATH`). Paying-day FAIL. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. DEMO ≠ client. No new parsers.

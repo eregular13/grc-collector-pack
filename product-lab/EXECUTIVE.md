@@ -2,11 +2,18 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 80):** verify-green / no-diff. Backlog (a)–(e
-statics) MET. Runtime still **ABSENT** (`docker CLI not on PATH`) —
-not a PASS. No product code. Cycle 79 conductor stdio e2e stays locked.
-Cycle 74 Reid-only blockers stay locked. Wrap stays **dead**. Paying-day
-**FAIL**. DEMO ≠ client. Catalog unchanged. pytest **320**.
+**This window (cycle 81):** deadline freeze / verify-green / no-diff
+(16:00 America/Los_Angeles). Backlog (a)–(e statics) MET. Runtime still
+**ABSENT** (`docker CLI not on PATH`) — not a PASS. No product code.
+Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers
+stay locked. Wrap stays **dead**. Paying-day **FAIL**. DEMO ≠ client.
+Catalog unchanged. pytest **320**.
+
+**Cycle 80 (stands):** verify-green / no-diff. Backlog (a)–(e statics)
+MET. Runtime still **ABSENT**. No product code. Cycle 79 conductor
+stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. Wrap
+stays **dead**. Paying-day **FAIL**. DEMO ≠ client. Catalog unchanged.
+pytest **320**.
 
 **Cycle 79 (stands):** conductor stdio MCP e2e. `mcp serve` forwards
 `--stdio` / `--once` / `--scope`. Process tests cover initialize,
@@ -176,10 +183,10 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
-**Deltas vs cycle 79:** lab counts unchanged. pytest **320**. No-diff.
-(e) runtime still ABSENT. Catalog / wrap / compose / paying-day /
-LICENSE-LOCK will_run unchanged. Paying-day remains **FAIL**. Compose
-remains **ABSENT**. Wrap remains review-only / dead. `scope_gap`
+**Deltas vs cycle 80:** lab counts unchanged. pytest **320**. No-diff
+deadline freeze. (e) runtime still ABSENT. Catalog / wrap / compose /
+paying-day / LICENSE-LOCK will_run unchanged. Paying-day remains **FAIL**.
+Compose remains **ABSENT**. Wrap remains review-only / dead. `scope_gap`
 remains **none**.
 
 **Deltas vs cycle 74:** lab counts unchanged. pytest **318**. No-diff

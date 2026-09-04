@@ -6,7 +6,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 
 **Ended** 2026-09-02 ~07:07 PT (PID 14860, exit 0). Do not start another overnight loop.
 
-**2026-09-04 afternoon build:** active 30-minute harden passes until **16:00 America/Los_Angeles**. Same safety: no live-scan, no POST `/api/risks`, no wrap restore, no paying-day PASS, no USB copy. Stop after 16:00 PT.
+**2026-09-04 afternoon build:** ended **16:00 America/Los_Angeles** (cycle 81 freeze). Same safety: no live-scan, no POST `/api/risks`, no wrap restore, no paying-day PASS, no USB copy. Do not start another afternoon loop.
 
 ## Each tick
 
@@ -44,6 +44,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 78 done: verify-green / no-diff. Full lab suite clean vs cycle 77.
 - Cycle 79 done: conductor stdio MCP e2e (`mcp serve --once/--stdio`, empty/unsigned SCOPE refuse).
 - Cycle 80 done: verify-green / no-diff. Full lab suite clean vs cycle 79.
+- Cycle 81 done: deadline freeze / verify-green / no-diff. Full lab suite clean vs cycle 80. Afternoon window ended 16:00 PT.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

@@ -1,6 +1,6 @@
-cycle: 80
+cycle: 81
 phase: DONE
-item: VERIFY-GREEN
+item: DEADLINE-FREEZE
 critic_score: 8/10
 open_p0:
 open_p1:
