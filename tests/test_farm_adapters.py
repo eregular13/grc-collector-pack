@@ -132,6 +132,15 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert slots["enum4linux-ng"].get("wired") is False
     assert slots["enum4linux-ng"].get("invoke") is False
     assert slots["enum4linux-ng"].get("sensor") == "identity"
+    assert "zmap" in md
+    assert "zmap.txt" in md
+    assert slots["zmap"].get("scope_key") == "file_drop"
+    assert slots["zmap"].get("wired") is False
+    assert slots["zmap"].get("invoke") is False
+    assert "unicornscan" in md
+    assert "unicornscan.txt" in md
+    assert slots["unicornscan"].get("scope_key") == "file_drop"
+    assert slots["unicornscan"].get("invoke") is False
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

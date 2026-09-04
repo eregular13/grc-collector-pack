@@ -320,6 +320,8 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     assert "netdiscover.txt" in names
     assert "nbtscan.txt" in names
     assert "smbmap.txt" in names
+    assert "zmap.txt" in names
+    assert "unicornscan.txt" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -728,6 +730,77 @@ def test_smbmap_parser_no_live() -> None:
         assert "smbclient" not in src
         assert "password=" not in src
         assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_zmap_demo_ftp_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "zmap.txt")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "filesrv.corp.local" in assets
+    assert "10.0.0.50" not in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any((r.get("extra") or {}).get("port") == "21" for r in findings)
+    ftp = next(r for r in findings if (r.get("extra") or {}).get("port") == "21")
+    mapped = map_finding(ftp)
+    assert mapped["include_poam"] is True
+    assert "FTP" in mapped["control_name"] or "21" in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_unicornscan_demo_ftp_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "unicornscan.txt")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "filesrv.corp.local" in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any((r.get("extra") or {}).get("port") == "21" for r in findings)
+    ftp = next(r for r in findings if (r.get("extra") or {}).get("port") == "21")
+    assert map_finding(ftp)["include_poam"] is True
+
+
+def test_zmap_unicornscan_do_not_steal_nmap_smbmap() -> None:
+    from shared.unicornscan import parse_unicornscan
+    from shared.zmap import parse_zmap
+
+    assert parse_zmap(DEMO / "nmap" / "scan.gnmap") is None
+    assert parse_zmap(DEMO / "nmap" / "smbmap.txt") is None
+    assert parse_zmap(DEMO / "nmap" / "arp-scan.txt") is None
+    assert parse_zmap(DEMO / "nmap" / "naabu.jsonl") is None
+    assert parse_unicornscan(DEMO / "nmap" / "scan.gnmap") is None
+    assert parse_unicornscan(DEMO / "nmap" / "smbmap.txt") is None
+    assert parse_unicornscan(DEMO / "nmap" / "zmap.txt") is None
+    gnmap = inventory_nmap.parse_file(DEMO / "nmap" / "scan.gnmap")
+    assert any((r.get("extra") or {}).get("port") == "445" for r in gnmap if r["kind"] == "finding")
+
+
+def test_zmap_empty(tmp_path) -> None:
+    dest = tmp_path / "zmap.txt"
+    dest.write_text("# zmap\n", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("saddr,dport,hostname\n", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text(
+        '{"saddr":"10.0.0.50","dport":21,"classification":"rst"}\n',
+        encoding="utf-8",
+    )
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_zmap_unicornscan_parser_no_live() -> None:
+    for rel in (
+        "collectors/inventory_nmap.py",
+        "shared/zmap.py",
+        "shared/unicornscan.py",
+    ):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "zmap -" not in src
+        assert "unicornscan -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src
 

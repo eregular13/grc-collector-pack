@@ -181,6 +181,12 @@ NO ACCESS invent nothing. Detect does not steal nmap / arp-scan /
 nbtscan. The collector never runs smbmap or smbclient, never does live
 SMB, and does not store credentials. The catalog slot stays `file_drop`.
 
+zmap **JSON / CSV / text** and unicornscan **text** are the same
+`in/nmap/` file-drop path (`saddr`/`dport` or `TCP open … from`). Open
+ports only. Empty / closed / RST invent nothing. Detect does not steal
+nmap / smbmap / arp-scan. The collector never runs zmap or unicornscan
+and never does a live internet scan. Both catalog slots stay `file_drop`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to

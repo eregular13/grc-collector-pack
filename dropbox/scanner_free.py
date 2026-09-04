@@ -84,6 +84,8 @@ SCANNER_PKGS = tuple(
             "smbclient",
             "enum4linux",
             "enum4linux-ng",
+            "zmap",
+            "unicornscan",
             "metasploit",
             "msfconsole",
             "hexstrike",

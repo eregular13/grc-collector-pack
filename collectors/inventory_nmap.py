@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, nbtscan, and smbmap exports.
+"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, nbtscan, smbmap, zmap, and unicornscan exports.
 
-Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, nbtscan, or smbmap.
+Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, nbtscan, smbmap, zmap, or unicornscan.
 """
 
 from __future__ import annotations
@@ -20,6 +20,8 @@ from shared.nbtscan import parse_nbtscan
 from shared.netdiscover import parse_netdiscover
 from shared.smbmap import parse_smbmap
 from shared.schema import make_record, make_ref
+from shared.unicornscan import parse_unicornscan
+from shared.zmap import parse_zmap
 
 SOURCE = "inventory-nmap"
 LABELS = ["nmap", "inventory"]
@@ -365,6 +367,42 @@ def parse_file(path: Path) -> list[dict]:
                         extra=extra,
                     )
                 )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    zmap_hosts = parse_zmap(path, raw)
+    if zmap_hosts is not None:
+        records = []
+        for host in zmap_hosts:
+            ports = list(host.get("ports") or [])
+            if not ports:
+                continue
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                ports,
+                extra_labels=["zmap"],
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    uni_hosts = parse_unicornscan(path, raw)
+    if uni_hosts is not None:
+        records = []
+        for host in uni_hosts:
+            ports = list(host.get("ports") or [])
+            if not ports:
+                continue
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                ports,
+                extra_labels=["unicornscan"],
+            )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
     stripped = raw.lstrip("\ufeff").lstrip()

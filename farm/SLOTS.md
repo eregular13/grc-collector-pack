@@ -77,9 +77,15 @@ subprocess; no live NetBIOS). Also drop **smbmap** share tables
 become exposure findings mapped to existing SMB POA&M. Empty / NO ACCESS
 invent nothing. Detect does not steal nmap / arp-scan / nbtscan. smbmap
 stays `file_drop` (never subprocess; no live SMB; no credentials).
-Empty `in/` still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`,
-`masscan.xml`, `naabu.jsonl`, `arp-scan.txt`, `fping.txt`,
-`netdiscover.txt`, `nbtscan.txt`, `smbmap.txt`). No new catalog slots.
+Also drop **zmap** JSON/CSV/text (`saddr`/`dport`, `# zmap`, IP + port)
+and **unicornscan** text (`TCP open ftp[21] from …`). Open ports only —
+empty / closed / RST invent nothing. Detect does not steal nmap /
+smbmap / arp-scan / naabu. zmap / unicornscan stay `file_drop` (never
+subprocess; no live internet scan). Empty `in/` still loads
+`fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`, `masscan.xml`,
+`naabu.jsonl`, `arp-scan.txt`, `fping.txt`, `netdiscover.txt`,
+`nbtscan.txt`, `smbmap.txt`, `zmap.txt`, `unicornscan.txt`). No new
+catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 

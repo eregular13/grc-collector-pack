@@ -1,0 +1,4 @@
+# zmap 2.1.1
+# -p 21 10.0.0.0/24
+saddr,dport,hostname
+10.0.0.50,21,filesrv.corp.local

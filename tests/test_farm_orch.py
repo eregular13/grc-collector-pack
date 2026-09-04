@@ -98,6 +98,8 @@ def test_license_lock_and_file_drop_never_will_run() -> None:
             "gvm",
             "enum4linux-ng",
             "smbmap",
+            "zmap",
+            "unicornscan",
             "hexstrike",
         }
     )
