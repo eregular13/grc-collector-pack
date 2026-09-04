@@ -1,6 +1,6 @@
 # Operator MCP stub — interface (no public attack API)
 
-Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No FastMCP dependency. No exploit tools. This is conductor UX for this Python pack — not USB `evergreen_assessment_mcp` and not a TypeScript refuse matrix.
+Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No FastMCP dependency. No exploit tools. This is conductor UX for this Python pack — not USB `evergreen_assessment_mcp` (21-tool `check_scope` / `license_guard` remains pack truth) and not a TypeScript refuse matrix.
 
 | Tool | Wraps | Notes |
 |---|---|---|

@@ -81,7 +81,12 @@ python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
 4. **Never open-internet spray.** Never one worker across a /16. External named hosts are the `run --profile external` path, not deepen.
 5. **Outputs stay the pack path:** discover/deepen artifacts → `in/` → control map → `out/poam/poam.csv` → CISO CSVs. Pentera (or Nmap/Nessus) finds it; Evergreen maps it.
 
-`SCOPE.example.yaml` ships `stages.deepen: false`. Set it true only when the client consented to louder tools on a named host list. The committed DEMO `SCOPE.yaml` sets `deepen: true` so `make dropbox-lab` still exercises the plan (no binaries).
+`SCOPE.example.yaml` ships `stages.deepen: false` and does **not** allowlist
+nmap / nessus — those stay opt-in under signed `SCOPE.allow_tools`, never a
+free-day live default. Set deepen true only when the client consented to
+louder tools on a named host list. The committed DEMO `SCOPE.yaml` sets
+`deepen: true` and DEMO-allowlists nmap so `make dropbox-lab` still
+exercises the plan (no binaries).
 
 `make dropbox-lab` is **plan-only** without Nmap/Nessus. Lab stays green without those binaries. Workers are destroyed after discover and after deepen.
 

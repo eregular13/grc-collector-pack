@@ -314,7 +314,8 @@ python3 -m dropbox mcp stage_discover    # plan-only
 ```
 
 The conductor is **`dropbox.mcp_stub`** JSON-RPC on stdin/stdout — **not**
-hosted FastMCP, **not** USB `evergreen_assessment_mcp`, and **not** paying-day
+hosted FastMCP, **not** USB `evergreen_assessment_mcp` (21-tool `check_scope` /
+`license_guard` — that remains pack truth), and **not** paying-day
 truth. Do not invent a TypeScript refuse matrix. It must start from the
 **repo root**. Replace
 `/absolute/path/to/grc-collector-pack` with this checkout. Prefer

@@ -19,14 +19,13 @@ external:
     - "client.example"
   ips:
     - "192.0.2.10"
+# Host-local only. nmap / nessus / nessuscli are opt-in under signed
+# SCOPE.allow_tools — never a free-day live default.
 allow_tools:
   - lynis
   - ss
   - ip
   - curl
-  - nmap
-  - nessus
-  - nessuscli
   - testssl
 orchestrator:
   # Brakes. Defaults prefer client-environment integrity over coverage ego.

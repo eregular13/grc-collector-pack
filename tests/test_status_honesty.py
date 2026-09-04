@@ -66,6 +66,38 @@ def test_executive_does_not_stamp_paying_day_or_assessment_ready() -> None:
                 assert any(tok in low for tok in ("not", "never", "do not", "fail", "≠"))
 
 
+def test_scanner_free_and_wrap_dead_require_hephaestus_rails() -> None:
+    """Rail 4: scanner-free + wrap-dead only count if wrap/toolbin/MCP rails hold."""
+    from dropbox.orchestrator.byo import farm_which
+    from dropbox.scope import LICENSE_LOCK_SPAWN
+
+    status = _status()
+    assert status.get("wrap") == "review-only"
+    assert status.get("paying_day") == "FAIL"
+    assert status.get("license_lock_will_run") == "never"
+    assert status.get("scanner_free") == "true"
+    for name in ("nuclei", "openvas", "wazuh", "osquery", "bloodhound", "pingcastle"):
+        assert name in LICENSE_LOCK_SPAWN
+        assert farm_which(name) is None
+    hexstrike = (ROOT / "dropbox" / "HEXSTRIKE.md").read_text(encoding="utf-8")
+    assert "evergreen_assessment_mcp" in hexstrike
+    assert "check_scope" in hexstrike
+    assert "license_guard" in hexstrike
+    assert "TypeScript refuse" in hexstrike
+    farm_op = (ROOT / "farm" / "OPERATOR.md").read_text(encoding="utf-8")
+    assert "evergreen_assessment_mcp" in farm_op
+    assert "check_scope" in farm_op
+    assert "license_guard" in farm_op
+    assert "TypeScript refuse" in farm_op
+    for rel in ("product-lab/EXECUTIVE.md", "dropbox/EXECUTIVE.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "wrap" in text.lower() and ("dead" in text.lower() or "review-only" in text.lower())
+        assert "evergreen_assessment_mcp" in text or "not pack truth" in text.lower()
+    for folder in (ROOT, ROOT / "dropbox", ROOT / "farm", ROOT / "scripts"):
+        assert not list(folder.glob("*.ts"))
+        assert not list(folder.glob("*refuse*matrix*"))
+
+
 def test_operator_compose_proof_path_is_documented() -> None:
     op = (ROOT / "farm" / "OPERATOR.md").read_text(encoding="utf-8")
     assert "docker compose config --services" in op

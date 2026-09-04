@@ -35,10 +35,16 @@ def test_architecture_docs_three_layers() -> None:
     assert "claude_desktop_config.json" in farm_op
     assert "farm_toolbin_status" in farm_op
     assert "evergreen_assessment_mcp" in farm_op
+    assert "check_scope" in farm_op
+    assert "license_guard" in farm_op
     assert "TypeScript refuse" in farm_op
     assert "evergreen_assessment_mcp" in hexstrike
+    assert "check_scope" in hexstrike
+    assert "license_guard" in hexstrike
     assert "TypeScript refuse" in hexstrike
     assert "evergreen_assessment_mcp" in iface
+    assert "check_scope" in iface
+    assert "license_guard" in iface
     for folder in (ROOT, ROOT / "dropbox", ROOT / "farm", ROOT / "scripts"):
         assert not list(folder.glob("*.ts"))
         assert not list(folder.glob("*refuse*matrix*"))

@@ -152,12 +152,24 @@ def test_demo_scope_has_deepen_on_for_lab() -> None:
 
 def test_example_scope_deepen_defaults_false() -> None:
     from dropbox.yaml_lite import load_yaml
+    from farm.adapters.catalog import select_stage_slots
 
     data = load_yaml((ROOT / "dropbox" / "SCOPE.example.yaml").read_text(encoding="utf-8"))
     assert data["orchestrator"]["stages"]["deepen"] is False
     assert data["orchestrator"]["stages"].get("external") is False
     assert data["orchestrator"]["max_workers"] == 2
     assert data["orchestrator"]["host_timeout_sec"] == 30
+    allow = [str(t).lower() for t in (data.get("allow_tools") or [])]
+    assert "nmap" not in allow
+    assert "nessus" not in allow
+    assert "nessuscli" not in allow
+    disc = select_stage_slots("discover", allow, which=lambda n: f"/stub/{n}")
+    nmap = next(row for row in disc["skipped"] if row["slot"] == "nmap")
+    assert nmap["will_run"] is False
+    assert "not in SCOPE.allow_tools" in nmap["reason"]
+    deep = select_stage_slots("deepen", allow, which=lambda n: f"/stub/{n}")
+    nessus = next(row for row in deep["skipped"] if row["slot"] == "nessus")
+    assert nessus["will_run"] is False
 
 
 def test_deepen_fail_closed_when_stage_missing(
