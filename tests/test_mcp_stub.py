@@ -158,8 +158,11 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     slots = handle_jsonrpc({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "farm_slots"}})
     result = slots["result"]
     assert result["tool"] == "farm_slots"
-    assert result["count"] >= 40
-    assert result["wired_count"] >= 20
+    assert result["count"] >= 95
+    assert result["wired_count"] >= 21
+    assert result["file_drop_count"] >= 70
+    assert result["by_category"]["discover"]["total"] >= 1
+    assert result["counts"]["total"] == result["count"]
     assert result["vendored_binaries"] is False
     status = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "orchestrator_status"}}

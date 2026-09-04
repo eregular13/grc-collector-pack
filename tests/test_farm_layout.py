@@ -32,7 +32,7 @@ def test_farm_slots_are_adapters_not_binaries() -> None:
     assert data.get("vendored_binaries") is False
     slots = data.get("slots") or {}
     assert isinstance(slots, dict)
-    assert len(slots) >= 40
+    assert len(slots) >= 95
     for required in ("nmap", "nessus", "testssl", "curl", "lynis", "hardeningkitty-export", "prowler", "maester"):
         assert required in slots
         slot = slots[required]

@@ -57,21 +57,25 @@ def _slot_matrix(allow_tools: list[str]) -> list[dict[str, Any]]:
 
 
 def farm_slots() -> dict[str, Any]:
-    from farm.adapters.catalog import invoke_slots, load_catalog, wired_slots
+    from farm.adapters.catalog import catalog_summary, invoke_slots, load_catalog, wired_slots
 
     data = load_catalog()
     wired = wired_slots()
     invoke = invoke_slots()
+    counts = catalog_summary()
     return {
         "tool": "farm_slots",
         "private": bool(data.get("private")),
         "hub_publish": bool(data.get("hub_publish")),
         "vendored_binaries": bool(data.get("vendored_binaries")),
-        "count": len(data.get("slots") or {}),
+        "count": counts["total"],
         "wired": sorted(wired),
-        "wired_count": len(wired),
+        "wired_count": counts["wired"],
         "invoke": sorted(invoke),
-        "invoke_count": len(invoke),
+        "invoke_count": counts["invoke"],
+        "file_drop_count": counts["file_drop"],
+        "by_category": counts["by_category"],
+        "counts": counts,
         "scope_gated": True,
     }
 

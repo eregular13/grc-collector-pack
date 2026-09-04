@@ -82,6 +82,11 @@ def argv_for(slot_id: str, exe: str, target: str, timeout: int) -> list[str]:
         return [exe, _named_host(target, "whois")]
     if name == "sslscan":
         return [exe, "--no-failed", _named_host(target, "sslscan")]
+    if name == "openssl":
+        host = _named_host(target, "openssl")
+        return [exe, "s_client", "-connect", f"{host}:443", "-brief"]
+    if name == "nslookup":
+        return [exe, _named_host(target, "nslookup")]
     raise GateError(f"no adapter argv for slot {slot_id!r}")
 
 

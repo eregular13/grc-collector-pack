@@ -8,7 +8,8 @@ See `dropbox/ARCHITECTURE.md` **Layer A** (BYO tool zoo) and `farm/OPERATOR.md` 
 
 | Path | Role |
 |---|---|
-| `SLOTS.yaml` | 40+ adapter slots (id, binary, stage, SCOPE key, output glob, license). **No binaries.** |
+| `SLOTS.yaml` | 95+ adapter slots (id, binary, stage, SCOPE key, output glob, license). **No binaries.** |
+| `SLOTS.md` | Category counts: wired vs file_drop. |
 | `adapters/` | Thin callable stubs for wired slots. Plan-only if missing. |
 | `OPERATOR.md` | How Reid installs tools, mounts `FARM_TOOL_BIN`, runs quiet→loud. |
 | `Dockerfile` | Orchestrator worker only (`python:3.12-slim` + COPY). No `apt`. |
@@ -25,9 +26,9 @@ Missing binary → orchestrator stays **plan-only**. This repo never apt-install
 
 ## Slots (adapters, not embeds)
 
-Wired invoke stubs: nmap · nessus · nessuscli · testssl · lynis · ss · ip · prowler · trivy · rustscan · naabu · httpx · dig · whois · sslscan
+Wired invoke stubs: nmap · nessus · nessuscli · testssl · lynis · ss · ip · prowler · trivy · rustscan · naabu · httpx · dig · whois · sslscan · openssl · nslookup
 
-Also wired: curl · hardeningkitty-export · maester · testssl.sh. File-drop stubs: kube-bench · gitleaks.
+Also wired: hardeningkitty-export · maester · testssl.sh. File-drop stubs: kube-bench · gitleaks. Header grabber is a separate wired slot.
 
 kube-bench / gitleaks are file_drop stubs (no subprocess). LICENSE-LOCK names (nuclei, openvas, pingcastle, …) stay file-drop only. The 10 public collectors stay parse-only.
 

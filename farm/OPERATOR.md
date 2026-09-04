@@ -44,7 +44,7 @@ python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted 
 | `commercial_byo` | Vendor CLI you licensed. We do not ship it. |
 | `oss_byo` | OSS you installed. Missing → plan-only. |
 
-LICENSE-LOCK names (nuclei, openvas, pingcastle, …) stay **file_drop**. Adapters never subprocess them.
+Catalog is **95+** slots (`SLOTS.md`). LICENSE-LOCK names (nuclei, openvas, gvm, pingcastle, bloodhound, …) stay **file_drop**. Adapters never subprocess them.
 
 kube-bench / gitleaks are **file_drop stubs** (callable, no subprocess). Drop JSON into `in/k8s/` / `in/code/`.
 

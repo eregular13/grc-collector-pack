@@ -8,7 +8,15 @@ from pathlib import Path
 import pytest
 
 from dropbox.scope import FORBIDDEN_TOOLS, GateError
-from farm.adapters.catalog import LICENSE_CLASSES, REQUIRED_FIELDS, invoke_slots, load_slots, wired_slots
+from farm.adapters.catalog import (
+    LICENSE_CLASSES,
+    REQUIRED_FIELDS,
+    catalog_summary,
+    invoke_slots,
+    load_slots,
+    render_slots_md,
+    wired_slots,
+)
 from farm.adapters.stubs import NEVER_SUBPROCESS, argv_for, run_slot
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,9 +37,20 @@ def _stub(bin_dir: Path, name: str, marker: Path, payload: str) -> Path:
 
 def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     slots = load_slots()
-    assert len(slots) >= 40
+    assert len(slots) >= 95
     categories = {v.get("category") or v.get("stage") for v in slots.values()}
-    for needed in ("discover", "deepen", "external", "endpoint", "identity", "cloud", "k8s", "secrets"):
+    for needed in (
+        "discover",
+        "deepen",
+        "external",
+        "endpoint",
+        "identity",
+        "cloud",
+        "k8s",
+        "secrets",
+        "wifi",
+        "ot",
+    ):
         assert needed in categories
     for name, slot in slots.items():
         for field in REQUIRED_FIELDS:
@@ -43,9 +62,18 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
         assert slot.get("scope_key") in {"allow_tools", "file_drop"}
         assert int(slot.get("default_batch") or 0) >= 1
     wired = wired_slots()
-    assert len(wired) >= 20
+    assert len(wired) >= 21
     invoke = invoke_slots()
-    assert len(invoke) >= 18
+    assert len(invoke) >= 21
+    counts = catalog_summary()
+    assert counts["total"] == len(slots)
+    assert counts["wired"] == len(wired)
+    assert counts["invoke"] == len(invoke)
+    assert "openssl" in invoke and "nslookup" in invoke
+    md = (FARM / "SLOTS.md").read_text(encoding="utf-8")
+    assert f"Total: {counts['total']}" in md
+    assert "By category" in md
+    assert render_slots_md() == md
     for required in (
         "nmap",
         "nessus",

@@ -114,3 +114,69 @@ def farm_slot_status(allow_tools: list[str] | None = None, which=None) -> list[d
             }
         )
     return rows
+
+
+def catalog_summary() -> dict[str, Any]:
+    """Counts for conductor + SLOTS.md. No binaries."""
+    slots = load_slots()
+    by_category: dict[str, dict[str, int]] = {}
+    wired = invoke = file_drop = 0
+    for slot in slots.values():
+        cat = str(slot.get("category") or slot.get("stage") or "other")
+        bucket = by_category.setdefault(cat, {"total": 0, "wired": 0, "invoke": 0, "file_drop": 0})
+        bucket["total"] += 1
+        if slot.get("wired"):
+            wired += 1
+            bucket["wired"] += 1
+        if slot.get("invoke"):
+            invoke += 1
+            bucket["invoke"] += 1
+        else:
+            file_drop += 1
+            bucket["file_drop"] += 1
+    return {
+        "total": len(slots),
+        "wired": wired,
+        "invoke": invoke,
+        "file_drop": file_drop,
+        "by_category": dict(sorted(by_category.items())),
+    }
+
+
+def render_slots_md() -> str:
+    summary = catalog_summary()
+    lines = [
+        "# Farm SLOTS catalog",
+        "",
+        "Private drop-box tool zoo. **No binaries in git.** Most slots are file_drop:",
+        "the operator lands artifacts in `in/<sensor>/` for Layer C.",
+        "",
+        f"Total: {summary['total']}",
+        f"Wired: {summary['wired']}",
+        f"Invoke: {summary['invoke']}",
+        f"File-drop: {summary['file_drop']}",
+        "",
+        "## By category",
+        "",
+        "| category | total | wired | invoke | file_drop |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for cat, bucket in summary["by_category"].items():
+        lines.append(
+            f"| {cat} | {bucket['total']} | {bucket['wired']} | {bucket['invoke']} | {bucket['file_drop']} |"
+        )
+    lines.extend(
+        [
+            "",
+            "LICENSE-LOCK names stay file_drop and are never subprocessed.",
+            "See `SLOTS.yaml` and `OPERATOR.md`.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def write_slots_md() -> Path:
+    dest = FARM_ROOT / "SLOTS.md"
+    dest.write_text(render_slots_md(), encoding="utf-8")
+    return dest
