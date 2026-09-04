@@ -23,5 +23,24 @@ File-drop: 81
 | secrets | 8 | 1 | 0 | 8 |
 | wifi | 3 | 0 | 0 | 3 |
 
+## Ingest map (Layer C)
+
+Every `output_glob` lands in an existing Layer C sensor directory.
+`audit_output_globs()` is empty. No theater parsers.
+
+| sensor | total | invoke | file_drop |
+|---|---:|---:|---:|
+| in/cloud/ | 9 | 1 | 8 |
+| in/code/ | 8 | 0 | 8 |
+| in/easm/ | 24 | 10 | 14 |
+| in/identity/ | 10 | 1 | 9 |
+| in/k8s/ | 10 | 1 | 9 |
+| in/nmap/ | 24 | 11 | 13 |
+| in/saas/ | 5 | 1 | 4 |
+| in/vuln/ | 11 | 3 | 8 |
+| in/wazuh/ | 10 | 2 | 8 |
+
+File-drop only (never subprocess even if on PATH): amass, checkov, ffuf, gobuster, nikto, scoutsuite, subfinder.
+
 LICENSE-LOCK names stay file_drop and are never subprocessed.
-See `SLOTS.yaml` and `OPERATOR.md`.
+See `SLOTS.yaml`, `INTEGRITY.md`, and `OPERATOR.md`.

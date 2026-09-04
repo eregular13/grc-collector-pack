@@ -16,6 +16,7 @@ from farm.adapters.catalog import (
     audit_output_globs,
     catalog_summary,
     farm_slot_status,
+    ingest_map,
     invoke_slots,
     load_slots,
     render_slots_md,
@@ -88,6 +89,10 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     md = (FARM / "SLOTS.md").read_text(encoding="utf-8")
     assert f"Total: {counts['total']}" in md
     assert "By category" in md
+    assert "Ingest map (Layer C)" in md
+    for sensor in LAYER_C_SENSORS:
+        assert f"| in/{sensor}/ |" in md
+    assert "nikto" in md and "checkov" in md
     assert render_slots_md() == md
     for required in (
         "nmap",
@@ -265,3 +270,7 @@ def test_layer_c_sensor_dirs_exist() -> None:
     for sensor in LAYER_C_SENSORS:
         path = ROOT / "in" / sensor
         assert path.is_dir(), path
+    mapped = ingest_map()
+    assert set(mapped) == set(LAYER_C_SENSORS)
+    assert sum(b["total"] for b in mapped.values()) == len(load_slots())
+    assert audit_output_globs() == []

@@ -176,6 +176,23 @@ def catalog_summary() -> dict[str, Any]:
     }
 
 
+def ingest_map() -> dict[str, dict[str, int]]:
+    """Slot counts by Layer C sensor dir. No theater sensors."""
+    slots = load_slots()
+    by_sensor: dict[str, dict[str, int]] = {
+        sensor: {"total": 0, "invoke": 0, "file_drop": 0} for sensor in sorted(LAYER_C_SENSORS)
+    }
+    for slot in slots.values():
+        sensor = str(slot.get("sensor") or "")
+        bucket = by_sensor.setdefault(sensor, {"total": 0, "invoke": 0, "file_drop": 0})
+        bucket["total"] += 1
+        if slot.get("invoke"):
+            bucket["invoke"] += 1
+        else:
+            bucket["file_drop"] += 1
+    return by_sensor
+
+
 def render_slots_md() -> str:
     summary = catalog_summary()
     lines = [
@@ -201,8 +218,28 @@ def render_slots_md() -> str:
     lines.extend(
         [
             "",
+            "## Ingest map (Layer C)",
+            "",
+            "Every `output_glob` lands in an existing Layer C sensor directory.",
+            "`audit_output_globs()` is empty. No theater parsers.",
+            "",
+            "| sensor | total | invoke | file_drop |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+    for sensor, bucket in ingest_map().items():
+        lines.append(
+            f"| in/{sensor}/ | {bucket['total']} | {bucket['invoke']} | {bucket['file_drop']} |"
+        )
+    lines.extend(
+        [
+            "",
+            "File-drop only (never subprocess even if on PATH): "
+            + ", ".join(sorted(FILE_DROP_ONLY))
+            + ".",
+            "",
             "LICENSE-LOCK names stay file_drop and are never subprocessed.",
-            "See `SLOTS.yaml` and `OPERATOR.md`.",
+            "See `SLOTS.yaml`, `INTEGRITY.md`, and `OPERATOR.md`.",
             "",
         ]
     )
