@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, and netdiscover exports.
+"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, and nbtscan exports.
 
-Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, or netdiscover.
+Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, or nbtscan.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from shared.fast_portscan import parse_fast_portscan
 from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
+from shared.nbtscan import parse_nbtscan
 from shared.netdiscover import parse_netdiscover
 from shared.schema import make_record, make_ref
 
@@ -279,6 +280,26 @@ def parse_file(path: Path) -> list[dict]:
                 str(host.get("hostname") or ""),
                 [],
                 extra_labels=["fping"],
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    nbt = parse_nbtscan(path, raw)
+    if nbt is not None:
+        records = []
+        for host in nbt:
+            extra = {
+                "mac": host.get("mac") or "",
+                "netbios": host.get("netbios") or "",
+            }
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or host.get("netbios") or ""),
+                [],
+                extra=extra,
+                extra_labels=["nbtscan"],
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records

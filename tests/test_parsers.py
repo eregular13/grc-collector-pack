@@ -318,6 +318,7 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     assert "arp-scan.txt" in names
     assert "fping.txt" in names
     assert "netdiscover.txt" in names
+    assert "nbtscan.txt" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -595,6 +596,64 @@ def test_netdiscover_parser_no_live() -> None:
         assert "Popen" not in src
         assert "netdiscover -" not in src
         assert "netdiscover --" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_nbtscan_demo_attaches_asset_only() -> None:
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "nbtscan.txt")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in assets]
+    assert "filesrv.corp.local" in names
+    assert "10.0.0.50" not in names
+    assert findings == []
+    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    extra = host.get("extra") or {}
+    assert extra.get("mac") == "00:11:22:33:44:55"
+    assert extra.get("netbios") == "FILESRV"
+    assert extra.get("ip") == "10.0.0.50"
+    assert "nbtscan" in (host.get("labels") or [])
+    assert "arp" not in (host.get("labels") or [])
+
+
+def test_nbtscan_does_not_steal_other_discover() -> None:
+    from shared.arp_scan import parse_arp_scan
+    from shared.fping import parse_fping
+    from shared.nbtscan import parse_nbtscan
+    from shared.netdiscover import parse_netdiscover
+
+    assert parse_nbtscan(DEMO / "nmap" / "arp-scan.txt") is None
+    assert parse_nbtscan(DEMO / "nmap" / "netdiscover.txt") is None
+    assert parse_nbtscan(DEMO / "nmap" / "fping.txt") is None
+    assert parse_arp_scan(DEMO / "nmap" / "nbtscan.txt") is None
+    assert parse_netdiscover(DEMO / "nmap" / "nbtscan.txt") is None
+    assert parse_fping(DEMO / "nmap" / "nbtscan.txt") is None
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "nbtscan.txt")
+    assert all("nbtscan" in (r.get("labels") or []) for r in recs if r["kind"] == "asset")
+
+
+def test_nbtscan_empty(tmp_path) -> None:
+    dest = tmp_path / "nbtscan.txt"
+    dest.write_text(
+        "Doing NBT name scan for addresses from 10.0.0.0/24\n"
+        "IP address       NetBIOS Name     Server    User             MAC address\n"
+        "------------------------------------------------------------------------------\n",
+        encoding="utf-8",
+    )
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_nbtscan_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/nbtscan.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "nbtscan -" not in src
+        assert "nbtscan --" not in src
         assert "nmap -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src

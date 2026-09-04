@@ -79,6 +79,7 @@ SCANNER_PKGS = tuple(
             "arp-scan",
             "fping",
             "netdiscover",
+            "nbtscan",
             "metasploit",
             "msfconsole",
             "hexstrike",

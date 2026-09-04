@@ -127,6 +127,12 @@ assets only. Empty / header-only invent nothing. arp-scan detect does
 not claim netdiscover tables. The collector never runs netdiscover and
 never does live ARP. The catalog slot stays `file_drop`.
 
+nbtscan **name/IP tables** are the same `in/nmap/` file-drop path
+(`Doing NBT name scan` / IP + NetBIOS + `<server>`). Hosts become
+assets only. Empty / header-only invent nothing. Detect does not steal
+arp-scan / netdiscover / fping. The collector never runs nbtscan and
+never does live NetBIOS. The catalog slot stays `file_drop`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to
