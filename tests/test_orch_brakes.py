@@ -9,13 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from dropbox.mcp_stub import dispatch
+from dropbox.mcp_stub import OPERATOR_TOOLS, dispatch
 from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import deepen_stage, orchestrate
 from dropbox.orchestrator.shard import batch_hosts
 from dropbox.scope import GateError, load_scope
 from farm.adapters.catalog import brakes_defaults
+from farm.adapters.stubs import run_slot
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -94,19 +95,69 @@ def test_conductor_refuses_empty_and_unsigned_scope(tmp_path: Path) -> None:
         "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
         "external:\n  hosts:\n    - vpn.example.com\n",
     )
-    tools = (
-        "farm_slots",
-        "export_ciso_poam",
-        "orchestrator_status",
-        "orchestrator_plan",
-        "stage_discover",
-        "stage_deepen",
-        "stage_ingest",
-    )
     for scope in (empty, unsigned):
-        for name in tools:
+        for name in OPERATOR_TOOLS:
             with pytest.raises(GateError, match="SCOPE"):
                 dispatch(name, scope_path=scope)
+
+
+def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("", encoding="utf-8")
+    unsigned = _write_scope(
+        tmp_path,
+        "client:\n  name: X\nconsent:\n  attestation_path: missing.md\n"
+        "  attestation_sha256: 00dead\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+    )
+    dest = tmp_path / "nmap.out"
+    for scope in (empty, unsigned):
+        with pytest.raises(GateError, match="SCOPE"):
+            run_slot("nmap", dest, ["nmap"], live=True, scope_path=scope)
+    host_dir = tmp_path / "host-local"
+    host_dir.mkdir()
+    att, digest = _consent(host_dir)
+    host_local = _write_scope(
+        host_dir,
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - lynis\n  - ss\n  - ip\n  - curl\n  - testssl\n",
+    )
+    result = run_slot("nmap", dest, ["nmap"], live=True, scope_path=host_local)
+    assert result["ran"] is False
+    assert result["scope_gated"] is True
+    assert "allow_tools" in result["skip_reason"]
+    monkeypatch.setenv("DROPBOX_WORK_IN", str(tmp_path / "work-in"))
+    cmds = (
+        ["gate"],
+        ["status"],
+        ["run", "--profile", "internal"],
+        ["run", "--live", "--profile", "internal"],
+        ["lab"],
+        ["orchestrate"],
+        ["mcp", "farm_slot_status"],
+        ["mcp", "farm_toolbin_status"],
+        ["mcp", "farm_slots"],
+        ["mcp", "export_ciso_poam"],
+        ["mcp", "scope_status"],
+    )
+    for scope in (empty, unsigned):
+        for extra in cmds:
+            proc = subprocess.run(
+                ["python3", "-m", "dropbox", *extra, "--scope", str(scope)],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert proc.returncode == 2, extra
+            assert "SCOPE gate" in proc.stderr
 
 
 def test_unsigned_scope_refuses_live(tmp_path: Path) -> None:

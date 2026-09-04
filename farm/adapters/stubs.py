@@ -6,10 +6,29 @@ from pathlib import Path
 from typing import Any, Callable
 
 from dropbox.orchestrator import byo
-from dropbox.scope import FORBIDDEN_TOOLS, GateError, LICENSE_LOCK_SPAWN, is_open_internet_cidr
+from dropbox.scope import (
+    FORBIDDEN_TOOLS,
+    GateError,
+    LICENSE_LOCK_SPAWN,
+    Scope,
+    is_open_internet_cidr,
+    load_scope,
+)
 from farm.adapters.catalog import FILE_DROP_ONLY, LICENSE_LOCK_LIVE, load_slots
 
 Which = Callable[[str], str | None]
+
+
+def _signed_allows(tool: str, signed: set[str]) -> bool:
+    """testssl and testssl.sh are one SCOPE.allow_tools family."""
+    name = (tool or "").strip().lower()
+    if name in signed:
+        return True
+    if name == "testssl.sh" and "testssl" in signed:
+        return True
+    if name == "testssl" and "testssl.sh" in signed:
+        return True
+    return False
 
 # Never subprocess these, even if a slot is mis-marked wired.
 NEVER_SUBPROCESS = frozenset(LICENSE_LOCK_SPAWN) | frozenset(LICENSE_LOCK_LIVE) | frozenset(
@@ -109,13 +128,24 @@ def argv_for(slot_id: str, exe: str, target: str, timeout: int) -> list[str]:
 def run_slot(
     slot_id: str,
     dest: Path,
-    allow_tools: list[str],
+    allow_tools: list[str] | None = None,
     target: str = ".",
     timeout: int = 8,
     live: bool = False,
     which: Which | None = None,
+    *,
+    scope: Scope | None = None,
+    scope_path: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Invoke one wired slot or stay plan-only. Forbidden tools never run."""
+    """Invoke one wired slot or stay plan-only. Signed SCOPE required. Forbidden tools never run."""
+    loaded = scope if scope is not None else load_scope(Path(scope_path) if scope_path else None)
+    signed = {str(t).strip().lower() for t in loaded.allow_tools if str(t).strip()}
+    requested = [
+        str(t).strip().lower()
+        for t in (allow_tools if allow_tools is not None else loaded.allow_tools)
+        if str(t).strip()
+    ]
+    allow = [t for t in requested if _signed_allows(t, signed)]
     which_fn = which or byo.farm_which
     slots = load_slots()
     name = (slot_id or "").strip().lower()
@@ -132,6 +162,8 @@ def run_slot(
         "output_glob": slot.get("output_glob"),
         "invoke": bool(slot.get("invoke")),
         "subprocess": False,
+        "scope_gated": True,
+        "client": loaded.client_name,
     }
     if name in FILE_DROP_ONLY or binary in FILE_DROP_ONLY:
         return {
@@ -154,7 +186,7 @@ def run_slot(
             "tool_ready": False,
             "skip_reason": "file-drop only (not a callable adapter)",
         }
-    exe, reason = byo.which_allowed(binary, allow_tools, which=which_fn)
+    exe, reason = byo.which_allowed(binary, allow, which=which_fn)
     if not exe:
         return {**base, "mode": "plan", "tool_ready": False, "skip_reason": reason}
     if not live:
@@ -166,7 +198,7 @@ def run_slot(
         }
     argv = argv_for(name, exe, target, timeout)
     dest = Path(dest)
-    rc = byo.run_allowed(argv, dest, timeout, allow_tools=allow_tools)
+    rc = byo.run_allowed(argv, dest, timeout, allow_tools=allow)
     return {
         **base,
         "mode": "live",

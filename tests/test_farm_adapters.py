@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -27,6 +28,24 @@ from farm.adapters.stubs import NEVER_SUBPROCESS, argv_for, run_slot
 
 ROOT = Path(__file__).resolve().parents[1]
 FARM = ROOT / "farm"
+
+
+def _signed_scope(tmp_path: Path, allow_tools: list[str]) -> Path:
+    att = tmp_path / "consent.md"
+    att.write_text("adapter-contract consent\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    tools = "\n".join(f"  - {name}" for name in allow_tools)
+    path = tmp_path / "SCOPE.yaml"
+    path.write_text(
+        "client:\n  name: DEMO — adapter contract\nconsent:\n"
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        "engagement:\n  start: 2026-09-01\n  end: 2026-12-31\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        f"allow_tools:\n{tools}\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 def _stub(bin_dir: Path, name: str, marker: Path, payload: str) -> Path:
@@ -234,6 +253,7 @@ def test_wired_slots_invoke_path_stubs(tmp_path: Path, monkeypatch: pytest.Monke
         _stub(bin_dir, str(slot["binary"]), marker, f"DEMO {name} stub\n")
     monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + "/usr/bin")
     allow = [str(s["binary"]) for s in invoke.values()]
+    scope_path = _signed_scope(tmp_path, allow)
     dest_root = tmp_path / "out"
     for name, slot in invoke.items():
         dest = dest_root / f"{name}.out"
@@ -256,7 +276,9 @@ def test_wired_slots_invoke_path_stubs(tmp_path: Path, monkeypatch: pytest.Monke
             target = "vpn.example.com"
         if name in {"nmap", "rustscan", "naabu"}:
             target = "10.20.30.0/24"
-        result = run_slot(name, dest, allow, target=target, timeout=8, live=True)
+        result = run_slot(
+            name, dest, allow, target=target, timeout=8, live=True, scope_path=scope_path
+        )
         assert result["ran"] is True, result
         assert result["mode"] == "live"
         assert dest.is_file()

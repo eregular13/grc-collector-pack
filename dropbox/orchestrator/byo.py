@@ -171,11 +171,13 @@ def run_allowed(
     argv: list[str],
     dest: Path,
     timeout: int,
-    allow_tools: list[str] | None = None,
+    allow_tools: list[str],
 ) -> int:
     """Run an allowlisted PATH binary; write stdout to dest. No download."""
     if not argv:
         raise ValueError("empty argv")
+    if allow_tools is None:
+        raise GateError("run_allowed requires SCOPE.allow_tools")
     joined = " ".join(str(a) for a in argv)
     low = joined.lower()
     for bad in FORBIDDEN_IN_ADAPTER:
@@ -184,10 +186,9 @@ def run_allowed(
     tool = Path(str(argv[0])).name.lower()
     if tool in LICENSE_LOCK_SPAWN:
         raise GateError(f"LICENSE-LOCK: run_allowed refuses {tool}")
-    if allow_tools is not None:
-        allow = {t.lower() for t in allow_tools}
-        if tool not in allow:
-            raise GateError(f"run_allowed refuses {tool}: not in SCOPE.allow_tools")
+    allow = {str(t).strip().lower() for t in allow_tools if str(t).strip()}
+    if not allow or tool not in allow:
+        raise GateError(f"run_allowed refuses {tool}: not in SCOPE.allow_tools")
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
