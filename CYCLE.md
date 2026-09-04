@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 24 — farm_slots.brakes matches INTEGRITY.md (2026-09-04)
+
+Conductor `farm_slots` returns structured `brakes` (SCOPE, deepen fail-closed, max_workers=2, batch 2–5, timeout 30s, wrap review-only). Catalog unchanged: **111 / 32 / 30 / 81**. pytest **153**. farm-lab 62/62/24 poam 61.
+
+```json
+{"pytest": 153, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 23 — Layer C ingest map on SLOTS.md (2026-09-04)
 
 `farm/SLOTS.md` now includes an **Ingest map (Layer C)** table: every slot lands in `in/cloud|nmap|vuln|wazuh|identity|easm|k8s|code|saas`. `ingest_map()` sums to 111. FILE_DROP_ONLY names listed. No theater parsers. Catalog unchanged: **111 / 32 / 30 / 81**.

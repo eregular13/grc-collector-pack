@@ -4,6 +4,8 @@ The farm is a **private** drop-box tool catalog + adapters. It is **not** a
 public Layer C collector and **not** a paying-day assessment. Wrap is
 review-only. Hexstrike is not vendored. USB evergreen-assessment is not copied.
 
+Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
+
 ## Brakes defaults
 
 | Brake | Default | Fail-closed behavior |

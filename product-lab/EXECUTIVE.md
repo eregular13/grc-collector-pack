@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-Farm catalog **111** slots (`SLOTS.md`: 32 wired / 30 invoke / 81 file_drop) plus Layer C ingest map. PATH-invoke **30**. LICENSE-LOCK + nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
+Farm catalog **111** slots (`SLOTS.md`: 32 wired / 30 invoke / 81 file_drop) plus Layer C ingest map. PATH-invoke **30**. `farm_slots.brakes` matches INTEGRITY.md. LICENSE-LOCK + nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.
