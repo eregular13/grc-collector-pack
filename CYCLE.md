@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 59 — enum4linux-ng file-drop polish (2026-09-04)
+
+identity-ad parses operator-landed enum4linux-ng JSON/text under `in/identity/` (`target` + users/groups/shares, or Share Enumeration text). Listed users/groups/shares stay listed. Null session, writable shares, and Domain Admins / Backup Operators hints map to existing identity/SMB POA&M only when the export already shows them. Empty invents nothing. Detect does not steal HardeningKitty or BloodHound. Demo `enum4linux-ng.txt` attaches null session + Domain Admins to existing `DC01.CORP.LOCAL` (assets unchanged; findings/poam +2). Collector does not run enum4linux and does not store credentials. Slot stays `file_drop`. Catalog **not inflated**. pytest **293**. Labs green. Compose ABSENT. Paying-day FAIL. smbmap cycle 58 stands.
+
+```json
+{"pytest": 293, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 78, "vulns": 19, "evidence": 27, "poam": 81}, "farm_lab": {"assets": 64, "findings": 78, "poam": 81, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 79, "vulns": 19, "poam": 81, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 87, "vulns": 19, "poam": 84, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL"}
+```
+
 ## cycle 58 — smbmap file-drop polish (2026-09-04)
 
 inventory-nmap parses operator-landed smbmap share tables under `in/nmap/` (`[+] IP:` / Disk + Permissions). Hosts become assets. READ/WRITE shares become exposure findings mapped to existing SMB POA&M (C$/ADMIN$ → restrict admin shares). Empty / NO ACCESS invent nothing. Detect does not steal nmap / arp-scan / nbtscan. Demo `smbmap.txt` attaches writable C$ to existing `filesrv.corp.local` (assets unchanged; findings/poam +1). Collector does not run smbmap or smbclient, never does live SMB, and does not store credentials. Slot stays `file_drop`. Catalog **not inflated**. pytest **288**. Labs green. Compose ABSENT. nbtscan cycle 57 stands.

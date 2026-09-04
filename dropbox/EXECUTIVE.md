@@ -12,11 +12,11 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 
 | Run | Assets | Findings | Vulns | Evidence | POA&M | `demo` |
 |---|---|---|---|---|---|---|
-| `make lab` (empty pack `in/` → fixtures) | 64 | 76 | 19 | 27 | 79 | true |
-| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 85 | 19 | 27 | 82 | true |
-| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 77 | 19 | 27 | 79 | true |
+| `make lab` (empty pack `in/` → fixtures) | 64 | 78 | 19 | 27 | 81 | true |
+| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 87 | 19 | 27 | 84 | true |
+| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 79 | 19 | 27 | 81 | true |
 
-pytest **288 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/76/27 poam 79 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **293 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/78/27 poam 81 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 59):** Layer C parse-only enum4linux-ng file-drop polish: JSON/text under `in/identity/` (`target` + users/groups/shares). Listed identities stay listed. Null session, writable shares, and Domain Admins hints map to existing identity/SMB POA&M only when shown. Empty invents nothing. Detect does not steal HardeningKitty or BloodHound. Demo attaches to `DC01.CORP.LOCAL`. No enum4linux run / no credentials / no live SMB/LDAP/auth. Slot stays `file_drop`. Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). Docs/e2e stand. Paying-day FAIL. Compose ABSENT. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
 **Delta (cycle 58):** Layer C parse-only smbmap file-drop polish: share tables under `in/nmap/` (`[+] IP:` / Disk + Permissions). Hosts become assets. READ/WRITE shares map to existing SMB POA&M. Empty/NO ACCESS invent nothing. Detect does not steal nmap / arp-scan / nbtscan. Demo attaches writable C$ to `filesrv.corp.local`. No smbmap/smbclient / no live SMB / no credentials. Slot stays `file_drop`. Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). Docs/e2e stand.
 

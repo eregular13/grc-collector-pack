@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 58 smbmap file-drop polish stands (READ/WRITE → existing SMB POA&M; empty/NO ACCESS invent nothing; no smbmap/smbclient; no live SMB). nbtscan cycle 57 stands. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 59 enum4linux-ng file-drop polish stands (null session / writable shares / Domain Admins → existing identity/SMB POA&M when shown; empty invents nothing; detect does not steal HK/BloodHound; no enum4linux run; no credentials). smbmap cycle 58 stands. Remaining window: harden existing farm/SCOPE honesty — do not add vanity Layer C parsers. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL.
 
 ## STOP rules
 

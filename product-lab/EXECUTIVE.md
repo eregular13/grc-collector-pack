@@ -2,36 +2,45 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 58):** smbmap file-drop polish. `in/nmap/` now
-accepts operator-landed smbmap share tables (`[+] IP:` / Disk +
-Permissions). Hosts become assets. READ/WRITE shares become exposure
-findings mapped to existing SMB POA&M. Empty / NO ACCESS invent nothing.
-Detect does not steal nmap / arp-scan / nbtscan. Collector stays
-parse-only — no smbmap/smbclient run, no live SMB, no credentials.
-Slot stays `file_drop`. Demo `smbmap.txt` attaches writable C$ to
-existing `filesrv.corp.local`.
+**This window (cycle 59):** enum4linux-ng file-drop polish. `in/identity/`
+now accepts operator-landed enum4linux-ng JSON or text (`target` +
+users/groups/shares). Listed identities stay listed. Null session,
+writable shares, and Domain Admins hints map to existing identity/SMB
+POA&M only when the export already shows them. Empty invents nothing.
+Detect does not steal HardeningKitty or BloodHound. Collector stays
+parse-only — no enum4linux run, no credentials, no live SMB/LDAP/auth.
+Slot stays `file_drop`. Demo `enum4linux-ng.txt` attaches to existing
+`DC01.CORP.LOCAL`.
 
-**Cycle 57 (stands):** nbtscan name/IP file-drop. Assets only. No live
-NetBIOS. Detect does not steal arp-scan / netdiscover / fping.
+**Cycle 58 (stands):** smbmap share-table file-drop. READ/WRITE → existing
+SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
-**Honest stamp:** compose **ABSENT**. Host `make lab` / `make farm-lab` /
-`make farm-toolbin-e2e` / `make dropbox-lab` / pytest **288 passed, 1 skipped**.
-Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. Wrap review-only.
-No paying-day PASS. No USB copy. Cycle 20 (105) stands. DEMO ≠ client.
+**Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
+`make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
+**293 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
+DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
 | Surface | Assets | Findings | Vulns | Evidence | POA&M | demo |
 |---|---:|---:|---:|---:|---:|---|
-| Host `make lab` | 64 | 76 | 19 | 27 | 79 | true |
-| `make farm-lab` | 64 | 76 | 19 | 27 | 79 | true |
-| `make farm-toolbin-e2e` | 64 | 77 | 19 | 27 | 79 | true |
-| `make dropbox-lab` | 69 | 85 | 19 | 27 | 82 | true |
+| Host `make lab` | 64 | 78 | 19 | 27 | 81 | true |
+| `make farm-lab` | 64 | 78 | 19 | 27 | 81 | true |
+| `make farm-toolbin-e2e` | 64 | 79 | 19 | 27 | 81 | true |
+| `make dropbox-lab` | 69 | 87 | 19 | 27 | 84 | true |
 
-**Deltas vs cycle 57:** host/farm findings **75→76**, POA&M **78→79**
-(demo writable C$ on existing `filesrv.corp.local`; NO ACCESS silent).
-Assets unchanged. e2e findings **76→77**, POA&M **78→79**. dropbox
-findings **84→85**, POA&M **81→82**. pytest **284→288**. Catalog / wrap /
-compose / paying-day unchanged.
+**Deltas vs cycle 58:** host/farm findings **76→78**, POA&M **79→81**
+(demo null session + Domain Admins on existing `DC01.CORP.LOCAL`; listed
+Administrator and IPC$ READ silent). Assets unchanged. e2e findings
+**77→79**, POA&M **79→81**. dropbox findings **85→87**, POA&M **82→84**.
+pytest **288→293**. Catalog / wrap / compose / paying-day unchanged.
 
-**Still open:** Docker/compose runtime unexercised. Live BYO on this box is
-DEMO stubs. Catalog ≠ 100 running binaries. Overnight loop ended 2026-09-02
-— do not re-arm. Afternoon build continues until 16:00 PT.
+**LICENSE-LOCK rail:** BloodHound / Nuclei / OpenVAS/GVM / PingCastle /
+exploit-class stay `file_drop` and never appear in invoke `will_run=true`.
+nmap/nessus invoke only when explicitly in SCOPE.allow_tools AND
+stages.deepen/discover enabled AND binary on PATH/FARM_TOOL_BIN.
+
+**Still open:** Docker/compose runtime unexercised — stamp ABSENT until
+proven on an operator host with Docker. Live BYO on this box is DEMO
+stubs. Catalog ≠ 100 running binaries. Overnight loop ended 2026-09-02
+— do not re-arm. Afternoon build continues until 16:00 PT; remaining
+cycles harden existing farm/SCOPE honesty, not new Layer C parsers.
