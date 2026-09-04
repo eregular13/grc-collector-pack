@@ -13,7 +13,7 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **153 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **158 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
 {"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T15:27:12Z"}
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-Farm catalog **111** slots (`SLOTS.md`: 32 wired / 30 invoke / 81 file_drop) plus Layer C ingest map. PATH-invoke **30**. `farm_slots.brakes` matches INTEGRITY.md. LICENSE-LOCK + nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
+Farm catalog **111** slots (32 wired / 30 invoke / 81 file_drop) — not inflated. Orchestrator plan lists per-stage SLOTS; `--live` discover/deepen use PATH invoke only. nuclei/openvas never subprocess. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.

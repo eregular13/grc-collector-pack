@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 25 — farm ↔ orchestrator slot selection (2026-09-04)
+
+Plan JSON lists SLOTS per stage from `allow_tools ∩ wired invoke ∩` discover / deepen / external. `--live` discover runs only discover-stage invoke adapters on PATH; missing gets an explicit skip_reason. Deepen batches use deepen invoke slots on discover-live hosts or `deepen_hosts`. nuclei / openvas / file_drop-only never subprocess. Catalog **not inflated** (111 / 32 / 30 / 81). pytest **158**. farm-lab 62/62/24 poam 61. compose absent.
+
+```json
+{"pytest": 158, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 24 — farm_slots.brakes matches INTEGRITY.md (2026-09-04)
 
 Conductor `farm_slots` returns structured `brakes` (SCOPE, deepen fail-closed, max_workers=2, batch 2–5, timeout 30s, wrap review-only). Catalog unchanged: **111 / 32 / 30 / 81**. pytest **153**. farm-lab 62/62/24 poam 61.

@@ -1,6 +1,6 @@
-cycle: 24
+cycle: 25
 phase: DONE
-item: FARM-BRAKES-JSON
+item: FARM-ORCH-SLOTS
 critic_score: 8/10
 open_p0:
 open_p1:

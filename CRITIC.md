@@ -1,6 +1,6 @@
-# CRITIC — cycle 24 (brakes JSON)
+# CRITIC — cycle 25 (farm ↔ orchestrator slots)
 
-**8/10** — zero P0/P1. Cycle 20’s 105 named slots stand. **32 wired / 30 invoke / 81 file_drop** of **111**. Conductor `farm_slots` now returns `brakes` (INTEGRITY defaults) plus `by_sensor`. `tools/list` stable; `farm_slot_status` filters by category. Ingest map on `SLOTS.md`. Labs green.
+**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 wired / 30 invoke / 81 file_drop**. Plan lists `allow_tools ∩ wired invoke` per discover/deepen/external. `--live` discover uses PATH invoke only; missing → skip_reason. Deepen batches use deepen invoke on discover-live / deepen_hosts. nuclei/openvas never subprocess. Labs green.
 
 −1 compose runtime still absent (no Docker CLI).  
 −1 live BYO still plan-only here (nmap/nessus missing). 30 invoke adapters ≠ 100 running binaries.
