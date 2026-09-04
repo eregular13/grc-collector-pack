@@ -13,7 +13,7 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **80 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **88 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
 {"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "applied_controls": 74, "poam": 58, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T05:40:17Z"}

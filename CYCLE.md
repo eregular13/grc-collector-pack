@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 12 — orchestrator = brakes (2026-09-04)
+
+Quiet → loud governor. Discover defaults quiet (`nmap -sn`, host timeout, no deepen tools). Deepen fail-closed unless `orchestrator.stages.deepen: true`. Hosts from discover or explicit `deepen_hosts`. `max_workers` default 2. Never /16 in one worker. Never 0.0.0.0/0. Tear-down after each stage. SCOPE.example ships deepen false. DEMO sets true for plan-only lab.
+
+pytest **88**. `make lab` 62/59/15/10 poam 58 demo true. `make dropbox-lab` 68/69 plan-only 3 shards / 2 batches / destroyed=3. Wrap dead. Docker absent.
+
+```json
+{"pytest": 88, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "orchestrator": "plan-only quiet→loud"}
+```
+
 ## cycle 11 — Pentera wedge: finding → CPG/CSF + POA&M (2026-09-04)
 
 Discovery is not enough. `shared/control_map.py` stamps high/critical and key medium (SMB/RDP) with wizard-safe `cpg_*` / `csf_*` (no colons). Loader writes `out/poam/poam.csv` (owner/due blank, status open) plus mapped `applied_controls`. Demo TCP/445 → restrict SMB / confirm SMBv1 disabled — not a CVE. Console `/api/poam` + drop zip. Docs: “Pentera finds it; Evergreen maps it.”
