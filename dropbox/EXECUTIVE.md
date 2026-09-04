@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 78):** verify-green / no-diff. Full lab suite re-run clean. No code change. Cycle 77 argv scanner-free stays locked. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 77; pytest **319**.
+
 **Delta (cycle 77):** compose argv scanner-free. `command`/`entrypoint`/`CMD`/`ENTRYPOINT` cannot quietly invoke nmap/nessus/nuclei/openvas or wrap POST paths. Pack `inventory_nmap.py` stays clean. Runtime still ABSENT (`docker CLI not on PATH`). Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 76 counts; pytest **319**.
 
 **Delta (cycle 76):** compose runtime ABSENT honesty. (e) statics still green; runtime still ABSENT (`docker CLI not on PATH`). No product code. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 75.

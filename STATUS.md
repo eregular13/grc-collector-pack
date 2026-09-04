@@ -1,6 +1,6 @@
-cycle: 77
+cycle: 78
 phase: DONE
-item: COMPOSE-ARGV-SCANNER-FREE
+item: VERIFY-GREEN
 critic_score: 8/10
 open_p0:
 open_p1:

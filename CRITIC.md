@@ -1,6 +1,6 @@
-# CRITIC — cycle 77 (compose argv scanner-free)
+# CRITIC — cycle 78 (verify-green / no-diff)
 
-**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. (e) statics tighter: compose/Dockerfile argv cannot quietly reintroduce nmap/nessus/nuclei/openvas or wrap POSTs. Runtime compose still **ABSENT** (hole, not a PASS). Full pytest **319**. Labs no-diff vs cycle 76 counts. Cycle 74 Reid-only blockers stay locked. Wrap **dead**. Paying-day **FAIL**. DEMO ≠ client.
+**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. No product code. Full pytest **319**. Labs no-diff vs cycle 77. (e) statics still green; compose **runtime ABSENT** (hole, not a PASS). Cycle 77 argv scanner-free stays locked. Cycle 74 Reid-only blockers stay locked. Wrap **dead**. Paying-day **FAIL**. DEMO ≠ client.
 
 −1 compose runtime still absent (no Docker CLI).  
 −1 stubs are DEMO, not real nmap/nessus.
