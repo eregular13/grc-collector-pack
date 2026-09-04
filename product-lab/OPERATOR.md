@@ -43,7 +43,7 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 | Folder | Accepts |
 |---|---|
 | `in/cloud/` | Prowler JSON, Prowler ASFF (`Findings` / list / object), ScoutSuite `services.*.findings`, Cloud Custodian, Steampipe. Parse-only — no cloud API calls. |
-| `in/nmap/` | Nmap XML, gnmap (`-oG`), thin JSON. Parse-only — collector does not run nmap. |
+| `in/nmap/` | Nmap XML, gnmap (`-oG`), thin JSON, masscan `-oX` / `-oJ` (open ports only; empty invents nothing; no nmap/masscan run). masscan slot stays file_drop / use_dont_ship. |
 | `in/vuln/` | Nuclei JSON/JSONL (`results` wrapper OK; INFO silent; no nuclei run), Nikto text/XML/JSON (interesting/high only; empty invents nothing; no nikto run / no live HTTP), Nessus `.nessus` / NessusClientData XML (`ReportHost`/`ReportItem`; High/Critical + key Medium; empty/DEMO stub invent nothing; no Nessus API / no collector invoke), Trivy, Greenbone, testssl JSON (HIGH/WARN only; no live TLS), sslscan XML/text (`ssltest`; TLS 1.0 / SSLv2/v3 / Heartbleed only; empty invents nothing; not testssl JSON; no sslscan run) |
 | `in/wazuh/` | Wazuh agents/alerts, osquery inventory + failing checks, Fleet hosts/policies (fail only; disk encryption / MDM Off map to POA&M; empty invents nothing), Lynis report / `report.dat`, CIS-CAT/XCCDF JSON (fail only). Parse-only — no osqueryi / CIS-CAT binary. |
 | `in/identity/` | BloodHound CE / SharpHound JSON (`data.nodes`/`data.edges` or `Properties`/`ObjectIdentifier`/`Aces`; empty data invents nothing), PingCastle XML, CIS-CAT/XCCDF XML/JSON (fail only), HardeningKitty Audit CSV (Failed/warning only; does not invent Windows findings) |

@@ -101,6 +101,10 @@ hosts and exposure findings only — the collector never runs `nmap`. Discover
 may land DEMO stub gnmap from `farm/tool-bin/lab/nmap`. Open 445 / 3389 / 23
 map to existing SMB / RDP / Telnet POA&M rows.
 
+masscan **`-oX` XML / `-oJ` JSON** is the same `in/nmap/` file-drop path.
+Open ports only. Empty exports invent nothing. The collector never runs
+masscan. The catalog slot stays `file_drop` / `use_dont_ship`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to

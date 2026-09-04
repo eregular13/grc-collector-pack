@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap gnmap/XML/JSON into hosts + exposure findings. Does not run nmap."""
+"""Parse dropped Nmap gnmap/XML/JSON and masscan -oX/-oJ into hosts + exposure.
+
+Parse-only. Does not run nmap or masscan.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_text, run_collector
+from shared.masscan import parse_masscan
 from shared.schema import make_record, make_ref
 
 SOURCE = "inventory-nmap"
@@ -167,6 +171,23 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
 def parse_file(path: Path) -> list[dict]:
     raw = read_text(path)
     now = iso_now()
+    mass = parse_masscan(path, raw)
+    if mass is not None:
+        records: list[dict] = []
+        for host in mass:
+            ports = list(host.get("ports") or [])
+            if not ports:
+                continue
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                ports,
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
     stripped = raw.lstrip("\ufeff").lstrip()
     if path.suffix.lower() == ".json" or stripped.startswith("{") or stripped.startswith("["):
         try:

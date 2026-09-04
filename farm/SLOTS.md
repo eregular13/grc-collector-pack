@@ -47,12 +47,16 @@ LICENSE-LOCK names stay file_drop and are never subprocessed.
 ## Nmap file-drop (Layer C)
 
 Drop Nmap **gnmap** (`-oG`), **XML** (`-oX`), or a thin **JSON** host/port
-export under `in/nmap/`. The inventory-nmap collector is parse-only — it
-never subprocesses `nmap`. Orchestrator discover may land DEMO stub gnmap
+export under `in/nmap/`. Also drop **masscan** `-oX` XML or `-oJ` JSON
+(`scanner="masscan"`, `{ip, ports:[{port, proto, status}]}`). Open ports
+only — empty `ports` / empty `nmaprun` invent nothing. masscan stays
+`file_drop` / `use_dont_ship` (never subprocess). The inventory-nmap
+collector is parse-only — it never subprocesses `nmap` or `masscan`.
+Orchestrator discover may land DEMO stub gnmap
 (`farm/tool-bin/lab/nmap` → `dropbox-discover-*.gnmap`) or BYO output.
 Open 445 / 3389 / 23 map to the existing CISO/POA&M rows (SMB, RDP, Telnet).
-Empty `in/` still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`).
-No new catalog slots.
+Empty `in/` still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`,
+`masscan.xml`). No new catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 

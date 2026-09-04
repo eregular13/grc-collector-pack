@@ -313,6 +313,58 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     names = {p.name for p in files}
     assert "scan.gnmap" in names
     assert "scan.xml" in names
+    assert "masscan.xml" in names
+
+
+def test_masscan_xml_rdp_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "masscan.xml")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "filesrv.corp.local" in assets
+    assert "10.0.0.50" not in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert (findings[0].get("extra") or {}).get("port") == "3389"
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "rdp" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_masscan_json_and_empty(tmp_path) -> None:
+    dest = tmp_path / "masscan.json"
+    dest.write_text(
+        """[{"ip":"10.0.0.50","ports":[{"port":445,"proto":"tcp","status":"open"},
+         {"port":22,"proto":"tcp","status":"closed"}]}]""",
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any((r.get("extra") or {}).get("port") == "445" for r in findings)
+    assert not any((r.get("extra") or {}).get("port") == "22" for r in findings)
+    dest.write_text("[]", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text('{"ip":"10.0.0.50","ports":[]}', encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    xml = tmp_path / "empty-masscan.xml"
+    xml.write_text(
+        '<?xml version="1.0"?><!--masscan--><nmaprun scanner="masscan"></nmaprun>',
+        encoding="utf-8",
+    )
+    assert inventory_nmap.parse_file(xml) == []
+
+
+def test_masscan_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/masscan.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "masscan -p" not in src
+        assert "masscan --" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
 
 
 def test_bloodhound_edges() -> None:
