@@ -2,7 +2,13 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 60):** LICENSE-LOCK / compose honesty. pytest now
+**This window (cycle 61):** wrap-dead farm SOP. RiskReady wrap stays dead
+forever — no login, no assets/evidence/incidents POST, not only
+`/api/risks`. Farm SOP never points at a RiskReady write. Stale
+IMPORT_RR/SECURITY dual-gate wrap language removed. No new Layer C
+parser. Catalog unchanged. Paying-day **FAIL**. Compose **ABSENT**.
+
+**Cycle 60 (stands):** LICENSE-LOCK / compose honesty. pytest now
 asserts BloodHound / Nuclei / OpenVAS/GVM / PingCastle / enum4linux-ng /
 smbmap (and the rest of the lock list) never appear in invoke
 `will_run=true` even when every slot is allowlisted and on PATH.
@@ -25,7 +31,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**294 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**296 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -37,7 +43,7 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make dropbox-lab` | 69 | 87 | 19 | 27 | 84 | true |
 
 **Deltas vs cycle 59:** lab counts unchanged (honesty/docs/test only).
-pytest **293→294**. Catalog / wrap / compose / paying-day unchanged.
+pytest **293→296**. Catalog / wrap / compose / paying-day unchanged.
 
 **Deltas vs cycle 58 (enum4linux-ng, still standing):** host/farm findings
 **76→78**, POA&M **79→81** (demo null session + Domain Admins on existing

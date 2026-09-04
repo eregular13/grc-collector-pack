@@ -1,6 +1,6 @@
-cycle: 60
+cycle: 61
 phase: DONE
-item: LICENSE-LOCK-WILL-RUN-COMPOSE-DOCS
+item: WRAP-DEAD-FARM-SOP
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 294
+pytest: 296
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -24,4 +24,5 @@ compose_lab_reason: docker CLI not on PATH
 scanner_free: true
 sink: absent
 paying_day: FAIL
+wrap: review-only
 next_action: compose runtime only on an operator Docker host using documented PASS criteria; remaining window hardens existing farm/SCOPE honesty, not new Layer C parsers

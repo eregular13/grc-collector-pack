@@ -24,6 +24,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Done this window: SARIF, cloud ASFF, HK/Lynis, testssl/Maester, k8s, nmap, BloodHound CE, Fleet, Nuclei JSON, CIS-CAT/osquery, EASM, Checkov/Gitleaks, ffuf/gobuster, Nikto, Nessus `.nessus`, Scuba/Okta SaaS, WhatWeb, sslscan, masscan, rustscan/naabu, arp-scan, fping, netdiscover, nbtscan, smbmap, enum4linux-ng file-drop
 - After cycle 59: stop vanity Layer C parser expansion; harden farm/SCOPE honesty + compose-on-Docker operator docs. Paying-day FAIL. Compose ABSENT until proven on a Docker host.
 - Cycle 60 done: LICENSE-LOCK will_run test + compose PASS criteria docs.
+- Cycle 61 done: wrap-dead farm SOP (no RiskReady write path).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

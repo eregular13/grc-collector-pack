@@ -16,7 +16,7 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 | `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 87 | 19 | 27 | 84 | true |
 | `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 79 | 19 | 27 | 81 | true |
 
-pytest **294 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/78/27 poam 81 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **296 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/78/27 poam 81 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 61):** Wrap-dead farm SOP. RiskReady wrap stays dead forever (no login / no assets / no incidents / no evidence POST — not only `/api/risks`). Farm SOP never points at a RiskReady write. Stale dual-gate wrap docs removed. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 59.
 
 **Delta (cycle 60):** Harden existing rails, no new parser. pytest asserts LICENSE-LOCK / file_drop-only names never appear in invoke `will_run=true` even when every slot is allowlisted and on PATH. Operator docs list exact `docker compose` commands and PASS criteria. This VM compose remains ABSENT (hole, not a PASS). Paying-day FAIL. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 59.
 

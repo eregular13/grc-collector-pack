@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 61 — wrap-dead farm SOP (2026-09-04)
+
+RiskReady wrap stays dead forever: no login, no assets/evidence/incidents POST, not only `/api/risks`. Stale `docs/IMPORT_RR.md` / `SECURITY.md` dual-gate wrap language removed. Farm SOP never points at a RiskReady write (tested). `push_riskready.sh` remains review-only even if `RISKREADY_PUSH=1`. Catalog **not inflated**. pytest **296**. Labs unchanged vs cycle 59 (64/78/19/27 poam 81). Compose ABSENT. Paying-day FAIL. enum4linux-ng cycle 59 stands. No new Layer C parser.
+
+```json
+{"pytest": 296, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 78, "vulns": 19, "evidence": 27, "poam": 81}, "farm_lab": {"assets": 64, "findings": 78, "poam": 81, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 79, "vulns": 19, "poam": 81, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 87, "vulns": 19, "poam": 84, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL"}
+```
+
 ## cycle 60 — LICENSE-LOCK will_run rail + compose-on-Docker docs (2026-09-04)
 
 pytest asserts LICENSE-LOCK / file_drop-only names (BloodHound, Nuclei, OpenVAS/GVM, PingCastle, enum4linux-ng, smbmap, …) never appear in invoke `will_run=true` even when every slot is allowlisted and on PATH. Operator docs list exact `docker compose` commands and PASS criteria for a host with Docker. This VM still stamps compose **ABSENT**. Paying-day **FAIL**. Catalog **not inflated**. pytest **294**. Labs unchanged vs cycle 59 (64/78/19/27 poam 81). enum4linux-ng cycle 59 stands. No new Layer C parser.
