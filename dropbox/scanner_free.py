@@ -127,6 +127,25 @@ WRAP_POST_RE = re.compile(
     r"|\$\{API\}/(?:auth/login|itsm/assets|evidence|incidents|risks))",
     re.IGNORECASE,
 )
+# Compose/Dockerfile argv: scanner name as a token, not a substring of
+# collectors/inventory_nmap.py (underscore binds the word).
+_CMD_KEY_RE = re.compile(
+    r"^(?P<indent>\s*)(?P<key>command|entrypoint)\s*:\s*(?P<rest>.*)$",
+    re.IGNORECASE,
+)
+_DOCKERFILE_CMD_RE = re.compile(
+    r"^(?P<indent>\s*)(?P<key>CMD|ENTRYPOINT)\s+(?P<rest>.*)$",
+)
+_BLOCK_FOLD = frozenset({">", "|", ">-", "|-", ">+", "|+"})
+COMPOSE_SCANNER_TOKEN_RE = re.compile(
+    rf"(?:^|[\s,\[])[\"']?(?:/(?:usr|opt|bin|sbin|local)(?:/[\w.-]+)*/)?(?:{_PKG})[\"']?(?:$|[\s,\]#])",
+    re.IGNORECASE,
+)
+COMPOSE_WRAP_PATH_RE = re.compile(
+    r"(?:/api/risks|/api/auth/login|/itsm/assets|/api/evidence(?!s)|/api/incidents"
+    r"|\$\{API\}/(?:auth/login|itsm/assets|evidence|incidents|risks))",
+    re.IGNORECASE,
+)
 RUN_SCANNER_RE = re.compile(
     r"^\s*RUN\s+(?:apt|apk|yum|dnf|pip)",
     re.IGNORECASE | re.MULTILINE,
@@ -135,6 +154,83 @@ ALLOWED_COMPOSE_IMAGES = (
     "grc-collector-pack:local",
     "${FARM_ORCH_IMAGE:-grc-collector-pack:local}",
 )
+
+
+def _strip_unquoted_comment(line: str) -> str:
+    """Drop a trailing # comment that is not inside quotes."""
+    in_q: str | None = None
+    escaped = False
+    out: list[str] = []
+    for ch in line:
+        if in_q:
+            out.append(ch)
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\" and in_q == '"':
+                escaped = True
+                continue
+            if ch == in_q:
+                in_q = None
+            continue
+        if ch in "\"'":
+            in_q = ch
+            out.append(ch)
+            continue
+        if ch == "#":
+            break
+        out.append(ch)
+    return "".join(out)
+
+
+def _iter_command_payloads(text: str) -> list[str]:
+    """command/entrypoint (compose) and CMD/ENTRYPOINT (Dockerfile) payloads."""
+    payloads: list[str] = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            i += 1
+            continue
+        match = _CMD_KEY_RE.match(line) or _DOCKERFILE_CMD_RE.match(line)
+        if not match:
+            i += 1
+            continue
+        rest = _strip_unquoted_comment(match.group("rest")).strip()
+        if rest and rest not in _BLOCK_FOLD:
+            payloads.append(rest)
+            i += 1
+            continue
+        base = len(match.group("indent"))
+        i += 1
+        while i < len(lines):
+            nxt = lines[i]
+            if not nxt.strip():
+                i += 1
+                continue
+            if nxt.lstrip().startswith("#"):
+                i += 1
+                continue
+            lead = len(nxt) - len(nxt.lstrip(" "))
+            if lead <= base:
+                break
+            payloads.append(_strip_unquoted_comment(nxt).strip())
+            i += 1
+    return payloads
+
+
+def _command_argv_hits(text: str, label: str) -> list[str]:
+    """Flag scanner binaries or wrap POST paths as compose/Dockerfile argv."""
+    hits: list[str] = []
+    for payload in _iter_command_payloads(text):
+        token_src = re.sub(r"^-\s+", "", payload)
+        if COMPOSE_SCANNER_TOKEN_RE.search(token_src):
+            hits.append(f"{label}: scanner-argv: {payload[:160]}")
+        if COMPOSE_WRAP_PATH_RE.search(payload):
+            hits.append(f"{label}: wrap-post-argv: {payload[:160]}")
+    return hits
 
 
 def scan_text(text: str, label: str) -> list[str]:
@@ -151,6 +247,7 @@ def scan_text(text: str, label: str) -> list[str]:
     ):
         for match in rx.finditer(text):
             hits.append(f"{label}: {kind}: {match.group(0).strip()[:160]}")
+    hits.extend(_command_argv_hits(text, label))
     return hits
 
 

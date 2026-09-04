@@ -77,6 +77,35 @@ def test_wrap_post_in_image_file_is_caught() -> None:
     assert comment == []
 
 
+def test_compose_command_scanner_argv_is_caught() -> None:
+    """command/entrypoint/CMD must not invoke scanners; inventory_nmap.py is parse-only."""
+    assert scan_text('command: ["nmap", "-sV"]\n', "compose")
+    assert scan_text("command: nmap -sV target\n", "compose")
+    assert scan_text('entrypoint: ["/usr/bin/nuclei"]\n', "compose")
+    assert scan_text("entrypoint: /usr/bin/nessus\n", "compose")
+    assert scan_text('CMD ["openvas"]\n', "Dockerfile")
+    assert scan_text("command: |\n  nmap -sV\n", "compose")
+    assert scan_text("command:\n  - nmap\n  - -sV\n", "compose")
+    wrap = 'command: ["curl", "-X", "POST", "https://x.invalid/api/risks"]\n'
+    hits = scan_text(wrap, "compose")
+    assert hits and any("wrap-post" in h for h in hits)
+    clean = scan_text(
+        'command: ["python", "collectors/inventory_nmap.py"]\n',
+        "compose",
+    )
+    assert clean == []
+    clean = scan_text(
+        'CMD ["python", "collectors/inventory_nmap.py"]\n',
+        "Dockerfile",
+    )
+    assert clean == []
+    comment = scan_text(
+        'command: ["python", "-m", "dropbox"]  # never nmap / never POST /api/risks\n',
+        "compose",
+    )
+    assert comment == []
+
+
 def test_dockerfile_and_compose_are_scanner_free() -> None:
     assert_image_files_scanner_free()
     assert_dropbox_compose_is_demo_dry()
