@@ -1,0 +1,189 @@
+"""Operator MCP stub hooks. SCOPE-gated. No exploit / attack API.
+
+Wraps existing dropbox CLI and orchestrator functions. Does not start a
+Hexstrike server, does not submodule hexstrike-ai, and does not expose
+Metasploit / AIExploitGenerator / exploit-chain tools.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from dropbox.orchestrator import byo
+from dropbox.orchestrator.farm import Farm
+from dropbox.orchestrator.pipeline import (
+    _orch_dir,
+    deepen_stage,
+    discover_stage,
+    ingest_stage,
+    integrity_stops,
+    orchestrate,
+)
+from dropbox.scope import GateError, load_scope
+
+OPERATOR_TOOLS = (
+    "scope_status",
+    "orchestrator_plan",
+    "orchestrator_status",
+    "stage_discover",
+    "stage_deepen",
+    "stage_ingest",
+    "export_ciso_poam",
+)
+
+# Substrings that must never become callable tools.
+REFUSED_ATTACK = (
+    "hexstrike",
+    "aiexploitgenerator",
+    "metasploit",
+    "msfconsole",
+    "exploit-chain",
+    "exploitchain",
+    "unauth-autonomous",
+    "autonomous spray",
+)
+
+
+def refuse_attack_name(name: str) -> None:
+    low = (name or "").strip().lower().replace("_", "-")
+    for bad in REFUSED_ATTACK:
+        if bad in low:
+            raise GateError(f"operator MCP refuses {name!r} (no exploit/attack API)")
+
+
+def dispatch(
+    name: str,
+    *,
+    live: bool = False,
+    scope_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Run one operator tool. Deepen stays fail-closed. Live still BYO-only."""
+    refuse_attack_name(name)
+    tool = (name or "").strip().lower()
+    if tool not in OPERATOR_TOOLS:
+        raise GateError(f"unknown operator tool {name!r}")
+    path = Path(scope_path) if scope_path else None
+    if tool == "scope_status":
+        return scope_status(scope_path=path)
+    if tool == "orchestrator_plan":
+        return orchestrator_plan(scope_path=path)
+    if tool == "orchestrator_status":
+        return orchestrator_status(scope_path=path)
+    if tool == "stage_discover":
+        return stage_discover(scope_path=path, live=live)
+    if tool == "stage_deepen":
+        return stage_deepen_tool(scope_path=path, live=live)
+    if tool == "stage_ingest":
+        return stage_ingest(scope_path=path)
+    return export_ciso_poam()
+
+
+def scope_status(scope_path: Path | None = None) -> dict[str, Any]:
+    scope = load_scope(scope_path)
+    return {
+        "tool": "scope_status",
+        "client": scope.client_name,
+        "window": f"{scope.window_start} .. {scope.window_end}",
+        "stage_discover": scope.stage_discover,
+        "stage_deepen": scope.stage_deepen,
+        "max_workers": scope.max_workers,
+        "deepen_batch": scope.deepen_batch,
+        "allow_tools": list(scope.allow_tools),
+        "path_matrix": byo.tool_matrix(scope.allow_tools),
+        "integrity_stops": integrity_stops(scope),
+        "demo": "DEMO" in scope.client_name.upper(),
+    }
+
+
+def orchestrator_plan(scope_path: Path | None = None) -> dict[str, Any]:
+    """Always plan-only. Never implies --live."""
+    scope = load_scope(scope_path)
+    summary = orchestrate(scope, live=False)
+    summary["tool"] = "orchestrator_plan"
+    summary["live"] = False
+    return summary
+
+
+def orchestrator_status(scope_path: Path | None = None) -> dict[str, Any]:
+    import json
+
+    scope = load_scope(scope_path)
+    summary_path = _orch_dir() / "summary.json"
+    last: dict[str, Any] = {}
+    if summary_path.is_file():
+        last = json.loads(summary_path.read_text(encoding="utf-8"))
+    disc = last.get("discover") or {}
+    deep = last.get("deepen") or {}
+    return {
+        "tool": "orchestrator_status",
+        "stage_graph": "discover (quiet) → deepen (loud, gated) → ingest (parse-only)",
+        "stage_discover": scope.stage_discover,
+        "stage_deepen": scope.stage_deepen,
+        "max_workers": scope.max_workers,
+        "deepen_batch": scope.deepen_batch,
+        "path_matrix": byo.tool_matrix(scope.allow_tools),
+        "last_integrity_stop": last.get("last_integrity_stop")
+        or disc.get("skip_reason")
+        or deep.get("skip_reason")
+        or "",
+        "shard_count": disc.get("shard_count"),
+        "batch_count": deep.get("batch_count"),
+        "discover_destroyed": disc.get("destroyed"),
+        "deepen_destroyed": deep.get("destroyed"),
+        "demo": "DEMO" in scope.client_name.upper(),
+    }
+
+
+def stage_discover(scope_path: Path | None = None, live: bool = False) -> dict[str, Any]:
+    scope = load_scope(scope_path)
+    farm = Farm(max_workers=scope.max_workers)
+    plan = discover_stage(scope, farm, live=live)
+    plan["tool"] = "stage_discover"
+    return plan
+
+
+def stage_deepen_tool(scope_path: Path | None = None, live: bool = False) -> dict[str, Any]:
+    scope = load_scope(scope_path)
+    if not scope.stage_deepen:
+        raise GateError("orchestrator.stages.deepen is not true")
+    farm = Farm(max_workers=scope.max_workers)
+    plan = deepen_stage(scope, farm, live=live)
+    plan["tool"] = "stage_deepen"
+    return plan
+
+
+def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
+    scope = load_scope(scope_path)
+    marker = ingest_stage(scope)
+    marker["tool"] = "stage_ingest"
+    marker["note"] = (
+        marker.get("note")
+        or "Layer B feeds Layer C via in/. Collectors stay parse-only."
+    )
+    return marker
+
+
+def export_ciso_poam() -> dict[str, Any]:
+    """Point at existing CISO/POA&M files. Does not invent owner or due."""
+    import os
+
+    raw = os.environ.get("OUT_DIR")
+    root = Path(raw) if raw else Path(__file__).resolve().parents[1] / "out"
+    ciso = root / "ciso-assistant"
+    poam = root / "poam"
+    files = []
+    for folder in (ciso, poam):
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.iterdir()):
+            if path.is_file():
+                files.append(str(path))
+    return {
+        "tool": "export_ciso_poam",
+        "ciso_dir": str(ciso),
+        "poam_dir": str(poam),
+        "files": files,
+        "owner_due": "blank — human fills",
+        "posted": False,
+    }

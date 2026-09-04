@@ -2,6 +2,8 @@
 
 Reid’s delivery is a **consented drop-box**, not a SaaS scanner and not a RiskReady wrap.
 
+Three layers (see `ARCHITECTURE.md`): **A** BYO tools on the box under SCOPE · **B** orchestrator = brakes (quiet discover → gated deepen → destroy → ingest) · **C** existing 10 containers parse `in/` only. Layer B feeds Layer C via `in/`; it does not turn collectors into live scanners. “100 tools” = parser file families, not 100 compose binaries. Hexstrike is a UX pattern only (`HEXSTRIKE.md`) — no exploit-chain, no vendor submodule.
+
 With written consent he places a VM, fills `SCOPE.yaml` (client, attestation hash, window, named internal CIDRs/hosts, named external hosts/domains/IPs), runs **internal** then **external**, and hands CISO Assistant CSVs from this pack.
 
 **This checkout’s `dropbox/SCOPE.yaml` is DEMO.** Empty pack `in/` is still fixture theater until an operator drops real files or runs a consented box.

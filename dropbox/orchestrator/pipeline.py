@@ -82,8 +82,19 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
             timeout_sec=scope.host_timeout_sec,
         )
         if use_live and worker.argv:
-            worker.status = "ran"
-            plan["mode"] = "live"
+            dest_out = _orch_dir() / "discover" / f"{worker.wid}.gnmap"
+            try:
+                rc = byo.run_allowed(
+                    worker.argv,
+                    dest_out,
+                    scope.host_timeout_sec,
+                    allow_tools=stage_allow,
+                )
+                worker.status = "ran" if rc == 0 else "failed"
+                plan["mode"] = "live"
+            except (OSError, TimeoutError, GateError) as exc:
+                worker.status = "failed"
+                plan["skip_reason"] = str(exc)[:240]
         else:
             worker.status = "skipped"
         plan["workers"].append(
@@ -201,9 +212,21 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
             timeout_sec=scope.host_timeout_sec,
         )
         if run_live and exe and worker.argv and live_left > 0:
-            worker.status = "ran"
-            plan["mode"] = "live"
-            live_left -= 1
+            dest_out = _orch_dir() / "deepen" / f"{worker.wid}.txt"
+            try:
+                rc = byo.run_allowed(
+                    worker.argv,
+                    dest_out,
+                    scope.host_timeout_sec,
+                    allow_tools=stage_allow,
+                )
+                worker.status = "ran" if rc == 0 else "failed"
+                plan["mode"] = "live"
+                live_left -= 1
+            except (OSError, TimeoutError, GateError) as exc:
+                worker.status = "failed"
+                plan["skip_reason"] = str(exc)[:240]
+                live_left -= 1
         else:
             worker.status = "skipped"
         plan["workers"].append(
@@ -221,6 +244,33 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
     plan["deepen_workers_alive"] = len(farm.alive("deepen"))
     _write_json(dest, plan)
     return plan
+
+
+def collect_discover_hosts(discover_dir: Path | None = None) -> list[str]:
+    """Parse discover *.gnmap Host lines. Up hosts only. No CIDR fallback."""
+    folder = discover_dir or (_orch_dir() / "discover")
+    hosts: list[str] = []
+    if not folder.is_dir():
+        return hosts
+    for path in sorted(folder.glob("*.gnmap")):
+        try:
+            raw = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line in raw.splitlines():
+            if not line.startswith("Host:"):
+                continue
+            if "Status: Down" in line:
+                continue
+            rest = line[len("Host:") :].strip()
+            addr = rest.split()[0] if rest.split() else ""
+            hostname = ""
+            if "(" in rest:
+                hostname = rest.split("(", 1)[1].split(")", 1)[0].strip()
+            name = hostname or addr
+            if name and name not in hosts:
+                hosts.append(name)
+    return hosts
 
 
 def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
@@ -256,7 +306,8 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
     discover = discover_stage(scope, farm, live=live)
     if farm.alive("discover"):
         raise GateError("discover workers still alive after destroy")
-    deepen = deepen_stage(scope, farm, live=live)
+    live_hosts = collect_discover_hosts(_orch_dir() / "discover") if live else None
+    deepen = deepen_stage(scope, farm, live=live, live_hosts=live_hosts)
     if farm.alive("deepen"):
         raise GateError("deepen workers still alive after destroy")
     ingest = ingest_stage(scope, dest_in=dest_in)
@@ -277,15 +328,20 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "volume": discover["volume"],
             "destroyed": discover["discover_workers_destroyed"],
             "alive": discover["discover_workers_alive"],
+            "skip_reason": discover.get("skip_reason") or "",
         },
         "deepen": {
             "batch_count": deepen["batch_count"],
             "mode": deepen["mode"],
             "volume": deepen["volume"],
             "destroyed": deepen.get("deepen_workers_destroyed", 0),
+            "skip_reason": deepen.get("skip_reason") or "",
+            "host_source": deepen.get("host_source") or "",
         },
         "ingest": ingest,
         "integrity_stops": integrity_stops(scope),
+        "last_integrity_stop": (discover.get("skip_reason") or deepen.get("skip_reason") or ""),
+        "path_matrix": byo.tool_matrix(scope.allow_tools),
     }
     _write_json(_orch_dir() / "summary.json", summary)
     return summary

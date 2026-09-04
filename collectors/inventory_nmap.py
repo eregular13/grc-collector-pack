@@ -21,6 +21,22 @@ RISKY = {
 }
 
 
+def _is_dropbox_demo(path: Path, raw: str) -> bool:
+    name = path.name.lower()
+    if name.startswith("dropbox-"):
+        return True
+    return "DEMO — not a client estate" in raw or "DEMO -- not a client estate" in raw
+
+
+def _stamp_demo(records: list[dict], demo: bool) -> None:
+    if not demo:
+        return
+    for rec in records:
+        labels = rec.setdefault("labels", [])
+        if "demo" not in labels:
+            labels.append("demo")
+
+
 def _emit_host(records: list[dict], now: str, name: str, addr: str, hostname: str, ports: list[tuple[str, str]]) -> None:
     records.append(
         make_record(
@@ -59,6 +75,22 @@ def _emit_host(records: list[dict], now: str, name: str, addr: str, hostname: st
                 extra={"port": portid, "service": svc, "ip": addr},
             )
         )
+        if portid == "445":
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{name}-admin-share"),
+                    name=f"Administrative share exposed on {name} (C$/ADMIN$)",
+                    description=f"{name} has SMB open; C$/ADMIN$ administrative shares should be restricted.",
+                    severity="medium",
+                    category="exposure",
+                    assets=[name],
+                    labels=LABELS + ["admin-share"],
+                    collected_at=now,
+                    extra={"service": "admin-share", "ip": addr},
+                )
+            )
 
 
 def parse_gnmap(raw: str, now: str) -> list[dict]:
@@ -93,7 +125,9 @@ def parse_file(path: Path) -> list[dict]:
     raw = read_text(path)
     now = iso_now()
     if not raw.lstrip().startswith("<"):
-        return parse_gnmap(raw, now)
+        records = parse_gnmap(raw, now)
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
     root = ET.fromstring(raw)
     now = iso_now()
     records: list[dict] = []
@@ -124,6 +158,7 @@ def parse_file(path: Path) -> list[dict]:
                 svc = service.attrib.get("name", "") if service is not None else ""
                 ports.append((portid, svc))
         _emit_host(records, now, name, addr, hostname, ports)
+    _stamp_demo(records, _is_dropbox_demo(path, raw))
     return records
 
 

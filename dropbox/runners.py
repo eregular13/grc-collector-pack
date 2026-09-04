@@ -39,10 +39,21 @@ def _run_cmd(argv: list[str], timeout: int = 30) -> subprocess.CompletedProcess[
     )
 
 
+_DEMO_HOST_PORTS: dict[str, list[tuple[str, str]]] = {
+    "db-01.demo.internal": [("445", "microsoft-ds"), ("22", "ssh")],
+    "app-02.demo.internal": [("3389", "ms-wbt-server"), ("22", "ssh")],
+    "app-01.demo.internal": [("80", "http"), ("22", "ssh")],
+    "dropbox-lab.local": [("22", "ssh")],
+    "127.0.0.1": [("22", "ssh")],
+}
+
+
 def write_inventory(scope: Scope, demo: bool = DEMO) -> Path:
     """Local ss/ip listen table → gnmap for inventory-nmap. Never Nmap."""
     dest = _sensor_dir("nmap") / "dropbox-inventory.gnmap"
     lines = ["# dropbox local inventory (ss/ip). Not Nmap."]
+    if demo:
+        lines.append("# DEMO — not a client estate")
     hosts: dict[str, tuple[str, list[tuple[str, str]]]] = {}
 
     if "ss" in scope.allow_tools or "ip" in scope.allow_tools:
@@ -67,7 +78,10 @@ def write_inventory(scope: Scope, demo: bool = DEMO) -> Path:
         for name in scope.internal_hosts:
             addr = name if _looks_ip(name) else "10.0.0.10"
             host = name if not _looks_ip(name) else socket.gethostname() or "dropbox-local"
-            hosts.setdefault(host, (addr, [("22", "ssh"), ("80", "http")]))
+            ports = _DEMO_HOST_PORTS.get(name) or _DEMO_HOST_PORTS.get(host)
+            if not ports:
+                ports = [("22", "ssh"), ("80", "http")]
+            hosts.setdefault(host, (addr, list(ports)))
 
     for name, (addr, ports) in hosts.items():
         port_s = ", ".join(f"{p}/open/tcp//{svc}///" for p, svc in ports) or "22/open/tcp//ssh///"
@@ -93,6 +107,7 @@ def write_lynis(scope: Scope, demo: bool = DEMO) -> Path | None:
         "osquery": [{"hostname": host, "status": "active", "source": "dropbox-lynis"}],
         "notes": "Lynis findings are not parsed (no Lynis collector). Host ingested via osquery shape.",
         "demo": demo or not bool(lynis),
+        "label": "DEMO — not a client estate" if demo else "host lynis",
     }
     dest_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return dest_json
@@ -112,9 +127,15 @@ def write_tls_headers(scope: Scope, demo: bool = DEMO, live: bool = LIVE) -> Pat
             "host": target.split("://")[-1].split("/")[0].split(":")[0],
             "url": target if "://" in target else f"https://{target}",
             "status_code": 0,
-            "title": "dropbox-demo no live curl",
+            "title": "DEMO — not a client estate (no live curl)",
             "tech": ["dropbox-demo"],
         }
+        if demo and (
+            row["host"].lower().startswith(("vpn.", "admin."))
+            or ".vpn." in f".{row['host'].lower()}"
+        ):
+            row["title"] = "DEMO — TLS weak cipher (not a client estate)"
+            row["tech"] = ["dropbox-demo", "tls-weak-cipher"]
         if live and not demo and "curl" in scope.allow_tools:
             curl = _which("curl")
             if not curl:

@@ -1,0 +1,115 @@
+"""Operator MCP stub: SCOPE-gated, no Hexstrike/exploit API."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from dropbox.mcp_stub import OPERATOR_TOOLS, dispatch, refuse_attack_name
+from dropbox.scope import GateError
+
+ROOT = Path(__file__).resolve().parents[1]
+SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
+
+
+def test_architecture_docs_three_layers() -> None:
+    text = (ROOT / "dropbox" / "ARCHITECTURE.md").read_text(encoding="utf-8")
+    assert "Layer A" in text and "Layer B" in text and "Layer C" in text
+    assert "parse-only" in text.lower()
+    assert "does **not** turn Layer C" in text or "does not turn Layer C" in text.lower()
+    assert "100 embedded binaries" in text or "not 100 embedded" in text.lower()
+    hexstrike = (ROOT / "dropbox" / "HEXSTRIKE.md").read_text(encoding="utf-8")
+    assert "Metasploit" in hexstrike
+    assert "AIExploitGenerator" in hexstrike
+    assert "submodule" in hexstrike.lower()
+    iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
+    for name in OPERATOR_TOOLS:
+        assert name in iface
+
+
+def test_no_hexstrike_submodule() -> None:
+    assert not (ROOT / "hexstrike-ai").exists()
+    gitmodules = ROOT / ".gitmodules"
+    if gitmodules.is_file():
+        assert "hexstrike" not in gitmodules.read_text(encoding="utf-8").lower()
+    blob = (ROOT / "dropbox" / "mcp_stub.py").read_text(encoding="utf-8")
+    assert "AIExploitGenerator" in blob
+    assert "does not start a Hexstrike server" in blob or "Does not start a Hexstrike" in blob
+
+
+def test_refuse_attack_names() -> None:
+    for name in (
+        "AIExploitGenerator",
+        "metasploit",
+        "msfconsole",
+        "exploit-chain",
+        "hexstrike_run",
+    ):
+        with pytest.raises(GateError, match="refuses"):
+            refuse_attack_name(name)
+        with pytest.raises(GateError, match="refuses"):
+            dispatch(name)
+
+
+def test_unknown_operator_tool_refused() -> None:
+    with pytest.raises(GateError, match="unknown operator tool"):
+        dispatch("nuke_the_lan")
+
+
+def test_mcp_cli_scope_status() -> None:
+    import subprocess
+
+    proc = subprocess.run(
+        ["python3", "-m", "dropbox", "mcp", "scope_status", "--scope", str(SCOPE)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "scope_status" in proc.stdout
+    assert "path_matrix" in proc.stdout
+
+
+def test_scope_status_and_status_tools() -> None:
+    st = dispatch("scope_status", scope_path=SCOPE)
+    assert st["tool"] == "scope_status"
+    assert "DEMO" in st["client"]
+    assert st["max_workers"] == 2
+    assert st["path_matrix"]
+    assert any(row["tool"] == "nmap" for row in st["path_matrix"])
+    obs = dispatch("orchestrator_status", scope_path=SCOPE)
+    assert "discover (quiet)" in obs["stage_graph"]
+    assert obs["tool"] == "orchestrator_status"
+
+
+def test_stage_deepen_requires_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import hashlib
+
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    att = tmp_path / "consent.md"
+    att.write_text("ok\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "orchestrator:\n  stages:\n    discover: true\n    deepen: false\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="stages.deepen"):
+        dispatch("stage_deepen", scope_path=scope)
+
+
+def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    (tmp_path / "out" / "poam").mkdir(parents=True)
+    (tmp_path / "out" / "poam" / "poam.csv").write_text("weakness,owner,due\nsmb,,\n", encoding="utf-8")
+    data = dispatch("export_ciso_poam")
+    assert data["posted"] is False
+    assert data["owner_due"].startswith("blank")
+    assert any(p.endswith("poam.csv") for p in data["files"])

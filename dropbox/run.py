@@ -36,11 +36,15 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    if not os.environ.get("IN_DIR") and os.environ.get("DROPBOX_WORK_IN"):
+        os.environ["IN_DIR"] = os.environ["DROPBOX_WORK_IN"]
     scope = load_scope(Path(args.scope) if args.scope else None)
     _print_gate(scope)
     demo = not args.live
     os.environ["DROPBOX_DEMO"] = "0" if args.live else "1"
     os.environ["DROPBOX_LIVE"] = "1" if args.live else "0"
+    if demo:
+        print("DEMO profile — not a client estate")
     written: list[Path] = []
     profile = args.profile
     if profile in {"internal", "all"}:
@@ -72,22 +76,29 @@ def _seed_fixtures(dest_in: Path) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
+    from dropbox.orchestrator import byo
     from dropbox.orchestrator.pipeline import _orch_dir, integrity_stops
 
     scope = load_scope(Path(args.scope) if args.scope else None)
     _print_gate(scope)
     print("governor: quiet→loud")
+    print("stage graph: discover (quiet) → deepen (loud, gated) → ingest (parse-only)")
     print(
-        f"  stage=discover volume=quiet shards=plan "
+        f"  stage=discover volume=quiet armed={scope.stage_discover} "
         f"prefix=/{scope.discover_prefix} max_workers={scope.max_workers}"
     )
     print(
         f"  stage=deepen volume=loud armed={scope.stage_deepen} "
         f"batch={scope.deepen_batch} deepen_hosts={len(scope.deepen_hosts)}"
     )
+    print("  stage=ingest Layer C collectors — files in in/ only; not live scanners")
     print("integrity stops:")
     for stop in integrity_stops(scope):
         print(f"  - {stop}")
+    print("allow_tools ∩ PATH:")
+    for row in byo.tool_matrix(scope.allow_tools):
+        loc = row["path"] or "—"
+        print(f"  {row['tool']:12} {row['state']:8} {loc}")
     summary_path = _orch_dir() / "summary.json"
     if summary_path.is_file():
         data = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -98,10 +109,26 @@ def cmd_status(args: argparse.Namespace) -> int:
             f"destroyed={disc.get('destroyed')} | deepen mode={deep.get('mode')} "
             f"batches={deep.get('batch_count')} destroyed={deep.get('destroyed')}"
         )
+        last_stop = (
+            data.get("last_integrity_stop")
+            or disc.get("skip_reason")
+            or deep.get("skip_reason")
+            or ""
+        )
+        print(f"last integrity stop: {last_stop or 'none (run completed under brakes)'}")
         if "DEMO" in str(data.get("client") or "").upper():
             print("DEMO fixtures ≠ client estate.")
     else:
         print("last run: none (python3 -m dropbox orchestrate)")
+        print("last integrity stop: none")
+    return 0
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    from dropbox.mcp_stub import dispatch
+
+    result = dispatch(args.tool, live=False, scope_path=Path(args.scope) if args.scope else None)
+    print(json.dumps(result, indent=2, default=str))
     return 0
 
 
@@ -163,6 +190,10 @@ def build_parser() -> argparse.ArgumentParser:
     st = sub.add_parser("status", help="show SCOPE brakes and last orchestrator run")
     st.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     st.set_defaults(func=cmd_status)
+    mcp = sub.add_parser("mcp", help="operator MCP stub (SCOPE-gated; no attack API)")
+    mcp.add_argument("tool", help="scope_status|orchestrator_plan|orchestrator_status|stage_*|export_ciso_poam")
+    mcp.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
+    mcp.set_defaults(func=cmd_mcp)
     return p
 
 

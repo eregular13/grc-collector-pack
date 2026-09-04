@@ -42,9 +42,18 @@ def parse_file(path: Path) -> list[dict]:
             host = line.split()[0].split("://")[-1].split("/")[0]
             if "." in host:
                 hosts.setdefault(host.lower(), {"name": host, "meta": {}})
+    demo_file = path.name.lower().startswith("dropbox-")
     records: list[dict] = []
     for key, item in sorted(hosts.items()):
         name = item["name"]
+        meta = item.get("meta") if isinstance(item.get("meta"), dict) else {}
+        tech = meta.get("tech") or []
+        tech_s = " ".join(str(x) for x in tech) if isinstance(tech, list) else str(tech)
+        title = str(meta.get("title") or "")
+        blob = f"{title} {tech_s}".lower()
+        labels = list(LABELS)
+        if demo_file or "dropbox-demo" in blob:
+            labels.append("demo")
         records.append(
             make_record(
                 kind="asset",
@@ -54,9 +63,9 @@ def parse_file(path: Path) -> list[dict]:
                 description=f"External host {name}",
                 category="external-host",
                 assets=[name],
-                labels=LABELS,
+                labels=labels,
                 collected_at=now,
-                extra={"asset_type": "PR", "httpx": item.get("meta") if isinstance(item.get("meta"), dict) else {}},
+                extra={"asset_type": "PR", "httpx": meta},
             )
         )
         if any(name.lower().startswith(p) or f".{p}" in f".{name.lower()}" for p in WATCH):
@@ -71,9 +80,25 @@ def parse_file(path: Path) -> list[dict]:
                     severity=sev,
                     category="exposure",
                     assets=[name],
-                    labels=LABELS,
+                    labels=labels,
                     collected_at=now,
                     extra={},
+                )
+            )
+        if "weak" in blob and ("cipher" in blob or "tls" in blob or "ssl" in blob):
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{name}-tls-weak"),
+                    name=f"TLS weak cipher: {name}",
+                    description=f"{name} presents a weak TLS cipher posture (not a specific CVE).",
+                    severity="medium",
+                    category="exposure",
+                    assets=[name],
+                    labels=labels + ["tls", "https"],
+                    collected_at=now,
+                    extra={"port": "443", "service": "https"},
                 )
             )
     return records

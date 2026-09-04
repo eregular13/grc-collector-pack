@@ -201,6 +201,17 @@ def test_discover_is_quiet_no_deepen_tools(
 ) -> None:
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     monkeypatch.setattr("dropbox.orchestrator.pipeline._which", lambda name: "/usr/bin/nmap")
+
+    def _no_live_scan(argv, dest, timeout, allow_tools=None):
+        dest = Path(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            "# test stub — not a live scan\nHost: 10.20.30.5 (app-01.demo.internal) Status: Up\n",
+            encoding="utf-8",
+        )
+        return 0
+
+    monkeypatch.setattr("dropbox.orchestrator.byo.run_allowed", _no_live_scan)
     scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
     farm = Farm(max_workers=scope.max_workers)
     plan = discover_stage(scope, farm, live=True)

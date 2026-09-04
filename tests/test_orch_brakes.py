@@ -185,7 +185,12 @@ def test_status_cli_prints_stops_and_demo_label() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     assert "quiet→loud" in proc.stdout or "quiet" in proc.stdout
+    assert "stage graph" in proc.stdout
+    assert "discover (quiet)" in proc.stdout and "ingest (parse-only)" in proc.stdout
     assert "integrity stops" in proc.stdout
     assert "max_workers=2" in proc.stdout
+    assert "allow_tools ∩ PATH" in proc.stdout
+    assert "missing" in proc.stdout or "present" in proc.stdout
+    assert "last integrity stop" in proc.stdout
     assert "DEMO" in proc.stdout
     assert "not a client" in proc.stdout.lower() or "not a client estate" in proc.stdout

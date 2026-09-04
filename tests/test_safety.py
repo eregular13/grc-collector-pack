@@ -39,6 +39,13 @@ def test_riskready_source_has_no_wrap_posts() -> None:
     assert "${API}/risks" not in text
 
 
+def test_collectors_do_not_import_dropbox() -> None:
+    for py in (ROOT / "collectors").glob("*.py"):
+        src = py.read_text(encoding="utf-8")
+        assert "import dropbox" not in src
+        assert "from dropbox" not in src
+
+
 def test_collectors_do_not_open_sockets() -> None:
     banned = ("socket.socket", "urllib.request", "http.client", "requests.get", "httpx.")
     for py in (ROOT / "collectors").glob("*.py"):

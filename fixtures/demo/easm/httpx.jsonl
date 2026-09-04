@@ -1,4 +1,4 @@
-{"host":"vpn.example.com","url":"https://vpn.example.com","status_code":200,"title":"SSL VPN","tech":["ivanti"]}
+{"host":"vpn.example.com","url":"https://vpn.example.com","status_code":200,"title":"SSL VPN TLS weak cipher","tech":["ivanti","tls-weak-cipher"]}
 {"host":"dev-api.example.com","url":"https://dev-api.example.com","status_code":200,"title":"Dev API","tech":["nginx"]}
 {"host":"www.example.com","url":"https://www.example.com","status_code":200,"title":"Example","tech":["cloudflare"]}
 {"host":"mail.example.com","url":"https://mail.example.com","status_code":200,"title":"Webmail","tech":["owa"]}

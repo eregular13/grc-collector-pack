@@ -109,10 +109,32 @@ def assert_lab() -> None:
     assert (OUT / "poam" / "poam.md").is_file()
     smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
     assert smb, "SMB/445 exposure must map into POA&M"
+    rdp = [r for r in poam if "RDP" in (r.get("weakness") or "") or "3389" in (r.get("recommended_fix") or "")]
+    assert rdp, "open RDP must map into POA&M"
+    tls = [
+        r
+        for r in poam
+        if "TLS" in (r.get("weakness") or "")
+        or "cipher" in (r.get("recommended_fix") or "").lower()
+    ]
+    assert tls, "TLS weak cipher / TLS posture must map into POA&M"
+    shares = [
+        r
+        for r in poam
+        if "admin share" in (r.get("weakness") or "").lower()
+        or "C$" in (r.get("recommended_fix") or "")
+        or "ADMIN$" in (r.get("recommended_fix") or "")
+    ]
+    assert shares, "admin shares (C$/ADMIN$) must map into POA&M"
+    for row in smb + rdp + tls + shares:
+        refs = row.get("framework_refs") or ""
+        assert "cpg_" in refs and "csf_" in refs
+        assert "CVE-" not in (row.get("recommended_fix") or "")
+        assert (row.get("owner") or "") == ""
+        assert (row.get("due") or "") == ""
     for row in smb:
         assert "cpg_2_W" in (row.get("framework_refs") or "")
         assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
-        assert "CVE-" not in (row.get("recommended_fix") or "")
         assert "dialect" in (row.get("recommended_fix") or "").lower() or "port" in (row.get("recommended_fix") or "").lower()
     for row in poam:
         assert (row.get("owner") or "") == ""
