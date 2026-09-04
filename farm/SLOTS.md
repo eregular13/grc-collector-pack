@@ -142,13 +142,16 @@ httpx `failed:true` rows and empty arrays invent nothing. Interesting
 rows only: sensitive perimeter names (vpn/admin/dev-api/staging) and
 admin/login titles. Also drop **ffuf** JSON (`results` + status/url) and
 **gobuster** text (`(Status: N)` lines). Interesting paths only
-(`/admin`, `/login`, `/.git`) — 404 and robots stay silent. High rows
-map to CISO/POA&M (perimeter hostnames, exposed admin UI, TLS weak
+(`/admin`, `/login`, `/.git`) — 404 and robots stay silent. Drop
+**WhatWeb** `--log-json` (`target` + `plugins`, or `{data}` wrap).
+Admin/login titles and interesting paths only — generic nginx/Home
+rows stay silent. Empty arrays invent nothing. High rows map to
+CISO/POA&M (perimeter hostnames, exposed admin UI, TLS weak
 cipher). Parse-only — no live DNS/HTTP, no amass/httpx/subfinder/ffuf/
-gobuster subprocess. Empty `in/` still loads `fixtures/demo/easm/`
-(`httpx.jsonl`, `httpx.json`, `amass.jsonl`, `ffuf.json`).
-amass / subfinder / ffuf / gobuster stay file_drop; httpx *invoke* is
-separate BYO. No new catalog slots.
+gobuster/whatweb subprocess. Empty `in/` still loads `fixtures/demo/easm/`
+(`httpx.jsonl`, `httpx.json`, `amass.jsonl`, `ffuf.json`, `whatweb.json`).
+amass / subfinder / ffuf / gobuster / whatweb stay file_drop; httpx
+*invoke* is separate BYO. No new catalog slots.
 
 ## Nuclei JSON file-drop (Layer C)
 

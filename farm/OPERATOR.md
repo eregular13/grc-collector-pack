@@ -200,8 +200,10 @@ ingest: native arrays and `{results|hosts}` wrappers parse. Failed httpx
 rows and empty exports invent nothing. High perimeter / admin-UI / TLS
 rows map to existing CISO/POA&M. ffuf JSON and gobuster text are the
 same file-drop path: interesting `/admin` `/login` `/.git` statuses
-only — 404/robots invent nothing. Layer C never runs amass, httpx,
-subfinder, ffuf, or gobuster and does not probe DNS/HTTP. Live BYO curl/testssl is
+only — 404/robots invent nothing. WhatWeb `--log-json` is the same
+file-drop path: admin/login titles only — empty/Home invent nothing.
+Layer C never runs amass, httpx, subfinder, ffuf, gobuster, or whatweb
+and does not probe DNS/HTTP. Live BYO curl/testssl is
 operator-local under written SCOPE — not orchestrate.
 LICENSE-LOCK / file_drop names never subprocess.
 

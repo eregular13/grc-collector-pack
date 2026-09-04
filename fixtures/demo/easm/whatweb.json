@@ -1,0 +1,18 @@
+[
+  {
+    "target": "https://admin.example.com/login",
+    "http_status": 200,
+    "plugins": {
+      "Title": {"string": ["Admin Login"]},
+      "HTTPServer": {"string": ["nginx"]}
+    }
+  },
+  {
+    "target": "https://www.example.com",
+    "http_status": 200,
+    "plugins": {
+      "Title": {"string": ["Example Corp"]},
+      "HTTPServer": {"string": ["nginx"]}
+    }
+  }
+]

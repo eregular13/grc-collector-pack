@@ -119,6 +119,8 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "Amass" in md
     assert "ffuf" in md
     assert "gobuster" in md
+    assert "WhatWeb" in md
+    assert "whatweb.json" in md
     assert "(Status:" in md or "Status:" in md
     assert "Nuclei JSON file-drop" in md
     assert "template_id" in md

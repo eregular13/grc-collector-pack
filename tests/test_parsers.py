@@ -1129,6 +1129,7 @@ def test_empty_in_still_loads_easm(tmp_path, monkeypatch) -> None:
     assert "httpx.json" in names
     assert "amass.jsonl" in names
     assert "ffuf.json" in names
+    assert "whatweb.json" in names
 
 
 def test_ffuf_json_interesting_path_maps_to_poam() -> None:
@@ -1182,7 +1183,54 @@ def test_easm_no_live_probe() -> None:
     assert "subfinder -" not in src
     assert "ffuf -" not in src
     assert "gobuster dir" not in src
+    assert "whatweb --" not in src
+    assert "whatweb http" not in src
     assert "socket.socket" not in src
+
+
+def test_whatweb_json_admin_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = easm.parse_file(DEMO / "easm" / "whatweb.json")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "admin.example.com" in assets
+    assert "www.example.com" not in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "WhatWeb" in findings[0]["name"]
+    assert findings[0]["assets"] == ["admin.example.com"]
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "admin" in mapped["control_name"].lower()
+    assert "live HTTP" in mapped["recommended_fix"] or "not a live" in mapped["recommended_fix"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_empty_whatweb_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "whatweb.json"
+    dest.write_text("[]", encoding="utf-8")
+    assert easm.parse_file(dest) == []
+    dest.write_text(
+        """[{"target":"https://www.example.com","http_status":200,
+        "plugins":{"Title":{"string":["Home"]}}}]""",
+        encoding="utf-8",
+    )
+    assert easm.parse_file(dest) == []
+    dest.write_text('{"data":[]}', encoding="utf-8")
+    assert easm.parse_file(dest) == []
+
+
+def test_whatweb_data_wrapper(tmp_path) -> None:
+    dest = tmp_path / "whatweb-wrap.json"
+    dest.write_text(
+        """{"data":[{"target":"https://admin.example.com/login","http_status":200,
+        "plugins":{"Title":{"string":["Admin Login"]}}}]}""",
+        encoding="utf-8",
+    )
+    recs = easm.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["assets"] == ["admin.example.com"]
 
 
 def test_scoutsuite() -> None:

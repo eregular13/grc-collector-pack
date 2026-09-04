@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Parse Amass / Subfinder / httpx / ffuf / gobuster / testssl into external hosts.
+"""Parse Amass / Subfinder / httpx / ffuf / gobuster / WhatWeb / testssl into external hosts.
 
-Parse-only. Does not run amass, httpx, subfinder, ffuf, gobuster, or any
-live DNS/HTTP probe.
+Parse-only. Does not run amass, httpx, subfinder, ffuf, gobuster, whatweb,
+or any live DNS/HTTP probe.
 """
 
 from __future__ import annotations
@@ -97,6 +97,128 @@ def _status_ok(row: dict[str, Any]) -> bool:
         return int(raw) in _OK_STATUS
     except (TypeError, ValueError):
         return False
+
+
+def _plugin_strings(plugins: dict[str, Any], name: str) -> list[str]:
+    block = plugins.get(name) or plugins.get(name.lower())
+    if isinstance(block, dict):
+        raw = block.get("string") or block.get("strings") or []
+        if isinstance(raw, list):
+            return [str(x) for x in raw if x]
+        if raw:
+            return [str(raw)]
+    if isinstance(block, list):
+        return [str(x) for x in block if x]
+    if isinstance(block, str) and block:
+        return [block]
+    return []
+
+
+def _whatweb_rows(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [x for x in payload if isinstance(x, dict)]
+    if not isinstance(payload, dict):
+        return []
+    for key in ("data", "results", "matches"):
+        raw = payload.get(key)
+        if isinstance(raw, list):
+            return [x for x in raw if isinstance(x, dict)]
+        if isinstance(raw, dict) and ("plugins" in raw or "target" in raw):
+            return [raw]
+    if "plugins" in payload or "target" in payload:
+        return [payload]
+    return []
+
+
+def _is_whatweb(payload: Any, path: Path | None = None) -> bool:
+    if path is not None and "whatweb" in path.name.lower():
+        return True
+    rows = _whatweb_rows(payload)
+    if not rows:
+        return False
+    row = rows[0]
+    return "plugins" in row and ("target" in row or "http_status" in row)
+
+
+def _whatweb_records(now: str, payload: Any) -> list[dict]:
+    records: list[dict] = []
+    seen_assets: set[str] = set()
+    labels = list(LABELS) + ["whatweb"]
+    for row in _whatweb_rows(payload):
+        plugins = row.get("plugins") if isinstance(row.get("plugins"), dict) else {}
+        target = str(row.get("target") or row.get("url") or "")
+        host = _host_from_row({"url": target, "host": row.get("host"), "name": row.get("name")})
+        titles = _plugin_strings(plugins, "Title")
+        title = titles[0] if titles else ""
+        blob = f"{title} {target} {host}".lower()
+        watch = any(
+            host.lower().startswith(p) or f".{p}" in f".{host.lower()}" for p in WATCH
+        )
+        interesting = (
+            "admin" in blob
+            or "login" in blob
+            or _interesting_path(target)
+            or watch
+        )
+        if not host or not interesting:
+            continue
+        if host.lower() not in seen_assets:
+            seen_assets.add(host.lower())
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"External host {host}",
+                    category="external-host",
+                    assets=[host],
+                    labels=labels,
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
+        if "admin" in blob or "login" in title.lower() or _interesting_path(target):
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{host}-whatweb-admin"),
+                    name=f"WhatWeb admin interface on {host}",
+                    description=(
+                        f"{host} presents an admin/login interface "
+                        f"(title={title or '[n/a]'}). "
+                        "This is a dropped WhatWeb export, not a live HTTP probe."
+                    ),
+                    severity="high",
+                    category="exposure",
+                    assets=[host],
+                    labels=labels + ["admin-ui"],
+                    collected_at=now,
+                    extra={"title": title, "url": target},
+                )
+            )
+        elif watch:
+            sev = "high" if host.lower().startswith(("vpn.", "dev-api.", "admin.")) else "medium"
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{host}-whatweb"),
+                    name=f"Sensitive external hostname {host}",
+                    description=(
+                        f"{host} is exposed on the public perimeter "
+                        "(dropped WhatWeb export, not a live DNS/HTTP probe)."
+                    ),
+                    severity=sev,
+                    category="exposure",
+                    assets=[host],
+                    labels=labels,
+                    collected_at=now,
+                    extra={"url": target},
+                )
+            )
+    return records
 
 
 def _is_ffuf(payload: Any, path: Path | None = None) -> bool:
@@ -212,6 +334,13 @@ def parse_file(path: Path) -> list[dict]:
             payload = read_json(path)
         except Exception:
             payload = None
+        if payload is not None and _is_whatweb(payload, path):
+            return _whatweb_records(now, payload)
+        if payload is None:
+            rows = [r for r in read_jsonl(path) if isinstance(r, dict)]
+            if rows and _is_whatweb(rows, path):
+                return _whatweb_records(now, rows)
+
         if payload is not None and is_testssl(payload):
             records: list[dict] = []
             seen: set[str] = set()
