@@ -2,7 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 68):** Farm SOP honesty. OPERATOR / QUICKSTART /
+**This window (cycle 69):** Conductor SCOPE gate. `farm_slots` and
+`export_ciso_poam` load written SCOPE. Empty/unsigned SCOPE refuses
+stage/status/export. `dropbox.mcp_stub` stays conductor UX, not pack
+truth. USB `evergreen_assessment_mcp` remains pack truth. Wrap stays
+**dead**. STATUS `wrap: review-only`. Paying-day **FAIL**. Compose
+**ABSENT**. DEMO ≠ client. Catalog unchanged. Cycle 68 SOP honesty
+stays locked.
+
+**Cycle 68 (stands):** Farm SOP honesty. OPERATOR / QUICKSTART /
 INTEGRITY lock DEMO ≠ client, `SCOPE.example.yaml` does not allowlist
 nmap/nessus (free-day closed), RiskReady never in SOP, USB
 `evergreen_assessment_mcp` remains pack truth, `dropbox.mcp_stub` is
@@ -91,7 +99,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**310 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**311 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -102,11 +110,10 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
-**Deltas vs cycle 67:** lab counts and pytest **310** unchanged (SOP
-asserts only). Catalog / wrap / compose / paying-day / LICENSE-LOCK
-will_run unchanged. Paying-day remains **FAIL**. Compose remains **ABSENT**.
-Wrap remains review-only / dead. Farm SOP copy-paste can no longer
-reopen the free-day nmap/nessus hole.
+**Deltas vs cycle 68:** lab counts unchanged. pytest **310→311**.
+Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run unchanged.
+Paying-day remains **FAIL**. Compose remains **ABSENT**. Wrap remains
+review-only / dead. Conductor catalog/export no longer skip SCOPE.
 
 **Deltas vs cycle 58 (enum4linux-ng, still standing):** host/farm findings
 **76→78**, POA&M **79→81** (demo null session + Domain Admins on existing

@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 69 — Conductor SCOPE gate (2026-09-04)
+
+`farm_slots` and `export_ciso_poam` now load written SCOPE. Empty/unsigned SCOPE refuses catalog, export, status, and stage tools. `dropbox.mcp_stub` stays conductor UX, not USB `evergreen_assessment_mcp` pack truth. No TypeScript refuse matrix. No new invoke slots. Cycle 68 farm SOP honesty stays locked. Catalog **not inflated**. pytest **311**. Labs unchanged vs cycle 68 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. Hexstrike pattern-only.
+
+```json
+{"pytest": 311, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never"}
+```
+
 ## cycle 68 — Farm SOP honesty (2026-09-04)
 
 OPERATOR / QUICKSTART / INTEGRITY lock DEMO ≠ client, `SCOPE.example.yaml` does not allowlist nmap/nessus (free-day closed), RiskReady never in SOP, USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`) = pack truth, `dropbox.mcp_stub` = conductor UX only. `farm_slots` brakes JSON matches (`free_day_scope`, `pack_truth`). Cycle 67 rails stay locked. Catalog **not inflated**. pytest **310**. Labs unchanged vs cycle 67 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. No new invoke slots. Hexstrike pattern-only.

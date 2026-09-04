@@ -32,6 +32,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 66 done: Hephaestus FARM_TOOL_BIN lock (never resolve/spawn LICENSE-LOCK scanners).
 - Cycle 67 done: Hephaestus SCOPE example opt-in (nmap/nessus not free-day default).
 - Cycle 68 done: Farm SOP honesty (OPERATOR/QUICKSTART/INTEGRITY + brakes JSON).
+- Cycle 69 done: Conductor SCOPE gate (farm_slots + export_ciso_poam load SCOPE).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
