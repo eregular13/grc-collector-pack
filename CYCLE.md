@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 30 — deepen FARM_TOOL_BIN DEMO stubs (2026-09-04)
+
+Lab stubs add nessus / nessuscli / testssl / testssl.sh / lynis (fixture stdout, DEMO banner, no network). Deepen + external-adjacent plan `will_run` true; `external_stage` still forces false. Dry `run_slot` writes work out. LICENSE-LOCK refuse stands. `make farm-toolbin-lab` asserts nmap+curl. Catalog **not inflated**. pytest **176**. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 176, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 29 — FARM_TOOL_BIN DEMO lab stubs (2026-09-04)
 
 `farm/tool-bin/lab/{nmap,curl}` are DEMO shell stubs (fixture gnmap / HTTP headers, no network). `farm_which` checks `FARM_TOOL_BIN` then `FARM_TOOL_BIN/lab` then PATH. Plan `will_run` true when env points at stubs; dry invoke writes work out. External stage still `will_run=false`. Catalog **not inflated**. pytest **172**. Labs green. Compose ABSENT.

@@ -1,6 +1,6 @@
-cycle: 29
+cycle: 30
 phase: DONE
-item: FARM-TOOL-BIN-LAB
+item: FARM-TOOLBIN-DEEPEN
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -11,4 +11,4 @@ compose_lab: absent
 compose_lab_reason: docker CLI not on PATH
 scanner_free: true
 sink: absent
-next_action: compose runtime when Docker is present; BYO nmap/nessus only on a consented box
+next_action: compose runtime when Docker is present; real BYO binaries only on a consented box

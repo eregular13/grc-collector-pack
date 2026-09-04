@@ -13,7 +13,7 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **172 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **176 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
 {"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T15:27:12Z"}
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-**Cycle 29 — tool-bin mount:** DEMO `farm/tool-bin/lab/{nmap,curl}` stubs + `farm_which` (`FARM_TOOL_BIN` then PATH). Plan `will_run` proven; dry invoke writes fixture output, no network. Compose **runtime** still ABSENT. Catalog **111** (32 / 30 / 81) — not inflated. External stays plan-only. Layer C untouched.
+**Cycle 30 — deepen tool-bin stubs:** DEMO `nessus` / `nessuscli` / `testssl.sh` / `lynis` plus nmap/curl. `make farm-toolbin-lab` asserts nmap+curl `will_run`. External orchestrate stage still plan-only. Compose **runtime** still ABSENT. Catalog **111** (32 / 30 / 81). Layer C untouched.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.
