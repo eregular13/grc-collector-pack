@@ -17,7 +17,7 @@ review-only. Hexstrike is not vendored. USB evergreen-assessment is not copied.
 | BYO PATH | `allow_tools` ∩ PATH only | Binary missing or not allowlisted → plan-only; never apt/embed |
 | LICENSE-LOCK embed | Never ship scanner packages | Nmap/Nessus BYO PATH+allowlist only; nuclei / OpenVAS / Zeek / Wazuh / osquery / PingCastle / Purple Knight / BloodHound / CIS-CAT stay file_drop, never subprocess |
 | Exploit / vendor | Absent | No Metasploit, no Hexstrike submodule, no USB copy |
-| Wrap | Review-only | `scripts/wrap.py --review-only`; `wrap.py --live` exits 2 |
+| Wrap | Review-only | `push_riskready.sh` prints LICENSE-LOCK and never POSTs, even if `RISKREADY_PUSH=1` |
 | Layer C | Parse-only ingest | `in/<sensor>/` only; collectors never call farm adapters |
 | Compose | Scanner-free | Farm Dockerfile has no `RUN apt`; compose runtime ABSENT here (no Docker CLI) |
 

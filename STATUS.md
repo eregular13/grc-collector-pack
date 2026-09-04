@@ -1,6 +1,6 @@
-cycle: 20
+cycle: 21
 phase: DONE
-item: FARM-SLOTS-95
+item: FARM-QUALITY-INVOKE
 critic_score: 8/10
 open_p0:
 open_p1:

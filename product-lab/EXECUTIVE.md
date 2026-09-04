@@ -13,10 +13,10 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **149 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **153 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T15:12:46Z"}
+{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T15:27:12Z"}
 ```
 
 Asset `ref_id` uniqueness: **62 = 62**.
@@ -38,7 +38,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 
 ## Drop-box (this PR)
 
-Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BYO tool farm under SCOPE (105 catalog slots, 21 invoke adapters — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes + stdio conductor, parse-only collectors. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule. See `farm/OPERATOR.md` and `farm/SLOTS.md`.
+Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BYO tool farm under SCOPE (110 catalog slots, 29 invoke adapters — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes + stdio conductor, parse-only collectors. Cycle 20’s 105 named slots stand; cycle 21 added 5 real OS stubs. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule. See `farm/OPERATOR.md`, `farm/INTEGRITY.md`, and `farm/SLOTS.md`.
 
 **Pentera finds it; Evergreen maps it.** After ingest, the client handoff is CISO CSVs plus `out/poam/poam.csv` (owner/due blank). SMB 445 in the demo nmap estate maps to network-service hardening (`cpg_2_W`, `csf_PR`) — not a hallucinated CVE.
 
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-Farm catalog **105** slots (`SLOTS.md`: 23 wired / 21 invoke / 84 file_drop). openssl + nslookup PATH stubs. LICENSE-LOCK stay file_drop. Conductor `farm_slots` returns category counts. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
+Farm catalog **110** slots (`SLOTS.md`: 31 wired / 29 invoke / 81 file_drop). PATH-invoke toward 30 (journalctl / kubectl client / snmpwalk / ping / traceroute / tracepath / host / getent). LICENSE-LOCK + nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.

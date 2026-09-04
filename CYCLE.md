@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 21 — quality: PATH-invoke toward 30, conductor, ingest audit (2026-09-04)
+
+Cycle 20 **105** named slots stand. Added 5 real OS stubs (ping / traceroute / tracepath / host / getent) and rewired existing oss_byo (journalctl, kubectl client, snmpwalk named-host). **110 / 31 wired / 29 invoke / 81 file_drop**. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Conductor `tools/list` is stable `OPERATOR_TOOLS` order; `farm_slot_status` accepts `category`. `audit_output_globs()` empty — every glob is `in/<Layer-C-sensor>/`. `farm/INTEGRITY.md` brakes table. Cursor `.cursor/mcp.json` snippet in `farm/OPERATOR.md` has `cwd` + `PYTHONPATH`. Wrap dead. No Hexstrike. No USB. No paying-day PASS.
+
+pytest **153 passed, 1 skipped**. `make lab` / `make farm-lab` 62/62/15/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64. compose_lab absent.
+
+```json
+{"pytest": 153, "pytest_skipped": 1, "farm_slots": 110, "wired": 31, "invoke": 29, "file_drop": 81, "assets": 62, "findings": 62, "poam": 61, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 20 — 105-slot catalog (95+), SLOTS.md, conductor counts (2026-09-04)
 
 `farm/SLOTS.yaml` is **105** slots across discover/deepen/external/endpoint/identity/cloud/k8s/secrets/wifi/ot. **23 wired / 21 invoke / 84 file_drop**. openssl + nslookup added as PATH stubs. LICENSE-LOCK (nuclei, openvas, gvm, pingcastle, bloodhound, sharphound, …) stay file_drop, never subprocess. `farm/SLOTS.md` is the category table. Conductor `farm_slots` returns `counts` + `by_category`. Layer C untouched. Wrap dead.
