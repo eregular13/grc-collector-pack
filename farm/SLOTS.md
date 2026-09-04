@@ -72,9 +72,14 @@ subprocess; no live ARP). Also drop **nbtscan** name/IP tables
 (`Doing NBT name scan` / IP + NetBIOS + `<server>`). Hosts become assets
 only — empty / header-only invent nothing. Detect does not steal
 arp-scan / netdiscover / fping. nbtscan stays `file_drop` (never
-subprocess; no live NetBIOS). Empty `in/` still loads `fixtures/demo/nmap/`
-(`scan.gnmap`, `scan.xml`, `masscan.xml`, `naabu.jsonl`, `arp-scan.txt`,
-`fping.txt`, `netdiscover.txt`, `nbtscan.txt`). No new catalog slots.
+subprocess; no live NetBIOS). Also drop **smbmap** share tables
+(`[+] IP:` / Disk + Permissions). Hosts become assets; READ/WRITE shares
+become exposure findings mapped to existing SMB POA&M. Empty / NO ACCESS
+invent nothing. Detect does not steal nmap / arp-scan / nbtscan. smbmap
+stays `file_drop` (never subprocess; no live SMB; no credentials).
+Empty `in/` still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`,
+`masscan.xml`, `naabu.jsonl`, `arp-scan.txt`, `fping.txt`,
+`netdiscover.txt`, `nbtscan.txt`, `smbmap.txt`). No new catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 

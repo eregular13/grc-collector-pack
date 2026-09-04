@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, and nbtscan exports.
+"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, nbtscan, and smbmap exports.
 
-Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, or nbtscan.
+Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, netdiscover, nbtscan, or smbmap.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.nbtscan import parse_nbtscan
 from shared.netdiscover import parse_netdiscover
+from shared.smbmap import parse_smbmap
 from shared.schema import make_record, make_ref
 
 SOURCE = "inventory-nmap"
@@ -301,6 +302,69 @@ def parse_file(path: Path) -> list[dict]:
                 extra=extra,
                 extra_labels=["nbtscan"],
             )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    mapped = parse_smbmap(path, raw)
+    if mapped is not None:
+        records = []
+        for host in mapped:
+            name = str(host.get("name") or "unknown-host")
+            addr = str(host.get("addr") or "")
+            hostname = str(host.get("hostname") or "")
+            _emit_host(
+                records,
+                now,
+                name,
+                addr,
+                hostname,
+                [],
+                extra_labels=["smbmap"],
+            )
+            for share in host.get("shares") or []:
+                if not isinstance(share, dict):
+                    continue
+                share_name = str(share.get("name") or "").strip()
+                access = str(share.get("access") or "").strip()
+                up = access.upper().replace(" ", "")
+                if not share_name or up in {"", "NOACCESS"}:
+                    continue
+                if "READ" not in up and "WRITE" not in up:
+                    continue
+                if share_name.upper() in {"IPC$", "PRINT$"} and "WRITE" not in up:
+                    continue
+                writable = "WRITE" in up
+                admin = share_name.upper() in {"C$", "ADMIN$"}
+                sev = "high" if writable else "medium"
+                kind = "Writable" if writable else "Readable"
+                title = f"{kind} SMB share {share_name} on {name}"
+                desc = (
+                    f"{name} smbmap export shows {share_name} as {access or 'open'}."
+                )
+                extra = {
+                    "port": "445",
+                    "service": "smb",
+                    "share": share_name,
+                    "access": access,
+                    "ip": addr,
+                }
+                labels = LABELS + ["smbmap", "smb"]
+                if admin:
+                    labels.append("admin-share")
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, f"{name}-share-{share_name}"),
+                        name=title,
+                        description=desc,
+                        severity=sev,
+                        category="exposure",
+                        assets=[name],
+                        labels=labels,
+                        collected_at=now,
+                        extra=extra,
+                    )
+                )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
     stripped = raw.lstrip("\ufeff").lstrip()

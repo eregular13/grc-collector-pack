@@ -80,6 +80,8 @@ SCANNER_PKGS = tuple(
             "fping",
             "netdiscover",
             "nbtscan",
+            "smbmap",
+            "smbclient",
             "metasploit",
             "msfconsole",
             "hexstrike",

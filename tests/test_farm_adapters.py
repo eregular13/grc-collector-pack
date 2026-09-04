@@ -120,6 +120,12 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert slots["nbtscan"].get("scope_key") == "file_drop"
     assert slots["nbtscan"].get("wired") is False
     assert slots["nbtscan"].get("invoke") is False
+    assert "smbmap" in md
+    assert "smbmap.txt" in md
+    assert slots["smbmap"].get("scope_key") == "file_drop"
+    assert slots["smbmap"].get("wired") is False
+    assert slots["smbmap"].get("invoke") is False
+    assert slots["smbmap"].get("sensor") == "nmap"
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

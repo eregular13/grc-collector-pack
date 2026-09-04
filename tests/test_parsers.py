@@ -319,6 +319,7 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     assert "fping.txt" in names
     assert "netdiscover.txt" in names
     assert "nbtscan.txt" in names
+    assert "smbmap.txt" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -654,6 +655,78 @@ def test_nbtscan_parser_no_live() -> None:
         assert "Popen" not in src
         assert "nbtscan -" not in src
         assert "nbtscan --" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_smbmap_demo_write_maps_to_smb_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "smbmap.txt")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in assets]
+    assert "filesrv.corp.local" in names
+    assert "10.0.0.50" not in names
+    assert len(findings) == 1
+    finding = findings[0]
+    extra = finding.get("extra") or {}
+    assert extra.get("share") == "C$"
+    assert "WRITE" in str(extra.get("access") or "").upper()
+    assert extra.get("port") == "445"
+    assert "smbmap" in (finding.get("labels") or [])
+    mapped = map_finding(finding)
+    assert mapped["include_poam"] is True
+    assert "share" in mapped["control_name"].lower() or "smb" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_smbmap_does_not_steal_nmap_arp_nbtscan() -> None:
+    from shared.arp_scan import parse_arp_scan
+    from shared.nbtscan import parse_nbtscan
+    from shared.smbmap import parse_smbmap
+
+    assert parse_smbmap(DEMO / "nmap" / "scan.gnmap") is None
+    assert parse_smbmap(DEMO / "nmap" / "arp-scan.txt") is None
+    assert parse_smbmap(DEMO / "nmap" / "nbtscan.txt") is None
+    assert parse_arp_scan(DEMO / "nmap" / "smbmap.txt") is None
+    assert parse_nbtscan(DEMO / "nmap" / "smbmap.txt") is None
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "smbmap.txt")
+    assert all("smbmap" in (r.get("labels") or []) for r in recs)
+
+
+def test_smbmap_empty_and_no_access(tmp_path) -> None:
+    dest = tmp_path / "smbmap.txt"
+    dest.write_text(
+        "[+] Finding open SMB shares...\n"
+        "        Disk                                                    Permissions\n"
+        "	----                                                    -----------\n",
+        encoding="utf-8",
+    )
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text(
+        "[+] IP: 10.0.0.50:445	Name: filesrv.corp.local\n"
+        "	ADMIN$                                                  NO ACCESS	Remote Admin\n"
+        "	IPC$                                                    NO ACCESS	Remote IPC\n",
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    assert [r["kind"] for r in recs] == ["asset"]
+    assert recs[0]["name"] == "filesrv.corp.local"
+
+
+def test_smbmap_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/smbmap.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "smbmap -" not in src
+        assert "smbmap --" not in src
+        assert "smbclient" not in src
+        assert "password=" not in src
         assert "nmap -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src

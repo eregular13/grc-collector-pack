@@ -133,6 +133,13 @@ assets only. Empty / header-only invent nothing. Detect does not steal
 arp-scan / netdiscover / fping. The collector never runs nbtscan and
 never does live NetBIOS. The catalog slot stays `file_drop`.
 
+smbmap **share tables** are the same `in/nmap/` file-drop path
+(`[+] IP:` / Disk + Permissions). Hosts become assets. READ/WRITE
+shares become exposure findings mapped to existing SMB POA&M. Empty /
+NO ACCESS invent nothing. Detect does not steal nmap / arp-scan /
+nbtscan. The collector never runs smbmap or smbclient, never does live
+SMB, and does not store credentials. The catalog slot stays `file_drop`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to

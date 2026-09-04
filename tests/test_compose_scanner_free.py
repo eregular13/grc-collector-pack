@@ -87,7 +87,7 @@ def test_never_embed_names_are_not_installed_in_image_files() -> None:
         path = ROOT / rel
         if path.is_file():
             blob += "\n" + path.read_text(encoding="utf-8").lower()
-    for tool in sorted(NEVER_EMBED | {"masscan", "naabu", "arp-scan", "fping", "netdiscover", "nbtscan"}):
+    for tool in sorted(NEVER_EMBED | {"masscan", "naabu", "arp-scan", "fping", "netdiscover", "nbtscan", "smbmap"}):
         if tool in {"riskready"}:
             continue
         assert f"apt-get install {tool}" not in blob
