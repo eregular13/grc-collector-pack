@@ -2,13 +2,19 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 73):** FARM_TOOL_BIN refuse-list. SCOPE hunt found
-**no remaining operator entrypoint gap** after cycle 72. Every
-`LICENSE_LOCK_SPAWN` name dropped into `tool-bin` or `tool-bin/lab`
-fails resolve/spawn. ORCH_BYO nmap/nessus stay off the refuse list.
-Cycle 72 run_slot intersection stays locked. Wrap stays **dead**.
-STATUS `wrap: review-only`. Paying-day **FAIL**. Compose **ABSENT**.
-DEMO ≠ client. Catalog unchanged.
+**This window (cycle 74):** Reid-only blockers. STATUS `next_action` and
+EXECUTIVE name CTA; Eval `npm start`; real KEEP `in/` drop; compose on
+a Docker host (this VM **ABSENT**, not a PASS); merge PR #1. No fake
+greens. Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked.
+Scanner-free compose/Dockerfile statics already green. Wrap stays
+**dead**. Paying-day **FAIL**. Compose **ABSENT**. DEMO ≠ client.
+Catalog unchanged.
+
+**Cycle 73 (stands):** FARM_TOOL_BIN refuse-list. SCOPE hunt found
+**no remaining operator entrypoint gap**. Every `LICENSE_LOCK_SPAWN`
+name in `tool-bin` / `lab/` fails resolve/spawn. STATUS `scope_gap:
+none`. Wrap stays **dead**. Paying-day **FAIL**. Compose **ABSENT**.
+Catalog unchanged.
 
 **Cycle 72 (stands):** SCOPE fail-closed invoke. `run_slot` `load_scope`
 and intersects caller `allow_tools` with the signed list. Empty/unsigned
@@ -126,7 +132,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**317 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**318 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -136,6 +142,11 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-lab` | 64 | 79 | 19 | 27 | 82 | true |
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
+
+**Deltas vs cycle 73:** lab counts unchanged. pytest **317→318**.
+Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run unchanged.
+Paying-day remains **FAIL**. Compose remains **ABSENT**. Wrap remains
+review-only / dead. `scope_gap` remains **none**.
 
 **Deltas vs cycle 72:** lab counts unchanged. pytest **316→317**.
 Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run unchanged.

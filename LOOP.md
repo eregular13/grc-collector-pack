@@ -37,6 +37,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 71 done: README honesty rails (STATUS/EXECUTIVE/catalog/pack truth/compose ABSENT).
 - Cycle 72 done: SCOPE fail-closed invoke (`run_slot` load_scope + signed allow_tools intersect; CLI/conductor refuse empty/unsigned).
 - Cycle 73 done: SCOPE entrypoint inventory = none remaining; FARM_TOOL_BIN refuse-list covers every LICENSE_LOCK_SPAWN name in tool-bin and lab/.
+- Cycle 74 done: STATUS/EXECUTIVE next_action is Reid-only blockers (CTA, Eval npm start, KEEP in/ drop, compose-on-Docker, merge PR #1). No fake greens.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

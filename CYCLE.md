@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 74 — Reid-only blockers (2026-09-04)
+
+STATUS `next_action` and EXECUTIVE name Reid-only work: CTA; Eval `npm start`; real KEEP `in/` drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #1. No fake greens. Scanner-free compose/Dockerfile statics already locked (pack + farm + dropbox). Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Catalog **not inflated**. pytest **318**. Labs unchanged vs cycle 73 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. No new parsers.
+
+```json
+{"pytest": 318, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
 ## cycle 73 — FARM_TOOL_BIN refuse-list (2026-09-04)
 
 SCOPE entrypoint hunt found **no remaining operator gap** after cycle 72: CLI, conductor, `run_slot`, and `orchestrate` all `load_scope`; discover/deepen use the loaded `Scope.allow_tools`. Hardened FARM_TOOL_BIN: every `LICENSE_LOCK_SPAWN` name dropped into `tool-bin` or `tool-bin/lab` fails `farm_which` / `which_allowed` / `run_allowed`. ORCH_BYO nmap/nessus stay off the refuse list. Cycle 72 run_slot intersection stays locked. Catalog **not inflated**. pytest **317**. Labs unchanged vs cycle 72 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. No new parsers.
