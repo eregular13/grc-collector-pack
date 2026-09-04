@@ -42,6 +42,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 76 done: (e) compose runtime honesty — statics green, runtime ABSENT, no fake PASS.
 - Cycle 77 done: (e) compose argv scanner-free — command/entrypoint/CMD/ENTRYPOINT cannot quietly embed scanners or wrap POSTs; runtime still ABSENT.
 - Cycle 78 done: verify-green / no-diff. Full lab suite clean vs cycle 77.
+- Cycle 79 done: conductor stdio MCP e2e (`mcp serve --once/--stdio`, empty/unsigned SCOPE refuse).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
