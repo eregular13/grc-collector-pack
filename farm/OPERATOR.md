@@ -118,13 +118,16 @@ python3 -m dropbox orchestrate
 python3 -m dropbox orchestrate --live   # BYO PATH only; still SCOPE-gated
 python3 -m dropbox.mcp_stub serve
 python3 -m dropbox mcp farm_slot_status
+python3 -m dropbox mcp farm_toolbin_status
 python3 -m dropbox mcp stage_discover    # plan-only
 ```
 
-Cursor reads **`.cursor/mcp.json`** in the project (or `~/.cursor/mcp.json`
-for a user-global entry). The conductor is **`dropbox.mcp_stub`** JSON-RPC
-on stdin/stdout — **not** hosted FastMCP. `cwd` **and** `PYTHONPATH` must
-be the **repo root** so `python3 -m dropbox.mcp_stub` resolves.
+The conductor is **`dropbox.mcp_stub`** JSON-RPC on stdin/stdout — **not**
+hosted FastMCP. It must start from the **repo root**. Replace
+`/absolute/path/to/grc-collector-pack` with this checkout. Prefer
+`scripts/mcp_stdio.sh` (finds the root itself) when the client ignores `cwd`.
+
+**Cursor** — project file `.cursor/mcp.json` (or user `~/.cursor/mcp.json`):
 
 ```json
 {
@@ -145,11 +148,28 @@ be the **repo root** so `python3 -m dropbox.mcp_stub` resolves.
 }
 ```
 
-`tools/list` returns the nine operator tools in **fixed** `OPERATOR_TOOLS`
+**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`
+(macOS) or `~/.config/Claude/claude_desktop_config.json` (Linux). Many
+builds ignore `cwd`; point `command` at the wrapper:
+
+```json
+{
+  "mcpServers": {
+    "grc-dropbox": {
+      "command": "/absolute/path/to/grc-collector-pack/scripts/mcp_stdio.sh"
+    }
+  }
+}
+```
+
+`tools/list` returns the ten operator tools in **fixed** `OPERATOR_TOOLS`
 order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
 `stage_discover`, `stage_deepen`, `stage_ingest`, `farm_slots`,
-`farm_slot_status`, `export_ciso_poam`). `farm_slot_status` accepts an
-optional `{ "category": "discover" }` argument.
+`farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`).
+`farm_slot_status` accepts an optional `{ "category": "discover" }`
+argument. `farm_toolbin_status` lists wired invoke resolve as
+`present` / `missing` / `demo_stub`. `orchestrator_plan` returns the
+per-stage `will_run` map already in plan JSON.
 
 Live deepen stays fail-closed (`DROPBOX_LIVE=0`) unless the operator
 explicitly allowlists tools. Do not point this at public Layer C.

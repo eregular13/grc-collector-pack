@@ -199,7 +199,7 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     st.set_defaults(func=cmd_status)
     mcp = sub.add_parser("mcp", help="operator MCP stub (SCOPE-gated; no attack API)")
-    mcp.add_argument("tool", help="scope_status|orchestrator_plan|orchestrator_status|stage_*|farm_slots|farm_slot_status|export_ciso_poam")
+    mcp.add_argument("tool", help="scope_status|orchestrator_plan|orchestrator_status|stage_*|farm_slots|farm_slot_status|farm_toolbin_status|export_ciso_poam")
     mcp.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     mcp.set_defaults(func=cmd_mcp)
     return p

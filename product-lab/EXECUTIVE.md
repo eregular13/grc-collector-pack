@@ -46,6 +46,8 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
+**Cycle 32 — conductor polish:** `farm_toolbin_status` (present/missing/demo_stub). `orchestrator_plan` returns per-stage `will_run`. Cursor + Claude Desktop snippets from repo root (`scripts/mcp_stdio.sh`). Catalog **111** (32 / 30 / 81). Cycle 31 e2e stands. Compose **runtime** still ABSENT.
+
 **Cycle 31 — farm-toolbin-e2e:** `make farm-toolbin-e2e` runs DEMO quiet→loud under `farm/work/e2e` with lab stubs (no internet). Discover → deepen → external plan-only → ingest → Layer C. Pack `in/` untouched. CISO/POA&M exist. LICENSE-LOCK still refuses. Catalog **111** (32 / 30 / 81). Compose **runtime** still ABSENT.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still needs real host binaries (not this box). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. Farm compose is a skeleton. No paying-day PASS. USB evergreen-assessment not copied.

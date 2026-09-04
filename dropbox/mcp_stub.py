@@ -8,6 +8,7 @@ Metasploit / AIExploitGenerator / exploit-chain tools.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,7 @@ OPERATOR_TOOLS = (
     "stage_ingest",
     "farm_slots",
     "farm_slot_status",
+    "farm_toolbin_status",
     "export_ciso_poam",
 )
 
@@ -46,6 +48,7 @@ TOOL_DESC = {
     "stage_ingest": "Copy artifacts into in/. Does not scan.",
     "farm_slots": "Private SLOTS catalog counts. No binaries.",
     "farm_slot_status": "Full slot matrix. Optional category filter.",
+    "farm_toolbin_status": "FARM_TOOL_BIN resolve for wired invoke slots: present/missing/demo_stub.",
     "export_ciso_poam": "Paths to CISO CSVs and poam.csv. Owner/due stay blank.",
 }
 
@@ -122,6 +125,70 @@ def farm_slot_status_tool(scope_path: Path | None = None, category: str | None =
     }
 
 
+def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
+    """Resolve wired invoke slots via FARM_TOOL_BIN then PATH. Does not invoke."""
+    from dropbox.scanner_free import is_demo_lab_stub
+    from farm.adapters.catalog import invoke_slots
+
+    scope = load_scope(scope_path)
+    raw = (os.environ.get("FARM_TOOL_BIN") or "").strip()
+    rows: list[dict[str, Any]] = []
+    present = missing = demo_stub = 0
+    for name, slot in sorted(invoke_slots().items()):
+        binary = str(slot.get("binary") or name).lower()
+        exe = byo.farm_which(binary)
+        if not exe:
+            state = "missing"
+            missing += 1
+        elif is_demo_lab_stub(Path(exe)):
+            state = "demo_stub"
+            demo_stub += 1
+        else:
+            state = "present"
+            present += 1
+        rows.append(
+            {
+                "slot": name,
+                "binary": binary,
+                "path": exe or "",
+                "state": state,
+            }
+        )
+    return {
+        "tool": "farm_toolbin_status",
+        "ok": True,
+        "live": False,
+        "plan_only": True,
+        "scope_gated": True,
+        "client": scope.client_name,
+        "farm_tool_bin": raw,
+        "count": len(rows),
+        "present": present,
+        "missing": missing,
+        "demo_stub": demo_stub,
+        "slots": rows,
+        "demo": "DEMO" in scope.client_name.upper(),
+        "note": "Resolve only. Does not invoke. LICENSE-LOCK names are not invoke slots.",
+    }
+
+
+def _will_run_map(summary: dict[str, Any]) -> dict[str, dict[str, bool]]:
+    """Per-stage slot → will_run from orchestrate plan JSON. External stays false."""
+    out: dict[str, dict[str, bool]] = {}
+    top = summary.get("slots") or {}
+    for stage in ("discover", "deepen", "external"):
+        stage_map: dict[str, bool] = {}
+        for source in (top.get(stage), (summary.get(stage) or {}).get("slots")):
+            if not isinstance(source, dict):
+                continue
+            for row in list(source.get("selected") or []) + list(source.get("skipped") or []):
+                name = str(row.get("slot") or "").strip()
+                if name:
+                    stage_map[name] = bool(row.get("will_run"))
+        out[stage] = stage_map
+    return out
+
+
 def tools_list_entries() -> list[dict[str, Any]]:
     """Stable tools/list payload. Order is OPERATOR_TOOLS, never sorted."""
     tools: list[dict[str, Any]] = []
@@ -180,6 +247,8 @@ def dispatch(
     if tool == "farm_slot_status":
         cat = extra.get("category")
         return farm_slot_status_tool(scope_path=path, category=str(cat) if cat else None)
+    if tool == "farm_toolbin_status":
+        return farm_toolbin_status_tool(scope_path=path)
     return export_ciso_poam()
 
 
@@ -207,6 +276,7 @@ def orchestrator_plan(scope_path: Path | None = None) -> dict[str, Any]:
     summary = orchestrate(scope, live=False)
     summary["tool"] = "orchestrator_plan"
     summary["live"] = False
+    summary["will_run"] = _will_run_map(summary)
     return summary
 
 

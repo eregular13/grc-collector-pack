@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 32):** Conductor `farm_toolbin_status` lists FARM_TOOL_BIN resolve for wired invoke slots (`present` / `missing` / `demo_stub`). `tools/call` `orchestrator_plan` returns the per-stage `will_run` map. `farm/OPERATOR.md` and `dropbox/operator_mcp_interface.md` have exact Cursor `.cursor/mcp.json` and Claude Desktop snippets; `scripts/mcp_stdio.sh` starts from repo root. Catalog unchanged (111 / 32 / 30 / 81). Cycle 31 e2e stands. No live internet. No fake compose pass.
+
 **Delta (cycle 31):** `make farm-toolbin-e2e` is the DEMO quiet→loud path with `FARM_TOOL_BIN=farm/tool-bin/lab`. Isolated `farm/work/e2e`: plan → discover (stub nmap) → deepen small batch (stub nessus/nessuscli) → external **plan-only** → ingest → Layer C. Artifacts land in `in/nmap|vuln|…`. CISO/POA&M exist. Pack `in/` stays `.gitkeep` only. `demo` true. LICENSE-LOCK still refuses. OPERATOR.md has one command block for toolbin-e2e vs real-binaries. Catalog unchanged (111 / 32 / 30 / 81). No live internet. No fake compose pass.
 
 **Delta (cycle 30):** DEMO tool-bin stubs now cover nmap, curl, nessus, nessuscli, testssl, testssl.sh, lynis. Deepen / external-adjacent slot plans `will_run` when `FARM_TOOL_BIN=lab`. Orchestrate external stage stays plan-only (no live probe). `make farm-toolbin-lab` asserts nmap+curl. LICENSE-LOCK names still refuse subprocess. Catalog unchanged (111 / 32 / 30 / 81).

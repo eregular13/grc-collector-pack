@@ -26,6 +26,14 @@ def test_architecture_docs_three_layers() -> None:
     iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
     for name in OPERATOR_TOOLS:
         assert name in iface
+    assert ".cursor/mcp.json" in iface
+    assert "claude_desktop_config.json" in iface
+    assert "scripts/mcp_stdio.sh" in iface
+    assert "will_run" in iface
+    farm_op = (ROOT / "farm" / "OPERATOR.md").read_text(encoding="utf-8")
+    assert ".cursor/mcp.json" in farm_op
+    assert "claude_desktop_config.json" in farm_op
+    assert "farm_toolbin_status" in farm_op
 
 
 def test_no_hexstrike_submodule() -> None:
@@ -186,6 +194,13 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     assert plan["result"]["tool"] == "orchestrator_plan"
     assert plan["result"]["live"] is False
     assert plan["result"]["grc_export"]["posted"] is False
+    will_run = plan["result"]["will_run"]
+    assert set(will_run) == {"discover", "deepen", "external"}
+    assert "nmap" in will_run["discover"]
+    assert will_run["discover"]["nmap"] is False
+    assert will_run["external"]
+    assert all(value is False for value in will_run["external"].values())
+    assert plan["result"]["slots"]["discover"]["selected"]
     matrix = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "farm_slot_status"}}
     )
@@ -221,6 +236,32 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
         assert body["result"]["live"] is False
         assert body["result"]["plan_only"] is True
         assert body["result"]["ok"] is True
+
+
+def test_farm_toolbin_status_lab_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dropbox.mcp_stub import handle_jsonrpc
+    from dropbox.scanner_free import LAB_STUB_DIR
+
+    monkeypatch.setenv("FARM_TOOL_BIN", str(LAB_STUB_DIR))
+    monkeypatch.setenv("PATH", "/nonexistent-farm-lab-path")
+    data = dispatch("farm_toolbin_status", scope_path=SCOPE)
+    assert data["tool"] == "farm_toolbin_status"
+    assert data["live"] is False
+    assert data["plan_only"] is True
+    assert data["farm_tool_bin"] == str(LAB_STUB_DIR)
+    assert data["count"] == data["present"] + data["missing"] + data["demo_stub"]
+    by_slot = {row["slot"]: row for row in data["slots"]}
+    assert "nuclei" not in by_slot
+    assert "openvas" not in by_slot
+    for name in ("nmap", "nessus", "nessuscli", "curl", "testssl", "lynis"):
+        assert by_slot[name]["state"] == "demo_stub", name
+        assert "tool-bin/lab/" in by_slot[name]["path"]
+    assert data["demo_stub"] >= 6
+    rpc = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": "farm_toolbin_status"}}
+    )
+    assert rpc["result"]["tool"] == "farm_toolbin_status"
+    assert rpc["result"]["demo_stub"] >= 6
 
 
 def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,5 +1,9 @@
 # CYCLE log
 
+## cycle 32 — conductor farm_toolbin_status + MCP snippets (2026-09-04)
+
+Conductor adds `farm_toolbin_status` (FARM_TOOL_BIN resolve: present/missing/demo_stub for wired invoke). `tools/call` `orchestrator_plan` returns per-stage `will_run`. OPERATOR.md + operator_mcp_interface.md have Cursor `.cursor/mcp.json` and Claude Desktop snippets; `scripts/mcp_stdio.sh` starts from repo root. Catalog **not inflated**. Cycle 31 e2e stands. No live internet. No fake compose.
+
 ## cycle 31 — farm-toolbin-e2e quiet→loud DEMO (2026-09-04)
 
 `make farm-toolbin-e2e` / `scripts/farm_toolbin_e2e.py`: isolated `farm/work/e2e` with `FARM_TOOL_BIN=farm/tool-bin/lab`. Plan → discover (DEMO nmap stub) → deepen small batch (DEMO nessus/nessuscli) → external **plan-only** → ingest → Layer C. Artifacts in `in/nmap|vuln`; CISO/POA&M exist; pack `in/` untouched; `demo` true. LICENSE-LOCK still refuses nuclei/openvas. Catalog **not inflated**. No live internet. No fake compose pass. pytest **178**. Labs green. Compose ABSENT.
