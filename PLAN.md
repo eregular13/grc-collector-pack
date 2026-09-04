@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycles 59–64 stand. **Stop vanity Layer C parsers.** Remaining ticks: farm/orchestrator/conductor honesty + SCOPE gates, not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap review-only forever. DEMO ≠ client. pytest greens are not assessment-ready.
+Until 16:00 PT: keep e2e green; cycles 59–65 stand. **Stop vanity Layer C parsers.** Remaining ticks: farm/orchestrator/conductor honesty + SCOPE gates, not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever (review-only; no login/POST). DEMO ≠ client. pytest greens are not assessment-ready. Hexstrike pattern-only.
 
 ## STOP rules
 

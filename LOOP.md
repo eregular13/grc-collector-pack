@@ -28,6 +28,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 62 done: MCP stub honesty (not USB evergreen_assessment_mcp / not TS refuse matrix).
 - Cycle 63 done: zmap/unicornscan file-drop. LICENSE-LOCK will_run still never.
 - Cycle 64 done: Themis honesty lock (paying-day FAIL, compose ABSENT in pytest).
+- Cycle 65 done: Argus wrap-dead (farm SOP never inherits Origin RiskReady write).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

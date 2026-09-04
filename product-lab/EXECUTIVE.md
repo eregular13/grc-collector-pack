@@ -2,7 +2,14 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 64):** Themis honesty lock. No new Layer C parsers.
+**This window (cycle 65):** Argus wrap-dead. RiskReady wrap stays **dead**
+forever — no login, no assets/incidents/evidence POST, not only
+`/api/risks`. Farm SOP never points at a RiskReady write and never
+inherits Windows/Origin mock rehearsal. STATUS `wrap: review-only`.
+Paying-day **FAIL**. Compose **ABSENT**. DEMO ≠ client. Hexstrike
+pattern-only. No new parsers. Catalog unchanged.
+
+**Cycle 64 (stands):** Themis honesty lock. No new Layer C parsers.
 pytest locks STATUS at paying-day **FAIL** and compose **ABSENT** — it
 must not stamp paying-day PASS or compose PASS on this VM. DEMO ≠ client estate. Compose **ABSENT** until proven on a
 Docker host (`farm/OPERATOR.md` lists exact `docker compose` commands
@@ -57,7 +64,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**305 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**307 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -69,8 +76,9 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
 **Deltas vs cycle 63:** lab counts unchanged (honesty tests only).
-pytest **301→305**. Catalog / wrap / compose / paying-day / LICENSE-LOCK
+pytest **301→307**. Catalog / wrap / compose / paying-day / LICENSE-LOCK
 will_run unchanged. Paying-day remains **FAIL**. Compose remains **ABSENT**.
+Wrap remains review-only / dead.
 
 **Deltas vs cycle 58 (enum4linux-ng, still standing):** host/farm findings
 **76→78**, POA&M **79→81** (demo null session + Domain Admins on existing
