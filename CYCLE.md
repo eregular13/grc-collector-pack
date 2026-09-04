@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 49 — SaaS file-drop polish (2026-09-04)
+
+saas-idp parses operator-landed ScubaGear / Okta / Maester / Graph exports under `in/saas/`. Failed/high only (`Results` / wrappers / JSONL). Pass / Skip / Info / empty invent nothing. Inactive Okta MFA_ENROLL maps to POA&M. Standing Global Administrator (Scuba PIM + Graph export) maps to POA&M. No Graph or Okta API. Demo `scuba-wrap.json` attaches MFA high to existing `contoso.onmicrosoft.com` (assets unchanged; findings/poam +1). scuba / okta-logs stay file_drop. Maester invoke stays BYO. Catalog **not inflated**. pytest **255**. Labs green. Compose ABSENT. Nessus cycle 48 and cycles 44–47 stand.
+
+```json
+{"pytest": 255, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 72, "vulns": 18, "evidence": 27, "poam": 74}, "farm_lab": {"assets": 64, "findings": 72, "poam": 74, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 73, "vulns": 18, "poam": 74, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 81, "vulns": 18, "poam": 77, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 48 — Nessus `.nessus` file-drop polish (2026-09-04)
 
 vuln-scan parses operator-landed NessusClientData XML (`ReportHost` / `ReportItem`) under `in/vuln/`. High/Critical plus key Medium (SMB 445, RDP 3389, TLS). Info/Low and empty `Report` invent nothing. Farm DEMO tool-bin `.txt` stubs stay non-Nessus (no `ReportHost`; e2e assets still 64). Demo `demo.nessus` attaches an SMB High to existing `http://10.0.0.20` (counts as a vulnerability, not a finding). No Nessus API; collector does not run nessuscli. nessus invoke stays BYO. Catalog **not inflated**. pytest **247**. Labs green (assets unchanged; vulns/poam +1). Compose ABSENT. Nikto cycle 47 and cycles 44–46 stand.

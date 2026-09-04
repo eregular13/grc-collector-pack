@@ -12,11 +12,11 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 
 | Run | Assets | Findings | Vulns | Evidence | POA&M | `demo` |
 |---|---|---|---|---|---|---|
-| `make lab` (empty pack `in/` → fixtures) | 64 | 71 | 18 | 27 | 73 | true |
-| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 80 | 18 | 27 | 76 | true |
-| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 72 | 18 | 27 | 73 | true |
+| `make lab` (empty pack `in/` → fixtures) | 64 | 72 | 18 | 27 | 74 | true |
+| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 81 | 18 | 27 | 77 | true |
+| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 73 | 18 | 27 | 74 | true |
 
-pytest **247 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/71/27 poam 73 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **255 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/72/27 poam 74 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 49):** Layer C parse-only SaaS file-drop polish: ScubaGear / Okta / Maester / Graph exports under `in/saas/`. Failed/high only. Empty/pass invent nothing. MFA and standing Global Administrator map to existing CISO/POA&M. Demo attaches MFA high to `contoso.onmicrosoft.com`. No Graph or Okta API. scuba / okta-logs stay file_drop. Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). Docs/e2e stand.
 
 **Delta (cycle 48):** Layer C parse-only Nessus `.nessus` file-drop polish: NessusClientData `ReportHost` / `ReportItem` under `in/vuln/`. High/Critical + key Medium. Empty and DEMO tool-bin `.txt` invent nothing. Demo attaches SMB High to `http://10.0.0.20`. No Nessus API; collector does not run nessuscli. nessus invoke stays BYO. Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). Docs/e2e stand.
 
