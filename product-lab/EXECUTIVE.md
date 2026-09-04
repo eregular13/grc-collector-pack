@@ -10,6 +10,12 @@ Cycle 72 run_slot intersection stays locked. Wrap stays **dead**.
 STATUS `wrap: review-only`. Paying-day **FAIL**. Compose **ABSENT**.
 DEMO ≠ client. Catalog unchanged.
 
+**Cycle 72 (stands):** SCOPE fail-closed invoke. `run_slot` `load_scope`
+and intersects caller `allow_tools` with the signed list. Empty/unsigned
+SCOPE refuses invoke. Host-local signed SCOPE cannot grant nmap.
+Conductor + CLI refuse empty/unsigned on every operator tool. Wrap stays
+**dead**. Paying-day **FAIL**. Compose **ABSENT**. Catalog unchanged.
+
 **Cycle 71 (stands):** README honesty rails. Root README matches
 STATUS / EXECUTIVE: DEMO ≠ client, paying-day **FAIL**, compose
 **ABSENT**, wrap **review-only**, catalog **111 / 32 / 30 / 81**, USB
