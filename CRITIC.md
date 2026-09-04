@@ -1,12 +1,14 @@
-# CRITIC — cycle 62 (MCP stub honesty)
+# CRITIC — cycle 63 (zmap/unicornscan file-drop)
 
-**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. Cycle 59 enum4linux-ng file-drop stands. Cycle 60 LICENSE-LOCK will_run rail stands. Cycle 61 wrap-dead farm SOP stands. This slice: `dropbox.mcp_stub` is conductor UX for this pack, not USB `evergreen_assessment_mcp`, not FastMCP, not a TypeScript refuse matrix, not paying-day truth. Compose still **ABSENT** (hole, not a PASS). Paying-day **FAIL**. Wrap review-only. No slot inflation. No new Layer C parser. Host lab 64/78/19/27 poam 81. e2e 64/79/19 poam 81 demo true. pytest **296**.
+**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. Layer C parses operator-landed zmap JSON/CSV/text and unicornscan text under `in/nmap/`. Open ports only. Empty/closed/RST invent nothing. Detect does not steal nmap / smbmap / arp / naabu. Demo attaches FTP/21 to existing `filesrv.corp.local`. No zmap/unicornscan subprocess. Slots stay `file_drop`. No quiet→loud via catalog growth.
 
-LICENSE-LOCK / file_drop-only names never `will_run=true`. nmap/nessus only when SCOPE.allow_tools + stage + PATH.
+**LICENSE-LOCK rail (Metis, reconfirmed):** BloodHound / Nuclei / OpenVAS / GVM / PingCastle / exploit-class / zmap / unicornscan / enum4linux-ng / smbmap never appear in invoke `will_run=true` even when every slot is allowlisted and on PATH. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH/FARM_TOOL_BIN.
+
+Host lab 64/79/19/27 poam 82. e2e 64/80/19 poam 82 demo true. pytest **301**. Compose **ABSENT**. Paying-day **FAIL**. Wrap review-only. Scanner-free. No Hexstrike vendor.
 
 −1 compose runtime still absent (no Docker CLI).  
 −1 stubs are DEMO, not real nmap/nessus. 30 invoke adapters ≠ 100 running binaries.
 
 ```json
-{"pytest": 296, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL"}
+{"pytest": 301, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never"}
 ```

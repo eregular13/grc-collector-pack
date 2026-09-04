@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycles 59–62 stand (enum4linux-ng file-drop; LICENSE-LOCK will_run; wrap-dead SOP; MCP stub honesty). Remaining window: harden existing farm/SCOPE honesty — do not add vanity Layer C parsers. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap review-only forever.
+Until 16:00 PT: keep e2e green; cycles 59–63 stand (enum4linux-ng; LICENSE-LOCK will_run; wrap-dead SOP; MCP honesty; zmap/unicornscan file-drop). File-drop remains the default. No quiet→loud via catalog growth. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap review-only forever.
 
 ## STOP rules
 

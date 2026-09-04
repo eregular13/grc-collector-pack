@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 63 — zmap/unicornscan file-drop polish (2026-09-04)
+
+inventory-nmap parses operator-landed zmap JSON/CSV/text and unicornscan text under `in/nmap/`. Open ports only. Empty / closed / RST invent nothing. Detect does not steal nmap / smbmap / arp-scan / naabu. Demo `zmap.txt` + `unicornscan.txt` attach FTP/21 to existing `filesrv.corp.local` (assets unchanged; findings/poam +1, deduped). No zmap/unicornscan subprocess. No live internet scan. Slots stay `file_drop`. Catalog **not inflated**. pytest **301**. Labs green. Compose ABSENT. Paying-day FAIL. LICENSE-LOCK / file_drop-only names still never `will_run=true` (reconfirmed). enum4linux-ng cycle 59 stands.
+
+```json
+{"pytest": 301, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never"}
+```
+
 ## cycle 62 — MCP stub honesty (2026-09-04)
 
 `dropbox.mcp_stub` is conductor UX for this Python pack — not USB `evergreen_assessment_mcp`, not hosted FastMCP, not a TypeScript refuse matrix, not paying-day truth. Docs + tests lock that. Catalog **not inflated**. pytest **296**. Labs unchanged vs cycle 59 (64/78/19/27 poam 81). Compose ABSENT. Paying-day FAIL. Wrap review-only. enum4linux-ng cycle 59 stands. No new Layer C parser.

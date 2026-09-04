@@ -12,11 +12,11 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 
 | Run | Assets | Findings | Vulns | Evidence | POA&M | `demo` |
 |---|---|---|---|---|---|---|
-| `make lab` (empty pack `in/` → fixtures) | 64 | 78 | 19 | 27 | 81 | true |
-| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 87 | 19 | 27 | 84 | true |
-| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 79 | 19 | 27 | 81 | true |
+| `make lab` (empty pack `in/` → fixtures) | 64 | 79 | 19 | 27 | 82 | true |
+| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 88 | 19 | 27 | 85 | true |
+| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 80 | 19 | 27 | 82 | true |
 
-pytest **296 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/78/27 poam 81 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **301 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/79/27 poam 82 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 63):** Layer C parse-only zmap/unicornscan file-drop polish: JSON/CSV/text under `in/nmap/` (`saddr`/`dport` or `TCP open … from`). Open ports only. Empty/closed/RST invent nothing. Detect does not steal nmap / smbmap / arp / naabu. Demo attaches FTP/21 to `filesrv.corp.local`. No zmap/unicornscan run. Slots stay `file_drop`. Catalog unchanged (111 / 32 / 30 / 81). **LICENSE-LOCK / file_drop-only list still never appears in invoke `will_run=true`** (reconfirmed this pass; BloodHound / Nuclei / OpenVAS / GVM / PingCastle / zmap / unicornscan / enum4linux-ng / smbmap stay dark even if allowlisted + on PATH). nmap/nessus only when SCOPE.allow_tools + stage + PATH. Paying-day FAIL. Compose ABSENT.
 
 **Delta (cycle 62):** MCP stub honesty. `dropbox.mcp_stub` is conductor UX for this pack — not USB `evergreen_assessment_mcp`, not FastMCP, not a TypeScript refuse matrix, not paying-day truth. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 59.
 
