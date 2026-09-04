@@ -75,9 +75,9 @@ python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
 
 ### Product contract
 
-1. **Discover is QUIET.** Wide shard inventory only (`internal.cidrs` → `/24` jobs, or `orchestrator.discover_prefix`). Low impact (`nmap -sn` + `--host-timeout`). **No deepen tools** in this stage. Plan-only if `nmap` is not on PATH or not in `stage_tools.discover` ∩ `allow_tools`.
+1. **Discover is QUIET.** Wide shard inventory only (`internal.cidrs` → `/24` jobs, or `orchestrator.discover_prefix`). Low impact (`nmap -sn` + `--host-timeout`). **No deepen tools** in this stage. Plan lists farm slots: `allow_tools ∩ wired invoke ∩ discover`. `--live` uses only those discover invoke adapters on PATH; missing → `skip_reason`. LICENSE-LOCK / file_drop never subprocess.
 2. **Brakes (always on).** SCOPE required. `max_workers` (default **2**). `deepen_batch` 2–5 (default **3**). `host_timeout_sec` (default **30**). Tear-down after every stage. **No targets outside SCOPE.** No `0.0.0.0/0` and no prefix shorter than `/8`.
-3. **Deepen is LOUDER and gated.** Runs only when `orchestrator.stages.deepen: true`. Missing or false → **fail closed** (no deepen workers, `--live` exits 2). Hosts come from **discover live results** or an explicit `orchestrator.deepen_hosts` list — never “the whole estate” and never a /16 in one worker. Small batches only. Tools only from `stage_tools.deepen` ∩ `allow_tools` (Nessus CLI if you installed it).
+3. **Deepen is LOUDER and gated.** Runs only when `orchestrator.stages.deepen: true`. Missing or false → **fail closed** (no deepen workers, `--live` exits 2). Hosts come from **discover live results** or an explicit `orchestrator.deepen_hosts` list — never “the whole estate” and never a /16 in one worker. Small batches only. Tools only from deepen-stage farm invoke slots ∩ `allow_tools` on PATH (Nessus CLI if you installed it).
 4. **Never open-internet spray.** Never one worker across a /16. External named hosts are the `run --profile external` path, not deepen.
 5. **Outputs stay the pack path:** discover/deepen artifacts → `in/` → control map → `out/poam/poam.csv` → CISO CSVs. Pentera (or Nmap/Nessus) finds it; Evergreen maps it.
 

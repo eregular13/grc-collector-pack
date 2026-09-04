@@ -6,6 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from dropbox.scope import FORBIDDEN_TOOLS
 from dropbox.yaml_lite import load_yaml
 
 FARM_ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +18,20 @@ LAYER_C_SENSORS = frozenset(
 FILE_DROP_ONLY = frozenset(
     {"nikto", "gobuster", "ffuf", "amass", "subfinder", "scoutsuite", "checkov"}
 )
+# Never live-subprocess these, even if allowlisted somehow.
+LICENSE_LOCK_LIVE = frozenset(FORBIDDEN_TOOLS) | {
+    "nuclei",
+    "openvas",
+    "gvm",
+    "gvmd",
+    "pingcastle",
+    "purpleknight",
+    "bloodhound",
+    "osqueryi",
+}
+DISCOVER_PREFER = ("nmap", "rustscan", "naabu")
+DEEPEN_PREFER = ("nessus", "nessuscli")
+PLAN_STAGES = ("discover", "deepen", "external")
 REQUIRED_FIELDS = (
     "id",
     "binary",
@@ -86,6 +101,102 @@ def slot_matrix(allow_tools: list[str], which=None) -> list[dict[str, Any]]:
         else:
             row["slot_state"] = "missing"
     return rows
+
+
+def refuse_live_slot(slot_id: str, binary: str | None = None) -> str | None:
+    """Return a refuse reason, or None if the slot may be considered for live."""
+    name = (slot_id or "").strip().lower()
+    bin_name = (binary or name).strip().lower()
+    if name in LICENSE_LOCK_LIVE or bin_name in LICENSE_LOCK_LIVE:
+        return f"LICENSE-LOCK: never subprocess {name or bin_name}"
+    if name in FILE_DROP_ONLY or bin_name in FILE_DROP_ONLY:
+        return f"file_drop only: never subprocess {name or bin_name}"
+    return None
+
+
+def select_stage_slots(
+    stage: str,
+    allow_tools: list[str] | None = None,
+    which=None,
+) -> dict[str, Any]:
+    """allow_tools ∩ wired invoke ∩ stage. Missing PATH stays selected with will_run false."""
+    import shutil
+
+    which_fn = which or shutil.which
+    want = str(stage or "").strip().lower()
+    allow = {str(t).strip().lower() for t in (allow_tools or []) if str(t).strip()}
+    selected: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for name, slot in load_slots().items():
+        cat = str(slot.get("category") or slot.get("stage") or "").lower()
+        if cat != want:
+            continue
+        binary = str(slot.get("binary") or name).lower()
+        refuse = refuse_live_slot(name, binary)
+        allowlisted = name in allow or binary in allow
+        invoke = bool(slot.get("invoke")) and bool(slot.get("wired"))
+        if refuse:
+            skipped.append(
+                {
+                    "slot": name,
+                    "binary": binary,
+                    "will_run": False,
+                    "state": "file_drop",
+                    "reason": refuse,
+                }
+            )
+            continue
+        if not invoke:
+            skipped.append(
+                {
+                    "slot": name,
+                    "binary": binary,
+                    "will_run": False,
+                    "state": "file_drop",
+                    "reason": "file_drop (not a callable adapter)",
+                }
+            )
+            continue
+        if not allowlisted:
+            skipped.append(
+                {
+                    "slot": name,
+                    "binary": binary,
+                    "will_run": False,
+                    "state": "not-allowlisted",
+                    "reason": "not in SCOPE.allow_tools",
+                }
+            )
+            continue
+        on_path = bool(which_fn(binary))
+        selected.append(
+            {
+                "slot": name,
+                "binary": binary,
+                "will_run": on_path,
+                "allowlisted": True,
+                "on_path": on_path,
+                "state": "present" if on_path else "missing",
+                "reason": "" if on_path else "not on PATH — plan only (will not download)",
+            }
+        )
+    prefer = DISCOVER_PREFER if want == "discover" else DEEPEN_PREFER if want == "deepen" else ()
+    rank = {name: index for index, name in enumerate(prefer)}
+    selected.sort(key=lambda row: (rank.get(row["slot"], 99), row["slot"]))
+    skipped.sort(key=lambda row: row["slot"])
+    ready = [row["slot"] for row in selected if row.get("will_run")]
+    return {
+        "stage": want,
+        "selected": selected,
+        "skipped": skipped,
+        "ready": ready,
+        "primary": ready[0] if ready else "",
+    }
+
+
+def plan_stage_slots(allow_tools: list[str] | None = None, which=None) -> dict[str, Any]:
+    """Discover / deepen / external slot plans for orchestrate summary."""
+    return {stage: select_stage_slots(stage, allow_tools, which=which) for stage in PLAN_STAGES}
 
 
 def farm_slot_status(

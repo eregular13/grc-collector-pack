@@ -11,6 +11,8 @@ from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.shard import batch_hosts, reject_wide_deepen_target, shard_cidrs
 from dropbox.scope import NEVER_EMBED, ORCH_BYO, ROOT, GateError, Scope, is_open_internet_cidr, load_scope
+from farm.adapters.catalog import plan_stage_slots, refuse_live_slot, select_stage_slots
+from farm.adapters.stubs import argv_for
 from shared.io_util import in_dir
 
 STAGE_GRAPH = (
@@ -43,15 +45,63 @@ def _write_json(path: Path, data) -> Path:
     return path
 
 
+def _choose_live_adapter(
+    slot_plan: dict,
+    target: str,
+    timeout: int,
+    allow_tools: list[str],
+    which,
+) -> tuple[str, str | None, list[str], str]:
+    """First ready invoke slot whose argv is legal for target. Never LICENSE-LOCK."""
+    last = "no invoke slot allowlisted and on PATH"
+    for row in slot_plan.get("selected") or []:
+        name = str(row.get("slot") or "")
+        binary = str(row.get("binary") or name)
+        refuse = refuse_live_slot(name, binary)
+        if refuse:
+            row["will_run"] = False
+            row["reason"] = refuse
+            last = refuse
+            continue
+        if not row.get("will_run"):
+            last = str(row.get("reason") or last)
+            continue
+        exe, reason = byo.which_allowed(binary, allow_tools, which=which)
+        if not exe:
+            row["will_run"] = False
+            row["on_path"] = False
+            row["state"] = "missing"
+            row["reason"] = reason
+            last = reason
+            continue
+        try:
+            argv = argv_for(name, exe, target, timeout)
+        except GateError as exc:
+            row["will_run"] = False
+            row["reason"] = str(exc)
+            last = str(exc)
+            continue
+        slot_plan["primary"] = name
+        slot_plan["ready"] = [r["slot"] for r in slot_plan.get("selected") or [] if r.get("will_run")]
+        return name, exe, argv, ""
+    slot_plan["primary"] = ""
+    slot_plan["ready"] = [r["slot"] for r in slot_plan.get("selected") or [] if r.get("will_run")]
+    return "", None, [], last
+
+
 def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
     prefix = scope.discover_prefix
     shards = shard_cidrs(scope.internal_cidrs, prefix) if scope.internal_cidrs else []
     for shard in shards:
         if is_open_internet_cidr(shard):
             raise GateError(f"discover refuses open-internet shard {shard}")
-    stage_allow = scope.tools_for("discover")
-    exe, reason, _tool = byo.resolve_stage("discover", stage_allow, which=_which)
+    stage_allow = list(scope.allow_tools)
+    slot_plan = select_stage_slots("discover", stage_allow, which=_which)
     sample = shards[:8]
+    probe = sample[0] if sample else (scope.internal_hosts[0] if scope.internal_hosts else ".")
+    primary, exe, _probe_argv, pick_reason = _choose_live_adapter(
+        slot_plan, probe, scope.host_timeout_sec, stage_allow, _which
+    )
     plan = {
         "stage": "discover",
         "volume": "quiet",
@@ -64,10 +114,11 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
         "max_live_shards": scope.max_live_shards,
         "max_workers": scope.max_workers,
         "host_timeout_sec": scope.host_timeout_sec,
-        "tool": "nmap",
+        "tool": primary or "nmap",
         "tool_ready": bool(exe),
-        "skip_reason": reason if not exe else "",
-        "note": "Quiet inventory. Not one scanner on a /16. No deepen tools.",
+        "skip_reason": pick_reason if not exe else "",
+        "slots": slot_plan,
+        "note": "Quiet inventory. Farm discover invoke ∩ allow_tools ∩ PATH. No file_drop / LICENSE-LOCK.",
         "workers": [],
     }
     if not scope.stage_discover:
@@ -90,7 +141,13 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
     try:
         for index, shard in enumerate(shards[: max(live_budget, min(8, len(shards)))]):
             use_live = bool(run_live and exe and index < live_budget)
-            argv = byo.nmap_quiet_argv(exe, shard, scope.host_timeout_sec) if use_live else []
+            argv: list[str] = []
+            if use_live and exe and primary:
+                try:
+                    argv = argv_for(primary, exe, shard, scope.host_timeout_sec)
+                except GateError as exc:
+                    use_live = False
+                    plan["skip_reason"] = plan["skip_reason"] or str(exc)
             worker = farm.spawn(
                 "discover",
                 shard,
@@ -122,6 +179,7 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
                 {
                     "id": worker.wid,
                     "target": shard,
+                    "slot": primary if worker.argv else "",
                     "status": worker.status,
                     "argv": worker.argv,
                     "timeout_sec": worker.timeout_sec,
@@ -179,6 +237,7 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
         "tool_ready": False,
         "skip_reason": "",
         "placeholder": "BYO Nessus CLI per batch. Never download. Never ship plugins.",
+        "slots": select_stage_slots("deepen", list(scope.allow_tools), which=_which),
         "workers": [],
         "deepen_workers_destroyed": 0,
         "deepen_workers_alive": 0,
@@ -211,10 +270,16 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
     batches = batch_hosts(hosts, scope.deepen_batch)
     plan["batches"] = batches
     plan["batch_count"] = len(batches)
-    stage_allow = scope.tools_for("deepen")
-    exe, reason, _tool = byo.resolve_stage("deepen", stage_allow, which=_which)
+    stage_allow = list(scope.allow_tools)
+    slot_plan = select_stage_slots("deepen", stage_allow, which=_which)
+    probe = hosts[0] if hosts else "."
+    primary, exe, _probe_argv, pick_reason = _choose_live_adapter(
+        slot_plan, probe, scope.host_timeout_sec, stage_allow, _which
+    )
+    plan["slots"] = slot_plan
+    plan["tool"] = primary or "nessus"
     plan["tool_ready"] = bool(exe)
-    plan["skip_reason"] = reason if not exe else ""
+    plan["skip_reason"] = pick_reason if not exe else ""
     run_live = bool(live and exe)
     live_left = scope.max_workers if run_live else 0
     if run_live and len(batches) > scope.max_workers:
@@ -229,7 +294,12 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
                     raise GateError(str(exc)) from exc
                 if not scope.allows_internal_target(item):
                     raise GateError(f"scope miss (target not in SCOPE): {item}")
-            argv = byo.nessus_batch_argv(exe, target, scope.host_timeout_sec) if run_live and exe else []
+            argv: list[str] = []
+            if run_live and exe and primary and live_left > 0:
+                try:
+                    argv = argv_for(primary, exe, target, scope.host_timeout_sec)
+                except GateError as exc:
+                    plan["skip_reason"] = plan["skip_reason"] or str(exc)
             worker = farm.spawn(
                 "deepen",
                 target,
@@ -263,6 +333,7 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
                 {
                     "id": worker.wid,
                     "target": target,
+                    "slot": primary if worker.argv else "",
                     "status": worker.status,
                     "argv": worker.argv,
                     "timeout_sec": worker.timeout_sec,
@@ -380,6 +451,8 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "destroyed": discover["discover_workers_destroyed"],
             "alive": discover["discover_workers_alive"],
             "skip_reason": discover.get("skip_reason") or "",
+            "slots": discover.get("slots") or {},
+            "tool": discover.get("tool") or "",
         },
         "deepen": {
             "batch_count": deepen["batch_count"],
@@ -388,7 +461,10 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "destroyed": deepen.get("deepen_workers_destroyed", 0),
             "skip_reason": deepen.get("skip_reason") or "",
             "host_source": deepen.get("host_source") or "",
+            "slots": deepen.get("slots") or {},
+            "tool": deepen.get("tool") or "",
         },
+        "slots": plan_stage_slots(scope.allow_tools, which=_which),
         "ingest": ingest,
         "grc_export": grc_export,
         "integrity_stops": integrity_stops(scope),

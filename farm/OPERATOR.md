@@ -52,8 +52,14 @@ kube-bench / gitleaks are **file_drop stubs** (callable, no subprocess). Drop JS
 
 Stage graph (quiet→loud): `plan → shard → discover → destroy → deepen (2–5) → destroy → ingest → grc_export`
 
+Plan JSON lists `slots` per stage: `allow_tools ∩ wired invoke ∩` discover / deepen / external.
+`--live` discover runs only those discover invoke slots that are on PATH; missing → `skip_reason`.
+Deepen uses deepen invoke slots on discover-live hosts or `deepen_hosts`.
+LICENSE-LOCK / file_drop names never subprocess.
+
 ```bash
 python3 -m dropbox orchestrate
+python3 -m dropbox orchestrate --live   # BYO PATH only; still SCOPE-gated
 python3 -m dropbox.mcp_stub serve
 python3 -m dropbox mcp farm_slot_status
 python3 -m dropbox mcp stage_discover    # plan-only
