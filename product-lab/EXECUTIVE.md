@@ -13,10 +13,10 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **136 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **140 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T14:24:35Z"}
+{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T14:57:51Z"}
 ```
 
 Asset `ref_id` uniqueness: **62 = 62**.
@@ -38,7 +38,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 
 ## Drop-box (this PR)
 
-Reid’s consented one-two combo lives in `dropbox/`. Three layers: BYO tools under SCOPE, orchestrator brakes, parse-only collectors. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule.
+Reid’s consented one-two combo lives in `dropbox/`. Three layers: BYO tools under SCOPE (`farm/` private slots — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes, parse-only collectors. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule.
 
 **Pentera finds it; Evergreen maps it.** After ingest, the client handoff is CISO CSVs plus `out/poam/poam.csv` (owner/due blank). SMB 445 in the demo nmap estate maps to network-service hardening (`cpg_2_W`, `csf_PR`) — not a hallucinated CVE.
 
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/`. Three layers: BYO tools un
 
 ## Delta (this pass, 2026-09-04)
 
-P1 compose scanner-free: `dropbox/scanner_free.py` fails the suite if nmap/nessus/nuclei/openvas/gvm are apt/pip/wget/FROM'd into `Dockerfile` or compose. `make dropbox-compose` runs internal+external demo/dry when Docker is up; **this VM stamps compose_lab: absent** (`docker CLI not on PATH`) after statics pass — not a fake pass. CISO drop MANIFEST + `product-lab/drop/` refreshed to 62/62/24 poam 61 (SMB/RDP goldens, owner/due blank). pytest **132 → 136 + 1 skip**.
+Private farm layout (`farm/`): Layer A slots + compose skeleton. Tools via host PATH, `FARM_TOOL_BIN` bind-mount, or private tags Reid builds. Not published as Hub soup. Binaries not vendored. Farm Dockerfile/compose fail the same apt/embed asserts as the pack image. Layer C 10 collectors untouched/parse-only. Integrity stop: farm is private. pytest **136 → 140 + 1 skip**.
 
-Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). No paying-day PASS. USB evergreen-assessment not copied.
+Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Farm compose is isolation docs, not a running multi-tool cluster. No paying-day PASS. USB evergreen-assessment not copied.

@@ -1,6 +1,6 @@
-cycle: 16
+cycle: 17
 phase: DONE
-item: COMPOSE-SCANNER-FREE
+item: PRIVATE-FARM-LAYOUT
 critic_score: 8/10
 open_p0:
 open_p1:
