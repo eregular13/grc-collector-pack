@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 57 nbtscan file-drop polish stands (assets only; detect does not steal arp-scan/netdiscover/fping; no nbtscan subprocess; no live NetBIOS). netdiscover cycle 56 stands. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 58 smbmap file-drop polish stands (READ/WRITE → existing SMB POA&M; empty/NO ACCESS invent nothing; no smbmap/smbclient; no live SMB). nbtscan cycle 57 stands. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 

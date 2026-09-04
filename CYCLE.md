@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 58 — smbmap file-drop polish (2026-09-04)
+
+inventory-nmap parses operator-landed smbmap share tables under `in/nmap/` (`[+] IP:` / Disk + Permissions). Hosts become assets. READ/WRITE shares become exposure findings mapped to existing SMB POA&M (C$/ADMIN$ → restrict admin shares). Empty / NO ACCESS invent nothing. Detect does not steal nmap / arp-scan / nbtscan. Demo `smbmap.txt` attaches writable C$ to existing `filesrv.corp.local` (assets unchanged; findings/poam +1). Collector does not run smbmap or smbclient, never does live SMB, and does not store credentials. Slot stays `file_drop`. Catalog **not inflated**. pytest **288**. Labs green. Compose ABSENT. nbtscan cycle 57 stands.
+
+```json
+{"pytest": 288, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 76, "vulns": 19, "evidence": 27, "poam": 79}, "farm_lab": {"assets": 64, "findings": 76, "poam": 79, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 77, "vulns": 19, "poam": 79, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 85, "vulns": 19, "poam": 82, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 57 — nbtscan file-drop polish (2026-09-04)
 
 inventory-nmap parses operator-landed nbtscan name/IP tables under `in/nmap/` (`Doing NBT name scan` / IP + NetBIOS + `<server>`). Hosts become assets only. Empty / header-only invent nothing. Detect does not steal arp-scan / netdiscover / fping. Demo `nbtscan.txt` attaches to existing `filesrv.corp.local` (assets and findings unchanged). Collector does not run nbtscan and never does live NetBIOS. Slot stays `file_drop`. Catalog **not inflated**. pytest **284**. Labs green. Compose ABSENT. netdiscover cycle 56 stands.

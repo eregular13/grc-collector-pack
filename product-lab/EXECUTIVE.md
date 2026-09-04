@@ -2,38 +2,35 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 57):** nbtscan file-drop polish. `in/nmap/` now
-accepts operator-landed nbtscan name/IP tables (`Doing NBT name scan` /
-IP + NetBIOS + `<server>`). Hosts become assets only. Empty /
-header-only invent nothing. Detect does not steal arp-scan /
-netdiscover / fping. Collector stays parse-only — no nbtscan run, no
-live NetBIOS. Slot stays `file_drop`. Demo `nbtscan.txt` attaches
-FILESRV / MAC to existing `filesrv.corp.local` (no new findings).
+**This window (cycle 58):** smbmap file-drop polish. `in/nmap/` now
+accepts operator-landed smbmap share tables (`[+] IP:` / Disk +
+Permissions). Hosts become assets. READ/WRITE shares become exposure
+findings mapped to existing SMB POA&M. Empty / NO ACCESS invent nothing.
+Detect does not steal nmap / arp-scan / nbtscan. Collector stays
+parse-only — no smbmap/smbclient run, no live SMB, no credentials.
+Slot stays `file_drop`. Demo `smbmap.txt` attaches writable C$ to
+existing `filesrv.corp.local`.
 
-**Cycle 56 (stands):** netdiscover text file-drop. Hosts become assets
-only. arp-scan detect does not claim tables. No live ARP.
-
-**Cycle 55 (stands):** fping text/JSON file-drop. Alive hosts become
-assets only. No live ping.
-
-**Cycle 54 (stands):** arp-scan text/JSON file-drop. Hosts become assets
-only. No live ARP.
+**Cycle 57 (stands):** nbtscan name/IP file-drop. Assets only. No live
+NetBIOS. Detect does not steal arp-scan / netdiscover / fping.
 
 **Honest stamp:** compose **ABSENT**. Host `make lab` / `make farm-lab` /
-`make farm-toolbin-e2e` / `make dropbox-lab` / pytest **284 passed, 1 skipped**.
+`make farm-toolbin-e2e` / `make dropbox-lab` / pytest **288 passed, 1 skipped**.
 Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. Wrap review-only.
 No paying-day PASS. No USB copy. Cycle 20 (105) stands. DEMO ≠ client.
 
 | Surface | Assets | Findings | Vulns | Evidence | POA&M | demo |
 |---|---:|---:|---:|---:|---:|---|
-| Host `make lab` | 64 | 75 | 19 | 27 | 78 | true |
-| `make farm-lab` | 64 | 75 | 19 | 27 | 78 | true |
-| `make farm-toolbin-e2e` | 64 | 76 | 19 | 27 | 78 | true |
-| `make dropbox-lab` | 69 | 84 | 19 | 27 | 81 | true |
+| Host `make lab` | 64 | 76 | 19 | 27 | 79 | true |
+| `make farm-lab` | 64 | 76 | 19 | 27 | 79 | true |
+| `make farm-toolbin-e2e` | 64 | 77 | 19 | 27 | 79 | true |
+| `make dropbox-lab` | 69 | 85 | 19 | 27 | 82 | true |
 
-**Deltas vs cycle 56:** counts unchanged (demo attaches NetBIOS/MAC to
-existing `filesrv.corp.local`; empty/header-only silent). pytest
-**280→284**. Catalog / wrap / compose / paying-day unchanged.
+**Deltas vs cycle 57:** host/farm findings **75→76**, POA&M **78→79**
+(demo writable C$ on existing `filesrv.corp.local`; NO ACCESS silent).
+Assets unchanged. e2e findings **76→77**, POA&M **78→79**. dropbox
+findings **84→85**, POA&M **81→82**. pytest **284→288**. Catalog / wrap /
+compose / paying-day unchanged.
 
 **Still open:** Docker/compose runtime unexercised. Live BYO on this box is
 DEMO stubs. Catalog ≠ 100 running binaries. Overnight loop ended 2026-09-02
