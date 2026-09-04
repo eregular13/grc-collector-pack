@@ -2,7 +2,11 @@
 
 ## cycle 31 — farm-toolbin-e2e quiet→loud DEMO (2026-09-04)
 
-`make farm-toolbin-e2e` / `scripts/farm_toolbin_e2e.py`: isolated `farm/work/e2e` with `FARM_TOOL_BIN=farm/tool-bin/lab`. Plan → discover (DEMO nmap stub) → deepen small batch (DEMO nessus/nessuscli) → external **plan-only** → ingest → Layer C. Artifacts in `in/nmap|vuln`; CISO/POA&M exist; pack `in/` untouched; `demo` true. LICENSE-LOCK still refuses nuclei/openvas. Catalog **not inflated**. No live internet. No fake compose pass.
+`make farm-toolbin-e2e` / `scripts/farm_toolbin_e2e.py`: isolated `farm/work/e2e` with `FARM_TOOL_BIN=farm/tool-bin/lab`. Plan → discover (DEMO nmap stub) → deepen small batch (DEMO nessus/nessuscli) → external **plan-only** → ingest → Layer C. Artifacts in `in/nmap|vuln`; CISO/POA&M exist; pack `in/` untouched; `demo` true. LICENSE-LOCK still refuses nuclei/openvas. Catalog **not inflated**. No live internet. No fake compose pass. pytest **178**. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 178, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_toolbin_e2e": {"assets": 63, "findings": 63, "poam": 61, "demo": true}, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
 
 ## cycle 30 — deepen FARM_TOOL_BIN DEMO stubs (2026-09-04)
 
