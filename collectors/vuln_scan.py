@@ -15,29 +15,47 @@ SOURCE = "vuln-scan"
 LABELS = ["vuln", "scanner"]
 
 
+def _is_nuclei_row(row: Any) -> bool:
+    if not isinstance(row, dict):
+        return False
+    if row.get("template-id") or row.get("template_id") or row.get("templateID"):
+        return True
+    return isinstance(row.get("info"), dict) and bool(
+        row["info"].get("name") or row["info"].get("severity")
+    )
+
+
+def _nuclei_from_payload(payload: Any) -> list[dict[str, Any]]:
+    if _is_nuclei_row(payload):
+        return [payload]  # type: ignore[list-item]
+    if isinstance(payload, list):
+        if is_testssl(payload):
+            return []
+        return [r for r in payload if _is_nuclei_row(r)]
+    if not isinstance(payload, dict):
+        return []
+    for key in ("results", "matches", "findings", "nuclei"):
+        raw = payload.get(key)
+        if isinstance(raw, list):
+            return [r for r in raw if _is_nuclei_row(r)]
+    return []
+
+
 def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
-    if path.suffix.lower() == ".jsonl" or "nuclei" in path.name.lower():
-        return [r for r in read_jsonl(path) if isinstance(r, dict)]
     text = read_text(path).lstrip("\ufeff").strip()
     if not text:
         return []
-    if text[0] == "{":
-        # JSONL or single object
-        rows = read_jsonl(path)
+    if path.suffix.lower() == ".jsonl" or "nuclei" in path.name.lower() or (
+        text[0] == "{" and "\n{" in text
+    ):
+        rows = [r for r in read_jsonl(path) if _is_nuclei_row(r)]
         if rows:
-            return [r for r in rows if isinstance(r, dict)]
-        obj = read_json(path)
-        return [obj] if isinstance(obj, dict) and "template-id" in obj else []
-    if text[0] == "[":
-        data = read_json(path)
-        if not isinstance(data, list) or is_testssl(data):
-            return []
-        return [
-            r
-            for r in data
-            if isinstance(r, dict) and (r.get("template-id") or r.get("template_id") or r.get("info"))
-        ]
-    return []
+            return rows
+    try:
+        payload = read_json(path)
+    except Exception:
+        return [r for r in read_jsonl(path) if _is_nuclei_row(r)]
+    return _nuclei_from_payload(payload)
 
 
 def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
@@ -140,8 +158,24 @@ def parse_file(path: Path) -> list[dict]:
     if nuclei:
         for row in nuclei:
             info = row.get("info") if isinstance(row.get("info"), dict) else {}
-            tid = str(row.get("template-id") or row.get("template_id") or info.get("name") or "nuclei")
-            host = str(row.get("host") or row.get("matched-at") or row.get("ip") or "unknown")
+            tid = str(
+                row.get("template-id")
+                or row.get("template_id")
+                or row.get("templateID")
+                or info.get("name")
+                or "nuclei"
+            )
+            sev = str(info.get("severity") or row.get("severity") or "medium").lower()
+            if sev in {"info", "unknown"}:
+                continue
+            host = str(
+                row.get("host")
+                or row.get("matched-at")
+                or row.get("matched_at")
+                or row.get("url")
+                or row.get("ip")
+                or "unknown"
+            )
             add_asset(host)
             records.append(
                 make_record(
@@ -150,12 +184,16 @@ def parse_file(path: Path) -> list[dict]:
                     ref_id=make_ref(SOURCE, tid),
                     name=str(info.get("name") or tid),
                     description=str(info.get("description") or tid),
-                    severity=info.get("severity") or row.get("severity") or "medium",
+                    severity=sev,
                     category="vulnerability",
                     assets=[host],
                     labels=LABELS + ["nuclei"],
                     collected_at=now,
-                    extra={"cve": tid if tid.upper().startswith("CVE") else ""},
+                    extra={
+                        "cve": tid if tid.upper().startswith("CVE") else "",
+                        "rule": tid,
+                        "template_id": tid,
+                    },
                 )
             )
         return records

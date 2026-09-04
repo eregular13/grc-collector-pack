@@ -375,6 +375,55 @@ def test_code_sarif_extension(tmp_path) -> None:
     assert "SQL injection" in mapped["control_name"]
 
 
+def test_nuclei_jsonl_maps_log4shell() -> None:
+    from shared.control_map import map_finding
+
+    recs = vuln_scan.parse_file(DEMO / "vuln" / "nuclei.jsonl")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) >= 3
+    log4j = next(r for r in findings if "Log4j" in r["name"] or "44228" in r["ref_id"])
+    mapped = map_finding(log4j)
+    assert mapped["include_poam"] is True
+    assert "Log4Shell" in mapped["control_name"] or "Log4j" in mapped["control_name"]
+    assert "dropped" in mapped["recommended_fix"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_nuclei_json_wrapper_and_info_silent(tmp_path) -> None:
+    dest = tmp_path / "scan.json"
+    dest.write_text(
+        """{"results":[
+        {"template_id":"exposed-redis","info":{"name":"Redis without auth","severity":"high",
+         "description":"Unauthenticated Redis"},"host":"10.0.0.40","matched_at":"10.0.0.40:6379"},
+        {"template-id":"tech-detect","info":{"name":"nginx detect","severity":"info"},
+         "host":"10.0.0.40"}
+        ]}""",
+        encoding="utf-8",
+    )
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "Redis" in findings[0]["name"]
+    assert not any("nginx" in r["name"] for r in findings)
+
+
+def test_empty_nuclei_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-nuclei.json"
+    dest.write_text("""{"results":[]}""", encoding="utf-8")
+    assert vuln_scan.parse_file(dest) == []
+
+
+def test_vuln_scan_no_nuclei_subprocess() -> None:
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "collectors" / "vuln_scan.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "nuclei -" not in src
+
+
 def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> None:
     from shared.io_util import load_inputs
 

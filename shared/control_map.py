@@ -180,6 +180,18 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Do not pass untrusted input to a shell. Use argv arrays or a safe API. "
             "This is a SAST/SARIF finding, not a CVE."
         )
+    elif "log4j" in text or "log4shell" in text or "jndi" in text:
+        name = "Patch Log4Shell-vulnerable services"
+        fix = (
+            "Upgrade Log4j to a fixed release and block JNDI lookups. "
+            "This is a dropped Nuclei finding, not a live scan."
+        )
+    elif "remote code execution" in text or text.endswith(" rce") or " rce " in f" {text} ":
+        name = "Stop remote code execution"
+        fix = (
+            "Patch or isolate the service that Nuclei flagged as RCE. "
+            "This is a dropped Nuclei finding, not a live scan."
+        )
     elif "xss" in text or "cross-site scripting" in text:
         name = "Stop cross-site scripting"
         fix = (

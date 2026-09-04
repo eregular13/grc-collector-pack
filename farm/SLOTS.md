@@ -124,6 +124,16 @@ Prowler *invoke* is separate BYO (`allow_tools`) when the binary is on PATH;
 this path is file-drop ingest. ScoutSuite stays file_drop-only.
 No new catalog slots.
 
+## Nuclei JSON file-drop (Layer C)
+
+Drop **Nuclei** JSON / JSONL under `in/vuln/` (JSONL, a single object,
+an array, or a `{results|matches|findings}` wrapper). `template-id` /
+`template_id` / `info` rows only. INFO stays silent. Empty `results`
+invents nothing. Parse-only — this repo never subprocesses `nuclei`.
+High rows map to CISO/POA&M when obvious (Log4Shell / RCE). Empty `in/`
+still loads `fixtures/demo/vuln/nuclei.jsonl`. nuclei stays file_drop.
+No new catalog slots.
+
 ## SARIF file-drop (Layer C)
 
 nuclei / semgrep / trivy stay file_drop (this repo does not run them).

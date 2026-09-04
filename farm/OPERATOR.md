@@ -105,6 +105,12 @@ kube-bench / kubescape / gitleaks are **file_drop** (never subprocess). Drop
 Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL only. Layer C does
 not run `kubectl` or talk to a cluster. High rows map to CISO/POA&M when
 obvious (privileged, anonymous-auth, privilege escalation, hostNetwork).
+
+Nuclei **JSON/JSONL** is file-drop ingest under `in/vuln/`. Layer C parses
+JSONL, a single object, an array, or a `{results|matches|findings}` wrapper.
+INFO rows stay silent. Empty results invent nothing. High Log4Shell / RCE
+rows map to existing CISO/POA&M. The collector never runs `nuclei`.
+
 Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.
