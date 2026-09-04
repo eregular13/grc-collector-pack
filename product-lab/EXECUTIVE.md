@@ -2,14 +2,13 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 72):** SCOPE fail-closed invoke. `run_slot` now
-`load_scope` and intersects caller `allow_tools` with the signed list.
-Empty/unsigned SCOPE refuses invoke. Host-local signed SCOPE cannot
-grant nmap even if the caller asks. `run_allowed` requires
-`allow_tools`. Conductor + CLI refuse empty/unsigned SCOPE on every
-operator tool. Cycle 71 README honesty stays locked. Wrap stays
-**dead**. STATUS `wrap: review-only`. Paying-day **FAIL**. Compose
-**ABSENT**. DEMO ≠ client. Catalog unchanged.
+**This window (cycle 73):** FARM_TOOL_BIN refuse-list. SCOPE hunt found
+**no remaining operator entrypoint gap** after cycle 72. Every
+`LICENSE_LOCK_SPAWN` name dropped into `tool-bin` or `tool-bin/lab`
+fails resolve/spawn. ORCH_BYO nmap/nessus stay off the refuse list.
+Cycle 72 run_slot intersection stays locked. Wrap stays **dead**.
+STATUS `wrap: review-only`. Paying-day **FAIL**. Compose **ABSENT**.
+DEMO ≠ client. Catalog unchanged.
 
 **Cycle 71 (stands):** README honesty rails. Root README matches
 STATUS / EXECUTIVE: DEMO ≠ client, paying-day **FAIL**, compose
@@ -121,7 +120,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**316 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**317 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -131,6 +130,11 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-lab` | 64 | 79 | 19 | 27 | 82 | true |
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
+
+**Deltas vs cycle 72:** lab counts unchanged. pytest **316→317**.
+Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run unchanged.
+Paying-day remains **FAIL**. Compose remains **ABSENT**. Wrap remains
+review-only / dead. SCOPE entrypoint gap remains **none**.
 
 **Deltas vs cycle 71:** lab counts unchanged. pytest **315→316**.
 Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run unchanged.

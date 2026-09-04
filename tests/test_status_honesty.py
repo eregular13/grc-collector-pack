@@ -39,6 +39,19 @@ def test_status_paying_day_fail_and_compose_absent_until_proven() -> None:
         assert status.get("compose_lab") in {"absent", "pass", "skip"}
 
 
+def test_status_scope_inventory_no_remaining_entrypoint_gap() -> None:
+    status = _status()
+    assert status.get("scope_gap") == "none"
+    inv = status.get("scope_inventory", "").lower()
+    assert "load_scope" in inv
+    assert "run_slot" in inv
+    assert "cli" in inv and "conductor" in inv
+    assert status.get("farm_tool_bin_refuse") == "LICENSE_LOCK_SPAWN"
+    assert status.get("paying_day") == "FAIL"
+    assert status.get("compose_lab") == "absent"
+    assert status.get("catalog_total") == "111"
+
+
 def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
     ok, _reason = docker_available()
     stamp = compose_lab()
