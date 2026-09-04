@@ -122,7 +122,9 @@ CLONE_RE = re.compile(
     re.IGNORECASE,
 )
 WRAP_POST_RE = re.compile(
-    r"(?:curl|wget)\s+[^\n]*(?:/api/risks|/api/auth/login|/itsm/assets|\$\{API\}/risks)",
+    r"(?:curl|wget)\s+[^\n]*"
+    r"(?:/api/risks|/api/auth/login|/itsm/assets|/api/evidence(?!s)|/api/incidents"
+    r"|\$\{API\}/(?:auth/login|itsm/assets|evidence|incidents|risks))",
     re.IGNORECASE,
 )
 RUN_SCANNER_RE = re.compile(

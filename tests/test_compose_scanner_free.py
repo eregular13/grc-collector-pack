@@ -52,6 +52,19 @@ def test_wrap_post_in_image_file_is_caught() -> None:
     assert hits and any("wrap-post" in h for h in hits)
     hits = scan_text("wget -q https://wrap.invalid/api/auth/login\n", "Dockerfile")
     assert hits
+    hits = scan_text("curl -X POST https://x.invalid/itsm/assets\n", "Dockerfile")
+    assert hits
+    hits = scan_text("curl -X POST https://x.invalid/api/evidence\n", "Dockerfile")
+    assert hits
+    hits = scan_text("curl -X POST https://x.invalid/api/incidents\n", "Dockerfile")
+    assert hits
+    hits = scan_text("wget ${API}/incidents\n", "Dockerfile")
+    assert hits
+    ciso = scan_text(
+        "curl -X POST https://ciso.invalid/api/evidences/\n",
+        "Dockerfile",
+    )
+    assert ciso == []
     clean = scan_text(
         "# Never POST /api/risks. RISKREADY_PUSH stays 0.\nFROM python:3.12-slim\n",
         "Dockerfile",

@@ -6,22 +6,15 @@ from pathlib import Path
 from typing import Any, Callable
 
 from dropbox.orchestrator import byo
-from dropbox.scope import FORBIDDEN_TOOLS, GateError, is_open_internet_cidr
-from farm.adapters.catalog import FILE_DROP_ONLY, load_slots
+from dropbox.scope import FORBIDDEN_TOOLS, GateError, LICENSE_LOCK_SPAWN, is_open_internet_cidr
+from farm.adapters.catalog import FILE_DROP_ONLY, LICENSE_LOCK_LIVE, load_slots
 
 Which = Callable[[str], str | None]
 
 # Never subprocess these, even if a slot is mis-marked wired.
-NEVER_SUBPROCESS = frozenset(FORBIDDEN_TOOLS) | {
-    "nuclei",
-    "openvas",
-    "gvm",
-    "gvmd",
-    "pingcastle",
-    "purpleknight",
-    "bloodhound",
-    "osqueryi",
-}
+NEVER_SUBPROCESS = frozenset(LICENSE_LOCK_SPAWN) | frozenset(LICENSE_LOCK_LIVE) | frozenset(
+    FORBIDDEN_TOOLS
+)
 
 
 def _named_host(target: str, tool: str) -> str:

@@ -50,6 +50,20 @@ NEVER_EMBED = frozenset(
 )
 ORCH_BYO = frozenset({"nmap", "nessus", "nessuscli"})
 FORBIDDEN_TOOLS = NEVER_EMBED - ORCH_BYO
+# Never resolve or subprocess these from FARM_TOOL_BIN or PATH — even if dropped
+# there. nmap/nessus stay ORCH_BYO (signed SCOPE.allow_tools + stage only).
+LICENSE_LOCK_SPAWN = frozenset(FORBIDDEN_TOOLS) | {
+    "hexstrike",
+    "hexstrike-ai",
+    "enum4linux",
+    "enum4linux-ng",
+    "smbmap",
+    "smbclient",
+    "zmap",
+    "unicornscan",
+    "metasploit",
+    "msfconsole",
+}
 
 ALLOWED_RUNNERS = frozenset({"lynis", "ss", "ip", "curl", "testssl", "testssl.sh"})
 EXTERNAL_STAGE_TOOLS = frozenset({"curl", "testssl", "testssl.sh"})

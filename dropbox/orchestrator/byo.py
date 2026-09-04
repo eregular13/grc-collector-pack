@@ -12,7 +12,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from dropbox.scope import DEEPEN_STAGE_TOOLS, DISCOVER_STAGE_TOOLS, EXTERNAL_STAGE_TOOLS, GateError
+from dropbox.scope import (
+    DEEPEN_STAGE_TOOLS,
+    DISCOVER_STAGE_TOOLS,
+    EXTERNAL_STAGE_TOOLS,
+    GateError,
+    LICENSE_LOCK_SPAWN,
+)
 
 # Integrity: this file must never grow a fetcher.
 FORBIDDEN_IN_ADAPTER = (
@@ -32,9 +38,12 @@ def farm_which(name: str) -> str | None:
 
     Lab stubs live under farm/tool-bin/lab/ and are DEMO shell scripts, not scanners.
     FARM_TOOL_BIN unset → PATH only (no implicit lab stub pickup).
+    LICENSE-LOCK names never resolve, even if dropped into FARM_TOOL_BIN.
     """
     tool = (name or "").strip()
     if not tool or tool in {".", ".."} or "/" in tool or "\\" in tool:
+        return None
+    if tool.lower() in LICENSE_LOCK_SPAWN:
         return None
     raw = (os.environ.get("FARM_TOOL_BIN") or "").strip()
     if raw:
@@ -56,6 +65,8 @@ def which_allowed(
 ) -> tuple[str | None, str]:
     """Return (exe, reason). exe is set only when named in allow_tools and on PATH."""
     tool = (name or "").strip().lower()
+    if tool in LICENSE_LOCK_SPAWN:
+        return None, f"LICENSE-LOCK: never resolve {tool}"
     allow = {t.lower() for t in allow_tools}
     if tool not in allow:
         return None, "not in SCOPE.allow_tools for this stage"
@@ -171,6 +182,8 @@ def run_allowed(
         if bad in low:
             raise GateError(f"adapter refuses fetcher/installer: {bad}")
     tool = Path(str(argv[0])).name.lower()
+    if tool in LICENSE_LOCK_SPAWN:
+        raise GateError(f"LICENSE-LOCK: run_allowed refuses {tool}")
     if allow_tools is not None:
         allow = {t.lower() for t in allow_tools}
         if tool not in allow:

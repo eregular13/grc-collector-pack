@@ -50,7 +50,12 @@ Each prints a DEMO banner and fixture-shaped stdout. They are not scanners
 and make no network calls. `make farm-toolbin-lab` points `FARM_TOOL_BIN` at
 that directory and asserts nmap+curl `will_run`. On a consented box, copy
 **your** allowlisted binaries into `farm/tool-bin/` (parent) or rely on host
-PATH. Do not commit ELF/deb scanner packages. Unset `FARM_TOOL_BIN` for
+PATH. Do not commit ELF/deb scanner packages. `FARM_TOOL_BIN` never
+resolves LICENSE-LOCK names (nuclei / openvas / wazuh / osquery /
+BloodHound / PingCastle / RiskReady / hexstrike / smbmap / zmap /
+enum4linux-ng / …) even if someone drops those binaries there.
+nmap / nessus invoke only under signed `SCOPE.allow_tools` + stage —
+never default free-day live. Unset `FARM_TOOL_BIN` for
 `make farm-lab` so that lab stays plan-only fixtures.
 
 ```bash

@@ -101,6 +101,9 @@ def test_license_lock_and_file_drop_never_will_run() -> None:
             "zmap",
             "unicornscan",
             "hexstrike",
+            "wazuh",
+            "osquery",
+            "riskready",
         }
     )
     ready: set[str] = set()

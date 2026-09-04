@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from dropbox.scope import FORBIDDEN_TOOLS
+from dropbox.scope import LICENSE_LOCK_SPAWN
 from dropbox.yaml_lite import load_yaml
 
 FARM_ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +19,7 @@ FILE_DROP_ONLY = frozenset(
     {"nikto", "gobuster", "ffuf", "amass", "subfinder", "scoutsuite", "checkov"}
 )
 # Never live-subprocess these, even if allowlisted somehow.
-LICENSE_LOCK_LIVE = frozenset(FORBIDDEN_TOOLS) | {
+LICENSE_LOCK_LIVE = frozenset(LICENSE_LOCK_SPAWN) | {
     "nuclei",
     "openvas",
     "gvm",
@@ -28,6 +28,9 @@ LICENSE_LOCK_LIVE = frozenset(FORBIDDEN_TOOLS) | {
     "purpleknight",
     "bloodhound",
     "osqueryi",
+    "wazuh",
+    "osquery",
+    "riskready",
 }
 DISCOVER_PREFER = ("nmap", "rustscan", "naabu")
 DEEPEN_PREFER = ("nessus", "nessuscli")

@@ -42,6 +42,7 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "Submodule hexstrike-ai" in text or "submodule hexstrike-ai" in text.lower()
     op = (FARM / "OPERATOR.md").read_text(encoding="utf-8")
     assert "FARM_TOOL_BIN" in op
+    assert "never resolves LICENSE-LOCK" in op
     assert "written SCOPE" in op
     assert "quiet" in op.lower()
     assert "mcpServers" in op or "dropbox.mcp_stub" in op

@@ -138,6 +138,54 @@ def test_farm_tool_bin_dry_invoke_deepen_external_adjacent(
             assert needle in blob, (slot, needle)
 
 
+def test_farm_which_refuses_locked_binaries_dropped_in_tool_bin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FARM_TOOL_BIN is not a back door for refused scanners."""
+    from dropbox.orchestrator.byo import run_allowed, which_allowed
+    from dropbox.scope import LICENSE_LOCK_SPAWN
+
+    tool_bin = tmp_path / "tool-bin"
+    tool_bin.mkdir()
+    locked = (
+        "nuclei",
+        "openvas",
+        "wazuh",
+        "osquery",
+        "bloodhound",
+        "pingcastle",
+        "smbmap",
+        "zmap",
+        "hexstrike",
+    )
+    for name in locked:
+        path = tool_bin / name
+        path.write_text("#!/bin/sh\necho SHOULD-NOT-RUN\n", encoding="utf-8")
+        path.chmod(0o755)
+    monkeypatch.setenv("FARM_TOOL_BIN", str(tool_bin))
+    monkeypatch.setenv("PATH", str(tool_bin))
+    for name in locked:
+        assert name in LICENSE_LOCK_SPAWN
+        assert farm_which(name) is None
+        exe, reason = which_allowed(name, [name])
+        assert exe is None
+        assert "LICENSE-LOCK" in reason
+        with pytest.raises(GateError, match="LICENSE-LOCK"):
+            run_allowed([str(tool_bin / name), "--help"], tmp_path / f"{name}.out", 2, allow_tools=[name])
+
+
+def test_repo_tool_bin_ships_no_scanner_binaries() -> None:
+    root = ROOT / "farm" / "tool-bin"
+    forbidden_ext = {".deb", ".rpm", ".exe", ".nbin", ".nasl"}
+    for path in root.rglob("*"):
+        if not path.is_file() or path.name == "README.md":
+            continue
+        assert path.suffix.lower() not in forbidden_ext, path
+        raw = path.read_bytes()[:8]
+        assert not raw.startswith(b"\x7fELF"), path
+        assert not raw.startswith(b"MZ"), path
+
+
 def test_farm_tool_bin_license_lock_still_refuses_subprocess(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
