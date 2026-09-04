@@ -1,0 +1,2 @@
+# fping (operator drop; parse-only)
+filesrv.corp.local is alive

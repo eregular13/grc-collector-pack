@@ -105,6 +105,11 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert slots["arp-scan"].get("scope_key") == "file_drop"
     assert slots["arp-scan"].get("wired") is False
     assert slots["arp-scan"].get("invoke") is False
+    assert "fping" in md
+    assert "fping.txt" in md
+    assert slots["fping"].get("scope_key") == "file_drop"
+    assert slots["fping"].get("wired") is False
+    assert slots["fping"].get("invoke") is False
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

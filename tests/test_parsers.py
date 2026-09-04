@@ -316,6 +316,7 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     assert "masscan.xml" in names
     assert "naabu.jsonl" in names
     assert "arp-scan.txt" in names
+    assert "fping.txt" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -481,6 +482,53 @@ def test_arp_scan_parser_no_live() -> None:
         assert "Popen" not in src
         assert "arp-scan --" not in src
         assert "arp-scan -l" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_fping_demo_attaches_asset_only() -> None:
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "fping.txt")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in assets]
+    assert "filesrv.corp.local" in names
+    assert findings == []
+    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    assert "fping" in (host.get("labels") or [])
+
+
+def test_fping_empty_and_unreachable(tmp_path) -> None:
+    dest = tmp_path / "fping.txt"
+    dest.write_text("10.0.0.51 is unreachable\n10.0.0.52 is down\n", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("# comment only\n", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_fping_json(tmp_path) -> None:
+    dest = tmp_path / "alive.json"
+    dest.write_text(
+        '{"ip":"10.0.0.50","hostname":"filesrv.corp.local","alive":true}',
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    assert [r["name"] for r in recs if r["kind"] == "asset"] == ["filesrv.corp.local"]
+    assert [r for r in recs if r["kind"] == "finding"] == []
+    dest = tmp_path / "fping.json"
+    dest.write_text('{"ip":"10.0.0.51","alive":false}\n', encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_fping_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/fping.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "fping -" not in src
+        assert "fping --" not in src
         assert "nmap -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src

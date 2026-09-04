@@ -116,6 +116,11 @@ Hosts become assets only. Empty / header-only invent nothing. The
 collector never runs arp-scan and never does live ARP. The catalog
 slot stays `file_drop`.
 
+fping **text / JSON** is the same `in/nmap/` file-drop path
+(`host is alive` or `{ip, hostname, alive}`). Alive hosts become
+assets only. Unreachable / empty invent nothing. The collector never
+runs fping and never does live ping. The catalog slot stays `file_drop`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap, masscan, rustscan, naabu, and arp-scan exports into hosts + exposure.
+"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, and fping exports into hosts + exposure.
 
-Parse-only. Does not run nmap, masscan, rustscan, naabu, or arp-scan.
+Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, or fping.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from typing import Any
 
 from shared.arp_scan import parse_arp_scan
 from shared.fast_portscan import parse_fast_portscan
+from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.schema import make_record, make_ref
@@ -242,6 +243,21 @@ def parse_file(path: Path) -> list[dict]:
                 [],
                 extra=extra,
                 extra_labels=["arp"],
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    pinged = parse_fping(path, raw)
+    if pinged is not None:
+        records = []
+        for host in pinged:
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                [],
+                extra_labels=["fping"],
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records

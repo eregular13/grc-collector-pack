@@ -61,9 +61,12 @@ rustscan / naabu *invoke* stays BYO (`allow_tools` + PATH); Layer C never
 subprocesses those binaries. Also drop **arp-scan** text or JSON
 (`Starting arp-scan` / IP + MAC + vendor lines, or `{ip, mac, vendor}`).
 Hosts become assets only — empty / header-only / 0 responded invent nothing.
-arp-scan stays `file_drop` (never subprocess; no live ARP). Empty `in/`
-still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`, `masscan.xml`,
-`naabu.jsonl`, `arp-scan.txt`). No new catalog slots.
+arp-scan stays `file_drop` (never subprocess; no live ARP). Also drop
+**fping** text or JSON (`host is alive` / `{ip, hostname, alive}`). Alive
+hosts become assets only — unreachable / empty invent nothing. fping stays
+`file_drop` (never subprocess; no live ping). Empty `in/` still loads
+`fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`, `masscan.xml`,
+`naabu.jsonl`, `arp-scan.txt`, `fping.txt`). No new catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 
