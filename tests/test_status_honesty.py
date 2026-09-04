@@ -52,6 +52,7 @@ def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
 
 def test_executive_does_not_stamp_paying_day_or_assessment_ready() -> None:
     for rel in (
+        "README.md",
         "STATUS.md",
         "product-lab/EXECUTIVE.md",
         "dropbox/EXECUTIVE.md",
@@ -64,6 +65,43 @@ def test_executive_does_not_stamp_paying_day_or_assessment_ready() -> None:
             low = line.lower()
             if "paying-day pass" in low or "paying_day: pass" in low:
                 assert any(tok in low for tok in ("not", "never", "do not", "fail", "≠"))
+
+
+def test_executive_and_status_share_honesty_rails() -> None:
+    status = _status()
+    assert status.get("paying_day") == "FAIL"
+    assert status.get("wrap") == "review-only"
+    assert status.get("catalog_total") == "111"
+    assert status.get("catalog_wired") == "32"
+    assert status.get("catalog_invoke") == "30"
+    assert status.get("catalog_file_drop") == "81"
+    assert "DEMO" in status.get("estate", "")
+    for rel in ("product-lab/EXECUTIVE.md", "dropbox/EXECUTIVE.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "111" in text and "32" in text and "30 invoke" in text and "81 file_drop" in text
+        assert "evergreen_assessment_mcp" in text
+        assert "FAIL" in text and "ABSENT" in text
+        assert "DEMO" in text and "client" in text.lower()
+        assert "review-only" in text.lower() or "wrap stays dead" in text.lower()
+
+
+def test_root_readme_honesty_rails() -> None:
+    """Top-level README must match STATUS: DEMO≠client, FAIL, ABSENT, catalog, pack truth."""
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    low = text.lower()
+    assert "demo ≠ client" in low or "demo != client" in low
+    assert "paying-day **fail**" in low or "paying-day fail" in low
+    assert "compose **absent**" in low or "compose absent" in low
+    assert "review-only" in low
+    assert "111" in text and "32 wired" in text
+    assert "30 invoke" in text and "81 file_drop" in text
+    assert "evergreen_assessment_mcp" in text
+    assert "check_scope" in text and "license_guard" in text
+    assert "dropbox.mcp_stub" in text
+    assert "not" in low and "allowlist nmap" in low
+    assert "exit-code-from grc-loader" in text
+    assert "exactly 10" in text
+    assert "this vm stamps compose absent" in low
 
 
 def test_scanner_free_and_wrap_dead_require_hephaestus_rails() -> None:
@@ -111,3 +149,8 @@ def test_operator_compose_proof_path_is_documented() -> None:
     assert "docker compose up --build --exit-code-from grc-loader" in pl
     assert "ABSENT" in pl
     assert "paying-day" in pl.lower()
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "docker compose config --services" in readme
+    assert "docker compose up --build --exit-code-from grc-loader" in readme
+    assert "this VM stamps compose ABSENT" in readme
+    assert "not" in readme.lower() and "paying-day pass" in readme.lower()

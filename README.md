@@ -12,7 +12,7 @@ python -m product
 
 Then open **http://127.0.0.1:18765/**. You get the estate (assets, findings, vulns, proposed risks), a refresh that re-runs collectors on local files, and a drop zip for import. The console binds localhost only. It never POSTs `/api/risks`.
 
-This is not a GRC platform and not an eleventh Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`. Demo fixtures only until you drop files in `in/`.
+This is not a GRC platform and not an eleventh Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`. Demo fixtures only until you drop files in `in/`. **DEMO ≠ client estate.** Paying-day **FAIL**. Compose **ABSENT** on a box without Docker (hole, not a PASS). RiskReady wrap is **review-only**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. `SCOPE.example.yaml` does **not** allowlist nmap/nessus (not free-day live). Pack truth is USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`); `dropbox.mcp_stub` is conductor UX only.
 
 See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs/PUBLIC_CLONE.md).
 
@@ -34,8 +34,12 @@ See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs
 One `python:3.12-slim` image. `grc-loader` waits on the nine collectors (`condition: service_completed_successfully`).
 
 ```bash
-docker compose up --build
+# operator Docker host only — this VM stamps compose ABSENT (not a PASS)
+docker compose config --services    # exactly 10
+docker compose up --build --exit-code-from grc-loader
 ```
+
+PASS on that host is loader exit 0, 10 services, no published ports — **not** a paying-day PASS.
 
 Local lab (no Docker):
 
@@ -70,7 +74,7 @@ Short runbook: [farm/QUICKSTART.md](farm/QUICKSTART.md).
 `make farm-toolbin-e2e` is DEMO stubs (`demo: true`) — **not a client estate**.
 Real `--live` only on a consented drop box with tools you installed.
 
-Overnight improve ticks: `LOOP.md` (every 30 minutes until 07:00 Pacific). Each tick reads STATUS / FAULTS / CRITIC and adds one parser or test, then re-labs.
+Overnight improve ended 2026-09-02 (`LOOP.md`). Afternoon harden until 16:00 PT keeps farm/SCOPE honesty — not new Layer C parsers. Paying-day stays FAIL.
 
 ## Outputs
 

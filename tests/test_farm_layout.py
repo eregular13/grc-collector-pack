@@ -34,6 +34,8 @@ def test_farm_quickstart_and_root_readme() -> None:
     assert "ARCHITECTURE.md" in readme
     assert "Layer" in readme
     assert "not a client estate" in readme.lower()
+    assert "evergreen_assessment_mcp" in readme
+    assert "paying-day" in readme.lower() and "fail" in readme.lower()
 
 
 def test_farm_readme_is_private_not_hub() -> None:
