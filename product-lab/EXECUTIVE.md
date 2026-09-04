@@ -13,12 +13,12 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **216 passed, 1 skipped**. `make farm-toolbin-e2e` **64 / 66 / 17 / 25** poam 66, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
+**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **220 passed, 1 skipped**. `make farm-toolbin-e2e` **64 / 66 / 17 / 25** poam 66, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **216 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **220 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 64, "findings": 65, "vulnerabilities": 17, "evidences": 25, "applied_controls": 82, "poam": 66, "risk_scenarios": 82, "incidents": 63, "risks_proposed": 62, "ocsf": 65, "canonical": 147, "demo": true, "generated_at": "2026-09-04T17:27:56Z"}
+{"assets": 64, "findings": 65, "vulnerabilities": 17, "evidences": 25, "applied_controls": 82, "poam": 66, "risk_scenarios": 82, "incidents": 63, "risks_proposed": 62, "ocsf": 65, "canonical": 147, "demo": true, "generated_at": "2026-09-04T17:31:28Z"}
 ```
 
 Asset `ref_id` uniqueness: **64 = 64**.
@@ -47,6 +47,8 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 **Recommendation:** ship as a parse-only collector pack plus a gated drop-box. Do not market wrap, CIDR spray, or a client estate from empty `in/` / DEMO SCOPE.
 
 ## Delta (this pass, 2026-09-04)
+
+**Cycle 42 — Nuclei JSON file-drop harden:** vuln-scan parses Nuclei JSONL / object / array / `{results}` wrapper under `in/vuln/`. INFO silent. Empty results invent nothing. Log4Shell / RCE map to POA&M. Collector does not run nuclei. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). Compose **runtime** still ABSENT.
 
 **Cycle 41 — Fleet file-drop harden:** host-wazuh parses Fleet `hosts` / `data.hosts` / a single `host` plus failing `policies` under `in/wazuh/`. Offline/MIA → coverage gap. Disk encryption off and MDM enrollment Off map to POA&M. Passing policies silent. Empty hosts/policies invent nothing. No Fleet API / fleetctl / osqueryi. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). Compose **runtime** still ABSENT.
 
