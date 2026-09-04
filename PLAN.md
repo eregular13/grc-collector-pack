@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 56 netdiscover file-drop polish stands (assets only; arp-scan does not claim tables; no netdiscover subprocess; no live ARP). fping cycle 55 and arp-scan cycle 54 stand. rustscan/naabu cycle 53 stands. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 57 nbtscan file-drop polish stands (assets only; detect does not steal arp-scan/netdiscover/fping; no nbtscan subprocess; no live NetBIOS). netdiscover cycle 56 stands. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 

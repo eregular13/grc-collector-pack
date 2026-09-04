@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 57 — nbtscan file-drop polish (2026-09-04)
+
+inventory-nmap parses operator-landed nbtscan name/IP tables under `in/nmap/` (`Doing NBT name scan` / IP + NetBIOS + `<server>`). Hosts become assets only. Empty / header-only invent nothing. Detect does not steal arp-scan / netdiscover / fping. Demo `nbtscan.txt` attaches to existing `filesrv.corp.local` (assets and findings unchanged). Collector does not run nbtscan and never does live NetBIOS. Slot stays `file_drop`. Catalog **not inflated**. pytest **284**. Labs green. Compose ABSENT. netdiscover cycle 56 stands.
+
+```json
+{"pytest": 284, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 75, "vulns": 19, "evidence": 27, "poam": 78}, "farm_lab": {"assets": 64, "findings": 75, "poam": 78, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 76, "vulns": 19, "poam": 78, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 84, "vulns": 19, "poam": 81, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 56 — netdiscover file-drop polish (2026-09-04)
 
 inventory-nmap parses operator-landed netdiscover text under `in/nmap/` (`Currently scanning` / IP + MAC + Count + Len + vendor). Hosts become assets only. Empty / header-only invent nothing. arp-scan detect does not claim netdiscover tables. Demo `netdiscover.txt` attaches to existing `filesrv.corp.local` (assets and findings unchanged). Collector does not run netdiscover and never does live ARP. Slot stays `file_drop`. Catalog **not inflated**. pytest **280**. Labs green. Compose ABSENT. fping cycle 55 and arp-scan cycle 54 stand.
