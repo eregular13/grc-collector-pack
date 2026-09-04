@@ -13,12 +13,12 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **192 passed, 1 skipped**. `make farm-toolbin-e2e` **64 / 66 / 16 / 25** poam 65, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
+**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **198 passed, 1 skipped**. `make farm-toolbin-e2e` **64 / 66 / 17 / 25** poam 66, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **192 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **198 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 64, "findings": 65, "vulnerabilities": 16, "evidences": 25, "applied_controls": 81, "poam": 65, "risk_scenarios": 81, "incidents": 62, "risks_proposed": 61, "ocsf": 65, "canonical": 146, "demo": true, "generated_at": "2026-09-04T17:00:35Z"}
+{"assets": 64, "findings": 65, "vulnerabilities": 17, "evidences": 25, "applied_controls": 82, "poam": 66, "risk_scenarios": 82, "incidents": 63, "risks_proposed": 62, "ocsf": 65, "canonical": 147, "demo": true, "generated_at": "2026-09-04T17:07:49Z"}
 ```
 
 Asset `ref_id` uniqueness: **64 = 64**.
@@ -36,7 +36,7 @@ Asset `ref_id` uniqueness: **64 = 64**.
 3. Open http://127.0.0.1:18765/ — refresh, review, download drop zip.
 4. Import CISO CSVs with clica/UI (`product-lab/drop/MANIFEST`). Leave RiskReady JSON for a human.
 
-- **Dropbox-lab:** `make dropbox-lab` → 69 assets / 74 findings / 16 vulns / 25 evidence / 68 POA&M. `demo: true` (dropbox-* overlays stamp DEMO). Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
+- **Dropbox-lab:** `make dropbox-lab` → 69 assets / 74 findings / 17 vulns / 25 evidence / 69 POA&M. `demo: true` (dropbox-* overlays stamp DEMO). Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
 
 ## Drop-box (this PR)
 
@@ -47,6 +47,8 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 **Recommendation:** ship as a parse-only collector pack plus a gated drop-box. Do not market wrap, CIDR spray, or a client estate from empty `in/` / DEMO SCOPE.
 
 ## Delta (this pass, 2026-09-04)
+
+**Cycle 37 — KEEP-chain file-drop harden:** testssl JSON under `in/vuln/` or `in/easm/` (HIGH/WARN only; no live TLS). Maester / Entra `directoryRoles` export under `in/saas/` (Failed only; no Graph API; empty members invent nothing). High rows map to POA&M (Heartbleed, TLS 1.0, phishing-resistant MFA). Demo testssl adds TLS 1.0 on existing `dev-api.example.com`. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). Compose **runtime** still ABSENT.
 
 **Cycle 36 — endpoint file-drop harden:** HardeningKitty Audit CSV under `in/identity/` (Failed/warning only; Guest-passed silent; no invented Windows findings). Lynis report under `in/wazuh/`. High rows map to POA&M when obvious (password history, LM hash, host firewall, SSH PermitRootLogin). Demo Lynis attaches to existing `jump-unmanaged`. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). No AD/WinRM/cloud API. Compose **runtime** still ABSENT.
 

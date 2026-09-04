@@ -1,6 +1,6 @@
-cycle: 36
+cycle: 37
 phase: DONE
-item: ENDPOINT-FILE-DROP-HARDEN
+item: KEEP-CHAIN-FILE-DROP
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 192
+pytest: 198
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -16,7 +16,7 @@ farm_lab: pass
 farm_toolbin_e2e: pass
 e2e_assets: 64
 e2e_findings: 66
-e2e_poam: 65
+e2e_poam: 66
 demo: true
 estate: DEMO — not a client estate
 compose_lab: absent

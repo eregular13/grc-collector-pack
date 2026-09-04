@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 37 — KEEP-chain file-drop harden (2026-09-04)
+
+testssl JSON (native array or `scanResult`) under `in/vuln/` or `in/easm/`: HIGH/CRITICAL/WARN only; OK silent. No live TLS. Maester `TestResults`/`Tests`/Pester under `in/saas/`: Failed only; Passed/Skipped silent. Graph `directoryRoles` export stays file-drop — empty members invent nothing; no Graph API. High rows map to CISO/POA&M (Heartbleed, TLS 1.0, phishing-resistant MFA). Demo testssl adds TLS 1.0 on existing `dev-api.example.com`. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **198**. Labs green. Compose ABSENT. HK/Lynis cycle 36 stands.
+
+```json
+{"pytest": 198, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 65, "vulns": 17, "poam": 66}, "farm_lab": {"assets": 64, "findings": 65, "poam": 66, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 66, "poam": 66, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 74, "poam": 69, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 36 — endpoint file-drop harden (2026-09-04)
 
 HardeningKitty Audit CSV under `in/identity/`: Failed/warning only; Passed (including Guest) silent. Does not invent Windows findings. Lynis report/`report.dat` under `in/wazuh/` (`*.txt`/`*.log`/`*.dat`). High rows map to CISO/POA&M when obvious (password history, LM hash, host firewall, SSH PermitRootLogin). Demo Lynis attaches to existing `jump-unmanaged`. Empty `in/` still loads fixtures. Catalog **not inflated**. No AD/WinRM/cloud API. pytest **192**. Labs green. Compose ABSENT. Cloud ASFF cycle 35 stands.
