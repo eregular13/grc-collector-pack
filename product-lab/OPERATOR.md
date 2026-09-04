@@ -6,6 +6,8 @@
 
 Do not set `GRC_LIVE_SCAN=1` as a real scan. Do not POST `/api/risks`. Do not wrap or run RiskReady. Do not invent FindingsAssessment UUIDs.
 
+The drop-box orchestrator is **brakes** (quiet discover → gated deepen). See `dropbox/OPERATOR.md`. Defaults prefer client-environment integrity over coverage ego.
+
 ## What this is
 
 A file emitter. Collectors parse scanner artifacts already on disk. Empty `in/<sensor>/` falls back to `fixtures/demo/` and labels records `demo`. That is **not** a client estate.

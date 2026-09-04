@@ -19,7 +19,7 @@ POA&M this lab: **58** rows (`out/poam/poam.csv`). pytest **80**.
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
-The orchestrator (`python3 -m dropbox orchestrate`) shards internal CIDRs into /24 jobs and batches hosts 2–5 for deepen. If the operator installed Nmap/Nessus on the box and listed them in `allow_tools`, a short-lived worker may run **that shard/batch only**. Without those binaries the farm is plan-only. Never one scanner on a /16. Never download Nessus plugins.
+The orchestrator is **brakes**, not a coverage contest: quiet discover (shard inventory) then a louder deepen that is **fail-closed** unless `orchestrator.stages.deepen: true`. Hosts from discover or an explicit `deepen_hosts` list, batches 2–5, `max_workers` default 2, per-host timeout, tear-down after each stage, nothing outside SCOPE, never a /16 in one worker, never open-internet spray. BYO Nmap/Nessus only if on PATH and allowlisted. Plan-only without those binaries. Never download Nessus plugins.
 
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 

@@ -29,3 +29,19 @@ def batch_hosts(hosts: list[str], size: int = 3) -> list[list[str]]:
     if not names:
         return []
     return [names[i : i + size] for i in range(0, len(names), size)]
+
+
+def reject_wide_deepen_target(target: str) -> None:
+    """Deepen is per-host. Never a /16 (or any multi-address CIDR) in one worker."""
+    text = str(target or "").strip()
+    if "/" not in text:
+        return
+    try:
+        net = ipaddress.ip_network(text, strict=False)
+    except ValueError:
+        return
+    if net.num_addresses > 1:
+        raise ValueError(
+            f"deepen refuses network target {text} ({net.num_addresses} addresses); "
+            "never a /16 in one worker"
+        )

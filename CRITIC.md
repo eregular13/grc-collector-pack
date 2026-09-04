@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# CRITIC — cycle 10 (orchestrator shards)
-=======
 # CRITIC — cycle 11 (POA&M control map)
->>>>>>> 9a867b2 (Record cycle 11 lab: POA&M handoff pack, 80 pytest, 58 rows.)
 
 **8/10** — zero P0/P1. Host lab green. Dropbox-lab green including orchestrator plan-only (no Nmap/Nessus on PATH). Compose not run (daemon absent). Wrap dead under `RISKREADY_PUSH=1`. Console localhost-only. POA&M export is a human-fill draft (owner/due blank).
 

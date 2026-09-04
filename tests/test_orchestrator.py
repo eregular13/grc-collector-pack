@@ -116,6 +116,9 @@ def test_orchestrate_cli_plan_only(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert data["discover"]["alive"] == 0
     assert data["discover"]["shard_count"] == 3
     assert data["deepen"]["mode"] == "plan"
+    assert data["governor"] == "quiet→loud"
+    assert data["brakes"]["max_workers"] == 2
+    assert data["brakes"]["stage_deepen"] is True
 
 
 def test_orchestrate_requires_scope_gate(tmp_path: Path) -> None:
@@ -136,6 +139,119 @@ def test_no_nessus_plugins_in_repo() -> None:
         if path.is_file() and path.suffix.lower() in {".nasl", ".nbin"}:
             hits.append(path)
     assert hits == []
+
+
+def test_demo_scope_has_deepen_on_for_lab() -> None:
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    assert scope.stage_discover is True
+    assert scope.stage_deepen is True
+    assert scope.max_workers == 2
+    assert scope.host_timeout_sec == 30
+    assert scope.deepen_hosts[:2] == ["127.0.0.1", "dropbox-lab.local"]
+
+
+def test_example_scope_deepen_defaults_false() -> None:
+    from dropbox.yaml_lite import load_yaml
+
+    data = load_yaml((ROOT / "dropbox" / "SCOPE.example.yaml").read_text(encoding="utf-8"))
+    assert data["orchestrator"]["stages"]["deepen"] is False
+    assert data["orchestrator"]["max_workers"] == 2
+    assert data["orchestrator"]["host_timeout_sec"] == 30
+
+
+def test_deepen_fail_closed_when_stage_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    scope.stage_deepen = False
+    farm = Farm(max_workers=scope.max_workers)
+    plan = deepen_stage(scope, farm, live=False)
+    assert plan["mode"] == "gated"
+    assert plan["batch_count"] == 0
+    assert plan["workers"] == []
+    with pytest.raises(GateError, match="stages.deepen"):
+        deepen_stage(scope, farm, live=True)
+
+
+def test_deepen_refuses_host_outside_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    farm = Farm(max_workers=2)
+    plan = deepen_stage(scope, farm, live_hosts=["8.8.8.8"], live=False)
+    assert plan["mode"] == "gated"
+    assert plan["hosts"] == []
+    assert "8.8.8.8" not in json.dumps(plan)
+
+
+def test_deepen_refuses_slash16_in_one_worker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    farm = Farm(max_workers=2)
+    with pytest.raises(GateError, match="never a /16"):
+        deepen_stage(scope, farm, live_hosts=["10.0.0.0/16"], live=False)
+
+
+def test_discover_is_quiet_no_deepen_tools(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    monkeypatch.setattr("dropbox.orchestrator.pipeline._which", lambda name: "/usr/bin/nmap")
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    farm = Farm(max_workers=scope.max_workers)
+    plan = discover_stage(scope, farm, live=True)
+    raw = json.dumps(plan)
+    assert plan["volume"] == "quiet"
+    assert plan["tool"] == "nmap"
+    assert "nessus" not in raw
+    assert "-sV" not in raw and "-A" not in raw
+    assert "--host-timeout" in raw
+    assert plan["host_timeout_sec"] == 30
+    assert farm.alive("discover") == []
+
+
+def test_open_internet_cidr_refused_at_gate(tmp_path: Path) -> None:
+    import hashlib
+
+    att = tmp_path / "consent.md"
+    att.write_text("ok\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  cidrs:\n    - 0.0.0.0/0\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="open-internet"):
+        load_scope(scope)
+
+
+def test_missing_stages_deepen_defaults_false(tmp_path: Path) -> None:
+    import hashlib
+
+    att = tmp_path / "consent.md"
+    att.write_text("ok\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+        encoding="utf-8",
+    )
+    loaded = load_scope(scope)
+    assert loaded.stage_deepen is False
+    assert loaded.stage_discover is True
+    assert loaded.max_workers == 2
 
 
 def test_ingest_copies_gnmap_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

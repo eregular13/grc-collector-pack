@@ -18,7 +18,7 @@ This directory is the **gated runner**. The public pack stays parse-only. Do not
    - **named** `internal.cidrs` and/or `internal.hosts`
    - **named** `external.hosts` / `domains` / `ips`
    - `allow_tools` (`lynis`, `ss`, `ip`, `curl`; optional BYO `nmap` / `nessus` if **you** installed them)
-   - `orchestrator.discover_prefix` (default 24), `deepen_batch` (2–5), `max_live_shards`
+   - Orchestrator brakes (see below): `stages.deepen` (default **false**), `max_workers`, `deepen_batch` (2–5), `host_timeout_sec`, `deepen_hosts`, `max_live_shards`
 
 No `SCOPE.yaml` → runners do not start. Missing or hash-mismatched attestation → exit 2.
 
@@ -51,22 +51,26 @@ What internal **does not**
 - No unsarded Nmap of a /16. CIDR spray is the orchestrator’s job, one /24 (or configured prefix) at a time, and only if `nmap` is already on PATH.
 - No Wazuh/osquery/BloodHound/PingCastle execution.
 
-## Orchestrator (discover → deepen → ingest)
+## Orchestrator = brakes (quiet → loud)
 
-Intelligent chaining — **not** one scanner on a /16.
+Client **environment integrity is paramount**. The farm still has to find vulns and misconfigs, but it is a governor, not a coverage contest. Defaults prefer integrity over coverage ego.
 
 ```bash
 python3 -m dropbox orchestrate          # plan-only if nmap/nessus are absent
 python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
 ```
 
-1. **SCOPE gate** (same fail-closed file as above).
-2. **Discover:** shard `internal.cidrs` into `/24` jobs (or `orchestrator.discover_prefix`). Each job is a short-lived worker. If `nmap` is on PATH **and** in `allow_tools`, that worker may run nmap on **that shard only**. Otherwise write `dropbox/out/discover/plan.json` and skip. After discover, workers are destroyed.
-3. **Deepen:** take discover live hosts or the SCOPE host list, batch 2–5 hosts (`orchestrator.deepen_batch`). If `nessus` / `nessuscli` is on PATH and allowed, one worker per batch. Otherwise emit the plan plus `dropbox/out/deepen/BYO-NESSUS.placeholder`. Never download Nessus. Never ship plugins.
-4. **Ingest:** copy any `.gnmap` / `.xml` discover artifacts into `in/nmap/`, then run the existing collectors + loader.
-5. **Deliverable:** CISO CSVs **and** `out/poam/poam.csv`. Pentera (or Nmap/Nessus) finds it; Evergreen maps it to CISA CPG + NIST CSF stamps and a recommended fix. Owner and due stay blank.
+### Product contract
 
-`make dropbox-lab` runs this in **plan-only** mode (this VM has no Nmap/Nessus). Lab stays green without those binaries.
+1. **Discover is QUIET.** Wide shard inventory only (`internal.cidrs` → `/24` jobs, or `orchestrator.discover_prefix`). Low impact (`nmap -sn` + `--host-timeout`). **No deepen tools** in this stage. Plan-only if `nmap` is not on PATH or not in `stage_tools.discover` ∩ `allow_tools`.
+2. **Brakes (always on).** SCOPE required. `max_workers` (default **2**). `deepen_batch` 2–5 (default **3**). `host_timeout_sec` (default **30**). Tear-down after every stage. **No targets outside SCOPE.** No `0.0.0.0/0` and no prefix shorter than `/8`.
+3. **Deepen is LOUDER and gated.** Runs only when `orchestrator.stages.deepen: true`. Missing or false → **fail closed** (no deepen workers, `--live` exits 2). Hosts come from **discover live results** or an explicit `orchestrator.deepen_hosts` list — never “the whole estate” and never a /16 in one worker. Small batches only. Tools only from `stage_tools.deepen` ∩ `allow_tools` (Nessus CLI if you installed it).
+4. **Never open-internet spray.** Never one worker across a /16. External named hosts are the `run --profile external` path, not deepen.
+5. **Outputs stay the pack path:** discover/deepen artifacts → `in/` → control map → `out/poam/poam.csv` → CISO CSVs. Pentera (or Nmap/Nessus) finds it; Evergreen maps it.
+
+`SCOPE.example.yaml` ships `stages.deepen: false`. Set it true only when the client consented to louder tools on a named host list. The committed DEMO `SCOPE.yaml` sets `deepen: true` so `make dropbox-lab` still exercises the plan (no binaries).
+
+`make dropbox-lab` is **plan-only** without Nmap/Nessus. Lab stays green without those binaries. Workers are destroyed after discover and after deepen.
 
 ## Run external (named SCOPE targets only)
 

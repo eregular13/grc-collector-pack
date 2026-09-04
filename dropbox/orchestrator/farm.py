@@ -13,6 +13,7 @@ class Worker:
     status: str = "planned"
     argv: list[str] = field(default_factory=list)
     note: str = ""
+    timeout_sec: int = 30
 
     def destroy(self) -> None:
         self.status = "destroyed"
@@ -22,15 +23,28 @@ class Worker:
 @dataclass
 class Farm:
     workers: list[Worker] = field(default_factory=list)
+    max_workers: int = 2
 
-    def spawn(self, stage: str, target: str, argv: list[str] | None = None, note: str = "") -> Worker:
+    def spawn(
+        self,
+        stage: str,
+        target: str,
+        argv: list[str] | None = None,
+        note: str = "",
+        timeout_sec: int = 30,
+    ) -> Worker:
+        live_argv = list(argv or [])
+        if live_argv and len(self.alive()) >= self.max_workers:
+            live_argv = []
+            note = (note + " max_workers cap").strip()
         worker = Worker(
             wid=f"{stage}-{len(self.workers) + 1:04d}",
             stage=stage,
             target=target,
             status="planned",
-            argv=list(argv or []),
+            argv=live_argv,
             note=note,
+            timeout_sec=timeout_sec,
         )
         self.workers.append(worker)
         return worker

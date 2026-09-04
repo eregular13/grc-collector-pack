@@ -36,4 +36,20 @@ orchestrator:
   discover_prefix: 24
   deepen_batch: 3
   max_live_shards: 16
+  max_workers: 2
+  host_timeout_sec: 30
+  stages:
+    discover: true
+    deepen: true
+  deepen_hosts:
+    - "127.0.0.1"
+    - "dropbox-lab.local"
+    - "app-01.demo.internal"
+    - "app-02.demo.internal"
+    - "db-01.demo.internal"
+  stage_tools:
+    discover:
+      - nmap
+    deepen:
+      - nessus
 byo: []

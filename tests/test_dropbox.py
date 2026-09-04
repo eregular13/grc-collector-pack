@@ -23,6 +23,9 @@ def test_example_scope_loads() -> None:
     assert scope.external_hosts
     assert "nmap" in scope.allow_tools
     assert "nessus" in scope.allow_tools
+    assert scope.stage_deepen is True
+    assert scope.allows_internal_target("127.0.0.1")
+    assert not scope.allows_internal_target("8.8.8.8")
 
 
 def test_gate_missing_scope(tmp_path: Path) -> None:

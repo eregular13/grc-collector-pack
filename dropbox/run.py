@@ -22,6 +22,11 @@ def _print_gate(scope) -> None:
     print(f"  internal cidrs={len(scope.internal_cidrs)} hosts={scope.internal_hosts}")
     print(f"  external hosts={scope.external_hosts} domains={scope.external_domains} ips={scope.external_ips}")
     print(f"  allow_tools={scope.allow_tools}")
+    print(
+        f"  orchestrator quiet→loud  discover={scope.stage_discover} "
+        f"deepen={scope.stage_deepen} max_workers={scope.max_workers} "
+        f"batch={scope.deepen_batch} host_timeout_sec={scope.host_timeout_sec}"
+    )
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
