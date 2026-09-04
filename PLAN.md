@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 53 rustscan/naabu file-drop polish stands (open ports only; no rustscan/naabu subprocess). masscan cycle 52 stands. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 54 arp-scan file-drop polish stands (assets only; no arp-scan subprocess; no live ARP). rustscan/naabu cycle 53 stands. masscan cycle 52 stands. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 
