@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 75 — verify-green / no-diff (2026-09-04)
+
+Full lab suite re-run. No regression. No code change. Catalog **111 / 32 / 30 / 81**. pytest **318**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. Compose ABSENT. Paying-day FAIL. Cycle 74 Reid-only blockers stay locked. Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. DEMO ≠ client. No new parsers.
+
+```json
+{"pytest": 318, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
 ## cycle 74 — Reid-only blockers (2026-09-04)
 
 STATUS `next_action` and EXECUTIVE name Reid-only work: CTA; Eval `npm start`; real KEEP `in/` drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #1. No fake greens. Scanner-free compose/Dockerfile statics already locked (pack + farm + dropbox). Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Catalog **not inflated**. pytest **318**. Labs unchanged vs cycle 73 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. No new parsers.

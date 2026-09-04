@@ -1,6 +1,6 @@
-cycle: 74
+cycle: 75
 phase: DONE
-item: REID-BLOCKERS
+item: VERIFY-GREEN
 critic_score: 8/10
 open_p0:
 open_p1:

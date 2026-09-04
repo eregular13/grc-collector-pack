@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 75):** verify-green / no-diff. Full lab suite re-run clean. No code change. Cycle 74 Reid-only blockers stay locked. Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 74.
+
 **Delta (cycle 74):** Reid-only blockers. STATUS `next_action` and EXECUTIVE name CTA; Eval `npm start`; real KEEP `in/` drop; compose on a Docker host (this VM ABSENT); merge PR #1. No fake greens. Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 73.
 
 **Delta (cycle 73):** FARM_TOOL_BIN refuse-list. SCOPE hunt found no remaining operator entrypoint gap after cycle 72. Every `LICENSE_LOCK_SPAWN` name in `tool-bin` / `tool-bin/lab` fails resolve/spawn. Cycle 72 run_slot intersection stays locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 72.

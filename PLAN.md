@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycles 59–74 stand. **Stop vanity Layer C parsers.** Remaining ticks: Reid-only blockers (CTA, Eval npm start, KEEP in/ drop, compose-on-Docker, merge PR #1) — not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. `FARM_TOOL_BIN` never resolves locked scanners. `SCOPE.example.yaml` does not default-allowlist nmap/nessus. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever (review-only; no login/POST). DEMO ≠ client. pytest greens are not assessment-ready. Hexstrike pattern-only. MCP stub is not USB `evergreen_assessment_mcp`.
+Until 16:00 PT: keep e2e green; cycles 59–75 stand. **Stop vanity Layer C parsers.** Remaining ticks: Reid-only blockers (CTA, Eval npm start, KEEP in/ drop, compose-on-Docker, merge PR #1) — not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. `FARM_TOOL_BIN` never resolves locked scanners. `SCOPE.example.yaml` does not default-allowlist nmap/nessus. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever (review-only; no login/POST). DEMO ≠ client. pytest greens are not assessment-ready. Hexstrike pattern-only. MCP stub is not USB `evergreen_assessment_mcp`.
 
 ## STOP rules
 

@@ -1,6 +1,6 @@
-# CRITIC — cycle 74 (Reid-only blockers)
+# CRITIC — cycle 75 (verify-green / no-diff)
 
-**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. No new parsers. STATUS / EXECUTIVE `next_action` is Reid-only (CTA, Eval `npm start`, real KEEP `in/` drop, compose-on-Docker, merge PR #1) — no fake greens. Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Scanner-free compose/Dockerfile statics already green. Wrap **dead**. Paying-day **FAIL**. Compose **ABSENT** (hole, not a PASS). DEMO ≠ client. Hexstrike pattern-only. Host lab 64/79/19/27 poam 82. e2e 64/80/19 poam 82 demo true. pytest **318**.
+**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. No new parsers. Full lab suite re-run clean vs cycle 74. Cycle 74 Reid-only blockers stay locked. Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Wrap **dead**. Paying-day **FAIL**. Compose **ABSENT** (hole, not a PASS). DEMO ≠ client. Hexstrike pattern-only. Host lab 64/79/19/27 poam 82. e2e 64/80/19 poam 82 demo true. pytest **318**.
 
 −1 compose runtime still absent (no Docker CLI).  
 −1 stubs are DEMO, not real nmap/nessus.
