@@ -1,6 +1,6 @@
-cycle: 25
+cycle: 26
 phase: DONE
-item: FARM-ORCH-SLOTS
+item: FARM-EXTERNAL-PLAN
 critic_score: 8/10
 open_p0:
 open_p1:
