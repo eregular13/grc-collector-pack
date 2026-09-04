@@ -96,6 +96,8 @@ python3 -m dropbox run --profile external --live   # curl -I named targets only
 
 Operator MCP: `python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools and exits (no Hexstrike server, no FastMCP).
 
+`make dropbox-compose` always runs scanner-free assertions on `Dockerfile` + `docker-compose.dropbox.yml`. If Docker is up it runs internal+external **demo/dry** profiles and checks the image has no scanner binaries. If Docker is absent it stamps **ABSENT** (not a pass).
+
 Output: `in/easm/dropbox-tls.jsonl` (existing easm collector).
 
 ## Ingest → CISO

@@ -177,6 +177,9 @@ def test_cli_gate_and_missing(tmp_path: Path) -> None:
 
 
 def test_image_and_dropbox_do_not_ship_forbidden_scanners() -> None:
+    from dropbox.scanner_free import assert_image_files_scanner_free
+
+    assert_image_files_scanner_free()
     blob = ""
     for rel in ("Dockerfile", "docker-compose.yml", "docker-compose.dropbox.yml"):
         path = ROOT / rel

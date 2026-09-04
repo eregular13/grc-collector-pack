@@ -1,6 +1,9 @@
-# Optional profiles. Same python image. No scanner packages.
+# Optional profiles. Same python:3.12-slim image. LICENSE-LOCK: no scanner packages.
+# Demo/dry only (DROPBOX_LIVE=0). Do not apt-install nmap/nessus/nuclei/openvas.
+#   make dropbox-compose
 #   docker compose -f docker-compose.dropbox.yml --profile internal run --rm dropbox-internal
 #   docker compose -f docker-compose.dropbox.yml --profile external run --rm dropbox-external
+# Default binds dropbox/work/compose-in|out — not pack in/.
 services:
   dropbox-internal:
     profiles: ["internal"]
@@ -18,8 +21,8 @@ services:
       IN_DIR: /in
       OUT_DIR: /out
     volumes:
-      - ./in:/in
-      - ./out:/out
+      - ${DROPBOX_COMPOSE_IN:-./dropbox/work/compose-in}:/in
+      - ${DROPBOX_COMPOSE_OUT:-./dropbox/work/compose-out}:/out
       - ./fixtures:/fixtures:ro
       - ./dropbox:/app/dropbox:ro
 
@@ -39,7 +42,7 @@ services:
       IN_DIR: /in
       OUT_DIR: /out
     volumes:
-      - ./in:/in
-      - ./out:/out
+      - ${DROPBOX_COMPOSE_IN:-./dropbox/work/compose-in}:/in
+      - ${DROPBOX_COMPOSE_OUT:-./dropbox/work/compose-out}:/out
       - ./fixtures:/fixtures:ro
       - ./dropbox:/app/dropbox:ro
