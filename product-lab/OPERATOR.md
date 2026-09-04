@@ -43,7 +43,7 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 | Folder | Accepts |
 |---|---|
 | `in/cloud/` | Prowler JSON, Prowler ASFF (`Findings` / list / object), ScoutSuite `services.*.findings`, Cloud Custodian, Steampipe. Parse-only — no cloud API calls. |
-| `in/nmap/` | Nmap XML, Nmap `-oG` |
+| `in/nmap/` | Nmap XML, gnmap (`-oG`), thin JSON. Parse-only — collector does not run nmap. |
 | `in/vuln/` | Nuclei JSONL, Trivy, Greenbone, testssl JSON (HIGH/WARN only; no live TLS) |
 | `in/wazuh/` | Wazuh agents/alerts, osquery, Fleet, Lynis report / `report.dat` (parse-only) |
 | `in/identity/` | BloodHound CE, PingCastle XML, HardeningKitty Audit CSV (Failed/warning only; does not invent Windows findings) |

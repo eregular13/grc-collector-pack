@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Parse Nmap XML into hosts + exposure findings."""
+"""Parse dropped Nmap gnmap/XML/JSON into hosts + exposure findings. Does not run nmap."""
 
 from __future__ import annotations
 
+import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 from shared.io_util import iso_now, read_text, run_collector
 from shared.schema import make_record, make_ref
@@ -93,6 +95,47 @@ def _emit_host(records: list[dict], now: str, name: str, addr: str, hostname: st
             )
 
 
+def parse_nmap_json(payload: Any, now: str) -> list[dict]:
+    """Parse a dropped nmap JSON/ndjson-shaped object. No live scan."""
+    hosts: list[Any] = []
+    if isinstance(payload, list):
+        hosts = payload
+    elif isinstance(payload, dict):
+        if isinstance(payload.get("hosts"), list):
+            hosts = payload["hosts"]
+        elif payload.get("ip") or payload.get("hostname") or payload.get("host"):
+            hosts = [payload]
+        else:
+            nmaprun = payload.get("nmaprun")
+            if isinstance(nmaprun, dict):
+                raw_h = nmaprun.get("host")
+                if isinstance(raw_h, list):
+                    hosts = raw_h
+                elif isinstance(raw_h, dict):
+                    hosts = [raw_h]
+    records: list[dict] = []
+    for host in hosts:
+        if not isinstance(host, dict):
+            continue
+        addr = str(host.get("ip") or host.get("addr") or host.get("address") or "")
+        hostname = str(host.get("hostname") or host.get("name") or host.get("host") or "")
+        name = hostname or addr or "unknown-host"
+        ports: list[tuple[str, str]] = []
+        for p in host.get("ports") or []:
+            if not isinstance(p, dict):
+                continue
+            if str(p.get("state") or "open").lower() != "open":
+                continue
+            portid = str(p.get("port") or p.get("portid") or "")
+            if not portid:
+                continue
+            svc = str(p.get("service") or p.get("name") or "")
+            ports.append((portid, svc))
+        if name or ports:
+            _emit_host(records, now, name, addr, hostname, ports)
+    return records
+
+
 def parse_gnmap(raw: str, now: str) -> list[dict]:
     records: list[dict] = []
     for line in raw.splitlines():
@@ -124,7 +167,17 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
 def parse_file(path: Path) -> list[dict]:
     raw = read_text(path)
     now = iso_now()
-    if not raw.lstrip().startswith("<"):
+    stripped = raw.lstrip("\ufeff").lstrip()
+    if path.suffix.lower() == ".json" or stripped.startswith("{") or stripped.startswith("["):
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            records = parse_gnmap(raw, now)
+        else:
+            records = parse_nmap_json(payload, now)
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    if not stripped.startswith("<"):
         records = parse_gnmap(raw, now)
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
@@ -163,7 +216,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".xml", ".gnmap", ".txt"), parse_file)
+    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json"), parse_file)
 
 
 if __name__ == "__main__":

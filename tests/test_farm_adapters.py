@@ -91,6 +91,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert f"Total: {counts['total']}" in md
     assert "By category" in md
     assert "Ingest map (Layer C)" in md
+    assert "Nmap file-drop" in md
+    assert "in/nmap/" in md
+    assert "never subprocesses" in md or "parse-only" in md
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

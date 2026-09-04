@@ -81,6 +81,74 @@ def test_nmap_gnmap() -> None:
     assert any(r["kind"] == "finding" and "FTP" in r["name"] for r in recs)
 
 
+def test_nmap_xml_risky_ports_map() -> None:
+    from shared.control_map import map_finding
+
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "scan.xml")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    by_port = {str((r.get("extra") or {}).get("port")): r for r in findings}
+    assert "445" in by_port and "3389" in by_port and "23" in by_port
+    smb = map_finding(by_port["445"])
+    assert smb["include_poam"] is True
+    assert "SMB" in smb["control_name"] or "445" in smb["recommended_fix"]
+    assert "CVE-" not in smb["recommended_fix"]
+    rdp = map_finding(by_port["3389"])
+    assert rdp["include_poam"] is True
+    tel = map_finding(by_port["23"])
+    assert tel["include_poam"] is True
+    assert "Telnet" in tel["control_name"]
+
+
+def test_lab_stub_gnmap_parses(tmp_path) -> None:
+    import subprocess
+    from pathlib import Path
+
+    stub = Path(__file__).resolve().parents[1] / "farm" / "tool-bin" / "lab" / "nmap"
+    out = subprocess.check_output([str(stub)], text=True)
+    dest = tmp_path / "dropbox-discover-lab.gnmap"
+    dest.write_text(out, encoding="utf-8")
+    recs = inventory_nmap.parse_file(dest)
+    assert any(r["kind"] == "asset" and r["name"] == "app-01.demo.internal" for r in recs)
+    ssh = [r for r in recs if r["kind"] == "finding" and (r.get("extra") or {}).get("port") == "22"]
+    assert ssh
+    assert "demo" in recs[0]["labels"]
+    src = (Path(__file__).resolve().parents[1] / "collectors" / "inventory_nmap.py").read_text(encoding="utf-8")
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "nmap -" not in src
+
+
+def test_minimal_nmap_json(tmp_path) -> None:
+    from shared.control_map import map_finding
+
+    dest = tmp_path / "scan.json"
+    dest.write_text(
+        """{"hosts":[{"hostname":"filesrv.corp.local","ip":"10.0.0.50",
+        "ports":[{"port":445,"state":"open","service":"microsoft-ds"},
+                 {"port":445,"state":"filtered","service":"microsoft-ds"}]}]}""",
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any((r.get("extra") or {}).get("port") == "445" for r in findings)
+    smb = next(r for r in findings if (r.get("extra") or {}).get("port") == "445")
+    mapped = map_finding(smb)
+    assert mapped["include_poam"] is True
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-nmap"))
+    (tmp_path / "empty-nmap" / "nmap").mkdir(parents=True)
+    files, demo = load_inputs("inventory-nmap", (".xml", ".gnmap", ".txt", ".json"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "scan.gnmap" in names
+    assert "scan.xml" in names
+
+
 def test_bloodhound_edges() -> None:
     recs = identity_ad.parse_file(DEMO / "identity" / "bloodhound-edges.json")
     names = [r["name"] for r in recs if r["kind"] == "finding"]

@@ -96,6 +96,11 @@ Do not treat ABSENT as paying-day evidence.
 
 Catalog is **95+** slots (`SLOTS.md`). LICENSE-LOCK names (nuclei, openvas, gvm, pingcastle, bloodhound, …) stay **file_drop**. Adapters never subprocess them.
 
+Nmap **gnmap/XML/JSON** is file-drop ingest under `in/nmap/`. Layer C parses
+hosts and exposure findings only — the collector never runs `nmap`. Discover
+may land DEMO stub gnmap from `farm/tool-bin/lab/nmap`. Open 445 / 3389 / 23
+map to existing SMB / RDP / Telnet POA&M rows.
+
 kube-bench / kubescape / gitleaks are **file_drop** (never subprocess). Drop
 Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL only. Layer C does
 not run `kubectl` or talk to a cluster. High rows map to CISO/POA&M when
