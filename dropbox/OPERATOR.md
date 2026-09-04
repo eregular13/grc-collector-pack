@@ -111,7 +111,12 @@ written SCOPE — this pack wires planning + ingest of dropped files only.
 
 Operator MCP: `python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools and exits (no Hexstrike server, no FastMCP).
 
-`make dropbox-compose` always runs scanner-free assertions on `Dockerfile` + `docker-compose.dropbox.yml`. If Docker is up it runs internal+external **demo/dry** profiles and checks the image has no scanner binaries. If Docker is absent it stamps **ABSENT** (not a pass).
+`make dropbox-compose` always runs scanner-free assertions on pack + farm +
+`docker-compose.dropbox.yml` (SCOPE / work / tool-bin binds; no scanner
+packages; wrap POST refused). If Docker is up it runs internal+external
+**demo/dry** profiles and checks the image has no scanner binaries. If Docker
+is absent it stamps **ABSENT** (not a pass). `make farm-compose` is the farm
+skeleton path — same statics, never a fake runtime pass.
 
 Private farm layout (`farm/`, Layer A): allowlisted slots only. Binaries come from host PATH / bind-mount / Reid’s private tags. Not a public Hub image. Same scanner-free asserts cover `farm/Dockerfile` + `farm/docker-compose.yml`.
 

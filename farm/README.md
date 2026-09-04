@@ -36,8 +36,9 @@ kube-bench / gitleaks are file_drop stubs (no subprocess). LICENSE-LOCK names (n
 ## Run (private box, written SCOPE)
 
 ```bash
-# static scanner-free (always):
-python3 -c "from dropbox.scanner_free import assert_image_files_scanner_free; assert_image_files_scanner_free()"
+# static scanner-free (always) — pack + farm + dropbox:
+make dropbox-compose
+make farm-compose
 
 # orchestrator plan-only (no Docker required):
 python3 -m dropbox orchestrate
@@ -45,6 +46,9 @@ python3 -m dropbox orchestrate
 # compose skeleton — only if Docker is on this private box:
 # docker compose -f farm/docker-compose.yml --profile orchestrate run --rm farm-orchestrator
 ```
+
+Without Docker CLI both compose labs stamp **ABSENT** after static PASS.
+That is not a runtime compose pass.
 
 `DROPBOX_LIVE=0` by default. Do not `--live` without SCOPE + allowlisted PATH tools.
 

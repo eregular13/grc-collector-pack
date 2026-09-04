@@ -21,7 +21,7 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 Asset `ref_id` uniqueness: **62 = 62**.
 
-- **Compose lab:** **absent** — `docker CLI not on PATH`. `make dropbox-compose` ran static scanner-free assertions (PASS) and stamped ABSENT. Not recorded as compose pass. Prior Windows product-lab (2026-09-03) had pack compose pass twice; that is historical, not this run.
+- **Compose lab:** **absent** — `docker CLI not on PATH`. `make dropbox-compose` and `make farm-compose` ran static scanner-free assertions (PASS, including farm/dropbox skeletons + wrap-POST refuse) and stamped ABSENT. **Statics prove** no scanner embed in Dockerfiles/compose and no wrap POST in those files. **Runtime remains unexercised** (no Docker CLI). Not recorded as compose pass. Prior Windows product-lab (2026-09-03) had pack compose pass twice; that is historical, not this run.
 - **Inputs:** `in/` is `.gitkeep` only → `fixtures/demo/` → `demo: true`. **Not a client estate.**
 - **Console:** `python3 -m product` bound `127.0.0.1:18765`. `/health` 200, `/api/summary` ready with those counts, GET `/api/risks` 403 `posted: false`, POST `/api/refresh` re-ran 10 modules and kept 62 assets. `GRC_PRODUCT_HOST=0.0.0.0` is refused.
 - **Sink:** none on this repo. Did not hit another tree’s `:18080`.
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-Farm catalog **111** slots (32 wired / 30 invoke / 81 file_drop) — not inflated. External orchestrator stage is plan-only (no live probe). Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
+**Cycle 28 — compose statics:** Farm + dropbox compose skeletons bind SCOPE / work / tool-bin. Scanner-free tests fail closed on nmap/nessus/nuclei/openvas/gvm/zeek embeds and wrap POST. Compose **runtime** still ABSENT on this VM (no Docker CLI) after static PASS. Catalog **111** (32 wired / 30 invoke / 81 file_drop) — not inflated. External stage stays plan-only. Layer C untouched.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.

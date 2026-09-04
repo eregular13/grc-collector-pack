@@ -25,6 +25,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 28):** Farm + dropbox compose are operator skeletons (SCOPE / work/in / work/out / tool-bin binds). Scanner-free statics fail closed on apt/pip/wget/FROM/COPY `.deb` / `git clone` of LICENSE-LOCK scanners and on wrap `curl … /api/risks`. `make dropbox-compose` / `make farm-compose` stamp **ABSENT** when Docker CLI is missing after static PASS — not a runtime pass. Catalog unchanged (111 / 32 / 30 / 81).
+
 **Delta (cycle 27):** Ingest inventories operator-dropped files already in `in/easm|…` (`dropped_external` on the ingest marker). `.gitkeep` and `plan.json` ignored. External stage remains **plan-only** — no live curl/testssl from orchestrate or CI. `make dropbox-external` stays DEMO fixture writer. Catalog unchanged (111 / 32 / 30 / 81). Layer C untouched.
 
 **Delta (cycle 26):** External stage is **plan-only** in the graph (after deepen, before ingest). SCOPE refuses CIDR / wildcards / `0.0.0.0/0` in `external:`; named hosts and https URLs allowed. External SLOTS `will_run=false`.

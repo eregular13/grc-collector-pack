@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
+import os
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -242,6 +243,9 @@ def _parse_day(value, field_name: str) -> date:
 
 
 def default_scope_path() -> Path:
+    raw = (os.environ.get("DROPBOX_SCOPE") or "").strip()
+    if raw:
+        return Path(raw)
     return ROOT / "dropbox" / "SCOPE.yaml"
 
 

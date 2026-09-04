@@ -1,9 +1,18 @@
 # Optional profiles. Same python:3.12-slim image. LICENSE-LOCK: no scanner packages.
-# Demo/dry only (DROPBOX_LIVE=0). Do not apt-install nmap/nessus/nuclei/openvas.
+# Operator skeleton only. Demo/dry (DROPBOX_LIVE=0). Not Hub soup.
+# Do not apt-install nmap/nessus/nuclei/openvas/gvm/zeek.
+# Never POST /api/risks. RISKREADY_PUSH stays 0.
+#
+# Operator binds (defaults under dropbox/work — not pack in/):
+#   DROPBOX_SCOPE       written SCOPE.yaml        → /app/dropbox/SCOPE.yaml
+#   DROPBOX_COMPOSE_IN  work/compose-in           → /in
+#   DROPBOX_COMPOSE_OUT work/compose-out          → /out
+#   FARM_TOOL_BIN       host allowlisted binaries → /opt/farm/bin (ro)
+#
 #   make dropbox-compose
 #   docker compose -f docker-compose.dropbox.yml --profile internal run --rm dropbox-internal
 #   docker compose -f docker-compose.dropbox.yml --profile external run --rm dropbox-external
-# Default binds dropbox/work/compose-in|out — not pack in/.
+# Runtime compose is optional. Without Docker CLI the lab stamps ABSENT.
 services:
   dropbox-internal:
     profiles: ["internal"]
@@ -18,11 +27,15 @@ services:
       GRC_LIVE_SCAN: "0"
       CISO_PUSH: "0"
       RISKREADY_PUSH: "0"
+      DROPBOX_SCOPE: /app/dropbox/SCOPE.yaml
       IN_DIR: /in
       OUT_DIR: /out
+      PATH: /opt/farm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     volumes:
+      - ${DROPBOX_SCOPE:-./dropbox/SCOPE.yaml}:/app/dropbox/SCOPE.yaml:ro
       - ${DROPBOX_COMPOSE_IN:-./dropbox/work/compose-in}:/in
       - ${DROPBOX_COMPOSE_OUT:-./dropbox/work/compose-out}:/out
+      - ${FARM_TOOL_BIN:-./farm/tool-bin}:/opt/farm/bin:ro
       - ./fixtures:/fixtures:ro
       - ./dropbox:/app/dropbox:ro
 
@@ -39,10 +52,14 @@ services:
       GRC_LIVE_SCAN: "0"
       CISO_PUSH: "0"
       RISKREADY_PUSH: "0"
+      DROPBOX_SCOPE: /app/dropbox/SCOPE.yaml
       IN_DIR: /in
       OUT_DIR: /out
+      PATH: /opt/farm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     volumes:
+      - ${DROPBOX_SCOPE:-./dropbox/SCOPE.yaml}:/app/dropbox/SCOPE.yaml:ro
       - ${DROPBOX_COMPOSE_IN:-./dropbox/work/compose-in}:/in
       - ${DROPBOX_COMPOSE_OUT:-./dropbox/work/compose-out}:/out
+      - ${FARM_TOOL_BIN:-./farm/tool-bin}:/opt/farm/bin:ro
       - ./fixtures:/fixtures:ro
       - ./dropbox:/app/dropbox:ro

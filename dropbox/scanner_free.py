@@ -53,6 +53,11 @@ SCANNER_PKGS = tuple(
             "zeek",
             "masscan",
             "naabu",
+            "rustscan",
+            "metasploit",
+            "msfconsole",
+            "hexstrike",
+            "hexstrike-ai",
         }
         | {n for n in NEVER_EMBED if n not in {"riskready", "bro"}}
     )
@@ -73,12 +78,28 @@ FETCH_RE = re.compile(
     re.IGNORECASE,
 )
 FROM_RE = re.compile(
-    rf"^\s*(?:FROM|image:)\s+\S*\b(?:{_PKG}|kalilinux)\b",
+    rf"^\s*(?:FROM|image:)\s+\S*\b(?:{_PKG}|kalilinux|instrumentisto/nmap|greenbone)\b",
     re.IGNORECASE | re.MULTILINE,
 )
-RUN_SCANNER_RE = re.compile(
-    rf"^\s*RUN\s+(?:apt|apk|yum|dnf|pip)",
+COPY_PKG_RE = re.compile(
+    rf"^\s*(?:COPY|ADD)\s+\S*\b(?:{_PKG})\b\S*\.(?:deb|rpm|exe|nbin|nasl)",
     re.IGNORECASE | re.MULTILINE,
+)
+CLONE_RE = re.compile(
+    rf"git\s+clone\s+[^\n]*\b(?:{_PKG}|hexstrike)\b",
+    re.IGNORECASE,
+)
+WRAP_POST_RE = re.compile(
+    r"(?:curl|wget)\s+[^\n]*(?:/api/risks|/api/auth/login|/itsm/assets|\$\{API\}/risks)",
+    re.IGNORECASE,
+)
+RUN_SCANNER_RE = re.compile(
+    r"^\s*RUN\s+(?:apt|apk|yum|dnf|pip)",
+    re.IGNORECASE | re.MULTILINE,
+)
+ALLOWED_COMPOSE_IMAGES = (
+    "grc-collector-pack:local",
+    "${FARM_ORCH_IMAGE:-grc-collector-pack:local}",
 )
 
 
@@ -90,6 +111,9 @@ def scan_text(text: str, label: str) -> list[str]:
         (PIP_RE, "pip-install"),
         (FETCH_RE, "download"),
         (FROM_RE, "base-image"),
+        (COPY_PKG_RE, "copy-package"),
+        (CLONE_RE, "git-clone"),
+        (WRAP_POST_RE, "wrap-post"),
     ):
         for match in rx.finditer(text):
             hits.append(f"{label}: {kind}: {match.group(0).strip()[:160]}")
@@ -111,17 +135,59 @@ def assert_image_files_scanner_free(paths: tuple[Path, ...] | None = None) -> No
     assert not hits, "scanner embed in image/compose:\n  " + "\n  ".join(hits)
 
 
+def _compose_images_are_local(text: str, label: str) -> list[str]:
+    hits: list[str] = []
+    for match in re.finditer(r"^\s*image:\s+(\S+)", text, re.MULTILINE):
+        image = match.group(1).strip().strip("\"'")
+        if image not in ALLOWED_COMPOSE_IMAGES and not image.startswith("${"):
+            hits.append(f"{label}: hub-soup image: {image}")
+    return hits
+
+
 def assert_dropbox_compose_is_demo_dry() -> None:
-    text = (ROOT / "docker-compose.dropbox.yml").read_text(encoding="utf-8")
+    path = ROOT / "docker-compose.dropbox.yml"
+    text = path.read_text(encoding="utf-8")
     assert "DROPBOX_DEMO: \"1\"" in text or "DROPBOX_DEMO: '1'" in text
     assert "DROPBOX_LIVE: \"0\"" in text or "DROPBOX_LIVE: '0'" in text
     assert "GRC_LIVE_SCAN: \"0\"" in text
     assert "RISKREADY_PUSH: \"0\"" in text
+    assert "DROPBOX_SCOPE" in text
+    assert "SCOPE.yaml" in text
+    assert "/opt/farm/bin" in text
+    assert "compose-in" in text and "compose-out" in text
     assert "apt-get" not in text.lower()
     assert "apt install" not in text.lower()
     assert "apk add" not in text.lower()
+    assert "hub.docker.com" not in text.lower()
     for profile in ("internal", "external"):
         assert f"--profile {profile}" in text or f'"{profile}"' in text
+    hits = scan_text(text, path.name) + _compose_images_are_local(text, path.name)
+    assert not hits, "dropbox compose skeleton drifted:\n  " + "\n  ".join(hits)
+
+
+def assert_farm_compose_is_skeleton() -> None:
+    """Farm compose is an operator bind-mount skeleton. No scanner packages. No Hub soup."""
+    path = ROOT / "farm" / "docker-compose.yml"
+    text = path.read_text(encoding="utf-8")
+    docker = (ROOT / "farm" / "Dockerfile").read_text(encoding="utf-8")
+    assert "DROPBOX_LIVE: \"0\"" in text
+    assert "GRC_LIVE_SCAN: \"0\"" in text
+    assert "RISKREADY_PUSH: \"0\"" in text
+    assert "DROPBOX_SCOPE" in text
+    assert "SCOPE.yaml" in text
+    assert "/opt/farm/bin" in text or "FARM_TOOL_BIN" in text
+    assert "FARM_IN" in text and "FARM_OUT" in text
+    assert "farm-internal" in text
+    assert "internal: true" in text
+    assert "apt-get" not in text.lower()
+    assert "apt install" not in text.lower()
+    assert "hub.docker.com" not in text.lower()
+    assert not any(line.strip().upper().startswith("RUN ") for line in docker.splitlines())
+    for service in ("farm-discover", "farm-deepen", "farm-ingest", "farm-orchestrator"):
+        assert service in text
+    hits = scan_text(text, "farm/docker-compose.yml") + scan_text(docker, "farm/Dockerfile")
+    hits.extend(_compose_images_are_local(text, "farm/docker-compose.yml"))
+    assert not hits, "farm compose skeleton drifted:\n  " + "\n  ".join(hits)
 
 
 def docker_available() -> tuple[bool, str]:
@@ -241,12 +307,16 @@ def compose_lab() -> dict[str, Any]:
     """Static scanner-free always. Runtime only if Docker is up. Never fake pass."""
     assert_image_files_scanner_free()
     assert_dropbox_compose_is_demo_dry()
+    assert_farm_compose_is_skeleton()
     ok, reason = docker_available()
     if not ok:
         stamp = {
             "status": "absent",
             "reason": reason,
             "scanner_free": True,
+            "farm_skeleton": True,
+            "dropbox_skeleton": True,
+            "wrap_free": True,
             "profiles_run": [],
             "note": "static scanner-free assertions passed; runtime compose not run",
         }
@@ -254,11 +324,17 @@ def compose_lab() -> dict[str, Any]:
         return stamp
     try:
         stamp = run_dropbox_compose_profiles()
+        stamp["farm_skeleton"] = True
+        stamp["dropbox_skeleton"] = True
+        stamp["wrap_free"] = True
     except Exception as exc:  # noqa: BLE001 — lab records the failure honestly
         stamp = {
             "status": "fail",
             "reason": str(exc)[:400],
             "scanner_free": True,
+            "farm_skeleton": True,
+            "dropbox_skeleton": True,
+            "wrap_free": True,
             "profiles_run": [],
         }
         write_stamp(stamp)

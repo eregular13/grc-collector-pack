@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -58,6 +58,10 @@ dropbox-lab:
 # Static scanner-free always. Runtime compose only if Docker is up; else ABSENT (not a fake pass).
 dropbox-compose:
 	$(PYTHON) scripts/dropbox_compose_lab.py
+
+# Farm compose skeleton statics. Runtime ABSENT unless an operator starts it locally.
+farm-compose:
+	$(PYTHON) scripts/farm_compose_lab.py
 
 # DEMO: plan → fixture discover → ingest → Layer C. Uses farm/work, not pack in/.
 farm-lab:

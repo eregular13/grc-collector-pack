@@ -36,6 +36,27 @@ python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted 
 
 `make farm-lab` writes under `farm/work/` (not pack `in/`). Stamp is DEMO.
 
+## Compose skeleton (statics vs runtime)
+
+`farm/docker-compose.yml` is an **operator skeleton**: bind-mounts for
+written `SCOPE.yaml`, `work/in`, `work/out`, `FARM_TOOL_BIN` → `/opt/farm/bin`,
+and orch scratch. The Dockerfile is `python:3.12-slim` + COPY. No `RUN apt`.
+No Hub soup image.
+
+```bash
+make dropbox-compose    # pack + farm + dropbox statics; runtime only if Docker is up
+make farm-compose       # farm skeleton statics; never fakes a runtime pass
+```
+
+**What statics prove:** no apt/pip/wget/FROM embed of nmap/nessus/nuclei/openvas/gvm/zeek
+(and the rest of LICENSE-LOCK). Wrap POST of risks is refused in image/compose files.
+SCOPE/work/tool-bin binds present, `DROPBOX_LIVE=0` / `RISKREADY_PUSH=0`.
+
+**What remains unexercised:** compose **runtime** (workers actually starting) when
+Docker CLI is missing. This VM stamps **ABSENT** after static PASS — not a compose
+pass. An operator with Docker may start profiles locally under written SCOPE.
+Do not treat ABSENT as paying-day evidence.
+
 ## License classes (`SLOTS.yaml`)
 
 | Class | Meaning |

@@ -23,7 +23,7 @@ Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
 | External stage | Plan-only | Named hosts/URLs only; no live curl/testssl from orchestrate; operator lands `in/easm/` |
 | External ingest | File-drop inventory | `ingest_stage` lists dropped `in/easm|…` files; never probes; skips `.gitkeep` / `plan.json` |
 | Layer C | Parse-only ingest | `in/<sensor>/` only; collectors never call farm adapters |
-| Compose | Scanner-free | Farm Dockerfile has no `RUN apt`; compose runtime ABSENT here (no Docker CLI) |
+| Compose | Scanner-free statics | Farm/dropbox Dockerfiles have no `RUN apt`; wrap POST absent; runtime ABSENT without Docker CLI (not a fake pass) |
 
 ## Adapter policy (quality, not catalog inflation)
 

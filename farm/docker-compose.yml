@@ -1,8 +1,17 @@
-# PRIVATE drop-box farm. Not for Docker Hub.
+# PRIVATE drop-box farm. Operator skeleton only. Not for Docker Hub.
 # Tools arrive via host PATH, FARM_TOOL_BIN bind-mount, or image tags Reid builds.
-# This file does not apt-install nmap/nessus/nuclei/openvas.
-# Default volumes stay under farm/work — not pack in/.
+# This file does not apt-install nmap/nessus/nuclei/openvas/gvm/zeek.
+# Never POST /api/risks. RISKREADY_PUSH stays 0.
+#
+# Operator binds (override with env; defaults stay under farm/work — not pack in/):
+#   FARM_SCOPE     written SCOPE.yaml          → /app/dropbox/SCOPE.yaml
+#   FARM_IN        work/in (Layer C sink)      → /in
+#   FARM_OUT       work/out                    → /out
+#   FARM_TOOL_BIN  host allowlisted binaries   → /opt/farm/bin (ro)
+#   FARM_WORK      orch scratch (optional)     → /var/farm/work
+#
 # Short-lived worker services: discover / deepen / ingest. Network is internal.
+# Runtime compose is optional. Without Docker CLI the lab stamps ABSENT.
 
 x-farm-common: &farm-common
   image: ${FARM_ORCH_IMAGE:-grc-collector-pack:local}
@@ -17,13 +26,17 @@ x-farm-common: &farm-common
     GRC_LIVE_SCAN: "0"
     CISO_PUSH: "0"
     RISKREADY_PUSH: "0"
+    DROPBOX_SCOPE: /app/dropbox/SCOPE.yaml
     IN_DIR: /in
     OUT_DIR: /out
     DROPBOX_ORCH_DIR: /var/farm
+    PATH: /opt/farm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   volumes:
+    - ${FARM_SCOPE:-../dropbox/SCOPE.yaml}:/app/dropbox/SCOPE.yaml:ro
     - ${FARM_IN:-./work/in}:/in
     - ${FARM_OUT:-./work/out}:/out
     - ${FARM_TOOL_BIN:-./tool-bin}:/opt/farm/bin:ro
+    - ${FARM_WORK:-./work}:/var/farm/work
     - farm-discover:/var/farm/discover
     - farm-deepen:/var/farm/deepen
     - farm-ingest:/var/farm/ingest
