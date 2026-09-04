@@ -2,11 +2,12 @@
 
 **DEMO ≠ client estate.** Written consent first. This repo does not install scanners.
 
-Honest stamp (cycle 65, host lab): pytest **307** + 1 skip. `make lab`
+Honest stamp (cycle 66, host lab): pytest **309** + 1 skip. `make lab`
 64 / 79 / 19 / 27 poam **82**. Catalog **111 / 32 wired / 30 invoke /
 81 file_drop**. compose **ABSENT** (no Docker CLI — hole, not a PASS).
 Wrap review-only. DEMO ≠ client. Paying-day **FAIL**. LICENSE-LOCK /
-file_drop-only names never `will_run=true`.
+file_drop-only names never `will_run=true`. `FARM_TOOL_BIN` never
+resolves locked scanners.
 
 1. **Consent** — store the signed memo next to the box; record its sha256.
 2. **SCOPE** — copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`.
