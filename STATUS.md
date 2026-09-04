@@ -1,6 +1,6 @@
-cycle: 61
+cycle: 62
 phase: DONE
-item: WRAP-DEAD-FARM-SOP
+item: MCP-STUB-HONESTY
 critic_score: 8/10
 open_p0:
 open_p1:

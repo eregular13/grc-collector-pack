@@ -2,7 +2,13 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 61):** wrap-dead farm SOP. RiskReady wrap stays dead
+**This window (cycle 62):** MCP stub honesty. `dropbox.mcp_stub` is
+conductor UX for this Python pack — not USB `evergreen_assessment_mcp`,
+not FastMCP, not a TypeScript refuse matrix, not paying-day truth.
+No new Layer C parser. Catalog unchanged. Paying-day **FAIL**.
+Compose **ABSENT**.
+
+**Cycle 61 (stands):** wrap-dead farm SOP. RiskReady wrap stays dead
 forever — no login, no assets/evidence/incidents POST, not only
 `/api/risks`. Farm SOP never points at a RiskReady write. Stale
 IMPORT_RR/SECURITY dual-gate wrap language removed. No new Layer C

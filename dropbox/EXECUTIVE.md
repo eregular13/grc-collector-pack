@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 62):** MCP stub honesty. `dropbox.mcp_stub` is conductor UX for this pack — not USB `evergreen_assessment_mcp`, not FastMCP, not a TypeScript refuse matrix, not paying-day truth. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 59.
+
 **Delta (cycle 61):** Wrap-dead farm SOP. RiskReady wrap stays dead forever (no login / no assets / no incidents / no evidence POST — not only `/api/risks`). Farm SOP never points at a RiskReady write. Stale dual-gate wrap docs removed. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 59.
 
 **Delta (cycle 60):** Harden existing rails, no new parser. pytest asserts LICENSE-LOCK / file_drop-only names never appear in invoke `will_run=true` even when every slot is allowlisted and on PATH. Operator docs list exact `docker compose` commands and PASS criteria. This VM compose remains ABSENT (hole, not a PASS). Paying-day FAIL. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 59.

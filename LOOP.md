@@ -25,6 +25,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - After cycle 59: stop vanity Layer C parser expansion; harden farm/SCOPE honesty + compose-on-Docker operator docs. Paying-day FAIL. Compose ABSENT until proven on a Docker host.
 - Cycle 60 done: LICENSE-LOCK will_run test + compose PASS criteria docs.
 - Cycle 61 done: wrap-dead farm SOP (no RiskReady write path).
+- Cycle 62 done: MCP stub honesty (not USB evergreen_assessment_mcp / not TS refuse matrix).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
