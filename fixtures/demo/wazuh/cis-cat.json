@@ -1,0 +1,16 @@
+{
+  "benchmark": "CIS Ubuntu Linux 22.04 LTS Benchmark",
+  "target": "jump-unmanaged",
+  "results": [
+    {
+      "id": "5.2.10",
+      "title": "Ensure SSH PermitRootLogin is no",
+      "result": "fail"
+    },
+    {
+      "id": "3.5.1",
+      "title": "Ensure a host firewall is installed",
+      "result": "pass"
+    }
+  ]
+}

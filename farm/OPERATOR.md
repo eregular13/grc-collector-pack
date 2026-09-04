@@ -136,6 +136,12 @@ Offline hosts are coverage gaps. Disk encryption off and MDM enrollment Off
 map to existing CISO/POA&M. Empty hosts/policies invent nothing. No Fleet
 API / fleetctl / osqueryi.
 
+CIS-CAT / XCCDF JSON or XML is file-drop ingest under `in/wazuh/` or
+`in/identity/`. Failed rows only. Empty results invent nothing. High rows
+map to existing CISO/POA&M (SSH PermitRootLogin, host firewall, disk
+encryption). osquery **check** JSON (`queries` with status=fail) lands under
+`in/wazuh/`. The collector never runs `cis-cat` or `osqueryi`.
+
 HardeningKitty **Audit CSV** and **Lynis** reports are file-drop ingest:
 land HK CSV under `in/identity/`, Lynis report/`report.dat` under `in/wazuh/`.
 Layer C parses Failed HK rows and Lynis warnings only — no WinRM/AD API, no

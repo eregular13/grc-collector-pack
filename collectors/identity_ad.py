@@ -13,6 +13,7 @@ from typing import Any
 
 import xml.etree.ElementTree as ET
 
+from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.schema import make_record, make_ref
 
@@ -280,12 +281,61 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
     return records
 
 
+def _emit_cis_cat(rows: list[dict[str, str]], now: str) -> list[dict]:
+    records: list[dict] = []
+    seen_hosts: set[str] = set()
+    for row in rows:
+        host = row.get("host") or "cis-host"
+        hid = row.get("id") or "cis"
+        title = row.get("title") or hid
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"CIS-assessed host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + ["cis-cat"],
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"cis-{hid}-{host}"),
+                name=f"CIS-CAT {hid}: {title}",
+                description=title,
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + ["cis-cat"],
+                collected_at=now,
+                extra={"id": hid, "name": title, "check_id": hid},
+            )
+        )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
     text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
     payload: Any = {}
     meta_kind = ""
     if path.suffix.lower() == ".csv" or ("," in text[:200] and "Severity" in text[:400]):
         return parse_hardeningkitty_csv(text, iso_now())
+    json_payload: Any = None
+    if not (path.suffix.lower() == ".xml" or text.lstrip().startswith("<")):
+        try:
+            json_payload = read_json(path)
+        except Exception:
+            json_payload = None
+    if is_cis_cat(json_payload, name=path.name, text=text):
+        return _emit_cis_cat(iter_cis_failures(json_payload, text=text), iso_now())
     if path.suffix.lower() == ".xml" or text.startswith("<"):
         nodes = _pingcastle_xml_nodes(path)
     else:

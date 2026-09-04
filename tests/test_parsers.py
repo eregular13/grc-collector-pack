@@ -48,6 +48,74 @@ def test_osquery_coverage() -> None:
     names = [r["name"] for r in recs if r["kind"] == "asset"]
     assert "laptop-04" in names
     assert any(r["kind"] == "finding" and "jump-unmanaged" in r["name"] for r in recs)
+    assert not any("osquery disk" in r["name"].lower() for r in recs if r["kind"] == "finding")
+
+
+def test_cis_cat_and_osquery_fail_only() -> None:
+    from shared.control_map import map_finding
+
+    recs = host_wazuh.parse_file(DEMO / "wazuh" / "cis-cat.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "PermitRootLogin" in findings[0]["name"]
+    assert not any("firewall" in r["name"].lower() for r in findings)
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "root login" in mapped["control_name"].lower() or "permitrootlogin" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+    oq = host_wazuh.parse_file(DEMO / "wazuh" / "osquery-checks.json")
+    ofind = [r for r in oq if r["kind"] == "finding"]
+    assert len(ofind) == 1
+    assert "disk encryption" in ofind[0]["name"].lower() or "disk encryption" in ofind[0]["description"].lower()
+    om = map_finding(ofind[0])
+    assert om["include_poam"] is True
+    assert "disk encryption" in om["control_name"].lower()
+    assert "CVE-" not in om["recommended_fix"]
+
+
+def test_cis_cat_xml_identity(tmp_path) -> None:
+    dest = tmp_path / "cis-cat.xml"
+    dest.write_text(
+        """<?xml version="1.0"?>
+        <Benchmark>
+          <TestResult>
+            <target>jump-unmanaged</target>
+            <rule-result idref="5.2.10" title="Ensure SSH PermitRootLogin is no">
+              <result>fail</result>
+            </rule-result>
+            <rule-result idref="1.1.1" title="Ensure cramfs is disabled">
+              <result>pass</result>
+            </rule-result>
+          </TestResult>
+        </Benchmark>""",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "PermitRootLogin" in findings[0]["name"]
+
+
+def test_empty_cis_osquery_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-cis.json"
+    dest.write_text("""{"benchmark":"CIS","target":"h","results":[]}""", encoding="utf-8")
+    assert host_wazuh.parse_file(dest) == []
+    dest.write_text("""{"queries":[]}""", encoding="utf-8")
+    assert host_wazuh.parse_file(dest) == []
+
+
+def test_empty_in_still_loads_cis_osquery(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-wazuh-cis"))
+    (tmp_path / "empty-wazuh-cis" / "wazuh").mkdir(parents=True)
+    files, demo = load_inputs("host-wazuh", (".json", ".xml", ".txt", ".log", ".dat"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "cis-cat.json" in names
+    assert "osquery-checks.json" in names
+    assert "osquery.json" in names
 
 
 def test_trufflehog_jsonl() -> None:
@@ -263,6 +331,7 @@ def test_identity_ad_no_ad_subprocess() -> None:
     assert "ldap" not in src.lower()
     assert "winrm" not in src.lower()
     assert "bloodhound -" not in src
+    assert "cis-cat -" not in src
 
 
 def test_fleet_hosts() -> None:
@@ -320,7 +389,7 @@ def test_empty_in_still_loads_fleet(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-wazuh"))
     (tmp_path / "empty-wazuh" / "wazuh").mkdir(parents=True)
-    files, demo = load_inputs("host-wazuh", (".json", ".txt", ".log", ".dat"))
+    files, demo = load_inputs("host-wazuh", (".json", ".xml", ".txt", ".log", ".dat"))
     assert demo is True
     names = {p.name for p in files}
     assert "fleet.json" in names
@@ -336,6 +405,7 @@ def test_host_wazuh_no_live_agent() -> None:
     assert "Popen" not in src
     assert "fleetctl" not in src
     assert "osqueryi" not in src
+    assert "cis-cat -" not in src
 
 
 def test_sarif() -> None:
@@ -564,7 +634,7 @@ def test_empty_in_still_loads_lynis_report(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-wazuh"))
     (tmp_path / "empty-wazuh" / "wazuh").mkdir(parents=True)
-    files, demo = load_inputs("host-wazuh", (".json", ".txt", ".log", ".dat"))
+    files, demo = load_inputs("host-wazuh", (".json", ".xml", ".txt", ".log", ".dat"))
     assert demo is True
     names = {p.name for p in files}
     assert "lynis-report.txt" in names

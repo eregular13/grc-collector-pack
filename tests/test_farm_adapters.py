@@ -107,6 +107,8 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "HardeningKitty" in md
     assert "Lynis" in md
     assert "Fleet" in md
+    assert "CIS-CAT" in md
+    assert "osquery" in md
     assert "in/identity/" in md
     assert "Cloud file-drop" in md
     assert "in/cloud/" in md

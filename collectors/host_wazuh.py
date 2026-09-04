@@ -10,7 +10,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.osquery_checks import iter_osquery_failures
 from shared.schema import make_record, make_ref
 
 SOURCE = "host-wazuh"
@@ -180,12 +182,82 @@ def parse_lynis_report(text: str, now: str) -> list[dict]:
     return records
 
 
+def _emit_check_rows(
+    rows: list[dict[str, str]],
+    now: str,
+    *,
+    prefix: str,
+    labels: list[str],
+    title_fmt: str,
+) -> list[dict]:
+    records: list[dict] = []
+    seen_hosts: set[str] = set()
+    for row in rows:
+        host = row.get("host") or "host"
+        hid = row.get("id") or prefix
+        title = row.get("title") or hid
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"Host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + labels,
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"{prefix}-{hid}-{host}"),
+                name=title_fmt.format(title=title, id=hid),
+                description=title,
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + labels,
+                collected_at=now,
+                extra={"id": hid, "name": title, "check_id": hid},
+            )
+        )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
     if path.suffix.lower() in {".txt", ".log", ".dat"}:
         return parse_lynis_report(read_text(path), iso_now())
-    payload = read_json(path)
+    text = read_text(path)
     now = iso_now()
+    if path.suffix.lower() == ".xml" or text.lstrip().startswith("<"):
+        if is_cis_cat(name=path.name, text=text):
+            return _emit_check_rows(
+                iter_cis_failures(text=text),
+                now,
+                prefix="cis",
+                labels=["cis-cat"],
+                title_fmt="CIS-CAT {id}: {title}",
+            )
+        return []
+    payload = read_json(path)
     records: list[dict] = []
+    if is_cis_cat(payload, name=path.name, text=text):
+        records.extend(
+            _emit_check_rows(
+                iter_cis_failures(payload),
+                now,
+                prefix="cis",
+                labels=["cis-cat"],
+                title_fmt="CIS-CAT {id}: {title}",
+            )
+        )
+        return records
     for agent in _agents(payload):
         name = str(agent.get("name") or agent.get("id") or "agent")
         status = str(agent.get("status") or "unknown").lower()
@@ -319,11 +391,20 @@ def parse_file(path: Path) -> list[dict]:
                 extra={},
             )
         )
+    records.extend(
+        _emit_check_rows(
+            iter_osquery_failures(payload),
+            now,
+            prefix="osquery",
+            labels=["osquery"],
+            title_fmt="osquery {id}: {title}",
+        )
+    )
     return records
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".txt", ".log", ".dat"), parse_file)
+    run_collector(SOURCE, (".json", ".xml", ".txt", ".log", ".dat"), parse_file)
 
 
 if __name__ == "__main__":
