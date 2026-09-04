@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 55 — fping file-drop polish (2026-09-04)
+
+inventory-nmap parses operator-landed fping text and JSON under `in/nmap/` (`host is alive` or `{ip, hostname, alive}`). Alive hosts become assets only. Unreachable / empty invent nothing. Demo `fping.txt` attaches to existing `filesrv.corp.local` (assets and findings unchanged). Collector does not run fping and never does live ping. Slot stays `file_drop`. Catalog **not inflated**. pytest **276**. Labs green. Compose ABSENT. arp-scan cycle 54 stands.
+
+```json
+{"pytest": 276, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 75, "vulns": 19, "evidence": 27, "poam": 78}, "farm_lab": {"assets": 64, "findings": 75, "poam": 78, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 76, "vulns": 19, "poam": 78, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 84, "vulns": 19, "poam": 81, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 54 — arp-scan file-drop polish (2026-09-04)
 
 inventory-nmap parses operator-landed arp-scan text and JSON under `in/nmap/` (`Starting arp-scan` / IP + MAC + vendor lines, or `{ip, mac, vendor}`). Hosts become assets only. Empty / header-only / 0 responded invent nothing. Demo `arp-scan.txt` attaches to existing `filesrv.corp.local` (assets and findings unchanged). Collector does not run arp-scan and never does live ARP. Slot stays `file_drop`. Catalog **not inflated**. pytest **272**. Labs green. Compose ABSENT. rustscan/naabu cycle 53 stands.

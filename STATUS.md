@@ -1,6 +1,6 @@
-cycle: 54
+cycle: 55
 phase: DONE
-item: ARP-SCAN-FILE-DROP-HARDEN
+item: FPING-FILE-DROP-HARDEN
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 272
+pytest: 276
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
