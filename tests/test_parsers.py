@@ -590,6 +590,70 @@ def test_vuln_scan_no_nuclei_subprocess() -> None:
     assert "import subprocess" not in src
     assert "Popen" not in src
     assert "nuclei -" not in src
+    assert "nikto -" not in src
+    assert "socket.socket" not in src
+
+
+def test_nikto_txt_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = vuln_scan.parse_file(DEMO / "vuln" / "nikto.txt")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "http://10.0.0.20" in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "Admin login" in findings[0]["name"]
+    assert "X-Frame-Options" not in str(recs)
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "admin" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_nikto_json_and_xml(tmp_path) -> None:
+    dest = tmp_path / "nikto.json"
+    dest.write_text(
+        """{"host":"http://10.0.0.20","vulnerabilities":[
+        {"id":"000221","OSVDB":"3092","url":"/admin","msg":"Admin login page found."},
+        {"id":"999957","OSVDB":"0","url":"/","msg":"The X-Frame-Options header is not present."}
+        ]}""",
+        encoding="utf-8",
+    )
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "/admin" in findings[0]["description"]
+    dest = tmp_path / "nikto.xml"
+    dest.write_text(
+        """<niktoscan><scandetails targethostname="http://10.0.0.20" targetip="10.0.0.20" targetport="80">
+        <item id="000221" osvdbid="3092"><description>Admin login page found.</description><uri>/admin</uri></item>
+        <item id="999957"><description>The X-Content-Type-Options header is not set.</description><uri>/</uri></item>
+        </scandetails></niktoscan>""",
+        encoding="utf-8",
+    )
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert any(r["kind"] == "asset" and r["name"] == "http://10.0.0.20" for r in recs)
+
+
+def test_empty_nikto_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-nikto.json"
+    dest.write_text("""{"host":"http://10.0.0.20","vulnerabilities":[]}""", encoding="utf-8")
+    assert vuln_scan.parse_file(dest) == []
+    dest = tmp_path / "empty-nikto.xml"
+    dest.write_text(
+        """<niktoscan><scandetails targethostname="h" targetip="10.0.0.20"></scandetails></niktoscan>""",
+        encoding="utf-8",
+    )
+    assert vuln_scan.parse_file(dest) == []
+    dest = tmp_path / "nessus-stub.txt"
+    dest.write_text(
+        "DEMO — not a real scanner. farm/tool-bin/lab/nessus\n"
+        "<NessusClientData_v2><!-- DEMO fixture-shaped, not a scan --></NessusClientData_v2>\n",
+        encoding="utf-8",
+    )
+    assert vuln_scan.parse_file(dest) == []
 
 
 def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> None:
@@ -597,11 +661,12 @@ def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> Non
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
     (tmp_path / "empty-in" / "vuln").mkdir(parents=True)
-    files, demo = load_inputs("vuln-scan", (".json", ".jsonl", ".sarif"))
+    files, demo = load_inputs("vuln-scan", (".json", ".jsonl", ".sarif", ".txt", ".xml"))
     assert demo is True
     names = {p.name for p in files}
     assert "nuclei.jsonl" in names
     assert "demo.sarif" in names
+    assert "nikto.txt" in names
 
 
 def test_minimal_asff_productfields_and_severity_string(tmp_path) -> None:

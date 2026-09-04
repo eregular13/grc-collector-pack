@@ -119,6 +119,12 @@ JSONL, a single object, an array, or a `{results|matches|findings}` wrapper.
 INFO rows stay silent. Empty results invent nothing. High Log4Shell / RCE
 rows map to existing CISO/POA&M. The collector never runs `nuclei`.
 
+Nikto **text / XML / JSON** is file-drop ingest under `in/vuln/` (slot glob
+`*.txt`; XML/JSON also parse). Interesting/high rows only — missing
+security headers stay silent. Empty exports invent nothing. High admin
+login / directory-index rows map to existing CISO/POA&M. The collector
+never runs nikto and does not probe HTTP.
+
 Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.

@@ -160,6 +160,19 @@ High rows map to CISO/POA&M when obvious (Log4Shell / RCE). Empty `in/`
 still loads `fixtures/demo/vuln/nuclei.jsonl`. nuclei stays file_drop.
 No new catalog slots.
 
+## Nikto file-drop (Layer C)
+
+Drop **Nikto** text, XML (`niktoscan` / `scandetails`), or JSON
+(`vulnerabilities` / `items`) under `in/vuln/`. Slot glob is
+`in/vuln/*.txt`; `.xml` / `.json` also parse. Interesting/high rows
+only (`/admin`, `/login`, `/.git`, phpinfo, directory indexing).
+Missing security-header noise stays silent. Empty exports invent
+nothing. Deepen DEMO `.txt` stubs (NessusClientData) are not Nikto
+and invent nothing. High rows map to CISO/POA&M (exposed admin UI).
+Parse-only — this repo never subprocesses nikto and does not probe
+HTTP. Empty `in/` still loads `fixtures/demo/vuln/nikto.txt`.
+nikto stays file_drop. No new catalog slots.
+
 ## Secrets / IaC file-drop (Layer C)
 
 Drop **Gitleaks** / **TruffleHog** / **Semgrep** / **Checkov** JSON or

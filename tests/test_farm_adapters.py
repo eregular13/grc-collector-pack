@@ -122,6 +122,8 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "(Status:" in md or "Status:" in md
     assert "Nuclei JSON file-drop" in md
     assert "template_id" in md
+    assert "Nikto file-drop" in md
+    assert "niktoscan" in md
     assert "Secrets / IaC file-drop" in md
     assert "failed_checks" in md
     assert "SARIF file-drop" in md

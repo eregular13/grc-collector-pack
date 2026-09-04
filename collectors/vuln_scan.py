@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, or SARIF into findings."""
+"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, Nikto, or SARIF.
+
+Parse-only. Does not run nuclei, nikto, or any live HTTP probe.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.nikto import is_interesting as nikto_interesting
+from shared.nikto import parse_nikto
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import make_record, make_ref
 from shared.testssl import is_testssl, iter_testssl_findings
@@ -154,6 +159,35 @@ def parse_file(path: Path) -> list[dict]:
         if records:
             return records
 
+    nikto = parse_nikto(path)
+    if nikto is not None:
+        for row in nikto:
+            url = str(row.get("url") or "/")
+            msg = str(row.get("msg") or "")
+            if not nikto_interesting(url, msg):
+                continue
+            host = str(row.get("host") or "unknown")
+            add_asset(host)
+            rid = str(row.get("id") or "nikto")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"nikto-{rid}-{host}-{url}"),
+                    name=f"Nikto: {msg or url}",
+                    description=(
+                        f"{msg} url={url} (Nikto file-drop; not a live HTTP probe)"
+                    ),
+                    severity="high",
+                    category="exposure",
+                    assets=[host],
+                    labels=LABELS + ["nikto"],
+                    collected_at=now,
+                    extra={"url": url, "id": rid},
+                )
+            )
+        return records
+
     nuclei = _nuclei_rows(path)
     if nuclei:
         for row in nuclei:
@@ -273,7 +307,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".jsonl", ".sarif"), parse_file)
+    run_collector(SOURCE, (".json", ".jsonl", ".sarif", ".txt", ".xml"), parse_file)
 
 
 if __name__ == "__main__":
