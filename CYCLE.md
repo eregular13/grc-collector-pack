@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 77 — compose argv scanner-free (2026-09-04)
+
+(e) static tighten without Docker: `scan_text` now flags compose `command`/`entrypoint` and Dockerfile `CMD`/`ENTRYPOINT` scanner tokens plus wrap POST paths as argv. Pack parse collectors (`inventory_nmap.py`) stay clean. Runtime still ABSENT (`docker CLI not on PATH`). Did not fake compose PASS. Cycle 74 Reid-only blockers stay locked. Paying-day FAIL. Catalog **111 / 32 / 30 / 81**. pytest **319** (+1). Labs no-diff vs cycle 76 counts.
+
+```json
+{"pytest": 319, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
 ## cycle 76 — compose runtime ABSENT honesty (2026-09-04)
 
 Backlog (a)–(d) MET. (e) statics MET; runtime still ABSENT (`docker CLI not on PATH`). Scanner-free + wrap-dead + SCOPE/brakes pytest **89 passed, 1 skipped**. Full pytest **318**. Labs no-diff vs cycle 75. No product code. Did not fake compose PASS. Cycle 74 Reid-only blockers stay locked. Paying-day FAIL. Catalog **111 / 32 / 30 / 81**.

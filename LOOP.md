@@ -40,6 +40,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 74 done: STATUS/EXECUTIVE next_action is Reid-only blockers (CTA, Eval npm start, KEEP in/ drop, compose-on-Docker, merge PR #1). No fake greens.
 - Cycle 75 done: verify-green / no-diff. Full lab suite clean vs cycle 74.
 - Cycle 76 done: (e) compose runtime honesty — statics green, runtime ABSENT, no fake PASS.
+- Cycle 77 done: (e) compose argv scanner-free — command/entrypoint/CMD/ENTRYPOINT cannot quietly embed scanners or wrap POSTs; runtime still ABSENT.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
