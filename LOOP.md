@@ -4,7 +4,9 @@ Interval: every 30 minutes until **07:00 America/Los_Angeles**.
 Sentinel: `AGENT_LOOP_TICK_grc-improve`
 Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 
-**Ended** 2026-09-02 ~07:07 PT (PID 14860, exit 0). Do not start another loop unless asked.
+**Ended** 2026-09-02 ~07:07 PT (PID 14860, exit 0). Do not start another overnight loop.
+
+**2026-09-04 afternoon build:** active 30-minute harden passes until **16:00 America/Los_Angeles**. Same safety: no live-scan, no POST `/api/risks`, no wrap restore, no paying-day PASS, no USB copy. Stop after 16:00 PT.
 
 ## Each tick
 

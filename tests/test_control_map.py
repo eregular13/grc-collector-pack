@@ -62,6 +62,57 @@ def test_low_ssh_not_forced_onto_poam() -> None:
     assert map_finding(rec)["include_poam"] is False
 
 
+def test_tls_posture_is_key_poam() -> None:
+    rec = make_record(
+        kind="finding",
+        source="easm",
+        ref_id="EASM-vpn-tls",
+        name="TLS expired on vpn.example.com",
+        description="https listener presents an expired certificate.",
+        severity="medium",
+        category="exposure",
+        assets=["vpn.example.com"],
+        extra={"port": "443", "service": "https"},
+    )
+    mapped = map_finding(rec)
+    assert mapped["include_poam"] is True
+    assert "TLS" in mapped["control_name"]
+    assert "CVE-" not in mapped["recommended_fix"]
+    assert ":" not in mapped["framework_refs"]
+
+
+def test_admin_share_is_key_poam() -> None:
+    rec = make_record(
+        kind="finding",
+        source="inventory-nmap",
+        ref_id="NMAP-dc-admin$",
+        name="ADMIN$ share reachable",
+        description="dc.corp.local exposes the ADMIN$ administrative share.",
+        severity="medium",
+        category="exposure",
+        assets=["dc.corp.local"],
+        extra={"port": "445", "service": "microsoft-ds"},
+    )
+    mapped = map_finding(rec)
+    assert mapped["include_poam"] is True
+    # SMB port still wins if 445 is set — admin share text is the fallback.
+    # Force the share narrative via description-only (no 445 extra) in a second rec:
+    share = make_record(
+        kind="finding",
+        source="identity-ad",
+        ref_id="ID-admin-share",
+        name="C$ admin share open",
+        description="filesrv.corp.local C$ administrative share is reachable.",
+        severity="medium",
+        category="exposure",
+        assets=["filesrv.corp.local"],
+    )
+    mapped = map_finding(share)
+    assert mapped["include_poam"] is True
+    assert "admin share" in mapped["control_name"].lower() or "C$" in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
 def test_extra_labels_wizard_safe_no_colon() -> None:
     stamps = extra_labels()
     assert "cpg_2_W" in stamps

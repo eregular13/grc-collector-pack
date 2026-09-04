@@ -67,6 +67,32 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Restrict RDP to approved paths"
         fix = "Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE."
         key_medium = True
+    elif (
+        "admin$" in text
+        or "c$" in text
+        or "ipc$" in text
+        or "admin share" in text
+        or "administrative share" in text
+    ):
+        name = "Restrict Windows admin shares"
+        fix = (
+            "Disable or ACL C$/ADMIN$/IPC$ so they are not reachable off the admin network. "
+            "Confirm SMBv1 is disabled. This is a share-exposure finding, not a CVE."
+        )
+        key_medium = True
+    elif (
+        port == "443"
+        or "tls" in text
+        or "ssl" in text
+        or "https" in text
+        or "certificate" in text
+    ):
+        name = "Harden TLS on the exposed service"
+        fix = (
+            "Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. "
+            "This is a posture finding, not a specific TLS CVE."
+        )
+        key_medium = True
     elif "public" in text and ("s3" in text or "bucket" in text):
         name = "Block public object-storage access"
         fix = "Remove public ACL/policy on the bucket. Keep the object private unless a documented exception exists."

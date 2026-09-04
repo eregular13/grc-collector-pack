@@ -7,14 +7,11 @@ import os
 import shutil
 from pathlib import Path
 
+from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.shard import batch_hosts, reject_wide_deepen_target, shard_cidrs
 from dropbox.scope import NEVER_EMBED, ORCH_BYO, ROOT, GateError, Scope, is_open_internet_cidr, load_scope
 from shared.io_util import in_dir
-
-NMAP_NAMES = ("nmap",)
-NESSUS_NAMES = ("nessus", "nessuscli")
-LOUD_DISCOVER_FLAGS = ("-sV", "-sC", "-A", "--script", "-p-", "--top-ports")
 
 
 def _which(name: str) -> str | None:
@@ -32,25 +29,6 @@ def _write_json(path: Path, data) -> Path:
     return path
 
 
-def _tool_ready(names: tuple[str, ...], allow: list[str]) -> tuple[str | None, str]:
-    listed = [n for n in names if n in allow]
-    if not listed:
-        return None, "not in SCOPE.allow_tools for this stage"
-    for name in listed:
-        exe = _which(name)
-        if exe:
-            return exe, "on PATH"
-    return None, "not on PATH — plan only (will not download)"
-
-
-def _quiet_nmap_argv(exe: str, shard: str, timeout_sec: int) -> list[str]:
-    argv = [exe, "-sn", "--host-timeout", f"{int(timeout_sec)}s", "-oG", "-", shard]
-    joined = " ".join(argv)
-    if any(flag in joined for flag in LOUD_DISCOVER_FLAGS):
-        raise GateError("discover argv is not quiet")
-    return argv
-
-
 def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
     prefix = scope.discover_prefix
     shards = shard_cidrs(scope.internal_cidrs, prefix) if scope.internal_cidrs else []
@@ -58,7 +36,7 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
         if is_open_internet_cidr(shard):
             raise GateError(f"discover refuses open-internet shard {shard}")
     stage_allow = scope.tools_for("discover")
-    exe, reason = _tool_ready(NMAP_NAMES, stage_allow)
+    exe, reason, _tool = byo.resolve_stage("discover", stage_allow, which=_which)
     sample = shards[:8]
     plan = {
         "stage": "discover",
@@ -95,7 +73,7 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
     live_budget = min(len(shards), scope.max_workers) if run_live else 0
     for index, shard in enumerate(shards[: max(live_budget, min(8, len(shards)))]):
         use_live = bool(run_live and exe and index < live_budget)
-        argv = _quiet_nmap_argv(exe, shard, scope.host_timeout_sec) if use_live else []
+        argv = byo.nmap_quiet_argv(exe, shard, scope.host_timeout_sec) if use_live else []
         worker = farm.spawn(
             "discover",
             shard,
@@ -200,7 +178,7 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
     plan["batches"] = batches
     plan["batch_count"] = len(batches)
     stage_allow = scope.tools_for("deepen")
-    exe, reason = _tool_ready(NESSUS_NAMES, stage_allow)
+    exe, reason, _tool = byo.resolve_stage("deepen", stage_allow, which=_which)
     plan["tool_ready"] = bool(exe)
     plan["skip_reason"] = reason if not exe else ""
     run_live = bool(live and exe)
@@ -214,7 +192,7 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
                 raise GateError(str(exc)) from exc
             if not scope.allows_internal_target(item):
                 raise GateError(f"deepen target not in SCOPE: {item}")
-        argv = [exe, "--batch", target, "--timeout", str(scope.host_timeout_sec)] if run_live and exe else []
+        argv = byo.nessus_batch_argv(exe, target, scope.host_timeout_sec) if run_live and exe else []
         worker = farm.spawn(
             "deepen",
             target,
@@ -307,9 +285,30 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "destroyed": deepen.get("deepen_workers_destroyed", 0),
         },
         "ingest": ingest,
+        "integrity_stops": integrity_stops(scope),
     }
     _write_json(_orch_dir() / "summary.json", summary)
     return summary
+
+
+def integrity_stops(scope: Scope) -> list[str]:
+    stops = [
+        "SCOPE required",
+        f"max_workers={scope.max_workers}",
+        f"deepen_batch={scope.deepen_batch} (enforced 2-5)",
+        f"host_timeout_sec={scope.host_timeout_sec}",
+        "tear-down after discover and deepen",
+        "no targets outside SCOPE",
+        "no 0.0.0.0/0",
+        "BYO nmap/nessus on PATH only; never apt/embed/download",
+    ]
+    if not scope.stage_deepen:
+        stops.append("stages.deepen=false (deepen fail-closed)")
+    else:
+        stops.append("stages.deepen=true (loud stage armed)")
+    if "DEMO" in scope.client_name.upper():
+        stops.append("DEMO SCOPE — not a client estate")
+    return stops
 
 
 def assert_no_embed() -> None:

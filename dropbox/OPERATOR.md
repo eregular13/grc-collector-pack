@@ -56,9 +56,12 @@ What internal **does not**
 Client **environment integrity is paramount**. The farm still has to find vulns and misconfigs, but it is a governor, not a coverage contest. Defaults prefer integrity over coverage ego.
 
 ```bash
+python3 -m dropbox status               # SCOPE brakes + last run (stage, shards, batches, stops)
 python3 -m dropbox orchestrate          # plan-only if nmap/nessus are absent
 python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
 ```
+
+`status` prints the quiet→loud governor, shard/batch brakes, and integrity stops (unsigned SCOPE never gets this far — the gate exits 2). Last-run lines come from `dropbox/out/summary.json` after an orchestrate. DEMO fixtures are labeled **not a client estate**.
 
 ### Product contract
 
