@@ -176,6 +176,26 @@ def catalog_summary() -> dict[str, Any]:
     }
 
 
+BRAKES_DEFAULTS = (
+    ("scope", "dropbox/SCOPE.yaml required"),
+    ("deepen", "stages.deepen default false; live needs flag + allow_tools"),
+    ("max_workers", "2"),
+    ("deepen_batch", "3 (must be 2-5)"),
+    ("host_timeout_sec", "30"),
+    ("wildcard_cidr", "external named hosts only; refuse 0.0.0.0/0 and /8-/16 spray"),
+    ("byo_path", "allow_tools ∩ PATH; missing → plan-only; never apt/embed"),
+    ("license_lock", "never embed scanners; nuclei/openvas/osquery stay file_drop"),
+    ("wrap", "push_riskready.sh review-only; never POST"),
+    ("layer_c", "parse-only ingest into in/<sensor>/"),
+    ("compose", "scanner-free; runtime ABSENT without Docker CLI"),
+)
+
+
+def brakes_defaults() -> dict[str, str]:
+    """Structured brakes table. Matches farm/INTEGRITY.md. No binaries."""
+    return {key: value for key, value in BRAKES_DEFAULTS}
+
+
 def ingest_map() -> dict[str, dict[str, int]]:
     """Slot counts by Layer C sensor dir. No theater sensors."""
     slots = load_slots()

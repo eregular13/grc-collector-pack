@@ -33,6 +33,13 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "host_timeout_sec" in integrity
     assert "0.0.0.0/0" in integrity
     assert "review-only" in integrity.lower()
+    from farm.adapters.catalog import brakes_defaults
+
+    brakes = brakes_defaults()
+    assert brakes["max_workers"] == "2"
+    assert "2-5" in brakes["deepen_batch"] or "2–5" in brakes["deepen_batch"]
+    assert "30" in brakes["host_timeout_sec"]
+    assert "0.0.0.0/0" in brakes["wildcard_cidr"]
 
 
 def test_farm_slots_are_adapters_not_binaries() -> None:

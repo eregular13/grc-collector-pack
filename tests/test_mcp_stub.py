@@ -170,6 +170,9 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     assert result["by_category"]["discover"]["total"] >= 1
     assert result["by_sensor"]["nmap"]["total"] >= 1
     assert sum(b["total"] for b in result["by_sensor"].values()) == result["count"]
+    assert result["brakes"]["max_workers"] == "2"
+    assert result["brakes"]["deepen_batch"].startswith("3")
+    assert "SCOPE.yaml" in result["brakes"]["scope"]
     assert result["counts"]["total"] == result["count"]
     assert result["vendored_binaries"] is False
     status = handle_jsonrpc(
