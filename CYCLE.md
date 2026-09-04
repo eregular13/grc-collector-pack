@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 40 — BloodHound CE file-drop harden (2026-09-04)
+
+identity-ad parses SharpHound CE `data[]` + `Properties` / `ObjectIdentifier` / mapped `Aces`, plus existing `data.nodes` / `data.edges`. Empty `data` / empty `Members` invent nothing. High rows map to CISO/POA&M (DCSync, GenericAll, roastable SPN, AS-REP, unconstrained delegation, Backup Operators). No LDAP / BloodHound run. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **212**. Labs green (counts unchanged vs cycle 39). Compose ABSENT. nmap cycle 39 stands.
+
+```json
+{"pytest": 212, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 65, "vulns": 17, "poam": 66}, "farm_lab": {"assets": 64, "findings": 65, "poam": 66, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 66, "poam": 66, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 74, "poam": 69, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 39 — nmap file-drop harden (2026-09-04)
 
 inventory-nmap parses gnmap / XML / JSON under `in/nmap/`. DEMO stub gnmap from `farm/tool-bin/lab/nmap` → assets + exposure. Open 445 / 3389 / 23 map to existing SMB / RDP / Telnet POA&M. Collector does not subprocess nmap. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **206**. Labs green (counts unchanged vs cycle 38). Compose ABSENT. k8s cycle 38 stands.

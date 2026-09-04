@@ -1,6 +1,6 @@
-cycle: 39
+cycle: 40
 phase: DONE
-item: NMAP-FILE-DROP-HARDEN
+item: BLOODHOUND-CE-FILE-DROP-HARDEN
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 206
+pytest: 212
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
