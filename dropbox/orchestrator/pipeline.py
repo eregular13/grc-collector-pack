@@ -387,6 +387,7 @@ def integrity_stops(scope: Scope) -> list[str]:
         "no targets outside SCOPE",
         "no 0.0.0.0/0",
         "BYO nmap/nessus on PATH only; never apt/embed/download",
+        "farm is private; binaries not vendored (not a public Hub image)",
     ]
     if not scope.stage_deepen:
         stops.append("stages.deepen=false (deepen fail-closed)")

@@ -195,5 +195,6 @@ def test_status_cli_prints_stops_and_demo_label() -> None:
     assert "timeout (host_timeout_sec)" in proc.stdout
     assert "batch overflow" in proc.stdout
     assert "scope miss" in proc.stdout
+    assert "farm is private" in proc.stdout
     assert "DEMO" in proc.stdout
     assert "not a client" in proc.stdout.lower() or "not a client estate" in proc.stdout

@@ -45,8 +45,16 @@ def test_dockerfile_and_compose_are_scanner_free() -> None:
 
 def test_never_embed_names_are_not_installed_in_image_files() -> None:
     blob = ""
-    for rel in ("Dockerfile", "docker-compose.yml", "docker-compose.dropbox.yml"):
-        blob += "\n" + (ROOT / rel).read_text(encoding="utf-8").lower()
+    for rel in (
+        "Dockerfile",
+        "docker-compose.yml",
+        "docker-compose.dropbox.yml",
+        "farm/Dockerfile",
+        "farm/docker-compose.yml",
+    ):
+        path = ROOT / rel
+        if path.is_file():
+            blob += "\n" + path.read_text(encoding="utf-8").lower()
     for tool in sorted(NEVER_EMBED | {"masscan", "naabu"}):
         if tool in {"riskready"}:
             continue

@@ -1,0 +1,61 @@
+# Private farm adapter slots. Binaries are NOT in this repo and are NOT
+# published as a public Hub image. Reid supplies PATH / bind-mount / private tag.
+# Orchestrator (Layer B) already schedules allowlisted names. Layer C only parses files.
+# Mapping form (not a list of maps) so yaml_lite can load it.
+
+private: true
+hub_publish: false
+vendored_binaries: false
+scope_required: true
+
+slots:
+  nmap:
+    stage: discover
+    sensor: nmap
+    source: host-PATH | bind-mount | private-tag
+    vendored: false
+  nessus:
+    stage: deepen
+    sensor: vuln
+    source: host-PATH | bind-mount | private-tag
+    vendored: false
+  testssl:
+    stage: external
+    sensor: easm
+    source: host-PATH | bind-mount | private-tag
+    vendored: false
+  curl:
+    stage: external
+    sensor: easm
+    source: host-PATH | bind-mount
+    vendored: false
+  lynis:
+    stage: host
+    sensor: wazuh
+    source: host-PATH | bind-mount
+    vendored: false
+  ss:
+    stage: host
+    sensor: nmap
+    source: host-PATH
+    vendored: false
+  ip:
+    stage: host
+    sensor: nmap
+    source: host-PATH
+    vendored: false
+  hardeningkitty-export:
+    stage: identity
+    sensor: identity
+    source: host-PATH | file-drop
+    vendored: false
+  prowler:
+    stage: cloud
+    sensor: cloud
+    source: host-PATH | file-drop
+    vendored: false
+  maester:
+    stage: saas
+    sensor: saas
+    source: host-PATH | file-drop
+    vendored: false

@@ -6,8 +6,10 @@ Short and sharp. Orchestrator is brakes. Collectors stay parse-only.
 
 On a **consented** box, Reid (or the operator) may already have host tools. SCOPE names them. This repo does **not** embed or apt-install Nmap, Nessus, Nuclei, OpenVAS/GVM, or the rest of LICENSE-LOCK.
 
+Private operator layout: **`farm/`** (README + `SLOTS.yaml` + compose skeleton). Tools arrive via host PATH, bind-mount (`FARM_TOOL_BIN`), or **private image tags Reid builds**. Not a public Hub soup. Binaries are not vendored.
+
 - Consent + window + named CIDRs/hosts first (`SCOPE.yaml`).
-- Allowlisted PATH binaries only (`ss` / `ip` / `curl` / `lynis`; optional BYO `nmap` / `nessus`).
+- Allowlisted PATH binaries only (`ss` / `ip` / `curl` / `lynis`; optional BYO `nmap` / `nessus` / `testssl`).
 - Missing binary → plan-only. Never download. Never ship plugins.
 
 ## Layer B — intelligent orchestrator = BRAKES
@@ -39,7 +41,7 @@ That number is **tool-family file inputs the parsers accept** (Nmap XML/gnmap, N
 consent SCOPE
     │
     ▼
-Layer A  BYO on PATH (optional)
+Layer A  BYO on PATH / farm/ bind-mount / private tag
     │
     ▼
 Layer B  discover → deepen → destroy → ingest

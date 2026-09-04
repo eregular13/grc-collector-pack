@@ -23,6 +23,18 @@ IMAGE_FILES = (
     ROOT / "docker-compose.dropbox.yml",
 )
 
+
+def image_files() -> tuple[Path, ...]:
+    """Pack image files plus private farm Dockerfile/compose when present."""
+    rows = list(IMAGE_FILES)
+    farm = ROOT / "farm"
+    if farm.is_dir():
+        for name in ("Dockerfile", "docker-compose.yml", "docker-compose.yaml"):
+            path = farm / name
+            if path.is_file():
+                rows.append(path)
+    return tuple(rows)
+
 # Package / binary names that must never be installed or downloaded into the image.
 SCANNER_PKGS = tuple(
     sorted(
@@ -85,7 +97,7 @@ def scan_text(text: str, label: str) -> list[str]:
 
 
 def assert_image_files_scanner_free(paths: tuple[Path, ...] | None = None) -> None:
-    files = paths or IMAGE_FILES
+    files = paths or image_files()
     hits: list[str] = []
     for path in files:
         assert path.is_file(), f"missing {path}"
