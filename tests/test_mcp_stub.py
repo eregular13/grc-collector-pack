@@ -34,6 +34,14 @@ def test_architecture_docs_three_layers() -> None:
     assert ".cursor/mcp.json" in farm_op
     assert "claude_desktop_config.json" in farm_op
     assert "farm_toolbin_status" in farm_op
+    assert "evergreen_assessment_mcp" in farm_op
+    assert "TypeScript refuse" in farm_op
+    assert "evergreen_assessment_mcp" in hexstrike
+    assert "TypeScript refuse" in hexstrike
+    assert "evergreen_assessment_mcp" in iface
+    for folder in (ROOT, ROOT / "dropbox", ROOT / "farm", ROOT / "scripts"):
+        assert not list(folder.glob("*.ts"))
+        assert not list(folder.glob("*refuse*matrix*"))
 
 
 def test_no_hexstrike_submodule() -> None:

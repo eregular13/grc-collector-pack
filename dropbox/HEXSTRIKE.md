@@ -16,3 +16,9 @@ Hexstrike’s MCP conductor UX (stage a job, pick a tool, watch status) is a use
 - A public attack API. The stub wraps `python3 -m dropbox …` only.
 
 See `operator_mcp_interface.md` and `mcp_stub.py`. Deepen still requires `orchestrator.stages.deepen: true`. Batch / `max_workers` brakes are unchanged.
+
+This stub is **conductor UX for this Python pack**, not USB
+`evergreen_assessment_mcp` (21-tool `check_scope` / `license_guard`) and not
+paying-day truth. Do not invent a parallel TypeScript refuse matrix. Do not
+treat `tools/list` here as an assessment catalog.
+
