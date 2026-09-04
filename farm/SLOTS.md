@@ -140,12 +140,15 @@ Drop **httpx** / **Amass** / **Subfinder** JSON, JSONL, or a host list under
 `in/easm/`. Native JSON arrays and `{results|hosts|data}` wrappers parse.
 httpx `failed:true` rows and empty arrays invent nothing. Interesting
 rows only: sensitive perimeter names (vpn/admin/dev-api/staging) and
-admin/login titles. High rows map to CISO/POA&M (perimeter hostnames,
-exposed admin UI, TLS weak cipher). Parse-only — no live DNS/HTTP,
-no amass/httpx/subfinder subprocess. Empty `in/` still loads
-`fixtures/demo/easm/` (`httpx.jsonl`, `httpx.json`, `amass.jsonl`).
-amass / subfinder stay file_drop; httpx *invoke* is separate BYO.
-No new catalog slots.
+admin/login titles. Also drop **ffuf** JSON (`results` + status/url) and
+**gobuster** text (`(Status: N)` lines). Interesting paths only
+(`/admin`, `/login`, `/.git`) — 404 and robots stay silent. High rows
+map to CISO/POA&M (perimeter hostnames, exposed admin UI, TLS weak
+cipher). Parse-only — no live DNS/HTTP, no amass/httpx/subfinder/ffuf/
+gobuster subprocess. Empty `in/` still loads `fixtures/demo/easm/`
+(`httpx.jsonl`, `httpx.json`, `amass.jsonl`, `ffuf.json`).
+amass / subfinder / ffuf / gobuster stay file_drop; httpx *invoke* is
+separate BYO. No new catalog slots.
 
 ## Nuclei JSON file-drop (Layer C)
 

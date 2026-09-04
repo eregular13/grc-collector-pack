@@ -117,6 +117,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "EASM file-drop" in md
     assert "httpx" in md
     assert "Amass" in md
+    assert "ffuf" in md
+    assert "gobuster" in md
+    assert "(Status:" in md or "Status:" in md
     assert "Nuclei JSON file-drop" in md
     assert "template_id" in md
     assert "Secrets / IaC file-drop" in md

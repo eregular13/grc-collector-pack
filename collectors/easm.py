@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Parse Amass / Subfinder / httpx / testssl into external hosts.
+"""Parse Amass / Subfinder / httpx / ffuf / gobuster / testssl into external hosts.
 
-Parse-only. Does not run amass, httpx, subfinder, or any live DNS/HTTP probe.
+Parse-only. Does not run amass, httpx, subfinder, ffuf, gobuster, or any
+live DNS/HTTP probe.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,9 @@ from shared.testssl import is_testssl, iter_testssl_findings
 SOURCE = "easm"
 LABELS = ["easm", "external"]
 WATCH = ("vpn.", "dev-api.", "admin.", "staging.")
+_INTERESTING_PATH = ("admin", "login", ".git", ".env", "phpmyadmin", "wp-admin")
+_OK_STATUS = {200, 204, 301, 302, 401, 403}
+_GOBUSTER_STATUS = re.compile(r"\(Status:\s*(\d+)\)", re.I)
 
 
 def _host_from_row(row: dict[str, Any]) -> str:
@@ -71,6 +76,135 @@ def _interesting_httpx(meta: dict[str, Any], name: str) -> bool:
     return False
 
 
+def _url_path(url: str) -> str:
+    rest = url.split("://", 1)[-1]
+    if "/" not in rest:
+        return ""
+    return "/" + rest.split("/", 1)[-1]
+
+
+def _interesting_path(url: str) -> bool:
+    path = _url_path(url) if "://" in url else (url if url.startswith("/") else "/" + url)
+    blob = path.lower()
+    return any(tok in blob for tok in _INTERESTING_PATH)
+
+
+def _status_ok(row: dict[str, Any]) -> bool:
+    raw = row.get("status")
+    if raw is None:
+        raw = row.get("status_code") or row.get("Status")
+    try:
+        return int(raw) in _OK_STATUS
+    except (TypeError, ValueError):
+        return False
+
+
+def _is_ffuf(payload: Any, path: Path | None = None) -> bool:
+    if path is not None and "ffuf" in path.name.lower():
+        return True
+    if not isinstance(payload, dict):
+        return False
+    if "commandline" in payload:
+        return True
+    results = payload.get("results")
+    if not isinstance(results, list) or not results:
+        return False
+    row = results[0]
+    if not isinstance(row, dict):
+        return False
+    return "input" in row or "position" in row or (
+        "length" in row and "url" in row and "host" not in row
+    )
+
+
+def _ffuf_rows(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [x for x in payload if isinstance(x, dict)]
+    if not isinstance(payload, dict):
+        return []
+    raw = payload.get("results") or payload.get("Results") or []
+    if isinstance(raw, list):
+        return [x for x in raw if isinstance(x, dict)]
+    return []
+
+
+def _is_gobuster(path: Path, text: str) -> bool:
+    if "gobuster" in path.name.lower():
+        return True
+    return bool(_GOBUSTER_STATUS.search(text))
+
+
+def _gobuster_rows(text: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = _GOBUSTER_STATUS.search(line)
+        if not match:
+            continue
+        token = line[: match.start()].strip().split()[0] if line[: match.start()].strip() else ""
+        if not token:
+            continue
+        rows.append({"url": token, "status": int(match.group(1))})
+    return rows
+
+
+def _path_exposure_records(
+    now: str, rows: list[dict[str, Any]], labels_extra: list[str]
+) -> list[dict]:
+    records: list[dict] = []
+    seen_assets: set[str] = set()
+    labels = list(LABELS) + labels_extra
+    for row in rows:
+        url = str(row.get("url") or row.get("input") or "")
+        if isinstance(row.get("input"), dict):
+            fuzz = row["input"].get("FUZZ") or row["input"].get("fuzz")
+            if fuzz and "://" not in url:
+                url = str(fuzz)
+        if not url or not _status_ok(row) or not _interesting_path(url):
+            continue
+        host = _host_from_row({"url": url, "host": row.get("host"), "name": row.get("name")})
+        if not host:
+            continue
+        if host.lower() not in seen_assets:
+            seen_assets.add(host.lower())
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"External host {host}",
+                    category="external-host",
+                    assets=[host],
+                    labels=labels,
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
+        path = _url_path(url) or url
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"{host}-path-{path}"),
+                name=f"Exposed admin interface path on {host}",
+                description=(
+                    f"{host} exposes {path} (status={row.get('status') or row.get('status_code')}). "
+                    "This is a dropped ffuf/gobuster finding, not a live HTTP probe."
+                ),
+                severity="high",
+                category="exposure",
+                assets=[host],
+                labels=labels + ["admin-ui"],
+                collected_at=now,
+                extra={"url": url, "path": path},
+            )
+        )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
     if path.suffix.lower() in {".json", ".jsonl"}:
@@ -116,6 +250,14 @@ def parse_file(path: Path) -> list[dict]:
                     )
                 )
             return records
+
+        if _is_ffuf(payload, path):
+            return _path_exposure_records(now, _ffuf_rows(payload), labels_extra=["ffuf"])
+
+    text = read_text(path)
+    if path.suffix.lower() in {".txt", ".log"} or "gobuster" in path.name.lower():
+        if _is_gobuster(path, text):
+            return _path_exposure_records(now, _gobuster_rows(text), labels_extra=["gobuster"])
 
     hosts: dict[str, dict] = {}
     name_l = path.name.lower()

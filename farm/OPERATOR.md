@@ -178,8 +178,10 @@ marker). It does not probe. `make dropbox-external` writes DEMO fixtures
 into `in/easm/`. httpx / Amass / Subfinder JSON or JSONL is file-drop
 ingest: native arrays and `{results|hosts}` wrappers parse. Failed httpx
 rows and empty exports invent nothing. High perimeter / admin-UI / TLS
-rows map to existing CISO/POA&M. Layer C never runs amass, httpx, or
-subfinder and does not probe DNS/HTTP. Live BYO curl/testssl is
+rows map to existing CISO/POA&M. ffuf JSON and gobuster text are the
+same file-drop path: interesting `/admin` `/login` `/.git` statuses
+only — 404/robots invent nothing. Layer C never runs amass, httpx,
+subfinder, ffuf, or gobuster and does not probe DNS/HTTP. Live BYO curl/testssl is
 operator-local under written SCOPE — not orchestrate.
 LICENSE-LOCK / file_drop names never subprocess.
 

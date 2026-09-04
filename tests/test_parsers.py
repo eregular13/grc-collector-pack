@@ -987,6 +987,47 @@ def test_empty_in_still_loads_easm(tmp_path, monkeypatch) -> None:
     assert "httpx.jsonl" in names
     assert "httpx.json" in names
     assert "amass.jsonl" in names
+    assert "ffuf.json" in names
+
+
+def test_ffuf_json_interesting_path_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = easm.parse_file(DEMO / "easm" / "ffuf.json")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "admin.example.com" in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "/admin" in findings[0]["description"]
+    assert "robots" not in findings[0]["description"].lower()
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "admin" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_gobuster_txt_interesting_path(tmp_path) -> None:
+    dest = tmp_path / "gobuster.txt"
+    dest.write_text(
+        "https://admin.example.com/login          (Status: 200) [Size: 1024]\n"
+        "https://admin.example.com/robots.txt     (Status: 200) [Size: 40]\n"
+        "https://admin.example.com/nonesuch       (Status: 404) [Size: 0]\n",
+        encoding="utf-8",
+    )
+    recs = easm.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "/login" in findings[0]["description"]
+    assert any(r["kind"] == "asset" and r["name"] == "admin.example.com" for r in recs)
+
+
+def test_empty_ffuf_gobuster_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "ffuf.json"
+    dest.write_text("""{"commandline":"ffuf","results":[]}""", encoding="utf-8")
+    assert easm.parse_file(dest) == []
+    dest = tmp_path / "gobuster.txt"
+    dest.write_text("https://admin.example.com/robots.txt (Status: 200) [Size: 40]\n", encoding="utf-8")
+    assert easm.parse_file(dest) == []
 
 
 def test_easm_no_live_probe() -> None:
@@ -998,6 +1039,8 @@ def test_easm_no_live_probe() -> None:
     assert "amass enum" not in src
     assert "httpx -" not in src
     assert "subfinder -" not in src
+    assert "ffuf -" not in src
+    assert "gobuster dir" not in src
     assert "socket.socket" not in src
 
 
