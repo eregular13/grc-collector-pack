@@ -6,7 +6,7 @@ Short and sharp. Orchestrator is brakes. Collectors stay parse-only.
 
 On a **consented** box, Reid (or the operator) may already have host tools. SCOPE names them. This repo does **not** embed or apt-install Nmap, Nessus, Nuclei, OpenVAS/GVM, or the rest of LICENSE-LOCK.
 
-Private operator layout: **`farm/`** (README + OPERATOR + `SLOTS.yaml` 40+ slots + adapter stubs + compose skeleton). Tools arrive via host PATH, bind-mount (`FARM_TOOL_BIN`), or **private image tags Reid builds**. Not a public Hub soup. Binaries are not vendored.
+Private operator layout: **`farm/`** (README + OPERATOR + `SLOTS.yaml` 95+ slots + `SLOTS.md` counts + adapter stubs + compose skeleton). Tools arrive via host PATH, bind-mount (`FARM_TOOL_BIN`), or **private image tags Reid builds**. Not a public Hub soup. Binaries are not vendored.
 
 - Consent + window + named CIDRs/hosts first (`SCOPE.yaml`).
 - Allowlisted PATH binaries only (`ss` / `ip` / `curl` / `lynis`; optional BYO `nmap` / `nessus` / `testssl`).

@@ -1,6 +1,6 @@
-cycle: 19
+cycle: 20
 phase: DONE
-item: FARM-ADAPTERS-20-FARMLAB
+item: FARM-SLOTS-95
 critic_score: 8/10
 open_p0:
 open_p1:

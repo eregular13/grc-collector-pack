@@ -38,7 +38,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 
 ## Drop-box (this PR)
 
-Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BYO tool farm under SCOPE (48 catalog slots, 13 wired adapters — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes + stdio conductor, parse-only collectors. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule. See `farm/OPERATOR.md`.
+Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BYO tool farm under SCOPE (105 catalog slots, 21 invoke adapters — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes + stdio conductor, parse-only collectors. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule. See `farm/OPERATOR.md` and `farm/SLOTS.md`.
 
 **Pentera finds it; Evergreen maps it.** After ingest, the client handoff is CISO CSVs plus `out/poam/poam.csv` (owner/due blank). SMB 445 in the demo nmap estate maps to network-service hardening (`cpg_2_W`, `csf_PR`) — not a hallucinated CVE.
 
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-21 wired farm adapters (19 invoke). rustscan/naabu/httpx/dig/whois/sslscan PATH stubs; kube-bench/gitleaks file-drop stubs; LICENSE-LOCK never subprocess. Conductor plan-only stage_* + `farm_slot_status`. `make farm-lab` DEMO (62/62/24 poam 61) under `farm/work`. `farm/OPERATOR.md` is the bare-Linux → CISO zip runbook. pytest **147 → 149 + 1 skip**. Layer C untouched.
+Farm catalog **105** slots (`SLOTS.md`: 23 wired / 21 invoke / 84 file_drop). openssl + nslookup PATH stubs. LICENSE-LOCK stay file_drop. Conductor `farm_slots` returns category counts. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
 
-Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Farm compose workers are a skeleton. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.
+Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.

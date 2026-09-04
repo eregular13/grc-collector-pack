@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 20 — 105-slot catalog (95+), SLOTS.md, conductor counts (2026-09-04)
+
+`farm/SLOTS.yaml` is **105** slots across discover/deepen/external/endpoint/identity/cloud/k8s/secrets/wifi/ot. **23 wired / 21 invoke / 84 file_drop**. openssl + nslookup added as PATH stubs. LICENSE-LOCK (nuclei, openvas, gvm, pingcastle, bloodhound, sharphound, …) stay file_drop, never subprocess. `farm/SLOTS.md` is the category table. Conductor `farm_slots` returns `counts` + `by_category`. Layer C untouched. Wrap dead.
+
+pytest **149 passed, 1 skipped**. `make lab` / `make farm-lab` 62/62/15/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64. compose_lab absent.
+
+```json
+{"pytest": 149, "pytest_skipped": 1, "farm_slots": 105, "wired": 23, "invoke": 21, "file_drop": 84, "assets": 62, "findings": 62, "poam": 61, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 19 — 21 wired adapters, farm-lab DEMO, farm_slot_status (2026-09-04)
 
 Wired SLOTS **21** (19 invoke + kube-bench/gitleaks file-drop stubs). New invoke: rustscan, naabu, httpx, dig, whois, sslscan. LICENSE-LOCK (nuclei/openvas/pingcastle) never subprocess. Conductor `tools/call` returns plan-only JSON for stage_discover/deepen/ingest plus `farm_slot_status` matrix. `make farm-lab` = plan → fixture discover → ingest → Layer C under `farm/work` (DEMO, not pack `in/`). `farm/OPERATOR.md` is one copy-paste runbook to CISO zip. Wrap dead.
