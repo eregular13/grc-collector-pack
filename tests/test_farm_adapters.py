@@ -91,6 +91,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert f"Total: {counts['total']}" in md
     assert "By category" in md
     assert "Ingest map (Layer C)" in md
+    assert "Kubernetes file-drop" in md
+    assert "kube-bench" in md
+    assert "Kubescape" in md
     assert "KEEP-chain file-drop" in md
     assert "testssl" in md
     assert "Maester" in md

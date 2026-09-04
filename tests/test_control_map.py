@@ -170,6 +170,51 @@ def test_cloud_high_findings_map_to_poam_not_cve() -> None:
         assert "CVE-" not in mapped["recommended_fix"]
 
 
+def test_k8s_highs_map_to_poam() -> None:
+    cases = [
+        (
+            "Minimize the admission of privileged containers",
+            "privileged containers must not be admitted",
+            {"control": "5.2.1"},
+            "privileged",
+        ),
+        (
+            "Anonymous Kubernetes API access",
+            "anonymous-auth=true on kube-apiserver",
+            {"control": "C-0013"},
+            "anonymous",
+        ),
+        (
+            "Allow privilege escalation",
+            "allowPrivilegeEscalation not set false",
+            {"control": "C-0034"},
+            "privilege escalation",
+        ),
+        (
+            "HostNetwork access",
+            "DaemonSet uses hostNetwork",
+            {"control": "C-0041"},
+            "hostnetwork",
+        ),
+    ]
+    for name, desc, extra, needle in cases:
+        rec = make_record(
+            kind="finding",
+            source="k8s-kubescape",
+            ref_id="K8S-map",
+            name=name,
+            description=desc,
+            severity="high",
+            category="cloud-misconfiguration",
+            assets=["prod-cluster"],
+            extra=extra,
+        )
+        mapped = map_finding(rec)
+        assert mapped["include_poam"] is True, name
+        assert needle in mapped["control_name"].lower(), (name, mapped["control_name"])
+        assert "kubectl" in mapped["recommended_fix"].lower() or "live cluster" in mapped["recommended_fix"].lower()
+
+
 def test_testssl_and_maester_map_to_poam() -> None:
     hb = make_record(
         kind="finding",

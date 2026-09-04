@@ -40,6 +40,7 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("arn"),
             extra.get("id"),
             extra.get("name"),
+            extra.get("control"),
         )
     ).lower()
 
@@ -220,6 +221,34 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         fix = (
             "Set PermitRootLogin no and use a named sudo account. "
             "This is a Lynis posture finding, not a CVE."
+        )
+    elif "privileged" in text and (
+        "container" in text or "pod" in text or "admission" in text
+    ):
+        name = "Deny privileged Kubernetes containers"
+        fix = (
+            "Do not run privileged=true. This is a Kubescape/kube-bench finding "
+            "from a dropped export, not a live kubectl call."
+        )
+    elif "anonymous" in text and (
+        "auth" in text or "api" in text or "kubernetes" in text
+    ):
+        name = "Disable anonymous Kubernetes API access"
+        fix = (
+            "Set --anonymous-auth=false. This is a dropped CIS/kube-bench finding, "
+            "not a live cluster call."
+        )
+    elif "privilege escalation" in text or "allowprivilegeescalation" in text.replace(" ", "").replace("_", "").replace("-", ""):
+        name = "Block Kubernetes privilege escalation"
+        fix = (
+            "Set allowPrivilegeEscalation=false. This is a dropped Kubescape finding, "
+            "not a live kubectl call."
+        )
+    elif "hostnetwork" in text.replace(" ", "").replace("_", "").replace("-", "") or "host network" in text:
+        name = "Avoid hostNetwork on Kubernetes workloads"
+        fix = (
+            "Unset hostNetwork unless the workload is a documented system DaemonSet. "
+            "This is a dropped Kubescape finding, not a live cluster call."
         )
     elif str(rec.get("category") or "") == "exposure":
         name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"

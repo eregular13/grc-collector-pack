@@ -399,9 +399,67 @@ def test_ms_graph_directory_roles() -> None:
 
 
 def test_kube_bench() -> None:
+    from shared.control_map import map_finding
+
     recs = k8s_kubescape.parse_file(DEMO / "k8s" / "kube-bench.json")
     names = [r["name"] for r in recs if r["kind"] == "finding"]
-    assert any("Anonymous" in n or "privileged" in n.lower() for n in names)
+    assert any("Anonymous" in n for n in names)
+    assert any("privileged" in n.lower() for n in names)
+    assert not any("Token authentication" in n for n in names)
+    priv = next(r for r in recs if r["kind"] == "finding" and "privileged" in r["name"].lower())
+    mapped = map_finding(priv)
+    assert mapped["include_poam"] is True
+    assert "privileged" in mapped["control_name"].lower()
+    assert "kubectl" in mapped["recommended_fix"].lower()
+
+
+def test_kubescape_maps_highs() -> None:
+    from shared.control_map import map_finding
+
+    recs = k8s_kubescape.parse_file(DEMO / "k8s" / "kubescape.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert not any("Immutable" in r["name"] for r in findings)
+    anon = next(r for r in findings if "Anonymous" in r["name"])
+    mapped = map_finding(anon)
+    assert mapped["include_poam"] is True
+    assert "anonymous" in mapped["control_name"].lower()
+
+
+def test_minimal_kube_bench_nested(tmp_path) -> None:
+    dest = tmp_path / "kb-min.json"
+    dest.write_text(
+        """{
+  "Controls": [{
+    "id": "1",
+    "tests": [{
+      "results": [
+        {"test_number": "1.2.1", "test_desc": "Anonymous authentication is not enabled", "status": "FAIL"},
+        {"test_number": "1.2.2", "test_desc": "should stay silent", "status": "PASS"}
+      ]
+    }]
+  }]
+}
+""",
+        encoding="utf-8",
+    )
+    recs = k8s_kubescape.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "Anonymous" in findings[0]["name"]
+    assert findings[0]["severity"] == "high"
+
+
+def test_empty_in_still_loads_k8s(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-k8s"))
+    (tmp_path / "empty-k8s" / "k8s").mkdir(parents=True)
+    files, demo = load_inputs("k8s-kubescape", (".json", ".jsonl"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "kube-bench.json" in names
+    assert "kubescape.json" in names
 
 
 def test_httpx_jsonl() -> None:

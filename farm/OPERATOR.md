@@ -96,7 +96,10 @@ Do not treat ABSENT as paying-day evidence.
 
 Catalog is **95+** slots (`SLOTS.md`). LICENSE-LOCK names (nuclei, openvas, gvm, pingcastle, bloodhound, …) stay **file_drop**. Adapters never subprocess them.
 
-kube-bench / gitleaks are **file_drop stubs** (callable, no subprocess). Drop JSON into `in/k8s/` / `in/code/`.
+kube-bench / kubescape / gitleaks are **file_drop** (never subprocess). Drop
+Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL only. Layer C does
+not run `kubectl` or talk to a cluster. High rows map to CISO/POA&M when
+obvious (privileged, anonymous-auth, privilege escalation, hostNetwork).
 Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.
