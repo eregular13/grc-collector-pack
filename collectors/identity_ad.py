@@ -14,6 +14,7 @@ from typing import Any
 import xml.etree.ElementTree as ET
 
 from shared.cis_cat import is_cis_cat, iter_cis_failures
+from shared.enum4linux import parse_enum4linux
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.schema import make_record, make_ref
 
@@ -322,12 +323,103 @@ def _emit_cis_cat(rows: list[dict[str, str]], now: str) -> list[dict]:
     return records
 
 
+def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
+    records: list[dict] = []
+    for host in hosts:
+        name = str(host.get("name") or "enum-host")
+        addr = str(host.get("addr") or "")
+        records.append(
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{name}"),
+                name=name,
+                description=f"Host {name} ({addr})".strip(),
+                category="host",
+                assets=[name],
+                labels=LABELS + ["enum4linux"],
+                collected_at=now,
+                extra={"asset_type": "PR", "ip": addr},
+            )
+        )
+        if host.get("null_session"):
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"null-session-{name}"),
+                    name=f"SMB null session allowed on {name}",
+                    description=f"{name} enum4linux-ng export shows an anonymous/null SMB session.",
+                    severity="high",
+                    category="identity-gap",
+                    assets=[name],
+                    labels=LABELS + ["enum4linux", "smb"],
+                    collected_at=now,
+                    extra={"service": "smb", "port": "445", "access": "null-session"},
+                )
+            )
+        for group in host.get("groups") or []:
+            label = str(group)
+            low = label.lower()
+            if "domain admins" in low:
+                title = "Domain Admins group listed"
+                desc = f"{name} export lists {label}."
+            elif "backup operators" in low:
+                title = "Backup Operators privileged group"
+                desc = f"{name} export lists {label}."
+            else:
+                continue
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{title}-{name}"),
+                    name=title,
+                    description=desc,
+                    severity="high",
+                    category="identity-gap",
+                    assets=[name],
+                    labels=LABELS + ["enum4linux"],
+                    collected_at=now,
+                    extra={"group": label},
+                )
+            )
+        for share in host.get("shares") or []:
+            if not isinstance(share, dict):
+                continue
+            share_name = str(share.get("name") or "").strip()
+            access = str(share.get("access") or "")
+            if not share_name or "WRITE" not in access.upper():
+                continue
+            if share_name.upper() in {"IPC$", "PRINT$"}:
+                continue
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{name}-share-{share_name}"),
+                    name=f"Writable SMB share {share_name} on {name}",
+                    description=f"{name} enum4linux-ng export shows {share_name} as {access}.",
+                    severity="high",
+                    category="exposure",
+                    assets=[name],
+                    labels=LABELS + ["enum4linux", "smb"],
+                    collected_at=now,
+                    extra={"port": "445", "service": "smb", "share": share_name, "access": access},
+                )
+            )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
     text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
     payload: Any = {}
     meta_kind = ""
     if path.suffix.lower() == ".csv" or ("," in text[:200] and "Severity" in text[:400]):
         return parse_hardeningkitty_csv(text, iso_now())
+    enum = parse_enum4linux(path, text)
+    if enum is not None:
+        return _emit_enum4linux(enum, iso_now())
     json_payload: Any = None
     if not (path.suffix.lower() == ".xml" or text.lstrip().startswith("<")):
         try:
@@ -339,7 +431,9 @@ def parse_file(path: Path) -> list[dict]:
     if path.suffix.lower() == ".xml" or text.startswith("<"):
         nodes = _pingcastle_xml_nodes(path)
     else:
-        payload = read_json(path)
+        payload = json_payload
+        if payload is None:
+            return []
         nodes = _nodes(payload)
         meta_kind = _meta_kind(payload)
     now = iso_now()
@@ -450,7 +544,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".xml", ".csv"), parse_file)
+    run_collector(SOURCE, (".json", ".xml", ".csv", ".txt"), parse_file)
 
 
 if __name__ == "__main__":

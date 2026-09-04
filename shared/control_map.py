@@ -237,6 +237,12 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Remove standing Backup Operators members. "
             "This is a BloodHound/PingCastle file-drop finding, not a live AD call."
         )
+    elif "domain admins" in text:
+        name = "Restrict Domain Admins membership"
+        fix = (
+            "Remove standing Domain Admins members. "
+            "This is a dropped identity export, not a live directory call."
+        )
     elif "disk encryption" in text or "filevault" in text or "bitlocker" in text:
         name = "Enable full-disk encryption"
         fix = (

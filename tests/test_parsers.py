@@ -828,11 +828,12 @@ def test_empty_in_still_loads_bloodhound(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-identity-bh"))
     (tmp_path / "empty-identity-bh" / "identity").mkdir(parents=True)
-    files, demo = load_inputs("identity-ad", (".json", ".xml", ".csv"))
+    files, demo = load_inputs("identity-ad", (".json", ".xml", ".csv", ".txt"))
     assert demo is True
     names = {p.name for p in files}
     assert "bloodhound.json" in names
     assert "bloodhound-edges.json" in names
+    assert "enum4linux-ng.txt" in names
 
 
 def test_identity_ad_no_ad_subprocess() -> None:
@@ -847,6 +848,93 @@ def test_identity_ad_no_ad_subprocess() -> None:
     assert "winrm" not in src.lower()
     assert "bloodhound -" not in src
     assert "cis-cat -" not in src
+    assert "enum4linux -" not in src
+
+
+def test_enum4linux_demo_maps_highs() -> None:
+    from shared.control_map import map_finding
+
+    recs = identity_ad.parse_file(DEMO / "identity" / "enum4linux-ng.txt")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert "DC01.CORP.LOCAL" in assets
+    names = [r["name"] for r in findings]
+    assert any("null session" in n.lower() for n in names)
+    assert any("Domain Admins" in n for n in names)
+    assert not any("Administrator" == n for n in names)
+    assert not any("IPC$" in n for n in names)
+    null = next(r for r in findings if "null session" in r["name"].lower())
+    mapped = map_finding(null)
+    assert mapped["include_poam"] is True
+    assert "SMB" in mapped["control_name"] or "445" in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
+    da = next(r for r in findings if "Domain Admins" in r["name"])
+    assert map_finding(da)["include_poam"] is True
+    assert "Domain Admins" in map_finding(da)["control_name"]
+
+
+def test_enum4linux_does_not_steal_hk_bloodhound() -> None:
+    from shared.enum4linux import parse_enum4linux
+
+    assert parse_enum4linux(DEMO / "identity" / "bloodhound.json") is None
+    assert parse_enum4linux(DEMO / "identity" / "bloodhound-edges.json") is None
+    assert parse_enum4linux(DEMO / "identity" / "hardeningkitty.csv") is None
+    bh = identity_ad.parse_file(DEMO / "identity" / "bloodhound.json")
+    assert any(r["kind"] == "finding" and r["name"] == "Roastable SPN" for r in bh)
+    hk = identity_ad.parse_file(DEMO / "identity" / "hardeningkitty.csv")
+    assert any("HardeningKitty" in r["name"] for r in hk if r["kind"] == "finding")
+
+
+def test_enum4linux_empty(tmp_path) -> None:
+    dest = tmp_path / "enum4linux-ng.txt"
+    dest.write_text("{}", encoding="utf-8")
+    assert identity_ad.parse_file(dest) == []
+    dest.write_text("", encoding="utf-8")
+    assert identity_ad.parse_file(dest) == []
+    dest.write_text(
+        '{"target":"DC01.CORP.LOCAL","users":{"500":{"username":"Administrator"}},'
+        '"shares":{"IPC$":{"access":["READ"]}},"sessions":{"null_session":false}}\n',
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    assert [r["kind"] for r in recs] == ["asset"]
+    assert recs[0]["name"] == "DC01.CORP.LOCAL"
+
+
+def test_enum4linux_text_maps_highs(tmp_path) -> None:
+    dest = tmp_path / "enum4linux-ng.txt"
+    dest.write_text(
+        "Starting enum4linux-ng\n"
+        "Target ............... DC01.CORP.LOCAL\n"
+        " ======================================== \n"
+        "|    Share Enumeration on DC01.CORP.LOCAL |\n"
+        " ======================================== \n"
+        "//DC01.CORP.LOCAL/IPC$ Mapping: OK, Listing: DENIED\n"
+        "//DC01.CORP.LOCAL/NETLOGON Mapping: OK, Listing: OK\n"
+        "group:[Domain Admins] rid:[0x200]\n"
+        "Sessions using username '', password ''\n",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    names = [r["name"] for r in recs if r["kind"] == "finding"]
+    assert any(r["kind"] == "asset" and r["name"] == "DC01.CORP.LOCAL" for r in recs)
+    assert any("null session" in n.lower() for n in names)
+    assert any("Domain Admins" in n for n in names)
+    assert any("NETLOGON" in n for n in names)
+    assert not any("IPC$" in n for n in names)
+
+
+def test_enum4linux_parser_no_live() -> None:
+    for rel in ("collectors/identity_ad.py", "shared/enum4linux.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "enum4linux -" not in src
+        assert "enum4linux-ng -" not in src
+        assert "password=" not in src
+        assert "smbclient" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
 
 
 def test_fleet_hosts() -> None:

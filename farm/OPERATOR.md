@@ -200,6 +200,14 @@ SharpHound run. High rows map to existing CISO/POA&M (DCSync, GenericAll,
 roastable SPN, AS-REP, unconstrained delegation, Backup Operators).
 bloodhound / azurehound stay file_drop.
 
+enum4linux-ng **JSON / text** is file-drop ingest under `in/identity/`.
+Layer C parses listed users/groups/shares. Null session, writable shares,
+and Domain Admins / Backup Operators hints map to existing identity/SMB
+POA&M only when the export already shows them. Empty invents nothing.
+Detect does not steal HardeningKitty or BloodHound. The collector never
+runs enum4linux and does not store credentials. The catalog slot stays
+`file_drop`.
+
 Fleet host/policy JSON is file-drop ingest under `in/wazuh/`. Layer C parses
 `hosts` / `data.hosts` / a single `host`, plus failing `policies` only.
 Offline hosts are coverage gaps. Disk encryption off and MDM enrollment Off

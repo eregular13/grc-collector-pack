@@ -1,0 +1,13 @@
+{
+  "target": "DC01.CORP.LOCAL",
+  "sessions": {"null_session": true, "sessions_possible": true},
+  "users": {
+    "500": {"username": "Administrator"}
+  },
+  "groups": {
+    "512": {"groupname": "Domain Admins"}
+  },
+  "shares": {
+    "IPC$": {"type": "IPC", "comment": "Remote IPC", "access": ["READ"]}
+  }
+}
