@@ -1,22 +1,18 @@
 # product-lab/drop MANIFEST — CISO Assistant CSVs
 
 Estate: demo (`in/` empty → fixtures/demo). Not a client.
-Copied from out/ after a lab. Hashes are SHA256 of the files in this folder.
+Copied from out/ after host lab 2026-09-04T05:08:28Z (this Linux VM).
 Do not invent FindingsAssessment UUIDs. Import with clica or the CISO Assistant UI.
+RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
 
-| File | Role | Notes |
+| File | Rows | SHA256 |
 |---|---|---|
-| ciso/assets.csv | PR/SP inventory | header contract; type PR\|SP |
-| ciso/findings.csv | findings | severity low\|medium\|high\|critical |
-| ciso/vulnerabilities.csv | CVEs / SAST / secrets | severity Information\|Low\|Medium\|High\|Critical |
-| ciso/evidences.csv | evidence names | nine sensors + loader |
-| ciso/applied_controls.csv | remediations | status to_do |
-| ciso/risk_scenarios.csv | semicolon scenarios | treatment=mitigate |
+| ciso/applied_controls.csv | 74 | `da9d72ab27264cca1788abc44d392ff78da659eca8b5724eab17be368c59c149` |
+| ciso/assets.csv | 62 | `4cfab51e09cfc1d4930609114a08670187accf2928c07d4dc783471be216172b` |
+| ciso/evidences.csv | 10 | `402c7a59e9fbdf5ed637ee9ed5dbe8ae628dc46e0237e36ee35dfb9fae57bd38` |
+| ciso/findings.csv | 59 | `1aece32684fa4e36fc7afd4bc992039f1fb72db49a026c87f3bec451584ddf02` |
+| ciso/risk_scenarios.csv | 74 | `5b5bc0b93488937a0fe00b5cf50cae90a9ec11166303b998b9981e3f0e8a1cc1` |
+| ciso/vulnerabilities.csv | 15 | `7eb09aeb6c3d26c1b6a37404bd747f2600aaf629c1d3c3ed4ba1e274173aeaa2` |
 
-SHA256 (filled after this cycle’s host lab):
+riskready/risks_proposed.json: 57 rows, SHA256 `be2ccc435e6f28f1a2307d50acb4d5cbb93928e0cf0505acea38b2705a1658d7`
 
-```
-pending — run scripts/lab.sh then refresh this block from out/ciso-assistant/
-```
-
-RiskReady JSON in `riskready/` is LICENSE-LOCK stay-out. Review on disk. Never POST.

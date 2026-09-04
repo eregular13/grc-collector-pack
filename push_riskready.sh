@@ -6,7 +6,7 @@ set -euo pipefail
 OUT="${OUT_DIR:-./out}/riskready"
 echo "LICENSE-LOCK: RiskReady stay-out. Review-only. Never wrap or POST."
 echo "RISKREADY_PUSH=${RISKREADY_PUSH:-0} is ignored — no login, no HTTP."
-echo "Human review files (do not POST /api/risks):"
+echo "Human review files (never auto-POST risks):"
 for f in risks_proposed.json assets.json evidence.json incidents.json; do
   p="${OUT}/${f}"
   if [[ -f "$p" ]]; then

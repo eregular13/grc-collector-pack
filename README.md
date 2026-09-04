@@ -58,6 +58,8 @@ python tests/lab_outputs.py
 
 Or `make lab` (`PYTHON=python` on Windows, `python3` on Linux) or `scripts/lab.sh` / `scripts/lab.ps1`.
 
+Consented drop-box (internal + external → `in/`): `dropbox/OPERATOR.md`. `make dropbox-lab` is fixtures + demo overlays, not a client estate.
+
 Overnight improve ticks: `LOOP.md` (every 30 minutes until 07:00 Pacific). Each tick reads STATUS / FAULTS / CRITIC and adds one parser or test, then re-labs.
 
 ## Outputs

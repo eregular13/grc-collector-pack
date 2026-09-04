@@ -1,0 +1,27 @@
+# Copy to SCOPE.yaml after written client consent. Demo values are not a client estate.
+client:
+  name: "CLIENT LEGAL NAME"
+consent:
+  attestation_path: dropbox/consent/SIGNED-CONSENT.md
+  attestation_sha256: "sha256-of-the-signed-attestation-file"
+engagement:
+  start: "YYYY-MM-DD"
+  end: "YYYY-MM-DD"
+internal:
+  cidrs:
+    - "10.0.0.0/8"
+  hosts:
+    - "dc01.client.internal"
+external:
+  hosts:
+    - "vpn.client.example"
+  domains:
+    - "client.example"
+  ips:
+    - "192.0.2.10"
+allow_tools:
+  - lynis
+  - ss
+  - ip
+  - curl
+byo: []

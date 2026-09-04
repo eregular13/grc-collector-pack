@@ -1,5 +1,28 @@
 # CYCLE log
 
+## cycle 9 — LICENSE-LOCK + drop-box (2026-09-04)
+
+Reid: pull/harden pack; same PR add evergreen drop-box.
+
+Wrap: `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`. No login, no curl, no POST. Tests fail if wrap endpoints reappear. Console binds 127.0.0.1 only. CISO prefers clica; no FindingsAssessment UUIDs.
+
+Drop-box: `dropbox/` SCOPE gate (client, consent path+sha256, window, named internal/external). Internal/external profiles. Demo runners write gnmap + httpx JSONL + osquery-shaped host JSON into existing collector formats. No forbidden scanners in the image. `make dropbox-lab` seeds `dropbox/work/in` (not pack `in/`).
+
+Labs this VM (Docker **absent**):
+
+- pytest **61 passed**
+- `make lab` empty pack `in/` → fixtures: 62 / 59 / 15 / 10, `demo: true`
+- `make dropbox-lab`: 65 / 63 / 15 / 10, `demo: false` (files in IN_DIR) — still not a client
+- Wrap `RISKREADY_PUSH=1 DRY_RUN=0` → LICENSE-LOCK, no HTTP
+- Console http://127.0.0.1:18765/ ready; `/api/risks` 403
+
+Not stamped: paying-day PASS. USB evergreen-assessment not copied.
+
+```json
+{"pytest": 61, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "sink": "absent"}
+```
+
+
 ## cycle 1 — BUILD / LAB / GREEN
 
 Pack shipped. Two consecutive green labs. critic 9/10. DONE.md GREEN.

@@ -86,8 +86,9 @@ def test_ciso_never_invents_findings_assessment() -> None:
 
 def test_ciso_rest_limited_to_assets_and_evidences() -> None:
     text = CISO.read_text(encoding="utf-8")
-    posts = re.findall(r'curl[^\n]+', text)
-    allowed = ("/api/assets/", "/api/evidences/")
+    posts = [ln for ln in text.splitlines() if re.search(r"^\s*curl\s", ln)]
+    assert posts, "expected optional CISO assets/evidences curl lines"
+    allowed = ("/api/assets/", "/api/evidences/", "${API}/assets/", "${API}/evidences/")
     for line in posts:
         assert any(a in line for a in allowed), line
         assert "/api/risks" not in line

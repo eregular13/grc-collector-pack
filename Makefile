@@ -6,7 +6,9 @@ export GRC_LIVE_SCAN := 0
 export CISO_PUSH := 0
 export RISKREADY_PUSH := 0
 
-.PHONY: lab test collectors loader compose safety product
+export IN_DIR ?= $(CURDIR)/in
+
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -36,3 +38,16 @@ safety:
 
 product:
 	$(PYTHON) -m product
+
+dropbox-gate:
+	$(PYTHON) -m dropbox gate
+
+dropbox-internal:
+	$(PYTHON) -m dropbox run --profile internal
+
+dropbox-external:
+	$(PYTHON) -m dropbox run --profile external
+
+dropbox-lab:
+	$(PYTHON) -m dropbox lab
+	$(MAKE) lab IN_DIR=$(CURDIR)/dropbox/work/in

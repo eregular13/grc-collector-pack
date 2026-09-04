@@ -1,0 +1,45 @@
+# Optional profiles. Same python image. No scanner packages.
+#   docker compose -f docker-compose.dropbox.yml --profile internal run --rm dropbox-internal
+#   docker compose -f docker-compose.dropbox.yml --profile external run --rm dropbox-external
+services:
+  dropbox-internal:
+    profiles: ["internal"]
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "-m", "dropbox", "run", "--profile", "internal"]
+    environment:
+      PYTHONPATH: /app
+      DRY_RUN: "1"
+      DROPBOX_DEMO: "1"
+      DROPBOX_LIVE: "0"
+      GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      IN_DIR: /in
+      OUT_DIR: /out
+    volumes:
+      - ./in:/in
+      - ./out:/out
+      - ./fixtures:/fixtures:ro
+      - ./dropbox:/app/dropbox:ro
+
+  dropbox-external:
+    profiles: ["external"]
+    image: grc-collector-pack:local
+    build: .
+    command: ["python", "-m", "dropbox", "run", "--profile", "external"]
+    environment:
+      PYTHONPATH: /app
+      DRY_RUN: "1"
+      DROPBOX_DEMO: "1"
+      DROPBOX_LIVE: "0"
+      GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      IN_DIR: /in
+      OUT_DIR: /out
+    volumes:
+      - ./in:/in
+      - ./out:/out
+      - ./fixtures:/fixtures:ro
+      - ./dropbox:/app/dropbox:ro

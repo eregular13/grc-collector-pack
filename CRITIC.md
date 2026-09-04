@@ -1,9 +1,10 @@
-# CRITIC — cycle 10 (GitHub hardening)
+# CRITIC — cycle 9 (wrap lock + drop-box)
 
-**10/10** — zero P0/P1. Two host labs + compose loader exit 0.
+**8/10** — zero P0/P1. Host lab green. Dropbox-lab green. Compose not run (daemon absent). Wrap dead under `RISKREADY_PUSH=1`. Console localhost-only. Master GITHUB-HARDEN (bind lock, evidence floor, OUT_DIR fail-closed) is on the rebase base.
 
-CI workflow present. SECURITY.md present. Bind lock rejects `0.0.0.0` (exit 2). Refresh 500 has no traceback. Evidence 24 (≥ 18). Import preview writes PENDING / createRisk docs with no sockets. `OUT_DIR` unset/missing-parent fails closed (old P2 closed).
+−1 compose absent on this VM (historical Windows compose pass is not this run).  
+−1 dropbox-lab copies fixtures into `work/in`, so `summary.demo` is false even though the estate is still fixtures + demo overlays — documented, not a client.
 
 ```json
-{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 24, "pytest": 55, "host_lab": "pass", "compose_lab": "pass"}
+{"assets_empty_in": 62, "findings_empty_in": 59, "wrap": "review-only", "orchestrator": "pending-this-rebase"}
 ```

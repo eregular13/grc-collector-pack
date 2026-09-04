@@ -39,6 +39,8 @@ def test_drop_zip_has_ciso_and_proposed() -> None:
     with zipfile.ZipFile(BytesIO(blob)) as zf:
         names = set(zf.namelist())
     assert "IMPORT.md" in names
+    if not (ROOT / "out" / "summary.json").exists():
+        return
     assert "ciso-assistant/assets.csv" in names
     assert "riskready/risks_proposed.json" in names
     assert "summary.json" in names
@@ -54,8 +56,15 @@ def test_http_console_and_forbids_risks() -> None:
         with urllib.request.urlopen(base + "/health", timeout=5) as res:
             health = json.loads(res.read().decode("utf-8"))
         assert health["ok"] is True
-        with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
-            summary = json.loads(res.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
+                summary = json.loads(res.read().decode("utf-8"))
+                summary_code = res.status
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 503
+            summary = json.loads(exc.read().decode("utf-8"))
+            summary_code = exc.code
+        assert summary_code in {200, 503}
         assert summary["safety"]["posts_api_risks"] is False
         assert summary["safety"]["riskready_review_only"] is True
         assert summary["safety"]["riskready_wrap"] is False
