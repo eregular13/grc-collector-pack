@@ -101,6 +101,13 @@ Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.
 
+testssl JSON and **Maester** / Entra Graph *exports* are file-drop ingest:
+land testssl JSON under `in/vuln/` or `in/easm/`; Maester or `directoryRoles`
+JSON under `in/saas/`. Layer C parses HIGH testssl rows and Failed Maester
+rows only — no live TLS probe, no Graph API call. OK/Passed stay silent.
+testssl / Maester *invoke* is separate BYO (`allow_tools`) if already on PATH.
+Orchestrate external stays plan-only.
+
 HardeningKitty **Audit CSV** and **Lynis** reports are file-drop ingest:
 land HK CSV under `in/identity/`, Lynis report/`report.dat` under `in/wazuh/`.
 Layer C parses Failed HK rows and Lynis warnings only — no WinRM/AD API, no

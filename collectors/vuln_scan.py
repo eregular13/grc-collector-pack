@@ -9,6 +9,7 @@ from typing import Any
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import make_record, make_ref
+from shared.testssl import is_testssl, iter_testssl_findings
 
 SOURCE = "vuln-scan"
 LABELS = ["vuln", "scanner"]
@@ -29,7 +30,13 @@ def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
         return [obj] if isinstance(obj, dict) and "template-id" in obj else []
     if text[0] == "[":
         data = read_json(path)
-        return [r for r in data if isinstance(r, dict)] if isinstance(data, list) else []
+        if not isinstance(data, list) or is_testssl(data):
+            return []
+        return [
+            r
+            for r in data
+            if isinstance(r, dict) and (r.get("template-id") or r.get("template_id") or r.get("info"))
+        ]
     return []
 
 
@@ -102,6 +109,33 @@ def parse_file(path: Path) -> list[dict]:
             )
         return records
 
+    try:
+        peek = read_json(path)
+    except Exception:
+        peek = None
+    if peek is not None and is_testssl(peek):
+        for row in iter_testssl_findings(peek):
+            host = str(row.get("host") or "unknown")
+            add_asset(host)
+            vid = str(row.get("cve") or row.get("id") or "testssl")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{vid}-{host}"),
+                    name=str(row.get("id") or row.get("finding") or vid),
+                    description=str(row.get("finding") or row.get("cve") or vid),
+                    severity=row.get("severity") or "high",
+                    category="vulnerability",
+                    assets=[host],
+                    labels=LABELS + ["testssl"],
+                    collected_at=now,
+                    extra={"cve": row.get("cve") or "", "id": row.get("id") or ""},
+                )
+            )
+        if records:
+            return records
+
     nuclei = _nuclei_rows(path)
     if nuclei:
         for row in nuclei:
@@ -154,31 +188,26 @@ def parse_file(path: Path) -> list[dict]:
             )
         return records
 
-    if isinstance(payload, dict) and payload.get("scanResult"):
-        for scan in payload.get("scanResult") or []:
-            if not isinstance(scan, dict):
-                continue
-            host = str(scan.get("targetHost") or scan.get("ip") or "unknown")
+    if is_testssl(payload):
+        for row in iter_testssl_findings(payload):
+            host = str(row.get("host") or "unknown")
             add_asset(host)
-            for vuln in scan.get("vulnerabilities") or scan.get("findings") or []:
-                if not isinstance(vuln, dict):
-                    continue
-                vid = str(vuln.get("cve") or vuln.get("id") or "testssl")
-                records.append(
-                    make_record(
-                        kind="finding",
-                        source=SOURCE,
-                        ref_id=make_ref(SOURCE, vid),
-                        name=str(vuln.get("id") or vuln.get("finding") or vid),
-                        description=str(vuln.get("finding") or vuln.get("cve") or vid),
-                        severity=vuln.get("severity") or "high",
-                        category="vulnerability",
-                        assets=[host],
-                        labels=LABELS + ["testssl"],
-                        collected_at=now,
-                        extra={"cve": vuln.get("cve") or ""},
-                    )
+            vid = str(row.get("cve") or row.get("id") or "testssl")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{vid}-{host}"),
+                    name=str(row.get("id") or row.get("finding") or vid),
+                    description=str(row.get("finding") or row.get("cve") or vid),
+                    severity=row.get("severity") or "high",
+                    category="vulnerability",
+                    assets=[host],
+                    labels=LABELS + ["testssl"],
+                    collected_at=now,
+                    extra={"cve": row.get("cve") or "", "id": row.get("id") or ""},
                 )
+            )
         if records:
             return records
 

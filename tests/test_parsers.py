@@ -281,16 +281,115 @@ def test_empty_in_still_loads_lynis_report(tmp_path, monkeypatch) -> None:
 
 
 def test_maester() -> None:
+    from shared.control_map import map_finding
+
     recs = saas_idp.parse_file(DEMO / "saas" / "maester.json")
     names = [r["name"] for r in recs if r["kind"] == "finding"]
     assert any("MT.1035" in n for n in names)
     assert not any("MT.1001" in n for n in names)
+    hit = next(r for r in recs if r["kind"] == "finding" and "MT.1035" in r["name"])
+    mapped = map_finding(hit)
+    assert mapped["include_poam"] is True
+    assert "phishing-resistant" in mapped["control_name"].lower()
+    assert "Graph API" in mapped["recommended_fix"] or "not a Graph" in mapped["recommended_fix"]
+
+
+def test_minimal_maester_pester_json(tmp_path) -> None:
+    dest = tmp_path / "maester-min.json"
+    dest.write_text(
+        """{
+  "TenantId": "contoso.onmicrosoft.com",
+  "Tests": [
+    {"Id": "MT.1035", "Passed": false, "Severity": "high",
+     "Description": "Privileged users should have phishing-resistant MFA"},
+    {"Id": "MT.1001", "Passed": true, "Severity": "medium",
+     "Description": "Security defaults documented"},
+    {"Id": "MT.9999", "Result": "Skipped", "Severity": "high",
+     "Description": "should not emit"}
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    recs = saas_idp.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "MT.1035" in findings[0]["name"]
+    assert not any("MT.1001" in r["name"] or "MT.9999" in r["name"] for r in findings)
+
+
+def test_empty_in_still_loads_maester(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-saas"))
+    (tmp_path / "empty-saas" / "saas").mkdir(parents=True)
+    files, demo = load_inputs("saas-idp", (".json",))
+    assert demo is True
+    assert "maester.json" in {p.name for p in files}
+
+
+def test_graph_empty_members_does_not_invent(tmp_path) -> None:
+    dest = tmp_path / "graph-empty.json"
+    dest.write_text(
+        """{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryRoles",
+  "tenant": "contoso.onmicrosoft.com",
+  "directoryRoles": [{"displayName": "Global Administrator", "members": []}]
+}
+""",
+        encoding="utf-8",
+    )
+    recs = saas_idp.parse_file(dest)
+    assert not any(r["kind"] == "finding" for r in recs)
 
 
 def test_testssl() -> None:
+    from shared.control_map import map_finding
+
     recs = vuln_scan.parse_file(DEMO / "vuln" / "testssl.json")
     findings = [r for r in recs if r["kind"] == "finding"]
     assert any("heartbleed" in r["name"].lower() or "CVE-2014-0160" in str(r) for r in findings)
+    assert any("TLS1" in r["name"] or "TLS 1.0" in r["description"] for r in findings)
+    assert not any("secure_renego" in r["name"] for r in findings)
+    hb = next(r for r in findings if "heartbleed" in r["name"].lower())
+    mapped = map_finding(hb)
+    assert mapped["include_poam"] is True
+    assert "heartbleed" in mapped["control_name"].lower()
+    assert "live probe" in mapped["recommended_fix"].lower()
+
+
+def test_minimal_testssl_native_array(tmp_path) -> None:
+    dest = tmp_path / "testssl-min.json"
+    dest.write_text(
+        """[
+  {"id": "heartbleed", "severity": "HIGH", "cve": "CVE-2014-0160",
+   "finding": "Heartbleed still offered on TLS", "ip": "vpn.example.com/203.0.113.9"},
+  {"id": "secure_renego", "severity": "OK", "finding": "Secure Renegotiation IS supported",
+   "ip": "vpn.example.com/203.0.113.9"}
+]
+""",
+        encoding="utf-8",
+    )
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "vpn.example.com" in findings[0]["assets"]
+    from collectors import easm
+
+    easm_recs = easm.parse_file(dest)
+    easm_findings = [r for r in easm_recs if r["kind"] == "finding"]
+    assert len(easm_findings) == 1
+    assert easm_findings[0]["severity"] == "high"
+
+
+def test_empty_in_still_loads_testssl(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-vuln"))
+    (tmp_path / "empty-vuln" / "vuln").mkdir(parents=True)
+    files, demo = load_inputs("vuln-scan", (".json", ".jsonl", ".sarif"))
+    assert demo is True
+    assert "testssl.json" in {p.name for p in files}
 
 
 def test_ms_graph_directory_roles() -> None:

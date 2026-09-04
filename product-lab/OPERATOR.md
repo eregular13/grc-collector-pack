@@ -44,13 +44,13 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 |---|---|
 | `in/cloud/` | Prowler JSON, Prowler ASFF (`Findings` / list / object), ScoutSuite `services.*.findings`, Cloud Custodian, Steampipe. Parse-only — no cloud API calls. |
 | `in/nmap/` | Nmap XML, Nmap `-oG` |
-| `in/vuln/` | Nuclei JSONL, Trivy, Greenbone, testssl |
+| `in/vuln/` | Nuclei JSONL, Trivy, Greenbone, testssl JSON (HIGH/WARN only; no live TLS) |
 | `in/wazuh/` | Wazuh agents/alerts, osquery, Fleet, Lynis report / `report.dat` (parse-only) |
 | `in/identity/` | BloodHound CE, PingCastle XML, HardeningKitty Audit CSV (Failed/warning only; does not invent Windows findings) |
-| `in/easm/` | Subfinder, httpx JSONL, Amass JSONL |
+| `in/easm/` | Subfinder, httpx JSONL, Amass JSONL, testssl JSON (same HIGH-only parse as `in/vuln/`) |
 | `in/k8s/` | Kubescape, kube-bench, Falco JSONL |
 | `in/code/` | Gitleaks, Semgrep, Trivy FS, TruffleHog, SARIF |
-| `in/saas/` | ScubaGear, Maester, Graph directoryRoles, Okta |
+| `in/saas/` | ScubaGear, Maester (Failed only), Graph `directoryRoles` export (file-drop; no Graph API), Okta |
 
 If a folder is empty, that collector uses `fixtures/demo/<sensor>/` and marks `demo`. Parse failure on one file does not invent hosts; fixture fallback only if the whole collector produced nothing.
 

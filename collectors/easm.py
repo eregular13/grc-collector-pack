@@ -5,8 +5,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shared.io_util import iso_now, read_jsonl, read_text, run_collector
+from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.schema import make_record, make_ref
+from shared.testssl import is_testssl, iter_testssl_findings
 
 SOURCE = "easm"
 LABELS = ["easm", "external"]
@@ -15,6 +16,49 @@ WATCH = ("vpn.", "dev-api.", "admin.", "staging.")
 
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
+    if path.suffix.lower() in {".json", ".jsonl"}:
+        try:
+            payload = read_json(path)
+        except Exception:
+            payload = None
+        if payload is not None and is_testssl(payload):
+            records: list[dict] = []
+            seen: set[str] = set()
+            for row in iter_testssl_findings(payload):
+                host = str(row.get("host") or "unknown")
+                if host.lower() not in seen:
+                    seen.add(host.lower())
+                    records.append(
+                        make_record(
+                            kind="asset",
+                            source=SOURCE,
+                            ref_id=make_ref(SOURCE, f"asset-{host}"),
+                            name=host,
+                            description=f"External host {host}",
+                            category="external-host",
+                            assets=[host],
+                            labels=LABELS + ["testssl"],
+                            collected_at=now,
+                            extra={"asset_type": "PR"},
+                        )
+                    )
+                vid = str(row.get("cve") or row.get("id") or "testssl")
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, f"{vid}-{host}"),
+                        name=str(row.get("id") or row.get("finding") or vid),
+                        description=str(row.get("finding") or row.get("cve") or vid),
+                        severity=row.get("severity") or "high",
+                        category="vulnerability",
+                        assets=[host],
+                        labels=LABELS + ["testssl"],
+                        collected_at=now,
+                        extra={"cve": row.get("cve") or "", "id": row.get("id") or "", "port": "443", "service": "https"},
+                    )
+                )
+            return records
     hosts: dict[str, dict] = {}
     name_l = path.name.lower()
     if path.suffix.lower() in {".jsonl", ".json"} or "httpx" in name_l:

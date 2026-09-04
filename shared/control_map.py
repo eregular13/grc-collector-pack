@@ -86,6 +86,18 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Restrict RDP to approved paths"
         fix = "Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE."
         key_medium = True
+    elif "heartbleed" in text:
+        name = "Remediate Heartbleed-vulnerable TLS"
+        fix = (
+            "Upgrade the TLS stack so Heartbleed is not offered. "
+            "This is a dropped testssl finding, not a live probe."
+        )
+    elif "tls 1.0" in text or "tlsv1.0" in text or "tls1 offered" in text.replace(" ", "").replace("_", "").replace("-", ""):
+        name = "Disable TLS 1.0"
+        fix = (
+            "Disable TLS 1.0 and require TLS 1.2 or newer. "
+            "This is a dropped testssl finding, not a live probe."
+        )
     elif (
         port == "443"
         or "tls" in text
@@ -176,6 +188,12 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."
+    elif "phishing-resistant" in text and "mfa" in text:
+        name = "Require phishing-resistant MFA for privileged users"
+        fix = (
+            "Require FIDO2 or another phishing-resistant method for privileged Entra roles. "
+            "This is a Maester posture finding from a dropped export, not a Graph API call."
+        )
     elif "password history" in text:
         name = "Enforce Windows password history"
         fix = (

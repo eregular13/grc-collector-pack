@@ -170,6 +170,53 @@ def test_cloud_high_findings_map_to_poam_not_cve() -> None:
         assert "CVE-" not in mapped["recommended_fix"]
 
 
+def test_testssl_and_maester_map_to_poam() -> None:
+    hb = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-hb",
+        name="heartbleed",
+        description="Heartbleed still offered on TLS",
+        severity="high",
+        category="vulnerability",
+        assets=["dev-api.example.com"],
+        extra={"cve": "CVE-2014-0160", "id": "heartbleed"},
+    )
+    mapped = map_finding(hb)
+    assert mapped["include_poam"] is True
+    assert "heartbleed" in mapped["control_name"].lower()
+    assert "live probe" in mapped["recommended_fix"].lower()
+    tls1 = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-tls1",
+        name="TLS1",
+        description="TLS 1.0 offered",
+        severity="high",
+        category="vulnerability",
+        assets=["dev-api.example.com"],
+        extra={"id": "TLS1"},
+    )
+    mapped = map_finding(tls1)
+    assert mapped["include_poam"] is True
+    assert "tls 1.0" in mapped["control_name"].lower()
+    mt = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-mt",
+        name="Maester MT.1035",
+        description="Privileged users should have phishing-resistant MFA",
+        severity="high",
+        category="cloud-misconfiguration",
+        assets=["contoso.onmicrosoft.com"],
+        extra={"id": "MT.1035"},
+    )
+    mapped = map_finding(mt)
+    assert mapped["include_poam"] is True
+    assert "phishing-resistant" in mapped["control_name"].lower()
+    assert "Graph API" in mapped["recommended_fix"] or "not a Graph" in mapped["recommended_fix"]
+
+
 def test_hk_and_lynis_high_map_to_poam_not_cve() -> None:
     cases = [
         (

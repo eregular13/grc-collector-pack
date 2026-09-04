@@ -65,9 +65,20 @@ def parse_file(path: Path) -> list[dict]:
         if records:
             return records
 
-    maester = payload.get("TestResults") or payload.get("tests") or payload.get("Maester")
+    maester = (
+        payload.get("TestResults")
+        or payload.get("tests")
+        or payload.get("Tests")
+        or payload.get("Maester")
+    )
     if isinstance(maester, list):
-        tenant = str(payload.get("Tenant") or payload.get("tenant") or "contoso.onmicrosoft.com")
+        tenant = str(
+            payload.get("Tenant")
+            or payload.get("tenant")
+            or payload.get("TenantId")
+            or payload.get("tenantId")
+            or "contoso.onmicrosoft.com"
+        )
         records.append(
             make_record(
                 kind="asset",
@@ -85,15 +96,23 @@ def parse_file(path: Path) -> list[dict]:
         for row in maester:
             if not isinstance(row, dict):
                 continue
-            result = str(row.get("Result") or row.get("result") or row.get("Status") or "").lower()
-            if result in {"pass", "passed", "success", "ok"}:
+            if row.get("Passed") is True:
                 continue
-            name = str(row.get("Name") or row.get("Id") or row.get("title") or "maester")
+            result = str(
+                row.get("Result") or row.get("result") or row.get("Status") or row.get("Outcome") or ""
+            ).lower()
+            if row.get("Passed") is False:
+                result = result or "failed"
+            if result in {"pass", "passed", "success", "ok", "skipped", "skip", "notrun", "notapplicable", "n/a"}:
+                continue
+            if result not in {"fail", "failed", "error", "unsuccessful"}:
+                continue
+            name = str(row.get("Name") or row.get("Id") or row.get("id") or row.get("title") or "maester")
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, name),
+                    ref_id=make_ref(SOURCE, f"{name}-{tenant}"),
                     name=f"Maester {name}",
                     description=str(row.get("Description") or row.get("Details") or name),
                     severity=row.get("Severity") or row.get("severity") or "high",
@@ -101,7 +120,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[tenant],
                     labels=LABELS + ["maester"],
                     collected_at=now,
-                    extra={"result": result},
+                    extra={"result": result or "failed", "id": row.get("Id") or row.get("id") or name},
                 )
             )
         if any(r.get("kind") == "finding" for r in records):
@@ -139,8 +158,12 @@ def parse_file(path: Path) -> list[dict]:
             if not isinstance(members, list):
                 members = [members]
             if "Global Administrator" in rname or rname.lower() == "global administrator":
-                for mem in members or ["unknown"]:
-                    upn = mem if isinstance(mem, str) else str((mem or {}).get("userPrincipalName") or (mem or {}).get("id") or "member")
+                for mem in members:
+                    if mem is None:
+                        continue
+                    upn = mem if isinstance(mem, str) else str((mem or {}).get("userPrincipalName") or (mem or {}).get("id") or "")
+                    if not upn:
+                        continue
                     records.append(
                         make_record(
                             kind="finding",
