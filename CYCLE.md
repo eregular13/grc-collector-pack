@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 45 — Checkov / Gitleaks / TruffleHog file-drop polish (2026-09-04)
+
+code-secrets parses Checkov `results.failed_checks` (and a report list), Gitleaks `{findings|leaks|results}` wrappers, and TruffleHog `{results}` under `in/code/`. Passed / INFO / empty invent nothing. Secrets stay redacted. Public S3 ACL and credential rows map to existing POA&M. Demo `checkov.json` attaches to existing `infra/terraform.tfvars` (failed only; versioning PASS silent). No live checkov / gitleaks / semgrep / trufflehog. Catalog **not inflated**. pytest **237**. Labs green (assets unchanged; findings/poam/evidence +1). Compose ABSENT. EASM cycle 44 and CIS-CAT/osquery cycle 43 stand.
+
+```json
+{"pytest": 237, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 69, "vulns": 17, "evidence": 26, "poam": 70}, "farm_lab": {"assets": 64, "findings": 69, "poam": 70, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 70, "poam": 70, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 78, "poam": 73, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 44 — EASM file-drop polish (2026-09-04)
 
 easm parses httpx / Amass / Subfinder JSON, JSONL, and `{results|hosts|data}` wrappers under `in/easm/`. httpx `failed:true` and empty arrays invent nothing. Sensitive perimeter names and admin/login titles map to existing POA&M. Demo `httpx.json` attaches to existing `admin.example.com` (failed vpn row silent). No live DNS/HTTP; no amass/httpx/subfinder subprocess. Catalog **not inflated**. pytest **229**. Labs green (assets unchanged; findings/poam +1). Compose ABSENT. CIS-CAT/osquery cycle 43 and cycles 39–42 stand.
