@@ -920,9 +920,13 @@ def test_empty_in_still_loads_maester(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-saas"))
     (tmp_path / "empty-saas" / "saas").mkdir(parents=True)
-    files, demo = load_inputs("saas-idp", (".json",))
+    files, demo = load_inputs("saas-idp", (".json", ".jsonl"))
     assert demo is True
-    assert "maester.json" in {p.name for p in files}
+    names = {p.name for p in files}
+    assert "maester.json" in names
+    assert "scuba.json" in names
+    assert "okta.json" in names
+    assert "scuba-wrap.json" in names
 
 
 def test_graph_empty_members_does_not_invent(tmp_path) -> None:
@@ -936,8 +940,7 @@ def test_graph_empty_members_does_not_invent(tmp_path) -> None:
 """,
         encoding="utf-8",
     )
-    recs = saas_idp.parse_file(dest)
-    assert not any(r["kind"] == "finding" for r in recs)
+    assert saas_idp.parse_file(dest) == []
 
 
 def test_testssl() -> None:
@@ -1202,3 +1205,154 @@ def test_falco_jsonl() -> None:
     names = [r["name"] for r in recs if r["kind"] == "finding"]
     assert "Launch Privileged Container" in names
     assert any(r["severity"] == "critical" for r in recs if r["kind"] == "finding")
+
+
+def test_scuba_demo_failed_high_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = saas_idp.parse_file(DEMO / "saas" / "scuba.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in findings]
+    assert "Legacy authentication protocols disabled" in names
+    assert "Privileged roles use PIM" in names
+    assert "External sharing restricted" in names
+    assert "Security defaults or CA policies" not in names
+    assert all("contoso.onmicrosoft.com" in str(r.get("assets")) for r in recs)
+    pim = next(r for r in findings if r["name"] == "Privileged roles use PIM")
+    mapped = map_finding(pim)
+    assert mapped["include_poam"] is True
+    assert "global administrator" in mapped["control_name"].lower()
+    assert "Graph API" in mapped["recommended_fix"] or "not a Graph" in mapped["recommended_fix"]
+
+
+def test_okta_demo_admin_mfa_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = saas_idp.parse_file(DEMO / "saas" / "okta.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["name"] == "Okta admin MFA gap"
+    assert "example.okta.com" in findings[0]["assets"]
+    assets = {r["name"] for r in recs if r["kind"] == "asset"}
+    assert "example.okta.com" in assets
+    assert "it-admin@example.com" in assets
+    assert "jane@example.com" in assets
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "mfa" in mapped["control_name"].lower()
+    assert "not a Graph or Okta API" in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_scuba_wrap_and_okta_data_unwrap() -> None:
+    from shared.control_map import map_finding
+
+    recs = saas_idp.parse_file(DEMO / "saas" / "scuba-wrap.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["name"] == "Privileged users require MFA"
+    assert findings[0]["assets"] == ["contoso.onmicrosoft.com"]
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "mfa" in mapped["control_name"].lower()
+    assert "ScubaGear" in mapped["recommended_fix"] or "Okta export" in mapped["recommended_fix"]
+    assert "not a Graph or Okta API" in mapped["recommended_fix"]
+
+
+def test_okta_data_wrapper(tmp_path) -> None:
+    dest = tmp_path / "okta-wrap.json"
+    dest.write_text(
+        """{
+  "data": {
+    "org": "example.okta.com",
+    "policies": [
+      {"id": "pol-mfa", "type": "MFA_ENROLL", "name": "Admins MFA",
+       "status": "INACTIVE", "description": "Okta admin MFA enrollment disabled"}
+    ],
+    "users": []
+  }
+}
+""",
+        encoding="utf-8",
+    )
+    recs = saas_idp.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["name"] == "Okta admin MFA gap"
+    assert findings[0]["assets"] == ["example.okta.com"]
+
+
+def test_empty_and_pass_only_saas_invent_nothing(tmp_path) -> None:
+    empty = tmp_path / "scuba-empty.json"
+    empty.write_text('{"Results": []}', encoding="utf-8")
+    assert saas_idp.parse_file(empty) == []
+    passed = tmp_path / "scuba-pass.json"
+    passed.write_text(
+        """{"Results": [{"Tenant": "contoso.onmicrosoft.com",
+        "Requirement": "Security defaults", "Result": "Pass",
+        "Details": "ok", "Severity": "high"}]}""",
+        encoding="utf-8",
+    )
+    assert saas_idp.parse_file(passed) == []
+    skip = tmp_path / "scuba-skip.json"
+    skip.write_text(
+        """{"Results": [{"Tenant": "contoso.onmicrosoft.com",
+        "Requirement": "Info only", "Result": "Skip",
+        "Details": "n/a", "Severity": "high"}]}""",
+        encoding="utf-8",
+    )
+    assert saas_idp.parse_file(skip) == []
+    low = tmp_path / "scuba-low.json"
+    low.write_text(
+        """{"Results": [{"Tenant": "contoso.onmicrosoft.com",
+        "Requirement": "Low fail", "Result": "Fail",
+        "Details": "noise", "Severity": "info"}]}""",
+        encoding="utf-8",
+    )
+    assert saas_idp.parse_file(low) == []
+    okta_empty = tmp_path / "okta-empty.json"
+    okta_empty.write_text('{"users": [], "policies": []}', encoding="utf-8")
+    assert saas_idp.parse_file(okta_empty) == []
+    maester_pass = tmp_path / "maester-pass.json"
+    maester_pass.write_text(
+        """{"Tenant": "contoso.onmicrosoft.com",
+        "TestResults": [{"Id": "MT.1", "Name": "MT.1", "Result": "Passed",
+        "Severity": "high", "Description": "ok"}]}""",
+        encoding="utf-8",
+    )
+    assert saas_idp.parse_file(maester_pass) == []
+
+
+def test_scuba_jsonl_and_array(tmp_path) -> None:
+    dest = tmp_path / "scuba.jsonl"
+    dest.write_text(
+        '{"Requirement": "Privileged users require MFA", "Result": "Fail",'
+        ' "Details": "Admin MFA not enforced", "Tenant": "contoso.onmicrosoft.com",'
+        ' "Severity": "high"}\n'
+        '{"Requirement": "ok row", "Result": "Pass", "Tenant": "contoso.onmicrosoft.com"}\n',
+        encoding="utf-8",
+    )
+    recs = saas_idp.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["name"] == "Privileged users require MFA"
+    arr = tmp_path / "scuba-array.json"
+    arr.write_text(
+        """[{"Requirement": "Privileged users require MFA", "Result": "Fail",
+        "Details": "Admin MFA not enforced", "Tenant": "contoso.onmicrosoft.com",
+        "Severity": "high"}]""",
+        encoding="utf-8",
+    )
+    recs = saas_idp.parse_file(arr)
+    assert any(r["kind"] == "finding" and r["name"] == "Privileged users require MFA" for r in recs)
+
+
+def test_saas_parser_no_live() -> None:
+    src = (ROOT / "collectors" / "saas_idp.py").read_text(encoding="utf-8")
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "urllib.request" not in src
+    assert "requests.get" not in src
+    assert "socket.socket" not in src
+    assert "nessuscli scan" not in src
+    assert "nessuscli --" not in src

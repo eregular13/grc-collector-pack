@@ -28,7 +28,7 @@ See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs
 | easm | Amass / Subfinder / httpx | external hosts |
 | k8s-kubescape | Kubescape / kube-bench | cluster findings |
 | code-secrets | Gitleaks / Semgrep / Trivy | secrets / SAST (redacted) |
-| saas-idp | ScubaGear / Graph / Okta | SaaS posture |
+| saas-idp | ScubaGear / Graph / Okta / Maester (file-drop; no Graph/Okta API) | SaaS posture |
 | grc-loader | `out/canonical/*.jsonl` | all GRC files |
 
 One `python:3.12-slim` image. `grc-loader` waits on the nine collectors (`condition: service_completed_successfully`).

@@ -265,6 +265,29 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Require FIDO2 or another phishing-resistant method for privileged Entra roles. "
             "This is a Maester posture finding from a dropped export, not a Graph API call."
         )
+    elif (
+        ("okta" in text and "mfa" in text)
+        or "privileged users require mfa" in text
+        or "admin mfa" in text
+        or "mfa enrollment" in text
+        or "mfa not enforced" in text
+    ):
+        name = "Require MFA for privileged SaaS admins"
+        fix = (
+            "Enforce MFA on privileged Okta/Entra roles from the dropped ScubaGear or Okta export. "
+            "This is not a Graph or Okta API call."
+        )
+    elif "global administrator" in text and (
+        "permanently" in text
+        or "pim" in text
+        or "standing" in text
+        or "via graph" in text
+    ):
+        name = "Remove standing Global Administrator assignment"
+        fix = (
+            "Use PIM eligible assignments instead of standing Global Administrator. "
+            "This is a dropped Scuba/Graph export finding, not a Graph API call."
+        )
     elif "password history" in text:
         name = "Enforce Windows password history"
         fix = (

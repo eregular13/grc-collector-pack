@@ -262,6 +262,54 @@ def test_testssl_and_maester_map_to_poam() -> None:
     assert "Graph API" in mapped["recommended_fix"] or "not a Graph" in mapped["recommended_fix"]
 
 
+def test_saas_mfa_and_admin_highs_map_to_poam() -> None:
+    okta = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-okta-mfa",
+        name="Okta admin MFA gap",
+        description="Okta admin MFA enrollment disabled",
+        severity="critical",
+        category="identity-gap",
+        assets=["example.okta.com"],
+        extra={"policy": "pol-mfa-admins"},
+    )
+    mapped = map_finding(okta)
+    assert mapped["include_poam"] is True
+    assert "mfa" in mapped["control_name"].lower()
+    assert "not a Graph or Okta API" in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
+    scuba_mfa = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-scuba-mfa",
+        name="Privileged users require MFA",
+        description="Admin MFA not enforced for Global Administrator",
+        severity="high",
+        category="cloud-misconfiguration",
+        assets=["contoso.onmicrosoft.com"],
+    )
+    mapped = map_finding(scuba_mfa)
+    assert mapped["include_poam"] is True
+    assert "mfa" in mapped["control_name"].lower()
+    assert "not a Graph or Okta API" in mapped["recommended_fix"]
+    ga = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-ga",
+        name="Entra Global Administrator via Graph",
+        description="ga@contoso.onmicrosoft.com holds Global Administrator (Microsoft Graph export)",
+        severity="critical",
+        category="identity-gap",
+        assets=["ga@contoso.onmicrosoft.com", "contoso.onmicrosoft.com"],
+        extra={"role": "Global Administrator"},
+    )
+    mapped = map_finding(ga)
+    assert mapped["include_poam"] is True
+    assert "global administrator" in mapped["control_name"].lower()
+    assert "not a Graph API" in mapped["recommended_fix"]
+
+
 def test_hk_and_lynis_high_map_to_poam_not_cve() -> None:
     cases = [
         (

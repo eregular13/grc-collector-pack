@@ -127,6 +127,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "Nessus file-drop" in md
     assert "ReportHost" in md
     assert "demo.nessus" in md
+    assert "SaaS file-drop" in md
+    assert "ScubaGear" in md
+    assert "scuba-wrap.json" in md
     assert "Secrets / IaC file-drop" in md
     assert "failed_checks" in md
     assert "SARIF file-drop" in md

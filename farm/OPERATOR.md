@@ -143,6 +143,13 @@ rows only — no live TLS probe, no Graph API call. OK/Passed stay silent.
 testssl / Maester *invoke* is separate BYO (`allow_tools`) if already on PATH.
 Orchestrate external stays plan-only.
 
+ScubaGear / Okta assessment JSON (or JSONL) is file-drop ingest under
+`in/saas/`. Layer C parses Failed/high Scuba `Results` and inactive Okta
+MFA_ENROLL policies only — Pass / Skip / empty invent nothing. Wrappers
+(`data` / `ScubaResults` / `okta`) unwrap. High MFA and standing Global
+Administrator rows map to existing CISO/POA&M. The collector never calls
+Microsoft Graph or the Okta API. scuba / okta-logs stay file_drop.
+
 BloodHound CE / SharpHound JSON is file-drop ingest under `in/identity/`.
 Layer C parses `data.nodes` / `data.edges`, graph `nodes`/`edges`, or
 SharpHound `data` arrays (`Properties` / `ObjectIdentifier` / mapped `Aces`).
