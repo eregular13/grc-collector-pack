@@ -19,6 +19,7 @@ from farm.adapters.catalog import (
     ingest_map,
     invoke_slots,
     load_slots,
+    parse_output_glob,
     render_slots_md,
     wired_slots,
 )
@@ -274,3 +275,6 @@ def test_layer_c_sensor_dirs_exist() -> None:
     assert set(mapped) == set(LAYER_C_SENSORS)
     assert sum(b["total"] for b in mapped.values()) == len(load_slots())
     assert audit_output_globs() == []
+    assert parse_output_glob("in/easm/*.jsonl") == ("easm", "*.jsonl")
+    assert parse_output_glob("in/not-a-sensor/*.txt") is None
+    assert parse_output_glob("easm/*.json") is None

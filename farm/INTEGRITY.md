@@ -21,6 +21,7 @@ Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
 | Exploit / vendor | Absent | No Metasploit, no Hexstrike submodule, no USB copy |
 | Wrap | Review-only | `push_riskready.sh` prints LICENSE-LOCK and never POSTs, even if `RISKREADY_PUSH=1` |
 | External stage | Plan-only | Named hosts/URLs only; no live curl/testssl from orchestrate; operator lands `in/easm/` |
+| External ingest | File-drop inventory | `ingest_stage` lists dropped `in/easm|…` files; never probes; skips `.gitkeep` / `plan.json` |
 | Layer C | Parse-only ingest | `in/<sensor>/` only; collectors never call farm adapters |
 | Compose | Scanner-free | Farm Dockerfile has no `RUN apt`; compose runtime ABSENT here (no Docker CLI) |
 

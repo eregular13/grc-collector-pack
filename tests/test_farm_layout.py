@@ -40,6 +40,8 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "2-5" in brakes["deepen_batch"] or "2–5" in brakes["deepen_batch"]
     assert "30" in brakes["host_timeout_sec"]
     assert "0.0.0.0/0" in brakes["wildcard_cidr"]
+    assert "never probe" in brakes["external_ingest"]
+    assert "file-drop inventory" in integrity.lower() or "File-drop inventory" in integrity
 
 
 def test_farm_slots_are_adapters_not_binaries() -> None:

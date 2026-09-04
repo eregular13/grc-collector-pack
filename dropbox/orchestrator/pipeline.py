@@ -11,7 +11,12 @@ from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.shard import batch_hosts, reject_wide_deepen_target, shard_cidrs
 from dropbox.scope import NEVER_EMBED, ORCH_BYO, ROOT, GateError, Scope, is_open_internet_cidr, load_scope
-from farm.adapters.catalog import plan_stage_slots, refuse_live_slot, select_stage_slots
+from farm.adapters.catalog import (
+    dropped_file_inventory,
+    plan_stage_slots,
+    refuse_live_slot,
+    select_stage_slots,
+)
 from shared.io_util import in_dir
 
 STAGE_GRAPH = (
@@ -462,13 +467,18 @@ def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
                 target = sensor_dir / f"dropbox-{stage_name}-{path.name}"
                 shutil.copy2(path, target)
                 copied.append(str(target))
+    dropped = dropped_file_inventory(dest, category="external")
     marker = {
         "client": scope.client_name,
         "copied": copied,
         "sink": "Layer C parse-only via in/",
+        "live": False,
+        "probed": False,
+        "dropped_external": dropped,
         "note": (
             "Plan-only labs have no nmap/nessus artifacts. "
-            "Loader still uses fixtures + demo overlays. "
+            "External is file-drop: inventory of in/easm|… only — no curl/testssl. "
+            "Loader still uses fixtures + demo overlays when dest is empty. "
             "Deliverable after ingest: CISO CSVs + out/poam/poam.csv."
         ),
     }

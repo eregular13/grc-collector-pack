@@ -57,8 +57,10 @@ Plan JSON lists `slots` per stage: `allow_tools ∩ wired invoke ∩` discover /
 Deepen uses deepen invoke slots on discover-live hosts or `deepen_hosts`.
 **External is plan-only** in this pack: slots list with `will_run=false` and
 `file_drop or plan-only — operator lands artifacts in in/easm|…`.
-`make dropbox-external` writes DEMO fixtures into `in/easm/`. Live BYO
-curl/testssl is operator-local under written SCOPE — not orchestrate.
+Ingest inventories those dropped files (`dropped_external` on the ingest
+marker). It does not probe. `make dropbox-external` writes DEMO fixtures
+into `in/easm/`. Live BYO curl/testssl is operator-local under written
+SCOPE — not orchestrate.
 LICENSE-LOCK / file_drop names never subprocess.
 
 ```bash

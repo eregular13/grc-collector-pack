@@ -19,9 +19,10 @@ Quiet → loud. Integrity over coverage ego.
 1. **Discover (quiet):** shard `internal.cidrs` to `/24` (or `discover_prefix`). Inventory only (`nmap -sn` + host timeout) if BYO nmap is on PATH **and** allowlisted.
 2. **Deepen (loud, gated):** only if `orchestrator.stages.deepen: true`. Hosts from **discover-live** or explicit `deepen_hosts`. Batches 2–5. Concurrent workers ≤ `max_workers`. Never a `/16` in one worker. Never `0.0.0.0/0`.
 3. **Destroy workers** after each stage.
-4. **Ingest:** copy/normalize artifacts into pack `in/<sensor>/`.
+4. **External (plan-only):** list named SCOPE hosts and farm slots with `will_run=false`. Operator lands files in `in/easm|…`. No live curl/testssl from orchestrate.
+5. **Ingest:** copy/normalize discover/deepen artifacts into pack `in/<sensor>/` and inventory dropped external files. Does not probe.
 
-`python3 -m dropbox status` prints the stage graph (`plan → shard → discover → destroy → deepen → destroy → ingest → grc_export`), last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). See `farm/OPERATOR.md`.
+`python3 -m dropbox status` prints the stage graph (`plan → shard → discover → destroy → deepen → destroy → external (plan-only) → ingest → grc_export`), last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). See `farm/OPERATOR.md`.
 
 ## Layer C — existing 10 containers (parse-only)
 
@@ -44,7 +45,7 @@ consent SCOPE
 Layer A  BYO on PATH / farm/ bind-mount / private tag
     │
     ▼
-Layer B  discover → deepen → destroy → ingest
+Layer B  discover → deepen → destroy → external (plan-only) → ingest
     │                    artifacts
     ▼
    in/<sensor>/

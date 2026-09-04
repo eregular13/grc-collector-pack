@@ -12,12 +12,14 @@ from dropbox.orchestrator.pipeline import (
     deepen_stage,
     discover_stage,
     external_stage,
+    ingest_stage,
     orchestrate,
 )
 from dropbox.scope import GateError, load_scope
 from farm.adapters.catalog import (
     FILE_DROP_ONLY,
     LICENSE_LOCK_LIVE,
+    dropped_file_inventory,
     refuse_live_slot,
     select_stage_slots,
 )
@@ -197,3 +199,71 @@ def test_dropbox_external_script_is_demo_fixture_writer() -> None:
     block = makefile.split("dropbox-external:")[1].split("dropbox-orchestrate:")[0]
     assert "--live" not in block
     assert "run --profile external" in block
+
+
+def test_ingest_inventories_dropped_external_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    dest = tmp_path / "in"
+    easm = dest / "easm"
+    easm.mkdir(parents=True)
+    (easm / ".gitkeep").write_text("", encoding="utf-8")
+    (easm / "plan.json").write_text("{}\n", encoding="utf-8")
+    (easm / "amass.json").write_text('{"name":"vpn.example.com"}\n', encoding="utf-8")
+    (easm / "httpx.jsonl").write_text('{"host":"vpn.example.com"}\n', encoding="utf-8")
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    marker = ingest_stage(scope, dest_in=dest)
+    dropped = marker["dropped_external"]
+    assert marker["live"] is False
+    assert marker["probed"] is False
+    assert dropped["live"] is False
+    assert dropped["will_run"] is False
+    assert dropped["probed"] is False
+    assert dropped["file_count"] == 2
+    assert "easm/amass.json" in dropped["files"]
+    assert "easm/httpx.jsonl" in dropped["files"]
+    assert "easm/.gitkeep" not in dropped["files"]
+    assert "easm/plan.json" not in dropped["files"]
+    assert dropped["sensors"]["easm"] == ["amass.json", "httpx.jsonl"]
+
+
+def test_ingest_empty_in_has_zero_dropped_external(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    dest = tmp_path / "in"
+    dest.mkdir()
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    marker = ingest_stage(scope, dest_in=dest)
+    dropped = marker["dropped_external"]
+    assert dropped["file_count"] == 0
+    assert dropped["files"] == []
+    assert dropped["live"] is False
+    assert dropped["will_run"] is False
+
+
+def test_ingest_skips_external_plan_json_and_does_not_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    orch = tmp_path / "orch"
+    (orch / "external").mkdir(parents=True)
+    (orch / "external" / "plan.json").write_text("{}\n", encoding="utf-8")
+    (orch / "external" / "headers.jsonl").write_text(
+        '{"url":"https://vpn.example.com"}\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(orch))
+    dest = tmp_path / "in"
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    marker = ingest_stage(scope, dest_in=dest)
+    assert not (dest / "easm" / "dropbox-external-plan.json").exists()
+    copied = dest / "easm" / "dropbox-external-headers.jsonl"
+    assert copied.is_file()
+    assert str(copied) in marker["copied"]
+    dropped = marker["dropped_external"]
+    assert "easm/dropbox-external-headers.jsonl" in dropped["files"]
+    assert dropped["live"] is False
+    assert dropped["probed"] is False
+    inv = dropped_file_inventory(dest, category="external")
+    assert inv["file_count"] == 1
+    assert inv["live"] is False

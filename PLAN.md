@@ -2,7 +2,7 @@
 
 Sensors + normalizer only. No GRC UI. Demo mode: parse `in/<sensor>/` or `fixtures/demo/`. Never live-scan. Never POST `/api/risks`.
 
-Drop-box (`dropbox/`): three layers — A BYO tool zoo under SCOPE (`farm/` private catalog 95+ slots + adapters; PATH / bind-mount / Reid’s tags; not Hub soup), B orchestrator brakes (plan → shard → quiet discover → destroy → gated deepen → destroy → ingest → grc_export), C 10 containers parse-only. Orchestrator does not turn collectors into scanners. Hexstrike-pattern operator MCP stub only (no vendor, no exploit API). `stages.deepen` fail-closed unless true. BYO Nmap/Nessus only if already on PATH. LICENSE-LOCK forbids shipping/embedding Nmap, Nuclei, OpenVAS, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, RiskReady wrap.
+Drop-box (`dropbox/`): three layers — A BYO tool zoo under SCOPE (`farm/` private catalog 95+ slots + adapters; PATH / bind-mount / Reid’s tags; not Hub soup), B orchestrator brakes (plan → shard → quiet discover → destroy → gated deepen → destroy → external plan-only → ingest → grc_export), C 10 containers parse-only. Orchestrator does not turn collectors into scanners. Hexstrike-pattern operator MCP stub only (no vendor, no exploit API). `stages.deepen` fail-closed unless true. BYO Nmap/Nessus only if already on PATH. LICENSE-LOCK forbids shipping/embedding Nmap, Nuclei, OpenVAS, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, RiskReady wrap.
 
 ## Graph
 

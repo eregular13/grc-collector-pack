@@ -297,6 +297,7 @@ BRAKES_DEFAULTS = (
     ("byo_path", "allow_tools ∩ PATH; missing → plan-only; never apt/embed"),
     ("license_lock", "never embed scanners; nuclei/openvas/osquery stay file_drop"),
     ("wrap", "push_riskready.sh review-only; never POST"),
+    ("external_ingest", "file-drop inventory of in/easm|…; never probe"),
     ("layer_c", "parse-only ingest into in/<sensor>/"),
     ("compose", "scanner-free; runtime ABSENT without Docker CLI"),
 )
@@ -322,6 +323,60 @@ def ingest_map() -> dict[str, dict[str, int]]:
         else:
             bucket["file_drop"] += 1
     return by_sensor
+
+
+SKIP_DROP_NAMES = frozenset({".gitkeep", "plan.json", "summary.json"})
+
+
+def parse_output_glob(output_glob: str) -> tuple[str, str] | None:
+    """`in/easm/*.jsonl` → (`easm`, `*.jsonl`). Refuse unknown sensors."""
+    text = str(output_glob or "").strip()
+    if not text.startswith("in/"):
+        return None
+    rest = text[3:]
+    if "/" not in rest:
+        return None
+    sensor, pattern = rest.split("/", 1)
+    if sensor not in LAYER_C_SENSORS or not pattern:
+        return None
+    return sensor, pattern
+
+
+def dropped_file_inventory(dest_in: Path, category: str = "external") -> dict[str, Any]:
+    """List operator-dropped files already in dest_in. Never probes. Never subprocess."""
+    want = str(category or "").strip().lower()
+    sensors: dict[str, list[str]] = {}
+    for _name, slot in load_slots().items():
+        cat = str(slot.get("category") or slot.get("stage") or "").lower()
+        if cat != want:
+            continue
+        parsed = parse_output_glob(str(slot.get("output_glob") or ""))
+        if not parsed:
+            continue
+        sensor, pattern = parsed
+        folder = dest_in / sensor
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.glob(pattern)):
+            if not path.is_file() or path.name in SKIP_DROP_NAMES:
+                continue
+            bucket = sensors.setdefault(sensor, [])
+            if path.name not in bucket:
+                bucket.append(path.name)
+    files = [f"{sensor}/{name}" for sensor, names in sorted(sensors.items()) for name in names]
+    return {
+        "category": want,
+        "file_count": len(files),
+        "files": files,
+        "sensors": {sensor: list(names) for sensor, names in sorted(sensors.items())},
+        "will_run": False,
+        "live": False,
+        "probed": False,
+        "note": (
+            "Operator file-drop inventory only. Orchestrator does not probe. "
+            "Land artifacts in in/easm|… then Layer C parses."
+        ),
+    }
 
 
 def render_slots_md() -> str:

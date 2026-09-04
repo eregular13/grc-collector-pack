@@ -8,7 +8,7 @@ This directory is the **gated runner**. The public pack stays parse-only. Do not
 ## Three layers (see `ARCHITECTURE.md`)
 
 - **Layer A — BYO tool zoo.** Consent SCOPE names host tools already on the drop box. This repo does not embed Nmap/Nessus/Nuclei/OpenVAS.
-- **Layer B — orchestrator = brakes.** Quiet discover → gated deepen → destroy workers → ingest into `in/` → grc_export. `python3 -m dropbox status` prints the stage graph, last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). Private farm install path: `farm/OPERATOR.md`.
+- **Layer B — orchestrator = brakes.** Quiet discover → gated deepen → destroy workers → **external (plan-only)** → ingest into `in/` (including inventory of dropped `in/easm|…` files) → grc_export. `python3 -m dropbox status` prints the stage graph, last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). Private farm install path: `farm/OPERATOR.md`.
 - **Layer C — 10 containers (9 collectors + loader).** Parse-only files in `in/` → CISO / POA&M / SimpleRisk leave-behind.
 
 Layer B **feeds** Layer C via `in/`. It does **not** turn Layer C into live scanners. “100 tools” means parser file-family inputs, not 100 binaries in compose.
@@ -102,6 +102,12 @@ python3 -m dropbox run --profile external
 writers (DROPBOX_DEMO=1). They do not add a new live probe. Wildcards, CIDRs,
 and `0.0.0.0/0` are refused in `external:` at the SCOPE gate. Named hosts and
 `https://` URLs are allowed.
+
+Ingest after the plan-only external stage **inventories** files already in
+`in/easm/` (and other Layer C dirs those slots map to). It copies discover/
+deepen artifacts when present. It does **not** curl or testssl. `.gitkeep`
+and `plan.json` are ignored. Live external BYO remains operator-local under
+written SCOPE — this pack wires planning + ingest of dropped files only.
 
 Operator MCP: `python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools and exits (no Hexstrike server, no FastMCP).
 
