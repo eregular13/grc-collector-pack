@@ -315,6 +315,7 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     assert "scan.xml" in names
     assert "masscan.xml" in names
     assert "naabu.jsonl" in names
+    assert "arp-scan.txt" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -412,6 +413,74 @@ def test_fast_portscan_parser_no_live() -> None:
         assert "Popen" not in src
         assert "rustscan -" not in src
         assert "naabu -" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_arp_scan_demo_attaches_asset_only() -> None:
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "arp-scan.txt")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in assets]
+    assert "filesrv.corp.local" in names
+    assert "10.0.0.50" not in names
+    assert findings == []
+    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    extra = host.get("extra") or {}
+    assert extra.get("mac") == "00:11:22:33:44:55"
+    assert "Dell" in str(extra.get("vendor") or "")
+    assert extra.get("ip") == "10.0.0.50"
+    assert "arp" in (host.get("labels") or [])
+
+
+def test_arp_scan_empty(tmp_path) -> None:
+    dest = tmp_path / "arp-scan.txt"
+    dest.write_text(
+        "Starting arp-scan 1.10.0 with 256 hosts\n"
+        "Ending arp-scan 1.10.0: 256 hosts scanned. 0 responded\n",
+        encoding="utf-8",
+    )
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("# comment only\nInterface: eth0, MAC: 00:0c:29:aa:bb:cc\n", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_arp_scan_json_and_jsonl(tmp_path) -> None:
+    dest = tmp_path / "hosts.json"
+    dest.write_text(
+        '{"ip":"10.0.0.50","mac":"00:11:22:33:44:55","vendor":"Dell Inc.",'
+        '"hostname":"filesrv.corp.local"}',
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    assets = [r for r in recs if r["kind"] == "asset"]
+    assert [r["name"] for r in assets] == ["filesrv.corp.local"]
+    assert [r for r in recs if r["kind"] == "finding"] == []
+    dest = tmp_path / "arp.jsonl"
+    dest.write_text(
+        '{"ip":"10.0.0.50","mac":"aa:bb:cc:dd:ee:ff","hostname":"filesrv.corp.local"}\n'
+        '{"ip":"10.0.0.51","mac":"11:22:33:44:55:66","vendor":"Unknown"}\n',
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    names = {r["name"] for r in recs if r["kind"] == "asset"}
+    assert names == {"filesrv.corp.local", "10.0.0.51"}
+    assert [r for r in recs if r["kind"] == "finding"] == []
+    dest = tmp_path / "arp-scan.json"
+    dest.write_text("[]", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_arp_scan_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/arp_scan.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "arp-scan --" not in src
+        assert "arp-scan -l" not in src
         assert "nmap -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src

@@ -110,6 +110,12 @@ rustscan / naabu **JSON / JSONL** is the same `in/nmap/` file-drop path
 invent nothing. The collector never runs rustscan or naabu. Those slots
 stay BYO invoke (`allow_tools` + PATH) on a consented box.
 
+arp-scan **text / JSON** is the same `in/nmap/` file-drop path
+(`Starting arp-scan` or IP + MAC + vendor lines; `{ip, mac, vendor}`).
+Hosts become assets only. Empty / header-only invent nothing. The
+collector never runs arp-scan and never does live ARP. The catalog
+slot stays `file_drop`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to

@@ -76,6 +76,7 @@ SCANNER_PKGS = tuple(
             "masscan",
             "naabu",
             "rustscan",
+            "arp-scan",
             "metasploit",
             "msfconsole",
             "hexstrike",

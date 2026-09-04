@@ -58,8 +58,12 @@ Open 445 / 3389 / 23 map to the existing CISO/POA&M rows (SMB, RDP, Telnet).
 Also drop **rustscan** / **naabu** JSON or JSONL (`{ip, port}` or
 `{ip, ports:[int]}`). Open ports only — empty / closed invent nothing.
 rustscan / naabu *invoke* stays BYO (`allow_tools` + PATH); Layer C never
-subprocesses those binaries. Empty `in/` still loads `fixtures/demo/nmap/`
-(`scan.gnmap`, `scan.xml`, `masscan.xml`, `naabu.jsonl`). No new catalog slots.
+subprocesses those binaries. Also drop **arp-scan** text or JSON
+(`Starting arp-scan` / IP + MAC + vendor lines, or `{ip, mac, vendor}`).
+Hosts become assets only — empty / header-only / 0 responded invent nothing.
+arp-scan stays `file_drop` (never subprocess; no live ARP). Empty `in/`
+still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`, `masscan.xml`,
+`naabu.jsonl`, `arp-scan.txt`). No new catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 

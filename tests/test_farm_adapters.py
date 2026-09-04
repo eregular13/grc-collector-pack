@@ -100,6 +100,11 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "rustscan" in md
     assert "naabu" in md
     assert "naabu.jsonl" in md
+    assert "arp-scan" in md
+    assert "arp-scan.txt" in md
+    assert slots["arp-scan"].get("scope_key") == "file_drop"
+    assert slots["arp-scan"].get("wired") is False
+    assert slots["arp-scan"].get("invoke") is False
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

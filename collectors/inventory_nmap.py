@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap, masscan, rustscan, and naabu exports into hosts + exposure.
+"""Parse dropped Nmap, masscan, rustscan, naabu, and arp-scan exports into hosts + exposure.
 
-Parse-only. Does not run nmap, masscan, rustscan, or naabu.
+Parse-only. Does not run nmap, masscan, rustscan, naabu, or arp-scan.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from shared.arp_scan import parse_arp_scan
 from shared.fast_portscan import parse_fast_portscan
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
@@ -44,7 +45,25 @@ def _stamp_demo(records: list[dict], demo: bool) -> None:
             labels.append("demo")
 
 
-def _emit_host(records: list[dict], now: str, name: str, addr: str, hostname: str, ports: list[tuple[str, str]]) -> None:
+def _emit_host(
+    records: list[dict],
+    now: str,
+    name: str,
+    addr: str,
+    hostname: str,
+    ports: list[tuple[str, str]],
+    extra: dict[str, Any] | None = None,
+    extra_labels: list[str] | None = None,
+) -> None:
+    extra_out: dict[str, Any] = {"asset_type": "PR", "ip": addr, "hostname": hostname}
+    if extra:
+        for key, value in extra.items():
+            if value not in (None, ""):
+                extra_out[key] = value
+    labels = list(LABELS)
+    for lab in extra_labels or []:
+        if lab not in labels:
+            labels.append(lab)
     records.append(
         make_record(
             kind="asset",
@@ -55,9 +74,9 @@ def _emit_host(records: list[dict], now: str, name: str, addr: str, hostname: st
             severity="info",
             category="host",
             assets=[name],
-            labels=LABELS,
+            labels=labels,
             collected_at=now,
-            extra={"asset_type": "PR", "ip": addr, "hostname": hostname},
+            extra=extra_out,
         )
     )
     for portid, svc in ports:
@@ -203,6 +222,26 @@ def parse_file(path: Path) -> list[dict]:
                 str(host.get("addr") or ""),
                 str(host.get("hostname") or ""),
                 ports,
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    arp = parse_arp_scan(path, raw)
+    if arp is not None:
+        records = []
+        for host in arp:
+            extra = {
+                "mac": host.get("mac") or "",
+                "vendor": host.get("vendor") or "",
+            }
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                [],
+                extra=extra,
+                extra_labels=["arp"],
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
