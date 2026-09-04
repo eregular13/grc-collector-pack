@@ -1,6 +1,6 @@
-cycle: 79
+cycle: 80
 phase: DONE
-item: CONDUCTOR-STDIO-E2E
+item: VERIFY-GREEN
 critic_score: 8/10
 open_p0:
 open_p1:

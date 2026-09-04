@@ -2,13 +2,18 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 79):** conductor stdio MCP e2e. `mcp serve`
-forwards `--stdio` / `--once` / `--scope`. Process tests cover
-initialize, stable `OPERATOR_TOOLS`, and empty/unsigned SCOPE refuse.
-Hexstrike pattern-only. Stub ≠ USB pack truth. Runtime still **ABSENT**
-(`docker CLI not on PATH`) — not a PASS. Cycle 74 Reid-only blockers
-stay locked. Wrap stays **dead**. Paying-day **FAIL**. DEMO ≠ client.
-Catalog unchanged. pytest **320**.
+**This window (cycle 80):** verify-green / no-diff. Backlog (a)–(e
+statics) MET. Runtime still **ABSENT** (`docker CLI not on PATH`) —
+not a PASS. No product code. Cycle 79 conductor stdio e2e stays locked.
+Cycle 74 Reid-only blockers stay locked. Wrap stays **dead**. Paying-day
+**FAIL**. DEMO ≠ client. Catalog unchanged. pytest **320**.
+
+**Cycle 79 (stands):** conductor stdio MCP e2e. `mcp serve` forwards
+`--stdio` / `--once` / `--scope`. Process tests cover initialize,
+stable `OPERATOR_TOOLS`, and empty/unsigned SCOPE refuse. Hexstrike
+pattern-only. Stub ≠ USB pack truth. Runtime still **ABSENT**. Cycle 74
+Reid-only blockers stay locked. Wrap stays **dead**. Paying-day **FAIL**.
+DEMO ≠ client. Catalog unchanged. pytest **320**.
 
 **Cycle 78 (stands):** verify-green / no-diff. Backlog
 (a)–(e statics) MET. Runtime still **ABSENT**. No product code. Cycle
@@ -171,10 +176,10 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
-**Deltas vs cycle 78:** lab counts unchanged. pytest **320** (+1 stdio
-MCP e2e). (e) runtime still ABSENT. Catalog / wrap / compose /
-paying-day / LICENSE-LOCK will_run unchanged. Paying-day remains **FAIL**.
-Compose remains **ABSENT**. Wrap remains review-only / dead. `scope_gap`
+**Deltas vs cycle 79:** lab counts unchanged. pytest **320**. No-diff.
+(e) runtime still ABSENT. Catalog / wrap / compose / paying-day /
+LICENSE-LOCK will_run unchanged. Paying-day remains **FAIL**. Compose
+remains **ABSENT**. Wrap remains review-only / dead. `scope_gap`
 remains **none**.
 
 **Deltas vs cycle 74:** lab counts unchanged. pytest **318**. No-diff
