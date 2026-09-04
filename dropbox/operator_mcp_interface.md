@@ -10,14 +10,30 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `stage_discover` | `discover_stage` | Quiet only. Live BYO nmap only if allowlisted + on PATH |
 | `stage_deepen` | `deepen_stage` | **Refuses** unless `stages.deepen: true`. Hosts = discover-live or `deepen_hosts` |
 | `stage_ingest` | `ingest_stage` | Copies artifacts into `in/`. Does not scan |
+| `farm_slots` | `farm/SLOTS.yaml` | Catalog + wired adapters. No binaries |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` | Paths only. Does not invent owner/due |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
 ```bash
-python3 -m dropbox.mcp_stub serve          # no-op: print the 7 tools and exit
+python3 -m dropbox.mcp_stub serve            # print the operator tools and exit
+python3 -m dropbox.mcp_stub serve --stdio    # JSON-RPC loop (Claude/Cursor)
 python3 -m dropbox mcp serve
 python3 -c "from dropbox.mcp_stub import dispatch; print(dispatch('scope_status'))"
+```
+
+Claude / Cursor MCP snippet (private box, `DROPBOX_LIVE=0`):
+
+```json
+{
+  "mcpServers": {
+    "evergreen-dropbox": {
+      "command": "python3",
+      "args": ["-m", "dropbox.mcp_stub", "serve", "--stdio"],
+      "env": {"DROPBOX_LIVE": "0", "GRC_LIVE_SCAN": "0", "RISKREADY_PUSH": "0"}
+    }
+  }
+}
 ```
 
 ## JSON-RPC examples (stdio stub)

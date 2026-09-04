@@ -146,6 +146,28 @@ def test_jsonrpc_tools_list_and_refuse_exploit() -> None:
     assert "refuses" in bad["error"]["message"]
 
 
+def test_jsonrpc_invokes_plan_status_and_farm_slots() -> None:
+    from dropbox.mcp_stub import handle_jsonrpc
+
+    slots = handle_jsonrpc({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "farm_slots"}})
+    result = slots["result"]
+    assert result["tool"] == "farm_slots"
+    assert result["count"] >= 40
+    assert result["wired_count"] >= 12
+    assert result["vendored_binaries"] is False
+    status = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "orchestrator_status"}}
+    )
+    assert status["result"]["tool"] == "orchestrator_status"
+    assert "discover (quiet)" in status["result"]["stage_graph"]
+    plan = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "orchestrator_plan"}}
+    )
+    assert plan["result"]["tool"] == "orchestrator_plan"
+    assert plan["result"]["live"] is False
+    assert plan["result"]["grc_export"]["posted"] is False
+
+
 def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     (tmp_path / "out" / "poam").mkdir(parents=True)

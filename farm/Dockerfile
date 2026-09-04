@@ -4,6 +4,9 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY dropbox /app/dropbox
 COPY shared /app/shared
+COPY farm/__init__.py /app/farm/__init__.py
+COPY farm/SLOTS.yaml /app/farm/SLOTS.yaml
+COPY farm/adapters /app/farm/adapters
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

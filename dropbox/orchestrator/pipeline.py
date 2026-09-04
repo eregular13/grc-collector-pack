@@ -13,6 +13,20 @@ from dropbox.orchestrator.shard import batch_hosts, reject_wide_deepen_target, s
 from dropbox.scope import NEVER_EMBED, ORCH_BYO, ROOT, GateError, Scope, is_open_internet_cidr, load_scope
 from shared.io_util import in_dir
 
+STAGE_GRAPH = (
+    "plan → shard → discover (quiet) → destroy → "
+    "deepen (loud, gated) → destroy → ingest (parse-only) → grc_export"
+)
+
+_SENSOR_COPY = (
+    ("discover", "nmap", {".gnmap", ".xml", ".nmap"}),
+    ("deepen", "vuln", {".nessus", ".xml", ".json", ".txt"}),
+    ("external", "easm", {".jsonl", ".json", ".txt"}),
+    ("endpoint", "wazuh", {".json", ".txt"}),
+    ("cloud", "cloud", {".json"}),
+    ("identity", "identity", {".json", ".xml", ".csv"}),
+)
+
 
 def _which(name: str) -> str | None:
     return shutil.which(name)
@@ -292,19 +306,22 @@ def collect_discover_hosts(discover_dir: Path | None = None) -> list[str]:
 def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
     """Copy/normalize orchestrator artifacts into pack in/<sensor>/."""
     dest = dest_in or in_dir()
-    nmap_dir = dest / "nmap"
-    nmap_dir.mkdir(parents=True, exist_ok=True)
     copied: list[str] = []
-    src_dir = _orch_dir() / "discover"
-    if src_dir.is_dir():
+    for stage_name, sensor, suffixes in _SENSOR_COPY:
+        src_dir = _orch_dir() / stage_name
+        sensor_dir = dest / sensor
+        sensor_dir.mkdir(parents=True, exist_ok=True)
+        if not src_dir.is_dir():
+            continue
         for path in src_dir.iterdir():
-            if path.suffix.lower() in {".gnmap", ".xml", ".nmap"} and path.is_file():
-                target = nmap_dir / f"dropbox-discover-{path.name}"
+            if path.suffix.lower() in suffixes and path.is_file():
+                target = sensor_dir / f"dropbox-{stage_name}-{path.name}"
                 shutil.copy2(path, target)
                 copied.append(str(target))
     marker = {
         "client": scope.client_name,
         "copied": copied,
+        "sink": "Layer C parse-only via in/",
         "note": (
             "Plan-only labs have no nmap/nessus artifacts. "
             "Loader still uses fixtures + demo overlays. "
@@ -313,6 +330,20 @@ def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
     }
     _write_json(_orch_dir() / "ingest" / "summary.json", marker)
     return marker
+
+
+def grc_export_stage(scope: Scope, dest_in: Path | None = None) -> dict:
+    """Point at Layer C CISO/POA&M rails. Does not scan. Does not POST."""
+    return {
+        "stage": "grc_export",
+        "sink": "Layer C parse-only",
+        "in_dir": str(dest_in or in_dir()),
+        "ciso": "out/ciso-assistant/",
+        "poam": "out/poam/poam.csv",
+        "owner_due": "blank — human fills",
+        "posted": False,
+        "note": "Collectors + loader emit CISO/POA&M from in/. Orchestrator does not scan.",
+    }
 
 
 def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | None = None) -> dict:
@@ -327,10 +358,12 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
     if farm.alive("deepen"):
         raise GateError("deepen workers still alive after destroy")
     ingest = ingest_stage(scope, dest_in=dest_in)
+    grc_export = grc_export_stage(scope, dest_in=dest_in)
     summary = {
         "client": scope.client_name,
         "live": live,
         "governor": "quiet→loud",
+        "stage_graph": STAGE_GRAPH,
         "brakes": {
             "max_workers": scope.max_workers,
             "batch_size": scope.deepen_batch,
@@ -355,6 +388,7 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "host_source": deepen.get("host_source") or "",
         },
         "ingest": ingest,
+        "grc_export": grc_export,
         "integrity_stops": integrity_stops(scope),
         "last_integrity_stop": (discover.get("skip_reason") or deepen.get("skip_reason") or ""),
         "path_matrix": byo.tool_matrix(scope.allow_tools),
@@ -388,6 +422,7 @@ def integrity_stops(scope: Scope) -> list[str]:
         "no 0.0.0.0/0",
         "BYO nmap/nessus on PATH only; never apt/embed/download",
         "farm is private; binaries not vendored (not a public Hub image)",
+        "allow_tools ∩ PATH ∩ SLOTS",
     ]
     if not scope.stage_deepen:
         stops.append("stages.deepen=false (deepen fail-closed)")

@@ -18,6 +18,11 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "Layer A" in text
     assert "parse-only" in text.lower()
     assert "Submodule hexstrike-ai" in text or "submodule hexstrike-ai" in text.lower()
+    op = (FARM / "OPERATOR.md").read_text(encoding="utf-8")
+    assert "FARM_TOOL_BIN" in op
+    assert "written SCOPE" in op
+    assert "quiet" in op.lower()
+    assert "mcpServers" in op or "dropbox.mcp_stub" in op
 
 
 def test_farm_slots_are_adapters_not_binaries() -> None:
@@ -27,13 +32,15 @@ def test_farm_slots_are_adapters_not_binaries() -> None:
     assert data.get("vendored_binaries") is False
     slots = data.get("slots") or {}
     assert isinstance(slots, dict)
+    assert len(slots) >= 40
     for required in ("nmap", "nessus", "testssl", "curl", "lynis", "hardeningkitty-export", "prowler", "maester"):
         assert required in slots
         slot = slots[required]
         assert slot.get("vendored") is False
         assert slot.get("sensor")
         assert slot.get("stage")
-    # No binary files under farm/tool-bin
+        assert slot.get("license_class")
+        assert slot.get("output_glob")
     tool_bin = FARM / "tool-bin"
     for path in tool_bin.iterdir():
         if path.name in {".gitkeep", "README.md"}:
@@ -49,19 +56,22 @@ def test_farm_image_files_are_scanner_free() -> None:
     docker = (FARM / "Dockerfile").read_text(encoding="utf-8")
     assert "FROM python:3.12-slim" in docker
     assert not any(line.strip().upper().startswith("RUN ") for line in docker.splitlines())
-    assert "apt" not in docker.lower()
+    assert "apt-get" not in docker.lower()
+    assert "apt install" not in docker.lower()
     compose = (FARM / "docker-compose.yml").read_text(encoding="utf-8")
     assert "DROPBOX_LIVE: \"0\"" in compose
     assert "GRC_LIVE_SCAN: \"0\"" in compose
     assert "apt-get" not in compose.lower()
-    assert "farm-discover" in compose and "farm-deepen" in compose
+    assert "farm-discover" in compose and "farm-deepen" in compose and "farm-ingest" in compose
+    assert "farm-internal" in compose
+    assert "internal: true" in compose
     hits = scan_text(compose, "farm/docker-compose.yml")
     assert hits == []
     hits = scan_text(docker, "farm/Dockerfile")
     assert hits == []
 
 
-def test_farm_does_not_vendor_scanner_binaries() -> None:
+def test_farm_tree_has_no_embedded_scanners() -> None:
     forbidden_ext = {".deb", ".rpm", ".exe", ".nbin", ".nasl"}
     hits = []
     for path in FARM.rglob("*"):
@@ -71,4 +81,7 @@ def test_farm_does_not_vendor_scanner_binaries() -> None:
             hits.append(path)
         if path.name.lower() in {"nmap", "nessus", "nuclei", "openvas"}:
             hits.append(path)
+        if path.suffix.lower() in {".py", ".yml", ".yaml", ".md"}:
+            text_hits = scan_text(path.read_text(encoding="utf-8"), str(path.relative_to(ROOT)))
+            hits.extend(text_hits)
     assert hits == []

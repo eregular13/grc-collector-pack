@@ -2,36 +2,61 @@
 # Tools arrive via host PATH, FARM_TOOL_BIN bind-mount, or image tags Reid builds.
 # This file does not apt-install nmap/nessus/nuclei/openvas.
 # Default volumes stay under farm/work — not pack in/.
+# Short-lived worker services: discover / deepen / ingest. Network is internal.
+
+x-farm-common: &farm-common
+  image: ${FARM_ORCH_IMAGE:-grc-collector-pack:local}
+  build:
+    context: ..
+    dockerfile: farm/Dockerfile
+  environment:
+    PYTHONPATH: /app
+    DRY_RUN: "1"
+    DROPBOX_DEMO: "1"
+    DROPBOX_LIVE: "0"
+    GRC_LIVE_SCAN: "0"
+    CISO_PUSH: "0"
+    RISKREADY_PUSH: "0"
+    IN_DIR: /in
+    OUT_DIR: /out
+    DROPBOX_ORCH_DIR: /var/farm
+  volumes:
+    - ${FARM_IN:-./work/in}:/in
+    - ${FARM_OUT:-./work/out}:/out
+    - ${FARM_TOOL_BIN:-./tool-bin}:/opt/farm/bin:ro
+    - farm-discover:/var/farm/discover
+    - farm-deepen:/var/farm/deepen
+    - farm-ingest:/var/farm/ingest
+    - ../dropbox:/app/dropbox:ro
+    - ../farm:/app/farm:ro
+    - ../shared:/app/shared:ro
+  networks:
+    - farm-internal
 
 services:
   farm-orchestrator:
+    <<: *farm-common
     profiles: ["orchestrate"]
-    image: ${FARM_ORCH_IMAGE:-grc-collector-pack:local}
-    build:
-      context: ..
-      dockerfile: farm/Dockerfile
     command: ["python", "-m", "dropbox", "orchestrate"]
-    environment:
-      PYTHONPATH: /app
-      DRY_RUN: "1"
-      DROPBOX_DEMO: "1"
-      DROPBOX_LIVE: "0"
-      GRC_LIVE_SCAN: "0"
-      CISO_PUSH: "0"
-      RISKREADY_PUSH: "0"
-      IN_DIR: /in
-      OUT_DIR: /out
-      DROPBOX_ORCH_DIR: /var/farm
-    volumes:
-      - ${FARM_IN:-./work/in}:/in
-      - ${FARM_OUT:-./work/out}:/out
-      - ${FARM_TOOL_BIN:-./tool-bin}:/opt/farm/bin:ro
-      - farm-discover:/var/farm/discover
-      - farm-deepen:/var/farm/deepen
-      - farm-ingest:/var/farm/ingest
-      - ../dropbox:/app/dropbox:ro
+  farm-discover:
+    <<: *farm-common
+    profiles: ["discover"]
+    command: ["python", "-m", "dropbox", "mcp", "stage_discover"]
+  farm-deepen:
+    <<: *farm-common
+    profiles: ["deepen"]
+    command: ["python", "-m", "dropbox", "mcp", "stage_deepen"]
+  farm-ingest:
+    <<: *farm-common
+    profiles: ["ingest"]
+    command: ["python", "-m", "dropbox", "mcp", "stage_ingest"]
 
 volumes:
   farm-discover:
   farm-deepen:
   farm-ingest:
+
+networks:
+  farm-internal:
+    driver: bridge
+    internal: true

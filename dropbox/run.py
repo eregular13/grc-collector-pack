@@ -76,13 +76,14 @@ def _seed_fixtures(dest_in: Path) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    from dropbox.orchestrator import byo
-    from dropbox.orchestrator.pipeline import _orch_dir, integrity_stops
+    from dropbox.orchestrator.pipeline import STAGE_GRAPH, _orch_dir, integrity_stops
+    from farm.adapters.catalog import slot_matrix
 
     scope = load_scope(Path(args.scope) if args.scope else None)
     _print_gate(scope)
+
     print("governor: quiet→loud")
-    print("stage graph: discover (quiet) → deepen (loud, gated) → ingest (parse-only)")
+    print(f"stage graph: {STAGE_GRAPH}")
     print(
         f"  stage=discover volume=quiet armed={scope.stage_discover} "
         f"prefix=/{scope.discover_prefix} max_workers={scope.max_workers}"
@@ -92,13 +93,15 @@ def cmd_status(args: argparse.Namespace) -> int:
         f"batch={scope.deepen_batch} deepen_hosts={len(scope.deepen_hosts)}"
     )
     print("  stage=ingest Layer C collectors — files in in/ only; not live scanners")
+    print("  stage=grc_export CISO CSVs + POA&M (owner/due blank); wrap review-only")
     print("integrity stops:")
     for stop in integrity_stops(scope):
         print(f"  - {stop}")
-    print("allow_tools ∩ PATH:")
-    for row in byo.tool_matrix(scope.allow_tools):
+    print("allow_tools ∩ PATH ∩ SLOTS:")
+    for row in slot_matrix(scope.allow_tools):
         loc = row["path"] or "—"
-        print(f"  {row['tool']:12} {row['state']:8} {loc}")
+        slot_state = row.get("slot_state") or row["state"]
+        print(f"  {row['tool']:24} {slot_state:12} {loc}")
     summary_path = _orch_dir() / "summary.json"
     if summary_path.is_file():
         data = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -195,7 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     st.set_defaults(func=cmd_status)
     mcp = sub.add_parser("mcp", help="operator MCP stub (SCOPE-gated; no attack API)")
-    mcp.add_argument("tool", help="scope_status|orchestrator_plan|orchestrator_status|stage_*|export_ciso_poam")
+    mcp.add_argument("tool", help="scope_status|orchestrator_plan|orchestrator_status|stage_*|farm_slots|export_ciso_poam")
     mcp.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     mcp.set_defaults(func=cmd_mcp)
     return p

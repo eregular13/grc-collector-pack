@@ -196,5 +196,7 @@ def test_status_cli_prints_stops_and_demo_label() -> None:
     assert "batch overflow" in proc.stdout
     assert "scope miss" in proc.stdout
     assert "farm is private" in proc.stdout
+    assert "grc_export" in proc.stdout
+    assert "allow_tools ∩ PATH ∩ SLOTS" in proc.stdout
     assert "DEMO" in proc.stdout
     assert "not a client" in proc.stdout.lower() or "not a client estate" in proc.stdout

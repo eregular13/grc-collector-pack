@@ -8,7 +8,7 @@ This directory is the **gated runner**. The public pack stays parse-only. Do not
 ## Three layers (see `ARCHITECTURE.md`)
 
 - **Layer A — BYO tool zoo.** Consent SCOPE names host tools already on the drop box. This repo does not embed Nmap/Nessus/Nuclei/OpenVAS.
-- **Layer B — orchestrator = brakes.** Quiet discover → gated deepen → destroy workers → ingest into `in/`. `python3 -m dropbox status` prints the stage graph, last integrity stop, shard/batch counters, and `allow_tools ∩ PATH` (present/missing).
+- **Layer B — orchestrator = brakes.** Quiet discover → gated deepen → destroy workers → ingest into `in/` → grc_export. `python3 -m dropbox status` prints the stage graph, last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). Private farm install path: `farm/OPERATOR.md`.
 - **Layer C — 10 containers (9 collectors + loader).** Parse-only files in `in/` → CISO / POA&M / SimpleRisk leave-behind.
 
 Layer B **feeds** Layer C via `in/`. It does **not** turn Layer C into live scanners. “100 tools” means parser file-family inputs, not 100 binaries in compose.

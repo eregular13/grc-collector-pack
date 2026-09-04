@@ -15,6 +15,7 @@ from typing import Any
 from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import (
+    STAGE_GRAPH,
     _orch_dir,
     deepen_stage,
     discover_stage,
@@ -31,6 +32,7 @@ OPERATOR_TOOLS = (
     "stage_discover",
     "stage_deepen",
     "stage_ingest",
+    "farm_slots",
     "export_ciso_poam",
 )
 
@@ -45,6 +47,29 @@ REFUSED_ATTACK = (
     "unauth-autonomous",
     "autonomous spray",
 )
+
+
+def _slot_matrix(allow_tools: list[str]) -> list[dict[str, Any]]:
+    from farm.adapters.catalog import slot_matrix
+
+    return slot_matrix(allow_tools)
+
+
+def farm_slots() -> dict[str, Any]:
+    from farm.adapters.catalog import load_catalog, wired_slots
+
+    data = load_catalog()
+    wired = wired_slots()
+    return {
+        "tool": "farm_slots",
+        "private": bool(data.get("private")),
+        "hub_publish": bool(data.get("hub_publish")),
+        "vendored_binaries": bool(data.get("vendored_binaries")),
+        "count": len(data.get("slots") or {}),
+        "wired": sorted(wired),
+        "wired_count": len(wired),
+        "scope_gated": True,
+    }
 
 
 def refuse_attack_name(name: str) -> None:
@@ -78,6 +103,8 @@ def dispatch(
         return stage_deepen_tool(scope_path=path, live=live)
     if tool == "stage_ingest":
         return stage_ingest(scope_path=path)
+    if tool == "farm_slots":
+        return farm_slots()
     return export_ciso_poam()
 
 
@@ -93,6 +120,7 @@ def scope_status(scope_path: Path | None = None) -> dict[str, Any]:
         "deepen_batch": scope.deepen_batch,
         "allow_tools": list(scope.allow_tools),
         "path_matrix": byo.tool_matrix(scope.allow_tools),
+        "slot_matrix": _slot_matrix(scope.allow_tools),
         "integrity_stops": integrity_stops(scope),
         "demo": "DEMO" in scope.client_name.upper(),
     }
@@ -119,12 +147,13 @@ def orchestrator_status(scope_path: Path | None = None) -> dict[str, Any]:
     deep = last.get("deepen") or {}
     return {
         "tool": "orchestrator_status",
-        "stage_graph": "discover (quiet) → deepen (loud, gated) → ingest (parse-only)",
+        "stage_graph": STAGE_GRAPH,
         "stage_discover": scope.stage_discover,
         "stage_deepen": scope.stage_deepen,
         "max_workers": scope.max_workers,
         "deepen_batch": scope.deepen_batch,
         "path_matrix": byo.tool_matrix(scope.allow_tools),
+        "slot_matrix": _slot_matrix(scope.allow_tools),
         "last_integrity_stop": last.get("last_integrity_stop")
         or disc.get("skip_reason")
         or deep.get("skip_reason")
@@ -195,7 +224,7 @@ def tool_catalog() -> dict[str, Any]:
     """stdio catalog. Not FastMCP. Not Hexstrike. No network bind."""
     return {
         "server": "dropbox-operator-mcp",
-        "protocol": "stdio-jsonrpc-stub",
+        "protocol": "stdio-jsonrpc",
         "hexstrike": False,
         "exploit_api": False,
         "scope_gated": True,
@@ -235,9 +264,28 @@ def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None)
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": f"method not found: {method}"}}
 
 
+def _stdio_loop(*, scope_path: Path | str | None = None) -> int:
+    """JSON-RPC stdio loop. tools/call is plan-only. No network bind."""
+    for raw in sys.stdin:
+        if not raw.strip():
+            continue
+        try:
+            req = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            print(
+                json.dumps({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(exc)}}),
+                flush=True,
+            )
+            continue
+        print(json.dumps(handle_jsonrpc(req, scope_path=scope_path), default=str), flush=True)
+    return 0
+
+
 def serve(argv: list[str] | None = None) -> int:
-    """List the 7 operator tools and exit. --once reads one JSON-RPC line from stdin."""
+    """List operator tools, or speak JSON-RPC on stdin (--once / --stdio)."""
     args = list(argv or [])
+    if "--stdio" in args:
+        return _stdio_loop()
     if "--once" in args:
         raw = sys.stdin.readline()
         if raw.strip():
