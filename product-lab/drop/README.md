@@ -25,6 +25,6 @@ SHA256 `assets.csv`: `4CFAB51E09CFC1D4930609114A08670187ACCF2928C07D4DC783471BE2
 | `assets.json` | inventory |
 | `incidents.json` | explicit + high/critical findings |
 | `evidence.json` | TECHNICAL / SENSOR / DRAFT |
-| `risks_proposed.json` | **on disk only — do not POST `/api/risks`** |
+| `assets.json` `evidence.json` `incidents.json` `risks_proposed.json` | **LICENSE-LOCK stay-out — review on disk. Never wrap or POST.** |
 
 SHA256 `risks_proposed.json`: `E10DE14A57A876F5BA18ED00C22769C6AD60AB7158C5757DC60F54DD5FA9C91C`

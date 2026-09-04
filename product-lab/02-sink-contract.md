@@ -16,8 +16,8 @@ This checkout has no `mock_sink` service, no `18080` bind in `docker-compose.yml
 
 | Script | Default flags | Allowed live POSTs if flags flipped | Forbidden |
 |---|---|---|---|
-| `push_ciso.sh` | `CISO_PUSH=0` → exit 0, print dry | `/api/assets/`, `/api/evidences/` when `CISO_PUSH=1` **and** `DRY_RUN!=1` | `/api/risks` (string present only as “Skipped”) |
-| `push_riskready.sh` | `RISKREADY_PUSH=0` → exit 0, print dry | auth/login, itsm/assets, evidence, incidents when `RISKREADY_PUSH=1` **and** `DRY_RUN!=1` | `/api/risks` (string present only as “Skipped”) |
+| `push_ciso.sh` | `CISO_PUSH=0` → exit 0, print dry + clica path | `/api/assets/`, `/api/evidences/` when `CISO_PUSH=1` **and** `DRY_RUN!=1` | `/api/risks`; FindingsAssessment UUIDs |
+| `push_riskready.sh` | always review-only | **none** — LICENSE-LOCK stay-out even if `RISKREADY_PUSH=1` | login, `/itsm/assets`, `/evidence`, `/incidents`, `/api/risks` |
 
 Default compose env: `DRY_RUN=1` `CISO_PUSH=0` `RISKREADY_PUSH=0`.
 

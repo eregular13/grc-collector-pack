@@ -29,6 +29,16 @@ def test_no_post_api_risks() -> None:
         assert 'POST "/api/risks"' not in text
 
 
+def test_riskready_source_has_no_wrap_posts() -> None:
+    text = (ROOT / "push_riskready.sh").read_text(encoding="utf-8")
+    assert "curl" not in text
+    assert "/api/auth/login" not in text
+    assert "/itsm/assets" not in text
+    assert "${API}/evidence" not in text
+    assert "${API}/incidents" not in text
+    assert "${API}/risks" not in text
+
+
 def test_collectors_do_not_open_sockets() -> None:
     banned = ("socket.socket", "urllib.request", "http.client", "requests.get", "httpx.")
     for py in (ROOT / "collectors").glob("*.py"):

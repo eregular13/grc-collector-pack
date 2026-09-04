@@ -1,0 +1,22 @@
+# product-lab/drop MANIFEST — CISO Assistant CSVs
+
+Estate: demo (`in/` empty → fixtures/demo). Not a client.
+Copied from out/ after a lab. Hashes are SHA256 of the files in this folder.
+Do not invent FindingsAssessment UUIDs. Import with clica or the CISO Assistant UI.
+
+| File | Role | Notes |
+|---|---|---|
+| ciso/assets.csv | PR/SP inventory | header contract; type PR\|SP |
+| ciso/findings.csv | findings | severity low\|medium\|high\|critical |
+| ciso/vulnerabilities.csv | CVEs / SAST / secrets | severity Information\|Low\|Medium\|High\|Critical |
+| ciso/evidences.csv | evidence names | nine sensors + loader |
+| ciso/applied_controls.csv | remediations | status to_do |
+| ciso/risk_scenarios.csv | semicolon scenarios | treatment=mitigate |
+
+SHA256 (filled after this cycle’s host lab):
+
+```
+pending — run scripts/lab.sh then refresh this block from out/ciso-assistant/
+```
+
+RiskReady JSON in `riskready/` is LICENSE-LOCK stay-out. Review on disk. Never POST.

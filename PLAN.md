@@ -11,7 +11,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 1. Nine collectors parse OSS scanner artifacts into canonical JSONL (`asset|finding|evidence|incident`).
 2. `grc-loader` emits CISO Assistant CSVs, RiskReady JSON, OCSF class_uid 2003, `summary.json`, `risks_proposed.json`.
 3. Compose: one `python:3.12-slim` image, ten services, loader waits on `service_completed_successfully`.
-4. Safety: `CISO_PUSH=0` `RISKREADY_PUSH=0` `GRC_LIVE_SCAN=0` `DRY_RUN=1`. Secrets → `[REDACTED]`.
+4. Safety: `CISO_PUSH=0` `RISKREADY_PUSH=0` `GRC_LIVE_SCAN=0` `DRY_RUN=1`. Secrets → `[REDACTED]`. LICENSE-LOCK: RiskReady stay-out — `push_riskready.sh` review-only even if `RISKREADY_PUSH=1`.
 5. Lab: pytest + nine collectors + loader + `tests/lab_outputs.py`. Counts ≥20 assets, ≥20 findings, ≥8 evidence.
 6. Hostile: truncated JSON, blank Nuclei lines, Nmap without hostnames, double loader (no dupes).
 

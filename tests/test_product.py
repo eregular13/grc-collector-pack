@@ -25,6 +25,9 @@ def test_estate_reads_out() -> None:
     data = estate()
     assert data["product"] == "GRC Collector Pack"
     assert data["safety"]["posts_api_risks"] is False
+    assert data["safety"]["riskready_review_only"] is True
+    assert data["safety"]["riskready_wrap"] is False
+    assert data["safety"]["bind"] == "127.0.0.1"
     if (ROOT / "out" / "summary.json").exists():
         assert data["ready"] is True
         assert data["summary"]["assets"] >= 20
@@ -54,6 +57,9 @@ def test_http_console_and_forbids_risks() -> None:
         with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
             summary = json.loads(res.read().decode("utf-8"))
         assert summary["safety"]["posts_api_risks"] is False
+        assert summary["safety"]["riskready_review_only"] is True
+        assert summary["safety"]["riskready_wrap"] is False
+        assert summary["bind"].startswith("127.0.0.1:")
         with urllib.request.urlopen(base + "/", timeout=5) as res:
             html = res.read().decode("utf-8")
         assert "GRC Collector Pack" in html

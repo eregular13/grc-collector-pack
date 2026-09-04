@@ -1,4 +1,4 @@
-PYTHON ?= python
+PYTHON ?= $(shell command -v python3 >/dev/null 2>&1 && echo python3 || echo python)
 export PYTHONPATH := $(CURDIR)
 export OUT_DIR := $(CURDIR)/out
 export DRY_RUN := 1

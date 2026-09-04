@@ -94,8 +94,11 @@ def estate() -> dict:
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),
             "riskready_push": os.environ.get("RISKREADY_PUSH", "0"),
+            "riskready_wrap": False,
+            "riskready_review_only": True,
             "live_scan": os.environ.get("GRC_LIVE_SCAN", "0"),
             "posts_api_risks": False,
+            "bind": "127.0.0.1",
         },
     }
 
@@ -141,7 +144,7 @@ def build_drop_zip() -> bytes:
     readme = (
         "GRC Collector Pack drop\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
-        "Import RiskReady assets / evidence / incidents JSON.\n"
+        "RiskReady JSON is review-only (LICENSE-LOCK stay-out). Do not wrap or POST.\n"
         "risks_proposed.json is for a human. Do not POST /api/risks.\n"
     )
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:

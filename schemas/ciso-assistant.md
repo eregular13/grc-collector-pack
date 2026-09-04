@@ -3,9 +3,11 @@
 Auth: `Authorization: Token <PAT>`
 API default: `http://localhost:8000/api`
 
-Push (`push_ciso.sh`) only when `CISO_PUSH=1`. REST may POST `/api/assets/` and `/api/evidences/` only. Never POST `/api/risks`.
+CISO Assistant is Reid-side SoR. Prefer clica or UI CSV import. Do not invent FindingsAssessment UUIDs.
 
-Import CSVs via clica or UI. Files land in `out/ciso-assistant/`.
+`push_ciso.sh` defaults to dry-run. REST may POST `/api/assets/` and `/api/evidences/` only when `CISO_PUSH=1` and `DRY_RUN!=1`. Never POST `/api/risks`.
+
+Files land in `out/ciso-assistant/`.
 
 ## assets.csv
 

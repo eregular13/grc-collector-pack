@@ -114,6 +114,10 @@ def assert_lab() -> None:
         text = script.read_text(encoding="utf-8")
         assert not re.search(r"curl[^\n]*/api/risks", text)
         assert "${API}/risks" not in text
+    rr = (ROOT / "push_riskready.sh").read_text(encoding="utf-8")
+    assert "curl" not in rr
+    assert "/api/auth/login" not in rr
+    assert "/itsm/assets" not in rr
 
     # demo path: collectors must not open sockets — static check
     collectors = (ROOT / "collectors").read_text if False else None

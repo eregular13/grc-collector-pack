@@ -56,7 +56,7 @@ python collectors/grc_loader.py
 python tests/lab_outputs.py
 ```
 
-Or `make lab` (`PYTHON=python` on Windows) or `scripts/lab.ps1`.
+Or `make lab` (`PYTHON=python` on Windows, `python3` on Linux) or `scripts/lab.sh` / `scripts/lab.ps1`.
 
 Overnight improve ticks: `LOOP.md` (every 30 minutes until 07:00 Pacific). Each tick reads STATUS / FAULTS / CRITIC and adds one parser or test, then re-labs.
 
@@ -81,18 +81,18 @@ CSV headers (exact):
 - vulnerabilities: `ref_id,name,description,status,severity,assets,applied_controls` (`Information|Low|Medium|High|Critical`)
 - risk_scenarios: semicolon, `treatment=mitigate`
 
-Import with [clica](https://github.com/intuitem/ciso-assistant-community) or the UI. `push_ciso.sh` runs only if `CISO_PUSH=1` and may POST `/api/assets/` and `/api/evidences/` only.
+CISO Assistant is Reid-side SoR. Prefer [clica](https://github.com/intuitem/ciso-assistant-community) or the UI CSV import. Do not invent FindingsAssessment UUIDs. `push_ciso.sh` defaults to dry-run; if `CISO_PUSH=1` and `DRY_RUN!=1` it may POST `/api/assets/` and `/api/evidences/` only.
 
-## RiskReady
+## RiskReady — LICENSE-LOCK stay-out
 
-Auth: `POST /api/auth/login` `{email,password}` — API `http://localhost:9380/api`
+This pack **never wraps or runs RiskReady**. `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`: no login, no HTTP client, no POST. Humans review:
 
-- `assets.json` → `POST /api/itsm/assets`
-- `incidents.json` → `POST /api/incidents` (explicit incidents plus every `high|critical` finding)
-- `evidence.json` → `POST /api/evidence` (`evidenceType=TECHNICAL`, `sourceType=SENSOR`, `status=DRAFT`)
-- `risks_proposed.json` — **never** auto-POST `/api/risks`
+- `out/riskready/assets.json`
+- `out/riskready/evidence.json`
+- `out/riskready/incidents.json`
+- `out/riskready/risks_proposed.json` — **never** auto-POST `/api/risks`
 
-`push_riskready.sh` if `RISKREADY_PUSH=1`: assets / evidence / incidents only.
+Do not restore wrap POSTs to `/api/auth/login`, `/itsm/assets`, `/evidence`, `/incidents`, or `/api/risks`. Tests fail if those reappear.
 
 ## Mapping
 
