@@ -86,6 +86,46 @@ Docker CLI is missing. This VM stamps **ABSENT** after static PASS — not a com
 pass. An operator with Docker may start profiles locally under written SCOPE.
 Do not treat ABSENT as paying-day evidence.
 
+### Compose runtime proof (operator host with Docker)
+
+This checkout stamps **ABSENT**. Do not rewrite that to PASS on a box without Docker.
+
+On a host where `docker compose version` works, under written SCOPE, with
+`DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0` `DROPBOX_LIVE=0`:
+
+1. **Pack Layer C (the only compose path that can stamp runtime PASS)**
+
+   ```bash
+   docker compose config --services
+   docker compose up --build --exit-code-from grc-loader
+   ```
+
+   **PASS criteria:** loader exit 0; exactly 10 services; no published ports;
+   `out/summary.json` exists; image probe finds no nmap/nuclei/openvas/nessus/gvm/zeek
+   (`command -v` must fail for those names). This is **not** a paying-day PASS.
+   Empty pack `in/` is still DEMO fixtures.
+
+2. **Dropbox profiles (what `make dropbox-compose` runs when Docker is up)**
+
+   ```bash
+   docker compose -f docker-compose.dropbox.yml --profile internal run --rm -T dropbox-internal
+   docker compose -f docker-compose.dropbox.yml --profile external run --rm -T dropbox-external
+   ```
+
+   **PASS criteria:** both exit 0 **and** `dropbox/work/compose-lab.json` has
+   `"status": "pass"` plus `"scanner_free": true`. `"status": "absent"` is a hole,
+   not a pass. Never `--live`. Never pack `in/`.
+
+3. **Farm skeleton (operator-local only; this lab never auto-PASS)**
+
+   ```bash
+   docker compose -f farm/docker-compose.yml --profile orchestrate run --rm farm-orchestrator
+   ```
+
+   `make farm-compose` does **not** start workers even when Docker is present;
+   it stamps **ABSENT**. Starting farm profiles is operator-local under written
+   SCOPE. `DROPBOX_LIVE` stays `0` unless the consented box explicitly overrides.
+
 ## License classes (`SLOTS.yaml`)
 
 | Class | Meaning |

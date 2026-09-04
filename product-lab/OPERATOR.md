@@ -76,13 +76,23 @@ CISO prints the clica path and dry-run. RiskReady prints LICENSE-LOCK review fil
 
 ## Compose (optional)
 
-If Docker is available:
+This VM stamps compose **ABSENT** when Docker CLI is missing — that is a hole,
+not a PASS, and never a paying-day stamp.
+
+If Docker is available on an operator host:
 
 ```bash
+docker compose config --services    # exactly 10
 docker compose up --build --exit-code-from grc-loader
 ```
 
-This VM’s product lab is **host-only** when the daemon is absent. Compose publishes no ports. The console is host-side, not an eleventh service.
+**PASS criteria:** loader exit 0; 10 services; no published ports;
+`out/summary.json` present. Image must not contain nmap/nuclei/openvas/nessus/gvm/zeek.
+Empty pack `in/` is DEMO fixtures. Do not stamp paying-day from this run.
+
+Dropbox runtime (`make dropbox-compose`) is PASS only when
+`dropbox/work/compose-lab.json` shows `"status": "pass"`. `"absent"` is not a pass.
+Farm compose is an operator skeleton — `make farm-compose` never auto-PASS.
 
 ## Do not
 

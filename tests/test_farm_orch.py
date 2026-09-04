@@ -15,11 +15,12 @@ from dropbox.orchestrator.pipeline import (
     ingest_stage,
     orchestrate,
 )
-from dropbox.scope import GateError, load_scope
+from dropbox.scope import FORBIDDEN_TOOLS, GateError, load_scope
 from farm.adapters.catalog import (
     FILE_DROP_ONLY,
     LICENSE_LOCK_LIVE,
     dropped_file_inventory,
+    load_slots,
     refuse_live_slot,
     select_stage_slots,
 )
@@ -76,6 +77,49 @@ def test_select_refuses_nuclei_openvas_even_if_named() -> None:
     for name in ("nuclei", "openvas"):
         with pytest.raises(GateError, match="LICENSE-LOCK"):
             argv_for(name, f"/stub/{name}", "10.20.30.0/24", 8)
+
+
+def test_license_lock_and_file_drop_never_will_run() -> None:
+    """Even if every slot is allowlisted and on PATH, locked names stay dark."""
+    slots = load_slots()
+    allow = sorted({str(slot.get("binary") or name) for name, slot in slots.items()} | set(slots))
+    locked = (
+        set(LICENSE_LOCK_LIVE)
+        | set(FILE_DROP_ONLY)
+        | set(FORBIDDEN_TOOLS)
+        | {
+            "bloodhound",
+            "azurehound",
+            "sharphound",
+            "pingcastle",
+            "purpleknight",
+            "nuclei",
+            "openvas",
+            "gvm",
+            "enum4linux-ng",
+            "smbmap",
+            "hexstrike",
+        }
+    )
+    ready: set[str] = set()
+    will_run_true: set[str] = set()
+    for stage in ("discover", "deepen", "external"):
+        plan = select_stage_slots(stage, allow, which=lambda n: f"/stub/{n}")
+        ready.update(plan["ready"])
+        for row in plan["selected"]:
+            if row.get("will_run"):
+                will_run_true.add(row["slot"])
+        for row in plan["skipped"]:
+            assert row.get("will_run") is False
+    overlap = (ready | will_run_true) & locked
+    assert not overlap, f"LICENSE-LOCK/file_drop appeared in will_run: {sorted(overlap)}"
+    refuse = set(LICENSE_LOCK_LIVE) | set(FILE_DROP_ONLY) | set(FORBIDDEN_TOOLS)
+    for name in locked:
+        if name not in slots:
+            continue
+        assert slots[name].get("invoke") is not True
+        if name in refuse:
+            assert refuse_live_slot(name, str(slots[name].get("binary") or name))
 
 
 def test_live_discover_uses_path_invoke_only(
