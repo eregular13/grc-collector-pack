@@ -2,7 +2,14 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 69):** Conductor SCOPE gate. `farm_slots` and
+**This window (cycle 70):** Brakes honesty regressions. pytest locks
+`free_day_scope`, `pack_truth`, wrap-dead, and conductor refusals for
+empty/unsigned SCOPE. Cycle 69 SCOPE gate stays locked. Wrap stays
+**dead**. STATUS `wrap: review-only`. Paying-day **FAIL**. Compose
+**ABSENT**. DEMO ≠ client. USB `evergreen_assessment_mcp` remains pack
+truth. Catalog unchanged.
+
+**Cycle 69 (stands):** Conductor SCOPE gate. `farm_slots` and
 `export_ciso_poam` load written SCOPE. Empty/unsigned SCOPE refuses
 stage/status/export. `dropbox.mcp_stub` stays conductor UX, not pack
 truth. USB `evergreen_assessment_mcp` remains pack truth. Wrap stays
@@ -99,7 +106,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**311 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**313 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -110,10 +117,10 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
-**Deltas vs cycle 68:** lab counts unchanged. pytest **310→311**.
+**Deltas vs cycle 69:** lab counts unchanged. pytest **311→313**.
 Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run unchanged.
 Paying-day remains **FAIL**. Compose remains **ABSENT**. Wrap remains
-review-only / dead. Conductor catalog/export no longer skip SCOPE.
+review-only / dead. Brakes tests now cover honesty rails + unsigned SCOPE.
 
 **Deltas vs cycle 58 (enum4linux-ng, still standing):** host/farm findings
 **76→78**, POA&M **79→81** (demo null session + Domain Admins on existing

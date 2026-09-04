@@ -2,7 +2,7 @@
 
 **DEMO ≠ client estate.** Written consent first. This repo does not install scanners.
 
-Honest stamp (cycle 69, host lab): pytest **311** + 1 skip. `make lab`
+Honest stamp (cycle 70, host lab): pytest **313** + 1 skip. `make lab`
 64 / 79 / 19 / 27 poam **82**. Catalog **111 / 32 wired / 30 invoke /
 81 file_drop**. compose **ABSENT** (no Docker CLI — hole, not a PASS).
 Wrap review-only. DEMO ≠ client. Paying-day **FAIL**. LICENSE-LOCK /

@@ -33,6 +33,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 67 done: Hephaestus SCOPE example opt-in (nmap/nessus not free-day default).
 - Cycle 68 done: Farm SOP honesty (OPERATOR/QUICKSTART/INTEGRITY + brakes JSON).
 - Cycle 69 done: Conductor SCOPE gate (farm_slots + export_ciso_poam load SCOPE).
+- Cycle 70 done: Orchestrator brakes regressions (free_day_scope / pack_truth / wrap / unsigned SCOPE).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
