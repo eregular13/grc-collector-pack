@@ -140,8 +140,11 @@ testssl JSON and **Maester** / Entra Graph *exports* are file-drop ingest:
 land testssl JSON under `in/vuln/` or `in/easm/`; Maester or `directoryRoles`
 JSON under `in/saas/`. Layer C parses HIGH testssl rows and Failed Maester
 rows only — no live TLS probe, no Graph API call. OK/Passed stay silent.
-testssl / Maester *invoke* is separate BYO (`allow_tools`) if already on PATH.
-Orchestrate external stays plan-only.
+sslscan **XML / text** is a separate file-drop (not testssl JSON): land under
+`in/vuln/` or `in/easm/`. Weak/failed only (TLS 1.0, SSLv2/v3, Heartbleed).
+Empty / TLS 1.2-only invent nothing. The collector never runs sslscan.
+testssl / sslscan / Maester *invoke* is separate BYO (`allow_tools`) if
+already on PATH. Orchestrate external stays plan-only.
 
 ScubaGear / Okta assessment JSON (or JSONL) is file-drop ingest under
 `in/saas/`. Layer C parses Failed/high Scuba `Results` and inactive Okta

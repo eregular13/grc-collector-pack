@@ -2,7 +2,7 @@
 """Parse Amass / Subfinder / httpx / ffuf / gobuster / WhatWeb / testssl into external hosts.
 
 Parse-only. Does not run amass, httpx, subfinder, ffuf, gobuster, whatweb,
-or any live DNS/HTTP probe.
+sslscan, or any live DNS/HTTP/TLS probe.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.schema import make_record, make_ref
+from shared.sslscan import parse_sslscan
 from shared.testssl import is_testssl, iter_testssl_findings
 
 SOURCE = "easm"
@@ -327,8 +328,57 @@ def _path_exposure_records(
     return records
 
 
+def _sslscan_records(now: str, rows: list[dict[str, Any]]) -> list[dict]:
+    records: list[dict] = []
+    seen: set[str] = set()
+    labels = list(LABELS) + ["sslscan"]
+    for row in rows:
+        host = str(row.get("host") or "unknown")
+        if host.lower() not in seen:
+            seen.add(host.lower())
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"External host {host}",
+                    category="external-host",
+                    assets=[host],
+                    labels=labels,
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
+        vid = str(row.get("id") or row.get("name") or "sslscan")
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"sslscan-{vid}-{host}"),
+                name=str(row.get("name") or row.get("finding") or vid),
+                description=str(row.get("finding") or row.get("name") or vid),
+                severity=row.get("severity") or "high",
+                category="vulnerability",
+                assets=[host],
+                labels=labels,
+                collected_at=now,
+                extra={
+                    "cve": row.get("cve") or "",
+                    "id": vid,
+                    "port": "443",
+                    "service": "https",
+                },
+            )
+        )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
+    sslscan = parse_sslscan(path)
+    if sslscan is not None:
+        return _sslscan_records(now, sslscan)
     if path.suffix.lower() in {".json", ".jsonl"}:
         try:
             payload = read_json(path)
@@ -496,7 +546,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".txt", ".json", ".jsonl"), parse_file)
+    run_collector(SOURCE, (".txt", ".json", ".jsonl", ".xml"), parse_file)
 
 
 if __name__ == "__main__":

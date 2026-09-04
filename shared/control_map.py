@@ -91,13 +91,13 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Remediate Heartbleed-vulnerable TLS"
         fix = (
             "Upgrade the TLS stack so Heartbleed is not offered. "
-            "This is a dropped testssl finding, not a live probe."
+            "This is a dropped TLS export, not a live probe."
         )
     elif "tls 1.0" in text or "tlsv1.0" in text or "tls1 offered" in text.replace(" ", "").replace("_", "").replace("-", ""):
         name = "Disable TLS 1.0"
         fix = (
             "Disable TLS 1.0 and require TLS 1.2 or newer. "
-            "This is a dropped testssl finding, not a live probe."
+            "This is a dropped TLS export, not a live probe."
         )
     elif (
         port == "443"

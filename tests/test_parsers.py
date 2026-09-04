@@ -740,6 +740,78 @@ def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> Non
     assert "demo.sarif" in names
     assert "nikto.txt" in names
     assert "demo.nessus" in names
+    assert "sslscan.xml" in names
+
+
+def test_sslscan_xml_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = vuln_scan.parse_file(DEMO / "vuln" / "sslscan.xml")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "TLS 1.0" in findings[0]["name"] or "TLS 1.0" in findings[0]["description"]
+    assert findings[0]["assets"] == ["vpn.example.com"]
+    assert not any("heartbleed" in r["name"].lower() for r in findings)
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "tls 1.0" in mapped["control_name"].lower()
+    assert "live probe" in mapped["recommended_fix"].lower()
+    easm_recs = easm.parse_file(DEMO / "vuln" / "sslscan.xml")
+    assert any(r["kind"] == "finding" and r["assets"] == ["vpn.example.com"] for r in easm_recs)
+
+
+def test_empty_sslscan_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "sslscan.xml"
+    dest.write_text(
+        """<?xml version="1.0"?>
+        <document title="SSLScan Results">
+         <ssltest host="vpn.example.com" port="443">
+          <protocol type="tls" version="1.2" enabled="1"/>
+          <heartbleed sslversion="TLSv1.2" vulnerable="0"/>
+         </ssltest>
+        </document>""",
+        encoding="utf-8",
+    )
+    assert vuln_scan.parse_file(dest) == []
+    dest.write_text("<document title='SSLScan Results'></document>", encoding="utf-8")
+    assert vuln_scan.parse_file(dest) == []
+    txt = tmp_path / "sslscan.txt"
+    txt.write_text(
+        "Testing SSL server www.example.com on port 443\n"
+        "  SSL/TLS Protocols:\n"
+        "TLSv1.2   enabled\n"
+        "TLSv1.3   enabled\n",
+        encoding="utf-8",
+    )
+    assert vuln_scan.parse_file(txt) == []
+    assert easm.parse_file(txt) == []
+
+
+def test_sslscan_text_tls10(tmp_path) -> None:
+    dest = tmp_path / "report.txt"
+    dest.write_text(
+        "Testing SSL server vpn.example.com on port 443\n"
+        "  SSL/TLS Protocols:\n"
+        "SSLv2     disabled\n"
+        "TLSv1.0   enabled\n"
+        "TLSv1.2   enabled\n",
+        encoding="utf-8",
+    )
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "TLS 1.0" in findings[0]["name"]
+    assert findings[0]["assets"] == ["vpn.example.com"]
+
+
+def test_sslscan_parser_no_live() -> None:
+    for rel in ("collectors/vuln_scan.py", "collectors/easm.py", "shared/sslscan.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "sslscan --" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
 
 
 def test_minimal_asff_productfields_and_severity_string(tmp_path) -> None:
@@ -1122,7 +1194,7 @@ def test_empty_in_still_loads_easm(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-easm"))
     (tmp_path / "empty-easm" / "easm").mkdir(parents=True)
-    files, demo = load_inputs("easm", (".txt", ".json", ".jsonl"))
+    files, demo = load_inputs("easm", (".txt", ".json", ".jsonl", ".xml"))
     assert demo is True
     names = {p.name for p in files}
     assert "httpx.jsonl" in names
@@ -1185,6 +1257,7 @@ def test_easm_no_live_probe() -> None:
     assert "gobuster dir" not in src
     assert "whatweb --" not in src
     assert "whatweb http" not in src
+    assert "sslscan --" not in src
     assert "socket.socket" not in src
 
 

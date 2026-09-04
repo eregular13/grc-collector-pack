@@ -69,9 +69,13 @@ No new catalog slots.
 
 Drop **testssl.sh JSON** (native finding array or `scanResult` wrapper) under
 `in/vuln/` or `in/easm/`. HIGH/CRITICAL/WARN rows only — OK/INFO are silent.
-No live TLS probes from Layer C. High rows map to CISO/POA&M when obvious
-(Heartbleed, TLS 1.0). Empty `in/` still loads `fixtures/demo/vuln/testssl.json`.
-testssl *invoke* is separate BYO (`allow_tools`) and stays plan-only from
+Drop **sslscan** XML (`ssltest` / `protocol`) or text (`SSL/TLS Protocols`)
+under `in/vuln/` or `in/easm/`. Weak/failed only (TLS 1.0, SSLv2/v3,
+Heartbleed, weak ciphers). Empty / TLS 1.2-only invent nothing. sslscan
+XML/text is not testssl JSON — a separate parse. No live TLS from Layer C.
+High rows map to CISO/POA&M when obvious (Heartbleed, TLS 1.0). Empty `in/`
+still loads `fixtures/demo/vuln/testssl.json` and `sslscan.xml`. testssl /
+sslscan *invoke* is separate BYO (`allow_tools`) and stays plan-only from
 orchestrate.
 
 Drop **Maester** / Entra assessment JSON under `in/saas/` (`TestResults` /

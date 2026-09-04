@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, Nikto, Nessus XML, or SARIF.
+"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, Nikto, Nessus XML, sslscan, or SARIF.
 
-Parse-only. Does not run nuclei, nikto, or Nessus, and does not call a Nessus API.
+Parse-only. Does not run nuclei, nikto, Nessus, or sslscan, and does not call a Nessus API.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collec
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
 from shared.nikto import parse_nikto
+from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import make_record, make_ref
 from shared.testssl import is_testssl, iter_testssl_findings
@@ -159,6 +160,34 @@ def parse_file(path: Path) -> list[dict]:
             )
         if records:
             return records
+
+    sslscan = parse_sslscan(path)
+    if sslscan is not None:
+        for row in sslscan:
+            host = str(row.get("host") or "unknown")
+            add_asset(host)
+            vid = str(row.get("id") or row.get("name") or "sslscan")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"sslscan-{vid}-{host}"),
+                    name=str(row.get("name") or row.get("finding") or vid),
+                    description=str(row.get("finding") or row.get("name") or vid),
+                    severity=row.get("severity") or "high",
+                    category="vulnerability",
+                    assets=[host],
+                    labels=LABELS + ["sslscan"],
+                    collected_at=now,
+                    extra={
+                        "cve": row.get("cve") or "",
+                        "id": vid,
+                        "port": "443",
+                        "service": "https",
+                    },
+                )
+            )
+        return records
 
     nikto = parse_nikto(path)
     if nikto is not None:

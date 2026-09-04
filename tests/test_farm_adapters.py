@@ -99,6 +99,8 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "Kubescape" in md
     assert "KEEP-chain file-drop" in md
     assert "testssl" in md
+    assert "sslscan.xml" in md
+    assert "ssltest" in md
     assert "Maester" in md
     assert "BloodHound CE file-drop" in md
     assert "SharpHound" in md
