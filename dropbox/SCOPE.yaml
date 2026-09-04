@@ -9,11 +9,14 @@ engagement:
   end: "2026-12-31"
 internal:
   cidrs:
-    - "10.0.0.0/8"
-    - "192.168.0.0/16"
+    - "10.20.30.0/23"
+    - "192.168.10.0/24"
   hosts:
     - "127.0.0.1"
     - "dropbox-lab.local"
+    - "app-01.demo.internal"
+    - "app-02.demo.internal"
+    - "db-01.demo.internal"
 external:
   hosts:
     - "vpn.example.com"
@@ -27,4 +30,10 @@ allow_tools:
   - ss
   - ip
   - curl
+  - nmap
+  - nessus
+orchestrator:
+  discover_prefix: 24
+  deepen_batch: 3
+  max_live_shards: 16
 byo: []

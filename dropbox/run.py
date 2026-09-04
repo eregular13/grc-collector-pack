@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -65,6 +66,16 @@ def _seed_fixtures(dest_in: Path) -> None:
                 shutil.copy2(path, sdir / path.name)
 
 
+def cmd_orchestrate(args: argparse.Namespace) -> int:
+    from dropbox.orchestrator.pipeline import orchestrate
+
+    scope = load_scope(Path(args.scope) if args.scope else None)
+    _print_gate(scope)
+    summary = orchestrate(scope, live=bool(args.live))
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
 def cmd_lab(args: argparse.Namespace) -> int:
     """gate → seed fixtures + demo runners → leave work IN_DIR ready for collectors."""
     work_in = Path(os.environ.get("DROPBOX_WORK_IN") or (ROOT / "dropbox" / "work" / "in"))
@@ -80,6 +91,13 @@ def cmd_lab(args: argparse.Namespace) -> int:
     runners.write_inventory(scope, demo=True)
     runners.write_lynis(scope, demo=True)
     runners.write_tls_headers(scope, demo=True, live=False)
+    from dropbox.orchestrator.pipeline import orchestrate
+
+    orch = orchestrate(scope, live=False, dest_in=work_in)
+    print(
+        f"orchestrator plan-only  shards={orch['discover']['shard_count']} "
+        f"batches={orch['deepen']['batch_count']} destroyed={orch['discover']['destroyed']}"
+    )
     print(f"dropbox-lab ingest ready under {work_in}")
     print("Estate is fixtures + demo runner overlays. Not a client.")
     return 0
@@ -99,6 +117,10 @@ def build_parser() -> argparse.ArgumentParser:
     lab = sub.add_parser("lab", help="demo ingest for make dropbox-lab")
     lab.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     lab.set_defaults(func=cmd_lab)
+    o = sub.add_parser("orchestrate", help="discover → deepen → ingest (plan-only without BYO binaries)")
+    o.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
+    o.add_argument("--live", action="store_true", help="run nmap/nessus only if on PATH and in allow_tools")
+    o.set_defaults(func=cmd_orchestrate)
     return p
 
 

@@ -19,4 +19,5 @@ out/import_preview/*
 Thumbs.db
 product-lab/tmp/
 dropbox/work/
+dropbox/out/
 in/**/dropbox-*

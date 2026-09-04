@@ -12,7 +12,8 @@ from dropbox.yaml_lite import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-FORBIDDEN_TOOLS = frozenset(
+# Never apt-install / Docker-embed these. Orchestrator may BYO nmap/nessus if on PATH.
+NEVER_EMBED = frozenset(
     {
         "nmap",
         "ncat",
@@ -24,6 +25,7 @@ FORBIDDEN_TOOLS = frozenset(
         "ospd-openvas",
         "nessus",
         "nessusd",
+        "nessuscli",
         "zeek",
         "bro",
         "wazuh",
@@ -45,6 +47,8 @@ FORBIDDEN_TOOLS = frozenset(
         "hail-mary",
     }
 )
+ORCH_BYO = frozenset({"nmap", "nessus", "nessuscli"})
+FORBIDDEN_TOOLS = NEVER_EMBED - ORCH_BYO
 
 ALLOWED_RUNNERS = frozenset({"lynis", "ss", "ip", "curl"})
 
@@ -71,6 +75,9 @@ class Scope:
     external_ips: list[str] = field(default_factory=list)
     allow_tools: list[str] = field(default_factory=list)
     byo: list[dict] = field(default_factory=list)
+    discover_prefix: int = 24
+    deepen_batch: int = 3
+    max_live_shards: int = 16
 
     def external_names(self) -> set[str]:
         names = {h.lower().rstrip(".") for h in self.external_hosts}
@@ -196,6 +203,20 @@ def load_scope(path: Path | None = None) -> Scope:
     if forbidden:
         raise GateError(f"LICENSE-LOCK: allow_tools names forbidden tools {forbidden}")
 
+    orch = data.get("orchestrator") if isinstance(data.get("orchestrator"), dict) else {}
+    try:
+        discover_prefix = int(orch.get("discover_prefix") or 24)
+        deepen_batch = int(orch.get("deepen_batch") or 3)
+        max_live_shards = int(orch.get("max_live_shards") or 16)
+    except (TypeError, ValueError) as exc:
+        raise GateError("orchestrator batch/prefix must be integers") from exc
+    if not 8 <= discover_prefix <= 32:
+        raise GateError("orchestrator.discover_prefix must be 8..32")
+    if not 2 <= deepen_batch <= 5:
+        raise GateError("orchestrator.deepen_batch must be 2..5")
+    if max_live_shards < 1:
+        raise GateError("orchestrator.max_live_shards must be >= 1")
+
     byo_raw = data.get("byo") or []
     byo: list[dict] = []
     if isinstance(byo_raw, list):
@@ -223,4 +244,7 @@ def load_scope(path: Path | None = None) -> Scope:
         external_ips=eips,
         allow_tools=allow,
         byo=byo,
+        discover_prefix=discover_prefix,
+        deepen_batch=deepen_batch,
+        max_live_shards=max_live_shards,
     )

@@ -2,7 +2,7 @@
 
 Sensors + normalizer only. No GRC UI. Demo mode: parse `in/<sensor>/` or `fixtures/demo/`. Never live-scan. Never POST `/api/risks`.
 
-Drop-box (`dropbox/`): SCOPE-gated internal/external ingest into `in/`. Not a scanner suite. LICENSE-LOCK forbids shipping/running Nmap, Nuclei, OpenVAS, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, RiskReady wrap.
+Drop-box (`dropbox/`): SCOPE-gated internal/external ingest into `in/`. Orchestrator shards CIDRs (discover → deepen → ingest); BYO Nmap/Nessus only if already on PATH. LICENSE-LOCK forbids shipping/embedding Nmap, Nuclei, OpenVAS, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, RiskReady wrap.
 
 ## Graph
 

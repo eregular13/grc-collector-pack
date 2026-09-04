@@ -9,7 +9,7 @@ import socket
 import subprocess
 from pathlib import Path
 
-from dropbox.scope import ALLOWED_RUNNERS, FORBIDDEN_TOOLS, GateError, Scope
+from dropbox.scope import ALLOWED_RUNNERS, FORBIDDEN_TOOLS, NEVER_EMBED, GateError, Scope
 from shared.io_util import in_dir
 
 DEMO = os.environ.get("DROPBOX_DEMO", "1") != "0"
@@ -28,8 +28,8 @@ def _which(name: str) -> str | None:
 
 def _run_cmd(argv: list[str], timeout: int = 30) -> subprocess.CompletedProcess[str]:
     exe = Path(argv[0]).name.lower()
-    if exe in FORBIDDEN_TOOLS:
-        raise GateError(f"LICENSE-LOCK: refusing to run {exe}")
+    if exe in NEVER_EMBED or exe in FORBIDDEN_TOOLS:
+        raise GateError(f"LICENSE-LOCK: generic runner refuses {exe}; use orchestrator shards only")
     return subprocess.run(
         argv,
         capture_output=True,

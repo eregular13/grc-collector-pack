@@ -21,7 +21,8 @@ def test_example_scope_loads() -> None:
     assert "DEMO" in scope.client_name
     assert scope.internal_cidrs
     assert scope.external_hosts
-    assert "nmap" not in scope.allow_tools
+    assert "nmap" in scope.allow_tools
+    assert "nessus" in scope.allow_tools
 
 
 def test_gate_missing_scope(tmp_path: Path) -> None:
@@ -83,7 +84,7 @@ def test_gate_forbidden_allow_tool(tmp_path: Path) -> None:
         + str(att)
         + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
         "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
-        "external:\n  hosts:\n    - vpn.example.com\nallow_tools:\n  - nmap\n",
+        "external:\n  hosts:\n    - vpn.example.com\nallow_tools:\n  - nuclei\n",
         encoding="utf-8",
     )
     with pytest.raises(GateError, match="LICENSE-LOCK"):
@@ -184,4 +185,4 @@ def test_dropbox_lab_cli_uses_work_in(tmp_path: Path, monkeypatch: pytest.Monkey
 def test_yaml_lite_round_trip_scope() -> None:
     data = load_yaml((ROOT / "dropbox" / "SCOPE.yaml").read_text(encoding="utf-8"))
     assert data["client"]["name"].startswith("DEMO")
-    assert "10.0.0.0/8" in data["internal"]["cidrs"]
+    assert "10.20.30.0/23" in data["internal"]["cidrs"]

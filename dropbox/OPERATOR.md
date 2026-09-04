@@ -17,7 +17,8 @@ This directory is the **gated runner**. The public pack stays parse-only. Do not
    - `engagement.start` / `engagement.end` (today must fall inside)
    - **named** `internal.cidrs` and/or `internal.hosts`
    - **named** `external.hosts` / `domains` / `ips`
-   - `allow_tools` (only `lynis`, `ss`, `ip`, `curl`, plus optional BYO names already on PATH)
+   - `allow_tools` (`lynis`, `ss`, `ip`, `curl`; optional BYO `nmap` / `nessus` if **you** installed them)
+   - `orchestrator.discover_prefix` (default 24), `deepen_batch` (2–5), `max_live_shards`
 
 No `SCOPE.yaml` → runners do not start. Missing or hash-mismatched attestation → exit 2.
 
@@ -27,7 +28,9 @@ python3 -m dropbox gate
 
 ## Drop the VM
 
-Place this repo on the box. Do **not** apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or any RiskReady wrap. Those are LICENSE-LOCK. The collector image does not ship them.
+Place this repo on the box. This repo does **not** apt-install or Docker-embed Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or any RiskReady wrap.
+
+If the client consented and **you** install Nmap and/or Nessus on the drop box yourself, list them in `SCOPE.allow_tools`. Evergreen only shards and stages. It will not download those tools or Nessus plugins.
 
 ## Run internal (this host only)
 
@@ -45,8 +48,24 @@ What internal **does**
 
 What internal **does not**
 
-- No Nmap of CIDRs. CIDRs in SCOPE are the named engagement range, not a scan target list.
+- No unsarded Nmap of a /16. CIDR spray is the orchestrator’s job, one /24 (or configured prefix) at a time, and only if `nmap` is already on PATH.
 - No Wazuh/osquery/BloodHound/PingCastle execution.
+
+## Orchestrator (discover → deepen → ingest)
+
+Intelligent chaining — **not** one scanner on a /16.
+
+```bash
+python3 -m dropbox orchestrate          # plan-only if nmap/nessus are absent
+python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
+```
+
+1. **SCOPE gate** (same fail-closed file as above).
+2. **Discover:** shard `internal.cidrs` into `/24` jobs (or `orchestrator.discover_prefix`). Each job is a short-lived worker. If `nmap` is on PATH **and** in `allow_tools`, that worker may run nmap on **that shard only**. Otherwise write `dropbox/out/discover/plan.json` and skip. After discover, workers are destroyed.
+3. **Deepen:** take discover live hosts or the SCOPE host list, batch 2–5 hosts (`orchestrator.deepen_batch`). If `nessus` / `nessuscli` is on PATH and allowed, one worker per batch. Otherwise emit the plan plus `dropbox/out/deepen/BYO-NESSUS.placeholder`. Never download Nessus. Never ship plugins.
+4. **Ingest:** copy any `.gnmap` / `.xml` discover artifacts into `in/nmap/`, then run the existing collectors + loader.
+
+`make dropbox-lab` runs this in **plan-only** mode (this VM has no Nmap/Nessus). Lab stays green without those binaries.
 
 ## Run external (named SCOPE targets only)
 
@@ -79,6 +98,7 @@ SimpleRisk: see `dropbox/SIMPLERISK.md` (leave-behind docs only). No SimpleRisk 
 |---|---|
 | SCOPE gate, demo runners, parse-only collectors, localhost console | Nmap, Nuclei, OpenVAS, Nessus, Zeek, Wazuh agent, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, RiskReady wrap |
 | Optional: `ss`/`ip`/`curl`/`lynis` **if already on the box** | Any download of those tools |
+| Orchestrator shard/batch plans | Nmap/Nessus binaries and Nessus plugins (install yourself under consent) |
 
 `make dropbox-lab` is **fixtures + demo overlays**, not a client estate. The committed `dropbox/SCOPE.yaml` is the DEMO consent fixture.
 

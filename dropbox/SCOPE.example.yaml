@@ -24,4 +24,10 @@ allow_tools:
   - ss
   - ip
   - curl
+  - nmap
+  - nessus
+orchestrator:
+  discover_prefix: 24
+  deepen_batch: 3
+  max_live_shards: 16
 byo: []

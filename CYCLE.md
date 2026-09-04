@@ -1,5 +1,11 @@
 # CYCLE log
 
+## cycle 10 — orchestrator shards (2026-09-04)
+
+Intelligent chaining, not one scanner on a /16. `dropbox/orchestrator/`: discover shards CIDRs to /24, deepen batches 2–5 hosts, ingest copies artifacts. Plan-only without Nmap/Nessus. BYO if on PATH and in SCOPE.allow_tools. Workers destroyed after discover. Never download Nessus plugins. Never apt-embed.
+
+pytest **75**. `make lab` 62/59 demo true. `make dropbox-lab` 68/69 (extra SCOPE hosts in demo inventory) + orchestrator 3 shards / 2 batches / destroyed=3. Wrap still dead.
+
 ## cycle 9 — LICENSE-LOCK + drop-box (2026-09-04)
 
 Reid: pull/harden pack; same PR add evergreen drop-box.

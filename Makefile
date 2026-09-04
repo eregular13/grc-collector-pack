@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -47,6 +47,9 @@ dropbox-internal:
 
 dropbox-external:
 	$(PYTHON) -m dropbox run --profile external
+
+dropbox-orchestrate:
+	$(PYTHON) -m dropbox orchestrate
 
 dropbox-lab:
 	$(PYTHON) -m dropbox lab

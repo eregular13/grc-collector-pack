@@ -34,7 +34,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 3. Open http://127.0.0.1:18765/ — refresh, review, download drop zip.
 4. Import CISO CSVs with clica/UI (`product-lab/drop/MANIFEST`). Leave RiskReady JSON for a human.
 
-- **Dropbox-lab:** `make dropbox-lab` → 65 assets / 63 findings / 15 vulns / 10 evidence. `demo: false` only because fixtures were copied into `dropbox/work/in`. Not a client.
+- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 69 findings / 15 vulns / 10 evidence. `demo: false` only because fixtures were copied into `dropbox/work/in`. Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
 
 ## Drop-box (this PR)
 
