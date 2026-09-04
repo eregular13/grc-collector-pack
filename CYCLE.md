@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 28 — compose scanner-free skeletons (2026-09-04)
+
+Farm + dropbox compose bind SCOPE / work/in / work/out / tool-bin. Statics catch apt/apk/yum/dnf, pip, wget, FROM/image soup, COPY `.deb`, `git clone`, and wrap `curl … /api/risks`. `make farm-compose` added. Docker absent → **ABSENT** after static PASS (not a fake runtime pass). Catalog **not inflated** (111 / 32 / 30 / 81). pytest **168**. Labs green.
+
+```json
+{"pytest": 168, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 27 — ingest dropped external files (2026-09-04)
 
 `ingest_stage` inventories operator-landed files in `in/easm|…` (`dropped_external`). Skips `.gitkeep` / `plan.json`. Still `will_run=false` / `live=false` / `probed=false`. No curl/testssl from orchestrate. Catalog **not inflated** (111 / 32 / 30 / 81). pytest **163**. Labs green.
