@@ -66,7 +66,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Restrict Windows admin shares"
         fix = (
             "Disable or ACL C$/ADMIN$/IPC$ so they are not reachable off the admin network. "
-            "Confirm SMBv1 is disabled. This is a share-exposure finding, not a CVE."
+            "Restrict TCP/445 (SMB) to the admin network. "
+            "Confirm SMBv1 is disabled. This is a share-exposure finding, not a dialect or CVE."
         )
         key_medium = True
     elif port == "445" or "smb" in text or "microsoft-ds" in text:
