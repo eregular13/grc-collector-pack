@@ -2,7 +2,11 @@
 
 ## cycle 34 — SARIF file-drop parsers (2026-09-04)
 
-`vuln-scan` and `code-secrets` accept `in/vuln/*.sarif` / `in/code/*.sarif`. Shared `shared/sarif.py`. Demo fixture `fixtures/demo/vuln/demo.sarif` (command-injection, high). High SARIF rules map to control_map / POA&M. Empty `in/` still falls back to existing fixtures plus the new SARIF. Catalog **not inflated**. farm/SLOTS.md + OPERATOR document file_drop → these parsers. Docs/e2e stand.
+`vuln-scan` and `code-secrets` accept `in/vuln/*.sarif` / `in/code/*.sarif`. Shared `shared/sarif.py`. Demo fixture `fixtures/demo/vuln/demo.sarif` (command-injection, high). High SARIF rules map to control_map / POA&M. Empty `in/` still falls back to existing fixtures plus the new SARIF. Catalog **not inflated**. farm/SLOTS.md + OPERATOR document file_drop → these parsers. Docs/e2e stand. pytest **184**. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 184, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 63, "findings": 62, "vulns": 16, "poam": 62}, "farm_toolbin_e2e": {"assets": 63, "findings": 63, "poam": 62, "demo": true}, "farm_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
 
 ## cycle 33 — operator UX + honesty docs (2026-09-04)
 

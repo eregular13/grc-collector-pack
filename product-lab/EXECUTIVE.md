@@ -13,15 +13,15 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **180 passed, 1 skipped**. `make farm-toolbin-e2e` **63 / 63 / 15 / 24** poam 61, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
+**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **184 passed, 1 skipped**. `make farm-toolbin-e2e` **63 / 63 / 16 / 24** poam 62, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **180 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **184 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T16:38:33Z"}
+{"assets": 63, "findings": 62, "vulnerabilities": 16, "evidences": 24, "applied_controls": 78, "poam": 62, "risk_scenarios": 78, "incidents": 59, "risks_proposed": 58, "ocsf": 62, "canonical": 142, "demo": true, "generated_at": "2026-09-04T16:44:03Z"}
 ```
 
-Asset `ref_id` uniqueness: **62 = 62**.
+Asset `ref_id` uniqueness: **63 = 63**.
 
 - **Compose lab:** **absent** — `docker CLI not on PATH`. `make dropbox-compose` and `make farm-compose` ran static scanner-free assertions (PASS, including farm/dropbox skeletons + wrap-POST refuse) and stamped ABSENT. **Statics prove** no scanner embed in Dockerfiles/compose and no wrap POST in those files. **Runtime remains unexercised** (no Docker CLI). Not recorded as compose pass. Prior Windows product-lab (2026-09-03) had pack compose pass twice; that is historical, not this run.
 - **Inputs:** `in/` is `.gitkeep` only → `fixtures/demo/` → `demo: true`. **Not a client estate.**
@@ -36,7 +36,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 3. Open http://127.0.0.1:18765/ — refresh, review, download drop zip.
 4. Import CISO CSVs with clica/UI (`product-lab/drop/MANIFEST`). Leave RiskReady JSON for a human.
 
-- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 71 findings / 15 vulns / 24 evidence / 64 POA&M. `demo: true` (dropbox-* overlays stamp DEMO). Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
+- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 71 findings / 16 vulns / 24 evidence / 65 POA&M. `demo: true` (dropbox-* overlays stamp DEMO). Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
 
 ## Drop-box (this PR)
 
