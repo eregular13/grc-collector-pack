@@ -30,6 +30,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 64 done: Themis honesty lock (paying-day FAIL, compose ABSENT in pytest).
 - Cycle 65 done: Argus wrap-dead (farm SOP never inherits Origin RiskReady write).
 - Cycle 66 done: Hephaestus FARM_TOOL_BIN lock (never resolve/spawn LICENSE-LOCK scanners).
+- Cycle 67 done: Hephaestus SCOPE example opt-in (nmap/nessus not free-day default).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

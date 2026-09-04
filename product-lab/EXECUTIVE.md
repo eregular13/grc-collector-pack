@@ -2,7 +2,17 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 66):** Hephaestus FARM_TOOL_BIN lock. `farm_which` /
+**This window (cycle 67):** Hephaestus SCOPE example opt-in.
+`SCOPE.example.yaml` no longer default-allowlists nmap/nessus. Invoke
+only under signed SCOPE.allow_tools — never free-day live. Wrap stays
+**dead** forever — no login, no assets/incidents/evidence POST, not only
+`/api/risks`. Farm SOP never points at a RiskReady write. STATUS
+`wrap: review-only`. Paying-day **FAIL**. Compose **ABSENT**. DEMO ≠
+client. Hexstrike pattern-only. USB `evergreen_assessment_mcp` remains
+pack truth; MCP stub is not. Scanner-free + wrap-dead hold because
+rails 1–3 hold. No new parsers. Catalog unchanged.
+
+**Cycle 66 (stands):** Hephaestus FARM_TOOL_BIN lock. `farm_which` /
 `run_allowed` never resolve or spawn LICENSE-LOCK scanners even if
 dropped into `FARM_TOOL_BIN`. nmap/nessus stay signed SCOPE.allow_tools
 + stage only — never default free-day live. Wrap stays **dead** forever
@@ -73,7 +83,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**309 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**310 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
@@ -84,10 +94,11 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
 
-**Deltas vs cycle 65:** lab counts unchanged (honesty tests only).
-pytest **307→309**. Catalog / wrap / compose / paying-day / LICENSE-LOCK
+**Deltas vs cycle 66:** lab counts unchanged (honesty tests only).
+pytest **309→310**. Catalog / wrap / compose / paying-day / LICENSE-LOCK
 will_run unchanged. Paying-day remains **FAIL**. Compose remains **ABSENT**.
-Wrap remains review-only / dead. `FARM_TOOL_BIN` now fail-closed on locked names.
+Wrap remains review-only / dead. `SCOPE.example.yaml` no longer
+default-allowlists nmap/nessus.
 
 **Deltas vs cycle 58 (enum4linux-ng, still standing):** host/farm findings
 **76→78**, POA&M **79→81** (demo null session + Domain Admins on existing

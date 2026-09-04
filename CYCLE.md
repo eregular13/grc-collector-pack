@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 67 — Hephaestus SCOPE example opt-in (2026-09-04)
+
+`SCOPE.example.yaml` no longer default-allowlists nmap/nessus/nessuscli. Client template stays host-local (`lynis`/`ss`/`ip`/`curl`/`testssl`). nmap/nessus invoke only under signed `SCOPE.allow_tools` — never a free-day live default. DEMO `SCOPE.yaml` still allowlists nmap for stub e2e. Rail 4 pytest locks wrap-dead + FARM_TOOL_BIN refuse + USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`) as pack truth; no TypeScript refuse matrix. Farm SOP never points at a RiskReady write. STATUS `wrap: review-only`. Catalog **not inflated**. pytest **310**. Labs unchanged vs cycle 66 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. Hexstrike pattern-only.
+
+```json
+{"pytest": 310, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never"}
+```
+
 ## cycle 66 — Hephaestus FARM_TOOL_BIN lock (2026-09-04)
 
 `farm_which` / `which_allowed` / `run_allowed` refuse LICENSE-LOCK names even if dropped into `FARM_TOOL_BIN` (nuclei / openvas / wazuh / osquery / BloodHound / PingCastle / RiskReady / hexstrike / smbmap / zmap / enum4linux-ng / …). nmap/nessus stay signed `SCOPE.allow_tools` + stage only — never default free-day live. Wrap-post statics catch evidence/incidents, not only `/api/risks`. Farm SOP never points at a RiskReady write. STATUS `wrap: review-only`. MCP stub remains conductor UX, not USB `evergreen_assessment_mcp` / not a TypeScript refuse matrix. Catalog **not inflated**. pytest **309**. Labs unchanged vs cycle 65 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. Hexstrike pattern-only.
