@@ -14,6 +14,7 @@ export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
 
 # 1) written SCOPE (copy example, fill client/consent/window/CIDRs)
 # cp dropbox/SCOPE.example.yaml dropbox/SCOPE.yaml
+#    example allow_tools is host-local only; add nmap/nessus only under signed SCOPE
 python3 -m dropbox gate
 python3 -m dropbox status
 

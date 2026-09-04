@@ -22,6 +22,9 @@ def test_farm_quickstart_and_root_readme() -> None:
     assert "DEMO" in qs
     assert "client estate" in qs.lower() or "≠ client" in qs
     assert "SCOPE" in qs
+    assert "SCOPE.example.yaml" in qs
+    assert "not" in qs.lower() and "allowlist nmap" in qs.lower()
+    assert "free-day" in qs.lower()
     assert "make farm-toolbin-e2e" in qs
     assert "--live" in qs
     assert "CISO" in qs or "ciso" in qs
@@ -43,6 +46,7 @@ def test_farm_readme_is_private_not_hub() -> None:
     op = (FARM / "OPERATOR.md").read_text(encoding="utf-8")
     assert "FARM_TOOL_BIN" in op
     assert "never resolves LICENSE-LOCK" in op
+    assert "add nmap/nessus only under signed SCOPE" in op
     assert "written SCOPE" in op
     assert "quiet" in op.lower()
     assert "mcpServers" in op or "dropbox.mcp_stub" in op
@@ -56,6 +60,14 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "host_timeout_sec" in integrity
     assert "0.0.0.0/0" in integrity
     assert "review-only" in integrity.lower()
+    assert "DEMO" in integrity and "client" in integrity.lower()
+    assert "evergreen_assessment_mcp" in integrity
+    assert "check_scope" in integrity
+    assert "license_guard" in integrity
+    assert "mcp_stub" in integrity
+    assert "SCOPE.example.yaml" in integrity
+    assert "not" in integrity.lower() and "example allow_tools" in integrity.lower()
+    assert "FARM_TOOL_BIN" in integrity
     from farm.adapters.catalog import brakes_defaults
 
     brakes = brakes_defaults()
@@ -64,6 +76,10 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "30" in brakes["host_timeout_sec"]
     assert "0.0.0.0/0" in brakes["wildcard_cidr"]
     assert "never probe" in brakes["external_ingest"]
+    assert "FARM_TOOL_BIN" in brakes["byo_path"]
+    assert "nmap/nessus not default" in brakes["free_day_scope"]
+    assert "evergreen_assessment_mcp" in brakes["pack_truth"]
+    assert "mcp_stub" in brakes["pack_truth"]
     assert "file-drop inventory" in integrity.lower() or "File-drop inventory" in integrity
 
 

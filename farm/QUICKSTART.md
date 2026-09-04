@@ -12,6 +12,7 @@ resolves locked scanners.
 1. **Consent** — store the signed memo next to the box; record its sha256.
 2. **SCOPE** — copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`.
    Fill client, attestation hash, window, named CIDRs/hosts.
+   Example does **not** allowlist nmap/nessus (not free-day live).
    `python3 -m dropbox gate`
 3. **tool-bin**
    - DEMO: `farm/tool-bin/lab/` stubs (fixture stdout, no network).

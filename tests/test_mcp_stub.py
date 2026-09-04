@@ -195,6 +195,8 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     assert result["brakes"]["max_workers"] == "2"
     assert result["brakes"]["deepen_batch"].startswith("3")
     assert "SCOPE.yaml" in result["brakes"]["scope"]
+    assert "evergreen_assessment_mcp" in result["brakes"]["pack_truth"]
+    assert "nmap/nessus not default" in result["brakes"]["free_day_scope"]
     assert result["counts"]["total"] == result["count"]
     assert result["vendored_binaries"] is False
     status = handle_jsonrpc(

@@ -1,8 +1,12 @@
 # Farm integrity (private, never a public Layer C scanner)
 
 The farm is a **private** drop-box tool catalog + adapters. It is **not** a
-public Layer C collector and **not** a paying-day assessment. Wrap is
-review-only. Hexstrike is not vendored. USB evergreen-assessment is not copied.
+public Layer C collector and **not** a paying-day assessment. **DEMO ≠
+client estate.** Wrap is review-only — Farm SOP never points at a
+RiskReady write. Hexstrike is not vendored. USB evergreen-assessment is
+not copied. Pack truth is USB `evergreen_assessment_mcp` (21-tool
+`check_scope` / `license_guard`). `dropbox.mcp_stub` is conductor UX
+only — not pack truth, not a TypeScript refuse matrix.
 
 Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
 
@@ -16,7 +20,9 @@ Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
 | `deepen_batch` | **3** (must be 2–5) | `GateError` if outside 2–5 |
 | Host timeout | `host_timeout_sec` default **30** | Adapter raises `TimeoutError`; worker is destroyed |
 | Wildcard / CIDR spray | External named hosts only | `0.0.0.0/0`, `*`, `/0`, and `/8`–`/16` spray never passed to adapters |
-| BYO PATH | `allow_tools` ∩ PATH only | Binary missing or not allowlisted → plan-only; never apt/embed |
+| BYO PATH | `allow_tools` ∩ PATH only | Binary missing or not allowlisted → plan-only; never apt/embed. `FARM_TOOL_BIN` never resolves LICENSE-LOCK names |
+| Free-day SCOPE | `SCOPE.example.yaml` host-local | nmap / nessus / nessuscli are **not** in the example allow_tools; opt-in under signed SCOPE only |
+| Pack truth | USB `evergreen_assessment_mcp` | `check_scope` / `license_guard`. `dropbox.mcp_stub` is conductor UX only |
 | LICENSE-LOCK embed | Never ship scanner packages | Nmap/Nessus BYO PATH+allowlist only; nuclei / OpenVAS / Zeek / Wazuh / osquery / PingCastle / Purple Knight / BloodHound / CIS-CAT stay file_drop, never subprocess |
 | Exploit / vendor | Absent | No Metasploit, no Hexstrike submodule, no USB copy |
 | Wrap | Review-only | `push_riskready.sh` prints LICENSE-LOCK and never POSTs, even if `RISKREADY_PUSH=1` |
