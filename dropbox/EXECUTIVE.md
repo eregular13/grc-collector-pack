@@ -25,6 +25,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 31):** `make farm-toolbin-e2e` is the DEMO quiet→loud path with `FARM_TOOL_BIN=farm/tool-bin/lab`. Isolated `farm/work/e2e`: plan → discover (stub nmap) → deepen small batch (stub nessus/nessuscli) → external **plan-only** → ingest → Layer C. Artifacts land in `in/nmap|vuln|…`. CISO/POA&M exist. Pack `in/` stays `.gitkeep` only. `demo` true. LICENSE-LOCK still refuses. OPERATOR.md has one command block for toolbin-e2e vs real-binaries. Catalog unchanged (111 / 32 / 30 / 81). No live internet. No fake compose pass.
+
 **Delta (cycle 30):** DEMO tool-bin stubs now cover nmap, curl, nessus, nessuscli, testssl, testssl.sh, lynis. Deepen / external-adjacent slot plans `will_run` when `FARM_TOOL_BIN=lab`. Orchestrate external stage stays plan-only (no live probe). `make farm-toolbin-lab` asserts nmap+curl. LICENSE-LOCK names still refuse subprocess. Catalog unchanged (111 / 32 / 30 / 81).
 
 **Delta (cycle 29):** `FARM_TOOL_BIN` is proven. DEMO shell stubs write fixture-shaped output with no network. Operator copies real binaries into `farm/tool-bin/` or uses host PATH.

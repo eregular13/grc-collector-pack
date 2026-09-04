@@ -32,6 +32,10 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 | saas-idp | saas/* | SAAS- | ScubaGear/Graph/Okta |
 | grc-loader | out/canonical | — | all GRC files |
 
+## This window (2026-09-04 afternoon)
+
+Until 16:00 PT: keep `make farm-toolbin-e2e` green. No slot inflation. No live internet. No fake compose pass.
+
 ## STOP rules
 
 DONE.md line 1 GREEN only after two consecutive green labs and critic ≥ 8 with zero P0/P1.

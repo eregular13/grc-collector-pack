@@ -32,6 +32,8 @@ allow_tools:
   - curl
   - nmap
   - nessus
+  - nessuscli
+  - testssl
 orchestrator:
   discover_prefix: 24
   deepen_batch: 3
@@ -53,4 +55,5 @@ orchestrator:
       - nmap
     deepen:
       - nessus
+      - nessuscli
 byo: []

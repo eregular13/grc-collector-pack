@@ -1,5 +1,9 @@
 # CYCLE log
 
+## cycle 31 — farm-toolbin-e2e quiet→loud DEMO (2026-09-04)
+
+`make farm-toolbin-e2e` / `scripts/farm_toolbin_e2e.py`: isolated `farm/work/e2e` with `FARM_TOOL_BIN=farm/tool-bin/lab`. Plan → discover (DEMO nmap stub) → deepen small batch (DEMO nessus/nessuscli) → external **plan-only** → ingest → Layer C. Artifacts in `in/nmap|vuln`; CISO/POA&M exist; pack `in/` untouched; `demo` true. LICENSE-LOCK still refuses nuclei/openvas. Catalog **not inflated**. No live internet. No fake compose pass.
+
 ## cycle 30 — deepen FARM_TOOL_BIN DEMO stubs (2026-09-04)
 
 Lab stubs add nessus / nessuscli / testssl / testssl.sh / lynis (fixture stdout, DEMO banner, no network). Deepen + external-adjacent plan `will_run` true; `external_stage` still forces false. Dry `run_slot` writes work out. LICENSE-LOCK refuse stands. `make farm-toolbin-lab` asserts nmap+curl. Catalog **not inflated**. pytest **176**. Labs green. Compose ABSENT.

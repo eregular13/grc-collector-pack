@@ -26,6 +26,8 @@ allow_tools:
   - curl
   - nmap
   - nessus
+  - nessuscli
+  - testssl
 orchestrator:
   # Brakes. Defaults prefer client-environment integrity over coverage ego.
   discover_prefix: 24
@@ -43,4 +45,5 @@ orchestrator:
       - nmap
     deepen:
       - nessus
+      - nessuscli
 byo: []

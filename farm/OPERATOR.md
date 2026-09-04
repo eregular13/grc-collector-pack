@@ -53,13 +53,14 @@ PATH. Do not commit ELF/deb scanner packages. Unset `FARM_TOOL_BIN` for
 `make farm-lab` so that lab stays plan-only fixtures.
 
 ```bash
-# prove the mount (DEMO stubs, no network):
-export FARM_TOOL_BIN="$PWD/farm/tool-bin/lab"
-python3 -c "from dropbox.orchestrator.byo import farm_which; print(farm_which('nmap'))"
+# DEMO quiet→loud (stubs only, no internet, not pack in/):
+make farm-toolbin-lab          # will_run nmap+curl
+make farm-toolbin-e2e          # discover→deepen stubs → external plan-only → Layer C
 
-# real box: copy YOUR binaries, or leave FARM_TOOL_BIN unset and use PATH
-# cp "$(command -v nmap)" farm/tool-bin/nmap
-# export FARM_TOOL_BIN="$PWD/farm/tool-bin"
+# real binaries on a consented box (you install; this repo does not):
+# export FARM_TOOL_BIN=/usr/local/bin
+# # or: cp "$(command -v nmap)" farm/tool-bin/nmap && export FARM_TOOL_BIN="$PWD/farm/tool-bin"
+# python3 -m dropbox orchestrate --live
 ```
 
 Unset `FARM_TOOL_BIN` for `make farm-lab` — that lab stays plan-only fixtures.
