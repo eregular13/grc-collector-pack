@@ -15,7 +15,7 @@ See `dropbox/ARCHITECTURE.md` **Layer A** (BYO tool zoo) and `farm/OPERATOR.md` 
 | `INTEGRITY.md` | Brakes defaults table (SCOPE, deepen, workers, batch, timeout). |
 | `Dockerfile` | Orchestrator worker only (`python:3.12-slim` + COPY). No `apt`. |
 | `docker-compose.yml` | Isolation volumes + optional host `tool-bin` bind-mount. Demo/dry default. |
-| `tool-bin/` | Empty mount point. Bind-mount host PATH tools here. Do not commit binaries. |
+| `tool-bin/` | Empty mount point + `lab/` DEMO stubs (`nmap`/`curl` shell scripts). Bind-mount or copy real binaries here. |
 
 ## How tools get onto the box
 

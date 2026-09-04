@@ -82,11 +82,9 @@ def invoke_slots() -> dict[str, dict[str, Any]]:
 
 def slot_matrix(allow_tools: list[str], which=None) -> list[dict[str, Any]]:
     """allow_tools ∩ PATH ∩ SLOTS. Never downloads."""
-    import shutil
-
     from dropbox.orchestrator import byo
 
-    which_fn = which or shutil.which
+    which_fn = which or byo.farm_which
     slots = load_slots()
     rows = byo.tool_matrix(allow_tools, which=which_fn)
     for row in rows:
@@ -120,9 +118,9 @@ def select_stage_slots(
     which=None,
 ) -> dict[str, Any]:
     """allow_tools ∩ wired invoke ∩ stage. Missing PATH stays selected with will_run false."""
-    import shutil
+    from dropbox.orchestrator import byo
 
-    which_fn = which or shutil.which
+    which_fn = which or byo.farm_which
     want = str(stage or "").strip().lower()
     allow = {str(t).strip().lower() for t in (allow_tools or []) if str(t).strip()}
     selected: list[dict[str, Any]] = []
@@ -205,9 +203,9 @@ def farm_slot_status(
     category: str | None = None,
 ) -> list[dict[str, Any]]:
     """Full SLOTS matrix: wired / invoke / PATH / allowlist. Never downloads."""
-    import shutil
+    from dropbox.orchestrator import byo
 
-    which_fn = which or shutil.which
+    which_fn = which or byo.farm_which
     allow = {str(t).strip().lower() for t in (allow_tools or []) if str(t).strip()}
     rows: list[dict[str, Any]] = []
     for name, slot in load_slots().items():

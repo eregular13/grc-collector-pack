@@ -1,0 +1,7 @@
+#!/bin/sh
+# DEMO farm lab stub — not a real scanner. No network. Not nmap.
+# Writes fixture-shaped gnmap to stdout so adapters can capture it.
+echo "DEMO — not a real scanner. farm/tool-bin/lab/nmap"
+printf 'Host: 10.20.30.5 (app-01.demo.internal)\tStatus: Up\n'
+printf 'Host: 10.20.30.5 (app-01.demo.internal)\tPorts: 22/open/tcp//ssh///\n'
+exit 0

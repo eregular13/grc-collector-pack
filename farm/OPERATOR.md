@@ -20,6 +20,8 @@ python3 -m dropbox status
 # 2) optional: tools YOU install (never this Dockerfile)
 # export PATH="$PATH:/opt/farm/bin"
 # export FARM_TOOL_BIN=/opt/farm/bin
+#    copy real allowlisted binaries into farm/tool-bin/ on the drop box
+#    OR rely on host PATH. farm/tool-bin/lab/ is DEMO stubs only (nmap/curl).
 
 # 3) DEMO path (fixtures, not a client) — plan → fixture discover → ingest → Layer C
 make farm-lab
@@ -35,6 +37,29 @@ python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted 
 ```
 
 `make farm-lab` writes under `farm/work/` (not pack `in/`). Stamp is DEMO.
+
+## tool-bin mount (PATH vs copy)
+
+On the drop box, tools come from **host PATH** or a **bind-mount / copy** into
+`farm/tool-bin/` (`FARM_TOOL_BIN`). This repo does not apt-install scanners.
+
+`farm/tool-bin/lab/nmap` and `farm/tool-bin/lab/curl` are **DEMO shell stubs**:
+they write fixture-shaped stdout and make no network calls. Tests set
+`FARM_TOOL_BIN` at that directory so plan `will_run` is true and a dry invoke
+writes under work out. They are not nmap/curl. Do not ship them as a paying
+engagement tool.
+
+```bash
+# prove the mount (DEMO stubs, no network):
+export FARM_TOOL_BIN="$PWD/farm/tool-bin/lab"
+python3 -c "from dropbox.orchestrator.byo import farm_which; print(farm_which('nmap'))"
+
+# real box: copy YOUR binaries, or leave FARM_TOOL_BIN unset and use PATH
+# cp "$(command -v nmap)" farm/tool-bin/nmap
+# export FARM_TOOL_BIN="$PWD/farm/tool-bin"
+```
+
+Unset `FARM_TOOL_BIN` for `make farm-lab` — that lab stays plan-only fixtures.
 
 ## Compose skeleton (statics vs runtime)
 

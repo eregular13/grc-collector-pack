@@ -1,0 +1,8 @@
+#!/bin/sh
+# DEMO farm lab stub — not a real scanner. No network. Does not exec system curl.
+# Writes fixture-shaped HTTP headers to stdout.
+echo "HTTP/1.1 200 OK"
+echo "X-GRC-Demo: true"
+echo "X-GRC-Note: DEMO — not a real scanner. farm/tool-bin/lab/curl"
+echo
+exit 0

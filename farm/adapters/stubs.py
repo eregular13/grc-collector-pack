@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from typing import Any, Callable
 
@@ -124,7 +123,7 @@ def run_slot(
     which: Which | None = None,
 ) -> dict[str, Any]:
     """Invoke one wired slot or stay plan-only. Forbidden tools never run."""
-    which_fn = which or shutil.which
+    which_fn = which or byo.farm_which
     slots = load_slots()
     name = (slot_id or "").strip().lower()
     slot = slots.get(name)

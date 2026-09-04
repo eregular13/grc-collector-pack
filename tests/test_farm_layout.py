@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dropbox.scanner_free import assert_image_files_scanner_free, image_files, scan_text
+from dropbox.scanner_free import (
+    assert_image_files_scanner_free,
+    image_files,
+    is_demo_lab_stub,
+    scan_text,
+)
 from dropbox.yaml_lite import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,9 +67,16 @@ def test_farm_slots_are_adapters_not_binaries() -> None:
         assert slot.get("output_glob")
     tool_bin = FARM / "tool-bin"
     for path in tool_bin.iterdir():
-        if path.name in {".gitkeep", "README.md"}:
+        if path.name in {".gitkeep", "README.md", "lab"}:
             continue
         assert not path.is_file() or path.stat().st_size == 0
+    lab = tool_bin / "lab"
+    assert lab.is_dir()
+    for path in lab.iterdir():
+        if path.name == "README.md":
+            continue
+        assert path.is_file()
+        assert is_demo_lab_stub(path), path
 
 
 def test_farm_image_files_are_scanner_free() -> None:
@@ -99,6 +111,8 @@ def test_farm_tree_has_no_embedded_scanners() -> None:
         if path.suffix.lower() in forbidden_ext:
             hits.append(path)
         if path.name.lower() in {"nmap", "nessus", "nuclei", "openvas"}:
+            if is_demo_lab_stub(path):
+                continue
             hits.append(path)
         if path.suffix.lower() in {".py", ".yml", ".yaml", ".md"}:
             text_hits = scan_text(path.read_text(encoding="utf-8"), str(path.relative_to(ROOT)))

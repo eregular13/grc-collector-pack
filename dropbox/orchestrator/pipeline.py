@@ -39,7 +39,7 @@ _SENSOR_COPY = (
 
 
 def _which(name: str) -> str | None:
-    return shutil.which(name)
+    return byo.farm_which(name)
 
 
 def _orch_dir() -> Path:

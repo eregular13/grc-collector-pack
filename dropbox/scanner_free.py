@@ -22,6 +22,28 @@ IMAGE_FILES = (
     ROOT / "docker-compose.yml",
     ROOT / "docker-compose.dropbox.yml",
 )
+LAB_STUB_DIR = ROOT / "farm" / "tool-bin" / "lab"
+_FORBIDDEN_STUB_EXT = {".deb", ".rpm", ".exe", ".nbin", ".nasl"}
+
+
+def is_demo_lab_stub(path: Path) -> bool:
+    """True for DEMO shell stubs under farm/tool-bin/lab/. Not ELF/deb scanners."""
+    try:
+        resolved = path.resolve()
+        resolved.relative_to(LAB_STUB_DIR.resolve())
+    except (ValueError, OSError):
+        return False
+    if not resolved.is_file() or resolved.suffix.lower() in _FORBIDDEN_STUB_EXT:
+        return False
+    try:
+        raw = resolved.read_bytes()[:8]
+    except OSError:
+        return False
+    if raw.startswith(b"\x7fELF") or raw.startswith(b"MZ"):
+        return False
+    body = resolved.read_text(encoding="utf-8", errors="replace")
+    head = body.lstrip()
+    return head.startswith("#!") and "DEMO" in body and "not a real scanner" in body.lower()
 
 
 def image_files() -> tuple[Path, ...]:

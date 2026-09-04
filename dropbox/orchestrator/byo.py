@@ -7,6 +7,7 @@ Missing binary → plan-only. This module has no HTTP client and never downloads
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -26,17 +27,40 @@ FORBIDDEN_IN_ADAPTER = (
 LOUD_DISCOVER_FLAGS = ("-sV", "-sC", "-A", "--script", "-p-", "--top-ports")
 
 
+def farm_which(name: str) -> str | None:
+    """Resolve an allowlisted tool: FARM_TOOL_BIN, then FARM_TOOL_BIN/lab, then PATH.
+
+    Lab stubs live under farm/tool-bin/lab/ and are DEMO shell scripts, not scanners.
+    FARM_TOOL_BIN unset → PATH only (no implicit lab stub pickup).
+    """
+    tool = (name or "").strip()
+    if not tool or tool in {".", ".."} or "/" in tool or "\\" in tool:
+        return None
+    raw = (os.environ.get("FARM_TOOL_BIN") or "").strip()
+    if raw:
+        root = Path(raw)
+        for folder in (root, root / "lab"):
+            candidate = folder / tool
+            try:
+                if candidate.is_file() and os.access(candidate, os.X_OK):
+                    return str(candidate.resolve())
+            except OSError:
+                continue
+    return shutil.which(tool)
+
+
 def which_allowed(
     name: str,
     allow_tools: list[str],
-    which=shutil.which,
+    which=None,
 ) -> tuple[str | None, str]:
     """Return (exe, reason). exe is set only when named in allow_tools and on PATH."""
     tool = (name or "").strip().lower()
     allow = {t.lower() for t in allow_tools}
     if tool not in allow:
         return None, "not in SCOPE.allow_tools for this stage"
-    exe = which(tool)
+    which_fn = which or farm_which
+    exe = which_fn(tool)
     if not exe:
         return None, "not on PATH — plan only (will not download)"
     return exe, "on PATH"
@@ -45,7 +69,7 @@ def which_allowed(
 def resolve_stage(
     stage: str,
     allow_tools: list[str],
-    which=shutil.which,
+    which=None,
 ) -> tuple[str | None, str, str]:
     """Pick the first allowed BYO binary for a stage. Never downloads."""
     if stage == "discover":
@@ -94,7 +118,7 @@ def testssl_argv(exe: str, host: str, timeout_sec: int) -> list[str]:
 
 def resolve_external(
     allow_tools: list[str],
-    which=shutil.which,
+    which=None,
 ) -> tuple[str | None, str, str]:
     """curl first (existing header path), then testssl. Never downloads."""
     last = "not in SCOPE.allow_tools for this stage"
@@ -111,14 +135,15 @@ def resolve_external(
     return None, missing_path or last, names[0] if names else "curl"
 
 
-def tool_matrix(allow_tools: list[str], which=shutil.which) -> list[dict]:
+def tool_matrix(allow_tools: list[str], which=None) -> list[dict]:
     """allow_tools ∩ PATH: present vs missing. Never downloads."""
+    which_fn = which or farm_which
     rows: list[dict] = []
     for name in allow_tools:
         tool = str(name).strip().lower()
         if not tool:
             continue
-        exe = which(tool)
+        exe = which_fn(tool)
         rows.append(
             {
                 "tool": tool,
