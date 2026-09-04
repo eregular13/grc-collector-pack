@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 38 k8s file-drop harden stands (Kubescape + kube-bench parse-only). testssl/Maester stands. No slot inflation. No live cluster calls. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 39 nmap file-drop harden stands (gnmap / XML / JSON parse-only; no nmap subprocess). k8s / testssl / Maester stand. No slot inflation. No live network scans. No fake compose pass.
 
 ## STOP rules
 
