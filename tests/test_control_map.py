@@ -25,7 +25,7 @@ def test_smb_445_maps_to_hardening_not_cve() -> None:
     assert mapped["include_poam"] is True
     assert "cpg_2_W" in mapped["cpg"]
     assert "csf_PR" in mapped["csf"]
-    assert "CVE" not in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
     assert "445" in mapped["recommended_fix"]
     assert "SMBv1" in mapped["recommended_fix"]
     assert "not a dialect" in mapped["recommended_fix"].lower() or "not a dialect or CVE" in mapped["recommended_fix"]

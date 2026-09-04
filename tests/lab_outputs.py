@@ -112,7 +112,7 @@ def assert_lab() -> None:
     for row in smb:
         assert "cpg_2_W" in (row.get("framework_refs") or "")
         assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
-        assert "CVE" not in (row.get("recommended_fix") or "")
+        assert "CVE-" not in (row.get("recommended_fix") or "")
         assert "dialect" in (row.get("recommended_fix") or "").lower() or "port" in (row.get("recommended_fix") or "").lower()
     for row in poam:
         assert (row.get("owner") or "") == ""

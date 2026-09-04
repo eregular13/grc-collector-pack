@@ -1,18 +1,20 @@
-# product-lab/drop MANIFEST — CISO Assistant CSVs
+# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M
 
 Estate: demo (`in/` empty → fixtures/demo). Not a client.
-Copied from out/ after host lab 2026-09-04T05:08:28Z (this Linux VM).
-Do not invent FindingsAssessment UUIDs. Import with clica or the CISO Assistant UI.
-RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
+Copied from out/ after host lab 2026-09-04T05:40:17Z (this Linux VM).
+Pentera finds it; Evergreen maps it.
+Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
+POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
 
 | File | Rows | SHA256 |
 |---|---|---|
-| ciso/applied_controls.csv | 74 | `da9d72ab27264cca1788abc44d392ff78da659eca8b5724eab17be368c59c149` |
-| ciso/assets.csv | 62 | `4cfab51e09cfc1d4930609114a08670187accf2928c07d4dc783471be216172b` |
-| ciso/evidences.csv | 10 | `402c7a59e9fbdf5ed637ee9ed5dbe8ae628dc46e0237e36ee35dfb9fae57bd38` |
-| ciso/findings.csv | 59 | `1aece32684fa4e36fc7afd4bc992039f1fb72db49a026c87f3bec451584ddf02` |
-| ciso/risk_scenarios.csv | 74 | `5b5bc0b93488937a0fe00b5cf50cae90a9ec11166303b998b9981e3f0e8a1cc1` |
+| ciso/applied_controls.csv | 74 | `5295e3127899525da0baa57641b46fef96c8ffb51c1105554873b6e3b59beb81` |
+| ciso/assets.csv | 62 | `2b62467ac144305ee0667979f6ac3c63bee1e6b78a1f60a4fe707ce19b86e0c5` |
+| ciso/evidences.csv | 10 | `906d4ca7007fbd82d2575d8cd8093eb82418d736595dce7a27a2cfe536543b90` |
+| ciso/findings.csv | 59 | `ee2356b7458b677884914c14ed373bf74844ee4b2af974bef8be540e4a45190b` |
+| ciso/risk_scenarios.csv | 74 | `02b525e3f1015aedc51a4a9a82173c09b9727813fcd82f1fcb1f52e2609b8a1d` |
 | ciso/vulnerabilities.csv | 15 | `7eb09aeb6c3d26c1b6a37404bd747f2600aaf629c1d3c3ed4ba1e274173aeaa2` |
+| poam/poam.csv | 58 | `0d2c680dd148b5f1fd1e5e9ad27a41ab664e9c1ba590bcbeb90f6fcd70b1a305` |
+| poam/poam.md | draft | `20e7bc430af086c4051f99f39890718f39695602dcc77436063caf472cb817a5` |
 
-riskready/risks_proposed.json: 57 rows, SHA256 `be2ccc435e6f28f1a2307d50acb4d5cbb93928e0cf0505acea38b2705a1658d7`
-
+riskready/risks_proposed.json: 57 rows, SHA256 `b11d8be0d7ae1ede5e7e46cb307e52f09bf7557801364e47cb3604bf9f71fd86`

@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 11 — Pentera wedge: finding → CPG/CSF + POA&M (2026-09-04)
+
+Discovery is not enough. `shared/control_map.py` stamps high/critical and key medium (SMB/RDP) with wizard-safe `cpg_*` / `csf_*` (no colons). Loader writes `out/poam/poam.csv` (owner/due blank, status open) plus mapped `applied_controls`. Demo TCP/445 → restrict SMB / confirm SMBv1 disabled — not a CVE. Console `/api/poam` + drop zip. Docs: “Pentera finds it; Evergreen maps it.”
+
+pytest **80**. `make lab` 62/59/15/10, poam **58**, demo true. `make dropbox-lab` 68/69 + orchestrator plan-only 3 shards / 2 batches / destroyed=3. Wrap still dead. Docker absent.
+
+```json
+{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "applied_controls": 74, "poam": 58, "risk_scenarios": 74, "pytest": 80, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent"}
+```
+
 ## cycle 10 — orchestrator shards (2026-09-04)
 
 Intelligent chaining, not one scanner on a /16. `dropbox/orchestrator/`: discover shards CIDRs to /24, deepen batches 2–5 hosts, ingest copies artifacts. Plan-only without Nmap/Nessus. BYO if on PATH and in SCOPE.allow_tools. Workers destroyed after discover. Never download Nessus plugins. Never apt-embed.

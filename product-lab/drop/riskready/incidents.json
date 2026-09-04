@@ -374,6 +374,16 @@
   },
   {
     "title": "SMB 445 exposed",
+    "description": "filesrv.corp.local has open TCP/445 (microsoft-ds).",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "source": "inventory-nmap",
+    "relatedAssets": [
+      "filesrv.corp.local"
+    ]
+  },
+  {
+    "title": "SMB 445 exposed",
     "description": "dc.corp.local has open TCP/445 (microsoft-ds).",
     "severity": "HIGH",
     "status": "OPEN",
@@ -390,16 +400,6 @@
     "source": "inventory-nmap",
     "relatedAssets": [
       "telnet-legacy.corp.local"
-    ]
-  },
-  {
-    "title": "SMB 445 exposed",
-    "description": "filesrv.corp.local has open TCP/445 (microsoft-ds).",
-    "severity": "HIGH",
-    "status": "OPEN",
-    "source": "inventory-nmap",
-    "relatedAssets": [
-      "filesrv.corp.local"
     ]
   },
   {

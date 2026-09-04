@@ -1,6 +1,6 @@
-cycle: 10
+cycle: 11
 phase: DONE
-item: ORCHESTRATOR-SHARDS
+item: POAM-CONTROL-MAP
 critic_score: 8/10
 open_p0:
 open_p1:

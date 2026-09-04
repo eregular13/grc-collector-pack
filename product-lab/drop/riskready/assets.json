@@ -484,6 +484,17 @@
     "notes": "Host legacy-ftp.corp.local (10.0.0.60)"
   },
   {
+    "name": "filesrv.corp.local",
+    "assetType": "Server",
+    "status": "ACTIVE",
+    "businessCriticality": "MEDIUM",
+    "dataClassification": "INTERNAL",
+    "cloudProvider": "NONE",
+    "inIsmsScope": true,
+    "source": "inventory-nmap",
+    "notes": "Host filesrv.corp.local (10.0.0.50)"
+  },
+  {
     "name": "dc.corp.local",
     "assetType": "Server",
     "status": "ACTIVE",
@@ -526,17 +537,6 @@
     "inIsmsScope": true,
     "source": "inventory-nmap",
     "notes": "Host 10.0.0.40 (10.0.0.40)"
-  },
-  {
-    "name": "filesrv.corp.local",
-    "assetType": "Server",
-    "status": "ACTIVE",
-    "businessCriticality": "MEDIUM",
-    "dataClassification": "INTERNAL",
-    "cloudProvider": "NONE",
-    "inIsmsScope": true,
-    "source": "inventory-nmap",
-    "notes": "Host filesrv.corp.local (10.0.0.50)"
   },
   {
     "name": "prod-cluster",

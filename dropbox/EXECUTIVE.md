@@ -13,6 +13,8 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 | `make lab` (empty pack `in/` → fixtures) | 62 | 59 | 15 | 10 | true |
 | `make dropbox-lab` (fixtures copied into `work/in` + demo overlays + extra SCOPE hosts) | 68 | 69 | 15 | 10 | false |
 
+POA&M this lab: **58** rows (`out/poam/poam.csv`). pytest **80**.
+
 `demo: false` on dropbox-lab means files were in `IN_DIR`, not that this is a client estate. It is still fixtures + demo gnmap/httpx/lynis-host overlays. Orchestrator on this VM is **plan-only** (no Nmap/Nessus): 3 /24 shards from `10.20.30.0/23` + `192.168.10.0/24`, 2 deepen batches of 3, discover workers destroyed.
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.

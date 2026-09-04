@@ -41,6 +41,8 @@ RSK-id-roastable-spn-svc-krbtgt-roast;SVC-KRBTGT-ROAST;identity-gap;Roastable SP
 RSK-id-as-rep-roastable-account-svc-krbtgt-roast;SVC-KRBTGT-ROAST;identity-gap;AS-REP roastable account;SVC-KRBTGT-ROAST does not require Kerberos preauth.;;High;High;High;CTL-id-as-rep-roastable-account-svc-krbtgt-roast;Moderate;Moderate;Moderate;mitigate
 RSK-nmap-legacy-ftp-corp-local-21;legacy-ftp.corp.local;exposure;FTP exposed;legacy-ftp.corp.local has open TCP/21 (ftp).;;High;High;High;CTL-nmap-legacy-ftp-corp-local-21;Moderate;Moderate;Moderate;mitigate
 RSK-nmap-legacy-ftp-corp-local-80;legacy-ftp.corp.local;exposure;HTTP exposed;legacy-ftp.corp.local has open TCP/80 (http).;;Low;Low;Low;CTL-nmap-legacy-ftp-corp-local-80;Low;Low;Low;mitigate
+RSK-nmap-filesrv-corp-local-445;filesrv.corp.local;exposure;SMB 445 exposed;filesrv.corp.local has open TCP/445 (microsoft-ds).;;High;High;High;CTL-nmap-filesrv-corp-local-445;Moderate;Moderate;Moderate;mitigate
+RSK-nmap-filesrv-corp-local-139;filesrv.corp.local;exposure;Open port 139/netbios-ssn;filesrv.corp.local has open TCP/139 (netbios-ssn).;;Low;Low;Low;CTL-nmap-filesrv-corp-local-139;Low;Low;Low;mitigate
 RSK-nmap-dc-corp-local-88;dc.corp.local;exposure;Open port 88/kerberos-sec;dc.corp.local has open TCP/88 (kerberos-sec).;;Low;Low;Low;CTL-nmap-dc-corp-local-88;Low;Low;Low;mitigate
 RSK-nmap-dc-corp-local-135;dc.corp.local;exposure;Open port 135/msrpc;dc.corp.local has open TCP/135 (msrpc).;;Low;Low;Low;CTL-nmap-dc-corp-local-135;Low;Low;Low;mitigate
 RSK-nmap-dc-corp-local-389;dc.corp.local;exposure;Open port 389/ldap;dc.corp.local has open TCP/389 (ldap).;;Low;Low;Low;CTL-nmap-dc-corp-local-389;Low;Low;Low;mitigate
@@ -50,8 +52,6 @@ RSK-nmap-telnet-legacy-corp-local-23;telnet-legacy.corp.local;exposure;Telnet ex
 RSK-nmap-telnet-legacy-corp-local-80;telnet-legacy.corp.local;exposure;HTTP exposed;telnet-legacy.corp.local has open TCP/80 (http).;;Low;Low;Low;CTL-nmap-telnet-legacy-corp-local-80;Low;Low;Low;mitigate
 RSK-nmap-web-01-corp-local-80;web-01.corp.local;exposure;HTTP exposed;web-01.corp.local has open TCP/80 (http).;;Low;Low;Low;CTL-nmap-web-01-corp-local-80;Low;Low;Low;mitigate
 RSK-nmap-10-0-0-40-22;10.0.0.40;exposure;SSH exposed;10.0.0.40 has open TCP/22 (ssh).;;Low;Low;Low;CTL-nmap-10-0-0-40-22;Low;Low;Low;mitigate
-RSK-nmap-filesrv-corp-local-445;filesrv.corp.local;exposure;SMB 445 exposed;filesrv.corp.local has open TCP/445 (microsoft-ds).;;High;High;High;CTL-nmap-filesrv-corp-local-445;Moderate;Moderate;Moderate;mitigate
-RSK-nmap-filesrv-corp-local-139;filesrv.corp.local;exposure;Open port 139/netbios-ssn;filesrv.corp.local has open TCP/139 (netbios-ssn).;;Low;Low;Low;CTL-nmap-filesrv-corp-local-139;Low;Low;Low;mitigate
 RSK-k8s-write-below-binary-dir;payments-worker|prod-cluster;incident;Write below binary dir;File below a known binary directory opened for writing (user=root pod=payments-worker);;Moderate;Moderate;Moderate;CTL-k8s-write-below-binary-dir;Low;Low;Low;mitigate
 RSK-k8s-launch-privileged-container;payments-worker|prod-cluster;incident;Launch Privileged Container;Privileged container started;;Very High;Very High;Very High;CTL-k8s-launch-privileged-container;High;High;High;mitigate
 RSK-k8s-1-2-1;cluster;cloud-misconfiguration;Anonymous authentication is not enabled;Anonymous authentication is not enabled;;High;High;High;CTL-k8s-1-2-1;Moderate;Moderate;Moderate;mitigate

@@ -1,13 +1,15 @@
 # Drop package
 
-**Copied:** 2026-09-04T05:08:28Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** 2026-09-04T05:40:17Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). Not a client.
 
-See `MANIFEST` for CISO CSV row counts and SHA256.
+See `MANIFEST` for CISO CSV + POA&M row counts and SHA256.
+
+**Pentera finds it; Evergreen maps it.** Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 
 ## `ciso/`
 
-CISO Assistant Community import CSVs. Headers are the contract. `risk_scenarios.csv` is **semicolon**-separated. Finding severity `low|medium|high|critical`. Vuln severity `Information|Low|Medium|High|Critical`. Asset type `PR` or `SP`. `filtering_labels` include wizard-safe `cpg_2_W`.
+CISO Assistant Community import CSVs. Headers are the contract. `risk_scenarios.csv` is **semicolon**-separated. Finding severity `low|medium|high|critical`. Vuln severity `Information|Low|Medium|High|Critical`. Asset type `PR` or `SP`. `filtering_labels` include wizard-safe `cpg_2_W` / `csf_*` (no colons).
 
 Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment UUIDs.
 
@@ -19,6 +21,17 @@ Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment U
 | `evidences.csv` | 10 (nine sensors + loader) |
 | `applied_controls.csv` | 74 |
 | `risk_scenarios.csv` | 74 |
+
+## `poam/`
+
+Operator draft. Not a CISO import. Owner and due stay blank.
+
+| File | Rows |
+|---|---|
+| `poam.csv` | 58 |
+| `poam.md` | same draft, markdown |
+
+Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
 
 ## `riskready/`
 
