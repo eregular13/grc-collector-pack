@@ -363,6 +363,8 @@ def dropped_file_inventory(dest_in: Path, category: str = "external") -> dict[st
             bucket = sensors.setdefault(sensor, [])
             if path.name not in bucket:
                 bucket.append(path.name)
+    for names in sensors.values():
+        names.sort()
     files = [f"{sensor}/{name}" for sensor, names in sorted(sensors.items()) for name in names]
     return {
         "category": want,

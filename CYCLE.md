@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 27 — ingest dropped external files (2026-09-04)
+
+`ingest_stage` inventories operator-landed files in `in/easm|…` (`dropped_external`). Skips `.gitkeep` / `plan.json`. Still `will_run=false` / `live=false` / `probed=false`. No curl/testssl from orchestrate. Catalog **not inflated** (111 / 32 / 30 / 81). pytest **163**. Labs green.
+
+```json
+{"pytest": 163, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 26 — external stage plan-only (2026-09-04)
 
 Stage graph: discover → deepen → **external (plan-only)** → ingest. SCOPE external refuses CIDR, wildcards, `0.0.0.0/0`; named hosts and `https://` URLs allowed. External SLOTS all `will_run=false` (`file_drop or plan-only — operator lands artifacts in in/easm|…`). `make dropbox-external` stays DEMO fixture writer — no live probe from orchestrate/CI. Catalog **not inflated** (111 / 32 / 30 / 81). pytest **160**. Labs green.

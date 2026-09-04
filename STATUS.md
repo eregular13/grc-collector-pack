@@ -1,6 +1,6 @@
-cycle: 26
+cycle: 27
 phase: DONE
-item: FARM-EXTERNAL-PLAN
+item: EXTERNAL-INGEST-DROPS
 critic_score: 8/10
 open_p0:
 open_p1:
