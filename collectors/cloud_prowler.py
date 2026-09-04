@@ -226,7 +226,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, check),
+                    ref_id=make_ref(SOURCE, f"{check}-{rid}"),
                     name=title,
                     description=desc,
                     severity=sev,

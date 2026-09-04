@@ -17,6 +17,8 @@ def test_prowler_asff() -> None:
     assert public["extra"].get("check_id") == "s3_bucket_public_access"
     assert public["extra"].get("service") == "s3"
     assert public["severity"] == "high"
+    refs = {r["ref_id"] for r in findings}
+    assert len(refs) == len(findings)
 
 
 def test_pingcastle_xml() -> None:
