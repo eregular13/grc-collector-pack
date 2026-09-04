@@ -27,7 +27,7 @@ Missing binary → orchestrator stays **plan-only**. This repo never apt-install
 
 ## Slots (adapters, not embeds)
 
-Wired invoke stubs: nmap · nessus · nessuscli · testssl · lynis · ss · ip · prowler · trivy · rustscan · naabu · httpx · dig · whois · sslscan · openssl · nslookup · ping · traceroute · tracepath · host · getent · journalctl · kubectl (client) · snmpwalk (named-host)
+Wired invoke stubs: nmap · nessus · nessuscli · testssl · lynis · ss · ip · prowler · trivy · rustscan · naabu · httpx · dig · whois · sslscan · openssl · nslookup · ping · traceroute · tracepath · host · getent · hostname · journalctl · kubectl (client) · snmpwalk (named-host)
 
 Also wired: hardeningkitty-export · maester · testssl.sh. File-drop stubs: kube-bench · gitleaks. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Header grabber is a separate wired slot.
 

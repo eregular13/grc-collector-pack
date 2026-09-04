@@ -1443,3 +1443,16 @@ slots:
     wired: true
     hook: farm.adapters.getent
     vendored: false
+  hostname:
+    id: hostname
+    binary: hostname
+    stage: discover
+    category: discover
+    scope_key: allow_tools
+    sensor: nmap
+    output_glob: in/nmap/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.hostname
+    vendored: false

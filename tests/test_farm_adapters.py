@@ -76,6 +76,8 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "openssl" in invoke and "nslookup" in invoke
     assert len(invoke) >= 28
     assert "ping" in invoke and "traceroute" in invoke
+    assert "hostname" in invoke
+    assert len(invoke) >= 30
     assert "journal-export" in invoke and "kubectl" in invoke
     assert "snmpwalk" in invoke
     assert audit_output_globs() == []

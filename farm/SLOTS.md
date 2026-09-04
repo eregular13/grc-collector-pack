@@ -3,9 +3,9 @@
 Private drop-box tool zoo. **No binaries in git.** Most slots are file_drop:
 the operator lands artifacts in `in/<sensor>/` for Layer C.
 
-Total: 110
-Wired: 31
-Invoke: 29
+Total: 111
+Wired: 32
+Invoke: 30
 File-drop: 81
 
 ## By category
@@ -14,7 +14,7 @@ File-drop: 81
 |---|---:|---:|---:|---:|
 | cloud | 11 | 2 | 2 | 9 |
 | deepen | 14 | 2 | 2 | 12 |
-| discover | 17 | 8 | 8 | 9 |
+| discover | 18 | 9 | 9 | 9 |
 | endpoint | 12 | 4 | 4 | 8 |
 | external | 19 | 10 | 10 | 9 |
 | identity | 13 | 1 | 1 | 12 |

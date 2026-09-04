@@ -25,7 +25,7 @@ review-only. Hexstrike is not vendored. USB evergreen-assessment is not copied.
 
 PATH-invoke adapters are **safe BYO only**. Common OS binaries may be wired
 when they exist on PATH (`ss`, `ip`, `ping`, `traceroute`, `tracepath`,
-`host`, `getent`, `journalctl`, `kubectl` client, `snmpwalk` named-host).
+`host`, `getent`, `hostname`, `journalctl`, `kubectl` client, `snmpwalk` named-host).
 
 These catalog names stay **file_drop** even if a binary is on PATH:
 

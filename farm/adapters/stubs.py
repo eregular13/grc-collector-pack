@@ -102,6 +102,8 @@ def argv_for(slot_id: str, exe: str, target: str, timeout: int) -> list[str]:
         return [exe, _named_host(target, "host")]
     if name == "getent":
         return [exe, "hosts", _named_host(target, "getent")]
+    if name == "hostname":
+        return [exe, "-f"]
     if name in {"journal-export", "journalctl"}:
         return [exe, "-n", "20", "--no-pager"]
     if name == "kubectl":
