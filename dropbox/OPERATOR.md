@@ -64,6 +64,7 @@ python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
 2. **Discover:** shard `internal.cidrs` into `/24` jobs (or `orchestrator.discover_prefix`). Each job is a short-lived worker. If `nmap` is on PATH **and** in `allow_tools`, that worker may run nmap on **that shard only**. Otherwise write `dropbox/out/discover/plan.json` and skip. After discover, workers are destroyed.
 3. **Deepen:** take discover live hosts or the SCOPE host list, batch 2–5 hosts (`orchestrator.deepen_batch`). If `nessus` / `nessuscli` is on PATH and allowed, one worker per batch. Otherwise emit the plan plus `dropbox/out/deepen/BYO-NESSUS.placeholder`. Never download Nessus. Never ship plugins.
 4. **Ingest:** copy any `.gnmap` / `.xml` discover artifacts into `in/nmap/`, then run the existing collectors + loader.
+5. **Deliverable:** CISO CSVs **and** `out/poam/poam.csv`. Pentera (or Nmap/Nessus) finds it; Evergreen maps it to CISA CPG + NIST CSF stamps and a recommended fix. Owner and due stay blank.
 
 `make dropbox-lab` runs this in **plan-only** mode (this VM has no Nmap/Nessus). Lab stays green without those binaries.
 
@@ -86,7 +87,7 @@ bash scripts/lab.sh
 python3 -m product          # http://127.0.0.1:18765/
 ```
 
-Collectors parse `in/<sensor>/`. Empty sensors still fall back to `fixtures/demo/` and label `demo`. Zip `out/` (or the console drop zip) for CISO Assistant. Prefer **clica / UI** CSV import. Do not invent FindingsAssessment UUIDs.
+Collectors parse `in/<sensor>/`. Empty sensors still fall back to `fixtures/demo/` and label `demo`. Zip `out/` (or the console drop zip) for CISO Assistant. Prefer **clica / UI** CSV import. Hand `out/poam/poam.csv` as the POA&M draft — a human fills owner and due. Do not invent FindingsAssessment UUIDs.
 
 RiskReady JSON is LICENSE-LOCK stay-out — review on disk. `push_riskready.sh` never logs in or POSTs.
 

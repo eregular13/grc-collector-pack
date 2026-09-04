@@ -63,6 +63,19 @@ ref_id;assets;threats;name;description;existing_controls;current_impact;current_
 treatment: `mitigate`
 Severity → `Low|Moderate|High|Very High`
 
+## POA&M (operator draft — not a CISO import)
+
+`out/poam/poam.csv` and `out/poam/poam.md`. Hand to the client with the CISO CSVs.
+
+```
+weakness,asset,severity,framework_refs,recommended_fix,owner,due,status
+```
+
+- High/critical findings and key medium exposures (SMB 445, RDP 3389) are included.
+- `framework_refs` are wizard-safe `cpg_*` / `csf_*` stamps (no colons).
+- `owner` and `due` stay blank. Status is `open`. A human fills dates — do not invent them.
+- Recommended fix is a control narrative (e.g. restrict TCP/445, confirm SMBv1 disabled). Port-open is not a CVE.
+
 ## OCSF
 
 `out/ocsf/compliance_findings.json` — array of Compliance Finding objects, `class_uid` 2003.

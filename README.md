@@ -66,6 +66,7 @@ Overnight improve ticks: `LOOP.md` (every 30 minutes until 07:00 Pacific). Each 
 
 - `out/canonical/*.jsonl` — `asset|finding|evidence|incident`
 - `out/ciso-assistant/` — `assets.csv` `applied_controls.csv` `evidences.csv` `findings.csv` `vulnerabilities.csv` `risk_scenarios.csv` (semicolon)
+- `out/poam/` — `poam.csv` `poam.md` (owner/due blank; human fills). Pentera finds it; Evergreen maps it.
 - `out/riskready/` — `assets.json` `incidents.json` `evidence.json` `risks_proposed.json`
 - `out/ocsf/compliance_findings.json` — OCSF-like Compliance Finding (`class_uid` 2003)
 - `out/summary.json` `out/evidence/lab-report.md`
@@ -101,7 +102,8 @@ Do not restore wrap POSTs to `/api/auth/login`, `/itsm/assets`, `/evidence`, `/i
 | Sensor | CISO Assistant | RiskReady |
 |---|---|---|
 | Cloud / K8s / SaaS failed checks | findings + OCSF + applied_controls | incidents + proposed risks |
-| Nmap / Wazuh / EASM hosts | assets PR/SP | ITSM assets |
+| Nmap / Wazuh / EASM hosts | assets PR/SP + exposure findings | ITSM assets |
+| High/critical + key medium (SMB/RDP) | applied_controls + `out/poam/poam.csv` (CPG/CSF) | review-only if high/crit |
 | Nuclei / Trivy / Gitleaks | vulnerabilities | incidents if high/crit |
 | Coverage / identity gaps | findings | incidents |
 | Every run | evidences | evidence DRAFT |

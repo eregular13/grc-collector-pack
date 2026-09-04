@@ -53,6 +53,8 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
+    poam_h = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status"
+    poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
 
     rr_assets = _json(OUT / "riskready" / "assets.json")
     rr_inc = _json(OUT / "riskready" / "incidents.json")
@@ -103,6 +105,29 @@ def assert_lab() -> None:
     assert len(names) == len(set(names)), "evidence names must be unique"
     assert vulns, "vulnerabilities.csv empty"
     assert ctrls and scen
+    assert poam, "poam.csv empty"
+    assert (OUT / "poam" / "poam.md").is_file()
+    smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
+    assert smb, "SMB/445 exposure must map into POA&M"
+    for row in smb:
+        assert "cpg_2_W" in (row.get("framework_refs") or "")
+        assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
+        assert "CVE" not in (row.get("recommended_fix") or "")
+        assert "dialect" in (row.get("recommended_fix") or "").lower() or "port" in (row.get("recommended_fix") or "").lower()
+    for row in poam:
+        assert (row.get("owner") or "") == ""
+        assert (row.get("due") or "") == ""
+        assert row.get("status") == "open"
+        assert row.get("severity") in FIND_SEV
+        refs = row.get("framework_refs") or ""
+        assert ":" not in refs
+        assert "cpg_" in refs and "csf_" in refs
+    high_findings = [r for r in findings if r["severity"] in {"high", "critical"}]
+    for row in high_findings:
+        labels = row.get("filtering_labels") or ""
+        assert "csf_" in labels, row
+    smb_ctrl = [r for r in ctrls if "SMB" in (r.get("name") or "") or "445" in (r.get("description") or "")]
+    assert smb_ctrl, "applied_controls must include SMB hardening narrative"
 
     blob = ""
     for path in OUT.rglob("*"):

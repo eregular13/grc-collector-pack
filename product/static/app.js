@@ -34,6 +34,14 @@ const COLS = {
     ["name", "Name"],
     ["description", "Description"],
   ],
+  poam: [
+    ["severity", "Severity"],
+    ["weakness", "Weakness"],
+    ["asset", "Asset"],
+    ["framework_refs", "Framework"],
+    ["recommended_fix", "Recommended fix"],
+    ["status", "Status"],
+  ],
 };
 
 const ENDPOINTS = {
@@ -42,6 +50,7 @@ const ENDPOINTS = {
   vulns: "/api/vulnerabilities",
   proposed: "/api/proposed",
   evidence: "/api/evidences",
+  poam: "/api/poam",
 };
 
 function $(id) {
@@ -112,6 +121,8 @@ function renderTable() {
   const cols = COLS[state.tab];
   const rows = state.rows.filter((r) => matches(r, q, sev));
   $("proposed-note").classList.toggle("hidden", state.tab !== "proposed");
+  const poamNote = $("poam-note");
+  if (poamNote) poamNote.classList.toggle("hidden", state.tab !== "poam");
   if (!rows.length) {
     $("table-wrap").innerHTML = "<p>No rows match.</p>";
     return;

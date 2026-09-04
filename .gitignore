@@ -9,6 +9,7 @@ venv/
 out/raw/*
 out/canonical/*
 out/ciso-assistant/*.csv
+out/poam/*
 out/riskready/*.json
 out/ocsf/*.json
 out/summary.json

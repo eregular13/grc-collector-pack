@@ -44,6 +44,8 @@ def test_drop_zip_has_ciso_and_proposed() -> None:
     assert "ciso-assistant/assets.csv" in names
     assert "riskready/risks_proposed.json" in names
     assert "summary.json" in names
+    if (ROOT / "out" / "poam" / "poam.csv").exists():
+        assert "poam/poam.csv" in names
 
 
 def test_http_console_and_forbids_risks() -> None:
@@ -73,6 +75,8 @@ def test_http_console_and_forbids_risks() -> None:
             html = res.read().decode("utf-8")
         assert "GRC Collector Pack" in html
         assert "Never POSTs /api/risks" in html
+        assert "POA&M" in html
+        assert "Evergreen maps it" in html
         try:
             urllib.request.urlopen(base + "/api/risks", timeout=5)
             raise AssertionError("GET /api/risks should be forbidden")

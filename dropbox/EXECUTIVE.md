@@ -21,4 +21,6 @@ The orchestrator (`python3 -m dropbox orchestrate`) shards internal CIDRs into /
 
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
+**Pentera finds it; Evergreen maps it.** High/critical (and key medium, e.g. RDP/SMB exposure) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Example: open TCP/445 is “restrict SMB / confirm SMBv1 is disabled” — a port finding, not a CVE. Owner and due are blank.
+
 Not a paying-day PASS. USB evergreen-assessment was not copied.

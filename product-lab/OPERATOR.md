@@ -57,6 +57,7 @@ If a folder is empty, that collector uses `fixtures/demo/<sensor>/` and marks `d
 After a lab or Refresh:
 
 - CISO Assistant CSVs: `out/ciso-assistant/` — import with [clica](https://github.com/intuitem/ciso-assistant-community) or the UI. Preferred. Optional `CISO_PUSH=1` + `DRY_RUN=0` may POST `/api/assets/` and `/api/evidences/` only.
+- POA&M draft: `out/poam/poam.csv` — **Pentera finds it; Evergreen maps it.** High/critical (and key medium such as SMB/RDP exposure) get CISA CPG + NIST CSF stamps and a recommended fix. Owner and due stay blank for a human. Do not invent dates or CVEs.
 - RiskReady JSON: `out/riskready/` — **LICENSE-LOCK stay-out**. Review on disk. `push_riskready.sh` never logs in or POSTs, even if `RISKREADY_PUSH=1`.
 - Packaged copy: `product-lab/drop/` plus `/export.zip` from the console. See `product-lab/drop/MANIFEST`.
 
