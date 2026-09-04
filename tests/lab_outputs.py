@@ -126,6 +126,8 @@ def assert_lab() -> None:
         or "ADMIN$" in (r.get("recommended_fix") or "")
     ]
     assert shares, "admin shares (C$/ADMIN$) must map into POA&M"
+    telnet = [r for r in poam if "Telnet" in (r.get("weakness") or "") or "23" in (r.get("recommended_fix") or "")]
+    assert telnet, "Telnet/23 exposure must map into POA&M"
     for row in smb + rdp + tls + shares:
         refs = row.get("framework_refs") or ""
         assert "cpg_" in refs and "csf_" in refs

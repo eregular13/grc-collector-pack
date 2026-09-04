@@ -121,6 +121,8 @@ def write_tls_headers(scope: Scope, demo: bool = DEMO, live: bool = LIVE) -> Pat
         targets = list(scope.external_domains)
     rows = []
     for target in targets:
+        if "*" in target or "?" in target or ("/" in target and "://" not in target):
+            raise GateError(f"external target refuses wildcard/CIDR: {target}")
         if not scope.allows_external_target(target):
             raise GateError(f"external target not in SCOPE: {target}")
         row = {
@@ -136,14 +138,33 @@ def write_tls_headers(scope: Scope, demo: bool = DEMO, live: bool = LIVE) -> Pat
         ):
             row["title"] = "DEMO — TLS weak cipher (not a client estate)"
             row["tech"] = ["dropbox-demo", "tls-weak-cipher"]
-        if live and not demo and "curl" in scope.allow_tools:
-            curl = _which("curl")
-            if not curl:
-                raise GateError("curl not on PATH")
+        if live and not demo:
             host = row["host"]
             if not scope.allows_external_target(host):
                 raise GateError(f"external target not in SCOPE: {host}")
-            proc = _run_cmd([curl, "-sS", "-I", "-m", "8", "--connect-timeout", "5", row["url"]], timeout=12)
+            from dropbox.orchestrator import byo
+
+            exe, _reason, tool = byo.resolve_external(scope.allow_tools, which=_which)
+            if tool in {"testssl", "testssl.sh"} and exe:
+                dest_tls = _sensor_dir("easm") / f"dropbox-testssl-{host}.txt"
+                byo.run_allowed(
+                    byo.testssl_argv(exe, host, 8),
+                    dest_tls,
+                    8,
+                    allow_tools=scope.allow_tools,
+                )
+                row["title"] = "testssl BYO"
+                row["tech"] = ["dropbox-testssl"]
+                rows.append(row)
+                continue
+            if "curl" not in scope.allow_tools or not exe:
+                raise GateError("curl not on PATH") if "curl" in scope.allow_tools else GateError(
+                    "no external BYO (curl/testssl) on PATH"
+                )
+            curl = exe if tool == "curl" else _which("curl")
+            if not curl:
+                raise GateError("curl not on PATH")
+            proc = _run_cmd(byo.curl_header_argv(curl, row["url"], 8), timeout=12)
             first = (proc.stdout or "").splitlines()[:1]
             code = 0
             if first and first[0].upper().startswith("HTTP"):

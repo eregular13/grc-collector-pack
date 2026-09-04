@@ -103,6 +103,31 @@ def test_external_only_named_targets() -> None:
     assert not scope.allows_external_target("8.8.8.8")
     with pytest.raises(GateError, match="not in SCOPE"):
         refuse_offscope_external(scope, "https://scan-the-internet.invalid")
+    assert not scope.allows_external_target("*.example.com")
+    assert not scope.allows_external_target("10.0.0.0/24")
+    assert not scope.allows_external_target("0.0.0.0/0")
+
+
+def test_external_scope_refuses_wildcard_and_cidr(tmp_path: Path) -> None:
+    import hashlib
+
+    att = tmp_path / "consent.md"
+    att.write_text("ok\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    header = (
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+    )
+    wild = tmp_path / "wild.yaml"
+    wild.write_text(header + "external:\n  hosts:\n    - '*.example.com'\n", encoding="utf-8")
+    with pytest.raises(GateError, match="wildcard"):
+        load_scope(wild)
+    cidr = tmp_path / "cidr.yaml"
+    cidr.write_text(header + "external:\n  hosts:\n    - 10.0.0.0/24\n", encoding="utf-8")
+    with pytest.raises(GateError, match="CIDR"):
+        load_scope(cidr)
 
 
 def test_demo_ingest_writes_existing_formats(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

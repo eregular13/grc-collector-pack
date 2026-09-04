@@ -7,6 +7,8 @@ Metasploit / AIExploitGenerator / exploit-chain tools.
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -187,3 +189,77 @@ def export_ciso_poam() -> dict[str, Any]:
         "owner_due": "blank — human fills",
         "posted": False,
     }
+
+
+def tool_catalog() -> dict[str, Any]:
+    """stdio catalog. Not FastMCP. Not Hexstrike. No network bind."""
+    return {
+        "server": "dropbox-operator-mcp",
+        "protocol": "stdio-jsonrpc-stub",
+        "hexstrike": False,
+        "exploit_api": False,
+        "scope_gated": True,
+        "tools": [{"name": name, "scope_gated": True} for name in OPERATOR_TOOLS],
+    }
+
+
+def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None) -> dict[str, Any]:
+    """One JSON-RPC 2.0 request. tools/call still SCOPE-gated via dispatch."""
+    rid = req.get("id")
+    method = str(req.get("method") or "")
+    if method == "initialize":
+        return {
+            "jsonrpc": "2.0",
+            "id": rid,
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "serverInfo": {"name": "dropbox-operator-mcp", "version": "stub"},
+                "capabilities": {"tools": {}},
+            },
+        }
+    if method == "tools/list":
+        tools = [
+            {"name": name, "description": f"SCOPE-gated operator tool {name}", "inputSchema": {"type": "object"}}
+            for name in OPERATOR_TOOLS
+        ]
+        return {"jsonrpc": "2.0", "id": rid, "result": {"tools": tools}}
+    if method == "tools/call":
+        params = req.get("params") if isinstance(req.get("params"), dict) else {}
+        name = str(params.get("name") or "")
+        try:
+            refuse_attack_name(name)
+            result = dispatch(name, live=False, scope_path=scope_path)
+            return {"jsonrpc": "2.0", "id": rid, "result": result}
+        except GateError as exc:
+            return {"jsonrpc": "2.0", "id": rid, "error": {"code": 2, "message": str(exc)}}
+    return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": f"method not found: {method}"}}
+
+
+def serve(argv: list[str] | None = None) -> int:
+    """List the 7 operator tools and exit. --once reads one JSON-RPC line from stdin."""
+    args = list(argv or [])
+    if "--once" in args:
+        raw = sys.stdin.readline()
+        if raw.strip():
+            try:
+                req = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                print(json.dumps({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(exc)}}))
+                return 1
+            print(json.dumps(handle_jsonrpc(req), default=str))
+            return 0
+    print(json.dumps(tool_catalog(), indent=2))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args or args[0] in {"serve", "--list"}:
+        rest = args[1:] if args and args[0] in {"serve", "--list"} else args
+        return serve(rest)
+    print("usage: python3 -m dropbox.mcp_stub serve", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

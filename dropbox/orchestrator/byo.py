@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from dropbox.scope import DEEPEN_STAGE_TOOLS, DISCOVER_STAGE_TOOLS, GateError
+from dropbox.scope import DEEPEN_STAGE_TOOLS, DISCOVER_STAGE_TOOLS, EXTERNAL_STAGE_TOOLS, GateError
 
 # Integrity: this file must never grow a fetcher.
 FORBIDDEN_IN_ADAPTER = (
@@ -75,6 +75,42 @@ def nessus_batch_argv(exe: str, target: str, timeout_sec: int) -> list[str]:
     return [exe, "--batch", target, "--timeout", str(int(timeout_sec))]
 
 
+def curl_header_argv(exe: str, url: str, timeout_sec: int) -> list[str]:
+    host = str(url or "").split("://")[-1].split("/")[0].split(":")[0]
+    if not host or "*" in host or "?" in host or ("/" in str(url) and "://" not in str(url)):
+        raise GateError(f"external curl refuses wildcard/CIDR {url!r}")
+    return [exe, "-sS", "-I", "-m", str(int(timeout_sec)), "--connect-timeout", "5", url]
+
+
+def testssl_argv(exe: str, host: str, timeout_sec: int) -> list[str]:
+    raw = str(host or "").strip()
+    if "*" in raw or "?" in raw or ("/" in raw and "://" not in raw):
+        raise GateError(f"external testssl refuses wildcard/CIDR {host!r}")
+    name = raw.split("://")[-1].split("/")[0].split(":")[0]
+    if not name:
+        raise GateError(f"external testssl refuses {host!r}")
+    return [exe, "--fast", "--quiet", "--connect-timeout", str(int(timeout_sec)), name]
+
+
+def resolve_external(
+    allow_tools: list[str],
+    which=shutil.which,
+) -> tuple[str | None, str, str]:
+    """curl first (existing header path), then testssl. Never downloads."""
+    last = "not in SCOPE.allow_tools for this stage"
+    names = [t for t in ("curl", "testssl", "testssl.sh") if t in EXTERNAL_STAGE_TOOLS]
+    missing_path = ""
+    for name in names:
+        exe, reason = which_allowed(name, allow_tools, which=which)
+        if exe:
+            return exe, reason, name
+        if "PATH" in reason:
+            missing_path = reason
+        elif not missing_path:
+            last = reason
+    return None, missing_path or last, names[0] if names else "curl"
+
+
 def tool_matrix(allow_tools: list[str], which=shutil.which) -> list[dict]:
     """allow_tools ∩ PATH: present vs missing. Never downloads."""
     rows: list[dict] = []
@@ -116,12 +152,16 @@ def run_allowed(
             raise GateError(f"run_allowed refuses {tool}: not in SCOPE.allow_tools")
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(
-        [str(a) for a in argv],
-        capture_output=True,
-        text=True,
-        timeout=max(1, int(timeout)),
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [str(a) for a in argv],
+            capture_output=True,
+            text=True,
+            timeout=max(1, int(timeout)),
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        dest.write_text((exc.stdout or "") if isinstance(exc.stdout, str) else "", encoding="utf-8")
+        raise TimeoutError("timeout (host_timeout_sec)") from exc
     dest.write_text((proc.stdout or "") or (proc.stderr or ""), encoding="utf-8")
     return int(proc.returncode)

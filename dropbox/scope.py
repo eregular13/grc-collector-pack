@@ -50,7 +50,8 @@ NEVER_EMBED = frozenset(
 ORCH_BYO = frozenset({"nmap", "nessus", "nessuscli"})
 FORBIDDEN_TOOLS = NEVER_EMBED - ORCH_BYO
 
-ALLOWED_RUNNERS = frozenset({"lynis", "ss", "ip", "curl"})
+ALLOWED_RUNNERS = frozenset({"lynis", "ss", "ip", "curl", "testssl", "testssl.sh"})
+EXTERNAL_STAGE_TOOLS = frozenset({"curl", "testssl", "testssl.sh"})
 
 # Quiet discover may only plan/run inventory tools. Deepen (louder) is a separate list.
 DISCOVER_STAGE_TOOLS = frozenset({"nmap"})
@@ -137,8 +138,12 @@ class Scope:
         raw = (target or "").strip()
         if not raw:
             return False
+        if "*" in raw or "?" in raw:
+            return False
+        if "://" not in raw and "/" in raw:
+            return False
         host = raw.split("://")[-1].split("/")[0].split(":")[0].lower().rstrip(".")
-        if not host:
+        if not host or "*" in host or "?" in host:
             return False
         names = self.external_names()
         if host in names:
@@ -279,6 +284,12 @@ def load_scope(path: Path | None = None) -> Scope:
     eips = _as_str_list(external.get("ips"))
     if not ehosts and not domains and not eips:
         raise GateError("external hosts/domains/IPs required")
+    for field, rows in (("hosts", ehosts), ("domains", domains), ("ips", eips)):
+        for item in rows:
+            if "*" in item or "?" in item:
+                raise GateError(f"external {field} refuses wildcard {item!r}")
+            if "/" in item:
+                raise GateError(f"external {field} refuses CIDR {item!r}")
     for ip in eips:
         try:
             ipaddress.ip_address(ip)

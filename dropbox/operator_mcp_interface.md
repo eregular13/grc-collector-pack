@@ -1,6 +1,6 @@
 # Operator MCP stub — interface (no public attack API)
 
-Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No exploit tools.
+Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No FastMCP dependency. No exploit tools.
 
 | Tool | Wraps | Notes |
 |---|---|---|
@@ -15,5 +15,29 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No e
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
 ```bash
+python3 -m dropbox.mcp_stub serve          # no-op: print the 7 tools and exit
+python3 -m dropbox mcp serve
 python3 -c "from dropbox.mcp_stub import dispatch; print(dispatch('scope_status'))"
 ```
+
+## JSON-RPC examples (stdio stub)
+
+`serve` does not bind a port. `--once` reads one line from stdin.
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+```
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+```
+
+```json
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"scope_status"}}
+```
+
+```json
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"AIExploitGenerator"}}
+```
+
+The last call returns a SCOPE gate error. `tools/call` never implies `--live`.

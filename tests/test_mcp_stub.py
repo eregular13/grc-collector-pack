@@ -106,6 +106,46 @@ def test_stage_deepen_requires_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         dispatch("stage_deepen", scope_path=scope)
 
 
+def test_mcp_serve_lists_tools_no_hexstrike() -> None:
+    import subprocess
+
+    proc = subprocess.run(
+        ["python3", "-m", "dropbox.mcp_stub", "serve"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = __import__("json").loads(proc.stdout)
+    names = [t["name"] for t in data["tools"]]
+    assert names == list(OPERATOR_TOOLS)
+    assert data["hexstrike"] is False
+    assert data["exploit_api"] is False
+    cli = subprocess.run(
+        ["python3", "-m", "dropbox", "mcp", "serve", "--scope", str(SCOPE)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert cli.returncode == 0, cli.stderr
+    assert "scope_status" in cli.stdout
+
+
+def test_jsonrpc_tools_list_and_refuse_exploit() -> None:
+    from dropbox.mcp_stub import handle_jsonrpc
+
+    listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    names = [t["name"] for t in listed["result"]["tools"]]
+    assert names == list(OPERATOR_TOOLS)
+    bad = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "Metasploit"}}
+    )
+    assert bad.get("error")
+    assert "refuses" in bad["error"]["message"]
+
+
 def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     (tmp_path / "out" / "poam").mkdir(parents=True)

@@ -92,7 +92,9 @@ python3 -m dropbox run --profile external
 python3 -m dropbox run --profile external --live   # curl -I named targets only
 ```
 
-`--live` sends `curl -I` to **each named** external host/IP in SCOPE. It will not fetch a host that is not in SCOPE. Demo (default) writes fixture httpx JSONL for those names and does **not** touch the network.
+`--live` sends `curl -I` (or BYO `testssl` if that is the resolved external tool) to **each named** external host/IP in SCOPE. Wildcards and CIDRs are refused at the gate. It will not fetch a host that is not in SCOPE. Demo (default) writes fixture httpx JSONL for those names and does **not** touch the network.
+
+Operator MCP: `python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools and exits (no Hexstrike server, no FastMCP).
 
 Output: `in/easm/dropbox-tls.jsonl` (existing easm collector).
 

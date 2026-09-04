@@ -71,47 +71,54 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
         )
         run_live = False
     live_budget = min(len(shards), scope.max_workers) if run_live else 0
-    for index, shard in enumerate(shards[: max(live_budget, min(8, len(shards)))]):
-        use_live = bool(run_live and exe and index < live_budget)
-        argv = byo.nmap_quiet_argv(exe, shard, scope.host_timeout_sec) if use_live else []
-        worker = farm.spawn(
-            "discover",
-            shard,
-            argv=argv,
-            note="quiet shard job",
-            timeout_sec=scope.host_timeout_sec,
-        )
-        if use_live and worker.argv:
-            dest_out = _orch_dir() / "discover" / f"{worker.wid}.gnmap"
-            try:
-                rc = byo.run_allowed(
-                    worker.argv,
-                    dest_out,
-                    scope.host_timeout_sec,
-                    allow_tools=stage_allow,
-                )
-                worker.status = "ran" if rc == 0 else "failed"
-                plan["mode"] = "live"
-            except (OSError, TimeoutError, GateError) as exc:
-                worker.status = "failed"
-                plan["skip_reason"] = str(exc)[:240]
-        else:
-            worker.status = "skipped"
-        plan["workers"].append(
-            {
-                "id": worker.wid,
-                "target": shard,
-                "status": worker.status,
-                "argv": worker.argv,
-                "timeout_sec": worker.timeout_sec,
-            }
-        )
-    dest = _write_json(_orch_dir() / "discover" / "plan.json", plan)
-    plan["plan_path"] = str(dest)
-    destroyed = farm.destroy_stage("discover")
-    plan["discover_workers_destroyed"] = destroyed
-    plan["discover_workers_alive"] = len(farm.alive("discover"))
-    _write_json(dest, plan)
+    if run_live and len(shards) > scope.max_workers:
+        plan["skip_reason"] = "batch overflow (max_workers cap)"
+    try:
+        for index, shard in enumerate(shards[: max(live_budget, min(8, len(shards)))]):
+            use_live = bool(run_live and exe and index < live_budget)
+            argv = byo.nmap_quiet_argv(exe, shard, scope.host_timeout_sec) if use_live else []
+            worker = farm.spawn(
+                "discover",
+                shard,
+                argv=argv,
+                note="quiet shard job",
+                timeout_sec=scope.host_timeout_sec,
+            )
+            if "max_workers cap" in worker.note:
+                plan["skip_reason"] = plan["skip_reason"] or "batch overflow (max_workers cap)"
+            if use_live and worker.argv:
+                dest_out = _orch_dir() / "discover" / f"{worker.wid}.gnmap"
+                try:
+                    rc = byo.run_allowed(
+                        worker.argv,
+                        dest_out,
+                        scope.host_timeout_sec,
+                        allow_tools=stage_allow,
+                    )
+                    worker.status = "ran" if rc == 0 else "failed"
+                    plan["mode"] = "live"
+                    if worker.status == "failed" and not plan["skip_reason"]:
+                        plan["skip_reason"] = "worker failed"
+                except (OSError, TimeoutError, GateError) as exc:
+                    worker.status = "failed"
+                    plan["skip_reason"] = classify_stop(exc)
+            else:
+                worker.status = "skipped"
+            plan["workers"].append(
+                {
+                    "id": worker.wid,
+                    "target": shard,
+                    "status": worker.status,
+                    "argv": worker.argv,
+                    "timeout_sec": worker.timeout_sec,
+                }
+            )
+    finally:
+        destroyed = farm.destroy_stage("discover")
+        plan["discover_workers_destroyed"] = destroyed
+        plan["discover_workers_alive"] = len(farm.alive("discover"))
+        dest = _write_json(_orch_dir() / "discover" / "plan.json", plan)
+        plan["plan_path"] = str(dest)
     return plan
 
 
@@ -135,7 +142,9 @@ def _select_deepen_hosts(scope: Scope, live_hosts: list[str] | None) -> tuple[li
         if host not in kept:
             kept.append(host)
     if not kept:
-        return [], "no in-SCOPE deepen hosts"
+        if candidates:
+            return [], "scope miss (target not in SCOPE)"
+        return [], "no discover hosts and no orchestrator.deepen_hosts"
     return kept, source
 
 
@@ -194,55 +203,62 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
     plan["skip_reason"] = reason if not exe else ""
     run_live = bool(live and exe)
     live_left = scope.max_workers if run_live else 0
-    for batch in batches:
-        target = ",".join(batch)
-        for item in batch:
-            try:
-                reject_wide_deepen_target(item)
-            except ValueError as exc:
-                raise GateError(str(exc)) from exc
-            if not scope.allows_internal_target(item):
-                raise GateError(f"deepen target not in SCOPE: {item}")
-        argv = byo.nessus_batch_argv(exe, target, scope.host_timeout_sec) if run_live and exe else []
-        worker = farm.spawn(
-            "deepen",
-            target,
-            argv=argv,
-            note="deepen batch",
-            timeout_sec=scope.host_timeout_sec,
-        )
-        if run_live and exe and worker.argv and live_left > 0:
-            dest_out = _orch_dir() / "deepen" / f"{worker.wid}.txt"
-            try:
-                rc = byo.run_allowed(
-                    worker.argv,
-                    dest_out,
-                    scope.host_timeout_sec,
-                    allow_tools=stage_allow,
-                )
-                worker.status = "ran" if rc == 0 else "failed"
-                plan["mode"] = "live"
-                live_left -= 1
-            except (OSError, TimeoutError, GateError) as exc:
-                worker.status = "failed"
-                plan["skip_reason"] = str(exc)[:240]
-                live_left -= 1
-        else:
-            worker.status = "skipped"
-        plan["workers"].append(
-            {
-                "id": worker.wid,
-                "target": target,
-                "status": worker.status,
-                "argv": worker.argv,
-                "timeout_sec": worker.timeout_sec,
-            }
-        )
-    plan["plan_path"] = str(_write_json(dest, plan))
-    destroyed = farm.destroy_stage("deepen")
-    plan["deepen_workers_destroyed"] = destroyed
-    plan["deepen_workers_alive"] = len(farm.alive("deepen"))
-    _write_json(dest, plan)
+    if run_live and len(batches) > scope.max_workers:
+        plan["skip_reason"] = "batch overflow (max_workers cap)"
+    try:
+        for batch in batches:
+            target = ",".join(batch)
+            for item in batch:
+                try:
+                    reject_wide_deepen_target(item)
+                except ValueError as exc:
+                    raise GateError(str(exc)) from exc
+                if not scope.allows_internal_target(item):
+                    raise GateError(f"scope miss (target not in SCOPE): {item}")
+            argv = byo.nessus_batch_argv(exe, target, scope.host_timeout_sec) if run_live and exe else []
+            worker = farm.spawn(
+                "deepen",
+                target,
+                argv=argv,
+                note="deepen batch",
+                timeout_sec=scope.host_timeout_sec,
+            )
+            if "max_workers cap" in worker.note:
+                plan["skip_reason"] = plan["skip_reason"] or "batch overflow (max_workers cap)"
+            if run_live and exe and worker.argv and live_left > 0:
+                dest_out = _orch_dir() / "deepen" / f"{worker.wid}.txt"
+                try:
+                    rc = byo.run_allowed(
+                        worker.argv,
+                        dest_out,
+                        scope.host_timeout_sec,
+                        allow_tools=stage_allow,
+                    )
+                    worker.status = "ran" if rc == 0 else "failed"
+                    plan["mode"] = "live"
+                    live_left -= 1
+                    if worker.status == "failed" and not plan["skip_reason"]:
+                        plan["skip_reason"] = "worker failed"
+                except (OSError, TimeoutError, GateError) as exc:
+                    worker.status = "failed"
+                    plan["skip_reason"] = classify_stop(exc)
+                    live_left -= 1
+            else:
+                worker.status = "skipped"
+            plan["workers"].append(
+                {
+                    "id": worker.wid,
+                    "target": target,
+                    "status": worker.status,
+                    "argv": worker.argv,
+                    "timeout_sec": worker.timeout_sec,
+                }
+            )
+    finally:
+        destroyed = farm.destroy_stage("deepen")
+        plan["deepen_workers_destroyed"] = destroyed
+        plan["deepen_workers_alive"] = len(farm.alive("deepen"))
+        plan["plan_path"] = str(_write_json(dest, plan))
     return plan
 
 
@@ -347,6 +363,17 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
     return summary
 
 
+def classify_stop(exc: BaseException | str) -> str:
+    text = str(exc).lower()
+    if "timeout" in text:
+        return "timeout (host_timeout_sec)"
+    if "max_workers" in text or "overflow" in text:
+        return "batch overflow (max_workers cap)"
+    if "not in scope" in text or "scope miss" in text:
+        return "scope miss (target not in SCOPE)"
+    return str(exc)[:240]
+
+
 def integrity_stops(scope: Scope) -> list[str]:
     stops = [
         "SCOPE required",
@@ -354,6 +381,9 @@ def integrity_stops(scope: Scope) -> list[str]:
         f"deepen_batch={scope.deepen_batch} (enforced 2-5)",
         f"host_timeout_sec={scope.host_timeout_sec}",
         "tear-down after discover and deepen",
+        "timeout (host_timeout_sec) → destroy workers",
+        "batch overflow (max_workers cap)",
+        "scope miss (target not in SCOPE)",
         "no targets outside SCOPE",
         "no 0.0.0.0/0",
         "BYO nmap/nessus on PATH only; never apt/embed/download",

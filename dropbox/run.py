@@ -125,6 +125,10 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_mcp(args: argparse.Namespace) -> int:
+    if args.tool == "serve":
+        from dropbox.mcp_stub import serve
+
+        return serve(["--list"])
     from dropbox.mcp_stub import dispatch
 
     result = dispatch(args.tool, live=False, scope_path=Path(args.scope) if args.scope else None)
