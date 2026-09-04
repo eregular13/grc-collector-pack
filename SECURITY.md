@@ -14,7 +14,7 @@ The console opens no outbound HTTP. It never POSTs `/api/risks`.
 
 ## Push scripts
 
-Dual-gate: `CISO_PUSH` / `RISKREADY_PUSH` default `0`, and `DRY_RUN` default `1`. Live POST (if both gates flipped) is limited to CISO assets/evidences and RiskReady assets/evidence/incidents. **Never** `POST /api/risks`. High/critical stay in `risks_proposed.json` for a human.
+Dual-gate: `CISO_PUSH` / `RISKREADY_PUSH` default `0`, and `DRY_RUN` default `1`. Optional CISO live POST (both gates flipped) is limited to `/api/assets/` and `/api/evidences/`. **RiskReady wrap is dead:** `push_riskready.sh` never logs in or POSTs — not `/api/risks`, not assets/evidence/incidents — even if `RISKREADY_PUSH=1`. High/critical stay in `risks_proposed.json` for a human. Farm SOP never points at a RiskReady write.
 
 ## Demo data
 

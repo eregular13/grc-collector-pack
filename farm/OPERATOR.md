@@ -33,7 +33,8 @@ python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted 
 # 5) CISO zip from localhost console (after lab outputs exist)
 # bash scripts/start-product.sh
 # open http://127.0.0.1:18765/  → download drop zip (CISO CSVs + poam.csv)
-# owner/due stay blank. Do not POST /api/risks. RiskReady is review-only.
+# owner/due stay blank. Do not POST /api/risks. RiskReady wrap is dead
+# (no login / no assets / no incidents / no evidence POST). Review-only.
 ```
 
 `make farm-lab` writes under `farm/work/` (not pack `in/`). Stamp is DEMO.

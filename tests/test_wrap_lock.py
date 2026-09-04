@@ -93,3 +93,42 @@ def test_ciso_rest_limited_to_assets_and_evidences() -> None:
         assert any(a in line for a in allowed), line
         assert "/api/risks" not in line
         assert "FindingsAssessment" not in line
+
+
+def test_import_rr_and_security_never_allow_riskready_write() -> None:
+    for rel in ("docs/IMPORT_RR.md", "SECURITY.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "Allowed live POSTs" not in text
+        assert "RiskReady assets/evidence/incidents" not in text
+        assert re.search(r"review-only|stay-out|never wraps|wrap is dead", text, re.I)
+
+
+def test_farm_sop_never_points_at_riskready_write() -> None:
+    write_needles = (
+        "Allowed live POSTs",
+        "/api/auth/login",
+        "/itsm/assets",
+        "${API}/auth/login",
+        "${API}/itsm/assets",
+        "${API}/evidence",
+        "${API}/incidents",
+        "${API}/risks",
+    )
+    for rel in (
+        "farm/OPERATOR.md",
+        "farm/QUICKSTART.md",
+        "farm/README.md",
+        "farm/INTEGRITY.md",
+        "farm/SLOTS.md",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        for needle in write_needles:
+            assert needle not in text, f"{rel} points at RiskReady write: {needle}"
+        for line in text.splitlines():
+            if "/api/risks" not in line:
+                continue
+            low = line.lower()
+            assert any(
+                token in low
+                for token in ("do not", "never", "- post", "review-only", "stay-out")
+            ), f"{rel} RiskReady write instruction: {line}"
