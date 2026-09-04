@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 35 cloud file-drop harden stands (Prowler ASFF + ScoutSuite parse-only). No slot inflation. No live internet. No fake compose pass. No cloud API calls.
+Until 16:00 PT: keep e2e green; cycle 36 endpoint file-drop harden stands (HK Audit CSV + Lynis report parse-only). Cloud ASFF stands. No slot inflation. No live internet. No fake compose pass. No AD/cloud API calls.
 
 ## STOP rules
 

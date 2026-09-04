@@ -12,11 +12,11 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 
 | Run | Assets | Findings | Vulns | Evidence | POA&M | `demo` |
 |---|---|---|---|---|---|---|
-| `make lab` (empty pack `in/` → fixtures) | 64 | 63 | 16 | 24 | 63 | true |
-| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 72 | 16 | 24 | 66 | true |
-| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 64 | 16 | 24 | 63 | true |
+| `make lab` (empty pack `in/` → fixtures) | 64 | 65 | 16 | 25 | 65 | true |
+| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 74 | 16 | 25 | 68 | true |
+| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 66 | 16 | 25 | 65 | true |
 
-pytest **187 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/63/24 poam 63 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **192 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/65/25 poam 65 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 36):** Layer C parse-only endpoint file-drop harden: HardeningKitty Audit CSV under `in/identity/` (Failed/warning only; does not invent Windows findings). Lynis report/`report.dat` under `in/wazuh/`. High rows map to CISO/POA&M when obvious (password history, LM hash, host firewall, SSH PermitRootLogin). Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). No AD/WinRM/cloud API. Docs/e2e stand.
 
 **Delta (cycle 35):** Layer C parse-only cloud file-drop harden: Prowler JSON/ASFF (`ProductFields`, string or dict Severity) and ScoutSuite `services.*.findings` under `in/cloud/`. High FAIL maps to CISO/POA&M when obvious (public S3 / AllUsers, IAM AdministratorAccess, root MFA, SG `0.0.0.0/0`, public RDS, unencrypted S3/EBS). Demo ASFF adds `demo-asff-open`. Empty pack `in/` still loads fixtures. ScoutSuite stays file_drop; Prowler invoke stays BYO. Catalog unchanged (111 / 32 / 30 / 81). No cloud API calls. No live tools. Docs/e2e stand.
 

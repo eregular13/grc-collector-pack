@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 36 — endpoint file-drop harden (2026-09-04)
+
+HardeningKitty Audit CSV under `in/identity/`: Failed/warning only; Passed (including Guest) silent. Does not invent Windows findings. Lynis report/`report.dat` under `in/wazuh/` (`*.txt`/`*.log`/`*.dat`). High rows map to CISO/POA&M when obvious (password history, LM hash, host firewall, SSH PermitRootLogin). Demo Lynis attaches to existing `jump-unmanaged`. Empty `in/` still loads fixtures. Catalog **not inflated**. No AD/WinRM/cloud API. pytest **192**. Labs green. Compose ABSENT. Cloud ASFF cycle 35 stands.
+
+```json
+{"pytest": 192, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 65, "vulns": 16, "poam": 65}, "farm_lab": {"assets": 64, "findings": 65, "poam": 65, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 66, "poam": 65, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 74, "poam": 68, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 35 — cloud file-drop harden (2026-09-04)
 
 `cloud-prowler` accepts Prowler JSON/ASFF (`ProductFields`, string or dict Severity) and ScoutSuite `services.*.findings` under `in/cloud/`. Finding `ref_id` is check+resource so two buckets stay two rows. High FAIL maps to CISO/POA&M when obvious (public S3 / AllUsers, IAM AdministratorAccess, root MFA, SG `0.0.0.0/0`, public RDS, unencrypted S3/EBS). Demo ASFF adds `demo-asff-open`. Empty `in/` still loads fixtures including `prowler-asff.json` + `scoutsuite.json`. ScoutSuite stays file_drop; Prowler invoke stays BYO. Catalog **not inflated**. No cloud API calls. pytest **187**. Labs green. Compose ABSENT.
