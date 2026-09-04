@@ -134,6 +134,19 @@ Prowler *invoke* is separate BYO (`allow_tools`) when the binary is on PATH;
 this path is file-drop ingest. ScoutSuite stays file_drop-only.
 No new catalog slots.
 
+## EASM file-drop (Layer C)
+
+Drop **httpx** / **Amass** / **Subfinder** JSON, JSONL, or a host list under
+`in/easm/`. Native JSON arrays and `{results|hosts|data}` wrappers parse.
+httpx `failed:true` rows and empty arrays invent nothing. Interesting
+rows only: sensitive perimeter names (vpn/admin/dev-api/staging) and
+admin/login titles. High rows map to CISO/POA&M (perimeter hostnames,
+exposed admin UI, TLS weak cipher). Parse-only — no live DNS/HTTP,
+no amass/httpx/subfinder subprocess. Empty `in/` still loads
+`fixtures/demo/easm/` (`httpx.jsonl`, `httpx.json`, `amass.jsonl`).
+amass / subfinder stay file_drop; httpx *invoke* is separate BYO.
+No new catalog slots.
+
 ## Nuclei JSON file-drop (Layer C)
 
 Drop **Nuclei** JSON / JSONL under `in/vuln/` (JSONL, a single object,

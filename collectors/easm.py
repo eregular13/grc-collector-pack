@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Parse Amass / Subfinder / httpx into external hosts."""
+"""Parse Amass / Subfinder / httpx / testssl into external hosts.
+
+Parse-only. Does not run amass, httpx, subfinder, or any live DNS/HTTP probe.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.schema import make_record, make_ref
@@ -12,6 +16,59 @@ from shared.testssl import is_testssl, iter_testssl_findings
 SOURCE = "easm"
 LABELS = ["easm", "external"]
 WATCH = ("vpn.", "dev-api.", "admin.", "staging.")
+
+
+def _host_from_row(row: dict[str, Any]) -> str:
+    host = str(
+        row.get("host")
+        or row.get("name")
+        or row.get("fqdn")
+        or row.get("hostname")
+        or row.get("input")
+        or row.get("url")
+        or ""
+    )
+    host = host.split("://")[-1].split("/")[0]
+    if host.count(":") == 1 and host.rsplit(":", 1)[-1].isdigit():
+        host = host.rsplit(":", 1)[0]
+    return host.strip()
+
+
+def _is_failed_row(row: dict[str, Any]) -> bool:
+    failed = row.get("failed")
+    if failed in {True, "true", "True", 1, "1", "yes"}:
+        return True
+    return False
+
+
+def _rows_from_payload(payload: Any) -> list[dict[str, Any]]:
+    """Amass / httpx / subfinder JSON array, wrapper, or single object."""
+    if isinstance(payload, list):
+        out: list[dict[str, Any]] = []
+        for item in payload:
+            if isinstance(item, dict):
+                out.append(item)
+            elif isinstance(item, str) and "." in item:
+                out.append({"name": item})
+        return out
+    if not isinstance(payload, dict):
+        return []
+    for key in ("results", "hosts", "data", "subdomains", "domains", "records"):
+        raw = payload.get(key)
+        if isinstance(raw, list):
+            return _rows_from_payload(raw)
+    if any(payload.get(k) for k in ("host", "name", "fqdn", "hostname", "input", "url")):
+        return [payload]
+    return []
+
+
+def _interesting_httpx(meta: dict[str, Any], name: str) -> bool:
+    title = str(meta.get("title") or "")
+    url = str(meta.get("url") or "")
+    blob = f"{title} {url} {name}".lower()
+    if "admin" in blob or "login" in blob:
+        return True
+    return False
 
 
 def parse_file(path: Path) -> list[dict]:
@@ -59,29 +116,30 @@ def parse_file(path: Path) -> list[dict]:
                     )
                 )
             return records
+
     hosts: dict[str, dict] = {}
     name_l = path.name.lower()
     if path.suffix.lower() in {".jsonl", ".json"} or "httpx" in name_l:
-        for row in read_jsonl(path):
+        payload: Any = None
+        try:
+            payload = read_json(path)
+        except Exception:
+            payload = None
+        rows = _rows_from_payload(payload) if payload is not None else []
+        if not rows:
+            rows = [r for r in read_jsonl(path) if isinstance(r, dict)]
+        for row in rows:
             if not isinstance(row, dict):
                 continue
-            host = str(
-                row.get("host")
-                or row.get("name")
-                or row.get("fqdn")
-                or row.get("input")
-                or row.get("url")
-                or ""
-            ).split("://")[-1].split("/")[0]
+            if _is_failed_row(row):
+                continue
+            host = _host_from_row(row)
             if host:
                 hosts[host.lower()] = {"name": host, "meta": row}
-        if not hosts:
-            # single JSON object or list handled poorly; try text domains
-            pass
     if not hosts:
         for line in read_text(path).splitlines():
             line = line.strip()
-            if not line or line.startswith("{") or line.startswith("#"):
+            if not line or line.startswith("{") or line.startswith("[") or line.startswith("#"):
                 continue
             host = line.split()[0].split("://")[-1].split("/")[0]
             if "." in host:
@@ -127,6 +185,24 @@ def parse_file(path: Path) -> list[dict]:
                     labels=labels,
                     collected_at=now,
                     extra={},
+                )
+            )
+        if _interesting_httpx(meta, name) and (
+            "admin" in f"{title} {name}".lower() or "login" in title.lower()
+        ):
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{name}-admin-ui"),
+                    name=f"Exposed admin interface on {name}",
+                    description=f"{name} presents an admin/login interface (title={title or '[n/a]'}).",
+                    severity="high",
+                    category="exposure",
+                    assets=[name],
+                    labels=labels + ["admin-ui"],
+                    collected_at=now,
+                    extra={"title": title, "url": meta.get("url") or ""},
                 )
             )
         if "weak" in blob and ("cipher" in blob or "tls" in blob or "ssl" in blob):

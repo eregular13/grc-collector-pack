@@ -114,6 +114,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "in/cloud/" in md
     assert "ScoutSuite" in md
     assert "ASFF" in md
+    assert "EASM file-drop" in md
+    assert "httpx" in md
+    assert "Amass" in md
     assert "Nuclei JSON file-drop" in md
     assert "template_id" in md
     assert "SARIF file-drop" in md

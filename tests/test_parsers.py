@@ -824,10 +824,83 @@ def test_empty_in_still_loads_k8s(tmp_path, monkeypatch) -> None:
 
 
 def test_httpx_jsonl() -> None:
+    from shared.control_map import map_finding
+
     recs = easm.parse_file(DEMO / "easm" / "httpx.jsonl")
     assets = [r["name"] for r in recs if r["kind"] == "asset"]
     assert "vpn.example.com" in assets
     assert any(r["kind"] == "finding" and "vpn.example.com" in r["assets"] for r in recs)
+    vpn = next(r for r in recs if r["kind"] == "finding" and "Sensitive external" in r["name"] and "vpn.example.com" in r["assets"])
+    mapped = map_finding(vpn)
+    assert mapped["include_poam"] is True
+    assert "perimeter" in mapped["control_name"].lower() or "hostname" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+    admin_ui = [r for r in recs if r["kind"] == "finding" and "admin interface" in r["name"].lower()]
+    assert admin_ui
+    assert map_finding(admin_ui[0])["include_poam"] is True
+
+
+def test_httpx_json_array_failed_silent() -> None:
+    from shared.control_map import map_finding
+
+    recs = easm.parse_file(DEMO / "easm" / "httpx.json")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "admin.example.com" in assets
+    assert "vpn.example.com" not in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any("admin interface" in r["name"].lower() for r in findings)
+    assert not any("vpn.example.com" in (r.get("assets") or []) for r in findings)
+    mapped = map_finding(next(r for r in findings if "admin" in r["name"].lower()))
+    assert mapped["include_poam"] is True
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_amass_json_array(tmp_path) -> None:
+    dest = tmp_path / "amass.json"
+    dest.write_text(
+        """[{"name":"vpn.example.com","domain":"example.com"},
+        {"name":"intranet.example.com","domain":"example.com"}]""",
+        encoding="utf-8",
+    )
+    recs = easm.parse_file(dest)
+    names = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "vpn.example.com" in names
+    assert "intranet.example.com" in names
+
+
+def test_empty_easm_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-httpx.json"
+    dest.write_text("[]", encoding="utf-8")
+    assert easm.parse_file(dest) == []
+    dest.write_text("""{"results":[],"hosts":[]}""", encoding="utf-8")
+    assert easm.parse_file(dest) == []
+    dest.write_text("""{"host":"vpn.example.com","failed":true}""", encoding="utf-8")
+    assert easm.parse_file(dest) == []
+
+
+def test_empty_in_still_loads_easm(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-easm"))
+    (tmp_path / "empty-easm" / "easm").mkdir(parents=True)
+    files, demo = load_inputs("easm", (".txt", ".json", ".jsonl"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "httpx.jsonl" in names
+    assert "httpx.json" in names
+    assert "amass.jsonl" in names
+
+
+def test_easm_no_live_probe() -> None:
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "collectors" / "easm.py").read_text(encoding="utf-8")
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "amass enum" not in src
+    assert "httpx -" not in src
+    assert "subfinder -" not in src
+    assert "socket.socket" not in src
 
 
 def test_scoutsuite() -> None:

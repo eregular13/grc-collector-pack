@@ -318,6 +318,23 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Unset hostNetwork unless the workload is a documented system DaemonSet. "
             "This is a dropped Kubescape finding, not a live cluster call."
         )
+    elif (
+        "admin interface" in text
+        or "admin login" in text
+        or "admin panel" in text
+        or "admin console" in text
+    ):
+        name = "Restrict exposed admin interfaces"
+        fix = (
+            "Move the admin UI off the public perimeter or put it behind SSO/VPN. "
+            "This is a dropped httpx/EASM finding, not a live HTTP probe."
+        )
+    elif "sensitive external hostname" in text or "public perimeter" in text:
+        name = "Lock down sensitive perimeter hostnames"
+        fix = (
+            "Do not publish vpn/admin/dev hostnames on the open internet. "
+            "This is a dropped EASM finding, not a live DNS/HTTP probe."
+        )
     elif str(rec.get("category") or "") == "exposure":
         name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"
         fix = (

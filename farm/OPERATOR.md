@@ -167,8 +167,12 @@ Deepen uses deepen invoke slots on discover-live hosts or `deepen_hosts`.
 `file_drop or plan-only — operator lands artifacts in in/easm|…`.
 Ingest inventories those dropped files (`dropped_external` on the ingest
 marker). It does not probe. `make dropbox-external` writes DEMO fixtures
-into `in/easm/`. Live BYO curl/testssl is operator-local under written
-SCOPE — not orchestrate.
+into `in/easm/`. httpx / Amass / Subfinder JSON or JSONL is file-drop
+ingest: native arrays and `{results|hosts}` wrappers parse. Failed httpx
+rows and empty exports invent nothing. High perimeter / admin-UI / TLS
+rows map to existing CISO/POA&M. Layer C never runs amass, httpx, or
+subfinder and does not probe DNS/HTTP. Live BYO curl/testssl is
+operator-local under written SCOPE — not orchestrate.
 LICENSE-LOCK / file_drop names never subprocess.
 
 ```bash
