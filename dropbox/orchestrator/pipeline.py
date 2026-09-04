@@ -12,7 +12,6 @@ from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.shard import batch_hosts, reject_wide_deepen_target, shard_cidrs
 from dropbox.scope import NEVER_EMBED, ORCH_BYO, ROOT, GateError, Scope, is_open_internet_cidr, load_scope
 from farm.adapters.catalog import plan_stage_slots, refuse_live_slot, select_stage_slots
-from farm.adapters.stubs import argv_for
 from shared.io_util import in_dir
 
 STAGE_GRAPH = (
@@ -53,6 +52,8 @@ def _choose_live_adapter(
     which,
 ) -> tuple[str, str | None, list[str], str]:
     """First ready invoke slot whose argv is legal for target. Never LICENSE-LOCK."""
+    from farm.adapters.stubs import argv_for
+
     last = "no invoke slot allowlisted and on PATH"
     for row in slot_plan.get("selected") or []:
         name = str(row.get("slot") or "")
@@ -144,6 +145,8 @@ def discover_stage(scope: Scope, farm: Farm, live: bool = False) -> dict:
             argv: list[str] = []
             if use_live and exe and primary:
                 try:
+                    from farm.adapters.stubs import argv_for
+
                     argv = argv_for(primary, exe, shard, scope.host_timeout_sec)
                 except GateError as exc:
                     use_live = False
@@ -297,6 +300,8 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
             argv: list[str] = []
             if run_live and exe and primary and live_left > 0:
                 try:
+                    from farm.adapters.stubs import argv_for
+
                     argv = argv_for(primary, exe, target, scope.host_timeout_sec)
                 except GateError as exc:
                     plan["skip_reason"] = plan["skip_reason"] or str(exc)

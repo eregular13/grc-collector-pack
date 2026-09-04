@@ -8,15 +8,12 @@ from farm.adapters.catalog import (
     slot_matrix,
     wired_slots,
 )
-from farm.adapters.stubs import argv_for, run_slot
 
 __all__ = [
     "LICENSE_CLASSES",
-    "argv_for",
     "load_catalog",
     "invoke_slots",
     "load_slots",
-    "run_slot",
     "slot_matrix",
     "wired_slots",
 ]
