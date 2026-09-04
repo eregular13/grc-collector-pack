@@ -123,3 +123,6 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 **Delta (cycle 26):** External stage is **plan-only** in the graph (after deepen, before ingest). SCOPE refuses CIDR / wildcards / `0.0.0.0/0` in `external:`; named hosts and https URLs allowed. External SLOTS `will_run=false`.
 
 Not a paying-day PASS. USB evergreen-assessment was not copied.
+
+**Reid-only blockers (no fake greens):** CTA; Eval `npm start`; real KEEP
+`in/` drop; compose on a Docker host (this VM ABSENT); merge PR #1.

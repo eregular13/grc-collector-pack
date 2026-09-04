@@ -39,6 +39,31 @@ def test_status_paying_day_fail_and_compose_absent_until_proven() -> None:
         assert status.get("compose_lab") in {"absent", "pass", "skip"}
 
 
+def test_status_next_action_is_reid_only_blockers() -> None:
+    status = _status()
+    action = status.get("next_action", "")
+    low = action.lower()
+    assert "reid-only" in low
+    assert "cta" in low
+    assert "eval" in low and "npm start" in low
+    assert "keep" in low and "in/" in action
+    assert "compose" in low and "docker" in low
+    assert "pr #1" in low
+    assert "no fake greens" in low
+    assert "absent" in low and "not a pass" in low
+    assert status.get("paying_day") == "FAIL"
+    assert status.get("compose_lab") == "absent"
+    assert status.get("scope_gap") == "none"
+    assert status.get("farm_tool_bin_refuse") == "LICENSE_LOCK_SPAWN"
+    for rel in ("product-lab/EXECUTIVE.md", "dropbox/EXECUTIVE.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "Reid-only" in text
+        assert "CTA" in text
+        assert "npm start" in text
+        assert "PR #1" in text
+        assert "ABSENT" in text
+
+
 def test_status_scope_inventory_no_remaining_entrypoint_gap() -> None:
     status = _status()
     assert status.get("scope_gap") == "none"

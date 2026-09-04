@@ -168,8 +168,9 @@ exploit-class stay `file_drop` and never appear in invoke `will_run=true`.
 nmap/nessus invoke only when explicitly in SCOPE.allow_tools AND
 stages.deepen/discover enabled AND binary on PATH/FARM_TOOL_BIN.
 
-**Still open:** Docker/compose runtime unexercised — stamp ABSENT until
-proven on an operator host with Docker. Live BYO on this box is DEMO
-stubs. Catalog ≠ 100 running binaries. Overnight loop ended 2026-09-02
-— do not re-arm. Afternoon build continues until 16:00 PT; remaining
-cycles harden existing farm/SCOPE honesty, not new Layer C parsers.
+**Still open (Reid-only blockers — no fake greens):** LinkedIn CTA;
+Origin Eval `npm start`; real KEEP-chain files dropped into pack `in/`
+(fixtures are not a client estate); compose runtime on a Docker host
+(this VM stamps **ABSENT**, not a PASS); merge PR #1. Live BYO on this
+box is DEMO stubs. Catalog ≠ 100 running binaries. Overnight loop ended
+2026-09-02 — do not re-arm. Paying-day stays **FAIL**.

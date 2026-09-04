@@ -29,4 +29,4 @@ license_lock_will_run: never
 scope_gap: none
 scope_inventory: CLI+conductor+run_slot+orchestrate load_scope; discover/deepen use loaded Scope.allow_tools
 farm_tool_bin_refuse: LICENSE_LOCK_SPAWN
-next_action: compose runtime only on an operator Docker host using documented PASS criteria; remaining window hardens existing farm/SCOPE honesty, not new Layer C parsers
+next_action: Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #1. No fake greens.
