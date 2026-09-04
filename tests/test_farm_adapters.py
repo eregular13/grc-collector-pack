@@ -100,6 +100,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "KEEP-chain file-drop" in md
     assert "testssl" in md
     assert "Maester" in md
+    assert "BloodHound CE file-drop" in md
+    assert "SharpHound" in md
+    assert "ObjectIdentifier" in md
     assert "Endpoint file-drop" in md
     assert "HardeningKitty" in md
     assert "Lynis" in md

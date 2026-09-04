@@ -186,6 +186,42 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Encode untrusted output for the HTML context. Avoid raw innerHTML. "
             "This is a SAST/SARIF finding, not a CVE."
         )
+    elif "dcsync" in text:
+        name = "Remove non-DC DCSync rights"
+        fix = (
+            "Revoke Replicating Directory Changes / All from non-DC principals. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        )
+    elif "genericall" in text.replace(" ", "").replace("_", "").replace("-", ""):
+        name = "Remove GenericAll on privileged objects"
+        fix = (
+            "Remove GenericAll ACE from the principal. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        )
+    elif "as-rep" in text or "asrep" in text.replace("-", "").replace(" ", "") or "does not require kerberos preauth" in text:
+        name = "Require Kerberos preauthentication"
+        fix = (
+            "Uncheck 'Do not require Kerberos preauthentication'. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        )
+    elif "roastable" in text or "kerberoast" in text:
+        name = "Harden kerberoastable service accounts"
+        fix = (
+            "Use a gMSA or rotate the SPN password; avoid user accounts with SPNs. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        )
+    elif "unconstrained delegation" in text:
+        name = "Remove unconstrained Kerberos delegation"
+        fix = (
+            "Disable unconstrained delegation; prefer constrained or resource-based. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        )
+    elif "backup operators" in text:
+        name = "Restrict Backup Operators membership"
+        fix = (
+            "Remove standing Backup Operators members. "
+            "This is a BloodHound/PingCastle file-drop finding, not a live AD call."
+        )
     elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."

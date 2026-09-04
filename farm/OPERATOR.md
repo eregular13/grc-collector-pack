@@ -116,6 +116,14 @@ rows only — no live TLS probe, no Graph API call. OK/Passed stay silent.
 testssl / Maester *invoke* is separate BYO (`allow_tools`) if already on PATH.
 Orchestrate external stays plan-only.
 
+BloodHound CE / SharpHound JSON is file-drop ingest under `in/identity/`.
+Layer C parses `data.nodes` / `data.edges`, graph `nodes`/`edges`, or
+SharpHound `data` arrays (`Properties` / `ObjectIdentifier` / mapped `Aces`).
+Empty `data` and empty `Members` invent nothing. No LDAP / BloodHound API /
+SharpHound run. High rows map to existing CISO/POA&M (DCSync, GenericAll,
+roastable SPN, AS-REP, unconstrained delegation, Backup Operators).
+bloodhound / azurehound stay file_drop.
+
 HardeningKitty **Audit CSV** and **Lynis** reports are file-drop ingest:
 land HK CSV under `in/identity/`, Lynis report/`report.dat` under `in/wazuh/`.
 Layer C parses Failed HK rows and Lynis warnings only — no WinRM/AD API, no

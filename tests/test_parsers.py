@@ -150,11 +150,119 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
 
 
 def test_bloodhound_edges() -> None:
+    from shared.control_map import map_finding
+
     recs = identity_ad.parse_file(DEMO / "identity" / "bloodhound-edges.json")
     names = [r["name"] for r in recs if r["kind"] == "finding"]
     assert "BloodHound GenericAll" in names
     assert "BloodHound DCSync" in names
     assert any(r["severity"] == "critical" for r in recs if r["kind"] == "finding")
+    dcsync = next(r for r in recs if r["kind"] == "finding" and r["name"] == "BloodHound DCSync")
+    mapped = map_finding(dcsync)
+    assert mapped["include_poam"] is True
+    assert "DCSync" in mapped["control_name"]
+    assert "CVE-" not in mapped["recommended_fix"]
+    gall = next(r for r in recs if r["kind"] == "finding" and r["name"] == "BloodHound GenericAll")
+    assert map_finding(gall)["include_poam"] is True
+
+
+def test_bloodhound_nodes_map() -> None:
+    from shared.control_map import map_finding
+
+    recs = identity_ad.parse_file(DEMO / "identity" / "bloodhound.json")
+    names = [r["name"] for r in recs if r["kind"] == "finding"]
+    assert "Roastable SPN" in names
+    assert "Backup Operators privileged group" in names
+    assert "Unconstrained delegation" in names
+    roast = next(r for r in recs if r["name"] == "Roastable SPN")
+    mapped = map_finding(roast)
+    assert mapped["include_poam"] is True
+    assert "kerberoast" in mapped["control_name"].lower() or "service account" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_sharphound_ce_users_json(tmp_path) -> None:
+    dest = tmp_path / "users.json"
+    dest.write_text(
+        """{"data":[{"ObjectIdentifier":"S-1-5-21-1000-2000-3000-1103",
+        "Properties":{"name":"SVC-SQL@CORP.LOCAL","hasspn":true,
+        "serviceprincipalnames":["MSSQLSvc/db.corp.local:1433"],
+        "dontreqpreauth":true,"unconstraineddelegation":false,
+        "highvalue":false},"Members":[],"Aces":[]}],
+        "meta":{"type":"users","count":1,"version":6}}""",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any(r["name"] == "SVC-SQL@CORP.LOCAL" for r in assets)
+    assert any(r["name"] == "Roastable SPN" for r in findings)
+    assert any(r["name"] == "AS-REP roastable account" for r in findings)
+    assert not any("High-value" in r["name"] for r in findings)
+
+
+def test_sharphound_ce_edges_and_aces(tmp_path) -> None:
+    dest = tmp_path / "graph.json"
+    dest.write_text(
+        """{"data":[
+        {"Source":"HELPDESK@CORP.LOCAL","Target":"DOMAIN ADMINS@CORP.LOCAL","EdgeType":"GenericAll"},
+        {"ObjectIdentifier":"S-1-5-21-1000-2000-3000-512",
+         "Properties":{"name":"CORP.LOCAL","highvalue":true},
+         "Aces":[{"PrincipalName":"SVC-SQL@CORP.LOCAL","RightName":"DCSync"},
+                 {"PrincipalName":"HELPDESK@CORP.LOCAL","RightName":"GenericRead"}]
+        }
+        ],"meta":{"type":"domains","count":1}}""",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    names = [r["name"] for r in recs if r["kind"] == "finding"]
+    assert "BloodHound GenericAll" in names
+    assert "BloodHound DCSync" in names
+    assert not any("GenericRead" in n for n in names)
+
+
+def test_empty_bloodhound_ce_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-users.json"
+    dest.write_text(
+        """{"data":[],"meta":{"type":"users","count":0,"version":6}}""",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    assert recs == []
+    dest.write_text(
+        """{"data":[{"ObjectIdentifier":"S-1-5-21-empty",
+        "Properties":{"name":"EMPTY-GROUP@CORP.LOCAL"},
+        "Members":[],"Aces":[]}],"meta":{"type":"groups","count":1}}""",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    assert [r["kind"] for r in recs] == ["asset"]
+    assert recs[0]["name"] == "EMPTY-GROUP@CORP.LOCAL"
+
+
+def test_empty_in_still_loads_bloodhound(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-identity-bh"))
+    (tmp_path / "empty-identity-bh" / "identity").mkdir(parents=True)
+    files, demo = load_inputs("identity-ad", (".json", ".xml", ".csv"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "bloodhound.json" in names
+    assert "bloodhound-edges.json" in names
+
+
+def test_identity_ad_no_ad_subprocess() -> None:
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "collectors" / "identity_ad.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "ldap" not in src.lower()
+    assert "winrm" not in src.lower()
+    assert "bloodhound -" not in src
 
 
 def test_fleet_hosts() -> None:

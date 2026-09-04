@@ -46,7 +46,7 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 | `in/nmap/` | Nmap XML, gnmap (`-oG`), thin JSON. Parse-only — collector does not run nmap. |
 | `in/vuln/` | Nuclei JSONL, Trivy, Greenbone, testssl JSON (HIGH/WARN only; no live TLS) |
 | `in/wazuh/` | Wazuh agents/alerts, osquery, Fleet, Lynis report / `report.dat` (parse-only) |
-| `in/identity/` | BloodHound CE, PingCastle XML, HardeningKitty Audit CSV (Failed/warning only; does not invent Windows findings) |
+| `in/identity/` | BloodHound CE / SharpHound JSON (`data.nodes`/`data.edges` or `Properties`/`ObjectIdentifier`/`Aces`; empty data invents nothing), PingCastle XML, HardeningKitty Audit CSV (Failed/warning only; does not invent Windows findings) |
 | `in/easm/` | Subfinder, httpx JSONL, Amass JSONL, testssl JSON (same HIGH-only parse as `in/vuln/`) |
 | `in/k8s/` | Kubescape JSON, kube-bench JSON (`Controls[].tests[].results[]`), Falco JSONL. Parse-only — no kubectl / live cluster. |
 | `in/code/` | Gitleaks, Semgrep, Trivy FS, TruffleHog, SARIF |

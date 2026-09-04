@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Parse BloodHound / PingCastle-like JSON into privileged identity findings."""
+"""Parse BloodHound CE / SharpHound / PingCastle-like JSON into identity findings.
+
+Parse-only. Does not invoke a directory collector or a remote shell.
+"""
 
 from __future__ import annotations
 
@@ -16,33 +19,13 @@ from shared.schema import make_record, make_ref
 SOURCE = "identity-ad"
 LABELS = ["identity", "ad"]
 
-
-def _nodes(payload: Any) -> list[dict[str, Any]]:
-    if isinstance(payload, list):
-        return [n for n in payload if isinstance(n, dict)]
-    if not isinstance(payload, dict):
-        return []
-    data = payload.get("data")
-    if isinstance(data, dict) and isinstance(data.get("nodes"), list):
-        return [n for n in data["nodes"] if isinstance(n, dict)]
-    if isinstance(payload.get("nodes"), list):
-        return [n for n in payload["nodes"] if isinstance(n, dict)]
-    # PingCastle-like
-    if isinstance(payload.get("PrivilegedAccounts"), list):
-        return [n for n in payload["PrivilegedAccounts"] if isinstance(n, dict)]
-    return []
-
-
-def _edges(payload: Any) -> list[dict[str, Any]]:
-    if not isinstance(payload, dict):
-        return []
-    data = payload.get("data")
-    if isinstance(data, dict) and isinstance(data.get("edges"), list):
-        return [e for e in data["edges"] if isinstance(e, dict)]
-    if isinstance(payload.get("edges"), list):
-        return [e for e in payload["edges"] if isinstance(e, dict)]
-    return []
-
+_META_KIND = {
+    "users": "User",
+    "computers": "Computer",
+    "groups": "Group",
+    "domains": "Domain",
+    "ous": "OU",
+}
 
 _EDGE_FINDINGS = {
     "HASESSION": ("high", "BloodHound HasSession", "Session edge can enable credential theft."),
@@ -53,6 +36,134 @@ _EDGE_FINDINGS = {
     "ALLOWEDTODELEGATE": ("high", "BloodHound constrained delegation", "Constrained delegation path."),
     "ADDMEMBER": ("medium", "BloodHound AddMember", "Can add members to a privileged group."),
 }
+
+
+def _looks_like_edge(obj: dict[str, Any]) -> bool:
+    if isinstance(obj.get("properties") or obj.get("Properties"), dict):
+        return False
+    if obj.get("ObjectIdentifier") or obj.get("objectid") or obj.get("objectId"):
+        return False
+    kind = str(
+        obj.get("kind")
+        or obj.get("type")
+        or obj.get("label")
+        or obj.get("EdgeType")
+        or obj.get("edgeType")
+        or obj.get("relationship")
+        or ""
+    )
+    has_ends = any(
+        obj.get(k)
+        for k in ("start", "end", "source", "target", "Source", "Target", "startNode", "endNode")
+    )
+    return has_ends and bool(kind)
+
+
+def _meta_kind(payload: Any) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    meta = payload.get("meta")
+    if not isinstance(meta, dict):
+        return ""
+    return _META_KIND.get(str(meta.get("type") or "").lower(), "")
+
+
+def _nodes(payload: Any) -> list[dict[str, Any]]:
+    raw: list[dict[str, Any]] = []
+    if isinstance(payload, list):
+        raw = [n for n in payload if isinstance(n, dict)]
+    elif isinstance(payload, dict):
+        data = payload.get("data")
+        if isinstance(data, dict) and isinstance(data.get("nodes"), list):
+            raw = [n for n in data["nodes"] if isinstance(n, dict)]
+        elif isinstance(data, list):
+            raw = [n for n in data if isinstance(n, dict)]
+        elif isinstance(payload.get("nodes"), list):
+            raw = [n for n in payload["nodes"] if isinstance(n, dict)]
+        elif isinstance(payload.get("PrivilegedAccounts"), list):
+            raw = [n for n in payload["PrivilegedAccounts"] if isinstance(n, dict)]
+    return [n for n in raw if not _looks_like_edge(n)]
+
+
+def _aces_as_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """SharpHound ACE rows → mapped edges only. Empty Aces invent nothing."""
+    out: list[dict[str, Any]] = []
+    for node in nodes:
+        aces = node.get("Aces") or node.get("aces") or []
+        if not isinstance(aces, list):
+            continue
+        props = _props(node)
+        end = str(
+            props.get("name")
+            or node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or node.get("objectId")
+            or ""
+        )
+        for ace in aces:
+            if not isinstance(ace, dict):
+                continue
+            right = str(ace.get("RightName") or ace.get("rightName") or ace.get("kind") or "")
+            start = str(
+                ace.get("PrincipalName")
+                or ace.get("PrincipalSID")
+                or ace.get("principal")
+                or ""
+            )
+            if right and start:
+                out.append({"kind": right, "start": start, "end": end})
+    return out
+
+
+def _edges(payload: Any) -> list[dict[str, Any]]:
+    collected: list[dict[str, Any]] = []
+    if isinstance(payload, list):
+        collected.extend(e for e in payload if isinstance(e, dict) and _looks_like_edge(e))
+        return collected
+    if not isinstance(payload, dict):
+        return []
+    data = payload.get("data")
+    if isinstance(data, dict) and isinstance(data.get("edges"), list):
+        collected.extend(e for e in data["edges"] if isinstance(e, dict))
+    if isinstance(payload.get("edges"), list):
+        collected.extend(e for e in payload["edges"] if isinstance(e, dict))
+    if isinstance(payload.get("relationships"), list):
+        collected.extend(e for e in payload["relationships"] if isinstance(e, dict))
+    if isinstance(data, list):
+        collected.extend(e for e in data if isinstance(e, dict) and _looks_like_edge(e))
+    collected.extend(_aces_as_edges(_nodes(payload)))
+    return collected
+
+
+def _fold_props(raw: dict[str, Any]) -> dict[str, Any]:
+    out = dict(raw)
+    lower = {str(k).lower().replace("_", ""): v for k, v in raw.items()}
+    aliases = {
+        "name": ("name", "displayname"),
+        "hasspn": ("hasspn",),
+        "dontreqpreauth": ("dontreqpreauth",),
+        "unconstraineddelegation": ("unconstraineddelegation",),
+        "highvalue": ("highvalue",),
+        "serviceprincipalnames": ("serviceprincipalnames",),
+        "pimeligible": ("pimeligible",),
+        "roles": ("roles",),
+        "description": ("description",),
+    }
+    for canon, keys in aliases.items():
+        if canon in out and out[canon] not in (None, ""):
+            continue
+        for key in keys:
+            if key in lower and lower[key] not in (None, ""):
+                out[canon] = lower[key]
+                break
+    return out
+
+
+def _props(node: dict[str, Any]) -> dict[str, Any]:
+    for key in ("properties", "Properties"):
+        if isinstance(node.get(key), dict):
+            return _fold_props(node[key])
+    return _fold_props(node)
 
 
 def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
@@ -172,6 +283,7 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
 def parse_file(path: Path) -> list[dict]:
     text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
     payload: Any = {}
+    meta_kind = ""
     if path.suffix.lower() == ".csv" or ("," in text[:200] and "Severity" in text[:400]):
         return parse_hardeningkitty_csv(text, iso_now())
     if path.suffix.lower() == ".xml" or text.startswith("<"):
@@ -179,12 +291,20 @@ def parse_file(path: Path) -> list[dict]:
     else:
         payload = read_json(path)
         nodes = _nodes(payload)
+        meta_kind = _meta_kind(payload)
     now = iso_now()
     records: list[dict] = []
     for node in nodes:
-        props = node.get("properties") if isinstance(node.get("properties"), dict) else node
-        name = str(props.get("name") or node.get("label") or node.get("objectid") or "identity")
-        kind = str(node.get("kind") or node.get("type") or "User")
+        props = _props(node)
+        objectid = (
+            node.get("objectid")
+            or node.get("ObjectIdentifier")
+            or node.get("objectId")
+            or props.get("objectid")
+        )
+        name = str(props.get("name") or node.get("label") or objectid or "identity")
+        kind = str(node.get("kind") or node.get("type") or meta_kind or "User")
+        # Empty Members / empty Aces invent nothing — we do not walk group membership.
         records.append(
             make_record(
                 kind="asset",
@@ -196,7 +316,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[name],
                 labels=LABELS + [kind.lower()],
                 collected_at=now,
-                extra={"asset_type": "SP", "kind": kind, "objectid": node.get("objectid")},
+                extra={"asset_type": "SP", "kind": kind, "objectid": objectid},
             )
         )
         findings: list[tuple[str, str, str]] = []
@@ -210,7 +330,8 @@ def parse_file(path: Path) -> list[dict]:
         roles = props.get("roles") or []
         if isinstance(roles, str):
             roles = [roles]
-        if any("Global Administrator" in str(r) for r in roles) and not props.get("pimEligible"):
+        pim = props.get("pimEligible") if "pimEligible" in props else props.get("pimeligible")
+        if any("Global Administrator" in str(r) for r in roles) and not pim:
             findings.append(("critical", "Entra GA without PIM", f"{name} is Global Administrator without PIM eligibility."))
         if props.get("unconstraineddelegation"):
             findings.append(("high", "Unconstrained delegation", f"{name} has unconstrained Kerberos delegation."))
@@ -233,13 +354,33 @@ def parse_file(path: Path) -> list[dict]:
                 )
             )
     for edge in _edges(payload):
-        kind = str(edge.get("kind") or edge.get("type") or edge.get("label") or "")
+        kind = str(
+            edge.get("kind")
+            or edge.get("type")
+            or edge.get("label")
+            or edge.get("EdgeType")
+            or edge.get("edgeType")
+            or edge.get("relationship")
+            or ""
+        )
         mapped = _EDGE_FINDINGS.get(kind.upper().replace(" ", ""))
         if not mapped:
             continue
         sev, title, desc = mapped
-        start = str(edge.get("start") or edge.get("source") or "")
-        end = str(edge.get("end") or edge.get("target") or "")
+        start = str(
+            edge.get("start")
+            or edge.get("source")
+            or edge.get("Source")
+            or edge.get("startNode")
+            or ""
+        )
+        end = str(
+            edge.get("end")
+            or edge.get("target")
+            or edge.get("Target")
+            or edge.get("endNode")
+            or ""
+        )
         records.append(
             make_record(
                 kind="finding",
