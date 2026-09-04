@@ -1,0 +1,39 @@
+name: lab
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      OUT_DIR: ${{ github.workspace }}/out
+      DRY_RUN: "1"
+      GRC_LIVE_SCAN: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Pytest
+        run: python -m pytest tests -q
+      - name: Collectors and loader
+        run: |
+          python collectors/cloud_prowler.py
+          python collectors/inventory_nmap.py
+          python collectors/vuln_scan.py
+          python collectors/host_wazuh.py
+          python collectors/identity_ad.py
+          python collectors/easm.py
+          python collectors/k8s_kubescape.py
+          python collectors/code_secrets.py
+          python collectors/saas_idp.py
+          python collectors/grc_loader.py
+      - name: Lab outputs
+        run: python tests/lab_outputs.py

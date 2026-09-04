@@ -45,7 +45,13 @@ def env_path(name: str, default: Path) -> Path:
 
 
 def out_dir() -> Path:
-    return env_path("OUT_DIR", root_dir() / "out")
+    raw = os.environ.get("OUT_DIR")
+    if raw is None or not str(raw).strip():
+        raise SystemExit("OUT_DIR is unset; refusing to write a silent empty tree")
+    path = Path(raw)
+    if not path.parent.exists():
+        raise SystemExit(f"OUT_DIR parent missing: {path.parent}")
+    return path
 
 
 def in_dir() -> Path:

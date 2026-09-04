@@ -13,6 +13,7 @@ out/riskready/*.json
 out/ocsf/*.json
 out/summary.json
 out/evidence/lab-report.md
+out/import_preview/*
 !out/**/.gitkeep
 .DS_Store
 Thumbs.db

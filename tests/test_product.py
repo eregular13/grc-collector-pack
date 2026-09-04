@@ -8,7 +8,15 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-from product.server import build_drop_zip, estate, make_server
+import pytest
+
+from product.server import (
+    assert_loopback_host,
+    bind_host,
+    build_drop_zip,
+    estate,
+    make_server,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -74,3 +82,51 @@ def test_product_source_never_posts_risks() -> None:
     assert "curl" not in text
     assert 'POST "/api/risks"' not in text
     assert "localhost:18080" not in text
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "*", "192.168.1.10", "10.0.0.5"])
+def test_bind_lock_rejects_non_loopback(host: str) -> None:
+    with pytest.raises(SystemExit) as exc:
+        assert_loopback_host(host)
+    assert exc.value.code == 2
+
+
+def test_bind_lock_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GRC_PRODUCT_HOST", "0.0.0.0")
+    with pytest.raises(SystemExit) as exc:
+        assert_loopback_host(bind_host())
+    assert exc.value.code == 2
+
+
+def test_refresh_500_has_no_traceback(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom() -> dict:
+        raise RuntimeError("secret-boom")
+
+    monkeypatch.setattr("product.server.refresh_estate", boom)
+    httpd = make_server("127.0.0.1", 0)
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        req = urllib.request.Request(
+            f"http://{host}:{port}/api/refresh", data=b"{}", method="POST"
+        )
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            raise AssertionError("refresh should fail")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 500
+            body = exc.read().decode("utf-8")
+            assert "Traceback" not in body
+            assert "secret-boom" not in body
+            data = json.loads(body)
+            assert data["error"] == "refresh failed"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_make_server_rejects_all_interfaces() -> None:
+    with pytest.raises(SystemExit) as exc:
+        make_server("0.0.0.0", 0)
+    assert exc.value.code == 2

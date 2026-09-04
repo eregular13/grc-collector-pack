@@ -18,6 +18,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+ALLOWED_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = Path(__file__).resolve().parent / "static"
 COLLECTORS = [
@@ -47,6 +49,15 @@ def bind_port() -> int:
     return int(os.environ.get("GRC_PRODUCT_PORT", "18765"))
 
 
+def assert_loopback_host(host: str) -> str:
+    raw = (host or "").strip()
+    normalized = raw.lower().strip("[]")
+    if normalized not in ALLOWED_HOSTS:
+        sys.stderr.write("GRC_PRODUCT_HOST must be 127.0.0.1, localhost, or ::1\n")
+        raise SystemExit(2)
+    return raw
+
+
 def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
@@ -71,7 +82,7 @@ def estate() -> dict:
             sev[key] += 1
     return {
         "product": "GRC Collector Pack",
-        "version": "1.0.0",
+        "version": "0.3.0",
         "repo": str(ROOT),
         "out_dir": str(out),
         "bind": f"{bind_host()}:{bind_port()}",
@@ -123,6 +134,10 @@ def build_drop_zip() -> bytes:
     ]
     files.extend(sorted((out / "ciso-assistant").glob("*.csv")))
     files.extend(sorted((out / "riskready").glob("*.json")))
+    drop = ROOT / "product-lab" / "drop"
+    if drop.is_dir():
+        files.extend(sorted((drop / "ciso").glob("*.csv")))
+        files.extend(sorted((drop / "riskready").glob("*.json")))
     readme = (
         "GRC Collector Pack drop\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
@@ -133,7 +148,10 @@ def build_drop_zip() -> bytes:
         zf.writestr("IMPORT.md", readme)
         for path in files:
             if path.is_file():
-                arc = path.relative_to(out).as_posix()
+                try:
+                    arc = path.relative_to(out).as_posix()
+                except ValueError:
+                    arc = path.relative_to(ROOT).as_posix()
                 zf.write(path, arcname=arc)
     return buf.getvalue()
 
@@ -240,15 +258,21 @@ class Handler(BaseHTTPRequestHandler):
         if path != "/api/refresh":
             self._json(404, {"error": "not found"})
             return
+        peer = (self.client_address[0] if self.client_address else "").strip("[]")
+        if peer not in ALLOWED_HOSTS:
+            self._json(403, {"error": "refresh is loopback-only"})
+            return
         try:
             result = refresh_estate()
             self._json(200, result)
-        except Exception as exc:
-            self._json(500, {"ok": False, "error": str(exc), "trace": traceback.format_exc()[-800:]})
+        except Exception:
+            traceback.print_exc()
+            self._json(500, {"ok": False, "error": "refresh failed"})
 
 
 def make_server(host: str | None = None, port: int | None = None) -> ThreadingHTTPServer:
-    httpd = ThreadingHTTPServer((host or bind_host(), port or bind_port()), Handler)
+    bound = assert_loopback_host(host if host is not None else bind_host())
+    httpd = ThreadingHTTPServer((bound, port if port is not None else bind_port()), Handler)
     httpd.allow_reuse_address = True
     return httpd
 
@@ -260,7 +284,7 @@ def main() -> None:
     os.environ.setdefault("GRC_LIVE_SCAN", "0")
     os.environ.setdefault("PYTHONPATH", str(ROOT))
     os.environ.setdefault("OUT_DIR", str(ROOT / "out"))
-    host, port = bind_host(), bind_port()
+    host, port = assert_loopback_host(bind_host()), bind_port()
     httpd = make_server(host, port)
     print(f"GRC Collector Pack  http://{host}:{port}/", flush=True)
     print("Local operator console. Never POSTs /api/risks.", flush=True)

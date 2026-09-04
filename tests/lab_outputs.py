@@ -98,7 +98,9 @@ def assert_lab() -> None:
 
     assert len(assets) >= 20, len(assets)
     assert len(findings) >= 20, len(findings)
-    assert len(evid) >= 8, len(evid)
+    assert len(evid) >= 18, len(evid)
+    names = [row["name"] for row in evid]
+    assert len(names) == len(set(names)), "evidence names must be unique"
     assert vulns, "vulnerabilities.csv empty"
     assert ctrls and scen
 

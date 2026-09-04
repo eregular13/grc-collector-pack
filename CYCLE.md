@@ -81,6 +81,15 @@ No new parsers. Inventory + host lab ×2 + compose ×2 + sink truth + negatives.
 {"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "pytest": 39, "host_lab": "pass", "compose_lab": "pass", "sink": "absent"}
 ```
 
+## cycle 10 — public-repo hardening
+
+CI workflow, SECURITY.md, loopback bind lock, evidence floor 24, import previews, VERSION 0.3.0. Two host labs + compose. `DONE_GITHUB.md` GREEN.
+
+```json
+{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 24, "pytest": 55, "host_lab": "pass", "compose_lab": "pass"}
+```
+
+
 
 
 

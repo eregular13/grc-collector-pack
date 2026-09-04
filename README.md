@@ -1,17 +1,20 @@
 # grc-collector-pack
 
-The product is a **local operator console** plus ten collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest.
+[![lab](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml/badge.svg)](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml)
 
-Double-click `Start-GRC-Pack.cmd` or:
+The product is a **local operator console** plus ten collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest. This is not CISO Assistant and not RiskReady.
+
+Double-click `Start-GRC-Pack.cmd` or, from the clone root:
 
 ```powershell
-cd C:\Users\R\grc-collector-pack
 python -m product
 ```
 
 Then open **http://127.0.0.1:18765/**. You get the estate (assets, findings, vulns, proposed risks), a refresh that re-runs collectors on local files, and a drop zip for import. The console binds localhost only. It never POSTs `/api/risks`.
 
-This is not a GRC platform and not an eleventh Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`.
+This is not a GRC platform and not an eleventh Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`. Demo fixtures only until you drop files in `in/`.
+
+See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs/PUBLIC_CLONE.md).
 
 ## Ten containers
 
@@ -107,7 +110,9 @@ Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`
 
 OSS / fair-use only (Prowler, Nmap, Nuclei, Trivy, Wazuh, BloodHound CE, Amass, Kubescape, Gitleaks, ScubaGear, official cloud APIs, …). No Wiz / Orca / Prisma / CrowdStrike / Qualys / Tenable / Vanta / Drata required.
 
-## Safety
+## Security
+
+The console is localhost only (`127.0.0.1`). Non-loopback binds exit 2. Report vulnerabilities via a GitHub Security Advisory. Full policy: [SECURITY.md](SECURITY.md).
 
 - `CISO_PUSH=0` `RISKREADY_PUSH=0` `GRC_LIVE_SCAN=0` `DRY_RUN=1`
 - Never POST `/api/risks`. High/critical → `risks_proposed.json` only

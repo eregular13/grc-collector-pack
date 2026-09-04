@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 
+from shared.evidence import build_evidence_rows
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
     ASSET_TYPES,
@@ -248,12 +249,12 @@ def load() -> dict:
             ]
         )
 
-    evidence_rows = []
-    for src in sources:
-        evidence_rows.append([f"{src} collector run", f"Canonical records ingested from {src} at {now}"])
+    evidence_rows = build_evidence_rows(sources, findings, len(records), now)
     for rec in evidences_in:
-        evidence_rows.append([rec.get("name"), rec.get("description")])
-    evidence_rows.append(["grc-loader run", f"Normalized {len(records)} canonical records at {now}"])
+        name = str(rec.get("name") or "").strip()
+        if not name or any(row[0] == name for row in evidence_rows):
+            continue
+        evidence_rows.append([name, str(rec.get("description") or "")])
 
     out_ciso = out_dir() / "ciso-assistant"
     _write_csv(out_ciso / "assets.csv", ASSETS_HEADER, ciso_assets)

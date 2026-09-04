@@ -15,7 +15,13 @@ def test_push_flags_default_zero() -> None:
 
 
 def test_no_post_api_risks() -> None:
-    paths = [ROOT / "push_ciso.sh", ROOT / "push_riskready.sh", ROOT / "product" / "server.py"]
+    paths = [
+        ROOT / "push_ciso.sh",
+        ROOT / "push_riskready.sh",
+        ROOT / "product" / "server.py",
+        ROOT / "scripts" / "preview_probo.py",
+        ROOT / "scripts" / "preview_rr.py",
+    ]
     for path in paths:
         text = path.read_text(encoding="utf-8")
         assert not re.search(r"curl[^\n]*/api/risks", text)
