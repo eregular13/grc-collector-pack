@@ -55,8 +55,11 @@ collector is parse-only — it never subprocesses `nmap` or `masscan`.
 Orchestrator discover may land DEMO stub gnmap
 (`farm/tool-bin/lab/nmap` → `dropbox-discover-*.gnmap`) or BYO output.
 Open 445 / 3389 / 23 map to the existing CISO/POA&M rows (SMB, RDP, Telnet).
-Empty `in/` still loads `fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`,
-`masscan.xml`). No new catalog slots.
+Also drop **rustscan** / **naabu** JSON or JSONL (`{ip, port}` or
+`{ip, ports:[int]}`). Open ports only — empty / closed invent nothing.
+rustscan / naabu *invoke* stays BYO (`allow_tools` + PATH); Layer C never
+subprocesses those binaries. Empty `in/` still loads `fixtures/demo/nmap/`
+(`scan.gnmap`, `scan.xml`, `masscan.xml`, `naabu.jsonl`). No new catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 

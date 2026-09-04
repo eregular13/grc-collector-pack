@@ -53,11 +53,11 @@ def _rows_from_payload(payload: Any) -> list[dict[str, Any]] | None:
 
 def _looks_like_masscan_json(rows: list[dict[str, Any]]) -> bool:
     if not rows:
-        return True
+        return False
     row = rows[0]
     ports = row.get("ports")
     if not isinstance(ports, list):
-        return bool(row.get("ip") or row.get("addr"))
+        return False
     if not ports:
         return True
     first = ports[0]

@@ -308,12 +308,13 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-nmap"))
     (tmp_path / "empty-nmap" / "nmap").mkdir(parents=True)
-    files, demo = load_inputs("inventory-nmap", (".xml", ".gnmap", ".txt", ".json"))
+    files, demo = load_inputs("inventory-nmap", (".xml", ".gnmap", ".txt", ".json", ".jsonl"))
     assert demo is True
     names = {p.name for p in files}
     assert "scan.gnmap" in names
     assert "scan.xml" in names
     assert "masscan.xml" in names
+    assert "naabu.jsonl" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -362,6 +363,55 @@ def test_masscan_parser_no_live() -> None:
         assert "Popen" not in src
         assert "masscan -p" not in src
         assert "masscan --" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_naabu_jsonl_telnet_maps_to_poam() -> None:
+    from shared.control_map import map_finding
+
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "naabu.jsonl")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "filesrv.corp.local" in assets
+    assert "10.0.0.50" not in assets
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert (findings[0].get("extra") or {}).get("port") == "23"
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "telnet" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_rustscan_json_and_empty(tmp_path) -> None:
+    dest = tmp_path / "rustscan.json"
+    dest.write_text(
+        '{"ip":"10.0.0.50","hostname":"filesrv.corp.local","ports":[445, 22]}',
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(dest)
+    ports = {(r.get("extra") or {}).get("port") for r in recs if r["kind"] == "finding"}
+    assert "445" in ports
+    assert "22" in ports
+    dest.write_text("[]", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest = tmp_path / "naabu-empty.jsonl"
+    dest.write_text("", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text('{"ip":"10.0.0.50","ports":[]}\n', encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text('{"ip":"10.0.0.50","port":22,"status":"closed"}\n', encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_fast_portscan_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/fast_portscan.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "rustscan -" not in src
+        assert "naabu -" not in src
         assert "nmap -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src

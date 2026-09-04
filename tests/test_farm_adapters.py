@@ -97,6 +97,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "masscan" in md
     assert "use_dont_ship" in md
     assert "masscan.xml" in md
+    assert "rustscan" in md
+    assert "naabu" in md
+    assert "naabu.jsonl" in md
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

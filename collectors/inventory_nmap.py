@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap gnmap/XML/JSON and masscan -oX/-oJ into hosts + exposure.
+"""Parse dropped Nmap, masscan, rustscan, and naabu exports into hosts + exposure.
 
-Parse-only. Does not run nmap or masscan.
+Parse-only. Does not run nmap, masscan, rustscan, or naabu.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from shared.fast_portscan import parse_fast_portscan
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.schema import make_record, make_ref
@@ -188,6 +189,23 @@ def parse_file(path: Path) -> list[dict]:
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
+    fast = parse_fast_portscan(path, raw)
+    if fast is not None:
+        records = []
+        for host in fast:
+            ports = list(host.get("ports") or [])
+            if not ports:
+                continue
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                ports,
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
     stripped = raw.lstrip("\ufeff").lstrip()
     if path.suffix.lower() == ".json" or stripped.startswith("{") or stripped.startswith("["):
         try:
@@ -237,7 +255,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json"), parse_file)
+    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json", ".jsonl"), parse_file)
 
 
 if __name__ == "__main__":

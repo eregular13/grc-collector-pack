@@ -1,0 +1,2 @@
+{"ip":"10.0.0.50","host":"filesrv.corp.local","port":23,"proto":"tcp"}
+{"ip":"10.0.0.50","host":"filesrv.corp.local","port":9999,"proto":"tcp","status":"closed"}
