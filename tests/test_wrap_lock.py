@@ -103,6 +103,32 @@ def test_import_rr_and_security_never_allow_riskready_write() -> None:
         assert re.search(r"review-only|stay-out|never wraps|wrap is dead", text, re.I)
 
 
+def test_status_and_executive_say_wrap_dead() -> None:
+    status = (ROOT / "STATUS.md").read_text(encoding="utf-8")
+    assert "wrap: review-only" in status
+    assert "paying_day: FAIL" in status
+    for rel in ("product-lab/EXECUTIVE.md", "dropbox/EXECUTIVE.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert re.search(r"wrap.*(review-only|dead|stay-out)", text, re.I)
+        assert "Allowed live POSTs" not in text
+
+
+def test_farm_sop_never_inherits_origin_wrap_rehearsal() -> None:
+    for rel in (
+        "farm/OPERATOR.md",
+        "farm/QUICKSTART.md",
+        "farm/README.md",
+        "farm/INTEGRITY.md",
+        "product-lab/OPERATOR.md",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "18080" not in text
+        assert "mock_sink" not in text
+        assert "Allowed live POSTs" not in text
+        assert "/itsm/assets" not in text
+        assert "/api/auth/login" not in text
+
+
 def test_farm_sop_never_points_at_riskready_write() -> None:
     write_needles = (
         "Allowed live POSTs",
@@ -120,6 +146,7 @@ def test_farm_sop_never_points_at_riskready_write() -> None:
         "farm/README.md",
         "farm/INTEGRITY.md",
         "farm/SLOTS.md",
+        "product-lab/OPERATOR.md",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for needle in write_needles:
