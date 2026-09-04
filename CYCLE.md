@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 64 — Themis honesty lock (2026-09-04)
+
+No new Layer C parsers. pytest locks STATUS honesty: `paying_day: FAIL`, `compose_lab: absent` until proven on a Docker host, DEMO ≠ client estate. Operator compose-on-Docker proof commands stay documented (`docker compose up --build --exit-code-from grc-loader` + PASS criteria). LICENSE-LOCK / BloodHound / Nuclei-class still never `will_run=true`. Catalog **not inflated**. pytest **305**. Labs unchanged vs cycle 63 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. zmap/unicornscan cycle 63 stands.
+
+```json
+{"pytest": 305, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never"}
+```
+
 ## cycle 63 — zmap/unicornscan file-drop polish (2026-09-04)
 
 inventory-nmap parses operator-landed zmap JSON/CSV/text and unicornscan text under `in/nmap/`. Open ports only. Empty / closed / RST invent nothing. Detect does not steal nmap / smbmap / arp-scan / naabu. Demo `zmap.txt` + `unicornscan.txt` attach FTP/21 to existing `filesrv.corp.local` (assets unchanged; findings/poam +1, deduped). No zmap/unicornscan subprocess. No live internet scan. Slots stay `file_drop`. Catalog **not inflated**. pytest **301**. Labs green. Compose ABSENT. Paying-day FAIL. LICENSE-LOCK / file_drop-only names still never `will_run=true` (reconfirmed). enum4linux-ng cycle 59 stands.
