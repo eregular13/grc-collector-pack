@@ -28,13 +28,13 @@ slots:
     binary: rustscan
     stage: discover
     category: discover
-    scope_key: file_drop
+    scope_key: allow_tools
     sensor: nmap
     output_glob: in/nmap/*.xml
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    hook: farm.adapters.rustscan
     vendored: false
   masscan:
     id: masscan
@@ -54,13 +54,13 @@ slots:
     binary: naabu
     stage: discover
     category: discover
-    scope_key: file_drop
+    scope_key: allow_tools
     sensor: nmap
     output_glob: in/nmap/*.json
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    hook: farm.adapters.naabu
     vendored: false
   arp-scan:
     id: arp-scan
@@ -237,13 +237,52 @@ slots:
     binary: httpx
     stage: external
     category: external
-    scope_key: file_drop
+    scope_key: allow_tools
     sensor: easm
     output_glob: in/easm/*.jsonl
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    hook: farm.adapters.httpx
+    vendored: false
+  dig:
+    id: dig
+    binary: dig
+    stage: external
+    category: external
+    scope_key: allow_tools
+    sensor: easm
+    output_glob: in/easm/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.dig
+    vendored: false
+  whois:
+    id: whois
+    binary: whois
+    stage: external
+    category: external
+    scope_key: allow_tools
+    sensor: easm
+    output_glob: in/easm/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.whois
+    vendored: false
+  sslscan:
+    id: sslscan
+    binary: sslscan
+    stage: external
+    category: external
+    scope_key: allow_tools
+    sensor: easm
+    output_glob: in/easm/*.txt
+    license_class: oss_byo
+    default_batch: 1
+    wired: true
+    hook: farm.adapters.sslscan
     vendored: false
   amass:
     id: amass
@@ -541,8 +580,9 @@ slots:
     output_glob: in/k8s/*.json
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    invoke: false
+    hook: farm.adapters.file_drop
     vendored: false
   trivy:
     id: trivy
@@ -606,8 +646,9 @@ slots:
     output_glob: in/code/*.json
     license_class: oss_byo
     default_batch: 1
-    wired: false
-    hook: file-drop
+    wired: true
+    invoke: false
+    hook: farm.adapters.file_drop
     vendored: false
   semgrep:
     id: semgrep

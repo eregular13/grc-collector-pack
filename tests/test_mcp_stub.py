@@ -146,14 +146,20 @@ def test_jsonrpc_tools_list_and_refuse_exploit() -> None:
     assert "refuses" in bad["error"]["message"]
 
 
-def test_jsonrpc_invokes_plan_status_and_farm_slots() -> None:
+def test_jsonrpc_invokes_plan_status_and_farm_slots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from dropbox.mcp_stub import handle_jsonrpc
+
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
 
     slots = handle_jsonrpc({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "farm_slots"}})
     result = slots["result"]
     assert result["tool"] == "farm_slots"
     assert result["count"] >= 40
-    assert result["wired_count"] >= 12
+    assert result["wired_count"] >= 20
     assert result["vendored_binaries"] is False
     status = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "orchestrator_status"}}
@@ -166,6 +172,26 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots() -> None:
     assert plan["result"]["tool"] == "orchestrator_plan"
     assert plan["result"]["live"] is False
     assert plan["result"]["grc_export"]["posted"] is False
+    matrix = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "farm_slot_status"}}
+    )
+    assert matrix["result"]["tool"] == "farm_slot_status"
+    assert matrix["result"]["plan_only"] is True
+    assert matrix["result"]["live"] is False
+    assert matrix["result"]["count"] >= 40
+    names = {row["slot"] for row in matrix["result"]["matrix"]}
+    assert "nmap" in names and "nuclei" in names
+    nuclei = next(row for row in matrix["result"]["matrix"] if row["slot"] == "nuclei")
+    assert nuclei["invoke"] is False
+    assert nuclei["state"] == "file_drop"
+    for tool, tid in (("stage_discover", 9), ("stage_deepen", 10), ("stage_ingest", 11)):
+        body = handle_jsonrpc(
+            {"jsonrpc": "2.0", "id": tid, "method": "tools/call", "params": {"name": tool}}
+        )
+        assert body["result"]["tool"] == tool
+        assert body["result"]["live"] is False
+        assert body["result"]["plan_only"] is True
+        assert body["result"]["ok"] is True
 
 
 def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

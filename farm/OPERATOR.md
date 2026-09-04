@@ -1,72 +1,65 @@
 # Private farm operator path
 
-**Written SCOPE required.** This is a drop-box Reid runs on a consented box under written SCOPE. Not a public Hub image. Not a scanner appliance. Layer C (the 10 public collectors) only parse files that land in `in/<sensor>/`.
+**Written SCOPE required.** Drop-box only under written SCOPE. Not a public Hub image. Layer C parses `in/<sensor>/` only.
 
 See `dropbox/ARCHITECTURE.md` Layer A / B / C.
 
-## 1. Install tools on the drop box (you, not this repo)
-
-Install allowlisted binaries **on the host** (or a private image tag you build). This repo never apt-installs Nmap, Nessus, Nuclei, OpenVAS/GVM, or LICENSE-LOCK tools.
+## Copy-paste runbook (bare Linux → CISO zip)
 
 ```bash
-# examples only — you choose packages and licenses
-# nmap nessus testssl lynis prowler trivy …
-export PATH="$PATH:/opt/farm/bin"
-export FARM_TOOL_BIN=/opt/farm/bin   # optional bind-mount source
+# 0) repo root, no scanner install from this tree
+cd /path/to/grc-collector-pack
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+
+# 1) written SCOPE (copy example, fill client/consent/window/CIDRs)
+# cp dropbox/SCOPE.example.yaml dropbox/SCOPE.yaml
+python3 -m dropbox gate
+python3 -m dropbox status
+
+# 2) optional: tools YOU install (never this Dockerfile)
+# export PATH="$PATH:/opt/farm/bin"
+# export FARM_TOOL_BIN=/opt/farm/bin
+
+# 3) DEMO path (fixtures, not a client) — plan → fixture discover → ingest → Layer C
+make farm-lab
+
+# 4) real engagement: drop artifacts into in/<sensor>/ (or farm/work/in), then:
+python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted PATH
+# IN_DIR=$PWD/in OUT_DIR=$PWD/out python3 collectors/grc_loader.py
+
+# 5) CISO zip from localhost console (after lab outputs exist)
+# bash scripts/start-product.sh
+# open http://127.0.0.1:18765/  → download drop zip (CISO CSVs + poam.csv)
+# owner/due stay blank. Do not POST /api/risks. RiskReady is review-only.
 ```
 
-Put extra wrappers in `farm/tool-bin/` **outside git** (directory is a mount point). Do not commit binaries.
+`make farm-lab` writes under `farm/work/` (not pack `in/`). Stamp is DEMO.
 
-License classes in `SLOTS.yaml`:
+## License classes (`SLOTS.yaml`)
 
 | Class | Meaning |
 |---|---|
-| `use_dont_ship` | LICENSE-LOCK / do not embed. Operator may already have it. File-drop or BYO nmap/nessus only. |
-| `commercial_byo` | Vendor CLI you licensed (Nessus, PingCastle, …). We do not ship it. |
+| `use_dont_ship` | LICENSE-LOCK / do not embed. File-drop or BYO nmap/nessus only. |
+| `commercial_byo` | Vendor CLI you licensed. We do not ship it. |
 | `oss_byo` | OSS you installed. Missing → plan-only. |
 
-`scope_key: file_drop` slots are **not** invoked. Drop their output files into the listed `output_glob`.
+LICENSE-LOCK names (nuclei, openvas, pingcastle, …) stay **file_drop**. Adapters never subprocess them.
 
-## 2. SCOPE
+kube-bench / gitleaks are **file_drop stubs** (callable, no subprocess). Drop JSON into `in/k8s/` / `in/code/`.
 
-Copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`. Fill client, consent hash, window, named CIDRs/hosts. List PATH tools in `allow_tools`. Keep `orchestrator.stages.deepen` false until you intend the loud stage.
+## Orchestrator + conductor
 
-```bash
-python3 -m dropbox gate
-python3 -m dropbox status
-```
-
-Status prints `allow_tools ∩ PATH ∩ SLOTS` (present / missing / not-in-slots).
-
-## 3. Orchestrator (brakes)
-
-Stage graph:
-
-`plan → shard → discover (quiet) → destroy → deepen (loud, gated 2–5) → destroy → ingest → grc_export`
+Stage graph (quiet→loud): `plan → shard → discover → destroy → deepen (2–5) → destroy → ingest → grc_export`
 
 ```bash
-# plan-only (default; safe when binaries are missing)
 python3 -m dropbox orchestrate
-
-# live BYO only if allowlisted AND on PATH — still SCOPE-gated, no 0.0.0.0/0
-python3 -m dropbox orchestrate --live
+python3 -m dropbox.mcp_stub serve
+python3 -m dropbox mcp farm_slot_status
+python3 -m dropbox mcp stage_discover    # plan-only
 ```
 
-Discover is quiet (`nmap -sn` + host timeout) when nmap is allowlisted and present. Deepen refuses unless `stages.deepen: true`. Workers are destroyed after each stage. Artifacts copy into `in/<sensor>/` for Layer C.
-
-## 4. Conductor (stdio MCP)
-
-Hexstrike-shaped UX, Evergreen rails. No exploit tools. No hexstrike-ai.
-
-```bash
-python3 -m dropbox.mcp_stub serve           # list tools
-python3 -m dropbox.mcp_stub serve --stdio   # JSON-RPC loop on stdin
-python3 -m dropbox mcp scope_status
-python3 -m dropbox mcp farm_slots
-python3 -m dropbox mcp orchestrator_plan    # never --live
-```
-
-Claude / Cursor MCP snippet (private box):
+Claude / Cursor MCP snippet:
 
 ```json
 {
@@ -84,17 +77,6 @@ Claude / Cursor MCP snippet (private box):
   }
 }
 ```
-
-## 5. Layer C ingest sink
-
-After files are in `in/`:
-
-```bash
-python3 -m pytest tests -q
-# collectors + loader → out/ciso-assistant/ + out/poam/poam.csv (owner/due blank)
-```
-
-Do not turn collectors into scanners. Do not POST `/api/risks`. RiskReady stays review-only.
 
 ## Do not
 

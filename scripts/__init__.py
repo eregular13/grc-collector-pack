@@ -1,1 +1,1 @@
-"""Operator scripts. Preview modules open no sockets."""
+"""Host-side lab scripts."""

@@ -33,6 +33,7 @@ OPERATOR_TOOLS = (
     "stage_deepen",
     "stage_ingest",
     "farm_slots",
+    "farm_slot_status",
     "export_ciso_poam",
 )
 
@@ -56,10 +57,11 @@ def _slot_matrix(allow_tools: list[str]) -> list[dict[str, Any]]:
 
 
 def farm_slots() -> dict[str, Any]:
-    from farm.adapters.catalog import load_catalog, wired_slots
+    from farm.adapters.catalog import invoke_slots, load_catalog, wired_slots
 
     data = load_catalog()
     wired = wired_slots()
+    invoke = invoke_slots()
     return {
         "tool": "farm_slots",
         "private": bool(data.get("private")),
@@ -68,7 +70,29 @@ def farm_slots() -> dict[str, Any]:
         "count": len(data.get("slots") or {}),
         "wired": sorted(wired),
         "wired_count": len(wired),
+        "invoke": sorted(invoke),
+        "invoke_count": len(invoke),
         "scope_gated": True,
+    }
+
+
+def farm_slot_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
+    from farm.adapters.catalog import farm_slot_status, invoke_slots, wired_slots
+
+    scope = load_scope(scope_path)
+    matrix = farm_slot_status(scope.allow_tools)
+    return {
+        "tool": "farm_slot_status",
+        "ok": True,
+        "live": False,
+        "plan_only": True,
+        "scope_gated": True,
+        "client": scope.client_name,
+        "count": len(matrix),
+        "wired_count": len(wired_slots()),
+        "invoke_count": len(invoke_slots()),
+        "matrix": matrix,
+        "demo": "DEMO" in scope.client_name.upper(),
     }
 
 
@@ -105,6 +129,8 @@ def dispatch(
         return stage_ingest(scope_path=path)
     if tool == "farm_slots":
         return farm_slots()
+    if tool == "farm_slot_status":
+        return farm_slot_status_tool(scope_path=path)
     return export_ciso_poam()
 
 
@@ -166,12 +192,20 @@ def orchestrator_status(scope_path: Path | None = None) -> dict[str, Any]:
     }
 
 
+def _annotate_stage(plan: dict[str, Any], tool: str, live: bool) -> dict[str, Any]:
+    plan["tool"] = tool
+    plan["ok"] = True
+    plan["live"] = bool(live)
+    plan["plan_only"] = not live
+    plan["scope_gated"] = True
+    return plan
+
+
 def stage_discover(scope_path: Path | None = None, live: bool = False) -> dict[str, Any]:
     scope = load_scope(scope_path)
     farm = Farm(max_workers=scope.max_workers)
     plan = discover_stage(scope, farm, live=live)
-    plan["tool"] = "stage_discover"
-    return plan
+    return _annotate_stage(plan, "stage_discover", live)
 
 
 def stage_deepen_tool(scope_path: Path | None = None, live: bool = False) -> dict[str, Any]:
@@ -180,19 +214,17 @@ def stage_deepen_tool(scope_path: Path | None = None, live: bool = False) -> dic
         raise GateError("orchestrator.stages.deepen is not true")
     farm = Farm(max_workers=scope.max_workers)
     plan = deepen_stage(scope, farm, live=live)
-    plan["tool"] = "stage_deepen"
-    return plan
+    return _annotate_stage(plan, "stage_deepen", live)
 
 
 def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
     scope = load_scope(scope_path)
     marker = ingest_stage(scope)
-    marker["tool"] = "stage_ingest"
     marker["note"] = (
         marker.get("note")
         or "Layer B feeds Layer C via in/. Collectors stay parse-only."
     )
-    return marker
+    return _annotate_stage(marker, "stage_ingest", live=False)
 
 
 def export_ciso_poam() -> dict[str, Any]:

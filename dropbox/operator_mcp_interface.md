@@ -11,6 +11,7 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `stage_deepen` | `deepen_stage` | **Refuses** unless `stages.deepen: true`. Hosts = discover-live or `deepen_hosts` |
 | `stage_ingest` | `ingest_stage` | Copies artifacts into `in/`. Does not scan |
 | `farm_slots` | `farm/SLOTS.yaml` | Catalog + wired adapters. No binaries |
+| `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Plan-only |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` | Paths only. Does not invent owner/due |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.

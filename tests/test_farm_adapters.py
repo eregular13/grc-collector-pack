@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from dropbox.scope import FORBIDDEN_TOOLS, GateError
-from farm.adapters.catalog import LICENSE_CLASSES, REQUIRED_FIELDS, load_slots, wired_slots
-from farm.adapters.stubs import argv_for, run_slot
+from farm.adapters.catalog import LICENSE_CLASSES, REQUIRED_FIELDS, invoke_slots, load_slots, wired_slots
+from farm.adapters.stubs import NEVER_SUBPROCESS, argv_for, run_slot
 
 ROOT = Path(__file__).resolve().parents[1]
 FARM = ROOT / "farm"
@@ -43,7 +43,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
         assert slot.get("scope_key") in {"allow_tools", "file_drop"}
         assert int(slot.get("default_batch") or 0) >= 1
     wired = wired_slots()
-    assert len(wired) >= 12
+    assert len(wired) >= 20
+    invoke = invoke_slots()
+    assert len(invoke) >= 18
     for required in (
         "nmap",
         "nessus",
@@ -57,8 +59,18 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
         "hardeningkitty-export",
         "maester",
         "trivy",
+        "rustscan",
+        "naabu",
+        "httpx",
+        "dig",
+        "whois",
+        "sslscan",
+        "kube-bench",
+        "gitleaks",
     ):
         assert required in wired
+    assert "kube-bench" not in invoke and "gitleaks" not in invoke
+    assert invoke["rustscan"].get("invoke") is True
 
 
 def test_forbidden_slots_are_file_drop_not_wired() -> None:
@@ -74,23 +86,23 @@ def test_wired_slots_invoke_path_stubs(tmp_path: Path, monkeypatch: pytest.Monke
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     marker = tmp_path / "invoked.txt"
-    wired = wired_slots()
-    for name, slot in wired.items():
+    invoke = invoke_slots()
+    for name, slot in invoke.items():
         _stub(bin_dir, str(slot["binary"]), marker, f"DEMO {name} stub\n")
     monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + "/usr/bin")
-    allow = [str(s["binary"]) for s in wired.values()]
+    allow = [str(s["binary"]) for s in invoke.values()]
     dest_root = tmp_path / "out"
-    for name, slot in wired.items():
+    for name, slot in invoke.items():
         dest = dest_root / f"{name}.out"
         target = "vpn.example.com" if slot["stage"] == "external" else "10.20.30.0/24"
-        if name == "nmap":
+        if name in {"nmap", "rustscan", "naabu"}:
             target = "10.20.30.0/24"
         result = run_slot(name, dest, allow, target=target, timeout=8, live=True)
         assert result["ran"] is True, result
         assert result["mode"] == "live"
         assert dest.is_file()
     text = marker.read_text(encoding="utf-8")
-    for slot in wired.values():
+    for slot in invoke.values():
         assert str(slot["binary"]) in text
 
 
@@ -134,4 +146,27 @@ def test_plan_only_when_live_false(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert result["mode"] == "plan"
     assert result["tool_ready"] is True
     assert result["ran"] is False
+    assert not marker.exists()
+
+
+def test_file_drop_stubs_and_license_lock_never_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    marker = tmp_path / "invoked.txt"
+    for name in ("kube-bench", "gitleaks", "nuclei", "openvas", "pingcastle"):
+        _stub(bin_dir, name, marker, "SHOULD-NOT-RUN\n")
+    monkeypatch.setenv("PATH", str(bin_dir))
+    dest = tmp_path / "x.out"
+    for name in ("kube-bench", "gitleaks"):
+        result = run_slot(name, dest, [name], live=True)
+        assert result["mode"] == "file_drop"
+        assert result["ran"] is False
+        assert result["subprocess"] is False
+    for name in NEVER_SUBPROCESS & {"nuclei", "openvas", "pingcastle"}:
+        with pytest.raises(GateError, match="LICENSE-LOCK"):
+            run_slot(name, dest, [name], live=True)
+        with pytest.raises(GateError, match="LICENSE-LOCK"):
+            argv_for(name, f"/stub/{name}", ".", 8)
     assert not marker.exists()

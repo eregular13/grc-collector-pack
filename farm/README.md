@@ -25,9 +25,11 @@ Missing binary → orchestrator stays **plan-only**. This repo never apt-install
 
 ## Slots (adapters, not embeds)
 
-Wired (callable): nmap · nessus · nessuscli · testssl · testssl.sh · curl · lynis · ss · ip · hardeningkitty-export · prowler · maester · trivy
+Wired invoke stubs: nmap · nessus · nessuscli · testssl · lynis · ss · ip · prowler · trivy · rustscan · naabu · httpx · dig · whois · sslscan
 
-The rest of `SLOTS.yaml` is **file-drop** (operator lands artifacts in `in/<sensor>/`). The 10 public collectors stay parse-only.
+Also wired: curl · hardeningkitty-export · maester · testssl.sh. File-drop stubs: kube-bench · gitleaks.
+
+kube-bench / gitleaks are file_drop stubs (no subprocess). LICENSE-LOCK names (nuclei, openvas, pingcastle, …) stay file-drop only. The 10 public collectors stay parse-only.
 
 ## Run (private box, written SCOPE)
 
