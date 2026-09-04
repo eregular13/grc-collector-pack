@@ -15,7 +15,7 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 | `make lab` (empty pack `in/` → fixtures) | 62 | 62 | 15 | 24 | 61 | true |
 | `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 68 | 71 | 15 | 24 | 64 | true |
 
-pytest **168 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** (no Nmap/Nessus): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 62/62/24 poam 61 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **172 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** (no Nmap/Nessus): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 62/62/24 poam 61 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,7 +25,9 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
-**Delta (cycle 28):** Farm + dropbox compose are operator skeletons (SCOPE / work/in / work/out / tool-bin binds). Scanner-free statics fail closed on apt/pip/wget/FROM/COPY `.deb` / `git clone` of LICENSE-LOCK scanners and on wrap `curl … /api/risks`. `make dropbox-compose` / `make farm-compose` stamp **ABSENT** when Docker CLI is missing after static PASS — not a runtime pass. Catalog unchanged (111 / 32 / 30 / 81).
+**Delta (cycle 29):** `FARM_TOOL_BIN` is proven. DEMO shell stubs in `farm/tool-bin/lab/` (`nmap`, `curl`) write fixture-shaped output with no network. Plan `will_run` is true when the env points at them; a dry invoke writes under work out. External stage stays plan-only. Operator copies real binaries into `farm/tool-bin/` or uses host PATH. Catalog unchanged (111 / 32 / 30 / 81).
+
+**Delta (cycle 28):** Farm + dropbox compose are operator skeletons (SCOPE / work/in / work/out / tool-bin binds). Scanner-free statics fail closed on LICENSE-LOCK embeds and wrap POST. Compose runtime still ABSENT here.
 
 **Delta (cycle 27):** Ingest inventories operator-dropped files already in `in/easm|…` (`dropped_external` on the ingest marker). `.gitkeep` and `plan.json` ignored. External stage remains **plan-only** — no live curl/testssl from orchestrate or CI. `make dropbox-external` stays DEMO fixture writer. Catalog unchanged (111 / 32 / 30 / 81). Layer C untouched.
 

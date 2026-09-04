@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 29 — FARM_TOOL_BIN DEMO lab stubs (2026-09-04)
+
+`farm/tool-bin/lab/{nmap,curl}` are DEMO shell stubs (fixture gnmap / HTTP headers, no network). `farm_which` checks `FARM_TOOL_BIN` then `FARM_TOOL_BIN/lab` then PATH. Plan `will_run` true when env points at stubs; dry invoke writes work out. External stage still `will_run=false`. Catalog **not inflated**. pytest **172**. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 172, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 28 — compose scanner-free skeletons (2026-09-04)
 
 Farm + dropbox compose bind SCOPE / work/in / work/out / tool-bin. Statics catch apt/apk/yum/dnf, pip, wget, FROM/image soup, COPY `.deb`, `git clone`, and wrap `curl … /api/risks`. `make farm-compose` added. Docker absent → **ABSENT** after static PASS (not a fake runtime pass). Catalog **not inflated** (111 / 32 / 30 / 81). pytest **168**. Labs green.
