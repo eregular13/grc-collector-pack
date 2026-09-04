@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 
+from shared.control_map import poam_rows
 from shared.evidence import build_evidence_rows
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
@@ -364,6 +365,46 @@ def load() -> dict:
     write_json(out_rr / "risks_proposed.json", proposed)
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
 
+    poam = poam_rows(findings)
+    poam_dir = out_dir() / "poam"
+    write_json(poam_dir / "poam.json", poam)
+    poam_header = [
+        "weakness",
+        "asset",
+        "severity",
+        "control_refs",
+        "recommended_action",
+        "owner",
+        "milestone",
+        "status",
+    ]
+    _write_csv(
+        poam_dir / "poam.csv",
+        poam_header,
+        [
+            [
+                row["weakness"],
+                row["asset"],
+                row["severity"],
+                row["control_refs"],
+                row["recommended_action"],
+                row["owner"],
+                row["milestone"],
+                row["status"],
+            ]
+            for row in poam
+        ],
+    )
+    write_json(
+        poam_dir / "MANIFEST.json",
+        {
+            "kind": "POA&M-shaped export",
+            "rows": len(poam),
+            "ciso": "out/ciso-assistant",
+            "note": "owner and milestone left blank for HITL. SimpleRisk leave-behind is this export, not a live API.",
+        },
+    )
+
     summary = {
         "assets": len(ciso_assets),
         "findings": len(ciso_findings),
@@ -375,6 +416,7 @@ def load() -> dict:
         "risks_proposed": len(proposed),
         "ocsf": len(ocsf),
         "canonical": len(records),
+        "poam": len(poam),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "generated_at": now,
     }

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — 2026-09-03
+
+Assessment engine brakes.
+
+- RiskReady wrap killed fail-closed (no login/POST even if PUSH=1).
+- `dropbox/` SCOPE + orchestrator plan/run (quiet → destroy → deepen 2–5 → ingest).
+- BYO nmap/nessus adapters; plan-only and fixture path without binaries.
+- POA&M export + CPG/CSF stubs; SMBv1 golden fixture.
+- NOTICE: Nmap use-don't-ship; RiskReady stay-out.
+
 ## 0.3.0 — 2026-09-03
 
 Public-repo hardening.

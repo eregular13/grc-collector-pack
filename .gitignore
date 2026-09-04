@@ -14,7 +14,10 @@ out/ocsf/*.json
 out/summary.json
 out/evidence/lab-report.md
 out/import_preview/*
+out/poam/*
+dropbox/out/*
 !out/**/.gitkeep
+!dropbox/out/.gitkeep
 .DS_Store
 Thumbs.db
 product-lab/tmp/

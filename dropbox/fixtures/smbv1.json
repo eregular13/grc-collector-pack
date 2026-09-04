@@ -1,0 +1,8 @@
+{
+  "name": "SMBv1 enabled",
+  "description": "Golden fixture: SMBv1 enabled on a lab host. Not a client estate.",
+  "severity": "high",
+  "category": "exposure",
+  "assets": ["lab-dc-01"],
+  "ref_id": "NMAP-lab-dc-01-smbv1"
+}

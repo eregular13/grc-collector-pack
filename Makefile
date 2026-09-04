@@ -6,7 +6,7 @@ export GRC_LIVE_SCAN := 0
 export CISO_PUSH := 0
 export RISKREADY_PUSH := 0
 
-.PHONY: lab test collectors loader compose safety product
+.PHONY: lab test collectors loader compose safety product orchestrator-plan
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -36,3 +36,6 @@ safety:
 
 product:
 	$(PYTHON) -m product
+
+orchestrator-plan:
+	$(PYTHON) -m dropbox.orchestrator plan --scope dropbox/SCOPE.example.yaml

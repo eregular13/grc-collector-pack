@@ -60,6 +60,11 @@ def assert_lab() -> None:
     proposed = _json(OUT / "riskready" / "risks_proposed.json")
     ocsf = _json(OUT / "ocsf" / "compliance_findings.json")
     summary = _json(OUT / "summary.json")
+    poam = _json(OUT / "poam" / "poam.json")
+    poam_csv = _read(OUT / "poam" / "poam.csv")
+    assert isinstance(poam, list) and poam
+    assert "weakness,asset,severity,control_refs" in poam_csv.splitlines()[0]
+    assert any("CPG_2_W" in str(row.get("control_refs") or "") or "SMB" in str(row.get("weakness") or "") for row in poam)
 
     assert isinstance(rr_assets, list) and rr_assets
     assert isinstance(rr_inc, list) and rr_inc

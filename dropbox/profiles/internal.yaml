@@ -1,0 +1,2 @@
+profiles: internal
+note: Host discovery and named on-prem only. No public internet spray.

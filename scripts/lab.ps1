@@ -8,6 +8,7 @@ $env:GRC_LIVE_SCAN = "0"
 $env:CISO_PUSH = "0"
 $env:RISKREADY_PUSH = "0"
 python -m pytest tests -q
+python -m dropbox.orchestrator plan --scope dropbox/SCOPE.example.yaml
 @(
   "cloud_prowler.py",
   "inventory_nmap.py",
