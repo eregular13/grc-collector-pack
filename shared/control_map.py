@@ -49,7 +49,20 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     cpg = [CPG_WEAK_SERVICE]
     key_medium = False
 
-    if port == "445" or "smb" in text or "microsoft-ds" in text:
+    if (
+        "admin$" in text
+        or "c$" in text
+        or "ipc$" in text
+        or "admin share" in text
+        or "administrative share" in text
+    ):
+        name = "Restrict Windows admin shares"
+        fix = (
+            "Disable or ACL C$/ADMIN$/IPC$ so they are not reachable off the admin network. "
+            "Confirm SMBv1 is disabled. This is a share-exposure finding, not a CVE."
+        )
+        key_medium = True
+    elif port == "445" or "smb" in text or "microsoft-ds" in text:
         name = "Harden or restrict SMB file sharing"
         fix = (
             "Restrict TCP/445 (SMB) to required admin or file-share hosts. "
@@ -66,19 +79,6 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     elif port == "3389" or "rdp" in text:
         name = "Restrict RDP to approved paths"
         fix = "Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE."
-        key_medium = True
-    elif (
-        "admin$" in text
-        or "c$" in text
-        or "ipc$" in text
-        or "admin share" in text
-        or "administrative share" in text
-    ):
-        name = "Restrict Windows admin shares"
-        fix = (
-            "Disable or ACL C$/ADMIN$/IPC$ so they are not reachable off the admin network. "
-            "Confirm SMBv1 is disabled. This is a share-exposure finding, not a CVE."
-        )
         key_medium = True
     elif (
         port == "443"

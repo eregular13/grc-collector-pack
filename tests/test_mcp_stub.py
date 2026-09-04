@@ -35,7 +35,8 @@ def test_no_hexstrike_submodule() -> None:
         assert "hexstrike" not in gitmodules.read_text(encoding="utf-8").lower()
     blob = (ROOT / "dropbox" / "mcp_stub.py").read_text(encoding="utf-8")
     assert "AIExploitGenerator" in blob
-    assert "does not start a Hexstrike server" in blob or "Does not start a Hexstrike" in blob
+    assert "Hexstrike" in blob
+    assert "does not submodule hexstrike-ai" in blob
 
 
 def test_refuse_attack_names() -> None:

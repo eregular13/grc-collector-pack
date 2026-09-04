@@ -95,8 +95,8 @@ def test_admin_share_is_key_poam() -> None:
     )
     mapped = map_finding(rec)
     assert mapped["include_poam"] is True
-    # SMB port still wins if 445 is set — admin share text is the fallback.
-    # Force the share narrative via description-only (no 445 extra) in a second rec:
+    assert "admin share" in mapped["control_name"].lower() or "C$" in mapped["recommended_fix"]
+    # Description-only (no 445 extra) still maps the share narrative:
     share = make_record(
         kind="finding",
         source="identity-ad",

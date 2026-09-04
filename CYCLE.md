@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 14 — three layers + Hexstrike-pattern stub + DEMO E2E (2026-09-04)
+
+Architecture documented (A BYO / B brakes / C parse-only). Hexstrike is UX pattern only — `mcp_stub.py` SCOPE-gated, no vendor submodule, no exploit API. Internal+external DEMO scripts stamp honest DEMO labels through in/ → POA&M → CISO. BYO adapters actually invoke allowlisted PATH stubs. Status CLI prints stage graph, last integrity stop, allow_tools ∩ PATH. POA&M goldens: TLS weak cipher, admin shares, open RDP (owner/due blank). Dropbox-lab `demo: true`.
+
+pytest **126**. `make lab` 62/62/15/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64 demo true. Plan-only 3 shards / 2 batches / destroyed=3. Wrap dead. Docker absent.
+
+```json
+{"pytest": 126, "assets": 62, "findings": 62, "evidences": 24, "poam": 61, "assets_dropbox_lab": 68, "findings_dropbox_lab": 71, "poam_dropbox_lab": 64, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "wrap": "review-only", "demo_dropbox_lab": true}
+```
+
 ## cycle 13 — rebase master + orchestrator harden (2026-09-04)
 
 Rebased onto `b9055eb` (CI, loopback bind, evidence floor). Wrap stayed dead. Added BYO adapters, `dropbox status`, SCOPE `--live` refuse (empty/unsigned/0.0.0.0/0), deepen `--live` exit 2 without `stages.deepen`, deepen worker tear-down tests, TLS + admin-share POA&M maps.

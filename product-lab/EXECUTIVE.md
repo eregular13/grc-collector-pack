@@ -13,10 +13,10 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **111 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **126 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 24, "applied_controls": 74, "poam": 58, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T14:12:58Z"}
+{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T14:24:35Z"}
 ```
 
 Asset `ref_id` uniqueness: **62 = 62**.
@@ -34,11 +34,11 @@ Asset `ref_id` uniqueness: **62 = 62**.
 3. Open http://127.0.0.1:18765/ — refresh, review, download drop zip.
 4. Import CISO CSVs with clica/UI (`product-lab/drop/MANIFEST`). Leave RiskReady JSON for a human.
 
-- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 69 findings / 15 vulns / 24 evidence. `demo: false` only because fixtures were copied into `dropbox/work/in`. Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
+- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 71 findings / 15 vulns / 24 evidence / 64 POA&M. `demo: true` (dropbox-* overlays stamp DEMO). Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
 
 ## Drop-box (this PR)
 
-Reid’s consented one-two combo lives in `dropbox/`. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`).
+Reid’s consented one-two combo lives in `dropbox/`. Three layers: BYO tools under SCOPE, orchestrator brakes, parse-only collectors. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule.
 
 **Pentera finds it; Evergreen maps it.** After ingest, the client handoff is CISO CSVs plus `out/poam/poam.csv` (owner/due blank). SMB 445 in the demo nmap estate maps to network-service hardening (`cpg_2_W`, `csf_PR`) — not a hallucinated CVE.
 
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/`. `SCOPE.yaml` is fail-close
 
 ## Delta (this pass, 2026-09-04)
 
-Hardened: rebased onto master `b9055eb` (kept wrap dead). Orchestrator brakes now have BYO PATH adapters, `python3 -m dropbox status`, fail-closed `--live` (empty / unsigned / `0.0.0.0/0` / deepen-off), `deepen_batch` 2–5 + `max_workers=2` + tear-down after both stages, TLS and admin-share POA&M maps (owner/due still blank). Evidence floor from master: **24**. pytest **88 → 111**.
+Three-layer architecture (`ARCHITECTURE.md`): A BYO zoo · B orchestrator brakes · C parse-only 10 containers. Hexstrike-pattern operator MCP stub only (`HEXSTRIKE.md`, `mcp_stub.py`) — no vendor, no exploit API. Internal/external DEMO scripts leave gnmap/httpx with honest DEMO labels through POA&M/CISO. Adapters invoke stub PATH binaries when allowlisted; missing → plan-only; non-allowlisted never invoked. Status CLI: stage graph, last integrity stop, allow_tools ∩ PATH. POA&M goldens for TLS weak cipher / admin shares / open RDP (`cpg_`/`csf_`, owner/due blank). pytest **111 → 126**. Findings 59→62, POA&M 58→61 (empty `in/`). Dropbox-lab demo flag now true.
 
-Remaining gaps: Docker/compose still absent here. Dropbox-lab still flips `demo: false` when fixtures land in `work/in`. Live BYO still plan-only on this VM (no Nmap/Nessus on PATH; adapters resolve PATH and build quiet argv, they do not subprocess-scan). No paying-day PASS. USB evergreen-assessment not copied.
+Remaining gaps: Docker/compose still absent here. Operator MCP is a CLI stub, not a hosted conductor. Live BYO still plan-only on this VM (nmap/nessus missing). No paying-day PASS. USB evergreen-assessment not copied.
