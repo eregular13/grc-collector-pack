@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 47 Nikto file-drop polish stands (interesting/high only; no nikto run / no live HTTP). Cycles 44–46 stand. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 48 Nessus `.nessus` file-drop polish stands (High/Critical + key Medium; no Nessus API / no collector invoke). Nikto cycle 47 and cycles 44–46 stand. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 
