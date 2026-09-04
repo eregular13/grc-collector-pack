@@ -1,11 +1,12 @@
-cycle: 18
+cycle: 19
 phase: DONE
-item: PRIVATE-FARM-CATALOG
+item: FARM-ADAPTERS-20-FARMLAB
 critic_score: 8/10
 open_p0:
 open_p1:
 host_lab: pass
 dropbox_lab: pass
+farm_lab: pass
 compose_lab: absent
 compose_lab_reason: docker CLI not on PATH
 scanner_free: true

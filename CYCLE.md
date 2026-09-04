@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 19 — 21 wired adapters, farm-lab DEMO, farm_slot_status (2026-09-04)
+
+Wired SLOTS **21** (19 invoke + kube-bench/gitleaks file-drop stubs). New invoke: rustscan, naabu, httpx, dig, whois, sslscan. LICENSE-LOCK (nuclei/openvas/pingcastle) never subprocess. Conductor `tools/call` returns plan-only JSON for stage_discover/deepen/ingest plus `farm_slot_status` matrix. `make farm-lab` = plan → fixture discover → ingest → Layer C under `farm/work` (DEMO, not pack `in/`). `farm/OPERATOR.md` is one copy-paste runbook to CISO zip. Wrap dead.
+
+pytest **149 passed, 1 skipped**. `make lab` 62/62/15/24 poam 61. `make farm-lab` 62/62/24 poam 61 demo true. `make dropbox-lab` 68/71/15/24 poam 64. compose_lab absent.
+
+```json
+{"pytest": 149, "pytest_skipped": 1, "assets": 62, "findings": 62, "evidences": 24, "poam": 61, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "farm_slots": 51, "wired_adapters": 21, "invoke_adapters": 19, "wrap": "review-only"}
+```
+
 ## cycle 18 — private farm catalog + adapters + conductor (2026-09-04)
 
 `farm/SLOTS.yaml` is a 48-slot tool-zoo catalog (discover/deepen/external/endpoint/identity/cloud/k8s/secrets) with binary, SCOPE key, output glob → `in/<sensor>/`, license_class, default_batch. 13 wired adapter stubs (plan-only if missing; PATH stub tests). `farm/OPERATOR.md` is the install → mount → quiet→loud path. Compose adds short-lived discover/deepen/ingest workers on an internal network. Orchestrator stage graph: plan → shard → discover → destroy → deepen → destroy → ingest → grc_export. Status prints allow_tools ∩ PATH ∩ SLOTS. Conductor lists 8 SCOPE-gated tools and invokes plan/status/farm_slots over JSON-RPC (no FastMCP, no Hexstrike). Layer C untouched. Ingest skips plan.json so pack `in/` stays gitkeep. Wrap dead.

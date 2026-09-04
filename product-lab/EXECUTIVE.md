@@ -13,10 +13,10 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **147 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **149 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T15:06:07Z"}
+{"assets": 62, "findings": 62, "vulnerabilities": 15, "evidences": 24, "applied_controls": 77, "poam": 61, "risk_scenarios": 77, "incidents": 58, "risks_proposed": 57, "ocsf": 62, "canonical": 140, "demo": true, "generated_at": "2026-09-04T15:12:46Z"}
 ```
 
 Asset `ref_id` uniqueness: **62 = 62**.
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-Private farm catalog (`farm/SLOTS.yaml`): 48 slots across discover/deepen/external/endpoint/identity/cloud/k8s/secrets with license_class + `in/<sensor>/` globs. 13 wired adapter stubs (plan-only if missing). Orchestrator graph through grc_export. Conductor lists 8 tools and invokes plan/status/farm_slots over JSON-RPC stdio. `farm/OPERATOR.md` is the private-box path. pytest **140 → 147 + 1 skip**. Layer C untouched.
+21 wired farm adapters (19 invoke). rustscan/naabu/httpx/dig/whois/sslscan PATH stubs; kube-bench/gitleaks file-drop stubs; LICENSE-LOCK never subprocess. Conductor plan-only stage_* + `farm_slot_status`. `make farm-lab` DEMO (62/62/24 poam 61) under `farm/work`. `farm/OPERATOR.md` is the bare-Linux → CISO zip runbook. pytest **147 → 149 + 1 skip**. Layer C untouched.
 
-Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Farm compose workers are a skeleton, not a running multi-tool cluster. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.
+Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Farm compose workers are a skeleton. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.
