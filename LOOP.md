@@ -35,6 +35,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 69 done: Conductor SCOPE gate (farm_slots + export_ciso_poam load SCOPE).
 - Cycle 70 done: Orchestrator brakes regressions (free_day_scope / pack_truth / wrap / unsigned SCOPE).
 - Cycle 71 done: README honesty rails (STATUS/EXECUTIVE/catalog/pack truth/compose ABSENT).
+- Cycle 72 done: SCOPE fail-closed invoke (`run_slot` load_scope + signed allow_tools intersect; CLI/conductor refuse empty/unsigned).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
