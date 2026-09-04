@@ -38,7 +38,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 
 ## Drop-box (this PR)
 
-Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BYO tool farm under SCOPE (110 catalog slots, 29 invoke adapters — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes + stdio conductor, parse-only collectors. Cycle 20’s 105 named slots stand; cycle 21 added 5 real OS stubs. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule. See `farm/OPERATOR.md`, `farm/INTEGRITY.md`, and `farm/SLOTS.md`.
+Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BYO tool farm under SCOPE (111 catalog slots, 30 invoke adapters — PATH / bind-mount / Reid’s tags; not Hub soup), orchestrator brakes + stdio conductor, parse-only collectors. Cycle 20’s 105 named slots stand; this window added 6 real OS stubs. `SCOPE.yaml` is fail-closed (client, attestation hash, window, named internal/external). Demo `make dropbox-lab` seeds `dropbox/work/in` from fixtures plus demo overlays — **not a client estate**. Allowlisted host tools only (`ss`/`ip`/`curl`/`lynis` if already on PATH). SimpleRisk is leave-behind docs only (`dropbox/SIMPLERISK.md`). Hexstrike is a UX pattern only — no vendor submodule. See `farm/OPERATOR.md`, `farm/INTEGRITY.md`, and `farm/SLOTS.md`.
 
 **Pentera finds it; Evergreen maps it.** After ingest, the client handoff is CISO CSVs plus `out/poam/poam.csv` (owner/due blank). SMB 445 in the demo nmap estate maps to network-service hardening (`cpg_2_W`, `csf_PR`) — not a hallucinated CVE.
 
@@ -46,6 +46,6 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
-Farm catalog **110** slots (`SLOTS.md`: 31 wired / 29 invoke / 81 file_drop). PATH-invoke toward 30 (journalctl / kubectl client / snmpwalk / ping / traceroute / tracepath / host / getent). LICENSE-LOCK + nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
+Farm catalog **111** slots (`SLOTS.md`: 32 wired / 30 invoke / 81 file_drop). PATH-invoke **30** (journalctl / kubectl client / snmpwalk / ping / traceroute / tracepath / host / getent / hostname). LICENSE-LOCK + nikto/gobuster/ffuf/amass/subfinder/scoutsuite/checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Labs unchanged (62/62/24 poam 61 host+farm-lab). Layer C untouched.
 
 Remaining gaps: Docker CLI still absent here (runtime compose path unexercised). Live BYO still plan-only (nmap/nessus missing). Catalog ≠ 100 running binaries. MCP is stdio JSON-RPC, not hosted FastMCP. No paying-day PASS. USB evergreen-assessment not copied.

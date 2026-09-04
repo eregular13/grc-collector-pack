@@ -50,7 +50,7 @@ dirs above. No new sensor stub. No theater parser.
 
 ## Cycle 20 catalog stands
 
-Cycle 20 shipped **105** named slots. Cycle 21 adds a **small** set of real
-OS PATH stubs (ping / traceroute / tracepath / host / getent) and rewires
-existing oss_byo entries (journalctl, kubectl client, snmpwalk). Do **not**
-inflate fake slots to hit a round number.
+Cycle 20 shipped **105** named slots. This window adds a **small** set of
+real OS PATH stubs (ping / traceroute / tracepath / host / getent / hostname)
+and rewires existing oss_byo entries (journalctl, kubectl client, snmpwalk).
+Do **not** inflate fake slots to hit a round number.

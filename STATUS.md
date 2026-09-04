@@ -1,6 +1,6 @@
-cycle: 21
+cycle: 22
 phase: DONE
-item: FARM-QUALITY-INVOKE
+item: FARM-INVOKE-30
 critic_score: 8/10
 open_p0:
 open_p1:

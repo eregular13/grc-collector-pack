@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 22 — hostname PATH stub hits 30 invoke (2026-09-04)
+
+Sixth real OS PATH stub (`hostname -f`, discover-adjacent, `in/nmap/`). Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. Cycle 20’s 105 named slots stand. No fake padding. Labs unchanged.
+
+pytest **153 passed, 1 skipped**. `make lab` / `make farm-lab` 62/62/15/24 poam 61. `make dropbox-lab` 68/71. compose_lab absent.
+
+```json
+{"pytest": 153, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "assets": 62, "poam": 61, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 21 — quality: PATH-invoke toward 30, conductor, ingest audit (2026-09-04)
 
 Cycle 20 **105** named slots stand. Added 5 real OS stubs (ping / traceroute / tracepath / host / getent) and rewired existing oss_byo (journalctl, kubectl client, snmpwalk named-host). **110 / 31 wired / 29 invoke / 81 file_drop**. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Conductor `tools/list` is stable `OPERATOR_TOOLS` order; `farm_slot_status` accepts `category`. `audit_output_globs()` empty — every glob is `in/<Layer-C-sensor>/`. `farm/INTEGRITY.md` brakes table. Cursor `.cursor/mcp.json` snippet in `farm/OPERATOR.md` has `cwd` + `PYTHONPATH`. Wrap dead. No Hexstrike. No USB. No paying-day PASS.

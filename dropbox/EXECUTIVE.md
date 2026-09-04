@@ -2,7 +2,7 @@
 
 Reid’s delivery is a **consented drop-box**, not a SaaS scanner and not a RiskReady wrap.
 
-Three layers (see `ARCHITECTURE.md`): **A** BYO tool farm under SCOPE — private `farm/` catalog (**110** slots, 31 wired / 29 invoke / 81 file_drop; PATH / bind-mount / Reid-built tags; not Hub soup) · **B** orchestrator = brakes (`plan → shard → discover → destroy → deepen → destroy → ingest → grc_export`) plus stdio MCP conductor · **C** existing 10 containers parse `in/` only. Layer B feeds Layer C via `in/`; it does not turn collectors into live scanners. Cycle 20’s 105 named slots stand; cycle 21 added 5 real OS PATH stubs, not fake padding. “100 tools” = catalog + file-drop families, not 100 compose binaries. Hexstrike is a UX pattern only (`HEXSTRIKE.md`) — no exploit-chain, no vendor submodule.
+Three layers (see `ARCHITECTURE.md`): **A** BYO tool farm under SCOPE — private `farm/` catalog (**111** slots, 32 wired / 30 invoke / 81 file_drop; PATH / bind-mount / Reid-built tags; not Hub soup) · **B** orchestrator = brakes (`plan → shard → discover → destroy → deepen → destroy → ingest → grc_export`) plus stdio MCP conductor · **C** existing 10 containers parse `in/` only. Layer B feeds Layer C via `in/`; it does not turn collectors into live scanners. Cycle 20’s 105 named slots stand; this window added 6 real OS PATH stubs (not fake padding) and rewired journalctl / kubectl / snmpwalk. “100 tools” = catalog + file-drop families, not 100 compose binaries. Hexstrike is a UX pattern only (`HEXSTRIKE.md`) — no exploit-chain, no vendor submodule.
 
 With written consent he places a VM, fills `SCOPE.yaml` (client, attestation hash, window, named internal CIDRs/hosts, named external hosts/domains/IPs), runs **internal** then **external**, and hands CISO Assistant CSVs from this pack.
 
@@ -25,6 +25,6 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
-**Delta (cycle 21):** PATH-invoke **29** (toward 30). Rewired journalctl / kubectl client / snmpwalk; added ping / traceroute / tracepath / host / getent. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit: every `output_glob` → existing Layer C sensor dir. Layer C untouched.
+**Delta (cycle 22):** PATH-invoke **30**. Added `hostname`. Cycle 21 already rewired journalctl / kubectl client / snmpwalk and added ping / traceroute / tracepath / host / getent. nikto / gobuster / ffuf / amass / subfinder / scoutsuite / checkov stay file_drop. Conductor `tools/list` stable; `farm_slot_status` filters by category. Ingest audit clean. Layer C untouched.
 
 Not a paying-day PASS. USB evergreen-assessment was not copied.
