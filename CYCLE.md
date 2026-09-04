@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 71 — README honesty rails (2026-09-04)
+
+Root README now matches STATUS / EXECUTIVE: DEMO ≠ client, paying-day FAIL, compose ABSENT (hole, not a PASS), wrap review-only, catalog **111 / 32 wired / 30 invoke / 81 file_drop**, USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`) = pack truth, `dropbox.mcp_stub` = conductor UX, `SCOPE.example.yaml` does not allowlist nmap/nessus. Operator compose proof (`config --services` + `up --build --exit-code-from grc-loader`) is documented; this VM still stamps ABSENT. Cycles 67–70 rails stay locked. Catalog **not inflated**. pytest **315**. Labs unchanged vs cycle 70 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. No new parsers.
+
+```json
+{"pytest": 315, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never"}
+```
+
 ## cycle 70 — Brakes honesty regressions (2026-09-04)
 
 `test_orch_brakes` now locks `free_day_scope`, `pack_truth`, wrap-dead, and conductor `load_scope` refusals for empty and unsigned SCOPE (farm_slots / export / status / stage). Cycle 69 SCOPE gate stays locked. Catalog **not inflated**. pytest **313**. Labs unchanged vs cycle 69 (64/79/19/27 poam 82). Compose ABSENT. Paying-day FAIL. DEMO ≠ client. No new parsers.

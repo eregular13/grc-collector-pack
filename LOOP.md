@@ -34,6 +34,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 68 done: Farm SOP honesty (OPERATOR/QUICKSTART/INTEGRITY + brakes JSON).
 - Cycle 69 done: Conductor SCOPE gate (farm_slots + export_ciso_poam load SCOPE).
 - Cycle 70 done: Orchestrator brakes regressions (free_day_scope / pack_truth / wrap / unsigned SCOPE).
+- Cycle 71 done: README honesty rails (STATUS/EXECUTIVE/catalog/pack truth/compose ABSENT).
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
