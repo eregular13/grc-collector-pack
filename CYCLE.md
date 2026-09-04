@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 46 — ffuf / gobuster file-drop polish (2026-09-04)
+
+easm parses ffuf JSON (`results` + status/url) and gobuster `(Status: N)` text under `in/easm/`. Interesting paths only (`/admin`, `/login`, `/.git`). 404 and robots invent nothing. Empty `results` invents nothing. Demo `ffuf.json` attaches to existing `admin.example.com` (robots/404 silent). No live DNS/HTTP; no ffuf/gobuster subprocess. Catalog **not inflated**. pytest **240**. Labs green (assets unchanged; findings/poam +1). Compose ABSENT. Checkov cycle 45 and EASM cycle 44 stand.
+
+```json
+{"pytest": 240, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 70, "vulns": 17, "evidence": 26, "poam": 71}, "farm_lab": {"assets": 64, "findings": 70, "poam": 71, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 71, "poam": 71, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 79, "poam": 74, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 45 — Checkov / Gitleaks / TruffleHog file-drop polish (2026-09-04)
 
 code-secrets parses Checkov `results.failed_checks` (and a report list), Gitleaks `{findings|leaks|results}` wrappers, and TruffleHog `{results}` under `in/code/`. Passed / INFO / empty invent nothing. Secrets stay redacted. Public S3 ACL and credential rows map to existing POA&M. Demo `checkov.json` attaches to existing `infra/terraform.tfvars` (failed only; versioning PASS silent). No live checkov / gitleaks / semgrep / trufflehog. Catalog **not inflated**. pytest **237**. Labs green (assets unchanged; findings/poam/evidence +1). Compose ABSENT. EASM cycle 44 and CIS-CAT/osquery cycle 43 stand.

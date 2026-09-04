@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 45 Checkov / Gitleaks / TruffleHog file-drop polish stands (failed Checkov only; wrappers; no live tools). EASM / CIS-CAT/osquery / Nuclei / Fleet / BloodHound CE / nmap stand. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 46 ffuf / gobuster file-drop polish stands (interesting paths only; no live DNS/HTTP). Checkov / EASM / CIS-CAT/osquery / Nuclei stand. No slot inflation. No live probes. No fake compose pass. Next leftover: nikto file-drop under `in/vuln/`.
 
 ## STOP rules
 
