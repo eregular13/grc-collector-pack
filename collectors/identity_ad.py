@@ -98,43 +98,64 @@ def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
 
 
 def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
+    """Parse HardeningKitty Audit CSV. Failed/warning rows only. Actual values redacted."""
     records: list[dict] = []
     sample = text[:4000]
-    dialect = csv.Sniffer().sniff(sample, delimiters=",;\t") if "," in sample or ";" in sample else csv.excel
+    dialect = csv.excel
+    if "," in sample or ";" in sample or "\t" in sample:
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel
     reader = csv.DictReader(StringIO(text), dialect=dialect)
     host = "windows-host"
+    seen_hosts: set[str] = set()
     for row in reader:
         if not row:
             continue
-        lower = {str(k).strip().lower(): (v or "").strip() for k, v in row.items() if k}
-        host = lower.get("computername") or lower.get("hostname") or host
-        result = (lower.get("result") or lower.get("status") or "").lower()
-        if result in {"passed", "pass", "ok", "true"}:
+        lower = {str(k).strip().lower().replace(" ", ""): (v or "").strip() for k, v in row.items() if k}
+        host = (
+            lower.get("computername")
+            or lower.get("hostname")
+            or lower.get("computer")
+            or lower.get("system")
+            or host
+        )
+        result = (lower.get("result") or lower.get("status") or lower.get("outcome") or "").lower()
+        if result in {"passed", "pass", "ok", "true", "compliant", "notapplicable", "n/a", "na"}:
+            continue
+        if result not in {"failed", "fail", "warning", "warn", "noncompliant", "error", ""}:
             continue
         hid = lower.get("id") or lower.get("number") or lower.get("name") or "hk"
         name = lower.get("name") or lower.get("title") or hid
-        sev = lower.get("severity") or "medium"
-        recommended = lower.get("recommended") or lower.get("recommendedvalue") or ""
-        actual = lower.get("actual") or lower.get("actualvalue") or ""
-        records.append(
-            make_record(
-                kind="asset",
-                source=SOURCE,
-                ref_id=make_ref(SOURCE, f"asset-{host}"),
-                name=host,
-                description=f"Windows host {host}",
-                category="host",
-                assets=[host],
-                labels=LABELS + ["windows", "hardeningkitty"],
-                collected_at=now,
-                extra={"asset_type": "PR"},
-            )
+        sev = lower.get("severity") or ("medium" if result in {"warning", "warn"} else "high")
+        recommended = (
+            lower.get("recommended")
+            or lower.get("recommendedvalue")
+            or lower.get("expected")
+            or ""
         )
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"Windows host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + ["windows", "hardeningkitty"],
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"hk-{hid}"),
+                ref_id=make_ref(SOURCE, f"hk-{hid}-{host}"),
                 name=f"HardeningKitty {name}",
                 description=f"{name} result={result or 'failed'} recommended={recommended or '[n/a]'} actual=[REDACTED]",
                 severity=sev,
@@ -142,7 +163,7 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["hardeningkitty"],
                 collected_at=now,
-                extra={"id": hid},
+                extra={"id": hid, "result": result or "failed", "name": name},
             )
         )
     return records

@@ -1,4 +1,4 @@
-ID,Name,Severity,Result,Recommended,Actual,ComputerName
-1.1,Enforce password history,High,Failed,24,5,win-dc01
-18.9,Disable LM hash storage,High,Failed,Enabled,Disabled,win-dc01
-2.3,Guest account status,Medium,Passed,Disabled,Disabled,win-dc01
+ID,Category,Name,Method,Severity,Result,Recommended,Actual,ComputerName
+1.1,Account Policies,Enforce password history,Registry,High,Failed,24,5,win-dc01
+18.9,Security Options,Disable LM hash storage,Registry,High,Failed,Enabled,Disabled,win-dc01
+2.3,Accounts,Guest account status,Registry,Medium,Passed,Disabled,Disabled,win-dc01

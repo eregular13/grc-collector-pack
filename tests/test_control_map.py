@@ -170,6 +170,51 @@ def test_cloud_high_findings_map_to_poam_not_cve() -> None:
         assert "CVE-" not in mapped["recommended_fix"]
 
 
+def test_hk_and_lynis_high_map_to_poam_not_cve() -> None:
+    cases = [
+        (
+            "HardeningKitty Enforce password history",
+            "Enforce password history result=failed recommended=24 actual=[REDACTED]",
+            {"id": "1.1", "name": "Enforce password history"},
+            "password history",
+        ),
+        (
+            "HardeningKitty Disable LM hash storage",
+            "Disable LM hash storage result=failed recommended=Enabled actual=[REDACTED]",
+            {"id": "18.9", "name": "Disable LM hash storage"},
+            "lm hash",
+        ),
+        (
+            "Lynis FIRE-4590: No firewall software installed",
+            "No firewall software installed",
+            {"check_id": "FIRE-4590"},
+            "firewall",
+        ),
+        (
+            "Lynis SSH-7408: SSH PermitRootLogin is enabled",
+            "SSH PermitRootLogin is enabled",
+            {"check_id": "SSH-7408"},
+            "root login",
+        ),
+    ]
+    for name, desc, extra, needle in cases:
+        rec = make_record(
+            kind="finding",
+            source="host-wazuh",
+            ref_id="WAZ-map",
+            name=name,
+            description=desc,
+            severity="high",
+            category="host-posture",
+            assets=["jump-unmanaged"],
+            extra=extra,
+        )
+        mapped = map_finding(rec)
+        assert mapped["include_poam"] is True, name
+        assert needle in mapped["control_name"].lower(), (name, mapped["control_name"])
+        assert "CVE-" not in mapped["recommended_fix"]
+
+
 def test_sarif_sql_injection_maps_to_poam() -> None:
     rec = make_record(
         kind="finding",

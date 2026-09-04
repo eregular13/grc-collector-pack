@@ -38,6 +38,8 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("cve"),
             extra.get("check_id"),
             extra.get("arn"),
+            extra.get("id"),
+            extra.get("name"),
         )
     ).lower()
 
@@ -174,6 +176,33 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."
+    elif "password history" in text:
+        name = "Enforce Windows password history"
+        fix = (
+            "Set password history to the recommended length. "
+            "This is a HardeningKitty/CIS posture finding, not a CVE."
+        )
+    elif "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", "").replace("-", ""):
+        name = "Disable LM hash storage"
+        fix = (
+            "Disable storage of LAN Manager hashes. Prefer NTLMv2. "
+            "This is a HardeningKitty/CIS posture finding, not a CVE."
+        )
+    elif "firewall" in text and (
+        "no firewall" in text or "not installed" in text or "inactive" in text
+    ):
+        name = "Enable a host firewall"
+        fix = (
+            "Install and enable a host firewall. This is a Lynis posture finding, not a CVE."
+        )
+    elif "permitrootlogin" in text.replace(" ", "").replace("_", "").replace("-", "") or (
+        "ssh" in text and "root login" in text
+    ):
+        name = "Disable SSH root login"
+        fix = (
+            "Set PermitRootLogin no and use a named sudo account. "
+            "This is a Lynis posture finding, not a CVE."
+        )
     elif str(rec.get("category") or "") == "exposure":
         name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"
         fix = (

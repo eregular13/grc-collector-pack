@@ -53,7 +53,7 @@ python3 -m dropbox run --profile internal --live
 What internal **does**
 
 - Local listen inventory via `ss`/`ip` (or demo gnmap from named SCOPE hosts) → `in/nmap/dropbox-inventory.gnmap`
-- Lynis **only** if `lynis` is on PATH and in `allow_tools` → host JSON in `in/wazuh/` (full Lynis controls are **not** parsed; no Lynis collector)
+- Lynis **only** if `lynis` is on PATH and in `allow_tools` → host JSON in `in/wazuh/`. Operator-landed Lynis reports (`in/wazuh/*.txt|*.dat`) are parse-only Layer C ingest. The collector does not run Lynis.
 - BYO: if a binary is already on PATH **and** named in `SCOPE.allow_tools` / `byo`, run SCOPE args and capture stdout → `in/<sensor>/`. Never downloads. Forbidden names are rejected even if listed.
 
 What internal **does not**

@@ -203,12 +203,81 @@ def test_empty_in_still_loads_cloud_asff_and_scoutsuite(tmp_path, monkeypatch) -
 
 
 def test_hardeningkitty_csv() -> None:
+    from shared.control_map import map_finding
+
     recs = identity_ad.parse_file(DEMO / "identity" / "hardeningkitty.csv")
     findings = [r for r in recs if r["kind"] == "finding"]
     assert any("password history" in r["name"] for r in findings)
+    assert any("LM hash" in r["name"] for r in findings)
     assert not any("Guest account" in r["name"] for r in findings)
+    assert {r["name"] for r in recs if r["kind"] == "asset"} == {"win-dc01"}
     blob = str(recs)
     assert " actual=5" not in blob
+    hist = next(r for r in findings if "password history" in r["name"])
+    mapped = map_finding(hist)
+    assert mapped["include_poam"] is True
+    assert "password history" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_minimal_hk_audit_csv(tmp_path) -> None:
+    dest = tmp_path / "audit.csv"
+    dest.write_text(
+        "ID,Name,Severity,Result,RecommendedValue,TestedValue,ComputerName\n"
+        "1.1,Enforce password history,High,Failed,24,5,win-hk-min\n"
+        "2.3,Guest account status,Medium,Passed,Disabled,Disabled,win-hk-min\n",
+        encoding="utf-8",
+    )
+    recs = identity_ad.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "high"
+    assert "password history" in findings[0]["name"]
+    assert not any("Guest" in r["name"] for r in findings)
+    assert "win-hk-min" in findings[0]["assets"]
+    blob = str(recs)
+    assert " actual=5" not in blob
+    assert "[REDACTED]" in blob
+
+
+def test_empty_in_still_loads_hk_csv(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-identity"))
+    (tmp_path / "empty-identity" / "identity").mkdir(parents=True)
+    files, demo = load_inputs("identity-ad", (".json", ".xml", ".csv"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "hardeningkitty.csv" in names
+
+
+def test_lynis_report() -> None:
+    from collectors import host_wazuh
+    from shared.control_map import map_finding
+
+    recs = host_wazuh.parse_file(DEMO / "wazuh" / "lynis-report.txt")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any("FIRE-4590" in r["name"] for r in findings)
+    assert any("SSH-7408" in r["name"] for r in findings)
+    assert not any("ACCT-9622" in r["name"] for r in findings)
+    assert any(r["kind"] == "asset" and r["name"] == "jump-unmanaged" for r in recs)
+    fw = next(r for r in findings if "FIRE-4590" in r["name"])
+    mapped = map_finding(fw)
+    assert mapped["include_poam"] is True
+    assert "firewall" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_empty_in_still_loads_lynis_report(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-wazuh"))
+    (tmp_path / "empty-wazuh" / "wazuh").mkdir(parents=True)
+    files, demo = load_inputs("host-wazuh", (".json", ".txt", ".log", ".dat"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "lynis-report.txt" in names
+    assert "osquery.json" in names
 
 
 def test_maester() -> None:

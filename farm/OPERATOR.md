@@ -101,6 +101,13 @@ Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
 `in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
 rows. This repo does not invoke those tools.
 
+HardeningKitty **Audit CSV** and **Lynis** reports are file-drop ingest:
+land HK CSV under `in/identity/`, Lynis report/`report.dat` under `in/wazuh/`.
+Layer C parses Failed HK rows and Lynis warnings only — no WinRM/AD API, no
+live Lynis from the collector. High rows map to CISO/POA&M when obvious.
+Passed HK rows (including Guest) stay silent. Lynis *invoke* is separate BYO
+(`allow_tools`) only if the binary is already on PATH.
+
 Prowler / ScoutSuite **cloud** is file-drop ingest under `in/cloud/`: land
 Prowler JSON, Prowler ASFF, or ScoutSuite `services.*.findings` JSON (Custodian
 and Steampipe also parse). Layer C does not call AWS/GCP/Azure APIs. High FAIL

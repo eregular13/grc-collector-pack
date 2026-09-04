@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
-from shared.io_util import iso_now, read_json, run_collector
+from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.schema import make_record, make_ref
 
 SOURCE = "host-wazuh"
@@ -51,7 +52,70 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+_LYNIS_BANG = re.compile(r"^!\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
+_LYNIS_DAT = re.compile(r"^warning\[\]=([^|]+)\|(.+)$", re.I)
+_LYNIS_HOST = re.compile(r"(?im)^(?:hostname\s*[:=]\s*|hostname\s+)(\S+)")
+
+
+def parse_lynis_report(text: str, now: str) -> list[dict]:
+    """Parse a Lynis report or report.dat. Warnings only. No invented hosts."""
+    host = "lynis-host"
+    mhost = _LYNIS_HOST.search(text)
+    if mhost:
+        host = mhost.group(1).strip().strip("\"'")
+    warnings: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        raw = line.strip()
+        bang = _LYNIS_BANG.match(raw)
+        if bang:
+            warnings.append((bang.group(2), bang.group(1)))
+            continue
+        dat = _LYNIS_DAT.match(raw)
+        if dat:
+            warnings.append((dat.group(1).strip(), dat.group(2).strip()))
+    if not warnings:
+        return []
+    records = [
+        make_record(
+            kind="asset",
+            source=SOURCE,
+            ref_id=make_ref(SOURCE, f"asset-{host}"),
+            name=host,
+            description=f"Lynis-audited host {host}",
+            category="host",
+            assets=[host],
+            labels=LABELS + ["lynis"],
+            collected_at=now,
+            extra={"asset_type": "PR"},
+        )
+    ]
+    seen: set[str] = set()
+    for cid, title in warnings:
+        key = f"{cid}-{host}"
+        if key in seen:
+            continue
+        seen.add(key)
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"lynis-{key}"),
+                name=f"Lynis {cid}: {title}",
+                description=title,
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + ["lynis"],
+                collected_at=now,
+                extra={"check_id": cid, "id": cid},
+            )
+        )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
+    if path.suffix.lower() in {".txt", ".log", ".dat"}:
+        return parse_lynis_report(read_text(path), iso_now())
     payload = read_json(path)
     now = iso_now()
     records: list[dict] = []
@@ -133,7 +197,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json",), parse_file)
+    run_collector(SOURCE, (".json", ".txt", ".log", ".dat"), parse_file)
 
 
 if __name__ == "__main__":
