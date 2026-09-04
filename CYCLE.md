@@ -2,7 +2,11 @@
 
 ## cycle 33 — operator UX + honesty docs (2026-09-04)
 
-`farm/QUICKSTART.md` (27 lines): consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box. Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE. STATUS + product-lab/EXECUTIVE stamp **111 / 32 / 30**, pytest **179**, e2e 63/63 poam 61. DEMO ≠ client estate. Catalog **not inflated**. Cycles 31–32 stand.
+`farm/QUICKSTART.md` (27 lines): consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box. Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE. STATUS + product-lab/EXECUTIVE stamp **111 / 32 / 30**, pytest **180** (179 + QUICKSTART doc test), e2e 63/63 poam 61. DEMO ≠ client estate. Catalog **not inflated**. Cycles 31–32 stand. Labs green. Compose ABSENT.
+
+```json
+{"pytest": 180, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "farm_toolbin_e2e": {"assets": 63, "findings": 63, "poam": 61, "demo": true}, "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
 
 ## cycle 32 — conductor farm_toolbin_status + MCP snippets (2026-09-04)
 
