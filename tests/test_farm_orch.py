@@ -7,7 +7,13 @@ from pathlib import Path
 import pytest
 
 from dropbox.orchestrator.farm import Farm
-from dropbox.orchestrator.pipeline import deepen_stage, discover_stage, orchestrate
+from dropbox.orchestrator.pipeline import (
+    EXTERNAL_PLAN_REASON,
+    deepen_stage,
+    discover_stage,
+    external_stage,
+    orchestrate,
+)
 from dropbox.scope import GateError, load_scope
 from farm.adapters.catalog import (
     FILE_DROP_ONLY,
@@ -38,8 +44,16 @@ def test_plan_lists_slots_per_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     deep = {row["slot"] for row in slots["deepen"]["selected"]}
     assert "nessus" in deep
     assert "openvas" not in deep
-    ext = {row["slot"] for row in slots["external"]["selected"]}
+    ext_rows = slots["external"]["selected"]
+    ext = {row["slot"] for row in ext_rows}
     assert "curl" in ext
+    assert all(row["will_run"] is False for row in ext_rows)
+    assert all("plan-only" in row["reason"] or "file_drop" in row["reason"] for row in ext_rows)
+    assert slots["external"]["ready"] == []
+    assert slots["external"]["primary"] == ""
+    assert summary["external"]["mode"] == "plan"
+    assert summary["external"]["live"] is False
+    assert "external (plan-only)" in summary["stage_graph"]
     assert summary["discover"]["slots"]["stage"] == "discover"
     assert summary["deepen"]["slots"]["stage"] == "deepen"
 
@@ -145,3 +159,41 @@ def test_missing_discover_slot_has_explicit_reason(
     rust = next(row for row in plan["slots"]["skipped"] if row["slot"] == "rustscan")
     assert rust["state"] == "not-allowlisted"
     assert LICENSE_LOCK_LIVE
+
+
+def test_external_stage_never_live_probes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    marker = tmp_path / "invoked.txt"
+    for name in ("curl", "testssl"):
+        script = bin_dir / name
+        script.write_text(
+            "#!/bin/sh\n"
+            f'printf "%s\\n" "{name}" >> "{marker}"\n',
+            encoding="utf-8",
+        )
+        script.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    plan = external_stage(scope, dest_in=tmp_path / "in", live=True)
+    assert plan["mode"] == "plan"
+    assert plan["live"] is False
+    assert plan["plan_only"] is True
+    assert plan["workers"] == []
+    assert EXTERNAL_PLAN_REASON in plan["skip_reason"]
+    curl = next(row for row in plan["slots"]["selected"] if row["slot"] == "curl")
+    assert curl["will_run"] is False
+    assert "in/easm" in curl["reason"]
+    assert not marker.exists()
+
+
+def test_dropbox_external_script_is_demo_fixture_writer() -> None:
+    script = (ROOT / "scripts" / "dropbox-external.sh").read_text(encoding="utf-8")
+    assert "--live" not in script
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    block = makefile.split("dropbox-external:")[1].split("dropbox-orchestrate:")[0]
+    assert "--live" not in block
+    assert "run --profile external" in block

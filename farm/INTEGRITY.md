@@ -20,6 +20,7 @@ Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
 | LICENSE-LOCK embed | Never ship scanner packages | Nmap/Nessus BYO PATH+allowlist only; nuclei / OpenVAS / Zeek / Wazuh / osquery / PingCastle / Purple Knight / BloodHound / CIS-CAT stay file_drop, never subprocess |
 | Exploit / vendor | Absent | No Metasploit, no Hexstrike submodule, no USB copy |
 | Wrap | Review-only | `push_riskready.sh` prints LICENSE-LOCK and never POSTs, even if `RISKREADY_PUSH=1` |
+| External stage | Plan-only | Named hosts/URLs only; no live curl/testssl from orchestrate; operator lands `in/easm/` |
 | Layer C | Parse-only ingest | `in/<sensor>/` only; collectors never call farm adapters |
 | Compose | Scanner-free | Farm Dockerfile has no `RUN apt`; compose runtime ABSENT here (no Docker CLI) |
 

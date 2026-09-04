@@ -36,6 +36,7 @@ orchestrator:
   stages:
     discover: true
     deepen: false
+    external: false
   deepen_hosts: []
   stage_tools:
     discover:

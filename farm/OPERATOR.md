@@ -50,11 +50,15 @@ kube-bench / gitleaks are **file_drop stubs** (callable, no subprocess). Drop JS
 
 ## Orchestrator + conductor
 
-Stage graph (quiet→loud): `plan → shard → discover → destroy → deepen (2–5) → destroy → ingest → grc_export`
+Stage graph (quiet→loud): `plan → shard → discover → destroy → deepen (2–5) → destroy → external (plan-only) → ingest → grc_export`
 
 Plan JSON lists `slots` per stage: `allow_tools ∩ wired invoke ∩` discover / deepen / external.
 `--live` discover runs only those discover invoke slots that are on PATH; missing → `skip_reason`.
 Deepen uses deepen invoke slots on discover-live hosts or `deepen_hosts`.
+**External is plan-only** in this pack: slots list with `will_run=false` and
+`file_drop or plan-only — operator lands artifacts in in/easm|…`.
+`make dropbox-external` writes DEMO fixtures into `in/easm/`. Live BYO
+curl/testssl is operator-local under written SCOPE — not orchestrate.
 LICENSE-LOCK / file_drop names never subprocess.
 
 ```bash

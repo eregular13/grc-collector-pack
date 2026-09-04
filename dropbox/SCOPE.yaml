@@ -41,6 +41,7 @@ orchestrator:
   stages:
     discover: true
     deepen: true
+    external: false
   deepen_hosts:
     - "127.0.0.1"
     - "dropbox-lab.local"

@@ -128,6 +128,21 @@ def test_external_scope_refuses_wildcard_and_cidr(tmp_path: Path) -> None:
     cidr.write_text(header + "external:\n  hosts:\n    - 10.0.0.0/24\n", encoding="utf-8")
     with pytest.raises(GateError, match="CIDR"):
         load_scope(cidr)
+    spray = tmp_path / "spray.yaml"
+    spray.write_text(header + "external:\n  hosts:\n    - 0.0.0.0/0\n", encoding="utf-8")
+    with pytest.raises(GateError, match="open-internet"):
+        load_scope(spray)
+    zero = tmp_path / "zero.yaml"
+    zero.write_text(header + "external:\n  hosts:\n    - vpn.example.com\n  ips:\n    - 0.0.0.0\n", encoding="utf-8")
+    with pytest.raises(GateError, match="open-internet"):
+        load_scope(zero)
+    url = tmp_path / "url.yaml"
+    url.write_text(
+        header + "external:\n  hosts:\n    - https://vpn.example.com\n",
+        encoding="utf-8",
+    )
+    loaded = load_scope(url)
+    assert loaded.external_hosts == ["https://vpn.example.com"]
 
 
 def test_demo_ingest_writes_existing_formats(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

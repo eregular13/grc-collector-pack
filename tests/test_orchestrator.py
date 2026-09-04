@@ -155,6 +155,7 @@ def test_example_scope_deepen_defaults_false() -> None:
 
     data = load_yaml((ROOT / "dropbox" / "SCOPE.example.yaml").read_text(encoding="utf-8"))
     assert data["orchestrator"]["stages"]["deepen"] is False
+    assert data["orchestrator"]["stages"].get("external") is False
     assert data["orchestrator"]["max_workers"] == 2
     assert data["orchestrator"]["host_timeout_sec"] == 30
 

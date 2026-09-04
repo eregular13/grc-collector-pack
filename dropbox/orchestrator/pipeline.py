@@ -16,7 +16,11 @@ from shared.io_util import in_dir
 
 STAGE_GRAPH = (
     "plan → shard → discover (quiet) → destroy → "
-    "deepen (loud, gated) → destroy → ingest (parse-only) → grc_export"
+    "deepen (loud, gated) → destroy → external (plan-only) → "
+    "ingest (parse-only) → grc_export"
+)
+EXTERNAL_PLAN_REASON = (
+    "file_drop or plan-only — operator lands artifacts in in/easm|…"
 )
 
 _SENSOR_COPY = (
@@ -379,6 +383,68 @@ def collect_discover_hosts(discover_dir: Path | None = None) -> list[str]:
     return hosts
 
 
+def _easm_fixture_present(dest_in: Path | None = None) -> bool:
+    folder = (dest_in or in_dir()) / "easm"
+    if not folder.is_dir():
+        return False
+    return any(path.is_file() and path.name != ".gitkeep" for path in folder.iterdir())
+
+
+def plan_only_external_slots(
+    allow_tools: list[str] | None = None,
+    which=None,
+    dest_in: Path | None = None,
+) -> dict:
+    """All external-category slots stay will_run=false. Never live-probe."""
+    plan = select_stage_slots("external", allow_tools, which=which)
+    fixture = _easm_fixture_present(dest_in)
+    reason = EXTERNAL_PLAN_REASON
+    if fixture:
+        reason = f"{EXTERNAL_PLAN_REASON} (fixture already present)"
+    for row in list(plan.get("selected") or []) + list(plan.get("skipped") or []):
+        row["will_run"] = False
+        if "LICENSE-LOCK" not in str(row.get("reason") or ""):
+            row["reason"] = reason
+    plan["ready"] = []
+    plan["primary"] = ""
+    plan["mode"] = "plan"
+    plan["fixture_present"] = fixture
+    return plan
+
+
+def external_stage(
+    scope: Scope,
+    dest_in: Path | None = None,
+    live: bool = False,
+) -> dict:
+    """Named-host plan only. Never curl/testssl the internet from this stage."""
+    del live  # this slice never live-probes, even if orchestrate --live
+    targets = list(dict.fromkeys(list(scope.external_hosts) + list(scope.external_ips)))
+    slot_plan = plan_only_external_slots(scope.allow_tools, which=_which, dest_in=dest_in)
+    plan = {
+        "stage": "external",
+        "volume": "named-only",
+        "mode": "plan",
+        "live": False,
+        "plan_only": True,
+        "client": scope.client_name,
+        "targets": targets,
+        "domains": list(scope.external_domains),
+        "tool_ready": False,
+        "skip_reason": EXTERNAL_PLAN_REASON,
+        "slots": slot_plan,
+        "note": (
+            "Orchestrator external is plan-only. Operator lands files in in/easm/ "
+            "(or make dropbox-external DEMO fixtures). Live BYO curl/testssl is "
+            "operator-local under written SCOPE — not this stage."
+        ),
+        "workers": [],
+    }
+    dest = _write_json(_orch_dir() / "external" / "plan.json", plan)
+    plan["plan_path"] = str(dest)
+    return plan
+
+
 def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
     """Copy/normalize orchestrator artifacts into pack in/<sensor>/."""
     dest = dest_in or in_dir()
@@ -435,6 +501,7 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
     deepen = deepen_stage(scope, farm, live=live, live_hosts=live_hosts)
     if farm.alive("deepen"):
         raise GateError("deepen workers still alive after destroy")
+    external = external_stage(scope, dest_in=dest_in, live=False)
     ingest = ingest_stage(scope, dest_in=dest_in)
     grc_export = grc_export_stage(scope, dest_in=dest_in)
     summary = {
@@ -448,6 +515,7 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "host_timeout_sec": scope.host_timeout_sec,
             "stage_discover": scope.stage_discover,
             "stage_deepen": scope.stage_deepen,
+            "stage_external": False,
         },
         "discover": {
             "shard_count": discover["shard_count"],
@@ -469,7 +537,21 @@ def orchestrate(scope: Scope | None = None, live: bool = False, dest_in: Path | 
             "slots": deepen.get("slots") or {},
             "tool": deepen.get("tool") or "",
         },
-        "slots": plan_stage_slots(scope.allow_tools, which=_which),
+        "external": {
+            "mode": external["mode"],
+            "volume": external["volume"],
+            "plan_only": True,
+            "live": False,
+            "skip_reason": external.get("skip_reason") or "",
+            "slots": external.get("slots") or {},
+            "targets": external.get("targets") or [],
+        },
+        "slots": {
+            **plan_stage_slots(scope.allow_tools, which=_which),
+            "external": external.get("slots") or plan_only_external_slots(
+                scope.allow_tools, which=_which, dest_in=dest_in
+            ),
+        },
         "ingest": ingest,
         "grc_export": grc_export,
         "integrity_stops": integrity_stops(scope),
@@ -506,6 +588,7 @@ def integrity_stops(scope: Scope) -> list[str]:
         "BYO nmap/nessus on PATH only; never apt/embed/download",
         "farm is private; binaries not vendored (not a public Hub image)",
         "allow_tools ∩ PATH ∩ SLOTS",
+        "external stage plan-only (no live network probe)",
     ]
     if not scope.stage_deepen:
         stops.append("stages.deepen=false (deepen fail-closed)")

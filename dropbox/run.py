@@ -92,6 +92,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         f"  stage=deepen volume=loud armed={scope.stage_deepen} "
         f"batch={scope.deepen_batch} deepen_hosts={len(scope.deepen_hosts)}"
     )
+    print("  stage=external volume=named-only armed=False plan-only (no live probe)")
     print("  stage=ingest Layer C collectors — files in in/ only; not live scanners")
     print("  stage=grc_export CISO CSVs + POA&M (owner/due blank); wrap review-only")
     print("integrity stops:")

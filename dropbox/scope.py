@@ -159,6 +159,26 @@ class Scope:
         return str(ip) in {i.lower() for i in self.external_ips}
 
 
+def _refuse_external_scope_item(field: str, item: str) -> None:
+    """Named hosts/URLs only. Refuse wildcard, CIDR, and 0.0.0.0/0."""
+    raw = str(item or "").strip()
+    if not raw:
+        raise GateError(f"external {field} refuses empty target")
+    if "*" in raw or "?" in raw:
+        raise GateError(f"external {field} refuses wildcard {item!r}")
+    if raw in {"0.0.0.0/0", "0.0.0.0", "::/0", "::"}:
+        raise GateError(f"external {field} refuses open-internet {item!r}")
+    if "://" in raw:
+        host = raw.split("://", 1)[1].split("/")[0].split(":")[0]
+        if not host or "*" in host or "?" in host:
+            raise GateError(f"external {field} refuses {item!r}")
+        if host in {"0.0.0.0", "::"}:
+            raise GateError(f"external {field} refuses open-internet {item!r}")
+        return
+    if "/" in raw:
+        raise GateError(f"external {field} refuses CIDR {item!r}")
+
+
 def is_open_internet_cidr(cidr: str) -> bool:
     """Refuse 0.0.0.0/0 and other internet-wide prefixes. Integrity over coverage."""
     try:
@@ -286,15 +306,14 @@ def load_scope(path: Path | None = None) -> Scope:
         raise GateError("external hosts/domains/IPs required")
     for field, rows in (("hosts", ehosts), ("domains", domains), ("ips", eips)):
         for item in rows:
-            if "*" in item or "?" in item:
-                raise GateError(f"external {field} refuses wildcard {item!r}")
-            if "/" in item:
-                raise GateError(f"external {field} refuses CIDR {item!r}")
+            _refuse_external_scope_item(field, item)
     for ip in eips:
         try:
-            ipaddress.ip_address(ip)
+            parsed = ipaddress.ip_address(ip)
         except ValueError as exc:
             raise GateError(f"invalid external IP {ip!r}") from exc
+        if parsed.is_unspecified or str(parsed) in {"0.0.0.0", "::"}:
+            raise GateError(f"external ips refuses open-internet {ip!r}")
 
     allow = [t.strip().lower() for t in _as_str_list(data.get("allow_tools"))]
     forbidden = sorted(set(allow) & FORBIDDEN_TOOLS)

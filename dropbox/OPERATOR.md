@@ -87,12 +87,21 @@ python3 -m dropbox orchestrate --live   # BYO binaries only; still SCOPE-gated
 
 ## Run external (named SCOPE targets only)
 
+Orchestrator stage **`external` is plan-only**. It lists farm slots and named
+SCOPE hosts; it does **not** curl or testssl the internet. Operator lands
+artifacts in `in/easm/` (or other Layer C dirs). Live BYO header-grab is
+**operator-local** under written SCOPE — not this PR’s CI/agent path.
+
 ```bash
+python3 -m dropbox orchestrate          # includes external (plan-only)
+make dropbox-external                   # DEMO fixture writer → in/easm/
 python3 -m dropbox run --profile external
-python3 -m dropbox run --profile external --live   # curl -I named targets only
 ```
 
-`--live` sends `curl -I` (or BYO `testssl` if that is the resolved external tool) to **each named** external host/IP in SCOPE. Wildcards and CIDRs are refused at the gate. It will not fetch a host that is not in SCOPE. Demo (default) writes fixture httpx JSONL for those names and does **not** touch the network.
+`make dropbox-external` / `scripts/dropbox-external.sh` stay DEMO fixture
+writers (DROPBOX_DEMO=1). They do not add a new live probe. Wildcards, CIDRs,
+and `0.0.0.0/0` are refused in `external:` at the SCOPE gate. Named hosts and
+`https://` URLs are allowed.
 
 Operator MCP: `python3 -m dropbox.mcp_stub serve` lists the seven SCOPE-gated tools and exits (no Hexstrike server, no FastMCP).
 
