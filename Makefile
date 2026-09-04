@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -66,3 +66,7 @@ farm-compose:
 # DEMO: plan → fixture discover → ingest → Layer C. Uses farm/work, not pack in/.
 farm-lab:
 	$(PYTHON) scripts/farm_lab.py
+
+# DEMO stubs only: FARM_TOOL_BIN=farm/tool-bin/lab, assert nmap+curl will_run. No live. No compose.
+farm-toolbin-lab:
+	$(PYTHON) scripts/farm_toolbin_lab.py

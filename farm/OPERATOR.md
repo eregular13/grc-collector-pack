@@ -43,11 +43,14 @@ python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted 
 On the drop box, tools come from **host PATH** or a **bind-mount / copy** into
 `farm/tool-bin/` (`FARM_TOOL_BIN`). This repo does not apt-install scanners.
 
-`farm/tool-bin/lab/nmap` and `farm/tool-bin/lab/curl` are **DEMO shell stubs**:
-they write fixture-shaped stdout and make no network calls. Tests set
-`FARM_TOOL_BIN` at that directory so plan `will_run` is true and a dry invoke
-writes under work out. They are not nmap/curl. Do not ship them as a paying
-engagement tool.
+**DEMO stubs vs real binaries:** `farm/tool-bin/lab/` ships shell stubs
+(`nmap`, `curl`, `nessus`, `nessuscli`, `testssl`, `testssl.sh`, `lynis`).
+Each prints a DEMO banner and fixture-shaped stdout. They are not scanners
+and make no network calls. `make farm-toolbin-lab` points `FARM_TOOL_BIN` at
+that directory and asserts nmap+curl `will_run`. On a consented box, copy
+**your** allowlisted binaries into `farm/tool-bin/` (parent) or rely on host
+PATH. Do not commit ELF/deb scanner packages. Unset `FARM_TOOL_BIN` for
+`make farm-lab` so that lab stays plan-only fixtures.
 
 ```bash
 # prove the mount (DEMO stubs, no network):

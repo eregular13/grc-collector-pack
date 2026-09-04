@@ -9,17 +9,20 @@ import pytest
 from dropbox.orchestrator.byo import farm_which
 from dropbox.orchestrator.pipeline import external_stage, orchestrate
 from dropbox.scanner_free import LAB_STUB_DIR, is_demo_lab_stub
-from dropbox.scope import load_scope
+from dropbox.scope import GateError, load_scope
 from farm.adapters.catalog import select_stage_slots
 from farm.adapters.stubs import run_slot
+
+LAB_STUB_NAMES = ("nmap", "curl", "nessus", "nessuscli", "testssl", "testssl.sh", "lynis")
+ALLOW_LAB = list(LAB_STUB_NAMES)
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_lab_stubs_are_demo_shell_not_scanners() -> None:
     names = {p.name for p in LAB_STUB_DIR.iterdir() if p.is_file() and p.name != "README.md"}
-    assert {"nmap", "curl"} <= names
-    for name in ("nmap", "curl"):
+    assert set(LAB_STUB_NAMES) <= names
+    for name in LAB_STUB_NAMES:
         path = LAB_STUB_DIR / name
         assert is_demo_lab_stub(path)
         text = path.read_text(encoding="utf-8")
@@ -27,6 +30,9 @@ def test_lab_stubs_are_demo_shell_not_scanners() -> None:
         assert "not a real scanner" in text.lower()
         assert "apt-get" not in text
         assert "wget " not in text
+        raw = path.read_bytes()[:8]
+        assert not raw.startswith(b"\x7fELF")
+        assert not raw.startswith(b"MZ")
 
 
 def test_farm_tool_bin_makes_plan_will_run(
@@ -83,3 +89,79 @@ def test_farm_which_ignores_tool_bin_when_unset(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setenv("PATH", "/nonexistent-farm-lab-path")
     assert farm_which("nmap") is None
     assert farm_which("curl") is None
+    assert farm_which("nessuscli") is None
+
+
+def test_farm_tool_bin_deepen_and_external_adjacent_will_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FARM_TOOL_BIN", str(LAB_STUB_DIR))
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    monkeypatch.setenv("PATH", "/nonexistent-farm-lab-path")
+    deep = select_stage_slots("deepen", ALLOW_LAB)
+    nessus = next(row for row in deep["selected"] if row["slot"] == "nessus")
+    nessuscli = next(row for row in deep["selected"] if row["slot"] == "nessuscli")
+    assert nessus["will_run"] is True
+    assert nessuscli["will_run"] is True
+    ext_plan = select_stage_slots("external", ALLOW_LAB)
+    testssl = next(row for row in ext_plan["selected"] if row["slot"] == "testssl.sh")
+    assert testssl["will_run"] is True
+    endp = select_stage_slots("endpoint", ALLOW_LAB)
+    lynis = next(row for row in endp["selected"] if row["slot"] == "lynis")
+    assert lynis["will_run"] is True
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    forced = external_stage(scope, dest_in=tmp_path / "in", live=True)
+    assert forced["live"] is False
+    curl = next(row for row in forced["slots"]["selected"] if row["slot"] == "curl")
+    assert curl["will_run"] is False
+
+
+def test_farm_tool_bin_dry_invoke_deepen_external_adjacent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FARM_TOOL_BIN", str(LAB_STUB_DIR))
+    monkeypatch.setenv("PATH", "/nonexistent-farm-lab-path")
+    work = tmp_path / "work" / "out"
+    cases = (
+        ("nessus", "app-01.demo.internal", "DEMO", "NessusClientData"),
+        ("nessuscli", "app-01.demo.internal", "DEMO", "NessusClientData"),
+        ("testssl.sh", "vpn.example.com", "DEMO", "fixture-shaped"),
+        ("lynis", ".", "DEMO", "Lynis"),
+    )
+    for slot, target, *needles in cases:
+        dest = work / f"{slot.replace('.', '_')}.out"
+        result = run_slot(slot, dest, ALLOW_LAB, target=target, live=True)
+        assert result["ran"] is True, slot
+        assert result["subprocess"] is True, slot
+        blob = dest.read_text(encoding="utf-8")
+        for needle in needles:
+            assert needle in blob, (slot, needle)
+
+
+def test_farm_tool_bin_license_lock_still_refuses_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FARM_TOOL_BIN", str(LAB_STUB_DIR))
+    monkeypatch.setenv("PATH", "/nonexistent-farm-lab-path")
+    dest = tmp_path / "work" / "out" / "bad.out"
+    for name in ("nuclei", "openvas"):
+        with pytest.raises(GateError, match="LICENSE-LOCK"):
+            run_slot(name, dest, ALLOW_LAB + [name], target="10.20.30.5", live=True)
+        assert farm_which(name) is None
+
+
+def test_farm_toolbin_lab_script_asserts_nmap_curl(tmp_path: Path) -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "farm_toolbin_lab", ROOT / "scripts" / "farm_toolbin_lab.py"
+    )
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    stamp = mod.farm_toolbin_lab(ROOT)
+    assert stamp["status"] == "pass"
+    assert stamp["live"] is False
+    assert stamp["will_run"]["nmap"] is True
+    assert stamp["will_run"]["curl"] is True
+    assert stamp["demo"] is True

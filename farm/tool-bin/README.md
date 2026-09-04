@@ -12,8 +12,9 @@ export FARM_TOOL_BIN=/usr/local/bin
 #      export FARM_TOOL_BIN=/path/to/grc-collector-pack/farm/tool-bin
 ```
 
-`lab/` holds **DEMO shell stubs** (`nmap`, `curl`) for tests. They are not
-scanners. Point `FARM_TOOL_BIN` at `farm/tool-bin` or `farm/tool-bin/lab` only
-when you intend those stubs. Unset `FARM_TOOL_BIN` → PATH only; missing → plan-only.
+`lab/` holds **DEMO shell stubs** (`nmap`, `curl`, `nessus`, `nessuscli`,
+`testssl`, `testssl.sh`, `lynis`) for tests. They are not scanners.
+`make farm-toolbin-lab` points `FARM_TOOL_BIN` there. Unset `FARM_TOOL_BIN`
+→ PATH only; missing → plan-only.
 
 Do not commit ELF/deb/rpm scanner packages here.
