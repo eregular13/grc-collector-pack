@@ -91,8 +91,6 @@ def argv_for(slot_id: str, exe: str, target: str, timeout: int) -> list[str]:
         return [exe, _named_host(target, "nslookup")]
     if name == "ping":
         host = _named_host(target, "ping")
-        if is_open_internet_cidr(target):
-            raise GateError("ping refuses 0.0.0.0/0")
         return [exe, "-c", "2", "-W", "2", host]
     if name == "traceroute":
         host = _named_host(target, "traceroute")
