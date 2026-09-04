@@ -16,7 +16,7 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 | `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 74 | 17 | 25 | 69 | true |
 | `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 66 | 17 | 25 | 66 | true |
 
-pytest **198 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/65/25 poam 66 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **202 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/65/25 poam 66 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 38):** Layer C parse-only k8s file-drop harden: Kubescape + kube-bench JSON under `in/k8s/` (nested results; FAIL only). High rows map to CISO/POA&M (privileged, anonymous-auth, privilege escalation, hostNetwork). No kubectl / live cluster. Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). Docs/e2e stand.
 
 **Delta (cycle 37):** Layer C parse-only KEEP-chain file-drop harden: testssl JSON under `in/vuln/` or `in/easm/` (HIGH/WARN only; no live TLS). Maester / Entra `directoryRoles` export under `in/saas/` (Failed only; no Graph API). High rows map to CISO/POA&M (Heartbleed, TLS 1.0, phishing-resistant MFA). Empty pack `in/` still loads fixtures. Catalog unchanged (111 / 32 / 30 / 81). Docs/e2e stand.
 

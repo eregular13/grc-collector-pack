@@ -1,6 +1,6 @@
-cycle: 37
+cycle: 38
 phase: DONE
-item: KEEP-CHAIN-FILE-DROP
+item: K8S-FILE-DROP-HARDEN
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 198
+pytest: 202
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass

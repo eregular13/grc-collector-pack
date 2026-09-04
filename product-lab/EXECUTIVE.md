@@ -13,9 +13,9 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **198 passed, 1 skipped**. `make farm-toolbin-e2e` **64 / 66 / 17 / 25** poam 66, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
+**Honest stamps (not a client estate):** catalog **111 / 32 wired / 30 invoke / 81 file_drop** — not 100 running binaries. pytest **202 passed, 1 skipped**. `make farm-toolbin-e2e` **64 / 66 / 17 / 25** poam 66, `demo: true`. Empty pack `in/` → fixtures → DEMO. **DEMO ≠ client estate.**
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **198 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **202 passed, 1 skipped** (honest compose runtime skip). `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
 {"assets": 64, "findings": 65, "vulnerabilities": 17, "evidences": 25, "applied_controls": 82, "poam": 66, "risk_scenarios": 82, "incidents": 63, "risks_proposed": 62, "ocsf": 65, "canonical": 147, "demo": true, "generated_at": "2026-09-04T17:07:49Z"}
@@ -47,6 +47,8 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 **Recommendation:** ship as a parse-only collector pack plus a gated drop-box. Do not market wrap, CIDR spray, or a client estate from empty `in/` / DEMO SCOPE.
 
 ## Delta (this pass, 2026-09-04)
+
+**Cycle 38 — k8s file-drop harden:** Kubescape + kube-bench JSON under `in/k8s/` (nested `Controls[].tests[].results[]`; Failed/FAIL only). High rows map to POA&M (privileged containers, anonymous-auth, privilege escalation, hostNetwork). No kubectl / live cluster. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). Compose **runtime** still ABSENT.
 
 **Cycle 37 — KEEP-chain file-drop harden:** testssl JSON under `in/vuln/` or `in/easm/` (HIGH/WARN only; no live TLS). Maester / Entra `directoryRoles` export under `in/saas/` (Failed only; no Graph API; empty members invent nothing). High rows map to POA&M (Heartbleed, TLS 1.0, phishing-resistant MFA). Demo testssl adds TLS 1.0 on existing `dev-api.example.com`. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). Compose **runtime** still ABSENT.
 

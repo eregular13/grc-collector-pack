@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 38 — k8s file-drop harden (2026-09-04)
+
+Kubescape (`summaryDetails` / `results`) and kube-bench (`Controls[].tests[].results[]` or flat FAIL) under `in/k8s/`. Failed/FAIL only; PASS silent. High rows map to CISO/POA&M (privileged containers, anonymous-auth, privilege escalation, hostNetwork). No kubectl / live cluster. Demo kube-bench is the same two FAILs in nested aqua shape. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **202**. Labs green (counts unchanged vs cycle 37). Compose ABSENT. testssl/Maester cycle 37 stands.
+
+```json
+{"pytest": 202, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 65, "vulns": 17, "poam": 66}, "farm_lab": {"assets": 64, "findings": 65, "poam": 66, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 66, "poam": 66, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 74, "poam": 69, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 37 — KEEP-chain file-drop harden (2026-09-04)
 
 testssl JSON (native array or `scanResult`) under `in/vuln/` or `in/easm/`: HIGH/CRITICAL/WARN only; OK silent. No live TLS. Maester `TestResults`/`Tests`/Pester under `in/saas/`: Failed only; Passed/Skipped silent. Graph `directoryRoles` export stays file-drop — empty members invent nothing; no Graph API. High rows map to CISO/POA&M (Heartbleed, TLS 1.0, phishing-resistant MFA). Demo testssl adds TLS 1.0 on existing `dev-api.example.com`. Empty `in/` still loads fixtures. Catalog **not inflated**. pytest **198**. Labs green. Compose ABSENT. HK/Lynis cycle 36 stands.
