@@ -1,6 +1,6 @@
 # Drop package
 
-**Copied:** 2026-09-04T05:40:17Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** 2026-09-04T14:12:58Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). Not a client.
 
 See `MANIFEST` for CISO CSV + POA&M row counts and SHA256.
@@ -18,7 +18,7 @@ Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment U
 | `assets.csv` | 62 |
 | `findings.csv` | 59 |
 | `vulnerabilities.csv` | 15 |
-| `evidences.csv` | 10 (nine sensors + loader) |
+| `evidences.csv` | 24 (sensor runs + high/critical attestations + loader) |
 | `applied_controls.csv` | 74 |
 | `risk_scenarios.csv` | 74 |
 

@@ -13,10 +13,10 @@ CISO Assistant is Reid-side system of record. Preferred path is clica / UI CSV i
 
 ## Lab truth (this checkout, 2026-09-04)
 
-- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **88 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
+- **Host lab:** Linux VM. `python3 -m pytest tests -q` → **111 passed**. `make lab` / `scripts/lab.sh` → collectors + loader + `lab_outputs: PASS`. Counts:
 
 ```json
-{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 10, "applied_controls": 74, "poam": 58, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T05:40:17Z"}
+{"assets": 62, "findings": 59, "vulnerabilities": 15, "evidences": 24, "applied_controls": 74, "poam": 58, "risk_scenarios": 74, "incidents": 58, "risks_proposed": 57, "ocsf": 59, "canonical": 137, "demo": true, "generated_at": "2026-09-04T14:12:58Z"}
 ```
 
 Asset `ref_id` uniqueness: **62 = 62**.
@@ -34,7 +34,7 @@ Asset `ref_id` uniqueness: **62 = 62**.
 3. Open http://127.0.0.1:18765/ — refresh, review, download drop zip.
 4. Import CISO CSVs with clica/UI (`product-lab/drop/MANIFEST`). Leave RiskReady JSON for a human.
 
-- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 69 findings / 15 vulns / 10 evidence. `demo: false` only because fixtures were copied into `dropbox/work/in`. Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
+- **Dropbox-lab:** `make dropbox-lab` → 68 assets / 69 findings / 15 vulns / 24 evidence. `demo: false` only because fixtures were copied into `dropbox/work/in`. Orchestrator plan-only (3 shards, 2 batches, workers destroyed). Not a client.
 
 ## Drop-box (this PR)
 
@@ -43,3 +43,9 @@ Reid’s consented one-two combo lives in `dropbox/`. `SCOPE.yaml` is fail-close
 **Pentera finds it; Evergreen maps it.** After ingest, the client handoff is CISO CSVs plus `out/poam/poam.csv` (owner/due blank). SMB 445 in the demo nmap estate maps to network-service hardening (`cpg_2_W`, `csf_PR`) — not a hallucinated CVE.
 
 **Recommendation:** ship as a parse-only collector pack plus a gated drop-box. Do not market wrap, CIDR spray, or a client estate from empty `in/` / DEMO SCOPE.
+
+## Delta (this pass, 2026-09-04)
+
+Hardened: rebased onto master `b9055eb` (kept wrap dead). Orchestrator brakes now have BYO PATH adapters, `python3 -m dropbox status`, fail-closed `--live` (empty / unsigned / `0.0.0.0/0` / deepen-off), `deepen_batch` 2–5 + `max_workers=2` + tear-down after both stages, TLS and admin-share POA&M maps (owner/due still blank). Evidence floor from master: **24**. pytest **88 → 111**.
+
+Remaining gaps: Docker/compose still absent here. Dropbox-lab still flips `demo: false` when fixtures land in `work/in`. Live BYO still plan-only on this VM (no Nmap/Nessus on PATH; adapters resolve PATH and build quiet argv, they do not subprocess-scan). No paying-day PASS. USB evergreen-assessment not copied.

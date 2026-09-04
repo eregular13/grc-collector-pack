@@ -57,9 +57,9 @@ Owner and due are blank — a human fills them. No invented dates.
 | semver regular expression DoS | package-lock.json | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | ReDoS in npm semver. | open |
 | TruffleHog AWS | infra/terraform.tfvars | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material. | open |
 | TruffleHog Github | scripts/deploy.sh | critical | cpg_2_W,cpg_1_E,csf_RS,csf_respond | Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material. | open |
-| OpenSSL Heartbleed | 10.0.0.30 | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | TLS heartbeat read overrun on web-01. | open |
+| OpenSSL Heartbleed | 10.0.0.30 | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. This is a posture finding, not a specific TLS CVE. | open |
 | Apache Log4j RCE | https://app.corp.local | critical | cpg_2_W,cpg_1_E,csf_RS,csf_respond | Log4Shell JNDI lookup | open |
 | HTTP/2 Rapid Reset | https://dev-api.example.com | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | HTTP/2 rapid reset DoS | open |
-| heartbleed | dev-api.example.com | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Heartbleed still offered on TLS | open |
+| heartbleed | dev-api.example.com | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. This is a posture finding, not a specific TLS CVE. | open |
 | xz-utils supply chain backdoor | app-server:latest | critical | cpg_2_W,cpg_1_E,csf_RS,csf_respond | Malicious code in xz-utils liblzma. | open |
 | curl SOCKS heap overflow | app-server:latest | high | cpg_2_W,cpg_1_E,csf_PR,csf_protect | Heap buffer overflow in curl SOCKS handshake. | open |

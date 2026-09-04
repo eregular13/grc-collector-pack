@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 13 — rebase master + orchestrator harden (2026-09-04)
+
+Rebased onto `b9055eb` (CI, loopback bind, evidence floor). Wrap stayed dead. Added BYO adapters, `dropbox status`, SCOPE `--live` refuse (empty/unsigned/0.0.0.0/0), deepen `--live` exit 2 without `stages.deepen`, deepen worker tear-down tests, TLS + admin-share POA&M maps.
+
+pytest **111**. `make lab` 62/59/15/24 poam 58 demo true. `make dropbox-lab` 68/69/15/24 plan-only 3 shards / 2 batches / destroyed=3. Wrap dead. Docker absent.
+
+```json
+{"pytest": 111, "assets": 62, "findings": 59, "evidences": 24, "poam": 58, "host_lab": "pass", "dropbox_lab": "pass", "compose_lab": "absent", "wrap": "review-only"}
+```
+
 ## cycle 12 — orchestrator = brakes (2026-09-04)
 
 Quiet → loud governor. Discover defaults quiet (`nmap -sn`, host timeout, no deepen tools). Deepen fail-closed unless `orchestrator.stages.deepen: true`. Hosts from discover or explicit `deepen_hosts`. `max_workers` default 2. Never /16 in one worker. Never 0.0.0.0/0. Tear-down after each stage. SCOPE.example ships deepen false. DEMO sets true for plan-only lab.

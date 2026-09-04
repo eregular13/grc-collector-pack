@@ -1,11 +1,25 @@
 name,description
-cloud-prowler collector run,Canonical records ingested from cloud-prowler at 2026-09-04T05:40:17Z
-code-secrets collector run,Canonical records ingested from code-secrets at 2026-09-04T05:40:17Z
-easm collector run,Canonical records ingested from easm at 2026-09-04T05:40:17Z
-host-wazuh collector run,Canonical records ingested from host-wazuh at 2026-09-04T05:40:17Z
-identity-ad collector run,Canonical records ingested from identity-ad at 2026-09-04T05:40:17Z
-inventory-nmap collector run,Canonical records ingested from inventory-nmap at 2026-09-04T05:40:17Z
-k8s-kubescape collector run,Canonical records ingested from k8s-kubescape at 2026-09-04T05:40:17Z
-saas-idp collector run,Canonical records ingested from saas-idp at 2026-09-04T05:40:17Z
-vuln-scan collector run,Canonical records ingested from vuln-scan at 2026-09-04T05:40:17Z
-grc-loader run,Normalized 137 canonical records at 2026-09-04T05:40:17Z
+cloud-prowler collector run,Canonical records ingested from cloud-prowler at 2026-09-04T14:12:58Z
+code-secrets collector run,Canonical records ingested from code-secrets at 2026-09-04T14:12:58Z
+easm collector run,Canonical records ingested from easm at 2026-09-04T14:12:58Z
+host-wazuh collector run,Canonical records ingested from host-wazuh at 2026-09-04T14:12:58Z
+identity-ad collector run,Canonical records ingested from identity-ad at 2026-09-04T14:12:58Z
+inventory-nmap collector run,Canonical records ingested from inventory-nmap at 2026-09-04T14:12:58Z
+k8s-kubescape collector run,Canonical records ingested from k8s-kubescape at 2026-09-04T14:12:58Z
+saas-idp collector run,Canonical records ingested from saas-idp at 2026-09-04T14:12:58Z
+vuln-scan collector run,Canonical records ingested from vuln-scan at 2026-09-04T14:12:58Z
+cloud-prowler cloud-misconfiguration high-critical attestation,"10 high/critical finding(s) from cloud-prowler family cloud-misconfiguration; refs CLD-s3-encryption-missing, CLD-s3-bucket-server-side-encryption-enabled, CLD-s3-bucket-public-access, CLD-iam-user-administrator-access, CLD-iam-root-mfa-enabled, CLD-ec2-securitygroup-allow-ingress-from-internet-to, CLD-cloudtrail-multi-region-enabled, CLD-rds-instance-no-public-access (+2 more). Source file out/canonical (sensor cloud-prowler)."
+code-secrets sast high-critical attestation,"2 high/critical finding(s) from code-secrets family sast; refs CODE-python-lang-security-audit-hardcoded-password, CODE-python-lang-security-audit-sql-injection. Source file out/canonical (sensor code-secrets)."
+code-secrets secrets high-critical attestation,"4 high/critical finding(s) from code-secrets family secrets; refs CODE-generic-api-key-services-payments-config-py, CODE-generic-secret-deploy-env-sample, CODE-trufflehog-aws-infra-terraform-tfvars, CODE-trufflehog-github-scripts-deploy-sh. Source file out/canonical (sensor code-secrets)."
+code-secrets vulnerability high-critical attestation,1 high/critical finding(s) from code-secrets family vulnerability; refs CODE-cve-2022-25883. Source file out/canonical (sensor code-secrets).
+easm exposure high-critical attestation,"3 high/critical finding(s) from easm family exposure; refs EASM-vpn-example-com, EASM-admin-example-com, EASM-dev-api-example-com. Source file out/canonical (sensor easm)."
+host-wazuh coverage-gap high-critical attestation,"3 high/critical finding(s) from host-wazuh family coverage-gap; refs WAZ-coverage-db-01, WAZ-coverage-fleet-laptop-07, WAZ-coverage-jump-unmanaged. Source file out/canonical (sensor host-wazuh)."
+host-wazuh incident high-critical attestation,1 high/critical finding(s) from host-wazuh family incident; refs WAZ-alert-17001. Source file out/canonical (sensor host-wazuh).
+identity-ad identity-gap high-critical attestation,"11 high/critical finding(s) from identity-ad family identity-gap; refs ID-genericall-helpdeskcorp-local-domain-adminscorp-, ID-dcsync-svc-sqlcorp-local-corp-local, ID-adminto-helpdeskcorp-local-dc01-corp-local, ID-backup-operators-privileged-group-backup-operato, ID-roastable-spn-svc-sqlcorp-local, ID-entra-ga-without-pim-gacontoso-onmicrosoft-com, ID-unconstrained-delegation-dc01-corp-local, ID-hk-1-1 (+3 more). Source file out/canonical (sensor identity-ad)."
+inventory-nmap exposure high-critical attestation,"4 high/critical finding(s) from inventory-nmap family exposure; refs NMAP-legacy-ftp-corp-local-21, NMAP-filesrv-corp-local-445, NMAP-dc-corp-local-445, NMAP-telnet-legacy-corp-local-23. Source file out/canonical (sensor inventory-nmap)."
+k8s-kubescape cloud-misconfiguration high-critical attestation,"6 high/critical finding(s) from k8s-kubescape family cloud-misconfiguration; refs K8S-1-2-1, K8S-5-2-1, K8S-c-0057, K8S-c-0013, K8S-c-0034, K8S-c-0041. Source file out/canonical (sensor k8s-kubescape)."
+k8s-kubescape incident high-critical attestation,1 high/critical finding(s) from k8s-kubescape family incident; refs K8S-launch-privileged-container. Source file out/canonical (sensor k8s-kubescape).
+saas-idp cloud-misconfiguration high-critical attestation,"3 high/critical finding(s) from saas-idp family cloud-misconfiguration; refs SAAS-mt-1035, SAAS-legacy-authentication-protocols-disabled, SAAS-privileged-roles-use-pim. Source file out/canonical (sensor saas-idp)."
+saas-idp identity-gap high-critical attestation,"2 high/critical finding(s) from saas-idp family identity-gap; refs SAAS-graph-ga-gacontoso-onmicrosoft-com, SAAS-admins-mfa. Source file out/canonical (sensor saas-idp)."
+vuln-scan vulnerability high-critical attestation,"6 high/critical finding(s) from vuln-scan family vulnerability; refs VULN-1-3-6-1-4-1-25623-1-0-103234, VULN-cve-2021-44228, VULN-cve-2023-44487, VULN-cve-2014-0160, VULN-cve-2024-3094, VULN-cve-2023-38545. Source file out/canonical (sensor vuln-scan)."
+grc-loader run,Normalized 137 canonical records at 2026-09-04T14:12:58Z

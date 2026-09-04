@@ -66,10 +66,10 @@ CTL-code-cve-2023-44270,Remediate: postcss line return parsing,Affected lockfile
 CTL-code-cve-2022-25883,Remediate: semver regular expression DoS,ReDoS in npm semver.,Global,to_do,technical,1,protect
 CTL-code-trufflehog-aws-infra-terraform-tfvars,Rotate and revoke exposed credentials,"Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material.",Global,to_do,technical,1,protect
 CTL-code-trufflehog-github-scripts-deploy-sh,Rotate and revoke exposed credentials,"Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material.",Global,to_do,technical,1,respond
-CTL-vuln-1-3-6-1-4-1-25623-1-0-103234,Remediate: OpenSSL Heartbleed,TLS heartbeat read overrun on web-01.,Global,to_do,technical,1,protect
+CTL-vuln-1-3-6-1-4-1-25623-1-0-103234,Harden TLS on the exposed service,"Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. This is a posture finding, not a specific TLS CVE.",Global,to_do,technical,1,protect
 CTL-vuln-cve-2021-44228,Remediate: Apache Log4j RCE,Log4Shell JNDI lookup,Global,to_do,technical,1,respond
 CTL-vuln-cve-2023-44487,Remediate: HTTP/2 Rapid Reset,HTTP/2 rapid reset DoS,Global,to_do,technical,1,protect
 CTL-vuln-exposed-panel,Remediate: Exposed admin panel,Unauthenticated admin UI,Global,to_do,technical,2,protect
-CTL-vuln-cve-2014-0160,Remediate: heartbleed,Heartbleed still offered on TLS,Global,to_do,technical,1,protect
+CTL-vuln-cve-2014-0160,Harden TLS on the exposed service,"Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. This is a posture finding, not a specific TLS CVE.",Global,to_do,technical,1,protect
 CTL-vuln-cve-2024-3094,Remediate: xz-utils supply chain backdoor,Malicious code in xz-utils liblzma.,Global,to_do,technical,1,respond
 CTL-vuln-cve-2023-38545,Remediate: curl SOCKS heap overflow,Heap buffer overflow in curl SOCKS handshake.,Global,to_do,technical,1,protect
