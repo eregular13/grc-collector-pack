@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, or Greenbone-like JSON into CVE findings."""
+"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, or SARIF into findings."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import make_record, make_ref
 
 SOURCE = "vuln-scan"
@@ -77,6 +78,29 @@ def parse_file(path: Path) -> list[dict]:
                 extra={"asset_type": "PR"},
             )
         )
+
+    sarif = load_sarif(path)
+    if sarif:
+        for row in iter_sarif_results(sarif):
+            host = str(row.get("uri") or "unknown")
+            add_asset(host)
+            rid = str(row.get("rule_id") or "sarif")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, rid),
+                    name=str(row.get("message") or rid),
+                    description=str(row.get("message") or rid),
+                    severity=row.get("severity") or "medium",
+                    category="vulnerability",
+                    assets=[host],
+                    labels=LABELS + ["sarif", str(row.get("tool") or "sarif").lower()],
+                    collected_at=now,
+                    extra={"rule": rid, "cve": rid if rid.upper().startswith("CVE") else ""},
+                )
+            )
+        return records
 
     nuclei = _nuclei_rows(path)
     if nuclei:
@@ -182,7 +206,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".jsonl"), parse_file)
+    run_collector(SOURCE, (".json", ".jsonl", ".sarif"), parse_file)
 
 
 if __name__ == "__main__":

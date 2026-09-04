@@ -48,6 +48,8 @@ Reid’s consented one-two combo lives in `dropbox/` + `farm/`. Three layers: BY
 
 ## Delta (this pass, 2026-09-04)
 
+**Cycle 34 — SARIF file-drop:** `vuln-scan` / `code-secrets` parse `*.sarif`. High rules map to POA&M. Demo fixture under `fixtures/demo/vuln/`. Empty `in/` still uses fixtures. Catalog **111** (32 / 30 / 81). No live internet. Compose **runtime** still ABSENT.
+
 **Cycle 33 — operator UX docs:** `farm/QUICKSTART.md` (consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box). Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE three layers. STATUS + this brief stamp **111 / 32 / 30**, pytest **180**, e2e 63/63 poam 61. DEMO ≠ client estate. Catalog unchanged. Compose **runtime** still ABSENT.
 
 **Cycle 32 — conductor polish:** `farm_toolbin_status` (present/missing/demo_stub). `orchestrator_plan` returns per-stage `will_run`. Cursor + Claude Desktop snippets from repo root (`scripts/mcp_stdio.sh`). Catalog **111** (32 / 30 / 81). Cycle 31 e2e stands. Compose **runtime** still ABSENT.

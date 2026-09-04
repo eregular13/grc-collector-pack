@@ -113,6 +113,25 @@ def test_admin_share_is_key_poam() -> None:
     assert "CVE-" not in mapped["recommended_fix"]
 
 
+def test_sarif_sql_injection_maps_to_poam() -> None:
+    rec = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id="CODE-sql",
+        name="Possible SQL injection via string format",
+        description="python.lang.security.audit.sql-injection",
+        severity="high",
+        category="sast",
+        assets=["services/payments/query.py"],
+        extra={"rule": "python.lang.security.audit.sql-injection"},
+    )
+    mapped = map_finding(rec)
+    assert mapped["include_poam"] is True
+    assert "SQL injection" in mapped["control_name"]
+    assert "CVE-" not in mapped["recommended_fix"]
+    assert "SARIF" in mapped["recommended_fix"]
+
+
 def test_extra_labels_wizard_safe_no_colon() -> None:
     stamps = extra_labels()
     assert "cpg_2_W" in stamps

@@ -97,6 +97,47 @@ def test_sarif() -> None:
     assert any("services/payments/query.py" in r["assets"] for r in findings)
 
 
+def test_vuln_sarif_suffix_and_poam_map() -> None:
+    from shared.control_map import map_finding
+
+    recs = vuln_scan.parse_file(DEMO / "vuln" / "demo.sarif")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    hit = findings[0]
+    assert hit["severity"] == "high"
+    assert "sarif" in hit["labels"]
+    assert "command-injection" in str(hit.get("extra", {}).get("rule"))
+    assert any(r["kind"] == "asset" and "app-01.demo.internal" in r["name"] for r in recs)
+    mapped = map_finding(hit)
+    assert mapped["include_poam"] is True
+    assert "command injection" in mapped["control_name"].lower()
+
+
+def test_code_sarif_extension(tmp_path) -> None:
+    dest = tmp_path / "drop.sarif"
+    dest.write_text((DEMO / "code" / "semgrep.sarif.json").read_text(encoding="utf-8"), encoding="utf-8")
+    recs = code_secrets.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    from shared.control_map import map_finding
+
+    mapped = map_finding(findings[0])
+    assert mapped["include_poam"] is True
+    assert "SQL injection" in mapped["control_name"]
+
+
+def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in" / "vuln").mkdir(parents=True)
+    files, demo = load_inputs("vuln-scan", (".json", ".jsonl", ".sarif"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "nuclei.jsonl" in names
+    assert "demo.sarif" in names
+
+
 def test_hardeningkitty_csv() -> None:
     recs = identity_ad.parse_file(DEMO / "identity" / "hardeningkitty.csv")
     findings = [r for r in recs if r["kind"] == "finding"]

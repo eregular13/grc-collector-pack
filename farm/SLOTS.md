@@ -43,4 +43,12 @@ Every `output_glob` lands in an existing Layer C sensor directory.
 File-drop only (never subprocess even if on PATH): amass, checkov, ffuf, gobuster, nikto, scoutsuite, subfinder.
 
 LICENSE-LOCK names stay file_drop and are never subprocessed.
+
+## SARIF file-drop (Layer C)
+
+nuclei / semgrep / trivy stay file_drop (this repo does not run them).
+Operator-landed SARIF is parsed by vuln-scan (`in/vuln/*.sarif`) and
+code-secrets (`in/code/*.sarif`). High rules map to CISO/POA&M.
+No new catalog slots.
+
 See `SLOTS.yaml`, `INTEGRITY.md`, and `OPERATOR.md`.

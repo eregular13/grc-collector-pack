@@ -1,5 +1,9 @@
 # CYCLE log
 
+## cycle 34 — SARIF file-drop parsers (2026-09-04)
+
+`vuln-scan` and `code-secrets` accept `in/vuln/*.sarif` / `in/code/*.sarif`. Shared `shared/sarif.py`. Demo fixture `fixtures/demo/vuln/demo.sarif` (command-injection, high). High SARIF rules map to control_map / POA&M. Empty `in/` still falls back to existing fixtures plus the new SARIF. Catalog **not inflated**. farm/SLOTS.md + OPERATOR document file_drop → these parsers. Docs/e2e stand.
+
 ## cycle 33 — operator UX + honesty docs (2026-09-04)
 
 `farm/QUICKSTART.md` (27 lines): consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box. Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE. STATUS + product-lab/EXECUTIVE stamp **111 / 32 / 30**, pytest **180** (179 + QUICKSTART doc test), e2e 63/63 poam 61. DEMO ≠ client estate. Catalog **not inflated**. Cycles 31–32 stand. Labs green. Compose ABSENT.

@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 34):** Layer C parse-only SARIF: `in/vuln/*.sarif` and `in/code/*.sarif` → canonical findings + CISO/POA&M for high rules (`sql-injection`, `command-injection`, XSS). Demo fixture `fixtures/demo/vuln/demo.sarif`. Empty pack `in/` still falls back to fixtures. Catalog unchanged (111 / 32 / 30 / 81). No live tools. Docs/e2e stand.
+
 **Delta (cycle 33):** `farm/QUICKSTART.md` (consent → SCOPE → tool-bin DEMO vs real → `make farm-toolbin-e2e` → CISO zip → `--live` only on drop box). Root README “Private drop-box farm” links QUICKSTART + ARCHITECTURE three layers. STATUS + product-lab/EXECUTIVE stamp **111 / 32 / 30**, pytest **180**, e2e 63/63 poam 61. DEMO ≠ client estate. Catalog unchanged. Cycles 31–32 stand.
 
 **Delta (cycle 32):** Conductor `farm_toolbin_status` lists FARM_TOOL_BIN resolve for wired invoke slots (`present` / `missing` / `demo_stub`). `tools/call` `orchestrator_plan` returns the per-stage `will_run` map. `farm/OPERATOR.md` and `dropbox/operator_mcp_interface.md` have exact Cursor `.cursor/mcp.json` and Claude Desktop snippets; `scripts/mcp_stdio.sh` starts from repo root. Catalog unchanged (111 / 32 / 30 / 81). Cycle 31 e2e stands. No live internet. No fake compose pass.

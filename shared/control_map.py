@@ -34,6 +34,8 @@ def _blob(rec: dict[str, Any]) -> str:
             rec.get("category"),
             extra.get("port"),
             extra.get("service"),
+            extra.get("rule"),
+            extra.get("cve"),
         )
     ).lower()
 
@@ -96,6 +98,24 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     elif "public" in text and ("s3" in text or "bucket" in text):
         name = "Block public object-storage access"
         fix = "Remove public ACL/policy on the bucket. Keep the object private unless a documented exception exists."
+    elif "sql-injection" in text or "sqli" in text or "sql injection" in text:
+        name = "Stop SQL injection in the application"
+        fix = (
+            "Parameterize queries. Do not concatenate untrusted input into SQL. "
+            "This is a SAST/SARIF finding, not a CVE."
+        )
+    elif "command-injection" in text or "os command" in text or "shell injection" in text:
+        name = "Stop OS command injection"
+        fix = (
+            "Do not pass untrusted input to a shell. Use argv arrays or a safe API. "
+            "This is a SAST/SARIF finding, not a CVE."
+        )
+    elif "xss" in text or "cross-site scripting" in text:
+        name = "Stop cross-site scripting"
+        fix = (
+            "Encode untrusted output for the HTML context. Avoid raw innerHTML. "
+            "This is a SAST/SARIF finding, not a CVE."
+        )
     elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."

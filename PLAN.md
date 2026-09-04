@@ -23,18 +23,18 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 |---|---|---|---|
 | cloud-prowler | cloud/*.json | CLD- | Prowler FAIL → findings + OCSF |
 | inventory-nmap | nmap/*.xml | NMAP- | hosts PR + exposure findings |
-| vuln-scan | vuln/* | VULN- | Nuclei/Trivy/Greenbone → vulns |
+| vuln-scan | vuln/* | VULN- | Nuclei/Trivy/Greenbone/SARIF → vulns |
 | host-wazuh | wazuh/* | WAZ- | coverage gaps + incidents |
 | identity-ad | identity/* | ID- | BloodHound/PingCastle → SP |
 | easm | easm/* | EASM- | Amass/Subfinder/httpx hosts |
 | k8s-kubescape | k8s/* | K8S- | cluster findings |
-| code-secrets | code/* | CODE- | secrets/SAST redacted |
+| code-secrets | code/* | CODE- | secrets/SAST/SARIF redacted |
 | saas-idp | saas/* | SAAS- | ScubaGear/Graph/Okta |
 | grc-loader | out/canonical | — | all GRC files |
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; QUICKSTART + honest stamps. No slot inflation. No live internet. No fake compose pass.
+Until 16:00 PT: keep e2e green; SARIF file-drop parsers. No slot inflation. No live internet. No fake compose pass.
 
 ## STOP rules
 

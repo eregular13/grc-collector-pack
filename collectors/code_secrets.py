@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
+from shared.sarif import is_sarif, iter_sarif_results
 from shared.schema import make_record, make_ref
 
 SOURCE = "code-secrets"
@@ -112,39 +113,26 @@ def parse_file(path: Path) -> list[dict]:
             )
         return records
 
-    if isinstance(payload, dict) and isinstance(payload.get("runs"), list):
-        for run in payload["runs"]:
-            if not isinstance(run, dict):
-                continue
-            tool = ((run.get("tool") or {}).get("driver") or {}).get("name") or "sarif"
-            for hit in run.get("results") or []:
-                if not isinstance(hit, dict):
-                    continue
-                locs = hit.get("locations") or []
-                uri = "repo"
-                if locs and isinstance(locs[0], dict):
-                    phys = locs[0].get("physicalLocation") or {}
-                    art = phys.get("artifactLocation") or {}
-                    uri = str(art.get("uri") or uri)
-                add_asset(uri)
-                msg = hit.get("message") if isinstance(hit.get("message"), dict) else {}
-                level = str(hit.get("level") or "warning").lower()
-                sev = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-                records.append(
-                    make_record(
-                        kind="finding",
-                        source=SOURCE,
-                        ref_id=make_ref(SOURCE, str(hit.get("ruleId") or "sarif")),
-                        name=str(msg.get("text") or hit.get("ruleId") or "SARIF finding"),
-                        description=str(msg.get("text") or hit.get("ruleId")),
-                        severity=sev,
-                        category="sast",
-                        assets=[uri],
-                        labels=LABELS + ["sarif", str(tool).lower()],
-                        collected_at=now,
-                        extra={"rule": hit.get("ruleId")},
-                    )
+    if isinstance(payload, dict) and is_sarif(payload):
+        for row in iter_sarif_results(payload):
+            uri = str(row.get("uri") or "repo")
+            add_asset(uri)
+            rid = str(row.get("rule_id") or "sarif")
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, rid),
+                    name=str(row.get("message") or rid),
+                    description=str(row.get("message") or rid),
+                    severity=row.get("severity") or "medium",
+                    category="sast",
+                    assets=[uri],
+                    labels=LABELS + ["sarif", str(row.get("tool") or "sarif").lower()],
+                    collected_at=now,
+                    extra={"rule": rid},
                 )
+            )
         if records:
             return records
 
@@ -205,7 +193,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".jsonl"), parse_file)
+    run_collector(SOURCE, (".json", ".jsonl", ".sarif"), parse_file)
 
 
 if __name__ == "__main__":
