@@ -1,6 +1,6 @@
-cycle: 59
+cycle: 60
 phase: DONE
-item: ENUM4LINUX-NG-FILE-DROP-HARDEN
+item: LICENSE-LOCK-WILL-RUN-COMPOSE-DOCS
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 293
+pytest: 294
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -24,4 +24,4 @@ compose_lab_reason: docker CLI not on PATH
 scanner_free: true
 sink: absent
 paying_day: FAIL
-next_action: compose runtime when Docker is present; real BYO binaries only on a consented box; remaining window hardens existing farm/SCOPE honesty, not new Layer C parsers
+next_action: compose runtime only on an operator Docker host using documented PASS criteria; remaining window hardens existing farm/SCOPE honesty, not new Layer C parsers

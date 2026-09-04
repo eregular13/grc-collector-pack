@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 60 — LICENSE-LOCK will_run rail + compose-on-Docker docs (2026-09-04)
+
+pytest asserts LICENSE-LOCK / file_drop-only names (BloodHound, Nuclei, OpenVAS/GVM, PingCastle, enum4linux-ng, smbmap, …) never appear in invoke `will_run=true` even when every slot is allowlisted and on PATH. Operator docs list exact `docker compose` commands and PASS criteria for a host with Docker. This VM still stamps compose **ABSENT**. Paying-day **FAIL**. Catalog **not inflated**. pytest **294**. Labs unchanged vs cycle 59 (64/78/19/27 poam 81). enum4linux-ng cycle 59 stands. No new Layer C parser.
+
+```json
+{"pytest": 294, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 78, "vulns": 19, "evidence": 27, "poam": 81}, "farm_lab": {"assets": 64, "findings": 78, "poam": 81, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 79, "vulns": 19, "poam": 81, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 87, "vulns": 19, "poam": 84, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL"}
+```
+
 ## cycle 59 — enum4linux-ng file-drop polish (2026-09-04)
 
 identity-ad parses operator-landed enum4linux-ng JSON/text under `in/identity/` (`target` + users/groups/shares, or Share Enumeration text). Listed users/groups/shares stay listed. Null session, writable shares, and Domain Admins / Backup Operators hints map to existing identity/SMB POA&M only when the export already shows them. Empty invents nothing. Detect does not steal HardeningKitty or BloodHound. Demo `enum4linux-ng.txt` attaches null session + Domain Admins to existing `DC01.CORP.LOCAL` (assets unchanged; findings/poam +2). Collector does not run enum4linux and does not store credentials. Slot stays `file_drop`. Catalog **not inflated**. pytest **293**. Labs green. Compose ABSENT. Paying-day FAIL. smbmap cycle 58 stands.

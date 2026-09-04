@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 59 enum4linux-ng file-drop polish stands (null session / writable shares / Domain Admins → existing identity/SMB POA&M when shown; empty invents nothing; detect does not steal HK/BloodHound; no enum4linux run; no credentials). smbmap cycle 58 stands. Remaining window: harden existing farm/SCOPE honesty — do not add vanity Layer C parsers. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL.
+Until 16:00 PT: keep e2e green; cycle 59 enum4linux-ng file-drop polish stands; cycle 60 LICENSE-LOCK will_run rail + compose-on-Docker docs stand. Remaining window: harden existing farm/SCOPE honesty — do not add vanity Layer C parsers. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host.
 
 ## STOP rules
 
