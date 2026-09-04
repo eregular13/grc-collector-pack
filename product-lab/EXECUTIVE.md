@@ -2,11 +2,16 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 75):** verify-green / no-diff. Full lab suite
-re-run clean. No code change. Cycle 74 Reid-only blockers stay locked.
-Cycle 73 `scope_gap: none` + FARM_TOOL_BIN refuse stay locked. Wrap
-stays **dead**. Paying-day **FAIL**. Compose **ABSENT**. DEMO ≠ client.
+**This window (cycle 76):** compose runtime ABSENT honesty. Backlog
+(a)–(d) MET. (e) statics MET; runtime still **ABSENT** (`docker CLI not
+on PATH`) — not a PASS. No product code. Cycle 74 Reid-only blockers
+stay locked. Wrap stays **dead**. Paying-day **FAIL**. DEMO ≠ client.
 Catalog unchanged.
+
+**Cycle 75 (stands):** verify-green / no-diff. Full lab suite re-run
+clean. No code change. Cycle 74 Reid-only blockers stay locked. Wrap
+stays **dead**. Paying-day **FAIL**. Compose **ABSENT**. Catalog
+unchanged.
 
 **Cycle 74 (stands):** Reid-only blockers. STATUS `next_action` names
 CTA; Eval `npm start`; real KEEP `in/` drop; compose on a Docker host
@@ -146,6 +151,12 @@ DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 | `make farm-lab` | 64 | 79 | 19 | 27 | 82 | true |
 | `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
 | `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
+
+**Deltas vs cycle 75:** lab counts unchanged. pytest **318**. No-diff.
+(e) runtime still ABSENT. Catalog / wrap / compose / paying-day /
+LICENSE-LOCK will_run unchanged. Paying-day remains **FAIL**. Compose
+remains **ABSENT**. Wrap remains review-only / dead. `scope_gap`
+remains **none**.
 
 **Deltas vs cycle 74:** lab counts unchanged. pytest **318**. No-diff
 verify. Catalog / wrap / compose / paying-day / LICENSE-LOCK will_run
