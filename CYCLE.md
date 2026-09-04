@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 47 — Nikto file-drop polish (2026-09-04)
+
+vuln-scan parses Nikto text, XML (`niktoscan` / `scandetails`), and JSON (`vulnerabilities` / `items`) under `in/vuln/`. Interesting/high only (`/admin`, `/login`, `/.git`, directory indexing). Missing security-header noise stays silent. Empty exports invent nothing. Deepen DEMO NessusClientData `.txt` is not Nikto. Demo `nikto.txt` attaches to existing `http://10.0.0.20`. No nikto subprocess; no live HTTP. Catalog **not inflated**. pytest **243**. Labs green (assets unchanged; findings/poam/evidence +1). Compose ABSENT. Cycles 44–46 stand.
+
+```json
+{"pytest": 243, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 71, "vulns": 17, "evidence": 27, "poam": 72}, "farm_lab": {"assets": 64, "findings": 71, "poam": 72, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 72, "poam": 72, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 80, "poam": 75, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 46 — ffuf / gobuster file-drop polish (2026-09-04)
 
 easm parses ffuf JSON (`results` + status/url) and gobuster `(Status: N)` text under `in/easm/`. Interesting paths only (`/admin`, `/login`, `/.git`). 404 and robots invent nothing. Empty `results` invents nothing. Demo `ffuf.json` attaches to existing `admin.example.com` (robots/404 silent). No live DNS/HTTP; no ffuf/gobuster subprocess. Catalog **not inflated**. pytest **240**. Labs green (assets unchanged; findings/poam +1). Compose ABSENT. Checkov cycle 45 and EASM cycle 44 stand.
