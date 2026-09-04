@@ -317,6 +317,7 @@ def test_empty_in_still_loads_nmap(tmp_path, monkeypatch) -> None:
     assert "naabu.jsonl" in names
     assert "arp-scan.txt" in names
     assert "fping.txt" in names
+    assert "netdiscover.txt" in names
 
 
 def test_masscan_xml_rdp_maps_to_poam() -> None:
@@ -529,6 +530,71 @@ def test_fping_parser_no_live() -> None:
         assert "Popen" not in src
         assert "fping -" not in src
         assert "fping --" not in src
+        assert "nmap -" not in src
+        assert "urllib.request" not in src
+        assert "socket.socket" not in src
+
+
+def test_netdiscover_demo_attaches_asset_only() -> None:
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "netdiscover.txt")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in assets]
+    assert "filesrv.corp.local" in names
+    assert "10.0.0.50" not in names
+    assert findings == []
+    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    extra = host.get("extra") or {}
+    assert extra.get("mac") == "00:11:22:33:44:55"
+    assert "Dell" in str(extra.get("vendor") or "")
+    assert extra.get("ip") == "10.0.0.50"
+    assert "netdiscover" in (host.get("labels") or [])
+    assert "arp" not in (host.get("labels") or [])
+
+
+def test_arp_scan_does_not_claim_netdiscover(tmp_path) -> None:
+    from shared.arp_scan import parse_arp_scan
+    from shared.netdiscover import looks_like_netdiscover, parse_netdiscover
+
+    table = (
+        "Currently scanning: 10.0.0.0/24   |   Screen View: Unique Hosts\n"
+        "   IP            At MAC Address     Count     Len  MAC Vendor / Hostname\n"
+        " 10.0.0.50       00:11:22:33:44:55      1      60  Dell Inc.  filesrv.corp.local\n"
+    )
+    dest = tmp_path / "lan.txt"
+    dest.write_text(table, encoding="utf-8")
+    raw = dest.read_text(encoding="utf-8")
+    assert looks_like_netdiscover(raw, dest.name) is True
+    assert parse_arp_scan(dest, raw) is None
+    recs = inventory_nmap.parse_file(dest)
+    host = next(r for r in recs if r["kind"] == "asset")
+    assert host["name"] == "filesrv.corp.local"
+    assert "netdiscover" in (host.get("labels") or [])
+    assert "arp" not in (host.get("labels") or [])
+    assert parse_netdiscover(DEMO / "nmap" / "arp-scan.txt") is None
+
+
+def test_netdiscover_empty(tmp_path) -> None:
+    dest = tmp_path / "netdiscover.txt"
+    dest.write_text(
+        "Currently scanning: 10.0.0.0/24   |   Screen View: Unique Hosts\n"
+        " 0 Captured ARP Req/Rep packets, from 0 hosts.   Total size: 0\n"
+        "   IP            At MAC Address     Count     Len  MAC Vendor / Hostname\n"
+        " -----------------------------------------------------------------------------\n",
+        encoding="utf-8",
+    )
+    assert inventory_nmap.parse_file(dest) == []
+    dest.write_text("", encoding="utf-8")
+    assert inventory_nmap.parse_file(dest) == []
+
+
+def test_netdiscover_parser_no_live() -> None:
+    for rel in ("collectors/inventory_nmap.py", "shared/netdiscover.py", "shared/arp_scan.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "import subprocess" not in src
+        assert "Popen" not in src
+        assert "netdiscover -" not in src
+        assert "netdiscover --" not in src
         assert "nmap -" not in src
         assert "urllib.request" not in src
         assert "socket.socket" not in src

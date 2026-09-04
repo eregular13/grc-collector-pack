@@ -110,6 +110,11 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert slots["fping"].get("scope_key") == "file_drop"
     assert slots["fping"].get("wired") is False
     assert slots["fping"].get("invoke") is False
+    assert "netdiscover" in md
+    assert "netdiscover.txt" in md
+    assert slots["netdiscover"].get("scope_key") == "file_drop"
+    assert slots["netdiscover"].get("wired") is False
+    assert slots["netdiscover"].get("invoke") is False
     assert "Kubernetes file-drop" in md
     assert "kube-bench" in md
     assert "Kubescape" in md

@@ -121,6 +121,12 @@ fping **text / JSON** is the same `in/nmap/` file-drop path
 assets only. Unreachable / empty invent nothing. The collector never
 runs fping and never does live ping. The catalog slot stays `file_drop`.
 
+netdiscover **text** is the same `in/nmap/` file-drop path
+(`Currently scanning` / IP + MAC + Count + Len + vendor). Hosts become
+assets only. Empty / header-only invent nothing. arp-scan detect does
+not claim netdiscover tables. The collector never runs netdiscover and
+never does live ARP. The catalog slot stays `file_drop`.
+
 kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
 subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
 only. Layer C does not run `kubectl` or talk to a cluster. High rows map to

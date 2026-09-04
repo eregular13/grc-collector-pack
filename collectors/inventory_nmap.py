@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, and fping exports into hosts + exposure.
+"""Parse dropped Nmap, masscan, rustscan, naabu, arp-scan, fping, and netdiscover exports.
 
-Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, or fping.
+Parse-only. Does not run nmap, masscan, rustscan, naabu, arp-scan, fping, or netdiscover.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from shared.fast_portscan import parse_fast_portscan
 from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
+from shared.netdiscover import parse_netdiscover
 from shared.schema import make_record, make_ref
 
 SOURCE = "inventory-nmap"
@@ -243,6 +244,26 @@ def parse_file(path: Path) -> list[dict]:
                 [],
                 extra=extra,
                 extra_labels=["arp"],
+            )
+        _stamp_demo(records, _is_dropbox_demo(path, raw))
+        return records
+    discovered = parse_netdiscover(path, raw)
+    if discovered is not None:
+        records = []
+        for host in discovered:
+            extra = {
+                "mac": host.get("mac") or "",
+                "vendor": host.get("vendor") or "",
+            }
+            _emit_host(
+                records,
+                now,
+                str(host.get("name") or "unknown-host"),
+                str(host.get("addr") or ""),
+                str(host.get("hostname") or ""),
+                [],
+                extra=extra,
+                extra_labels=["netdiscover"],
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records

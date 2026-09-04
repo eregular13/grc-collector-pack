@@ -64,9 +64,13 @@ Hosts become assets only — empty / header-only / 0 responded invent nothing.
 arp-scan stays `file_drop` (never subprocess; no live ARP). Also drop
 **fping** text or JSON (`host is alive` / `{ip, hostname, alive}`). Alive
 hosts become assets only — unreachable / empty invent nothing. fping stays
-`file_drop` (never subprocess; no live ping). Empty `in/` still loads
-`fixtures/demo/nmap/` (`scan.gnmap`, `scan.xml`, `masscan.xml`,
-`naabu.jsonl`, `arp-scan.txt`, `fping.txt`). No new catalog slots.
+`file_drop` (never subprocess; no live ping). Also drop **netdiscover**
+text (`Currently scanning` / IP + MAC + Count + Len + vendor). Hosts
+become assets only — empty / header-only invent nothing. arp-scan detect
+does not claim netdiscover tables. netdiscover stays `file_drop` (never
+subprocess; no live ARP). Empty `in/` still loads `fixtures/demo/nmap/`
+(`scan.gnmap`, `scan.xml`, `masscan.xml`, `naabu.jsonl`, `arp-scan.txt`,
+`fping.txt`, `netdiscover.txt`). No new catalog slots.
 
 ## Kubernetes file-drop (Layer C)
 
