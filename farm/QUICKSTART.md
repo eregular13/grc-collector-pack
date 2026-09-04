@@ -2,10 +2,10 @@
 
 **DEMO ≠ client estate.** Written consent first. This repo does not install scanners.
 
-Honest stamp (cycle 50, host lab): pytest **258** + 1 skip. `make lab`
-64 / 73 / 18 / 27 poam **75**. Catalog **111 / 32 wired / 30 invoke /
+Honest stamp (cycle 51, host lab): pytest **262** + 1 skip. `make lab`
+64 / 73 / 19 / 27 poam **76**. Catalog **111 / 32 wired / 30 invoke /
 81 file_drop**. compose **ABSENT** (no Docker CLI). Wrap review-only.
-Not a paying-day PASS.
+DEMO ≠ client. Not a paying-day PASS.
 
 1. **Consent** — store the signed memo next to the box; record its sha256.
 2. **SCOPE** — copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`.

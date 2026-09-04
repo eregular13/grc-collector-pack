@@ -34,7 +34,7 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 
 ## This window (2026-09-04 afternoon)
 
-Until 16:00 PT: keep e2e green; cycle 50 WhatWeb file-drop polish stands (admin/login only; no live HTTP). SaaS cycle 49 and Nessus cycle 48 stand. No slot inflation. No live probes. No fake compose pass.
+Until 16:00 PT: keep e2e green; cycle 51 sslscan file-drop polish stands (weak/failed TLS only; not testssl JSON; no live sslscan). WhatWeb cycle 50 and SaaS cycle 49 stand. No slot inflation. No live probes. No fake compose pass.
 
 ## STOP rules
 

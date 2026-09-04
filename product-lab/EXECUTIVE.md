@@ -2,33 +2,33 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 50):** WhatWeb file-drop polish. `in/easm/` now
-accepts operator-landed WhatWeb `--log-json` (`target` + `plugins`).
-Admin/login only. Empty / Home invent nothing. Collector stays parse-only
-— no whatweb run, no live HTTP. whatweb stays file_drop. Demo
-`whatweb.json` attaches one admin-login high to existing
-`admin.example.com`. Admin UI maps to existing CISO/POA&M.
+**This window (cycle 51):** sslscan file-drop polish. `in/vuln/` and
+`in/easm/` now accept operator-landed sslscan XML (`ssltest`) or text.
+Weak/failed only (TLS 1.0, SSLv2/v3, Heartbleed). Empty / TLS 1.2-only
+invent nothing. This is **not** testssl JSON. Collector stays parse-only
+— no sslscan run, no live TLS. sslscan *invoke* stays BYO. Demo
+`sslscan.xml` attaches one TLS 1.0 row to existing `vpn.example.com`
+(counted as a vulnerability, like Nessus). Maps to existing TLS POA&M.
 
-**Cycle 49 (stands):** SaaS file-drop polish. ScubaGear / Okta / Maester /
-Graph exports under `in/saas/`. Failed/high only. No Graph or Okta API.
+**Cycles 49–50 (stand):** SaaS Scuba/Okta file-drop; WhatWeb `--log-json`.
 
 **Honest stamp:** compose **ABSENT**. Host `make lab` / `make farm-lab` /
-`make farm-toolbin-e2e` / `make dropbox-lab` / pytest **258 passed, 1 skipped**.
+`make farm-toolbin-e2e` / `make dropbox-lab` / pytest **262 passed, 1 skipped**.
 Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. Wrap review-only.
-No paying-day PASS. No USB copy. Cycle 20 (105) stands. SaaS cycle 49 stands.
+No paying-day PASS. No USB copy. Cycle 20 (105) stands. DEMO ≠ client.
 
 | Surface | Assets | Findings | Vulns | Evidence | POA&M | demo |
 |---|---:|---:|---:|---:|---:|---|
-| Host `make lab` | 64 | 73 | 18 | 27 | 75 | true |
-| `make farm-lab` | 64 | 73 | 18 | 27 | 75 | true |
-| `make farm-toolbin-e2e` | 64 | 74 | 18 | 27 | 75 | true |
-| `make dropbox-lab` | 69 | 82 | 18 | 27 | 78 | true |
+| Host `make lab` | 64 | 73 | 19 | 27 | 76 | true |
+| `make farm-lab` | 64 | 73 | 19 | 27 | 76 | true |
+| `make farm-toolbin-e2e` | 64 | 74 | 19 | 27 | 76 | true |
+| `make dropbox-lab` | 69 | 82 | 19 | 27 | 79 | true |
 
-**Deltas vs cycle 49:** host/farm findings **72→73**, POA&M **74→75** (demo
-`whatweb.json` admin-login on existing `admin.example.com`; Home silent).
-Assets unchanged. e2e findings **73→74**, assets still 64. dropbox
-findings **81→82**, POA&M **77→78**. Catalog / wrap / compose / paying-day
-unchanged.
+**Deltas vs cycle 50:** host/farm vulns **18→19**, POA&M **75→76** (demo
+`sslscan.xml` TLS 1.0 on existing `vpn.example.com`; TLS 1.2 / empty
+silent). Findings and assets unchanged. e2e vulns **18→19**, assets still
+64. dropbox vulns **18→19**, POA&M **78→79**. Catalog / wrap / compose /
+paying-day unchanged.
 
 **Still open:** Docker/compose runtime unexercised. Live BYO on this box is
 DEMO stubs. Catalog ≠ 100 running binaries. Overnight loop ended 2026-09-02

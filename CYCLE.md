@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 51 — sslscan file-drop polish (2026-09-04)
+
+vuln-scan / easm parse operator-landed sslscan XML (`ssltest` / `protocol`) or text (`SSL/TLS Protocols`) under `in/vuln/` or `in/easm/`. Weak/failed only (TLS 1.0, SSLv2/v3, Heartbleed, weak ciphers). Empty / TLS 1.2-only invent nothing. This is **not** testssl JSON (cycle 37) — a separate parse. Demo `sslscan.xml` attaches TLS 1.0 to existing `vpn.example.com` (vulnerability row, not a finding; poam +1; assets unchanged). No live sslscan. sslscan *invoke* stays BYO. Catalog **not inflated**. pytest **262**. Labs green. Compose ABSENT. WhatWeb cycle 50 and SaaS cycle 49 stand.
+
+```json
+{"pytest": 262, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "host_lab": {"assets": 64, "findings": 73, "vulns": 19, "evidence": 27, "poam": 76}, "farm_lab": {"assets": 64, "findings": 73, "poam": 76, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 74, "vulns": 19, "poam": 76, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 82, "vulns": 19, "poam": 79, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only"}
+```
+
 ## cycle 50 — WhatWeb file-drop polish (2026-09-04)
 
 easm parses operator-landed WhatWeb `--log-json` (`target` + `plugins`, `{data}` wrap, JSONL) under `in/easm/`. Admin/login titles and interesting paths only. Empty / Home / generic nginx invent nothing. Demo `whatweb.json` attaches admin-login high to existing `admin.example.com` (assets unchanged; findings/poam +1). No live HTTP; collector does not run whatweb. whatweb stays file_drop. Catalog **not inflated**. pytest **258**. Labs green. Compose ABSENT. SaaS cycle 49 and Nessus cycle 48 stand.
