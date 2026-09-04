@@ -9,11 +9,13 @@ from pathlib import Path
 
 import pytest
 
+from dropbox.mcp_stub import dispatch
 from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import deepen_stage, orchestrate
 from dropbox.orchestrator.shard import batch_hosts
 from dropbox.scope import GateError, load_scope
+from farm.adapters.catalog import brakes_defaults
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,6 +61,52 @@ def test_empty_scope_refuses_live(tmp_path: Path) -> None:
     )
     assert proc.returncode == 2
     assert "SCOPE gate" in proc.stderr
+
+
+def test_brakes_defaults_lock_honesty_rails() -> None:
+    brakes = brakes_defaults()
+    assert "nmap/nessus not default" in brakes["free_day_scope"]
+    assert "SCOPE.example.yaml" in brakes["free_day_scope"]
+    assert "evergreen_assessment_mcp" in brakes["pack_truth"]
+    assert "check_scope" in brakes["pack_truth"]
+    assert "license_guard" in brakes["pack_truth"]
+    assert "mcp_stub" in brakes["pack_truth"]
+    assert "conductor" in brakes["pack_truth"]
+    assert "review-only" in brakes["wrap"]
+    assert "never POST" in brakes["wrap"]
+    assert "push_riskready" in brakes["wrap"]
+    assert "ABSENT" in brakes["compose"]
+    assert "FARM_TOOL_BIN" in brakes["byo_path"]
+    slots = dispatch("farm_slots", scope_path=ROOT / "dropbox" / "SCOPE.yaml")
+    assert slots["scope_gated"] is True
+    assert slots["brakes"]["free_day_scope"] == brakes["free_day_scope"]
+    assert slots["brakes"]["pack_truth"] == brakes["pack_truth"]
+    assert slots["brakes"]["wrap"] == brakes["wrap"]
+
+
+def test_conductor_refuses_empty_and_unsigned_scope(tmp_path: Path) -> None:
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("", encoding="utf-8")
+    unsigned = _write_scope(
+        tmp_path,
+        "client:\n  name: X\nconsent:\n  attestation_path: missing.md\n"
+        "  attestation_sha256: 00dead\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+    )
+    tools = (
+        "farm_slots",
+        "export_ciso_poam",
+        "orchestrator_status",
+        "orchestrator_plan",
+        "stage_discover",
+        "stage_deepen",
+        "stage_ingest",
+    )
+    for scope in (empty, unsigned):
+        for name in tools:
+            with pytest.raises(GateError, match="SCOPE"):
+                dispatch(name, scope_path=scope)
 
 
 def test_unsigned_scope_refuses_live(tmp_path: Path) -> None:
