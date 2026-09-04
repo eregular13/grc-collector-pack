@@ -222,6 +222,26 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Remove standing Backup Operators members. "
             "This is a BloodHound/PingCastle file-drop finding, not a live AD call."
         )
+    elif "disk encryption" in text or "filevault" in text or "bitlocker" in text:
+        name = "Enable full-disk encryption"
+        fix = (
+            "Enable FileVault, BitLocker, or LUKS on the endpoint. "
+            "This is a Fleet file-drop finding, not a live agent query."
+        )
+    elif "mdm" in text and (
+        "enroll" in text or "unenroll" in text or "enrollment off" in text or "not enrolled" in text
+    ):
+        name = "Enroll the endpoint in MDM"
+        fix = (
+            "Enroll the host in the approved MDM. "
+            "This is a Fleet file-drop finding, not a live agent query."
+        )
+    elif "coverage gap" in text or "agent disconnected" in text:
+        name = "Restore endpoint coverage"
+        fix = (
+            "Reconnect the agent or enroll the host in Fleet/Wazuh. "
+            "This is a coverage finding from a dropped export, not a live query."
+        )
     elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."

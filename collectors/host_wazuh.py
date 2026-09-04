@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Parse Wazuh/osquery JSON into coverage gaps + incidents."""
+"""Parse Wazuh / osquery / Fleet JSON into coverage gaps + incidents.
+
+Parse-only. Does not run Wazuh, osquery, Fleet, or a live agent query.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +15,43 @@ from shared.schema import make_record, make_ref
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
+
+
+def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
+    name = row.get("name") or row.get("hostname") or row.get("computer_name") or row.get("display_name")
+    if not name and row.get("id") not in (None, ""):
+        name = row.get("id")
+    if not name:
+        return None
+    status = str(row.get("status") or "online").lower()
+    if status in {"offline", "mia"}:
+        status = "disconnected"
+    mdm = row.get("mdm") if isinstance(row.get("mdm"), dict) else {}
+    return {
+        "name": name,
+        "status": status,
+        "ip": row.get("primary_ip") or row.get("ip") or "",
+        "disk_encryption_enabled": row.get("disk_encryption_enabled"),
+        "mdm": mdm,
+        "platform": row.get("platform") or "",
+    }
+
+
+def _host_rows(raw: Any) -> list[dict[str, Any]]:
+    if isinstance(raw, list):
+        rows = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("hosts"), list):
+        rows = raw["hosts"]
+    else:
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        host = _normalize_host(row)
+        if host:
+            out.append(host)
+    return out
 
 
 def _agents(payload: Any) -> list[dict[str, Any]]:
@@ -35,21 +75,48 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
             if name:
                 out.append({"name": name, "status": row.get("status") or "active", "ip": cols.get("local_hostname") or ""})
         return out
-    hosts = payload.get("hosts")
-    if isinstance(hosts, list):
-        out = []
-        for row in hosts:
-            if not isinstance(row, dict):
-                continue
-            name = row.get("hostname") or row.get("computer_name") or row.get("display_name") or row.get("id")
-            if not name:
-                continue
-            status = str(row.get("status") or "online").lower()
-            if status in {"offline", "mia"}:
-                status = "disconnected"
-            out.append({"name": name, "status": status, "ip": row.get("primary_ip") or row.get("ip") or ""})
-        return out
+    if isinstance(data, dict) and (data.get("hosts") is not None):
+        rows = _host_rows(data.get("hosts"))
+        if rows:
+            return rows
+    rows = _host_rows(payload.get("hosts"))
+    if rows:
+        return rows
+    if isinstance(payload.get("host"), dict):
+        host = _normalize_host(payload["host"])
+        return [host] if host else []
     return []
+
+
+def _failing_policies(payload: Any) -> list[dict[str, Any]]:
+    """Fleet policies. Fail only. Pass/empty invent nothing."""
+    raw: list[Any] = []
+    if isinstance(payload, dict):
+        if isinstance(payload.get("policies"), list):
+            raw = list(payload["policies"])
+        data = payload.get("data")
+        if isinstance(data, dict) and isinstance(data.get("policies"), list):
+            raw = list(data["policies"])
+        host = payload.get("host")
+        if isinstance(host, dict) and isinstance(host.get("policies"), list):
+            raw.extend(p for p in host["policies"] if isinstance(p, dict))
+    out: list[dict[str, Any]] = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or row.get("query_name") or row.get("id") or "")
+        if not name:
+            continue
+        result = str(row.get("response") or row.get("result") or row.get("status") or "").lower()
+        if result in {"pass", "passed", "ok", "compliant"}:
+            continue
+        try:
+            failing = int(row.get("failing_host_count") or 0)
+        except (TypeError, ValueError):
+            failing = 0
+        if result in {"fail", "failed", "error"} or failing > 0:
+            out.append(row)
+    return out
 
 
 _LYNIS_BANG = re.compile(r"^!\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
@@ -153,6 +220,65 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"agent_status": status},
                 )
             )
+        enc = agent.get("disk_encryption_enabled")
+        if enc is False or str(enc).lower() in {"false", "0", "no"}:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"diskenc-{name}"),
+                    name=f"Disk encryption disabled on {name}",
+                    description=f"{name} reports disk_encryption_enabled=false.",
+                    severity="high",
+                    category="host-posture",
+                    assets=[name],
+                    labels=LABELS + ["fleet", "disk-encryption"],
+                    collected_at=now,
+                    extra={"disk_encryption_enabled": False},
+                )
+            )
+        mdm = agent.get("mdm") if isinstance(agent.get("mdm"), dict) else {}
+        enroll = str(mdm.get("enrollment_status") or mdm.get("enrollment") or "").lower()
+        if enroll in {"off", "unenrolled", "never", "not enrolled"}:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"mdm-{name}"),
+                    name=f"MDM enrollment off on {name}",
+                    description=f"{name} is not enrolled in MDM (enrollment_status={enroll}).",
+                    severity="high",
+                    category="host-posture",
+                    assets=[name],
+                    labels=LABELS + ["fleet", "mdm"],
+                    collected_at=now,
+                    extra={"mdm_enrollment": enroll},
+                )
+            )
+    for policy in _failing_policies(payload):
+        pname = str(policy.get("name") or policy.get("query_name") or policy.get("id") or "policy")
+        host = "fleet"
+        if isinstance(payload, dict) and isinstance(payload.get("host"), dict):
+            host = str(
+                payload["host"].get("hostname")
+                or payload["host"].get("computer_name")
+                or host
+            )
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"fleet-policy-{pname}-{host}"),
+                name=f"Fleet policy failed: {pname}",
+                description=f"{pname} failed on {host}.",
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + ["fleet", "policy"],
+                collected_at=now,
+                extra={"policy": pname, "name": pname},
+            )
+        )
     alerts = []
     if isinstance(payload, dict):
         raw_alerts = payload.get("alerts") or payload.get("hits") or []

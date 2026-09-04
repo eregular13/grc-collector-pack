@@ -124,6 +124,12 @@ SharpHound run. High rows map to existing CISO/POA&M (DCSync, GenericAll,
 roastable SPN, AS-REP, unconstrained delegation, Backup Operators).
 bloodhound / azurehound stay file_drop.
 
+Fleet host/policy JSON is file-drop ingest under `in/wazuh/`. Layer C parses
+`hosts` / `data.hosts` / a single `host`, plus failing `policies` only.
+Offline hosts are coverage gaps. Disk encryption off and MDM enrollment Off
+map to existing CISO/POA&M. Empty hosts/policies invent nothing. No Fleet
+API / fleetctl / osqueryi.
+
 HardeningKitty **Audit CSV** and **Lynis** reports are file-drop ingest:
 land HK CSV under `in/identity/`, Lynis report/`report.dat` under `in/wazuh/`.
 Layer C parses Failed HK rows and Lynis warnings only — no WinRM/AD API, no

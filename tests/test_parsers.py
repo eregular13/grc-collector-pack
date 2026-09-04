@@ -266,10 +266,76 @@ def test_identity_ad_no_ad_subprocess() -> None:
 
 
 def test_fleet_hosts() -> None:
+    from shared.control_map import map_finding
+
     recs = host_wazuh.parse_file(DEMO / "wazuh" / "fleet.json")
     names = [r["name"] for r in recs if r["kind"] == "asset"]
     assert "fleet-laptop-07" in names
-    assert any(r["kind"] == "finding" and "fleet-laptop-07" in r["name"] for r in recs)
+    assert "fleet-build-01" in names
+    offline = next(r for r in recs if r["kind"] == "finding" and "fleet-laptop-07" in r["name"])
+    assert "disconnected" in offline["name"].lower() or "coverage" in offline["description"].lower()
+    assert not any(r["kind"] == "finding" and "fleet-build-01" in r["name"] for r in recs)
+    mapped = map_finding(offline)
+    assert mapped["include_poam"] is True
+    assert "coverage" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_fleet_api_disk_mdm_and_policies(tmp_path) -> None:
+    from shared.control_map import map_finding
+
+    dest = tmp_path / "hosts.json"
+    dest.write_text(
+        """{"data":{"hosts":[{"hostname":"mac-07","status":"online","primary_ip":"10.0.4.9",
+        "disk_encryption_enabled":false,"mdm":{"enrollment_status":"Off"}},
+        {"hostname":"mac-ok","status":"online","disk_encryption_enabled":true,
+         "mdm":{"enrollment_status":"On (manual)"}}]},
+        "policies":[{"name":"Gatekeeper enabled","response":"pass"},
+                    {"name":"Full disk encryption","response":"fail","failing_host_count":1}]}""",
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in findings]
+    assert any("Disk encryption" in n for n in names)
+    assert any("MDM enrollment" in n for n in names)
+    assert any("Full disk encryption" in n for n in names)
+    assert not any("Gatekeeper" in n for n in names)
+    assert not any("mac-ok" in n for n in names)
+    enc = next(r for r in findings if "Disk encryption" in r["name"])
+    mapped = map_finding(enc)
+    assert mapped["include_poam"] is True
+    assert "disk encryption" in mapped["control_name"].lower()
+    assert "CVE-" not in mapped["recommended_fix"]
+
+
+def test_empty_fleet_invents_nothing(tmp_path) -> None:
+    dest = tmp_path / "empty-fleet.json"
+    dest.write_text("""{"hosts":[],"policies":[]}""", encoding="utf-8")
+    assert host_wazuh.parse_file(dest) == []
+
+
+def test_empty_in_still_loads_fleet(tmp_path, monkeypatch) -> None:
+    from shared.io_util import load_inputs
+
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-wazuh"))
+    (tmp_path / "empty-wazuh" / "wazuh").mkdir(parents=True)
+    files, demo = load_inputs("host-wazuh", (".json", ".txt", ".log", ".dat"))
+    assert demo is True
+    names = {p.name for p in files}
+    assert "fleet.json" in names
+
+
+def test_host_wazuh_no_live_agent() -> None:
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "collectors" / "host_wazuh.py").read_text(
+        encoding="utf-8"
+    )
+    assert "import subprocess" not in src
+    assert "Popen" not in src
+    assert "fleetctl" not in src
+    assert "osqueryi" not in src
 
 
 def test_sarif() -> None:
