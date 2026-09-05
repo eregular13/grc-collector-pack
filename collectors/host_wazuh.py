@@ -1,16 +1,59 @@
 #!/usr/bin/env python3
-"""Parse Wazuh/osquery JSON into coverage gaps + incidents."""
+"""Parse Wazuh / osquery / Fleet JSON into coverage gaps + incidents.
+
+Parse-only. Does not run Wazuh, osquery, Fleet, or a live agent query.
+"""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
-from shared.io_util import iso_now, read_json, run_collector
+from shared.cis_cat import is_cis_cat, iter_cis_failures
+from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.osquery_checks import iter_osquery_failures
 from shared.schema import make_record, make_ref
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
+
+
+def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
+    name = row.get("name") or row.get("hostname") or row.get("computer_name") or row.get("display_name")
+    if not name and row.get("id") not in (None, ""):
+        name = row.get("id")
+    if not name:
+        return None
+    status = str(row.get("status") or "online").lower()
+    if status in {"offline", "mia"}:
+        status = "disconnected"
+    mdm = row.get("mdm") if isinstance(row.get("mdm"), dict) else {}
+    return {
+        "name": name,
+        "status": status,
+        "ip": row.get("primary_ip") or row.get("ip") or "",
+        "disk_encryption_enabled": row.get("disk_encryption_enabled"),
+        "mdm": mdm,
+        "platform": row.get("platform") or "",
+    }
+
+
+def _host_rows(raw: Any) -> list[dict[str, Any]]:
+    if isinstance(raw, list):
+        rows = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("hosts"), list):
+        rows = raw["hosts"]
+    else:
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        host = _normalize_host(row)
+        if host:
+            out.append(host)
+    return out
 
 
 def _agents(payload: Any) -> list[dict[str, Any]]:
@@ -34,27 +77,187 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
             if name:
                 out.append({"name": name, "status": row.get("status") or "active", "ip": cols.get("local_hostname") or ""})
         return out
-    hosts = payload.get("hosts")
-    if isinstance(hosts, list):
-        out = []
-        for row in hosts:
-            if not isinstance(row, dict):
-                continue
-            name = row.get("hostname") or row.get("computer_name") or row.get("display_name") or row.get("id")
-            if not name:
-                continue
-            status = str(row.get("status") or "online").lower()
-            if status in {"offline", "mia"}:
-                status = "disconnected"
-            out.append({"name": name, "status": status, "ip": row.get("primary_ip") or row.get("ip") or ""})
-        return out
+    if isinstance(data, dict) and (data.get("hosts") is not None):
+        rows = _host_rows(data.get("hosts"))
+        if rows:
+            return rows
+    rows = _host_rows(payload.get("hosts"))
+    if rows:
+        return rows
+    if isinstance(payload.get("host"), dict):
+        host = _normalize_host(payload["host"])
+        return [host] if host else []
     return []
 
 
-def parse_file(path: Path) -> list[dict]:
-    payload = read_json(path)
-    now = iso_now()
+def _failing_policies(payload: Any) -> list[dict[str, Any]]:
+    """Fleet policies. Fail only. Pass/empty invent nothing."""
+    raw: list[Any] = []
+    if isinstance(payload, dict):
+        if isinstance(payload.get("policies"), list):
+            raw = list(payload["policies"])
+        data = payload.get("data")
+        if isinstance(data, dict) and isinstance(data.get("policies"), list):
+            raw = list(data["policies"])
+        host = payload.get("host")
+        if isinstance(host, dict) and isinstance(host.get("policies"), list):
+            raw.extend(p for p in host["policies"] if isinstance(p, dict))
+    out: list[dict[str, Any]] = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or row.get("query_name") or row.get("id") or "")
+        if not name:
+            continue
+        result = str(row.get("response") or row.get("result") or row.get("status") or "").lower()
+        if result in {"pass", "passed", "ok", "compliant"}:
+            continue
+        try:
+            failing = int(row.get("failing_host_count") or 0)
+        except (TypeError, ValueError):
+            failing = 0
+        if result in {"fail", "failed", "error"} or failing > 0:
+            out.append(row)
+    return out
+
+
+_LYNIS_BANG = re.compile(r"^!\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
+_LYNIS_DAT = re.compile(r"^warning\[\]=([^|]+)\|(.+)$", re.I)
+_LYNIS_HOST = re.compile(r"(?im)^(?:hostname\s*[:=]\s*|hostname\s+)(\S+)")
+
+
+def parse_lynis_report(text: str, now: str) -> list[dict]:
+    """Parse a Lynis report or report.dat. Warnings only. No invented hosts."""
+    host = "lynis-host"
+    mhost = _LYNIS_HOST.search(text)
+    if mhost:
+        host = mhost.group(1).strip().strip("\"'")
+    warnings: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        raw = line.strip()
+        bang = _LYNIS_BANG.match(raw)
+        if bang:
+            warnings.append((bang.group(2), bang.group(1)))
+            continue
+        dat = _LYNIS_DAT.match(raw)
+        if dat:
+            warnings.append((dat.group(1).strip(), dat.group(2).strip()))
+    if not warnings:
+        return []
+    records = [
+        make_record(
+            kind="asset",
+            source=SOURCE,
+            ref_id=make_ref(SOURCE, f"asset-{host}"),
+            name=host,
+            description=f"Lynis-audited host {host}",
+            category="host",
+            assets=[host],
+            labels=LABELS + ["lynis"],
+            collected_at=now,
+            extra={"asset_type": "PR"},
+        )
+    ]
+    seen: set[str] = set()
+    for cid, title in warnings:
+        key = f"{cid}-{host}"
+        if key in seen:
+            continue
+        seen.add(key)
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"lynis-{key}"),
+                name=f"Lynis {cid}: {title}",
+                description=title,
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + ["lynis"],
+                collected_at=now,
+                extra={"check_id": cid, "id": cid},
+            )
+        )
+    return records
+
+
+def _emit_check_rows(
+    rows: list[dict[str, str]],
+    now: str,
+    *,
+    prefix: str,
+    labels: list[str],
+    title_fmt: str,
+) -> list[dict]:
     records: list[dict] = []
+    seen_hosts: set[str] = set()
+    for row in rows:
+        host = row.get("host") or "host"
+        hid = row.get("id") or prefix
+        title = row.get("title") or hid
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"Host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + labels,
+                    collected_at=now,
+                    extra={"asset_type": "PR"},
+                )
+            )
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"{prefix}-{hid}-{host}"),
+                name=title_fmt.format(title=title, id=hid),
+                description=title,
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + labels,
+                collected_at=now,
+                extra={"id": hid, "name": title, "check_id": hid},
+            )
+        )
+    return records
+
+
+def parse_file(path: Path) -> list[dict]:
+    if path.suffix.lower() in {".txt", ".log", ".dat"}:
+        return parse_lynis_report(read_text(path), iso_now())
+    text = read_text(path)
+    now = iso_now()
+    if path.suffix.lower() == ".xml" or text.lstrip().startswith("<"):
+        if is_cis_cat(name=path.name, text=text):
+            return _emit_check_rows(
+                iter_cis_failures(text=text),
+                now,
+                prefix="cis",
+                labels=["cis-cat"],
+                title_fmt="CIS-CAT {id}: {title}",
+            )
+        return []
+    payload = read_json(path)
+    records: list[dict] = []
+    if is_cis_cat(payload, name=path.name, text=text):
+        records.extend(
+            _emit_check_rows(
+                iter_cis_failures(payload),
+                now,
+                prefix="cis",
+                labels=["cis-cat"],
+                title_fmt="CIS-CAT {id}: {title}",
+            )
+        )
+        return records
     for agent in _agents(payload):
         name = str(agent.get("name") or agent.get("id") or "agent")
         status = str(agent.get("status") or "unknown").lower()
@@ -89,6 +292,65 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"agent_status": status},
                 )
             )
+        enc = agent.get("disk_encryption_enabled")
+        if enc is False or str(enc).lower() in {"false", "0", "no"}:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"diskenc-{name}"),
+                    name=f"Disk encryption disabled on {name}",
+                    description=f"{name} reports disk_encryption_enabled=false.",
+                    severity="high",
+                    category="host-posture",
+                    assets=[name],
+                    labels=LABELS + ["fleet", "disk-encryption"],
+                    collected_at=now,
+                    extra={"disk_encryption_enabled": False},
+                )
+            )
+        mdm = agent.get("mdm") if isinstance(agent.get("mdm"), dict) else {}
+        enroll = str(mdm.get("enrollment_status") or mdm.get("enrollment") or "").lower()
+        if enroll in {"off", "unenrolled", "never", "not enrolled"}:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"mdm-{name}"),
+                    name=f"MDM enrollment off on {name}",
+                    description=f"{name} is not enrolled in MDM (enrollment_status={enroll}).",
+                    severity="high",
+                    category="host-posture",
+                    assets=[name],
+                    labels=LABELS + ["fleet", "mdm"],
+                    collected_at=now,
+                    extra={"mdm_enrollment": enroll},
+                )
+            )
+    for policy in _failing_policies(payload):
+        pname = str(policy.get("name") or policy.get("query_name") or policy.get("id") or "policy")
+        host = "fleet"
+        if isinstance(payload, dict) and isinstance(payload.get("host"), dict):
+            host = str(
+                payload["host"].get("hostname")
+                or payload["host"].get("computer_name")
+                or host
+            )
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"fleet-policy-{pname}-{host}"),
+                name=f"Fleet policy failed: {pname}",
+                description=f"{pname} failed on {host}.",
+                severity="high",
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + ["fleet", "policy"],
+                collected_at=now,
+                extra={"policy": pname, "name": pname},
+            )
+        )
     alerts = []
     if isinstance(payload, dict):
         raw_alerts = payload.get("alerts") or payload.get("hits") or []
@@ -129,11 +391,20 @@ def parse_file(path: Path) -> list[dict]:
                 extra={},
             )
         )
+    records.extend(
+        _emit_check_rows(
+            iter_osquery_failures(payload),
+            now,
+            prefix="osquery",
+            labels=["osquery"],
+            title_fmt="osquery {id}: {title}",
+        )
+    )
     return records
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json",), parse_file)
+    run_collector(SOURCE, (".json", ".xml", ".txt", ".log", ".dat"), parse_file)
 
 
 if __name__ == "__main__":

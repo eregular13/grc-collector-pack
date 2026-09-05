@@ -1,0 +1,22 @@
+# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M
+
+Estate: demo (`in/` empty → fixtures/demo). Not a client.
+Copied from out/ after host lab 2026-09-04T14:51:44Z (this Linux VM).
+Pentera finds it; Evergreen maps it.
+Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
+POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
+
+| File | Rows | SHA256 |
+|---|---|---|
+| ciso/applied_controls.csv | 77 | `4c0854eb325ebd0052232187f85a01bb5d09c561251130224295d070d4efa7a3` |
+| ciso/assets.csv | 62 | `2b62467ac144305ee0667979f6ac3c63bee1e6b78a1f60a4fe707ce19b86e0c5` |
+| ciso/evidences.csv | 24 | `1a836bd5874eb49965d5a3b74ebe5c2c76a12c2dfa86a59f0e4bea6450a6fc2b` |
+| ciso/findings.csv | 62 | `519ad642bc192e189f282b6820e9d430c73e0aa8152d591cacc8febdb20de804` |
+| ciso/risk_scenarios.csv | 77 | `a2ca81e0d0607708d4860ac3ce889a0e710e15c2c82d793a68f1895a4fa26eb0` |
+| ciso/vulnerabilities.csv | 15 | `7eb09aeb6c3d26c1b6a37404bd747f2600aaf629c1d3c3ed4ba1e274173aeaa2` |
+| poam/poam.csv | 61 | `d01354e60f00afcc25ace665f8c18541ed13049d58dd3b01689cbd12220e5916` |
+| poam/poam.md | draft | `3b2c2e96e358bc4b3ac43eba486b9611f411e3de13640310c0d71d6201294de3` |
+
+riskready/risks_proposed.json: 57 rows, SHA256 `b11d8be0d7ae1ede5e7e46cb307e52f09bf7557801364e47cb3604bf9f71fd86`
+
+POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row.

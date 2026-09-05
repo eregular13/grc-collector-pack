@@ -94,8 +94,11 @@ def estate() -> dict:
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),
             "riskready_push": os.environ.get("RISKREADY_PUSH", "0"),
+            "riskready_wrap": False,
+            "riskready_review_only": True,
             "live_scan": os.environ.get("GRC_LIVE_SCAN", "0"),
             "posts_api_risks": False,
+            "bind": "127.0.0.1",
         },
     }
 
@@ -109,6 +112,7 @@ def payload(kind: str):
         "evidences": out / "ciso-assistant" / "evidences.csv",
         "controls": out / "ciso-assistant" / "applied_controls.csv",
         "scenarios": out / "ciso-assistant" / "risk_scenarios.csv",
+        "poam": out / "poam" / "poam.csv",
         "incidents": out / "riskready" / "incidents.json",
         "proposed": out / "riskready" / "risks_proposed.json",
         "rr_assets": out / "riskready" / "assets.json",
@@ -133,6 +137,7 @@ def build_drop_zip() -> bytes:
         out / "ocsf" / "compliance_findings.json",
     ]
     files.extend(sorted((out / "ciso-assistant").glob("*.csv")))
+    files.extend(sorted((out / "poam").glob("*")))
     files.extend(sorted((out / "riskready").glob("*.json")))
     drop = ROOT / "product-lab" / "drop"
     if drop.is_dir():
@@ -140,8 +145,10 @@ def build_drop_zip() -> bytes:
         files.extend(sorted((drop / "riskready").glob("*.json")))
     readme = (
         "GRC Collector Pack drop\n"
+        "Pentera finds it; Evergreen maps it.\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
-        "Import RiskReady assets / evidence / incidents JSON.\n"
+        "POA&M: poam/poam.csv — owner and due are blank for a human.\n"
+        "RiskReady JSON is review-only (LICENSE-LOCK stay-out). Do not wrap or POST.\n"
         "risks_proposed.json is for a human. Do not POST /api/risks.\n"
     )
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -235,6 +242,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/evidences": "evidences",
             "/api/controls": "controls",
             "/api/scenarios": "scenarios",
+            "/api/poam": "poam",
             "/api/incidents": "incidents",
             "/api/proposed": "proposed",
         }

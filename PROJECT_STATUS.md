@@ -132,7 +132,7 @@ Exact headers. `risk_scenarios.csv` is semicolon. Finding severity `low|medium|h
 
 `assets.json`, `incidents.json` (explicit + every high/critical finding), `evidence.json` (`TECHNICAL` / `SENSOR` / `DRAFT`), `risks_proposed.json` (**never auto-POST**). Likelihood/impact enums mapped from severity.
 
-`push_riskready.sh` only if `RISKREADY_PUSH=1`. Default `0`.
+`push_riskready.sh` is LICENSE-LOCK stay-out: review-only even if `RISKREADY_PUSH=1`. No login, no wrap POSTs. Default `0`.
 
 ### Evidence
 

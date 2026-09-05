@@ -1,30 +1,45 @@
 # Drop package
 
-**Copied:** 2026-09-03 21:45 America/Los_Angeles from `C:\Users\R\grc-collector-pack\out\` after the product-lab compose + negative suite.  
+**Copied:** 2026-09-04T14:12:58Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). Not a client.
+
+See `MANIFEST` for CISO CSV + POA&M row counts and SHA256.
+
+**Pentera finds it; Evergreen maps it.** Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 
 ## `ciso/`
 
-CISO Assistant Community import CSVs. Headers are the contract. `risk_scenarios.csv` is **semicolon**-separated. Finding severity `low|medium|high|critical`. Vuln severity `Information|Low|Medium|High|Critical`. Asset type `PR` or `SP`. `filtering_labels` include wizard-safe `cpg_2_W`.
+CISO Assistant Community import CSVs. Headers are the contract. `risk_scenarios.csv` is **semicolon**-separated. Finding severity `low|medium|high|critical`. Vuln severity `Information|Low|Medium|High|Critical`. Asset type `PR` or `SP`. `filtering_labels` include wizard-safe `cpg_2_W` / `csf_*` (no colons).
 
-| File | Role |
+Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment UUIDs.
+
+| File | Rows |
 |---|---|
-| `assets.csv` | 62 rows + header |
+| `assets.csv` | 62 |
 | `findings.csv` | 59 |
 | `vulnerabilities.csv` | 15 |
-| `evidences.csv` | 10 (nine sensors + loader) |
+| `evidences.csv` | 24 (sensor runs + high/critical attestations + loader) |
 | `applied_controls.csv` | 74 |
 | `risk_scenarios.csv` | 74 |
 
-SHA256 `assets.csv`: `4CFAB51E09CFC1D4930609114A08670187ACCF2928C07D4DC783471BE216172B`
+## `poam/`
+
+Operator draft. Not a CISO import. Owner and due stay blank.
+
+| File | Rows |
+|---|---|
+| `poam.csv` | 58 |
+| `poam.md` | same draft, markdown |
+
+Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
 
 ## `riskready/`
+
+LICENSE-LOCK stay-out. Review on disk. Never wrap, login, or POST.
 
 | File | Role |
 |---|---|
 | `assets.json` | inventory |
 | `incidents.json` | explicit + high/critical findings |
 | `evidence.json` | TECHNICAL / SENSOR / DRAFT |
-| `risks_proposed.json` | **on disk only — do not POST `/api/risks`** |
-
-SHA256 `risks_proposed.json`: `E10DE14A57A876F5BA18ED00C22769C6AD60AB7158C5757DC60F54DD5FA9C91C`
+| `risks_proposed.json` | human review only — never POST `/api/risks` |

@@ -1,0 +1,6 @@
+#!/bin/sh
+# DEMO farm lab stub — not a real scanner. No network. Not lynis.
+echo "DEMO — not a real scanner. farm/tool-bin/lab/lynis"
+echo "[ Lynis 0.0.0 ]"
+echo "Hardening index : 0 [DEMO fixture-shaped — not a scan]"
+exit 0

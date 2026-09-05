@@ -39,6 +39,67 @@ def _falco_events(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _kube_bench_rows(payload: Any) -> list[dict[str, Any]]:
+    """Flatten aqua kube-bench Controls[].tests[].results[] or a flat FAIL list."""
+    controls: list[Any] = []
+    if isinstance(payload, dict):
+        controls = payload.get("Controls") or payload.get("controls") or []
+    elif isinstance(payload, list):
+        controls = payload
+    if not isinstance(controls, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for ctrl in controls:
+        if not isinstance(ctrl, dict):
+            continue
+        tests = ctrl.get("tests") if isinstance(ctrl.get("tests"), list) else []
+        if tests:
+            for test in tests:
+                if not isinstance(test, dict):
+                    continue
+                results = test.get("results") or test.get("Results") or []
+                if not isinstance(results, list):
+                    continue
+                for res in results:
+                    if isinstance(res, dict):
+                        rows.append(res)
+            continue
+        if str(ctrl.get("status") or "").upper() in {"FAIL", "FAILED", "WARN"}:
+            rows.append(ctrl)
+    return rows
+
+
+def _kubescape_result_rows(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    results = payload.get("results") or payload.get("Results")
+    if not isinstance(results, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in results:
+        if not isinstance(row, dict):
+            continue
+        ctrls = row.get("controls") or row.get("Controls")
+        if isinstance(ctrls, dict):
+            for cid, ctrl in ctrls.items():
+                if isinstance(ctrl, dict):
+                    merged = dict(ctrl)
+                    merged.setdefault("id", cid)
+                    merged.setdefault("controlID", cid)
+                    out.append(merged)
+        elif row.get("controlID") or row.get("id"):
+            out.append(row)
+    return out
+
+
+def _failed_status(raw: Any) -> bool:
+    status = raw
+    if isinstance(raw, dict):
+        status = raw.get("status") or raw.get("Status") or ""
+    s = str(status or "").lower()
+    return s in {"fail", "failed", "warn", "warning"}
+
+
 def _falco_severity(priority: Any) -> str:
     p = str(priority or "warning").lower()
     if p in {"emergency", "alert", "critical"}:
@@ -97,20 +158,62 @@ def parse_file(path: Path) -> list[dict]:
     cluster = "cluster"
     if isinstance(payload, dict):
         cluster = str(payload.get("clusterName") or payload.get("cluster") or "cluster")
-    records.append(
-        make_record(
-            kind="asset",
-            source=SOURCE,
-            ref_id=make_ref(SOURCE, f"asset-{cluster}"),
-            name=cluster,
-            description=f"Kubernetes cluster {cluster}",
-            category="cluster",
-            assets=[cluster],
-            labels=LABELS,
-            collected_at=now,
-            extra={"asset_type": "PR"},
+    seen_assets: set[str] = set()
+    seen_cids: set[str] = set()
+
+    def add_cluster() -> None:
+        key = cluster.lower()
+        if key in seen_assets:
+            return
+        seen_assets.add(key)
+        records.append(
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{cluster}"),
+                name=cluster,
+                description=f"Kubernetes cluster {cluster}",
+                category="cluster",
+                assets=[cluster],
+                labels=LABELS,
+                collected_at=now,
+                extra={"asset_type": "PR"},
+            )
         )
-    )
+
+    def add_finding(
+        cid: str,
+        name: str,
+        desc: str,
+        sev: Any,
+        labels: list[str],
+    ) -> None:
+        key = cid.lower() or name.lower()
+        if not key or key in seen_cids:
+            return
+        seen_cids.add(key)
+        add_cluster()
+        try:
+            sev = _sev_from_score(float(sev))
+        except (TypeError, ValueError):
+            sev = sev or "high"
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"{cid}-{cluster}"),
+                name=name,
+                description=desc,
+                severity=sev,
+                category="cloud-misconfiguration",
+                assets=[cluster],
+                labels=labels,
+                collected_at=now,
+                extra={"control": cid, "id": cid},
+            )
+        )
+
+    add_cluster()
     if isinstance(payload, dict):
         summary = payload.get("summaryDetails") or {}
         controls = summary.get("controls") if isinstance(summary, dict) else {}
@@ -118,29 +221,38 @@ def parse_file(path: Path) -> list[dict]:
             for cid, ctrl in controls.items():
                 if not isinstance(ctrl, dict):
                     continue
-                status = str(ctrl.get("status") or "").lower()
-                if status in {"passed", "pass", "skipped"}:
+                if not _failed_status(ctrl.get("status")):
                     continue
                 name = str(ctrl.get("name") or cid)
-                records.append(
-                    make_record(
-                        kind="finding",
-                        source=SOURCE,
-                        ref_id=make_ref(SOURCE, str(cid)),
-                        name=name,
-                        description=str(ctrl.get("description") or name),
-                        severity=_sev_from_score(ctrl.get("severityScore")),
-                        category="cloud-misconfiguration",
-                        assets=[cluster],
-                        labels=LABELS,
-                        collected_at=now,
-                        extra={"control": cid},
-                    )
+                add_finding(
+                    str(cid),
+                    name,
+                    str(ctrl.get("description") or name),
+                    _sev_from_score(ctrl.get("severityScore") or ctrl.get("severity")),
+                    LABELS,
                 )
+        for row in _kubescape_result_rows(payload):
+            status = row.get("status") or row.get("Status")
+            if isinstance(status, dict):
+                status = status.get("status")
+            if not _failed_status(status):
+                continue
+            cid = str(row.get("controlID") or row.get("id") or row.get("name") or "ks")
+            name = str(row.get("name") or row.get("text") or cid)
+            sev = row.get("severityScore")
+            if sev is None and isinstance(row.get("severity"), dict):
+                sev = row["severity"].get("score")
+            if sev is None:
+                sev = row.get("severity") or "high"
+            add_finding(cid, name, str(row.get("description") or row.get("remediation") or name), sev, LABELS)
         for res in payload.get("resources") or []:
             if not isinstance(res, dict):
                 continue
             rname = str(res.get("name") or "workload")
+            key = rname.lower()
+            if key in seen_assets:
+                continue
+            seen_assets.add(key)
             records.append(
                 make_record(
                     kind="asset",
@@ -155,27 +267,18 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"asset_type": "PR", "namespace": res.get("namespace")},
                 )
             )
-        for ctrl in payload.get("Controls") or []:
-            if not isinstance(ctrl, dict):
-                continue
-            if str(ctrl.get("status") or "").upper() not in {"FAIL", "FAILED"}:
-                continue
-            cid = str(ctrl.get("id") or ctrl.get("text") or "cis")
-            records.append(
-                make_record(
-                    kind="finding",
-                    source=SOURCE,
-                    ref_id=make_ref(SOURCE, cid),
-                    name=str(ctrl.get("text") or cid),
-                    description=str(ctrl.get("text") or cid),
-                    severity=ctrl.get("severity") or "high",
-                    category="cloud-misconfiguration",
-                    assets=[cluster],
-                    labels=LABELS + ["kube-bench"],
-                    collected_at=now,
-                    extra={"control": cid},
-                )
-            )
+    for row in _kube_bench_rows(payload):
+        if not _failed_status(row.get("status") or row.get("State")):
+            continue
+        cid = str(row.get("test_number") or row.get("id") or row.get("text") or "cis")
+        name = str(row.get("test_desc") or row.get("text") or cid)
+        add_finding(
+            cid,
+            name,
+            str(row.get("reason") or row.get("remediation") or name),
+            row.get("severity") or "high",
+            LABELS + ["kube-bench"],
+        )
     return records
 
 

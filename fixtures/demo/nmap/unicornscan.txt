@@ -1,0 +1,2 @@
+# unicornscan
+TCP open           ftp[21]         from  10.0.0.50  ttl 64  filesrv.corp.local

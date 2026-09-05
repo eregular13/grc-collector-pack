@@ -1,0 +1,31 @@
+{
+  "check_type": "terraform",
+  "results": {
+    "failed_checks": [
+      {
+        "check_id": "CKV_AWS_20",
+        "bc_check_id": "BC_AWS_S3_1",
+        "check_name": "S3 Bucket has an ACL defined which allows public READ access.",
+        "file_path": "/infra/terraform.tfvars",
+        "resource": "aws_s3_bucket.demo",
+        "severity": "HIGH",
+        "guideline": "https://docs.bridgecrew.io/docs/s3_1-acl-read-permissions-everyone"
+      }
+    ],
+    "passed_checks": [
+      {
+        "check_id": "CKV_AWS_21",
+        "check_name": "S3 Bucket has versioning enabled",
+        "file_path": "/infra/terraform.tfvars",
+        "resource": "aws_s3_bucket.demo",
+        "severity": "LOW"
+      }
+    ],
+    "skipped_checks": []
+  },
+  "summary": {
+    "failed": 1,
+    "passed": 1,
+    "skipped": 0
+  }
+}

@@ -1,0 +1,13 @@
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          10.0.0.20
++ Target Hostname:    http://10.0.0.20
++ Target Port:        80
++ Start Time:         2026-09-04 17:00:00 (GMT0)
+---------------------------------------------------------------------------
++ Server: Apache/2.4
++ /: The X-Frame-Options header is not present.
++ /: The X-Content-Type-Options header is not set.
++ /admin: Admin login page found.
+---------------------------------------------------------------------------
++ 4 host(s) tested

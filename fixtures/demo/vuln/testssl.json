@@ -9,6 +9,16 @@
           "severity": "HIGH",
           "cve": "CVE-2014-0160",
           "finding": "Heartbleed still offered on TLS"
+        },
+        {
+          "id": "TLS1",
+          "severity": "HIGH",
+          "finding": "TLS 1.0 offered"
+        },
+        {
+          "id": "secure_renego",
+          "severity": "OK",
+          "finding": "Secure Renegotiation IS supported"
         }
       ]
     }

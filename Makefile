@@ -1,4 +1,4 @@
-PYTHON ?= python
+PYTHON ?= $(shell command -v python3 >/dev/null 2>&1 && echo python3 || echo python)
 export PYTHONPATH := $(CURDIR)
 export OUT_DIR := $(CURDIR)/out
 export DRY_RUN := 1
@@ -6,7 +6,9 @@ export GRC_LIVE_SCAN := 0
 export CISO_PUSH := 0
 export RISKREADY_PUSH := 0
 
-.PHONY: lab test collectors loader compose safety product
+export IN_DIR ?= $(CURDIR)/in
+
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -36,3 +38,39 @@ safety:
 
 product:
 	$(PYTHON) -m product
+
+dropbox-gate:
+	$(PYTHON) -m dropbox gate
+
+dropbox-internal:
+	$(PYTHON) -m dropbox run --profile internal
+
+dropbox-external:
+	$(PYTHON) -m dropbox run --profile external
+
+dropbox-orchestrate:
+	$(PYTHON) -m dropbox orchestrate
+
+dropbox-lab:
+	$(PYTHON) -m dropbox lab
+	$(MAKE) lab IN_DIR=$(CURDIR)/dropbox/work/in
+
+# Static scanner-free always. Runtime compose only if Docker is up; else ABSENT (not a fake pass).
+dropbox-compose:
+	$(PYTHON) scripts/dropbox_compose_lab.py
+
+# Farm compose skeleton statics. Runtime ABSENT unless an operator starts it locally.
+farm-compose:
+	$(PYTHON) scripts/farm_compose_lab.py
+
+# DEMO: plan → fixture discover → ingest → Layer C. Uses farm/work, not pack in/.
+farm-lab:
+	$(PYTHON) scripts/farm_lab.py
+
+# DEMO stubs only: FARM_TOOL_BIN=farm/tool-bin/lab, assert nmap+curl will_run. No live. No compose.
+farm-toolbin-lab:
+	$(PYTHON) scripts/farm_toolbin_lab.py
+
+# DEMO quiet→loud e2e under farm/work/e2e. Stubs only. External plan-only. Not pack in/.
+farm-toolbin-e2e:
+	$(PYTHON) scripts/farm_toolbin_e2e.py

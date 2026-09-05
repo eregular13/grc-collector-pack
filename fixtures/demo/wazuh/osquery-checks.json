@@ -1,0 +1,16 @@
+{
+  "hostname": "jump-unmanaged",
+  "queries": [
+    {
+      "name": "disk_encryption",
+      "status": "fail",
+      "title": "Disk encryption is disabled",
+      "columns": {"hostname": "jump-unmanaged", "encrypted": "0"}
+    },
+    {
+      "name": "system_info",
+      "status": "pass",
+      "columns": {"hostname": "jump-unmanaged"}
+    }
+  ]
+}

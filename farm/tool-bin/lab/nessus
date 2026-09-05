@@ -1,0 +1,5 @@
+#!/bin/sh
+# DEMO farm lab stub — not a real scanner. No network. Not Nessus.
+echo "DEMO — not a real scanner. farm/tool-bin/lab/nessus"
+printf '<NessusClientData_v2><!-- DEMO fixture-shaped, not a scan --></NessusClientData_v2>\n'
+exit 0

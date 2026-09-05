@@ -471,6 +471,19 @@
     "treatment": "mitigate"
   },
   {
+    "ref_id": "NMAP-filesrv-corp-local-445",
+    "name": "SMB 445 exposed",
+    "description": "filesrv.corp.local has open TCP/445 (microsoft-ds).",
+    "likelihood": "LIKELY",
+    "impact": "MAJOR",
+    "severity": "high",
+    "assets": [
+      "filesrv.corp.local"
+    ],
+    "source": "inventory-nmap",
+    "treatment": "mitigate"
+  },
+  {
     "ref_id": "NMAP-dc-corp-local-445",
     "name": "SMB 445 exposed",
     "description": "dc.corp.local has open TCP/445 (microsoft-ds).",
@@ -492,19 +505,6 @@
     "severity": "critical",
     "assets": [
       "telnet-legacy.corp.local"
-    ],
-    "source": "inventory-nmap",
-    "treatment": "mitigate"
-  },
-  {
-    "ref_id": "NMAP-filesrv-corp-local-445",
-    "name": "SMB 445 exposed",
-    "description": "filesrv.corp.local has open TCP/445 (microsoft-ds).",
-    "likelihood": "LIKELY",
-    "impact": "MAJOR",
-    "severity": "high",
-    "assets": [
-      "filesrv.corp.local"
     ],
     "source": "inventory-nmap",
     "treatment": "mitigate"

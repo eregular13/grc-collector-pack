@@ -1,11 +1,10 @@
-# RiskReady Community Edition ingest
+# RiskReady Community Edition — review-only export
 
-Auth: `POST /api/auth/login` `{email,password}`
-API default: `http://localhost:9380/api`
+**LICENSE-LOCK stay-out.** This pack never wraps or runs RiskReady. `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`: no login, no HTTP client, no POST.
 
-`push_riskready.sh` only when `RISKREADY_PUSH=1`: assets, evidence, incidents. Never POST `/api/risks`.
+Humans review JSON under `out/riskready/`. Never auto-POST `/api/risks`.
 
-## assets.json → POST /api/itsm/assets
+## assets.json — review only
 
 ```json
 {
@@ -21,11 +20,11 @@ API default: `http://localhost:9380/api`
 }
 ```
 
-## incidents.json → POST /api/incidents
+## incidents.json — review only
 
 Explicit incidents plus every finding with severity `high|critical`.
 
-## evidence.json → POST /api/evidence
+## evidence.json — review only
 
 ```json
 {

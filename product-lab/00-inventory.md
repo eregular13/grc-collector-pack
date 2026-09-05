@@ -32,7 +32,7 @@ Docker Desktop **4.89.0** (238018). Engine **29.7.2**, API 1.55, context `deskto
 | `scripts/lab.ps1` | yes — host lab |
 | `Makefile` target `compose` | yes — `docker compose up --build --exit-code-from grc-loader` |
 | `push_ciso.sh` | yes — dry unless `CISO_PUSH=1`; never `/api/risks` |
-| `push_riskready.sh` | yes — dry unless `RISKREADY_PUSH=1`; never `/api/risks` |
+| `push_riskready.sh` | yes — review-only forever, even if `RISKREADY_PUSH=1`; no login/POST |
 | `run_docker_lab.ps1` | **no** |
 | `run_facet_docker.ps1` | **no** |
 | `tests/mock_grc*` / mock sink compose service | **no** |

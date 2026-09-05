@@ -1,0 +1,4 @@
+Starting arp-scan 1.10.0 with 256 hosts (https://github.com/royhills/arp-scan)
+Interface: eth0, type: EN10MB, MAC: 00:0c:29:aa:bb:cc, IPv4: 10.0.0.1
+10.0.0.50	00:11:22:33:44:55	Dell Inc.	filesrv.corp.local
+Ending arp-scan 1.10.0: 256 hosts scanned in 1.337 seconds (191.47 hosts/sec). 1 responded

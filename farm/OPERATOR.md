@@ -1,0 +1,378 @@
+# Private farm operator path
+
+**Written SCOPE required.** Drop-box only under written SCOPE. Not a public Hub image. Layer C parses `in/<sensor>/` only.
+
+See `dropbox/ARCHITECTURE.md` Layer A / B / C.
+
+## Copy-paste runbook (bare Linux → CISO zip)
+
+```bash
+# 0) repo root, no scanner install from this tree
+cd /path/to/grc-collector-pack
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+
+# 1) written SCOPE (copy example, fill client/consent/window/CIDRs)
+# cp dropbox/SCOPE.example.yaml dropbox/SCOPE.yaml
+#    example allow_tools is host-local only; add nmap/nessus only under signed SCOPE
+python3 -m dropbox gate
+python3 -m dropbox status
+
+# 2) optional: tools YOU install (never this Dockerfile)
+# export PATH="$PATH:/opt/farm/bin"
+# export FARM_TOOL_BIN=/opt/farm/bin
+#    copy real allowlisted binaries into farm/tool-bin/ on the drop box
+#    OR rely on host PATH. farm/tool-bin/lab/ is DEMO stubs only (nmap/curl).
+
+# 3) DEMO path (fixtures, not a client) — plan → fixture discover → ingest → Layer C
+make farm-lab
+
+# 4) real engagement: drop artifacts into in/<sensor>/ (or farm/work/in), then:
+python3 -m dropbox orchestrate          # plan-only unless --live + allowlisted PATH
+# IN_DIR=$PWD/in OUT_DIR=$PWD/out python3 collectors/grc_loader.py
+
+# 5) CISO zip from localhost console (after lab outputs exist)
+# bash scripts/start-product.sh
+# open http://127.0.0.1:18765/  → download drop zip (CISO CSVs + poam.csv)
+# owner/due stay blank. Do not POST /api/risks. RiskReady wrap is dead
+# (no login / no assets / no incidents / no evidence POST). Review-only.
+```
+
+`make farm-lab` writes under `farm/work/` (not pack `in/`). Stamp is DEMO.
+
+## tool-bin mount (PATH vs copy)
+
+On the drop box, tools come from **host PATH** or a **bind-mount / copy** into
+`farm/tool-bin/` (`FARM_TOOL_BIN`). This repo does not apt-install scanners.
+
+**DEMO stubs vs real binaries:** `farm/tool-bin/lab/` ships shell stubs
+(`nmap`, `curl`, `nessus`, `nessuscli`, `testssl`, `testssl.sh`, `lynis`).
+Each prints a DEMO banner and fixture-shaped stdout. They are not scanners
+and make no network calls. `make farm-toolbin-lab` points `FARM_TOOL_BIN` at
+that directory and asserts nmap+curl `will_run`. On a consented box, copy
+**your** allowlisted binaries into `farm/tool-bin/` (parent) or rely on host
+PATH. Do not commit ELF/deb scanner packages. `FARM_TOOL_BIN` never resolves LICENSE-LOCK names (nuclei / openvas / wazuh / osquery / BloodHound / PingCastle / RiskReady / hexstrike / smbmap / zmap / enum4linux-ng / …) even if someone drops those binaries there. nmap / nessus invoke only under signed `SCOPE.allow_tools` + stage — never default free-day live. Unset `FARM_TOOL_BIN` for
+`make farm-lab` so that lab stays plan-only fixtures.
+
+```bash
+# DEMO quiet→loud (stubs only, no internet, not pack in/):
+make farm-toolbin-lab          # will_run nmap+curl
+make farm-toolbin-e2e          # discover→deepen stubs → external plan-only → Layer C
+
+# real binaries on a consented box (you install; this repo does not):
+# export FARM_TOOL_BIN=/usr/local/bin
+# # or: cp "$(command -v nmap)" farm/tool-bin/nmap && export FARM_TOOL_BIN="$PWD/farm/tool-bin"
+# python3 -m dropbox orchestrate --live
+```
+
+Unset `FARM_TOOL_BIN` for `make farm-lab` — that lab stays plan-only fixtures.
+
+## Compose skeleton (statics vs runtime)
+
+`farm/docker-compose.yml` is an **operator skeleton**: bind-mounts for
+written `SCOPE.yaml`, `work/in`, `work/out`, `FARM_TOOL_BIN` → `/opt/farm/bin`,
+and orch scratch. The Dockerfile is `python:3.12-slim` + COPY. No `RUN apt`.
+No Hub soup image.
+
+```bash
+make dropbox-compose    # pack + farm + dropbox statics; runtime only if Docker is up
+make farm-compose       # farm skeleton statics; never fakes a runtime pass
+```
+
+**What statics prove:** no apt/pip/wget/FROM embed of nmap/nessus/nuclei/openvas/gvm/zeek
+(and the rest of LICENSE-LOCK). Wrap POST of risks is refused in image/compose files.
+SCOPE/work/tool-bin binds present, `DROPBOX_LIVE=0` / `RISKREADY_PUSH=0`.
+
+**What remains unexercised:** compose **runtime** (workers actually starting) when
+Docker CLI is missing. This VM stamps **ABSENT** after static PASS — not a compose
+pass. An operator with Docker may start profiles locally under written SCOPE.
+Do not treat ABSENT as paying-day evidence.
+
+### Compose runtime proof (operator host with Docker)
+
+This checkout stamps **ABSENT**. Do not rewrite that to PASS on a box without Docker.
+
+On a host where `docker compose version` works, under written SCOPE, with
+`DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0` `DROPBOX_LIVE=0`:
+
+1. **Pack Layer C (the only compose path that can stamp runtime PASS)**
+
+   ```bash
+   docker compose config --services
+   docker compose up --build --exit-code-from grc-loader
+   ```
+
+   **PASS criteria:** loader exit 0; exactly 10 services; no published ports;
+   `out/summary.json` exists; image probe finds no nmap/nuclei/openvas/nessus/gvm/zeek
+   (`command -v` must fail for those names). This is **not** a paying-day PASS.
+   Empty pack `in/` is still DEMO fixtures.
+
+2. **Dropbox profiles (what `make dropbox-compose` runs when Docker is up)**
+
+   ```bash
+   docker compose -f docker-compose.dropbox.yml --profile internal run --rm -T dropbox-internal
+   docker compose -f docker-compose.dropbox.yml --profile external run --rm -T dropbox-external
+   ```
+
+   **PASS criteria:** both exit 0 **and** `dropbox/work/compose-lab.json` has
+   `"status": "pass"` plus `"scanner_free": true`. `"status": "absent"` is a hole,
+   not a pass. Never `--live`. Never pack `in/`.
+
+3. **Farm skeleton (operator-local only; this lab never auto-PASS)**
+
+   ```bash
+   docker compose -f farm/docker-compose.yml --profile orchestrate run --rm farm-orchestrator
+   ```
+
+   `make farm-compose` does **not** start workers even when Docker is present;
+   it stamps **ABSENT**. Starting farm profiles is operator-local under written
+   SCOPE. `DROPBOX_LIVE` stays `0` unless the consented box explicitly overrides.
+
+## License classes (`SLOTS.yaml`)
+
+| Class | Meaning |
+|---|---|
+| `use_dont_ship` | LICENSE-LOCK / do not embed. File-drop or BYO nmap/nessus only. |
+| `commercial_byo` | Vendor CLI you licensed. We do not ship it. |
+| `oss_byo` | OSS you installed. Missing → plan-only. |
+
+Catalog is **95+** slots (`SLOTS.md`). LICENSE-LOCK names (nuclei, openvas, gvm, pingcastle, bloodhound, …) stay **file_drop**. Adapters never subprocess them.
+
+Nmap **gnmap/XML/JSON** is file-drop ingest under `in/nmap/`. Layer C parses
+hosts and exposure findings only — the collector never runs `nmap`. Discover
+may land DEMO stub gnmap from `farm/tool-bin/lab/nmap`. Open 445 / 3389 / 23
+map to existing SMB / RDP / Telnet POA&M rows.
+
+masscan **`-oX` XML / `-oJ` JSON** is the same `in/nmap/` file-drop path.
+Open ports only. Empty exports invent nothing. The collector never runs
+masscan. The catalog slot stays `file_drop` / `use_dont_ship`.
+
+rustscan / naabu **JSON / JSONL** is the same `in/nmap/` file-drop path
+(`{ip, port}` or `{ip, ports:[…]}`). Open ports only. Empty / closed
+invent nothing. The collector never runs rustscan or naabu. Those slots
+stay BYO invoke (`allow_tools` + PATH) on a consented box.
+
+arp-scan **text / JSON** is the same `in/nmap/` file-drop path
+(`Starting arp-scan` or IP + MAC + vendor lines; `{ip, mac, vendor}`).
+Hosts become assets only. Empty / header-only invent nothing. The
+collector never runs arp-scan and never does live ARP. The catalog
+slot stays `file_drop`.
+
+fping **text / JSON** is the same `in/nmap/` file-drop path
+(`host is alive` or `{ip, hostname, alive}`). Alive hosts become
+assets only. Unreachable / empty invent nothing. The collector never
+runs fping and never does live ping. The catalog slot stays `file_drop`.
+
+netdiscover **text** is the same `in/nmap/` file-drop path
+(`Currently scanning` / IP + MAC + Count + Len + vendor). Hosts become
+assets only. Empty / header-only invent nothing. arp-scan detect does
+not claim netdiscover tables. The collector never runs netdiscover and
+never does live ARP. The catalog slot stays `file_drop`.
+
+nbtscan **name/IP tables** are the same `in/nmap/` file-drop path
+(`Doing NBT name scan` / IP + NetBIOS + `<server>`). Hosts become
+assets only. Empty / header-only invent nothing. Detect does not steal
+arp-scan / netdiscover / fping. The collector never runs nbtscan and
+never does live NetBIOS. The catalog slot stays `file_drop`.
+
+smbmap **share tables** are the same `in/nmap/` file-drop path
+(`[+] IP:` / Disk + Permissions). Hosts become assets. READ/WRITE
+shares become exposure findings mapped to existing SMB POA&M. Empty /
+NO ACCESS invent nothing. Detect does not steal nmap / arp-scan /
+nbtscan. The collector never runs smbmap or smbclient, never does live
+SMB, and does not store credentials. The catalog slot stays `file_drop`.
+
+zmap **JSON / CSV / text** and unicornscan **text** are the same
+`in/nmap/` file-drop path (`saddr`/`dport` or `TCP open … from`). Open
+ports only. Empty / closed / RST invent nothing. Detect does not steal
+nmap / smbmap / arp-scan. The collector never runs zmap or unicornscan
+and never does a live internet scan. Both catalog slots stay `file_drop`.
+
+kube-bench / kubescape / gitleaks / checkov are **file_drop** (never
+subprocess). Drop Kubescape or kube-bench JSON into `in/k8s/` — Failed/FAIL
+only. Layer C does not run `kubectl` or talk to a cluster. High rows map to
+CISO/POA&M when obvious (privileged, anonymous-auth, privilege escalation,
+hostNetwork).
+
+Gitleaks / TruffleHog / Semgrep / Checkov JSON or JSONL is file-drop ingest
+under `in/code/`. Layer C parses arrays and `{findings|leaks|results}`
+wrappers. Checkov failed_checks only — passed/INFO silent. Empty exports
+invent nothing. Secrets are redacted. High rows map to existing CISO/POA&M
+(credential rotate, public S3 / public ACL). The collector never runs
+those binaries.
+
+Nuclei **JSON/JSONL** is file-drop ingest under `in/vuln/`. Layer C parses
+JSONL, a single object, an array, or a `{results|matches|findings}` wrapper.
+INFO rows stay silent. Empty results invent nothing. High Log4Shell / RCE
+rows map to existing CISO/POA&M. The collector never runs `nuclei`.
+
+Nikto **text / XML / JSON** is file-drop ingest under `in/vuln/` (slot glob
+`*.txt`; XML/JSON also parse). Interesting/high rows only — missing
+security headers stay silent. Empty exports invent nothing. High admin
+login / directory-index rows map to existing CISO/POA&M. The collector
+never runs nikto and does not probe HTTP.
+
+Nessus **`.nessus` / NessusClientData XML** is file-drop ingest under
+`in/vuln/`. Layer C parses `ReportHost` / `ReportItem` (High/Critical, plus
+key Medium SMB/RDP/TLS). Empty reports invent nothing. Farm DEMO tool-bin
+`.txt` stubs are not Nessus exports. The collector never runs a Nessus
+binary and never calls a Nessus API. nessus / nessuscli *invoke* stays
+BYO (`allow_tools` + PATH) on a consented box — separate from this parse.
+
+Nuclei / Semgrep / Trivy **SARIF** is file_drop: land `in/vuln/*.sarif` or
+`in/code/*.sarif`. Layer C parsers emit findings; high rules become CISO/POA&M
+rows. This repo does not invoke those tools.
+
+testssl JSON and **Maester** / Entra Graph *exports* are file-drop ingest:
+land testssl JSON under `in/vuln/` or `in/easm/`; Maester or `directoryRoles`
+JSON under `in/saas/`. Layer C parses HIGH testssl rows and Failed Maester
+rows only — no live TLS probe, no Graph API call. OK/Passed stay silent.
+sslscan **XML / text** is a separate file-drop (not testssl JSON): land under
+`in/vuln/` or `in/easm/`. Weak/failed only (TLS 1.0, SSLv2/v3, Heartbleed).
+Empty / TLS 1.2-only invent nothing. The collector never runs sslscan.
+testssl / sslscan / Maester *invoke* is separate BYO (`allow_tools`) if
+already on PATH. Orchestrate external stays plan-only.
+
+ScubaGear / Okta assessment JSON (or JSONL) is file-drop ingest under
+`in/saas/`. Layer C parses Failed/high Scuba `Results` and inactive Okta
+MFA_ENROLL policies only — Pass / Skip / empty invent nothing. Wrappers
+(`data` / `ScubaResults` / `okta`) unwrap. High MFA and standing Global
+Administrator rows map to existing CISO/POA&M. The collector never calls
+Microsoft Graph or the Okta API. scuba / okta-logs stay file_drop.
+
+BloodHound CE / SharpHound JSON is file-drop ingest under `in/identity/`.
+Layer C parses `data.nodes` / `data.edges`, graph `nodes`/`edges`, or
+SharpHound `data` arrays (`Properties` / `ObjectIdentifier` / mapped `Aces`).
+Empty `data` and empty `Members` invent nothing. No LDAP / BloodHound API /
+SharpHound run. High rows map to existing CISO/POA&M (DCSync, GenericAll,
+roastable SPN, AS-REP, unconstrained delegation, Backup Operators).
+bloodhound / azurehound stay file_drop.
+
+enum4linux-ng **JSON / text** is file-drop ingest under `in/identity/`.
+Layer C parses listed users/groups/shares. Null session, writable shares,
+and Domain Admins / Backup Operators hints map to existing identity/SMB
+POA&M only when the export already shows them. Empty invents nothing.
+Detect does not steal HardeningKitty or BloodHound. The collector never
+runs enum4linux and does not store credentials. The catalog slot stays
+`file_drop`.
+
+Fleet host/policy JSON is file-drop ingest under `in/wazuh/`. Layer C parses
+`hosts` / `data.hosts` / a single `host`, plus failing `policies` only.
+Offline hosts are coverage gaps. Disk encryption off and MDM enrollment Off
+map to existing CISO/POA&M. Empty hosts/policies invent nothing. No Fleet
+API / fleetctl / osqueryi.
+
+CIS-CAT / XCCDF JSON or XML is file-drop ingest under `in/wazuh/` or
+`in/identity/`. Failed rows only. Empty results invent nothing. High rows
+map to existing CISO/POA&M (SSH PermitRootLogin, host firewall, disk
+encryption). osquery **check** JSON (`queries` with status=fail) lands under
+`in/wazuh/`. The collector never runs `cis-cat` or `osqueryi`.
+
+HardeningKitty **Audit CSV** and **Lynis** reports are file-drop ingest:
+land HK CSV under `in/identity/`, Lynis report/`report.dat` under `in/wazuh/`.
+Layer C parses Failed HK rows and Lynis warnings only — no WinRM/AD API, no
+live Lynis from the collector. High rows map to CISO/POA&M when obvious.
+Passed HK rows (including Guest) stay silent. Lynis *invoke* is separate BYO
+(`allow_tools`) only if the binary is already on PATH.
+
+Prowler / ScoutSuite **cloud** is file-drop ingest under `in/cloud/`: land
+Prowler JSON, Prowler ASFF, or ScoutSuite `services.*.findings` JSON (Custodian
+and Steampipe also parse). Layer C does not call AWS/GCP/Azure APIs. High FAIL
+rows map to CISO/POA&M when the check is obvious. Prowler *invoke* is separate
+BYO (`allow_tools`) only if the binary is already on PATH. ScoutSuite stays
+`file_drop` even if `scout` is on PATH.
+
+## Orchestrator + conductor
+
+Stage graph (quiet→loud): `plan → shard → discover → destroy → deepen (2–5) → destroy → external (plan-only) → ingest → grc_export`
+
+Plan JSON lists `slots` per stage: `allow_tools ∩ wired invoke ∩` discover / deepen / external.
+`--live` discover runs only those discover invoke slots that are on PATH; missing → `skip_reason`.
+Deepen uses deepen invoke slots on discover-live hosts or `deepen_hosts`.
+**External is plan-only** in this pack: slots list with `will_run=false` and
+`file_drop or plan-only — operator lands artifacts in in/easm|…`.
+Ingest inventories those dropped files (`dropped_external` on the ingest
+marker). It does not probe. `make dropbox-external` writes DEMO fixtures
+into `in/easm/`. httpx / Amass / Subfinder JSON or JSONL is file-drop
+ingest: native arrays and `{results|hosts}` wrappers parse. Failed httpx
+rows and empty exports invent nothing. High perimeter / admin-UI / TLS
+rows map to existing CISO/POA&M. ffuf JSON and gobuster text are the
+same file-drop path: interesting `/admin` `/login` `/.git` statuses
+only — 404/robots invent nothing. WhatWeb `--log-json` is the same
+file-drop path: admin/login titles only — empty/Home invent nothing.
+Layer C never runs amass, httpx, subfinder, ffuf, gobuster, or whatweb
+and does not probe DNS/HTTP. Live BYO curl/testssl is
+operator-local under written SCOPE — not orchestrate.
+LICENSE-LOCK / file_drop names never subprocess.
+
+```bash
+python3 -m dropbox orchestrate
+python3 -m dropbox orchestrate --live   # BYO PATH only; still SCOPE-gated
+python3 -m dropbox.mcp_stub serve
+python3 -m dropbox mcp farm_slot_status
+python3 -m dropbox mcp farm_toolbin_status
+python3 -m dropbox mcp stage_discover    # plan-only
+```
+
+The conductor is **`dropbox.mcp_stub`** JSON-RPC on stdin/stdout — **not**
+hosted FastMCP, **not** USB `evergreen_assessment_mcp` (21-tool `check_scope` /
+`license_guard` — that remains pack truth), and **not** paying-day
+truth. Do not invent a TypeScript refuse matrix. It must start from the
+**repo root**. Replace
+`/absolute/path/to/grc-collector-pack` with this checkout. Prefer
+`scripts/mcp_stdio.sh` (finds the root itself) when the client ignores `cwd`.
+
+**Cursor** — project file `.cursor/mcp.json` (or user `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "grc-dropbox": {
+      "command": "python3",
+      "args": ["-m", "dropbox.mcp_stub", "serve", "--stdio"],
+      "cwd": "/absolute/path/to/grc-collector-pack",
+      "env": {
+        "PYTHONPATH": "/absolute/path/to/grc-collector-pack",
+        "DROPBOX_LIVE": "0",
+        "GRC_LIVE_SCAN": "0",
+        "CISO_PUSH": "0",
+        "RISKREADY_PUSH": "0"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`
+(macOS) or `~/.config/Claude/claude_desktop_config.json` (Linux). Many
+builds ignore `cwd`; point `command` at the wrapper:
+
+```json
+{
+  "mcpServers": {
+    "grc-dropbox": {
+      "command": "/absolute/path/to/grc-collector-pack/scripts/mcp_stdio.sh"
+    }
+  }
+}
+```
+
+`tools/list` returns the ten operator tools in **fixed** `OPERATOR_TOOLS`
+order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
+`stage_discover`, `stage_deepen`, `stage_ingest`, `farm_slots`,
+`farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`).
+`farm_slot_status` accepts an optional `{ "category": "discover" }`
+argument. `farm_toolbin_status` lists wired invoke resolve as
+`present` / `missing` / `demo_stub`. `orchestrator_plan` returns the
+per-stage `will_run` map already in plan JSON.
+
+Live deepen stays fail-closed (`DROPBOX_LIVE=0`) unless the operator
+explicitly allowlists tools. Do not point this at public Layer C.
+
+## Do not
+
+- Publish `farm/` images to public Hub
+- Apt-install scanners in `farm/Dockerfile`
+- Copy USB evergreen-assessment
+- Stamp paying-day PASS
+- Submodule hexstrike-ai / add Metasploit
