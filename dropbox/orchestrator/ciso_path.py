@@ -13,6 +13,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from dropbox.orchestrator.estate import (
+    assert_pack_in_unchanged,
+    fingerprint,
+    is_pack_in,
+    pack_in_dir,
+    write_pack_in_requested,
+)
 from dropbox.orchestrator.keepmin import inventory_keepmin, landed_sensors
 from dropbox.scope import ROOT, load_scope
 
@@ -79,16 +86,27 @@ def run_ciso_path(
     dest_out: Path,
     *,
     scope_path: Path | None = None,
+    write_pack_in: bool | None = None,
 ) -> dict[str, Any]:
-    """Parse only sensors that already have KEEP-minimum files. No demo fallback."""
+    """Parse only sensors that already have KEEP-minimum files. No demo fallback.
+
+    Default file-drop is read-only against pack in/. Landing copies go under
+    dest_out/in unless the operator opts in with --write-pack-in.
+    """
     scope = load_scope(scope_path)
     dest_in = Path(dest_in)
     dest_out = Path(dest_out)
     dest_out.mkdir(parents=True, exist_ok=True)
+    allow_write = write_pack_in_requested(explicit=write_pack_in)
+    pack_before = fingerprint(pack_in_dir())
     rows = inventory_keepmin(dest_in)
-    if any(_has_input_files(dest_in / sensor) for sensor in SENSOR_COLLECTORS):
+    has_sensors = any(_has_input_files(dest_in / sensor) for sensor in SENSOR_COLLECTORS)
+    if has_sensors:
         stage_in = dest_in
         landed = rows
+    elif is_pack_in(dest_in) and allow_write:
+        stage_in = dest_in
+        landed = _land_keepmin(rows, stage_in)
     else:
         stage_in = dest_out / "in"
         landed = _land_keepmin(rows, stage_in)
@@ -170,6 +188,10 @@ def run_ciso_path(
     }
     quote_path = dest_out / "quote-shaped.json"
     quote_path.write_text(json.dumps(quote, indent=2) + "\n", encoding="utf-8")
+    pack_after = fingerprint(pack_in_dir())
+    pack_in_written = pack_before != pack_after
+    if pack_in_written and not allow_write:
+        assert_pack_in_unchanged(pack_before, pack_after, context="ciso")
     return {
         "ok": True,
         "live": False,
@@ -193,6 +215,9 @@ def run_ciso_path(
         "posted": posted,
         "http": False,
         "ciso_push": "1" if caller_push else "0",
+        "write_pack_in": allow_write,
+        "pack_in_written": pack_in_written,
+        "file_drop_read_only": not allow_write,
         "sor": "ciso-assistant",
         "ciso_dir": str(ciso_dir),
         "ciso_files": ciso_files,
@@ -203,7 +228,8 @@ def run_ciso_path(
         "quote_path": str(quote_path),
         "note": (
             "Operator SoR is out/ciso-assistant/*.csv. Empty sensors do not "
-            "load fixtures/demo. This path never HTTP. RISKREADY_PUSH ignored. "
-            "posted false unless CISO_PUSH=1 and DRY_RUN!=1."
+            "load fixtures/demo. Default file-drop reads pack in/ only "
+            "(--write-pack-in to land). This path never HTTP. RISKREADY_PUSH "
+            "ignored. posted false unless CISO_PUSH=1 and DRY_RUN!=1."
         ),
     }

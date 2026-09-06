@@ -56,6 +56,7 @@ def test_vanity_refused_unless_landed() -> None:
     assert refuse_vanity("nuclei", file_on_disk=False)
     assert refuse_vanity("trivy", file_on_disk=False)
     assert refuse_vanity("nessus", file_on_disk=False)
+    assert refuse_vanity("hexstrike", file_on_disk=False)
     assert refuse_vanity("hardeningkitty", file_on_disk=False) is None
     for name in KEEP_MINIMUM:
         assert name not in VANITY_SCHEDULE
@@ -97,6 +98,14 @@ def test_schedule_refuses_vanity_and_live_on_demo(tmp_path: Path) -> None:
     assert "nessus" in refused
     planned = {row["slot"] for row in data["planned"]}
     assert "nuclei" not in planned
+    hex_data = schedule(
+        SCOPE,
+        live=False,
+        dest_in=tmp_path / "in",
+        dest_out=tmp_path / "out",
+        extra=["hexstrike"],
+    )
+    assert any(row["slot"] == "hexstrike" for row in hex_data["refused"])
     with pytest.raises(GateError, match="DEMO"):
         schedule(SCOPE, live=True, dest_in=tmp_path / "in", dest_out=tmp_path / "out")
 
@@ -125,6 +134,8 @@ def test_ciso_path_keep_samples_not_client_keep(tmp_path: Path) -> None:
     assert result["posted"] is False
     assert result["sor"] == "ciso-assistant"
     assert result["ciso_files"]
+    assert result["pack_in_written"] is False
+    assert result["file_drop_read_only"] is True
     assert all(name.endswith(".csv") for name in result["ciso_files"])
     assert (dest_out / "quote-shaped.json").is_file()
     assert (dest_out / "ciso-assistant" / "assets.csv").is_file()
@@ -148,7 +159,7 @@ def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
             "--out-dir",
             str(out),
             "--extra",
-            "nuclei,trivy,nessus",
+            "nuclei,trivy,nessus,hexstrike",
         ],
         cwd=str(ROOT),
         capture_output=True,
@@ -161,6 +172,7 @@ def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
     assert "nuclei" in refused
     assert "trivy" in refused
     assert "nessus" in refused
+    assert "hexstrike" in refused
     planned = {row["slot"] for row in data["planned"]}
     assert "nuclei" not in planned
     assert data["live"] is False
@@ -269,3 +281,70 @@ def test_schedule_cli_scope_and_keep_samples(tmp_path: Path) -> None:
     assert data["client_keep_real"] == "0/4"
     assert data["sor"]["sample"] is True
     assert data["live"] is False
+    assert data["pack_in_written"] is False
+    assert data["file_drop_read_only"] is True
+
+
+def test_schedule_and_ciso_never_write_pack_in(tmp_path: Path) -> None:
+    """Estate protect: schedule/ciso read pack in/; never mutate it."""
+    from dropbox.orchestrator.ciso_path import run_ciso_path
+    from dropbox.orchestrator.estate import fingerprint, pack_in_dir
+
+    pack = pack_in_dir()
+    before = fingerprint(pack)
+    data = schedule(SCOPE, live=False, dest_in=pack, dest_out=tmp_path / "sched-out")
+    after = fingerprint(pack)
+    assert before == after
+    assert data["pack_in_written"] is False
+    assert data["file_drop_read_only"] is True
+    assert data["write_pack_in"] is False
+    assert data["live"] is False
+    ciso = run_ciso_path(pack, tmp_path / "ciso-out", scope_path=SCOPE)
+    assert fingerprint(pack) == before
+    assert ciso["pack_in_written"] is False
+    assert ciso["file_drop_read_only"] is True
+    armed = schedule(
+        SCOPE,
+        live=False,
+        dest_in=tmp_path / "in",
+        dest_out=tmp_path / "flag-out",
+        write_pack_in=True,
+    )
+    assert armed["write_pack_in"] is True
+    assert armed["file_drop_read_only"] is False
+    assert fingerprint(pack) == before
+
+
+def test_schedule_cli_never_writes_pack_in(tmp_path: Path) -> None:
+    from dropbox.orchestrator.estate import fingerprint, pack_in_dir
+
+    pack = pack_in_dir()
+    before = fingerprint(pack)
+    proc = subprocess.run(
+        [
+            "python3",
+            "-m",
+            "dropbox",
+            "schedule",
+            "--scope",
+            str(SCOPE),
+            "--in-dir",
+            str(pack),
+            "--out-dir",
+            str(tmp_path / "cli-out"),
+            "--extra",
+            "nuclei,hexstrike",
+        ],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout[proc.stdout.find("{") :])
+    assert data["pack_in_written"] is False
+    assert data["file_drop_read_only"] is True
+    assert fingerprint(pack) == before
+    refused = {row["slot"] for row in data["refused"]}
+    assert "nuclei" in refused
+    assert "hexstrike" in refused

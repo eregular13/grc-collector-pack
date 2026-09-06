@@ -173,6 +173,7 @@ def cmd_schedule(args: argparse.Namespace) -> int:
         dest_in=dest_in,
         dest_out=dest_out,
         extra=extra,
+        write_pack_in=bool(getattr(args, "write_pack_in", False)),
     )
     print(json.dumps(summary, indent=2, default=str))
     return 0
@@ -189,7 +190,12 @@ def cmd_ciso(args: argparse.Namespace) -> int:
     dest_out = Path(args.out_dir) if getattr(args, "out_dir", None) else Path(
         os.environ.get("OUT_DIR") or (ROOT / "out")
     )
-    result = run_ciso_path(dest_in, dest_out, scope_path=Path(args.scope) if args.scope else None)
+    result = run_ciso_path(
+        dest_in,
+        dest_out,
+        scope_path=Path(args.scope) if args.scope else None,
+        write_pack_in=bool(getattr(args, "write_pack_in", False)),
+    )
     print(json.dumps(result, indent=2, default=str))
     return 0
 
@@ -254,11 +260,21 @@ def build_parser() -> argparse.ArgumentParser:
     sch.add_argument("--in-dir", dest="in_dir", help="Layer C in/ (default IN_DIR or pack in/)")
     sch.add_argument("--out-dir", dest="out_dir", help="out/ (default OUT_DIR or dropbox/work/schedule-out)")
     sch.add_argument("--extra", default="", help="comma names; vanity refused unless file already landed")
+    sch.add_argument(
+        "--write-pack-in",
+        action="store_true",
+        help="opt-in: allow landing copies into pack in/ (default file-drop reads only)",
+    )
     sch.set_defaults(func=cmd_schedule)
     ciso = sub.add_parser("ciso", help="landed KEEP-minimum → CISO CSVs (no demo fallback)")
     ciso.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     ciso.add_argument("--in-dir", dest="in_dir", help="Layer C in/")
     ciso.add_argument("--out-dir", dest="out_dir", help="out/")
+    ciso.add_argument(
+        "--write-pack-in",
+        action="store_true",
+        help="opt-in: allow landing copies into pack in/ (default file-drop reads only)",
+    )
     ciso.set_defaults(func=cmd_ciso)
     return p
 

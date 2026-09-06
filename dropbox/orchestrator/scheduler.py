@@ -8,6 +8,12 @@ from typing import Any
 
 from dropbox.mcp_stub import farm_toolbin_status_tool
 from dropbox.orchestrator.ciso_path import run_ciso_path
+from dropbox.orchestrator.estate import (
+    assert_pack_in_unchanged,
+    fingerprint,
+    pack_in_dir,
+    write_pack_in_requested,
+)
 from dropbox.orchestrator.keepmin import (
     KEEP_MINIMUM,
     VANITY_SCHEDULE,
@@ -40,15 +46,19 @@ def schedule(
     dest_in: Path | None = None,
     dest_out: Path | None = None,
     extra: list[str] | None = None,
+    write_pack_in: bool | None = None,
 ) -> dict[str, Any]:
     """discover (quiet from drops) → deepen (fail-closed) → ingest → SoR.
 
     --live is HITL. DEMO SCOPE and live_ready=0 refuse PATH invoke.
-    File-drop is the default. Vanity names stay off the schedule.
+    File-drop is the default (reads pack in/, never writes unless
+    --write-pack-in). Vanity names stay off the schedule.
     """
     scope = load_scope(scope_path)
     dest_in = _dest_in(dest_in)
     dest_out = _dest_out(dest_out)
+    allow_write = write_pack_in_requested(explicit=write_pack_in)
+    pack_before = fingerprint(pack_in_dir())
     demo_scope = "DEMO" in scope.client_name.upper()
     toolbin = farm_toolbin_status_tool(scope_path=scope_path)
     live_ready_count = int(toolbin.get("live_ready_count") or 0)
@@ -134,7 +144,13 @@ def schedule(
         "parse_only": True,
         "sensors": sorted({str(row.get("sensor") or "") for row in rows if row.get("sensor")}),
     }
-    sor = run_ciso_path(dest_in, dest_out, scope_path=scope_path)
+    sor = run_ciso_path(
+        dest_in, dest_out, scope_path=scope_path, write_pack_in=allow_write
+    )
+    pack_after = fingerprint(pack_in_dir())
+    pack_in_written = pack_before != pack_after
+    if pack_in_written and not allow_write:
+        assert_pack_in_unchanged(pack_before, pack_after, context="schedule")
     return {
         "ok": True,
         "tool": "schedule",
@@ -149,6 +165,9 @@ def schedule(
         "client_keep_real": "4/4" if client_keep_ready(scan_keep_dir(dest_in)) else "0/4",
         "keep_minimum": list(KEEP_MINIMUM),
         "file_drop_default": True,
+        "file_drop_read_only": not allow_write,
+        "write_pack_in": allow_write,
+        "pack_in_written": pack_in_written,
         "live_ready_count": live_ready_count,
         "discover": discover,
         "deepen": deepen,
@@ -163,7 +182,8 @@ def schedule(
         "pack_truth": "evergreen_assessment_mcp",
         "farm_mcp_pack_truth": False,
         "note": (
-            "One-shot KEEP-minimum. Not cron. Vanity (nuclei/trivy/nessus) not "
-            "scheduled unless the file already landed. PATH/live needs HITL."
+            "One-shot KEEP-minimum. Not cron. Vanity (nuclei/trivy/nessus/"
+            "hexstrike) not scheduled unless the file already landed. "
+            "File-drop reads pack in/ only unless --write-pack-in. PATH/live needs HITL."
         ),
     }

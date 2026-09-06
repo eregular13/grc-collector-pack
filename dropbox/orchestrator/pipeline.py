@@ -8,6 +8,13 @@ import shutil
 from pathlib import Path
 
 from dropbox.orchestrator import byo
+from dropbox.orchestrator.estate import (
+    assert_pack_in_unchanged,
+    fingerprint,
+    is_pack_in,
+    pack_in_dir,
+    write_pack_in_requested,
+)
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.shard import batch_hosts, reject_wide_deepen_target, shard_cidrs
 from dropbox.scope import NEVER_EMBED, ORCH_BYO, ROOT, GateError, Scope, is_open_internet_cidr, load_scope
@@ -450,24 +457,41 @@ def external_stage(
     return plan
 
 
-def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
-    """Copy/normalize orchestrator artifacts into pack in/<sensor>/."""
+def ingest_stage(
+    scope: Scope,
+    dest_in: Path | None = None,
+    *,
+    write_pack_in: bool | None = None,
+) -> dict:
+    """Copy/normalize orchestrator artifacts into dest in/<sensor>/.
+
+    Default file-drop is read-only against pack in/. Copies into the
+    DESKTOP estate require --write-pack-in or PACK_IN_WRITE=1.
+    """
     dest = dest_in or in_dir()
+    allow_write = write_pack_in_requested(explicit=write_pack_in)
+    pack_before = fingerprint(pack_in_dir())
     copied: list[str] = []
-    for stage_name, sensor, suffixes in _SENSOR_COPY:
-        src_dir = _orch_dir() / stage_name
-        sensor_dir = dest / sensor
-        sensor_dir.mkdir(parents=True, exist_ok=True)
-        if not src_dir.is_dir():
-            continue
-        for path in src_dir.iterdir():
-            if path.name in {"plan.json", "summary.json"}:
+    read_only = is_pack_in(dest) and not allow_write
+    if not read_only:
+        for stage_name, sensor, suffixes in _SENSOR_COPY:
+            src_dir = _orch_dir() / stage_name
+            sensor_dir = dest / sensor
+            sensor_dir.mkdir(parents=True, exist_ok=True)
+            if not src_dir.is_dir():
                 continue
-            if path.suffix.lower() in suffixes and path.is_file():
-                target = sensor_dir / f"dropbox-{stage_name}-{path.name}"
-                shutil.copy2(path, target)
-                copied.append(str(target))
+            for path in src_dir.iterdir():
+                if path.name in {"plan.json", "summary.json"}:
+                    continue
+                if path.suffix.lower() in suffixes and path.is_file():
+                    target = sensor_dir / f"dropbox-{stage_name}-{path.name}"
+                    shutil.copy2(path, target)
+                    copied.append(str(target))
     dropped = dropped_file_inventory(dest, category="external")
+    pack_after = fingerprint(pack_in_dir())
+    pack_in_written = pack_before != pack_after
+    if pack_in_written and not allow_write:
+        assert_pack_in_unchanged(pack_before, pack_after, context="ingest")
     marker = {
         "client": scope.client_name,
         "copied": copied,
@@ -475,9 +499,13 @@ def ingest_stage(scope: Scope, dest_in: Path | None = None) -> dict:
         "live": False,
         "probed": False,
         "dropped_external": dropped,
+        "write_pack_in": allow_write,
+        "pack_in_written": pack_in_written,
+        "file_drop_read_only": not allow_write,
         "note": (
             "Plan-only labs have no nmap/nessus artifacts. "
             "External is file-drop: inventory of in/easm|… only — no curl/testssl. "
+            "Pack in/ is read-only unless --write-pack-in. "
             "Loader still uses fixtures + demo overlays when dest is empty. "
             "Deliverable after ingest: CISO CSVs + out/poam/poam.csv."
         ),

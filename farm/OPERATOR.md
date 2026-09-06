@@ -35,6 +35,8 @@ python3 -m dropbox ciso              # landed → out/ciso-assistant/*.csv (oper
 python -m keep lab                   # keep/work; never writes pack in/
 ```
 
+schedule / ingest / ciso default is **file-drop read-only** against pack `in/`.
+They never land copies there unless `--write-pack-in` or `PACK_IN_WRITE=1`.
 keep-lab this-run guard: pre-existing pack `in/` estate is not a fail. Sample
 keep-lab only fails if **this run** mutates pack `in/`. Desktop has no `make`
 / `gh` — use the python modules above. `posted:false` unless `CISO_PUSH=1`.

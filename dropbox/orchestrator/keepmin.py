@@ -33,6 +33,10 @@ VANITY_SCHEDULE = frozenset(
         "amass",
         "subfinder",
         "checkov",
+        "hexstrike",
+        "hexstrike-ai",
+        "metasploit",
+        "msfconsole",
     }
 )
 

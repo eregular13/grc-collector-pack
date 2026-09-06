@@ -74,12 +74,15 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "push_ciso" in op
     assert "python -m keep lab" in op
     assert "no make" in op.lower() or "no `make`" in op
+    assert "--write-pack-in" in op
+    assert "file-drop read-only" in op.lower() or "reads pack" in op.lower()
     drop_op = (ROOT / "dropbox" / "OPERATOR.md").read_text(encoding="utf-8")
     assert "Day-of" in drop_op
     assert "python3 -m dropbox ciso" in drop_op
     assert "clica" in drop_op
     assert "push_ciso" in drop_op
     assert "never writes pack" in drop_op.lower() or "never writes pack in/" in drop_op
+    assert "--write-pack-in" in drop_op
     integrity = (FARM / "INTEGRITY.md").read_text(encoding="utf-8")
     assert "## Brakes defaults" in integrity
     assert "`max_workers`" in integrity

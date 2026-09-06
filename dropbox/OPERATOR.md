@@ -33,9 +33,11 @@ python3 -m dropbox ciso              # landed → out/ciso-assistant/*.csv (oper
 python -m keep lab                   # keep/work; never writes pack in/
 ```
 
-keep-lab this-run guard: pre-existing pack `in/` estate is not a fail.
-Desktop has no `make` / `gh`. Vanity slots (nuclei/trivy/nessus) stay off the
-schedule unless the file already landed. DEMO `--live` is refused.
+schedule / ingest / ciso default is **file-drop read-only** against pack `in/`.
+Never writes unless `--write-pack-in` or `PACK_IN_WRITE=1`. keep-lab this-run
+guard: pre-existing pack `in/` estate is not a fail. Desktop has no `make` /
+`gh`. Vanity slots (nuclei/trivy/nessus/hexstrike) stay off the schedule unless
+the file already landed. DEMO `--live` is refused.
 
 ## Three layers (see `ARCHITECTURE.md`)
 
