@@ -142,6 +142,7 @@ def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
     monkeypatch.setenv("DROPBOX_WORK_IN", str(tmp_path / "work-in"))
     cmds = (
         ["gate"],
+        ["attest"],
         ["status"],
         ["run", "--profile", "internal"],
         ["run", "--live", "--profile", "internal"],

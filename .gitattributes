@@ -1,0 +1,5 @@
+# Consent bytes are hashed into SCOPE.yaml. Keep LF so Windows autocrlf
+# cannot rewrite dropbox/consent/* and drift attestation_sha256.
+dropbox/consent/** text eol=lf
+dropbox/SCOPE.yaml text eol=lf
+dropbox/SCOPE.example.yaml text eol=lf

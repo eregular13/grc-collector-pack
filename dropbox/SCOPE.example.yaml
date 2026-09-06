@@ -3,6 +3,7 @@ client:
   name: "CLIENT LEGAL NAME"
 consent:
   attestation_path: dropbox/consent/SIGNED-CONSENT.md
+  # After the signed file exists: python -m dropbox attest --write
   attestation_sha256: "sha256-of-the-signed-attestation-file"
 engagement:
   start: "YYYY-MM-DD"

@@ -53,11 +53,16 @@ Operator MCP stub (`mcp_stub.py`, `HEXSTRIKE.md`): Hexstrike-style stage/status 
 
 1. Get **written** client consent (PDF or signed memo).
 2. Store it next to the box, e.g. `dropbox/consent/SIGNED-CONSENT.md`.
-3. `sha256sum` that file.
-4. Copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`.
-5. Fill:
+3. Copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml` and fill path + window + named targets.
+4. Stamp the hash (LF-canonical SHA-256 of the attestation file — not a Windows CRLF `sha256sum`):
+
+```bash
+python -m dropbox attest --write
+```
+
+5. Fill the rest of SCOPE:
    - `client.name`
-   - `consent.attestation_path` + `consent.attestation_sha256`
+   - `consent.attestation_path` (hash comes from `attest --write`)
    - `engagement.start` / `engagement.end` (today must fall inside)
    - **named** `internal.cidrs` and/or `internal.hosts`
    - **named** `external.hosts` / `domains` / `ips`
@@ -65,9 +70,10 @@ Operator MCP stub (`mcp_stub.py`, `HEXSTRIKE.md`): Hexstrike-style stage/status 
    - Orchestrator brakes (see below): `stages.deepen` (default **false**), `max_workers`, `deepen_batch` (2–5), `host_timeout_sec`, `deepen_hosts`, `max_live_shards`
 
 No `SCOPE.yaml` → runners do not start. Missing or hash-mismatched attestation → exit 2.
+There is no skip-hash. After any consent edit, run `python -m dropbox attest --write` then gate.
 
 ```bash
-python3 -m dropbox gate
+python -m dropbox gate
 ```
 
 ## Drop the VM

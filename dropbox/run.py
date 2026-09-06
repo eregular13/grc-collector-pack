@@ -9,7 +9,15 @@ import shutil
 import sys
 from pathlib import Path
 
-from dropbox.scope import ROOT, GateError, load_scope
+from dropbox.scope import (
+    ROOT,
+    GateError,
+    attestation_digest,
+    consent_file_from_scope,
+    default_scope_path,
+    load_scope,
+    write_attestation_hash,
+)
 from dropbox import runners
 
 SENSORS = ("cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas")
@@ -32,6 +40,26 @@ def _print_gate(scope) -> None:
 def cmd_gate(args: argparse.Namespace) -> int:
     scope = load_scope(Path(args.scope) if args.scope else None)
     _print_gate(scope)
+    return 0
+
+
+def cmd_attest(args: argparse.Namespace) -> int:
+    """Print LF-canonical sha256 of the consent file. --write stamps SCOPE.yaml.
+
+    Does not skip the hash. After consent edits, regenerate then `python -m dropbox gate`.
+    """
+    scope_path = Path(args.scope) if args.scope else default_scope_path()
+    att_path, declared = consent_file_from_scope(scope_path)
+    digest = attestation_digest(att_path.read_bytes())
+    print(f"attestation {att_path}")
+    print(f"sha256 {digest}")
+    if declared and declared != digest:
+        print(f"SCOPE hash stale expected {declared} file {digest}")
+    if args.write:
+        write_attestation_hash(scope_path, digest)
+        print(f"wrote consent.attestation_sha256 → {scope_path}")
+    elif declared and declared != digest:
+        print("re-run with --write to stamp the file hash into SCOPE.yaml")
     return 0
 
 
@@ -233,6 +261,17 @@ def build_parser() -> argparse.ArgumentParser:
     g = sub.add_parser("gate", help="validate SCOPE and consent; print and exit")
     g.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     g.set_defaults(func=cmd_gate)
+    at = sub.add_parser(
+        "attest",
+        help="print LF-canonical sha256 of the consent file; --write stamps SCOPE.yaml",
+    )
+    at.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
+    at.add_argument(
+        "--write",
+        action="store_true",
+        help="stamp consent.attestation_sha256 from the attestation file (never skip-hash)",
+    )
+    at.set_defaults(func=cmd_attest)
     r = sub.add_parser("run", help="run a profile after the gate")
     r.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     r.add_argument("--profile", choices=("internal", "external", "all"), required=True)
