@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -66,6 +67,30 @@ def _stamp_sample_labels(out: Path) -> None:
         path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
 
+_PACK_SKIP = frozenset({".gitkeep", ".DS_Store"})
+
+
+def _pack_tree_fingerprint(folder: Path) -> dict[str, str]:
+    """Relative path → sha256 for non-skip files. Used to detect THIS-run writes."""
+    out: dict[str, str] = {}
+    if not folder.is_dir():
+        return out
+    for path in sorted(folder.rglob("*")):
+        if not path.is_file() or path.name in _PACK_SKIP:
+            continue
+        rel = str(path.relative_to(folder)).replace("\\", "/")
+        out[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return out
+
+
+def _watched_pack_dirs(root: Path, pack_in: Path) -> list[Path]:
+    watched = [Path(pack_in)]
+    repo_in = root / "in"
+    if repo_in.resolve() != Path(pack_in).resolve():
+        watched.append(repo_in)
+    return watched
+
+
 def _choose_sources(root: Path, pack_in: Path) -> tuple[list[dict[str, Any]], bool, str]:
     pack_rows = scan_keep_dir(pack_in)
     if client_keep_ready(pack_rows):
@@ -98,6 +123,7 @@ def keep_lab(
 def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     work_in = work / "in"
     work_out = work / "out"
+    before = {str(path): _pack_tree_fingerprint(path) for path in _watched_pack_dirs(root, pack_in)}
     for folder in (work_in, work_out):
         if folder.exists():
             shutil.rmtree(folder)
@@ -166,12 +192,9 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
     summary_path = work_out / "summary.json"
     counts = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.is_file() else {}
-    wrote_pack = False
-    if (root / "in").is_dir() and origin == "keep-samples":
-        for p in (root / "in").rglob("*"):
-            if p.is_file() and p.name not in {".gitkeep", ".DS_Store"}:
-                wrote_pack = True
-                break
+    after = {str(path): _pack_tree_fingerprint(path) for path in _watched_pack_dirs(root, pack_in)}
+    wrote_pack = before != after
+    preexisting = sum(len(fp) for fp in before.values())
 
     stamp = {
         "status": "pass",
@@ -182,6 +205,7 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         "origin": origin,
         "pack_in_used": origin == "pack-in",
         "pack_in_written": wrote_pack,
+        "pack_in_preexisting": preexisting,
         "in_dir": str(work_in),
         "out_dir": str(work_out),
         "handoff": str(handoff_path),
@@ -224,7 +248,7 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         stamp["reason"] = "sample keep-lab must stamp summary.demo true"
     elif wrote_pack and origin == "keep-samples":
         stamp["status"] = "fail"
-        stamp["reason"] = "keep-lab wrote pack in/"
+        stamp["reason"] = "keep-lab wrote pack in/ this run"
     (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
     return stamp
 

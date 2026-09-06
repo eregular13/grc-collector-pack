@@ -20,8 +20,8 @@ never resolves locked scanners.
 4. **DEMO quiet→loud** (`farm/work/e2e`, not pack `in/`):
    `python3 -m dropbox mcp farm_toolbin_status` then `make farm-toolbin-e2e`.
    Stubs may `will_run`; `live_ready_count` stays 0 on DEMO SCOPE.
-5. **KEEP → Eval** (optional): `make keep-lab` → `keep/work/out/eval/handoff.json`
-   (max-5). **SAMPLE ≠ client KEEP** until pack `in/` has the four exports.
+5. **KEEP → Eval** (optional): `python -m keep lab` → `keep/work/out/eval/handoff.json`
+   (max-5). **SAMPLE ≠ client KEEP**. Never writes pack `in/`.
 6. **CISO zip** — `bash scripts/start-product.sh` → http://127.0.0.1:18765/
    Owner/due blank. Do not POST `/api/risks`. RiskReady is review-only.
 7. **Real `--live`** — consented box, tools you installed, `live_ready_count` > 0:

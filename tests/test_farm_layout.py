@@ -28,6 +28,7 @@ def test_farm_quickstart_and_root_readme() -> None:
     assert "make farm-toolbin-e2e" in qs
     assert "--live" in qs
     assert "CISO" in qs or "ciso" in qs
+    assert "python -m keep lab" in qs or "python3 -m keep lab" in qs
     assert "DROPBOX_LIVE=0" in qs
     assert "GRC_LIVE_SCAN=0" in qs
     assert "CISO_PUSH=0" in qs

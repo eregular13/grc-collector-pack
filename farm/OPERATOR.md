@@ -123,6 +123,11 @@ On a host where `docker compose version` works, under written SCOPE, with
    (`command -v` must fail for those names). This is **not** a paying-day PASS.
    Empty pack `in/` is still DEMO fixtures.
 
+   **Estate already in pack `in/`:** `docker compose config --services` should
+   still list 10. Optional `up` parses **that estate** (no fixtures-park).
+   Park/move estate `in/` aside only if you want fixture counts. Or skip
+   `up` and run `python -m keep lab` — keep-lab never writes pack `in/`.
+
 2. **Dropbox profiles (what `make dropbox-compose` runs when Docker is up)**
 
    ```bash

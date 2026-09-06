@@ -13,12 +13,14 @@ Operator has (or will have) KEEP-chain exports:
 - Prowler JSON **or** ScoutSuite `services.*.findings` JSON
 
 This checkout does **not** ship those four client files. Redacted samples
-in `fixtures/keep-samples/` make `make keep-lab` pass. **SAMPLE ≠ client
-KEEP.** See `keep/OPERATOR.md`.
+in `fixtures/keep-samples/` make `python -m keep lab` pass. **SAMPLE ≠ client
+KEEP.** See `keep/OPERATOR.md`. Desktop has no `make` / `gh` — use
+`python -m keep lab` (or `python3 -m keep lab`). keep-lab never writes
+pack `in/`; pre-existing estate there is ignored on the sample path.
 
 ## Artifact
 
-`keep/work/out/eval/handoff.json` after `make keep-lab` / `python3 -m keep lab`.
+`keep/work/out/eval/handoff.json` after `python -m keep lab`.
 
 | Field | Meaning |
 |---|---|

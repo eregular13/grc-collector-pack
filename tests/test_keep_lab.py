@@ -82,8 +82,41 @@ def test_keep_lab_uses_samples_when_pack_in_empty(tmp_path: Path) -> None:
     assert handoff["findings"]
     assert handoff["ciso"]["shape"] == "ciso-assistant"
     assert "findings.csv" in handoff["ciso"]["files"]
+    assert stamp["pack_in_written"] is False
     pack_in_files = [p for p in (ROOT / "in").rglob("*") if p.is_file() and p.name != ".gitkeep"]
-    assert pack_in_files == []
+    assert pack_in_files == [] or stamp["pack_in_preexisting"] == len(pack_in_files)
+
+
+def test_keep_lab_samples_pass_with_preexisting_pack_in_estate(tmp_path: Path) -> None:
+    """Desktop: estate already in pack in/ must not fail sample keep-lab isolation."""
+    pack_in = tmp_path / "estate-in"
+    (pack_in / "nmap").mkdir(parents=True)
+    (pack_in / "cloud").mkdir()
+    estate_xml = pack_in / "nmap" / "client-scan.xml"
+    estate_xml.write_text(
+        '<?xml version="1.0"?><nmaprun><host><address addr="10.0.0.9"/></host></nmaprun>\n',
+        encoding="utf-8",
+    )
+    estate_json = pack_in / "cloud" / "not-keep.json"
+    estate_json.write_text('{"estate": true, "note": "not a KEEP family"}\n', encoding="utf-8")
+    before_xml = estate_xml.read_bytes()
+    before_json = estate_json.read_bytes()
+    stamp = keep_lab(ROOT, pack_in=pack_in, work=tmp_path / "work")
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["origin"] == "keep-samples"
+    assert stamp["sample"] is True
+    assert stamp["client_keep"] is False
+    assert stamp["pack_in_written"] is False
+    assert stamp["pack_in_preexisting"] >= 2
+    assert stamp["posted"] is False
+    assert stamp["http"] is False
+    assert set(KEEP_FAMILIES) <= set(stamp["families"])
+    assert stamp["counts"]["handoff_findings"] == 5 or stamp["counts"]["handoff_findings"] >= 1
+    assert estate_xml.read_bytes() == before_xml
+    assert estate_json.read_bytes() == before_json
+    work_in = tmp_path / "work" / "in"
+    assert (work_in / "identity" / "hardeningkitty.csv").is_file()
+    assert not (pack_in / "identity" / "hardeningkitty.csv").exists()
 
 
 def test_keep_lab_client_keep_when_four_non_sample_files(tmp_path: Path) -> None:
@@ -204,6 +237,8 @@ def test_handoff_docs_and_no_eval_http() -> None:
     assert "SAMPLE ≠ client KEEP" in op or "SAMPLE ≠ client" in op
     assert "npm start" in op or "Origin Eval" in op
     assert "handoff.json" in op
+    assert "python -m keep lab" in op or "python3 -m keep lab" in op
+    assert "keep-lab never" in op.lower() or "never touching pack" in op.lower() or "never writes pack" in op.lower()
     doc = (ROOT / "docs" / "KEEP_EVAL_HANDOFF.md").read_text(encoding="utf-8")
     assert "max-5" in doc or "max 5" in doc or "max_findings" in doc
     assert "No live Eval HTTP" in doc or "no live Eval HTTP" in doc.lower()

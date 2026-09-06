@@ -11,7 +11,7 @@ def main(argv: list[str] | None = None) -> int:
         from keep.lab import main as lab_main
 
         return lab_main()
-    print("usage: python3 -m keep lab", file=sys.stderr)
+    print("usage: python -m keep lab", file=sys.stderr)
     return 2
 
 

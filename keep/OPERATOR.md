@@ -23,18 +23,23 @@ Adapters **detect + copy**. They never subprocess those tools.
 
 Four real client files are **absent** from pack `in/` on this checkout.
 
-`fixtures/keep-samples/` ships redacted fixtures so `make keep-lab` stays
+`fixtures/keep-samples/` ships redacted fixtures so keep-lab stays
 green. Hosts use `.invalid`. JSON files set `"sample": true`. See
 `fixtures/keep-samples/README.md`.
 
 keep-lab prefers pack `in/` **only** when all four families are present and
 none carry the sample banner. Otherwise it lands the samples under
-`keep/work/in/` (not pack `in/`) and stamps `sample: true` / `demo: true`.
+`keep/work/in/` and stamps `sample: true` / `demo: true`.
+
+**keep-lab never writes pack `in/`.** Pre-existing estate files there are
+ignored for the sample path. The fail guard is this-run mutation only.
+
+Desktop has no `make` / `gh`. Use:
 
 ```bash
 export PYTHONPATH="$PWD"
 export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0
-make keep-lab
+python -m keep lab
 # or: python3 -m keep lab
 ```
 
@@ -69,12 +74,26 @@ live Eval URL.
 
 1. Land client exports in pack `in/identity/*.csv`, `in/saas/*.json`,
    `in/vuln/*.json`, `in/cloud/*.json`.
-2. Re-run `make keep-lab`. Stamp flips to `client_keep: true` only if all
+2. Re-run `python -m keep lab`. Stamp flips to `client_keep: true` only if all
    four families parse and are not samples.
 3. Human reviews `handoff.json` before Eval import.
 
 DEMO fixtures in `fixtures/demo/` are a different estate (full nine-sensor
 lab). keep-lab does **not** ingest those.
+
+## Estate already in pack `in/` (DESKTOP)
+
+If pack `in/` already has client/estate files:
+
+- `python -m keep lab` still isolates under `keep/work/`. It does **not**
+  park, overwrite, or require you to empty pack `in/`.
+- `docker compose up` parses **that estate** (Layer C). Empty-folder
+  collectors would otherwise fall back to `fixtures/demo/` — that is the
+  fixtures-park pattern. With estate present there is no fixtures-park.
+  Either run compose as **estate-only** (current `in/`) **or** park/move
+  estate `in/` aside first if you want fixture counts.
+- `docker compose config --services` should list exactly 10. Optional
+  `up` is skipped when you do not want to mix estate + fixtures.
 
 ## Do not
 
