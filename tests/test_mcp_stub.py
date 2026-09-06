@@ -268,18 +268,81 @@ def test_farm_toolbin_status_lab_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert data["plan_only"] is True
     assert data["farm_tool_bin"] == str(LAB_STUB_DIR)
     assert data["count"] == data["present"] + data["missing"] + data["demo_stub"]
+    assert data["demo_scope"] is True
+    assert data["live_ready_count"] == 0
+    assert data["will_run_count"] >= 6
+    assert "nuclei" in data["license_lock_refused"]
     by_slot = {row["slot"]: row for row in data["slots"]}
     assert "nuclei" not in by_slot
     assert "openvas" not in by_slot
     for name in ("nmap", "nessus", "nessuscli", "curl", "testssl", "lynis"):
         assert by_slot[name]["state"] == "demo_stub", name
         assert "tool-bin/lab/" in by_slot[name]["path"]
+        assert by_slot[name]["allowlisted"] is True, name
+        assert by_slot[name]["will_run"] is True, name
+        assert by_slot[name]["live_ready"] is False, name
+        assert by_slot[name]["stage"]
     assert data["demo_stub"] >= 6
     rpc = handle_jsonrpc(
         {"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": "farm_toolbin_status"}}
     )
     assert rpc["result"]["tool"] == "farm_toolbin_status"
     assert rpc["result"]["demo_stub"] >= 6
+    assert rpc["result"]["live_ready_count"] == 0
+
+
+def test_farm_toolbin_status_live_ready_needs_non_demo_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Operator signal: lab stubs never live_ready; a real binary can be on a signed SCOPE."""
+    import hashlib
+
+    from dropbox.mcp_stub import farm_toolbin_status_tool
+
+    tool_bin = tmp_path / "tool-bin"
+    tool_bin.mkdir()
+    nmap = tool_bin / "nmap"
+    nmap.write_text("#!/bin/sh\necho real-byo-nmap\n", encoding="utf-8")
+    nmap.chmod(0o755)
+    monkeypatch.setenv("FARM_TOOL_BIN", str(tool_bin))
+    monkeypatch.setenv("PATH", "/nonexistent-farm-live-ready-path")
+
+    demo = farm_toolbin_status_tool(scope_path=SCOPE)
+    nmap_demo = next(row for row in demo["slots"] if row["slot"] == "nmap")
+    assert nmap_demo["state"] == "present"
+    assert nmap_demo["will_run"] is True
+    assert nmap_demo["live_ready"] is False
+    assert demo["demo_scope"] is True
+    assert demo["live_ready_count"] == 0
+
+    att = tmp_path / "consent.md"
+    att.write_text("signed keep-eval farm handoff\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: Contoso Labs\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - nmap\n  - curl\n"
+        "orchestrator:\n  stages:\n    discover: true\n    deepen: false\n",
+        encoding="utf-8",
+    )
+    live = farm_toolbin_status_tool(scope_path=scope)
+    nmap_live = next(row for row in live["slots"] if row["slot"] == "nmap")
+    curl_live = next(row for row in live["slots"] if row["slot"] == "curl")
+    assert live["demo_scope"] is False
+    assert nmap_live["state"] == "present"
+    assert nmap_live["allowlisted"] is True
+    assert nmap_live["will_run"] is True
+    assert nmap_live["live_ready"] is True
+    assert live["live_ready_count"] >= 1
+    assert curl_live["allowlisted"] is True
+    assert curl_live["state"] == "missing"
+    assert curl_live["will_run"] is False
+    assert curl_live["live_ready"] is False
+    assert "nuclei" in live["license_lock_refused"]
 
 
 def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

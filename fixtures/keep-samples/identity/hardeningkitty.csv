@@ -1,0 +1,4 @@
+ID,Category,Name,Method,Severity,Result,Recommended,Actual,ComputerName
+1.1,Account Policies,Enforce password history,Registry,High,Failed,24,[REDACTED],sample-dc01.keep.invalid
+18.9,Security Options,Disable LM hash storage,Registry,High,Failed,Enabled,[REDACTED],sample-dc01.keep.invalid
+2.3,Accounts,Guest account status,Registry,Medium,Passed,Disabled,Disabled,sample-dc01.keep.invalid

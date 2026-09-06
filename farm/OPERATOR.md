@@ -363,8 +363,11 @@ order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
 `farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`).
 `farm_slot_status` accepts an optional `{ "category": "discover" }`
 argument. `farm_toolbin_status` lists wired invoke resolve as
-`present` / `missing` / `demo_stub`. `orchestrator_plan` returns the
-per-stage `will_run` map already in plan JSON.
+`present` / `missing` / `demo_stub` plus SCOPE `allowlisted` / `will_run`
+/ `live_ready`. DEMO stubs may `will_run` in `make farm-toolbin-e2e`;
+`live_ready` stays 0 on DEMO SCOPE. Real `--live` needs a signed
+non-DEMO SCOPE and an allowlisted real binary. `orchestrator_plan`
+returns the per-stage `will_run` map already in plan JSON.
 
 Live deepen stays fail-closed (`DROPBOX_LIVE=0`) unless the operator
 explicitly allowlists tools. Do not point this at public Layer C.

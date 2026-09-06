@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -74,3 +74,7 @@ farm-toolbin-lab:
 # DEMO quiet→loud e2e under farm/work/e2e. Stubs only. External plan-only. Not pack in/.
 farm-toolbin-e2e:
 	$(PYTHON) scripts/farm_toolbin_e2e.py
+
+# SAMPLE KEEP-chain → Eval handoff under keep/work/. Not pack in/. Not a client KEEP drop.
+keep-lab:
+	$(PYTHON) -m keep lab

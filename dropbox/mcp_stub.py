@@ -48,7 +48,10 @@ TOOL_DESC = {
     "stage_ingest": "Copy artifacts into in/. Does not scan.",
     "farm_slots": "Private SLOTS catalog counts under written SCOPE. No binaries.",
     "farm_slot_status": "Full slot matrix. Optional category filter.",
-    "farm_toolbin_status": "FARM_TOOL_BIN resolve for wired invoke slots: present/missing/demo_stub.",
+    "farm_toolbin_status": (
+        "FARM_TOOL_BIN resolve: present/missing/demo_stub plus allowlisted/"
+        "will_run/live_ready. DEMO stubs are not live-ready."
+    ),
     "export_ciso_poam": "SCOPE-gated paths to CISO CSVs and poam.csv. Owner/due stay blank.",
 }
 
@@ -129,14 +132,22 @@ def farm_slot_status_tool(scope_path: Path | None = None, category: str | None =
 
 
 def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
-    """Resolve wired invoke slots via FARM_TOOL_BIN then PATH. Does not invoke."""
+    """Resolve wired invoke slots via FARM_TOOL_BIN then PATH. Does not invoke.
+
+    Honesty for quiet→loud: DEMO stubs may will_run in farm-toolbin-e2e.
+    live_ready stays 0 on DEMO SCOPE or when the resolve is a lab stub.
+    Real --live needs a signed non-DEMO SCOPE plus an allowlisted real binary.
+    """
     from dropbox.scanner_free import is_demo_lab_stub
+    from dropbox.scope import LICENSE_LOCK_SPAWN
     from farm.adapters.catalog import invoke_slots
 
     scope = load_scope(scope_path)
     raw = (os.environ.get("FARM_TOOL_BIN") or "").strip()
+    allow = {str(t).strip().lower() for t in scope.allow_tools if str(t).strip()}
+    demo_scope = "DEMO" in scope.client_name.upper()
     rows: list[dict[str, Any]] = []
-    present = missing = demo_stub = 0
+    present = missing = demo_stub = will_run = live_ready = 0
     for name, slot in sorted(invoke_slots().items()):
         binary = str(slot.get("binary") or name).lower()
         exe = byo.farm_which(binary)
@@ -149,14 +160,26 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         else:
             state = "present"
             present += 1
+        allowlisted = name in allow or binary in allow
+        can_run = allowlisted and bool(exe)
+        ready = (not demo_scope) and allowlisted and state == "present"
+        if can_run:
+            will_run += 1
+        if ready:
+            live_ready += 1
         rows.append(
             {
                 "slot": name,
                 "binary": binary,
                 "path": exe or "",
                 "state": state,
+                "stage": str(slot.get("category") or slot.get("stage") or ""),
+                "allowlisted": allowlisted,
+                "will_run": can_run,
+                "live_ready": ready,
             }
         )
+    refused = [name for name in sorted(LICENSE_LOCK_SPAWN) if byo.farm_which(name) is None]
     return {
         "tool": "farm_toolbin_status",
         "ok": True,
@@ -169,9 +192,18 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         "present": present,
         "missing": missing,
         "demo_stub": demo_stub,
+        "will_run_count": will_run,
+        "live_ready_count": live_ready,
+        "demo_scope": demo_scope,
+        "license_lock_refused": refused,
         "slots": rows,
-        "demo": "DEMO" in scope.client_name.upper(),
-        "note": "Resolve only. Does not invoke. LICENSE-LOCK names are not invoke slots.",
+        "demo": demo_scope,
+        "note": (
+            "Resolve only. Does not invoke. LICENSE-LOCK names stay refused. "
+            "DEMO stubs may will_run in farm-toolbin-e2e; live_ready stays 0 on "
+            "DEMO SCOPE or lab stubs. Real --live needs signed non-DEMO SCOPE "
+            "plus an allowlisted real binary. DEMO ≠ client estate."
+        ),
     }
 
 

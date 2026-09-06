@@ -12,7 +12,7 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `stage_ingest` | `ingest_stage` | Copies discover/deepen artifacts into `in/`. Inventories dropped external files. Does not scan |
 | `farm_slots` | `farm/SLOTS.yaml` | Catalog + wired adapters under written SCOPE. No binaries |
 | `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Optional `{ "category": "discover" }`. Plan-only |
-| `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Wired invoke resolve: `present` / `missing` / `demo_stub`. Does not invoke |
+| `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Wired invoke resolve: `present` / `missing` / `demo_stub` plus `allowlisted` / `will_run` / `live_ready`. DEMO stubs may `will_run` in e2e; `live_ready` stays 0 on DEMO SCOPE. Does not invoke |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` | SCOPE-gated paths only. Does not invent owner/due. Never POSTs |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
@@ -68,9 +68,11 @@ ignore `cwd` still resolve `python3 -m dropbox.mcp_stub`.
 ```
 
 `tools/list` order is stable (`OPERATOR_TOOLS`). `farm_slot_status` may
-filter with `params.arguments.category`. `tools/call` `orchestrator_plan`
-returns `will_run` (`discover` / `deepen` / `external` → slot → bool).
-External entries stay `false`.
+filter with `params.arguments.category`. `farm_toolbin_status` adds
+`allowlisted` / `will_run` / `live_ready` (DEMO stubs are not live-ready).
+`tools/call` `orchestrator_plan` returns `will_run`
+(`discover` / `deepen` / `external` → slot → bool). External entries stay
+`false`.
 
 ## JSON-RPC examples (stdio stub)
 

@@ -1,0 +1,16 @@
+{
+  "sample": true,
+  "_comment": "SAMPLE — redacted KEEP-chain fixture. Not a client KEEP drop.",
+  "services": {
+    "s3": {
+      "findings": {
+        "s3-bucket-allusers-read": {
+          "description": "Bucket readable by AllUsers",
+          "level": "danger",
+          "flagged_items": 1,
+          "items": ["sample-scout-public"]
+        }
+      }
+    }
+  }
+}
