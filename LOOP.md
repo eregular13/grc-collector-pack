@@ -46,6 +46,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 80 done: verify-green / no-diff. Full lab suite clean vs cycle 79.
 - Cycle 81 done: deadline freeze / verify-green / no-diff. Full lab suite clean vs cycle 80. Afternoon window ended 16:00 PT.
 - Cycle 82 done: KEEP→Eval handoff (`make keep-lab`, samples ≠ client KEEP) + farm_toolbin_status live_ready honesty. Catalog unchanged.
+- Cycle 83 done: Hephaestus contract (file_drop/demo never live_ready; tools/call plan-only; two MCP servers; CISO posted gate; SimpleRisk out/ leave-behind; default-off env). Catalog unchanged.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

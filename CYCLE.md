@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 83 — Hephaestus live_ready + two-MCP contract (2026-09-06)
+
+P0: `farm_toolbin_status` per-slot `live_ready` + `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or FILE_DROP_ONLY names even if a binary is under `FARM_TOOL_BIN`. `tools/call` stays plan-only (`arguments.live` ignored). `farm_which` still refuses `LICENSE_LOCK_SPAWN`. `push_riskready.sh` stays review-only (no curl/login/POST even if `RISKREADY_PUSH=1`).
+
+P1: `export_ciso_poam` reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/`. `posted` false unless `CISO_PUSH=1` and `DRY_RUN!=1`; conductor `http` always false. Loader writes SimpleRisk leave-behind under `out/` only. `schemas/mcp.example.json` + OPERATOR snippets are two servers (`grc-dropbox` + `evergreen-assessment`), not one merged server.
+
+P2: `scripts/mcp_stdio.sh` + `farm/QUICKSTART.md` default `DROPBOX_LIVE=0 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0`. Catalog **unchanged** **111 / 32 / 30 / 81**. pytest **331**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. keep-lab sample 6/6 poam 8 handoff 5. Compose ABSENT. Paying-day FAIL. Wrap review-only. USB evergreen-assessment untouched.
+
+```json
+{"pytest": 331, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
 ## cycle 82 — KEEP→Eval handoff + farm_toolbin_status live_ready (2026-09-06)
 
 Slice B: pack `in/` still has no client KEEP files. Redacted `fixtures/keep-samples/` + `keep/adapters.py` file-drop landers feed existing Layer C parsers. `make keep-lab` writes `keep/work/out/eval/handoff.json` (max-5 findings, `posted: false`, `http: false`). SAMPLE ≠ client KEEP. No Eval HTTP. No `/api/risks`.

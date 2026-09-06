@@ -2,7 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 82):** KEEP→Eval file-drop handoff +
+**This window (cycle 83):** Hephaestus contract — file_drop/demo never
+`live_ready`; `tools/call` plan-only; two MCP servers unmerged; CISO
+`posted` gate; SimpleRisk `out/` leave-behind. Wrap stays **dead**.
+Paying-day **FAIL**. DEMO ≠ client. Catalog unchanged (111 / 32 wired /
+30 invoke / 81 file_drop). pytest **331**. Runtime still **ABSENT**
+(`docker CLI not on PATH`) — not a PASS. Cycle 74 Reid-only blockers
+stay locked. USB `evergreen_assessment_mcp` remains pack truth.
+
+**Cycle 82 (stands):** KEEP→Eval file-drop handoff +
 `farm_toolbin_status` live_ready. `make keep-lab` uses redacted samples
 (**SAMPLE ≠ client KEEP**). No Eval HTTP. Wrap stays **dead**. Paying-day
 **FAIL**. DEMO ≠ client. Catalog unchanged. pytest **328**. Runtime still
