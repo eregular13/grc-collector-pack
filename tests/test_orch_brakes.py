@@ -78,6 +78,12 @@ def test_brakes_defaults_lock_honesty_rails() -> None:
     assert "push_riskready" in brakes["wrap"]
     assert "ABSENT" in brakes["compose"]
     assert "FARM_TOOL_BIN" in brakes["byo_path"]
+    assert brakes["argus_bar"] == "fail-closed"
+    assert "DEMO e2e" in brakes["argus_demo_e2e"]
+    assert "0/4" in brakes["argus_keep"]
+    assert "evergreen_assessment_mcp only" in brakes["argus_pack_truth"]
+    assert "HITL" in brakes["argus_invoke"]
+    assert "pattern-only" in brakes["argus_hexstrike"]
     slots = dispatch("farm_slots", scope_path=ROOT / "dropbox" / "SCOPE.yaml")
     assert slots["scope_gated"] is True
     assert slots["brakes"]["free_day_scope"] == brakes["free_day_scope"]
@@ -146,6 +152,8 @@ def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
         ["mcp", "farm_slots"],
         ["mcp", "export_ciso_poam"],
         ["mcp", "scope_status"],
+        ["schedule"],
+        ["ciso"],
     )
     for scope in (empty, unsigned):
         for extra in cmds:

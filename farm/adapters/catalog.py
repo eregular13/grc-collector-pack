@@ -303,6 +303,14 @@ BRAKES_DEFAULTS = (
     ("external_ingest", "file-drop inventory of in/easm|…; never probe"),
     ("layer_c", "parse-only ingest into in/<sensor>/"),
     ("compose", "scanner-free; runtime ABSENT without Docker CLI"),
+    ("argus_bar", "fail-closed"),
+    ("argus_demo_e2e", "DEMO e2e ≠ client; live_ready fail-closed on stubs"),
+    ("argus_keep", "SAMPLE/fixture KEEP ≠ client KEEP; 0/4 real still open"),
+    ("argus_pack_truth", "evergreen_assessment_mcp only; farm MCP never pack truth"),
+    ("argus_compose", "PASS only on DESKTOP Docker proof; agent-VM ABSENT ≠ pass"),
+    ("argus_invoke", "signed SCOPE + HITL kill before PATH/live; file_drop default"),
+    ("argus_wrap", "RiskReady wrap/POST stay-out forever"),
+    ("argus_hexstrike", "pattern-only"),
 )
 
 

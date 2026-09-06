@@ -5,6 +5,19 @@
 
 This directory is the **gated runner**. The public pack stays parse-only. Do not turn the collectors into a scanner suite.
 
+## Argus fail-closed bar
+
+- DEMO e2e ≠ client; `live_ready` fail-closed on stubs
+- SAMPLE/fixture KEEP ≠ client KEEP (0/4 real still open)
+- Pack MCP truth = `evergreen_assessment_mcp` only; farm MCP never pack truth
+- Compose PASS only on DESKTOP Docker proof — agent-VM ABSENT ≠ pass
+- Signed SCOPE + HITL kill before any PATH/live invoke; file_drop default
+- RiskReady wrap/POST stay-out forever
+- Hexstrike pattern-only
+
+`python3 -m dropbox schedule` is one-shot KEEP-minimum (not cron).
+`python3 -m dropbox ciso` parses landed KEEP-minimum files only.
+
 ## Three layers (see `ARCHITECTURE.md`)
 
 - **Layer A — BYO tool zoo.** Consent SCOPE names host tools already on the drop box. This repo does not embed Nmap/Nessus/Nuclei/OpenVAS.

@@ -64,6 +64,38 @@ def test_status_next_action_is_reid_only_blockers() -> None:
         assert "ABSENT" in text
 
 
+def test_argus_fail_closed_bar_is_stamped() -> None:
+    status = _status()
+    assert status.get("argus_bar") == "fail-closed"
+    assert "DEMO" in status.get("argus_demo_e2e", "") and "client" in status.get("argus_demo_e2e", "")
+    assert status.get("argus_live_ready_stubs") == "fail-closed"
+    assert "SAMPLE" in status.get("argus_keep", "") and "client KEEP" in status.get("argus_keep", "")
+    assert status.get("argus_keep_real") == "0/4"
+    assert status.get("argus_pack_truth") == "evergreen_assessment_mcp only"
+    assert status.get("argus_farm_mcp") == "never pack truth"
+    assert "DESKTOP" in status.get("argus_compose", "")
+    vm = status.get("argus_compose_vm", "")
+    assert "ABSENT" in vm
+    assert "pass" in vm.lower() and ("≠" in vm or "not" in vm.lower())
+    assert "HITL" in status.get("argus_invoke", "") and "SCOPE" in status.get("argus_invoke", "")
+    assert status.get("argus_file_drop") == "default"
+    assert "stay-out" in status.get("argus_wrap", "")
+    assert status.get("argus_hexstrike") == "pattern-only"
+    assert status.get("paying_day") == "FAIL"
+    assert status.get("compose_lab") == "absent"
+    for rel in ("farm/OPERATOR.md", "dropbox/OPERATOR.md", "farm/INTEGRITY.md"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "Argus" in text or "argus" in text.lower()
+        assert "DEMO e2e" in text
+        assert "0/4" in text
+        assert "evergreen_assessment_mcp" in text
+        assert "never pack truth" in text
+        assert "DESKTOP" in text
+        assert "HITL" in text
+        assert "stay-out" in text or "review-only" in text.lower()
+        assert "pattern-only" in text.lower() or "Hexstrike pattern-only" in text
+
+
 def test_status_scope_inventory_no_remaining_entrypoint_gap() -> None:
     status = _status()
     assert status.get("scope_gap") == "none"

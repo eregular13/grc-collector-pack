@@ -61,6 +61,11 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert ".cursor/mcp.json" in op
     assert '"grc-dropbox"' in op
     assert '"evergreen-assessment"' in op
+    assert "Argus fail-closed" in op
+    assert "DEMO e2e" in op
+    assert "0/4" in op
+    assert "never pack truth" in op
+    assert "HITL" in op
     integrity = (FARM / "INTEGRITY.md").read_text(encoding="utf-8")
     assert "## Brakes defaults" in integrity
     assert "`max_workers`" in integrity
@@ -92,6 +97,9 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "simplerisk" in integrity.lower()
     assert "leave-behind" in integrity.lower()
     assert "out/" in integrity
+    assert "Argus" in integrity or "argus" in integrity.lower()
+    assert "0/4" in integrity
+    assert "fail-closed" in integrity.lower()
 
 
 def test_farm_slots_are_adapters_not_binaries() -> None:

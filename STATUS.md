@@ -1,6 +1,6 @@
-cycle: 83
+cycle: 84
 phase: DONE
-item: HEPHAESTUS-CONTRACT
+item: ARGUS-KEEPMIN-SCHEDULER
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -28,6 +28,19 @@ paying_day: FAIL
 wrap: review-only
 license_lock_will_run: never
 scope_gap: none
-scope_inventory: CLI+conductor+run_slot+orchestrate load_scope; discover/deepen use loaded Scope.allow_tools
+scope_inventory: CLI+conductor+run_slot+orchestrate+schedule+ciso load_scope; discover/deepen use loaded Scope.allow_tools
 farm_tool_bin_refuse: LICENSE_LOCK_SPAWN
+argus_bar: fail-closed
+argus_demo_e2e: DEMO e2e ≠ client
+argus_live_ready_stubs: fail-closed
+argus_keep: SAMPLE/fixture KEEP ≠ client KEEP
+argus_keep_real: 0/4
+argus_pack_truth: evergreen_assessment_mcp only
+argus_farm_mcp: never pack truth
+argus_compose: PASS only on DESKTOP Docker proof
+argus_compose_vm: ABSENT ≠ pass
+argus_invoke: signed SCOPE + HITL kill before PATH/live
+argus_file_drop: default
+argus_wrap: stay-out forever
+argus_hexstrike: pattern-only
 next_action: Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #1. No fake greens.

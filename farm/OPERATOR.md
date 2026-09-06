@@ -2,6 +2,22 @@
 
 **Written SCOPE required.** Drop-box only under written SCOPE. Not a public Hub image. Layer C parses `in/<sensor>/` only.
 
+## Argus fail-closed bar
+
+Do not contradict these stamps:
+
+- DEMO e2e ≠ client; `live_ready` fail-closed on stubs
+- SAMPLE/fixture KEEP ≠ client KEEP (0/4 real still open)
+- Pack MCP truth = `evergreen_assessment_mcp` only; farm MCP never pack truth
+- Compose PASS only on DESKTOP Docker proof — agent-VM ABSENT ≠ pass
+- Signed SCOPE + HITL kill before any PATH/live invoke; file_drop default
+- RiskReady wrap/POST stay-out forever
+- Hexstrike pattern-only
+
+One-shot KEEP-minimum: `python3 -m dropbox schedule` (not cron). CISO path:
+`python3 -m dropbox ciso` — landed sensors only, no fixtures/demo fallback.
+`--live` is HITL and is refused on DEMO SCOPE or `live_ready_count=0`.
+
 See `dropbox/ARCHITECTURE.md` Layer A / B / C.
 
 ## Copy-paste runbook (bare Linux → CISO zip)

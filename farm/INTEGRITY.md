@@ -32,6 +32,7 @@ Conductor `farm_slots` returns these defaults as structured `brakes` JSON.
 | External ingest | File-drop inventory | `ingest_stage` lists dropped `in/easm|…` files; never probes; skips `.gitkeep` / `plan.json` |
 | Layer C | Parse-only ingest | `in/<sensor>/` only; collectors never call farm adapters |
 | Compose | Scanner-free statics | Farm/dropbox Dockerfiles have no `RUN apt`; wrap POST absent; runtime ABSENT without Docker CLI (not a fake pass) |
+| Argus bar | fail-closed | DEMO e2e ≠ client; live_ready fail-closed on stubs; SAMPLE KEEP ≠ client KEEP (0/4); pack truth = `evergreen_assessment_mcp` only; farm MCP never pack truth; compose PASS only on DESKTOP Docker; signed SCOPE + HITL before PATH/live; file_drop default; RiskReady wrap stay-out; Hexstrike pattern-only |
 
 ## Adapter policy (quality, not catalog inflation)
 
