@@ -66,6 +66,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"expired tls|certificate has expired|cert_e_expired|expired certificate", re.I),
+        "weakness": "Expired TLS certificate",
+        "cpg": ["CPG 2.W"],
+        "csf": ["PR.DS-02", "PR.DS-10"],
+        "action": "Renew the certificate before notAfter; monitor expiry; do not leave lab-expired certs on a client listener.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"untrusted tls|self-signed|certificate verify", re.I),
         "weakness": "Untrusted TLS certificate",
         "cpg": ["CPG 2.W"],

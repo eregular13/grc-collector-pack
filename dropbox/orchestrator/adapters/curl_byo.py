@@ -161,34 +161,50 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
 
 
 def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
-    """Self-signed / verify-fail on https:// only. Do not invent SMBv1."""
+    """Self-signed / expired / verify-fail on https:// only. Do not invent SMBv1."""
     if not (url or "").lower().startswith("https://"):
         return []
     low = (stderr or "").lower()
-    if any(
+    host = urlparse(url).hostname or url
+    rows: list[dict[str, Any]] = []
+
+    def _row(name: str) -> dict[str, Any]:
+        return {
+            "host": host,
+            "asset": host,
+            "name": name,
+            "weakness": name,
+            "severity": "medium",
+        }
+
+    expired = any(
+        tok in low
+        for tok in (
+            "certificate has expired",
+            "cert_e_expired",
+            "expired certificate",
+            "certificate is expired",
+            "error 10 at 0 depth lookup",
+        )
+    )
+    untrusted = any(
         tok in low
         for tok in (
             "self-signed",
             "self signed certificate",
-            "ssl certificate problem",
             "unable to get local issuer",
             "certificate verify failed",
             "untrusted_root",
             "sec_e_untrusted_root",
             "not trusted",
         )
-    ):
-        host = urlparse(url).hostname or url
-        return [
-            {
-                "host": host,
-                "asset": host,
-                "name": "Untrusted TLS certificate",
-                "weakness": "Untrusted TLS certificate",
-                "severity": "medium",
-            }
-        ]
-    return []
+    )
+    # Generic "ssl certificate problem" is untrusted only when expiry was not the sampled reason.
+    if expired:
+        rows.append(_row("Expired TLS certificate"))
+    elif untrusted or "ssl certificate problem" in low:
+        rows.append(_row("Untrusted TLS certificate"))
+    return rows
 
 
 def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[str, Any]:

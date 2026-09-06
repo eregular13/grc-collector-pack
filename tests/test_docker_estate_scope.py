@@ -155,6 +155,46 @@ def test_class_a_host_lan_exact_cidr_refused(tmp_path, monkeypatch) -> None:
     assert load_scope(path24).forbidden_cidr_reason() is None
 
 
+def test_expired_tls_parser_and_map() -> None:
+    """Observed on grc-expired-24h: alpine curl --cacert → certificate has expired."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    err = "curl: (60) SSL certificate problem: certificate has expired\n"
+    rows = curl_byo.parse_curl_tls(err, "https://127.0.0.1:18343/")
+    assert rows and rows[0]["name"] == "Expired TLS certificate"
+    assert curl_byo.parse_curl_tls(err, "http://127.0.0.1:18381/") == []
+    mapped = map_finding("Expired TLS certificate", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Expired TLS certificate"
+    self_signed = curl_byo.parse_curl_tls(
+        "curl: (60) SSL certificate problem: self-signed certificate\n",
+        "https://127.0.0.1:18443/",
+    )
+    assert self_signed and self_signed[0]["name"] == "Untrusted TLS certificate"
+
+
+def test_expired_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.140.0/24 loopback 18381/18343. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.expired.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.140.0/24" in live
+    assert "grc-expired-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:18381:80" in live
+    assert "127.0.0.1:18343:443" in live
+    assert "0.0.0.0:18381" not in live
+    assert "0.0.0.0:18343" not in live
+    assert "grc-estate-c11" not in live
+    assert "-not_after 20200102000000Z" in live
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.140.0/24" not in main
+
+
 def test_xwait_compose_isolated_if_present() -> None:
     """T24-wait extra lab: 172.28.130.0/24 loopback 18281/18282/18243. Not office LAN. Not c11."""
     xwait = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.xwait.yml")

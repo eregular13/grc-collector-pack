@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 132
+
+T24-wait extra: expired TLS estate `grc-expired-24h` on `172.28.140.0/24` loopback 18381/18343. Alpine curl `--cacert` observed `certificate has expired`; map `Expired TLS certificate`. Eval pytest-a/b bind-mount leftover still extra-lab, not SKU floor. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 131
 
 Palisade LLM honeypot lab: isolated `grc-honeypot-24h` `172.28.150.0/24`, loopback SSH `:12222` + dash `:18088`. Combined probe maps outdated OpenSSH 5.3, any-password SSH, ANSI hidden traps, dashboard Cleartext HTTP. `inventory_nmap` flags OpenSSH 5.x from XML version. Cowrie needs interactive shell. Palisade `init.py` is not drop-in on Cowrie 3 `command_modules`. Facing false. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
