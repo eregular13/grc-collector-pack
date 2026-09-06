@@ -160,6 +160,37 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
     return rows
 
 
+def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
+    """Self-signed / verify-fail on https:// only. Do not invent SMBv1."""
+    if not (url or "").lower().startswith("https://"):
+        return []
+    low = (stderr or "").lower()
+    if any(
+        tok in low
+        for tok in (
+            "self-signed",
+            "self signed certificate",
+            "ssl certificate problem",
+            "unable to get local issuer",
+            "certificate verify failed",
+            "untrusted_root",
+            "sec_e_untrusted_root",
+            "not trusted",
+        )
+    ):
+        host = urlparse(url).hostname or url
+        return [
+            {
+                "host": host,
+                "asset": host,
+                "name": "Untrusted TLS certificate",
+                "weakness": "Untrusted TLS certificate",
+                "severity": "medium",
+            }
+        ]
+    return []
+
+
 def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[str, Any]:
     """HEAD-only curl on named URLs. Never CIDR. Never shell=True. Never download."""
     desc = describe(scope, batch)
@@ -210,10 +241,34 @@ def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[
             return desc
         ran = True
         blob = (proc.stdout or "")[:MAX_STDOUT_BYTES]
+        err = (proc.stderr or "")[:MAX_STDOUT_BYTES]
+        findings.extend(parse_curl_tls(err, url))
         findings.extend(parse_curl_headers(blob, url))
+        if url.lower().startswith("https://") and "http/" not in blob.lower():
+            insecure = cmd[:1] + ["-k"] + cmd[1:]
+            try:
+                proc2 = subprocess.run(
+                    insecure,
+                    capture_output=True,
+                    text=True,
+                    timeout=seconds + 2,
+                    check=False,
+                    shell=False,
+                )
+                findings.extend(parse_curl_headers((proc2.stdout or "")[:MAX_STDOUT_BYTES], url))
+            except (subprocess.TimeoutExpired, OSError):
+                pass
         desc["returncode"] = proc.returncode
         desc["stderr_bytes"] = len(proc.stderr or "")
+    uniq: list[dict[str, Any]] = []
+    seen: set[tuple[Any, Any]] = set()
+    for row in findings:
+        key = (row.get("name"), row.get("host"))
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(row)
     desc["executed"] = ran
-    desc["findings"] = findings
+    desc["findings"] = uniq
     desc["label"] = "live-byo" if ran else "plan-only"
     return desc

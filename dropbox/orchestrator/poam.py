@@ -66,6 +66,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"untrusted tls|self-signed|certificate verify", re.I),
+        "weakness": "Untrusted TLS certificate",
+        "cpg": ["CPG 2.W"],
+        "csf": ["PR.DS-02", "PR.DS-10"],
+        "action": "Replace self-signed lab certs with a trusted chain; pin or ACME on the real drop box.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"tlsv?1(\.0)?|sslv?3|weak cipher", re.I),
         "weakness": "Weak TLS/SSL",
         "cpg": ["CPG 2.K"],

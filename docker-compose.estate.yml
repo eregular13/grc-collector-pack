@@ -21,6 +21,21 @@ services:
       grc-estate:
         ipv4_address: 172.28.90.11
 
+  estate-tls:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:18443:443"
+    volumes:
+      - ./estate/tls/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./estate/web:/usr/share/nginx/html:ro
+    command:
+      - /bin/sh
+      - -c
+      - apk add --no-cache openssl >/dev/null && mkdir -p /etc/nginx/tls && openssl req -x509 -nodes -days 2 -newkey rsa:2048 -keyout /etc/nginx/tls/key.pem -out /etc/nginx/tls/cert.pem -subj "/CN=localhost" >/dev/null 2>&1 && nginx -g "daemon off;"
+    networks:
+      grc-estate:
+        ipv4_address: 172.28.90.12
+
   estate-nmap:
     image: instrumentisto/nmap:latest
     profiles: ["scan"]

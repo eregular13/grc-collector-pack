@@ -1,5 +1,17 @@
 # Changelog
 
+## cycle 124
+
+T02 24h: `SCOPE.docker-estate.yaml` includes `https://127.0.0.1:18443/`. `python -m dropbox.product_demo` pack_mapped 5 (Untrusted TLS added from live estate-tls), facing false, blocked_by lab_sim_not_client_estate. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+TLS+product 14 passed.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
+## cycle 123
+
+T01 24h: `estate-tls` sidecar `127.0.0.1:18443` self-signed (HTTP `:18081` stays). curl_byo maps Untrusted TLS certificate (including Windows schannel UNTRUSTED_ROOT) and Missing HSTS on HTTPS after `-k` header sample. No public bind. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: 216+ passed.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 122
 
 SKU sim: `scripts/product_demo.ps1` forwards `@args` so `--help` is help. QUICKSTART uses `.venv\Scripts\python.exe` (does not assume a global pytest). No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

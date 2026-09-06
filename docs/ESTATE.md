@@ -11,6 +11,7 @@ docker compose -f docker-compose.estate.yml up -d
 | --- | --- |
 | estate-web (nginx) | `127.0.0.1:18081` → `172.28.90.10` |
 | estate-api (whoami) | `127.0.0.1:18082` → `172.28.90.11` |
+| estate-tls (nginx self-signed) | `127.0.0.1:18443` → `172.28.90.12` |
 | network | `grc-estate` `172.28.90.0/24` |
 
 Publish binds **loopback only**. SCOPE: `dropbox/SCOPE.docker-estate.yaml` (Evergreen Docker Estate LLC). Tools: curl HEAD + optional sidecar nmap `-sn` on that CIDR (`--profile scan`). Pack image does not apt-install nmap.

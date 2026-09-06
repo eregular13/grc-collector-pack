@@ -332,6 +332,10 @@ def test_cleartext_http_and_headers_map() -> None:
     # Do not invent SMBv1 from HTTP.
     assert "SMBv1" not in http["weakness"]
     assert "445" not in http["recommended_action"]
+    tls = map_finding("Untrusted TLS certificate", "127.0.0.1", "medium")
+    assert tls["mapped"] is True
+    assert "UNMAPPED" not in tls["control_refs"]
+    assert "SMBv1" not in tls["weakness"]
 
 
 def test_destroy_workers_after_discover() -> None:
@@ -2048,6 +2052,28 @@ def test_curl_live_shaped_nginx_headers_not_smb() -> None:
         mapped = map_finding(row["name"], row["asset"], row["severity"])
         assert mapped["mapped"] is True
         assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_curl_https_self_signed_and_missing_hsts() -> None:
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    err = "curl: (60) SSL certificate problem: self signed certificate\n"
+    tls_rows = curl_byo.parse_curl_tls(err, "https://127.0.0.1:18443/")
+    assert tls_rows and tls_rows[0]["name"] == "Untrusted TLS certificate"
+    win = "curl: (60) schannel: SEC_E_UNTRUSTED_ROOT (0x80090325) - The certificate chain was issued by an authority that is not trusted.\n"
+    assert curl_byo.parse_curl_tls(win, "https://127.0.0.1:18443/")
+    assert curl_byo.parse_curl_tls(err, "http://127.0.0.1:18081/") == []
+    headers = curl_byo.parse_curl_headers(
+        "HTTP/1.1 200 OK\nServer: nginx/1.31.5\n\n",
+        "https://127.0.0.1:18443/",
+    )
+    names = {r["name"] for r in headers}
+    assert "Cleartext HTTP" not in names
+    assert "Missing HSTS" in names
+    assert not any("smb" in n.lower() for n in names)
+    mapped = map_finding("Untrusted TLS certificate", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
 
 
 def test_curl_empty_head_does_not_invent_missing_headers() -> None:

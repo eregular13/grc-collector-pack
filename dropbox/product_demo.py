@@ -119,6 +119,8 @@ def _scope_ok() -> None:
     load_scope(SCOPE)
     if "127.0.0.1:18081" not in text or "127.0.0.1:18082" not in text:
         raise SystemExit("SCOPE.docker-estate.yaml missing loopback publishes")
+    if "127.0.0.1:18443" not in text:
+        raise SystemExit("SCOPE.docker-estate.yaml missing TLS loopback 18443")
     parsed = urlparse(WEB)
     if parsed.hostname not in {"127.0.0.1", "localhost"}:
         raise SystemExit("demo loopback drifted")

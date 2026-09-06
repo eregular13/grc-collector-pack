@@ -1,5 +1,5 @@
 # Authorized Docker estate rehearsal. Not a client LAN. Not Litware.
-# Targets: compose network 172.28.90.0/24 and loopback maps 127.0.0.1:18081/18082 only.
+# Targets: compose network 172.28.90.0/24 and loopback maps 127.0.0.1:18081/18082/18443 only.
 client_legal_name: "Evergreen Docker Estate LLC"
 named_contact: "Reid Schram"
 consent_attested: true
@@ -18,6 +18,7 @@ external:
   urls:
     - "http://127.0.0.1:18081/"
     - "http://127.0.0.1:18082/"
+    - "https://127.0.0.1:18443/"
 cloud:
   accounts: []
 entra:

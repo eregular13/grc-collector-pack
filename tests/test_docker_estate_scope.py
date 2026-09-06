@@ -12,6 +12,17 @@ def test_estate_cidr_is_not_lan_10() -> None:
     assert "pve2" not in text.lower()
     assert "allow_live_exec: true" in text
     assert "Evergreen Docker Estate LLC" in text
+    assert "https://127.0.0.1:18443/" in text
+    assert "http://127.0.0.1:18081/" in text
+
+
+def test_estate_tls_sidecar_loopback_only() -> None:
+    text = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "127.0.0.1:18443:443" in text
+    assert "0.0.0.0:18443" not in text
+    assert "estate-tls" in text
+    conf = (ROOT / "estate" / "tls" / "default.conf").read_text(encoding="utf-8")
+    assert "listen 443 ssl" in conf
 
 
 def test_example_scope_still_not_live() -> None:
