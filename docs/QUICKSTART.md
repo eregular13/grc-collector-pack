@@ -4,13 +4,14 @@ From the **pack root** (this repo). Lab-sim is not a customer pack. `client_faci
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
+$py = ".\.venv\Scripts\python.exe"
+& $py -m pip install -r requirements.txt
 $env:PYTHONPATH = (Get-Location)
 $env:DRY_RUN = "1"; $env:CISO_PUSH = "0"; $env:RISKREADY_PUSH = "0"; $env:GRC_LIVE_SCAN = "0"
-python -m pytest tests -q
+& $py -m pytest tests -q
 docker compose -f docker-compose.estate.yml up -d
-python -m dropbox.product_demo --help
-python -m dropbox.product_demo
+& $py -m dropbox.product_demo --help
+& $py -m dropbox.product_demo
 ```
 
 `--help` prints usage and exits (no HTTP). Default `run` needs estate-web on `127.0.0.1:18081` or exits 2 `estate_down`. It does **not** fall back to Litware CSVs.

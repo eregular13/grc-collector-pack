@@ -8,5 +8,5 @@ $env:CISO_PUSH = if ($env:CISO_PUSH) { $env:CISO_PUSH } else { "0" }
 $env:RISKREADY_PUSH = "0"
 $env:GRC_LIVE_SCAN = "0"
 Remove-Item Env:EVERGREEN_ORCH_LIVE -ErrorAction SilentlyContinue
-python -m dropbox.product_demo
+python -m dropbox.product_demo @args
 exit $LASTEXITCODE

@@ -19,7 +19,8 @@ def _estate_web_up() -> bool:
 
 def test_quickstart_and_estate_docs() -> None:
     qs = (ROOT / "docs" / "QUICKSTART.md").read_text(encoding="utf-8")
-    assert "python -m dropbox.product_demo --help" in qs
+    assert "dropbox.product_demo --help" in qs
+    assert ".venv\\Scripts\\python.exe" in qs or '.venv/Scripts/python.exe' in qs
     assert "docker compose -f docker-compose.estate.yml up -d" in qs
     assert r"C:\Users\R" not in qs
     estate = (ROOT / "docs" / "ESTATE.md").read_text(encoding="utf-8")

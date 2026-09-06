@@ -8,12 +8,13 @@ Version `0.4.1`. One page: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
+$py = ".\.venv\Scripts\python.exe"
+& $py -m pip install -r requirements.txt
 $env:PYTHONPATH = (Get-Location)
-python -m pytest tests -q
+& $py -m pytest tests -q
 docker compose -f docker-compose.estate.yml up -d
-python -m dropbox.product_demo --help
-python -m dropbox.product_demo
+& $py -m dropbox.product_demo --help
+& $py -m dropbox.product_demo
 ```
 
 `--help` prints usage and exits. It does not hit the mock sink. If estate-web is down, `product_demo` exits 2 `estate_down` — it does not silently use Litware CSVs.

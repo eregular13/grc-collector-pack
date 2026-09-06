@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 122
+
+SKU sim: `scripts/product_demo.ps1` forwards `@args` so `--help` is help. QUICKSTART uses `.venv\Scripts\python.exe` (does not assume a global pytest). No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: 216 passed.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 121
 
 Clean-clone pytest: `.env.example` un-ignored; conftest seeds stub `out/` CSVs if missing so factory tests run without a prior `run_lab.ps1`. VERSION 0.4.2. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

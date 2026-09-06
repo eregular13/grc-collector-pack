@@ -123,7 +123,7 @@ def test_estate_slug_poam_is_cleartext_not_litware(tmp_path, monkeypatch) -> Non
 def test_readme_leads_with_assessment() -> None:
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "Authorized assessment" in text
-    assert "python -m dropbox.product_demo --help" in text
+    assert "dropbox.product_demo --help" in text
     assert "Not a GRC UI" in text
     assert "0.0.0.0" not in text
     assert "127.0.0.1" in text
@@ -142,6 +142,7 @@ def test_product_demo_module_exists() -> None:
     assert "lab-sim" in text
     ps1 = (ROOT / "scripts" / "product_demo.ps1").read_text(encoding="utf-8")
     assert "python -m dropbox.product_demo" in ps1
+    assert "@args" in ps1
     assert "RISKREADY_PUSH" in ps1
 
 
