@@ -2,7 +2,17 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 85):** keep-lab this-run pack `in/` guard +
+**This window (cycle 86):** CISO SoR path
+(`python3 -m dropbox ciso` → `out/ciso-assistant/*.csv`;
+`posted:false` unless `CISO_PUSH=1`) + scheduler CLI e2e (vanity
+refuse + DEMO `--live` exit 2) + OPERATOR Day-of (no make/gh;
+clica / `bash push_ciso.sh`). keep-lab this-run guard stands.
+Argus bar stands. DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth
+= USB `evergreen_assessment_mcp` only. Compose **ABSENT ≠ pass**.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+pytest **342**. Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 85 (stands):** keep-lab this-run pack `in/` guard +
 desktop `python -m keep lab`. Pre-existing estate no longer fails
 sample isolation. Estate-only compose park noted. Argus bar stands.
 DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth = USB
