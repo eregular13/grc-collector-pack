@@ -1,13 +1,14 @@
 # Farm quickstart (private drop-box)
 
 **DEMO ≠ client estate.** Written consent first. This repo does not install scanners.
+Defaults: `DROPBOX_LIVE=0` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`.
 
 Honest stamp (cycle 81 freeze, host lab): pytest **320** + 1 skip. `make lab`
 64 / 79 / 19 / 27 poam **82**. Catalog **111 / 32 wired / 30 invoke /
 81 file_drop**. compose **ABSENT** (no Docker CLI — hole, not a PASS).
 Wrap review-only. DEMO ≠ client. Paying-day **FAIL**. LICENSE-LOCK /
-file_drop-only names never `will_run=true`. `FARM_TOOL_BIN` never
-resolves locked scanners.
+file_drop-only names never `will_run` or `live_ready`. `FARM_TOOL_BIN`
+never resolves locked scanners.
 
 1. **Consent** — store the signed memo next to the box; record its sha256.
 2. **SCOPE** — copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`.

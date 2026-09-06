@@ -24,7 +24,10 @@ from dropbox.orchestrator.pipeline import (
     integrity_stops,
     orchestrate,
 )
-from dropbox.scope import GateError, load_scope
+from dropbox.scope import ALLOWED_RUNNERS, GateError, LICENSE_LOCK_SPAWN, ORCH_BYO, load_scope
+
+# Goose-style live_ready allowlist (Metis). File-drop / LICENSE-LOCK never join.
+LIVE_READY_ALLOW = frozenset(ORCH_BYO) | frozenset(ALLOWED_RUNNERS)
 
 OPERATOR_TOOLS = (
     "scope_status",
@@ -49,10 +52,13 @@ TOOL_DESC = {
     "farm_slots": "Private SLOTS catalog counts under written SCOPE. No binaries.",
     "farm_slot_status": "Full slot matrix. Optional category filter.",
     "farm_toolbin_status": (
-        "FARM_TOOL_BIN resolve: present/missing/demo_stub plus allowlisted/"
-        "will_run/live_ready. DEMO stubs are not live-ready."
+        "FARM_TOOL_BIN resolve: per-slot live_ready plus live_ready_count/slots[]. "
+        "Never live_ready for demo_stub or file_drop-only names."
     ),
-    "export_ciso_poam": "SCOPE-gated paths to CISO CSVs and poam.csv. Owner/due stay blank.",
+    "export_ciso_poam": (
+        "Reads out/ciso-assistant/ + out/poam/ + out/simplerisk/. "
+        "posted false unless CISO_PUSH=1. Conductor http is always false."
+    ),
 }
 
 # Substrings that must never become callable tools.
@@ -131,25 +137,48 @@ def farm_slot_status_tool(scope_path: Path | None = None, category: str | None =
     }
 
 
+def _slot_live_ready(
+    *,
+    name: str,
+    binary: str,
+    state: str,
+    allowlisted: bool,
+    demo_scope: bool,
+) -> bool:
+    """live_ready is never true for demo_stub, file_drop-only, or LICENSE-LOCK."""
+    from farm.adapters.catalog import FILE_DROP_ONLY
+
+    if demo_scope or not allowlisted or state != "present":
+        return False
+    if name in FILE_DROP_ONLY or binary in FILE_DROP_ONLY:
+        return False
+    if name in LICENSE_LOCK_SPAWN or binary in LICENSE_LOCK_SPAWN:
+        return False
+    return name in LIVE_READY_ALLOW or binary in LIVE_READY_ALLOW
+
+
 def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
     """Resolve wired invoke slots via FARM_TOOL_BIN then PATH. Does not invoke.
 
     Honesty for quiet→loud: DEMO stubs may will_run in farm-toolbin-e2e.
-    live_ready stays 0 on DEMO SCOPE or when the resolve is a lab stub.
-    Real --live needs a signed non-DEMO SCOPE plus an allowlisted real binary.
+    live_ready stays 0 on DEMO SCOPE, lab stubs, or file_drop-only names
+    even if a binary sits under FARM_TOOL_BIN. Real --live needs a signed
+    non-DEMO SCOPE plus an allowlisted real binary on the Goose list.
     """
     from dropbox.scanner_free import is_demo_lab_stub
-    from dropbox.scope import LICENSE_LOCK_SPAWN
-    from farm.adapters.catalog import invoke_slots
+    from farm.adapters.catalog import FILE_DROP_ONLY, invoke_slots, load_slots
 
     scope = load_scope(scope_path)
     raw = (os.environ.get("FARM_TOOL_BIN") or "").strip()
     allow = {str(t).strip().lower() for t in scope.allow_tools if str(t).strip()}
     demo_scope = "DEMO" in scope.client_name.upper()
     rows: list[dict[str, Any]] = []
-    present = missing = demo_stub = will_run = live_ready = 0
+    present = missing = demo_stub = file_drop = will_run = live_ready = 0
+    seen: set[str] = set()
     for name, slot in sorted(invoke_slots().items()):
         binary = str(slot.get("binary") or name).lower()
+        seen.add(name)
+        seen.add(binary)
         exe = byo.farm_which(binary)
         if not exe:
             state = "missing"
@@ -161,8 +190,15 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
             state = "present"
             present += 1
         allowlisted = name in allow or binary in allow
-        can_run = allowlisted and bool(exe)
-        ready = (not demo_scope) and allowlisted and state == "present"
+        drop_only = name in FILE_DROP_ONLY or binary in FILE_DROP_ONLY
+        can_run = allowlisted and bool(exe) and not drop_only
+        ready = _slot_live_ready(
+            name=name,
+            binary=binary,
+            state=state,
+            allowlisted=allowlisted,
+            demo_scope=demo_scope,
+        )
         if can_run:
             will_run += 1
         if ready:
@@ -179,6 +215,26 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
                 "live_ready": ready,
             }
         )
+    catalog = load_slots()
+    for name in sorted(FILE_DROP_ONLY):
+        if name in seen:
+            continue
+        slot = catalog.get(name) or {}
+        binary = str(slot.get("binary") or name).lower()
+        exe = byo.farm_which(binary)
+        file_drop += 1
+        rows.append(
+            {
+                "slot": name,
+                "binary": binary,
+                "path": exe or "",
+                "state": "file_drop",
+                "stage": str(slot.get("category") or slot.get("stage") or "file_drop"),
+                "allowlisted": name in allow or binary in allow,
+                "will_run": False,
+                "live_ready": False,
+            }
+        )
     refused = [name for name in sorted(LICENSE_LOCK_SPAWN) if byo.farm_which(name) is None]
     return {
         "tool": "farm_toolbin_status",
@@ -192,6 +248,7 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         "present": present,
         "missing": missing,
         "demo_stub": demo_stub,
+        "file_drop": file_drop,
         "will_run_count": will_run,
         "live_ready_count": live_ready,
         "demo_scope": demo_scope,
@@ -201,7 +258,8 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         "note": (
             "Resolve only. Does not invoke. LICENSE-LOCK names stay refused. "
             "DEMO stubs may will_run in farm-toolbin-e2e; live_ready stays 0 on "
-            "DEMO SCOPE or lab stubs. Real --live needs signed non-DEMO SCOPE "
+            "DEMO SCOPE, lab stubs, or file_drop-only names even if a binary "
+            "is under FARM_TOOL_BIN. Real --live needs signed non-DEMO SCOPE "
             "plus an allowlisted real binary. DEMO ≠ client estate."
         ),
     }
@@ -382,32 +440,47 @@ def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
 
 
 def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
-    """Point at existing CISO/POA&M files. Does not invent owner or due."""
-    import os
+    """Point at existing CISO/POA&M/SimpleRisk files. Does not invent owner or due.
 
+    posted is false unless CISO_PUSH=1 and DRY_RUN!=1. Conductor http is
+    always false — RISKREADY_PUSH never enables HTTP.
+    """
     scope = load_scope(scope_path)
     raw = os.environ.get("OUT_DIR")
     root = Path(raw) if raw else Path(__file__).resolve().parents[1] / "out"
     ciso = root / "ciso-assistant"
     poam = root / "poam"
+    simplerisk = root / "simplerisk"
     files = []
-    for folder in (ciso, poam):
+    for folder in (ciso, poam, simplerisk):
         if not folder.is_dir():
             continue
         for path in sorted(folder.iterdir()):
             if path.is_file():
                 files.append(str(path))
+    ciso_push = os.environ.get("CISO_PUSH", "0") == "1"
+    dry_run = os.environ.get("DRY_RUN", "1") == "1"
+    posted = bool(ciso_push and not dry_run)
     return {
         "tool": "export_ciso_poam",
         "ciso_dir": str(ciso),
         "poam_dir": str(poam),
+        "simplerisk_dir": str(simplerisk),
         "files": files,
         "owner_due": "blank — human fills",
-        "posted": False,
+        "posted": posted,
+        "http": False,
+        "ciso_push": "1" if ciso_push else "0",
+        "clica": "prefer clica or CISO UI import — do not invent FindingsAssessment UUIDs",
+        "push_ciso": "push_ciso.sh dry unless CISO_PUSH=1 and DRY_RUN!=1; assets/evidences only",
         "scope_gated": True,
         "client": scope.client_name,
         "demo": "DEMO" in scope.client_name.upper(),
         "wrap": "review-only",
+        "note": (
+            "Conductor never HTTP. RISKREADY_PUSH is ignored. SimpleRisk is "
+            "leave-behind under out/ only."
+        ),
     }
 
 
@@ -442,7 +515,9 @@ def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None)
     if method == "tools/call":
         params = req.get("params") if isinstance(req.get("params"), dict) else {}
         name = str(params.get("name") or "")
-        arguments = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+        raw_args = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+        # tools/call is plan-only. Never honor arguments.live / params.live.
+        arguments = {k: v for k, v in raw_args.items() if str(k).lower() != "live"}
         try:
             refuse_attack_name(name)
             result = dispatch(name, live=False, scope_path=scope_path, arguments=arguments)

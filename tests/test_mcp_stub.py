@@ -30,11 +30,29 @@ def test_architecture_docs_three_layers() -> None:
     assert "claude_desktop_config.json" in iface
     assert "scripts/mcp_stdio.sh" in iface
     assert "will_run" in iface
+    assert '"grc-dropbox"' in iface
+    assert '"evergreen-assessment"' in iface
+    assert "do **not** merge" in iface or "not one merged" in iface.lower() or "do not merge" in iface.lower()
     farm_op = (ROOT / "farm" / "OPERATOR.md").read_text(encoding="utf-8")
     assert ".cursor/mcp.json" in farm_op
     assert "claude_desktop_config.json" in farm_op
     assert "farm_toolbin_status" in farm_op
     assert "evergreen_assessment_mcp" in farm_op
+    assert '"grc-dropbox"' in farm_op
+    assert '"evergreen-assessment"' in farm_op
+    example = (ROOT / "schemas" / "mcp.example.json").read_text(encoding="utf-8")
+    assert '"grc-dropbox"' in example
+    assert '"evergreen-assessment"' in example
+    assert "dropbox.mcp_stub" in example
+    assert "evergreen_assessment_mcp" in example
+    assert "grc-dropbox-evergreen" not in example
+    assert "grc-dropbox-evergreen" not in iface
+    assert "grc-dropbox-evergreen" not in farm_op
+    ciso_md = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
+    assert "push_ciso" in ciso_md
+    assert "clica" in ciso_md
+    assert "export_ciso_poam" in ciso_md
+    assert "CISO_PUSH=1" in ciso_md
     assert "check_scope" in farm_op
     assert "license_guard" in farm_op
     assert "TypeScript refuse" in farm_op
@@ -267,14 +285,19 @@ def test_farm_toolbin_status_lab_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert data["live"] is False
     assert data["plan_only"] is True
     assert data["farm_tool_bin"] == str(LAB_STUB_DIR)
-    assert data["count"] == data["present"] + data["missing"] + data["demo_stub"]
+    assert data["count"] == data["present"] + data["missing"] + data["demo_stub"] + data["file_drop"]
     assert data["demo_scope"] is True
     assert data["live_ready_count"] == 0
     assert data["will_run_count"] >= 6
+    assert data["file_drop"] >= 7
     assert "nuclei" in data["license_lock_refused"]
     by_slot = {row["slot"]: row for row in data["slots"]}
     assert "nuclei" not in by_slot
     assert "openvas" not in by_slot
+    for name in ("nikto", "gobuster", "ffuf", "amass", "subfinder", "scoutsuite", "checkov"):
+        assert by_slot[name]["state"] == "file_drop", name
+        assert by_slot[name]["will_run"] is False, name
+        assert by_slot[name]["live_ready"] is False, name
     for name in ("nmap", "nessus", "nessuscli", "curl", "testssl", "lynis"):
         assert by_slot[name]["state"] == "demo_stub", name
         assert "tool-bin/lab/" in by_slot[name]["path"]
@@ -345,17 +368,123 @@ def test_farm_toolbin_status_live_ready_needs_non_demo_scope(
     assert "nuclei" in live["license_lock_refused"]
 
 
+def test_farm_toolbin_status_file_drop_only_never_live_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """file_drop-only names stay not live_ready even if dropped into FARM_TOOL_BIN."""
+    import hashlib
+
+    from dropbox.mcp_stub import farm_toolbin_status_tool
+
+    tool_bin = tmp_path / "tool-bin"
+    tool_bin.mkdir()
+    for name in ("nikto", "gobuster", "nmap"):
+        path = tool_bin / name
+        path.write_text("#!/bin/sh\necho byo-drop\n", encoding="utf-8")
+        path.chmod(0o755)
+    monkeypatch.setenv("FARM_TOOL_BIN", str(tool_bin))
+    monkeypatch.setenv("PATH", "/nonexistent-file-drop-only-path")
+
+    demo = farm_toolbin_status_tool(scope_path=SCOPE)
+    nikto_demo = next(row for row in demo["slots"] if row["slot"] == "nikto")
+    assert nikto_demo["state"] == "file_drop"
+    assert nikto_demo["path"]
+    assert nikto_demo["will_run"] is False
+    assert nikto_demo["live_ready"] is False
+    assert demo["live_ready_count"] == 0
+
+    att = tmp_path / "consent.md"
+    att.write_text("signed file-drop honesty\n", encoding="utf-8")
+    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: Contoso Labs\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - nmap\n  - nikto\n  - gobuster\n"
+        "orchestrator:\n  stages:\n    discover: true\n    deepen: false\n",
+        encoding="utf-8",
+    )
+    live = farm_toolbin_status_tool(scope_path=scope)
+    nikto = next(row for row in live["slots"] if row["slot"] == "nikto")
+    gobuster = next(row for row in live["slots"] if row["slot"] == "gobuster")
+    nmap = next(row for row in live["slots"] if row["slot"] == "nmap")
+    assert live["demo_scope"] is False
+    assert nikto["path"] and gobuster["path"]
+    assert nikto["live_ready"] is False
+    assert gobuster["live_ready"] is False
+    assert nikto["will_run"] is False
+    assert gobuster["will_run"] is False
+    assert nmap["state"] == "present"
+    assert nmap["live_ready"] is True
+    assert live["live_ready_count"] == 1
+
+
+def test_tools_call_is_plan_only_even_if_arguments_live(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dropbox.mcp_stub import handle_jsonrpc
+
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    for name, tid in (("orchestrator_plan", 31), ("stage_discover", 32), ("stage_ingest", 33)):
+        body = handle_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": tid,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": {"live": True}},
+            }
+        )
+        assert body["result"]["live"] is False, name
+        assert body["result"].get("plan_only") is True or name == "orchestrator_plan"
+        if name == "orchestrator_plan":
+            assert body["result"]["live"] is False
+
+
 def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    monkeypatch.setenv("CISO_PUSH", "0")
+    monkeypatch.setenv("RISKREADY_PUSH", "1")
+    (tmp_path / "out" / "ciso-assistant").mkdir(parents=True)
+    (tmp_path / "out" / "ciso-assistant" / "assets.csv").write_text("ref_id\nA1\n", encoding="utf-8")
     (tmp_path / "out" / "poam").mkdir(parents=True)
     (tmp_path / "out" / "poam" / "poam.csv").write_text("weakness,owner,due\nsmb,,\n", encoding="utf-8")
+    (tmp_path / "out" / "simplerisk").mkdir(parents=True)
+    (tmp_path / "out" / "simplerisk" / "poam.csv").write_text("weakness,owner,due\nsmb,,\n", encoding="utf-8")
     data = dispatch("export_ciso_poam", scope_path=SCOPE)
     assert data["posted"] is False
+    assert data["http"] is False
     assert data["owner_due"].startswith("blank")
     assert data["scope_gated"] is True
     assert data["wrap"] == "review-only"
     assert "DEMO" in data["client"]
-    assert any(p.endswith("poam.csv") for p in data["files"])
+    assert any("ciso-assistant" in p and p.endswith("assets.csv") for p in data["files"])
+    assert any(p.endswith("poam.csv") and "poam" in p for p in data["files"])
+    assert any("simplerisk" in p for p in data["files"])
+    assert "clica" in data["clica"]
+
+
+def test_export_ciso_poam_posted_only_when_ciso_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    (tmp_path / "out" / "poam").mkdir(parents=True)
+    (tmp_path / "out" / "poam" / "poam.csv").write_text("weakness\nsmb\n", encoding="utf-8")
+    monkeypatch.setenv("CISO_PUSH", "1")
+    monkeypatch.setenv("DRY_RUN", "1")
+    monkeypatch.setenv("RISKREADY_PUSH", "1")
+    dry = dispatch("export_ciso_poam", scope_path=SCOPE)
+    assert dry["posted"] is False
+    assert dry["http"] is False
+    monkeypatch.setenv("DRY_RUN", "0")
+    armed = dispatch("export_ciso_poam", scope_path=SCOPE)
+    assert armed["posted"] is True
+    assert armed["http"] is False
+    assert armed["ciso_push"] == "1"
+    assert armed["wrap"] == "review-only"
 
 
 def _rpc_once(argv: list[str], req: dict, *, cwd: Path | None = None) -> dict:

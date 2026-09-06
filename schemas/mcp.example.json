@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "grc-dropbox": {
+      "command": "python3",
+      "args": ["-m", "dropbox.mcp_stub", "serve", "--stdio"],
+      "cwd": "/absolute/path/to/grc-collector-pack",
+      "env": {
+        "PYTHONPATH": "/absolute/path/to/grc-collector-pack",
+        "DROPBOX_LIVE": "0",
+        "GRC_LIVE_SCAN": "0",
+        "CISO_PUSH": "0",
+        "RISKREADY_PUSH": "0"
+      }
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
+    }
+  }
+}

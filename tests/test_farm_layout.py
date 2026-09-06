@@ -28,6 +28,10 @@ def test_farm_quickstart_and_root_readme() -> None:
     assert "make farm-toolbin-e2e" in qs
     assert "--live" in qs
     assert "CISO" in qs or "ciso" in qs
+    assert "DROPBOX_LIVE=0" in qs
+    assert "GRC_LIVE_SCAN=0" in qs
+    assert "CISO_PUSH=0" in qs
+    assert "RISKREADY_PUSH=0" in qs
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "## Private drop-box farm" in readme
     assert "farm/QUICKSTART.md" in readme
@@ -55,6 +59,8 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert '"cwd"' in op
     assert "PYTHONPATH" in op
     assert ".cursor/mcp.json" in op
+    assert '"grc-dropbox"' in op
+    assert '"evergreen-assessment"' in op
     integrity = (FARM / "INTEGRITY.md").read_text(encoding="utf-8")
     assert "## Brakes defaults" in integrity
     assert "`max_workers`" in integrity
@@ -83,6 +89,9 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "evergreen_assessment_mcp" in brakes["pack_truth"]
     assert "mcp_stub" in brakes["pack_truth"]
     assert "file-drop inventory" in integrity.lower() or "File-drop inventory" in integrity
+    assert "simplerisk" in integrity.lower()
+    assert "leave-behind" in integrity.lower()
+    assert "out/" in integrity
 
 
 def test_farm_slots_are_adapters_not_binaries() -> None:

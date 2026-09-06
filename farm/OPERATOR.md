@@ -324,6 +324,9 @@ truth. Do not invent a TypeScript refuse matrix. It must start from the
 
 **Cursor** — project file `.cursor/mcp.json` (or user `~/.cursor/mcp.json`):
 
+Two servers — do **not** merge. Pack truth stays USB `evergreen_assessment_mcp`.
+Conductor is `dropbox.mcp_stub` (`grc-dropbox`) only. See `schemas/mcp.example.json`.
+
 ```json
 {
   "mcpServers": {
@@ -338,6 +341,11 @@ truth. Do not invent a TypeScript refuse matrix. It must start from the
         "CISO_PUSH": "0",
         "RISKREADY_PUSH": "0"
       }
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
     }
   }
 }
@@ -352,6 +360,11 @@ builds ignore `cwd`; point `command` at the wrapper:
   "mcpServers": {
     "grc-dropbox": {
       "command": "/absolute/path/to/grc-collector-pack/scripts/mcp_stdio.sh"
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
     }
   }
 }
@@ -362,12 +375,13 @@ order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
 `stage_discover`, `stage_deepen`, `stage_ingest`, `farm_slots`,
 `farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`).
 `farm_slot_status` accepts an optional `{ "category": "discover" }`
-argument. `farm_toolbin_status` lists wired invoke resolve as
-`present` / `missing` / `demo_stub` plus SCOPE `allowlisted` / `will_run`
-/ `live_ready`. DEMO stubs may `will_run` in `make farm-toolbin-e2e`;
-`live_ready` stays 0 on DEMO SCOPE. Real `--live` needs a signed
-non-DEMO SCOPE and an allowlisted real binary. `orchestrator_plan`
-returns the per-stage `will_run` map already in plan JSON.
+argument. `farm_toolbin_status` lists per-slot `live_ready` plus
+`live_ready_count` / `slots[]`. DEMO stubs may `will_run` in
+`make farm-toolbin-e2e`; `live_ready` stays 0 on DEMO SCOPE, lab stubs,
+or file_drop-only names even if a binary is under `FARM_TOOL_BIN`.
+`tools/call` is plan-only. Real `--live` needs a signed non-DEMO SCOPE
+and an allowlisted real binary. `orchestrator_plan` returns the
+per-stage `will_run` map already in plan JSON.
 
 Live deepen stays fail-closed (`DROPBOX_LIVE=0`) unless the operator
 explicitly allowlists tools. Do not point this at public Layer C.

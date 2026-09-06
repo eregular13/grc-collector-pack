@@ -10,6 +10,7 @@ out/raw/*
 out/canonical/*
 out/ciso-assistant/*.csv
 out/poam/*
+out/simplerisk/*
 out/riskready/*.json
 out/ocsf/*.json
 out/summary.json
