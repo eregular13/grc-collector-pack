@@ -50,6 +50,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 84 done: Argus fail-closed bar stamped; KEEP-minimum one-shot scheduler + landed-only CISO path. 0/4 real KEEP still open. Catalog unchanged.
 - Cycle 85 done: keep-lab this-run pack `in/` guard; desktop `python -m keep lab`; estate-only compose park note. Catalog unchanged.
 - Cycle 86 done: CISO SoR (`out/ciso-assistant`) + scheduler CLI e2e (vanity + DEMO `--live`) + OPERATOR Day-of. Catalog unchanged.
+- Cycle 87 done: pack in/ estate protect (schedule/ingest/ciso read-only unless `--write-pack-in`). Catalog unchanged.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

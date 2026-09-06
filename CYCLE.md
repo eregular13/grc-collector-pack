@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 87 — pack in/ estate protect (2026-09-06)
+
+schedule / ingest / ciso default file-drop is **read-only** against pack `in/`. Landing copies require `--write-pack-in` or `PACK_IN_WRITE=1`. This-run fingerprint fails closed. Hexstrike added to vanity refuse. KEEP-minimum dry path still discover→deepen→ingest→SoR (HK/Lynis/nmap/testssl/Maester/cloud). CISO SoR `out/ciso-assistant` + `posted:false` unless `CISO_PUSH=1` stands. No new parsers. Catalog **111 / 32 / 30 / 81**. pytest **345**. Labs no-diff vs cycle 86.
+
+```json
+{"pytest": 345, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 86 — CISO SoR + scheduler CLI e2e + Day-of OPERATOR (2026-09-06)
 
 Harden `python3 -m dropbox ciso` / `export_ciso_poam`: operator SoR is `out/ciso-assistant/*.csv`; `posted:false` unless `CISO_PUSH=1` and `DRY_RUN!=1`; `http` always false (`RISKREADY_PUSH` ignored). Desktop docs: clica or `bash push_ciso.sh` (no make/gh). One-shot scheduler CLI e2e refuses vanity extras (nuclei/trivy/nessus) and DEMO `--live` (exit 2). OPERATOR Day-of: signed SCOPE → schedule dry-run → ingest → ciso files; keep-lab this-run estate guard + no make/gh. No new parsers. No RiskReady HTTP. No catalog inflation. Catalog **111 / 32 / 30 / 81**. pytest **342**. Labs no-diff vs cycle 85.

@@ -2,7 +2,17 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 86):** CISO SoR path
+**This window (cycle 87):** pack `in/` estate protect.
+schedule / ingest / ciso default file-drop is read-only; land only
+with `--write-pack-in` or `PACK_IN_WRITE=1`. Hexstrike refused on
+the KEEP-minimum schedule. CISO SoR + Day-of stand. keep-lab
+this-run guard stands. Argus bar stands. DEMO e2e ≠ client.
+SAMPLE KEEP **0/4**. Pack truth = USB `evergreen_assessment_mcp`
+only. Compose **ABSENT ≠ pass**. Catalog unchanged (111 / 32 wired /
+30 invoke / 81 file_drop). pytest **345**. Cycle 74 Reid-only
+blockers stay locked.
+
+**Cycle 86 (stands):** CISO SoR path
 (`python3 -m dropbox ciso` → `out/ciso-assistant/*.csv`;
 `posted:false` unless `CISO_PUSH=1`) + scheduler CLI e2e (vanity
 refuse + DEMO `--live` exit 2) + OPERATOR Day-of (no make/gh;
