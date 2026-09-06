@@ -2,8 +2,8 @@
 
 ## cycle 128
 
-T06 24h: cold copy `_24h/cold` compose project `grc-estate-24h` on `172.28.110.0/24` (host 19081/19082/19443). One `product_demo` pack_mapped 5 facing false. `down -v`. Main estate stayed up. Office-LAN SCOPE is `forbidden_cidr` plan-only. `Missing web security headers` remaps. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
-pytest: targeted SCOPE+product 18 passed; docker pytest-c green; pytest-a/b polluted by shared dropbox/out (T07).
+T06 24h: cold copy `_24h/cold` compose project `grc-estate-24h` on `172.28.110.0/24` (host 19081/19082/19443). One `product_demo` slug `24h-cold` pack_mapped 5 facing false. `down -v`. Main estate stayed up. Office-LAN SCOPE is `forbidden_cidr` plan-only. `Missing web security headers` remaps. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+product 20 passed.
 summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
 
 ## cycle 127

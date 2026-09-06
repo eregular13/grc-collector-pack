@@ -120,6 +120,27 @@ def test_office_lan_host_and_default_route_refused(tmp_path) -> None:
     assert load_scope(path2).refuse_live() == "forbidden_cidr"
 
 
+def test_t06_cold_compose_isolated_if_present() -> None:
+    """T06: cold copy uses 172.28.110.0/24 and loopback 19081/19082/19443. Not office LAN."""
+    cold = Path(r"C:\GRC Collector\_24h\cold\docker-compose.estate.yml")
+    if not cold.is_file():
+        return
+    text = cold.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.110.0/24" in live
+    assert "grc-estate-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19081:80" in live
+    assert "127.0.0.1:19082:80" in live
+    assert "127.0.0.1:19443:443" in live
+    assert "0.0.0.0:19081" not in live
+    assert "0.0.0.0:19443" not in live
+    assert "grc-estate-c11" not in live
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.110.0/24" not in main
+
+
 def test_push_scripts_still_wrap_dead() -> None:
     ps1 = (ROOT / "push_riskready.ps1").read_text(encoding="utf-8")
     assert "WRAP_DEAD" in ps1
