@@ -83,6 +83,8 @@ def test_farm_readme_is_private_not_hub() -> None:
     assert "push_ciso" in drop_op
     assert "never writes pack" in drop_op.lower() or "never writes pack in/" in drop_op
     assert "--write-pack-in" in drop_op
+    iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
+    assert "cross-wire" in iface.lower() or "Cross-wire" in iface
     integrity = (FARM / "INTEGRITY.md").read_text(encoding="utf-8")
     assert "## Brakes defaults" in integrity
     assert "`max_workers`" in integrity

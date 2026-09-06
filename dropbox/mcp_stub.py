@@ -61,6 +61,16 @@ TOOL_DESC = {
     ),
 }
 
+# Pack-truth tools live on the USB assessment MCP only. Conductor refuses them.
+PACK_TRUTH_TOOLS = frozenset(
+    {
+        "check_scope",
+        "license_guard",
+        "assessment_ready",
+        "assessment-ready",
+    }
+)
+
 # Substrings that must never become callable tools.
 REFUSED_ATTACK = (
     "hexstrike",
@@ -309,6 +319,16 @@ def refuse_attack_name(name: str) -> None:
             raise GateError(f"operator MCP refuses {name!r} (no exploit/attack API)")
 
 
+def refuse_cross_wire(name: str) -> None:
+    """Pack-truth tools are not conductor tools. Fail closed."""
+    tool = (name or "").strip().lower().replace("_", "-")
+    packed = (name or "").strip().lower()
+    if packed in PACK_TRUTH_TOOLS or tool in PACK_TRUTH_TOOLS:
+        raise GateError(
+            f"conductor refuses pack-truth tool {name!r} (cross-wire; USB assessment MCP only)"
+        )
+
+
 def dispatch(
     name: str,
     *,
@@ -318,6 +338,7 @@ def dispatch(
 ) -> dict[str, Any]:
     """Run one operator tool. Deepen stays fail-closed. Live still BYO-only."""
     refuse_attack_name(name)
+    refuse_cross_wire(name)
     tool = (name or "").strip().lower()
     if tool not in OPERATOR_TOOLS:
         raise GateError(f"unknown operator tool {name!r}")
@@ -500,6 +521,9 @@ def tool_catalog() -> dict[str, Any]:
         "hexstrike": False,
         "exploit_api": False,
         "scope_gated": True,
+        "pack_truth": False,
+        "farm_mcp_pack_truth": False,
+        "cross_wire": "fail-closed",
         "tools": [{"name": name, "scope_gated": True} for name in OPERATOR_TOOLS],
     }
 

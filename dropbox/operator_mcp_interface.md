@@ -36,6 +36,8 @@ ignore `cwd` still resolve `python3 -m dropbox.mcp_stub`.
 
 Two servers — do **not** merge. Pack truth is USB `evergreen_assessment_mcp`.
 This repo's conductor is `dropbox.mcp_stub` only. See `schemas/mcp.example.json`.
+Cross-wire (`check_scope` / `license_guard` on the conductor, or one merged
+server) fails closed.
 
 ```json
 {

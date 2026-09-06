@@ -100,6 +100,85 @@ def test_unknown_operator_tool_refused() -> None:
         dispatch("nuke_the_lan")
 
 
+def test_two_mcp_cross_wire_fails_closed() -> None:
+    """Hephaestus: pack-truth tools are not conductor tools. Config stays unmerged."""
+    import json
+
+    from dropbox.mcp_contract import (
+        CONDUCTOR_MODULE,
+        PACK_TRUTH_MODULE,
+        validate_two_mcp_servers,
+    )
+    from dropbox.mcp_stub import PACK_TRUTH_TOOLS, refuse_cross_wire, tool_catalog
+
+    assert not (PACK_TRUTH_TOOLS & set(OPERATOR_TOOLS))
+    blob = (ROOT / "dropbox" / "mcp_stub.py").read_text(encoding="utf-8")
+    assert "evergreen_assessment_mcp" not in blob
+    for name in ("check_scope", "license_guard", "assessment_ready"):
+        with pytest.raises(GateError, match="cross-wire"):
+            refuse_cross_wire(name)
+        with pytest.raises(GateError, match="cross-wire"):
+            dispatch(name, scope_path=SCOPE)
+    catalog = tool_catalog()
+    assert catalog["pack_truth"] is False
+    assert catalog["farm_mcp_pack_truth"] is False
+    assert catalog["cross_wire"] == "fail-closed"
+    assert catalog["server"] == "dropbox-operator-mcp"
+    example = json.loads((ROOT / "schemas" / "mcp.example.json").read_text(encoding="utf-8"))
+    ok = validate_two_mcp_servers(example)
+    assert ok["merged"] is False
+    assert ok["pack_truth"] == PACK_TRUTH_MODULE
+    assert ok["conductor"] == CONDUCTOR_MODULE
+    merged = {"mcpServers": {"grc-dropbox-evergreen": example["mcpServers"]["grc-dropbox"]}}
+    with pytest.raises(GateError, match="cross-wire|merged"):
+        validate_two_mcp_servers(merged)
+    swapped = {
+        "mcpServers": {
+            "grc-dropbox": {
+                "command": "python3",
+                "args": ["-m", "evergreen_assessment_mcp"],
+            },
+            "evergreen-assessment": {
+                "command": "python3",
+                "args": ["-m", "dropbox.mcp_stub", "serve", "--stdio"],
+            },
+        }
+    }
+    with pytest.raises(GateError, match="cross-wired"):
+        validate_two_mcp_servers(swapped)
+
+
+def test_cross_wire_cli_and_jsonrpc_fail_closed() -> None:
+    import subprocess
+
+    from dropbox.mcp_stub import handle_jsonrpc
+
+    proc = subprocess.run(
+        ["python3", "-m", "dropbox", "mcp", "check_scope", "--scope", str(SCOPE)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 2
+    assert "cross-wire" in (proc.stderr or "") + (proc.stdout or "")
+    body = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 99,
+            "method": "tools/call",
+            "params": {"name": "license_guard", "arguments": {}},
+        }
+    )
+    assert body.get("error")
+    assert "cross-wire" in body["error"]["message"]
+    listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+    names = [t["name"] for t in listed["result"]["tools"]]
+    assert "check_scope" not in names
+    assert "license_guard" not in names
+    assert names == list(OPERATOR_TOOLS)
+
+
 def test_mcp_cli_scope_status() -> None:
     import subprocess
 
@@ -526,7 +605,14 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
     )
     names = [t["name"] for t in listed["result"]["tools"]]
     assert names == list(OPERATOR_TOOLS)
-    for banned in ("AIExploitGenerator", "Metasploit", "msfconsole", "hexstrike_run"):
+    for banned in (
+        "AIExploitGenerator",
+        "Metasploit",
+        "msfconsole",
+        "hexstrike_run",
+        "check_scope",
+        "license_guard",
+    ):
         assert banned not in names
 
     stdio = subprocess.run(
