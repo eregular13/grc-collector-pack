@@ -50,7 +50,7 @@ _MAP = [
         "severity": "medium",
     },
     {
-        "match": re.compile(r"missing x-frame-options|missing csp", re.I),
+        "match": re.compile(r"missing x-frame-options|missing csp|missing web security headers", re.I),
         "weakness": "Missing web security headers",
         "cpg": ["CPG 2.W"],
         "csf": ["PR.PS-01"],

@@ -1,5 +1,29 @@
 # Changelog
 
+## cycle 128
+
+T06 24h: cold copy `_24h/cold` compose project `grc-estate-24h` on `172.28.110.0/24` (host 19081/19082/19443). One `product_demo` pack_mapped 5 facing false. `down -v`. Main estate stayed up. Office-LAN SCOPE is `forbidden_cidr` plan-only. `Missing web security headers` remaps. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+product 18 passed; docker pytest-c green; pytest-a/b polluted by shared dropbox/out (T07).
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
+## cycle 127
+
+T05 24h: sink-down `product_demo --help` 102ms and `--dry-run` 125ms, both exit 0. Sink restored. POST /api/risks 403. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: help/dry-run timed; targeted SCOPE tests green.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
+## cycle 126
+
+T04 24h: estate-web/api/tls stopped → `product_demo` exit 2 `estate_down`. Product zip SHA unchanged; no SMBv1. Estate brought back. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: live fail-closed.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
+## cycle 125
+
+T03 24h: SCOPE with `192.168.10.0/24` (or 192.168.10.x host, or `0.0.0.0/0`) is `refuse_live=forbidden_cidr` — plan-only, nmap never execs. Comments are not targets. No scan. No cycle 11. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+product 16 passed.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 124
 
 T02 24h: `SCOPE.docker-estate.yaml` includes `https://127.0.0.1:18443/`. `python -m dropbox.product_demo` pack_mapped 5 (Untrusted TLS added from live estate-tls), facing false, blocked_by lab_sim_not_client_estate. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

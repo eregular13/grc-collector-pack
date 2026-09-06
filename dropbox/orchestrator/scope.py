@@ -1,12 +1,14 @@
 """SCOPE load + fail-closed validation. Unsigned or empty targets refuse live stages."""
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 # CIDR-only does not unlock testssl; Entra-only does not unlock Lynis.
 TOOL_TARGET_KINDS: dict[str, tuple[str, ...]] = {
@@ -135,6 +137,9 @@ MAX_DISCOVER_SHARD_SIZE = 256
 MAX_DEEPEN_BATCH_SIZE = 5
 MAX_CONCURRENT_DISCOVER = 4
 MAX_CONCURRENT_DEEPEN = 2
+# This lab host's office LAN. Parsed targets only — comments must not trip this.
+OFFICE_LAN = ipaddress.ip_network("192.168.10.0/24")
+FORBIDDEN_EXACT_CIDRS = frozenset({"0.0.0.0/0", "::/0"})
 
 
 @dataclass
@@ -277,6 +282,43 @@ class Scope:
             return "window_closed"
         return None
 
+    def forbidden_cidr_reason(self) -> str | None:
+        """Refuse office LAN / default-route CIDRs. Comments are not targets."""
+        for cidr in self.internal_cidrs:
+            text = (cidr or "").strip()
+            if not text:
+                continue
+            if text in FORBIDDEN_EXACT_CIDRS:
+                return "forbidden_cidr"
+            try:
+                net = ipaddress.ip_network(text, strict=False)
+            except ValueError:
+                continue
+            if int(net.prefixlen) == 0:
+                return "forbidden_cidr"
+            if net.overlaps(OFFICE_LAN):
+                return "forbidden_cidr"
+        hosts: list[str] = []
+        hosts.extend(self.internal_hosts)
+        hosts.extend(self.external_hostnames)
+        for raw in list(self.external_urls) + list(self.internal_endpoints):
+            t = (raw or "").strip()
+            if "://" in t:
+                hosts.append(urlparse(t).hostname or "")
+            else:
+                hosts.append(t)
+        for host in hosts:
+            h = (host or "").strip()
+            if not h:
+                continue
+            try:
+                ip = ipaddress.ip_address(h)
+            except ValueError:
+                continue
+            if ip in OFFICE_LAN:
+                return "forbidden_cidr"
+        return None
+
     def refuse_live(self, now: datetime | None = None) -> str | None:
         """Return reason to refuse discover/deepen, or None if allowed to plan live stages.
         Unsigned and empty-target refuses are laws — SCOPE cannot toggle them off."""
@@ -286,6 +328,9 @@ class Scope:
             return "empty_targets"
         if not self.allow_tools:
             return "empty_allow_tools"
+        forbidden = self.forbidden_cidr_reason()
+        if forbidden:
+            return forbidden
         window = self.window_reason(now=now)
         if window:
             return window

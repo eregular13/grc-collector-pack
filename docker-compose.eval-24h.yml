@@ -1,0 +1,208 @@
+# Isolated 24h evaluation estate. Not the T06 cold project. Not c11. Not office LAN.
+# Loopback publishes only.
+name: grc-eval-24h
+
+x-pack: &pack
+  build: .
+  working_dir: /pack
+  environment:
+    PYTHONPATH: /pack
+    DRY_RUN: "1"
+    CISO_PUSH: "0"
+    RISKREADY_PUSH: "0"
+    GRC_LIVE_SCAN: "0"
+    PACK_ROOT: /pack
+    PYTEST_ADDOPTS: "-p no:cacheprovider"
+  volumes:
+    - ./:/pack
+    - ../product-lab:/product-lab
+  networks:
+    - grc-eval-24h
+
+services:
+  eval-web:
+    image: nginx:alpine
+    mem_limit: 256m
+    ports:
+      - "127.0.0.1:18181:80"
+    volumes:
+      - ./estate/web:/usr/share/nginx/html:ro
+    networks:
+      grc-eval-24h:
+        ipv4_address: 172.28.120.10
+
+  eval-api:
+    image: traefik/whoami
+    mem_limit: 256m
+    ports:
+      - "127.0.0.1:18182:80"
+    networks:
+      grc-eval-24h:
+        ipv4_address: 172.28.120.11
+
+  eval-tls:
+    image: nginx:alpine
+    mem_limit: 256m
+    ports:
+      - "127.0.0.1:18143:443"
+    volumes:
+      - ./estate/tls/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./estate/web:/usr/share/nginx/html:ro
+    command:
+      - /bin/sh
+      - -c
+      - apk add --no-cache openssl >/dev/null && mkdir -p /etc/nginx/tls && openssl req -x509 -nodes -days 2 -newkey rsa:2048 -keyout /etc/nginx/tls/key.pem -out /etc/nginx/tls/cert.pem -subj "/CN=localhost" >/dev/null 2>&1 && nginx -g "daemon off;"
+    networks:
+      grc-eval-24h:
+        ipv4_address: 172.28.120.12
+
+  eval-headers:
+    image: nginx:alpine
+    mem_limit: 256m
+    ports:
+      - "127.0.0.1:18183:80"
+    volumes:
+      - ./estate/web:/usr/share/nginx/html:ro
+    networks:
+      grc-eval-24h:
+        ipv4_address: 172.28.120.13
+
+  eval-sink:
+    <<: *pack
+    mem_limit: 512m
+    command: python tests/mock_grc_sink.py
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      SINK_PORT: "8080"
+      OUT_DIR: /pack/out-eval-24h
+    ports:
+      - "127.0.0.1:18180:8080"
+    networks:
+      grc-eval-24h:
+        ipv4_address: 172.28.120.20
+
+  pytest-a:
+    <<: *pack
+    mem_limit: 3g
+    mem_reservation: 1g
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      PACK_ROOT: /pack
+      OUT_DIR: /tmp/out-a
+      DROPBOX_OUT: /tmp/dropbox-out-a
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+    command: python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp=/tmp/pytest-a
+    networks:
+      - grc-eval-24h
+
+  pytest-b:
+    <<: *pack
+    mem_limit: 3g
+    mem_reservation: 1g
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      PACK_ROOT: /pack
+      OUT_DIR: /tmp/out-b
+      DROPBOX_OUT: /tmp/dropbox-out-b
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+    command: python -m pytest tests/test_orchestrator.py tests/test_docker_estate_scope.py -q --tb=short -p no:cacheprovider --basetemp=/tmp/pytest-b
+    networks:
+      - grc-eval-24h
+
+  pytest-c:
+    <<: *pack
+    mem_limit: 2g
+    mem_reservation: 512m
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      PACK_ROOT: /pack
+      OUT_DIR: /tmp/out-c
+      DROPBOX_OUT: /tmp/dropbox-out-c
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+    command: python -m pytest tests/test_safety.py tests/test_loader.py tests/test_pipeline.py tests/test_product.py tests/test_product_ready.py -q --tb=short -p no:cacheprovider --basetemp=/tmp/pytest-c
+    networks:
+      - grc-eval-24h
+
+  collectors:
+    <<: *pack
+    mem_limit: 2g
+    mem_reservation: 512m
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-eval-24h
+    command:
+      - sh
+      - -c
+      - python collectors/cloud_prowler.py && python collectors/inventory_nmap.py && python collectors/vuln_scan.py && python collectors/host_wazuh.py && python collectors/identity_ad.py && python collectors/easm.py && python collectors/k8s_kubescape.py && python collectors/code_secrets.py && python collectors/saas_idp.py && python collectors/grc_loader.py
+    networks:
+      - grc-eval-24h
+
+  map-audit:
+    <<: *pack
+    mem_limit: 2g
+    mem_reservation: 512m
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-eval-24h
+    command: python scripts/eval_24h_map.py
+    networks:
+      - grc-eval-24h
+
+  eval-hold-1:
+    image: python:3.12-slim
+    mem_limit: 3500m
+    mem_reservation: 2g
+    command: ["python", "-c", "import time, pathlib; root=pathlib.Path('/data'); blob=[p.read_bytes() for p in root.rglob('*') if p.is_file()] if root.exists() else []; buf=bytearray(3*1024*1024*1024); print('hold1', len(blob), sum(map(len,blob)), len(buf), flush=True); time.sleep(86400)"]
+    volumes:
+      - ./fixtures:/data:ro
+    networks:
+      - grc-eval-24h
+
+  eval-hold-2:
+    image: python:3.12-slim
+    mem_limit: 3500m
+    mem_reservation: 2g
+    command: ["python", "-c", "import time; buf=bytearray(3*1024*1024*1024); print('hold2', len(buf), flush=True); time.sleep(86400)"]
+    networks:
+      - grc-eval-24h
+
+  eval-hold-3:
+    image: python:3.12-slim
+    mem_limit: 3500m
+    mem_reservation: 2g
+    command: ["python", "-c", "import time; buf=bytearray(3*1024*1024*1024); print('hold3', len(buf), flush=True); time.sleep(86400)"]
+    networks:
+      - grc-eval-24h
+
+networks:
+  grc-eval-24h:
+    name: grc-eval-24h
+    ipam:
+      config:
+        - subnet: 172.28.120.0/24

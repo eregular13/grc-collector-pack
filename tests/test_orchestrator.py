@@ -2074,6 +2074,9 @@ def test_curl_https_self_signed_and_missing_hsts() -> None:
     assert not any("smb" in n.lower() for n in names)
     mapped = map_finding("Untrusted TLS certificate", "127.0.0.1", "medium")
     assert mapped["mapped"] is True
+    headers_named = map_finding("Missing web security headers", "127.0.0.1", "low")
+    assert headers_named["mapped"] is True
+    assert "UNMAPPED" not in headers_named["control_refs"]
 
 
 def test_curl_empty_head_does_not_invent_missing_headers() -> None:
