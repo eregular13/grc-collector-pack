@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 84 — Argus fail-closed bar + KEEP-minimum scheduler (2026-09-06)
+
+Argus bar stamped into STATUS / farm+dropbox OPERATOR / INTEGRITY / brakes JSON. DEMO e2e ≠ client; live_ready fail-closed on stubs; SAMPLE KEEP ≠ client KEEP (0/4); pack truth = `evergreen_assessment_mcp` only; farm MCP never pack truth; compose PASS only on DESKTOP Docker (agent-VM ABSENT ≠ pass); signed SCOPE + HITL before PATH/live; file_drop default; RiskReady wrap stay-out; Hexstrike pattern-only.
+
+Themis one-shot `python3 -m dropbox schedule` + landed-only `python3 -m dropbox ciso`. KEEP-minimum only (HK / Lynis / nmap / testssl / Maester / cloud). Vanity (nuclei/trivy/nessus) refused unless the file already landed. Empty `in/` does not load fixtures/demo. `--live` refused on DEMO SCOPE or `live_ready_count=0`. No new parsers. Catalog **111 / 32 / 30 / 81**. pytest **339**. Labs no-diff vs cycle 83 counts.
+
+```json
+{"pytest": 339, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 83 — Hephaestus live_ready + two-MCP contract (2026-09-06)
 
 P0: `farm_toolbin_status` per-slot `live_ready` + `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or FILE_DROP_ONLY names even if a binary is under `FARM_TOOL_BIN`. `tools/call` stays plan-only (`arguments.live` ignored). `farm_which` still refuses `LICENSE_LOCK_SPAWN`. `push_riskready.sh` stays review-only (no curl/login/POST even if `RISKREADY_PUSH=1`).

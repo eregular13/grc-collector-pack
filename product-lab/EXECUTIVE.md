@@ -2,7 +2,14 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 83):** Hephaestus contract — file_drop/demo never
+**This window (cycle 84):** Argus fail-closed bar + KEEP-minimum
+one-shot scheduler. DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth
+= USB `evergreen_assessment_mcp` only; farm MCP never pack truth.
+Compose **ABSENT ≠ pass**. HITL before live. Wrap stay-out. Hexstrike
+pattern-only. Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). pytest **339**. Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 83 (stands):** Hephaestus contract — file_drop/demo never
 `live_ready`; `tools/call` plan-only; two MCP servers unmerged; CISO
 `posted` gate; SimpleRisk `out/` leave-behind. Wrap stays **dead**.
 Paying-day **FAIL**. DEMO ≠ client. Catalog unchanged (111 / 32 wired /
