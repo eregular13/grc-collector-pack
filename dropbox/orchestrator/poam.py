@@ -58,6 +58,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"directory listing(?: enabled)?|nginx autoindex", re.I),
+        "weakness": "Directory listing enabled",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Disable autoindex; serve an explicit index or 403 on directory URLs.",
+        "severity": "low",
+    },
+    {
         "match": re.compile(r"server banner", re.I),
         "weakness": "Server banner disclosure",
         "cpg": ["CPG 2.T"],

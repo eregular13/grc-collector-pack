@@ -176,6 +176,48 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_directory_listing_parser_and_map() -> None:
+    """Observed on grc-dirlist-24h GET / : nginx autoindex Index of / . TRACE was 405."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "<html>\n<head><title>Index of /</title></head>\n<body>\n"
+        "<h1>Index of /</h1><hr><pre><a href=\"../\">../</a>\n"
+        "<a href=\"readme.txt\">readme.txt</a>\n</pre><hr></body>\n</html>\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:18881/")
+    assert rows and rows[0]["name"] == "Directory listing enabled"
+    assert curl_byo.parse_curl_body("HTTP/1.1 200 OK\nServer: nginx\n\n", "http://127.0.0.1:18881/") == []
+    mapped = map_finding("Directory listing enabled", "127.0.0.1", "low")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Directory listing enabled"
+    assert curl_byo.parse_curl_headers("HTTP/1.1 200 OK\nServer: nginx\n\n", "http://127.0.0.1:18881/")
+    # HEAD must not invent a listing
+    head_names = {r["name"] for r in curl_byo.parse_curl_headers("HTTP/1.1 200 OK\nServer: nginx\n\n", "http://127.0.0.1:18881/")}
+    assert "Directory listing enabled" not in head_names
+
+
+def test_dirlist_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.180.0/24 loopback 18881 autoindex. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.dirlist.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.180.0/24" in live
+    assert "grc-dirlist-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:18881:80" in live
+    assert "0.0.0.0:18881" not in live
+    assert "grc-estate-c11" not in live
+    conf = Path(r"C:\GRC Collector\product-lab\24h\dirlist\default.conf").read_text(encoding="utf-8")
+    assert "autoindex on" in conf
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.180.0/24" not in main
+
+
 def test_tls_hostname_mismatch_parser_and_map() -> None:
     """Observed on grc-mismatch-24h: alpine curl --cacert → SAN does not match IP."""
     from dropbox.orchestrator.adapters import curl_byo

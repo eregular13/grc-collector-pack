@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 135
+
+T24-wait extra: autoindex estate `grc-dirlist-24h` on `172.28.180.0/24` loopback 18881. GET `/` observed nginx `Index of /`; map `Directory listing enabled` from GET body only (HEAD does not invent it). TRACE 405, not mapped. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 134
 
 T24-wait extra: hostname-mismatch TLS estate `grc-mismatch-24h` on `172.28.170.0/24` loopback 18681/18643, cert SAN `wrong.lab.example`. Alpine curl `--cacert` observed `no alternative certificate subject name matches target ipv4 address`; map `TLS hostname mismatch`. Do not invent mismatch from UNTRUSTED_ROOT alone. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

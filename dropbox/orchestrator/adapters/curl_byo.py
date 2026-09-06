@@ -160,6 +160,23 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
     return rows
 
 
+def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
+    """Directory listing from a GET body only. HEAD samples are not a listing."""
+    host = urlparse(url).hostname or url
+    low = (blob or "").lower()
+    if "index of /" in low or "<title>index of" in low:
+        return [
+            {
+                "host": host,
+                "asset": host,
+                "name": "Directory listing enabled",
+                "weakness": "Directory listing enabled",
+                "severity": "low",
+            }
+        ]
+    return []
+
+
 def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
     """Self-signed / expired / verify-fail on https:// only. Do not invent SMBv1."""
     if not (url or "").lower().startswith("https://"):
