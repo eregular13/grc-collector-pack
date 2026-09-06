@@ -127,6 +127,8 @@ def test_readme_leads_with_assessment() -> None:
     assert "Not a GRC UI" in text
     assert "0.0.0.0" not in text
     assert "127.0.0.1" in text
+    assert "Lab-sim" in text or "lab-sim" in text
+    assert "docs/QUICKSTART.md" in text
 
 
 def test_product_demo_module_exists() -> None:

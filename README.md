@@ -2,20 +2,23 @@
 
 Authorized assessment (signed SCOPE) → evidence in CISO Assistant Community → POA&M + blank remediation quote. Not a GRC UI. Not Pentera.
 
-Version `0.4.0`. Demo estate is **lab-sim**; `client_facing_ready` stays false until a real signed drop box + HITL.
+**Lab-sim ≠ customer pack.** `client_facing_ready` stays false until a real signed drop box + HITL.
+
+Version `0.4.1`. One page: [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ```powershell
-cd "C:\GRC Collector\grc-collector-pack"
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 $env:PYTHONPATH = (Get-Location)
+python -m pytest tests -q
+docker compose -f docker-compose.estate.yml up -d
 python -m dropbox.product_demo --help
 python -m dropbox.product_demo
-# zip under engagements/
-# import: docs/IMPORT_CISO.md
 ```
 
-`--help` prints usage and exits. It does not hit the mock sink.
+`--help` prints usage and exits. It does not hit the mock sink. If estate-web is down, `product_demo` exits 2 `estate_down` — it does not silently use Litware CSVs.
 
-Docs: [SECURITY.md](SECURITY.md) · [NOTICE](NOTICE) (nmap use-don’t-ship, RiskReady stay-out) · [docs/HITL.md](docs/HITL.md) · [docs/LAB_WINDOW.md](docs/LAB_WINDOW.md) · [docs/IMPORT_CISO.md](docs/IMPORT_CISO.md) · [docs/IMPORT_RR.md](docs/IMPORT_RR.md) · [docs/IMPORT_PROBO.md](docs/IMPORT_PROBO.md) · [docs/OUT_DIR.md](docs/OUT_DIR.md) · [docs/PUBLISH.md](docs/PUBLISH.md)
+Docs: [SECURITY.md](SECURITY.md) · [NOTICE](NOTICE) (nmap use-don’t-ship, RiskReady stay-out) · [docs/HITL.md](docs/HITL.md) · [docs/ESTATE.md](docs/ESTATE.md) · [docs/LAB_WINDOW.md](docs/LAB_WINDOW.md) · [docs/IMPORT_CISO.md](docs/IMPORT_CISO.md) · [docs/IMPORT_RR.md](docs/IMPORT_RR.md) · [docs/IMPORT_PROBO.md](docs/IMPORT_PROBO.md) · [docs/OUT_DIR.md](docs/OUT_DIR.md) · [docs/PUBLISH.md](docs/PUBLISH.md)
 
 Three layers, kept separate:
 
@@ -27,11 +30,9 @@ RiskReady wrap is **stay-out** (`push_riskready.*` never POSTs). SimpleRisk is a
 
 License: MIT.
 
-## Quick lab (Windows)
+## Fixture lab (Windows)
 
 ```powershell
-cd "C:\GRC Collector\grc-collector-pack"
-python -m pip install -r requirements.txt
 powershell -ExecutionPolicy Bypass -File .\run_lab.ps1
 ```
 
