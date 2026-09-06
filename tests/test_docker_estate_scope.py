@@ -120,6 +120,62 @@ def test_office_lan_host_and_default_route_refused(tmp_path) -> None:
     assert load_scope(path2).refuse_live() == "forbidden_cidr"
 
 
+def test_class_a_host_lan_exact_cidr_refused(tmp_path, monkeypatch) -> None:
+    """24h bar: 10.0.0.0/8 is host LAN. Fixture 10.0.0.0/24 is not the whole class A."""
+    from dropbox.orchestrator.adapters import nmap_byo
+    from dropbox.orchestrator.plan import build_plan
+    from dropbox.orchestrator.run import run
+    from dropbox.orchestrator.scope import load_scope
+
+    poisoned = _estate_scope_text().replace('- "172.28.90.0/24"', '- "10.0.0.0/8"', 1)
+    path = tmp_path / "SCOPE.class-a.yaml"
+    path.write_text(poisoned, encoding="utf-8")
+    called: list[int] = []
+    monkeypatch.setenv("EVERGREEN_ORCH_LIVE", "1")
+    monkeypatch.setattr(nmap_byo, "on_path", lambda: True)
+
+    def _boom(*_a, **_k):
+        called.append(1)
+        raise AssertionError("nmap must not exec against 10.0.0.0/8")
+
+    monkeypatch.setattr(nmap_byo.subprocess, "run", _boom)
+    scope = load_scope(path)
+    assert scope.refuse_live() == "forbidden_cidr"
+    plan = build_plan(scope)
+    assert plan["label"] == "plan-only"
+    assert plan["brakes"]["refuse_live"] == "forbidden_cidr"
+    payload = run(path, "discover", dest=tmp_path / "out-class-a")
+    assert payload.get("refused") == "forbidden_cidr"
+    assert called == []
+    desc = nmap_byo.describe(scope, ["10.0.0.0/8"])
+    assert desc["would_exec"] is False
+    fixture = _estate_scope_text().replace('- "172.28.90.0/24"', '- "10.0.0.0/24"', 1)
+    path24 = tmp_path / "SCOPE.class-a-24.yaml"
+    path24.write_text(fixture, encoding="utf-8")
+    assert load_scope(path24).forbidden_cidr_reason() is None
+
+
+def test_xwait_compose_isolated_if_present() -> None:
+    """T24-wait extra lab: 172.28.130.0/24 loopback 18281/18282/18243. Not office LAN. Not c11."""
+    xwait = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.xwait.yml")
+    if not xwait.is_file():
+        return
+    text = xwait.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.130.0/24" in live
+    assert "grc-xwait-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:18281:80" in live
+    assert "127.0.0.1:18282:80" in live
+    assert "127.0.0.1:18243:443" in live
+    assert "0.0.0.0:18281" not in live
+    assert "0.0.0.0:18243" not in live
+    assert "grc-estate-c11" not in live
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.130.0/24" not in main
+
+
 def test_t06_cold_compose_isolated_if_present() -> None:
     """T06: cold copy uses 172.28.110.0/24 and loopback 19081/19082/19443. Not office LAN."""
     cold = Path(r"C:\GRC Collector\_24h\cold\docker-compose.estate.yml")

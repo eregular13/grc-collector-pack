@@ -1,6 +1,6 @@
 # CLIENT_READY (software bar)
 
-written_at: 2026-09-06T11:22:00-07:00
+written_at: 2026-09-06T12:19:00-07:00
 version: 0.5.0-rc.1
 client_facing_ready: false
 paying_day: NO
@@ -13,7 +13,7 @@ This is the **software** a first client assessment would run. Docker-sim is not 
 | Mapped web/TLS POA&M `pack_mapped ≥ 4` | PASS (`5`: Cleartext HTTP, Missing HSTS, Missing web security headers, Server banner, Untrusted TLS) |
 | `python -m dropbox.product_demo` / `--help` | PASS (`--help` no sink HTTP) |
 | `docs/CLIENT_ASSESS.md` checklist | PASS (do not scan a client from this lab) |
-| LAN CIDR refuse plan-only | PASS (`forbidden_cidr`) |
+| LAN CIDR refuse plan-only | PASS (`192.168.10.0/24`, `0.0.0.0/0`, `10.0.0.0/8`) |
 | Unsigned refuse | PASS |
 | Estate-down no Litware zip | PASS (exit 2) |
 | WRAP_DEAD / no POST `/api/risks` | PASS (403) |

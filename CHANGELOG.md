@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 130
+
+T24-wait (not freeze): SCOPE `10.0.0.0/8` (whole class A / supernet) is `forbidden_cidr` plan-only; fixture `10.0.0.0/24` unchanged. Extra isolated compose `grc-xwait-24h` on `172.28.130.0/24` loopback 18281/18282/18243. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 129
 
 T07–T16/T18–T19 24h: slug isolation (`24h-cold` vs `docker-estate-product`); leftover `.alive` destroyed even when discover skipped; deepen 2–5; zip contract no `.env`; `docs/CLIENT_ASSESS.md`; SimpleRisk estate CSV; console GET-only POST 405 on `127.0.0.1:18765`; PRODUCT.md no longer claims Litware CSVs on the estate slug; chaos kill estate-web recovers; mock sink assets/evidence 200, `/api/risks` 403; `--help` ×3 sink delta 0. VERSION 0.5.0-rc.1 = client-assess **software** bar, not paying-day. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

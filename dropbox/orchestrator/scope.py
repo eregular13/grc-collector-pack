@@ -139,7 +139,9 @@ MAX_CONCURRENT_DISCOVER = 4
 MAX_CONCURRENT_DEEPEN = 2
 # This lab host's office LAN. Parsed targets only — comments must not trip this.
 OFFICE_LAN = ipaddress.ip_network("192.168.10.0/24")
-FORBIDDEN_EXACT_CIDRS = frozenset({"0.0.0.0/0", "::/0"})
+# Whole class-A is host LAN on this bar. Fixture 10.0.0.0/24 and /16 stay plan-only by other brakes.
+HOST_LAN_10 = ipaddress.ip_network("10.0.0.0/8")
+FORBIDDEN_EXACT_CIDRS = frozenset({"0.0.0.0/0", "::/0", "10.0.0.0/8"})
 
 
 @dataclass
@@ -297,6 +299,8 @@ class Scope:
             if int(net.prefixlen) == 0:
                 return "forbidden_cidr"
             if net.overlaps(OFFICE_LAN):
+                return "forbidden_cidr"
+            if net.version == 4 and (net == HOST_LAN_10 or HOST_LAN_10.subnet_of(net)):
                 return "forbidden_cidr"
         hosts: list[str] = []
         hosts.extend(self.internal_hosts)
