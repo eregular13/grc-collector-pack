@@ -2,7 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 87):** pack `in/` estate protect.
+**This window (cycle 88):** Hephaestus two-MCP contract.
+Conductor refuses pack-truth tools (`check_scope` / `license_guard`);
+merged or swapped mcp.json fails closed. Pack truth = USB
+`evergreen_assessment_mcp` only. Estate protect + CISO SoR stand.
+DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Compose **ABSENT ≠ pass**.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+pytest **347**. Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 87 (stands):** pack `in/` estate protect.
 schedule / ingest / ciso default file-drop is read-only; land only
 with `--write-pack-in` or `PACK_IN_WRITE=1`. Hexstrike refused on
 the KEEP-minimum schedule. CISO SoR + Day-of stand. keep-lab

@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 88):** Hephaestus two-MCP contract. Conductor refuses `check_scope` / `license_guard` (cross-wire fail-closed). Merged or swapped mcp.json refused. Pack truth stays USB `evergreen_assessment_mcp`. Estate protect + CISO SoR stand. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 87 counts; pytest **347**.
+
 **Delta (cycle 87):** pack `in/` estate protect. schedule / ingest / ciso never write pack `in/` unless `--write-pack-in` or `PACK_IN_WRITE=1`. Hexstrike refused on KEEP-minimum extras. CISO SoR + Day-of stand. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 86 counts; pytest **345**.
 
 **Delta (cycle 86):** CISO SoR is `out/ciso-assistant/*.csv` from `python3 -m dropbox ciso` / `export_ciso_poam`. `posted:false` unless `CISO_PUSH=1`. Desktop: clica / `bash push_ciso.sh` (no `make`/`gh`). Scheduler CLI e2e refuses vanity extras and DEMO `--live`. OPERATOR Day-of: signed SCOPE → schedule dry-run → ingest → ciso files. keep-lab this-run guard stands. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 85 counts; pytest **342**.
