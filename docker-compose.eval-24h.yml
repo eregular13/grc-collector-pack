@@ -87,8 +87,8 @@ services:
 
   pytest-a:
     <<: *pack
-    mem_limit: 3g
-    mem_reservation: 1g
+    mem_limit: 2g
+    mem_reservation: 512m
     environment:
       PYTHONPATH: /pack
       DRY_RUN: "1"
@@ -99,14 +99,17 @@ services:
       OUT_DIR: /tmp/out-a
       DROPBOX_OUT: /tmp/dropbox-out-a
       PYTEST_ADDOPTS: "-p no:cacheprovider"
-    command: python -m pytest tests -q --tb=short -p no:cacheprovider --basetemp=/tmp/pytest-a
+    tmpfs:
+      - /pack/dropbox/out
+      - /tmp/pytest-a
+    command: python -m pytest tests -q --tb=line -p no:cacheprovider --basetemp=/tmp/pytest-a
     networks:
       - grc-eval-24h
 
   pytest-b:
     <<: *pack
-    mem_limit: 3g
-    mem_reservation: 1g
+    mem_limit: 2g
+    mem_reservation: 512m
     environment:
       PYTHONPATH: /pack
       DRY_RUN: "1"
@@ -117,7 +120,10 @@ services:
       OUT_DIR: /tmp/out-b
       DROPBOX_OUT: /tmp/dropbox-out-b
       PYTEST_ADDOPTS: "-p no:cacheprovider"
-    command: python -m pytest tests/test_orchestrator.py tests/test_docker_estate_scope.py -q --tb=short -p no:cacheprovider --basetemp=/tmp/pytest-b
+    tmpfs:
+      - /pack/dropbox/out
+      - /tmp/pytest-b
+    command: python -m pytest tests/test_orchestrator.py tests/test_docker_estate_scope.py -q --tb=line -p no:cacheprovider --basetemp=/tmp/pytest-b
     networks:
       - grc-eval-24h
 

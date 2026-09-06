@@ -4,7 +4,7 @@ Authorized assessment (signed SCOPE) → evidence in CISO Assistant Community �
 
 **Lab-sim ≠ customer pack.** `client_facing_ready` stays false until a real signed drop box + HITL.
 
-Version `0.4.1`. One page: [docs/QUICKSTART.md](docs/QUICKSTART.md).
+Version `0.5.0-rc.1` (client-assess **software** bar — not a paying-day PASS). One page: [docs/QUICKSTART.md](docs/QUICKSTART.md). Also [docs/CLIENT_ASSESS.md](docs/CLIENT_ASSESS.md).
 
 ```powershell
 python -m venv .venv

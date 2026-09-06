@@ -4,7 +4,7 @@ live_finding_classes: Cleartext HTTP; Missing HSTS; Missing X-Frame-Options/CSP 
 pack_mapped: 5
 poam_rows_from_estate: 5
 client_facing_ready: false
-why_not_paying_day: docker-sim HITL is attested lab-sim (`blocked_by=lab_sim_not_client_estate`). Kit copies pack CISO CSVs (Litware fixture 132/155/9), not a customer estate. SCOPE.example stays historically closed. No signed live drop box.
+why_not_paying_day: docker-sim HITL is attested lab-sim (`blocked_by=lab_sim_not_client_estate`). Estate slug copies `out-estate/` POA&M, not Litware 132/155/9 CISO CSVs. SCOPE.example stays historically closed. No signed live drop box.
 ciso_import: docs/IMPORT_CISO.md
 riskready: WRAP_DEAD
 buyer_sees_in_30_min: isolated estate :18081/:18082/:18443; live HEAD → mapped POA&M (CPG 2.W / PR.DS-02 / PR.PS-01 / CPG 2.T / PR.DS-10); HITL lab-sim attested; mock sink assets+evidences; zip `engagements/engagement-docker-estate-product-YYYYMMDD.zip` with PRODUCT_RUN.md

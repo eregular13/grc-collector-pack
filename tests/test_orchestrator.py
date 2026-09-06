@@ -338,15 +338,16 @@ def test_cleartext_http_and_headers_map() -> None:
     assert "SMBv1" not in tls["weakness"]
 
 
-def test_destroy_workers_after_discover() -> None:
+def test_destroy_workers_after_discover(tmp_path) -> None:
     from dropbox.orchestrator.run import run
 
-    dest = ROOT / "dropbox" / "out"
-    dest.mkdir(parents=True, exist_ok=True)
+    dest = tmp_path / "out"
+    dest.mkdir(parents=True)
     (dest / "workers").mkdir(exist_ok=True)
     leftover = dest / "workers" / "crashed-discover.alive"
     leftover.write_text("alive\n", encoding="utf-8")
-    run(LAB_SCOPE, "discover")
+    payload = run(LAB_SCOPE, "discover", dest=dest)
+    assert "crashed-discover" in (payload.get("leftover_alive_destroyed") or [])
     destroy = json.loads((dest / "destroy_discover.json").read_text(encoding="utf-8"))
     assert destroy["destroyed"]
     alive = list((dest / "workers").glob("*.alive"))
@@ -359,6 +360,20 @@ def test_destroy_workers_after_discover() -> None:
     assert "printer-down.corp.local" not in {
         row.get("host") for row in discover.get("hosts") or []
     }
+
+
+def test_skipped_discover_still_destroys_alive(tmp_path) -> None:
+    """T08: leftover .alive must die even when discover is refused/skipped."""
+    from dropbox.orchestrator.run import run
+
+    dest = tmp_path / "out"
+    (dest / "workers").mkdir(parents=True)
+    leftover = dest / "workers" / "orphan.alive"
+    leftover.write_text("alive\n", encoding="utf-8")
+    payload = run(ROOT / "dropbox" / "SCOPE.unsigned.yaml", "discover", dest=dest)
+    assert payload.get("refused") == "unsigned_or_consent_false"
+    assert "orphan" in (payload.get("leftover_alive_destroyed") or [])
+    assert list((dest / "workers").glob("*.alive")) == []
 
 
 def test_external_fixture_ingest_skips_internal_pack_demo() -> None:
@@ -2650,12 +2665,12 @@ def test_unsigned_scope_plan_only_ok() -> None:
     assert plan["brakes"]["deepen_batch_size"] == 3
 
 
-def test_destroy_workers_after_deepen() -> None:
+def test_destroy_workers_after_deepen(tmp_path) -> None:
     from dropbox.orchestrator.run import run
 
-    run(LAB_SCOPE, "discover")
-    payload = run(LAB_SCOPE, "deepen")
-    dest = ROOT / "dropbox" / "out"
+    dest = tmp_path / "out"
+    run(LAB_SCOPE, "discover", dest=dest)
+    payload = run(LAB_SCOPE, "deepen", dest=dest)
     destroy = json.loads((dest / "destroy_deepen.json").read_text(encoding="utf-8"))
     assert destroy["destroyed"]
     alive = list((dest / "workers").glob("*.alive"))
@@ -2666,6 +2681,27 @@ def test_destroy_workers_after_deepen() -> None:
     assert cap >= 1
     assert all(len(wave) <= cap for wave in rec.get("waves") or [])
     assert rec.get("label") in {"fixture", "live-byo"}
+
+
+def test_estate_deepen_batch_is_two_to_five() -> None:
+    """T09: docker-estate deepen stays in the 2–5 window."""
+    from dropbox.orchestrator.plan import build_plan, deepen_batches
+    from dropbox.orchestrator.scope import load_scope
+
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.docker-estate.yaml")
+    assert 2 <= scope.batch.deepen_batch_size <= 5
+    plan = build_plan(scope)
+    assert 2 <= int(plan["brakes"]["deepen_batch_size"]) <= 5
+    urls = list(scope.external_urls)
+    assert urls
+    batches = deepen_batches(urls, scope.batch.deepen_batch_size)
+    assert batches
+    assert all(1 <= len(b) <= 5 for b in batches)
+    from dropbox.orchestrator.adapters import curl_byo
+
+    assert curl_byo.MAX_DEEPEN_TARGETS == 5
+    huge = curl_byo.describe(scope, [f"https://h{i}.example" for i in range(6)])
+    assert huge["shard_brake"] == "batch_too_large"
 
 
 def test_blank_named_contact_refuses_live(tmp_path, monkeypatch) -> None:

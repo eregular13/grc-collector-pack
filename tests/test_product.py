@@ -120,6 +120,137 @@ def test_estate_slug_poam_is_cleartext_not_litware(tmp_path, monkeypatch) -> Non
     assert "132" not in json.dumps(rec["counts"])
 
 
+def test_two_slugs_do_not_steal_poam(tmp_path, monkeypatch) -> None:
+    """T07: docker-estate-product vs 24h-cold keep separate POA&M."""
+    import zipfile
+
+    monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
+    from dropbox.new_engagement import new_engagement
+    from dropbox.package_engagement import package_slug
+
+    header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
+    src_a = tmp_path / "estate-out"
+    (src_a / "poam").mkdir(parents=True)
+    (src_a / "poam" / "poam.csv").write_text(
+        header + "Cleartext HTTP,127.0.0.1,medium,CPG 2.W;PR.DS-02,Enforce TLS,,,open\n",
+        encoding="utf-8",
+    )
+    src_b = tmp_path / "cold-out"
+    (src_b / "poam").mkdir(parents=True)
+    (src_b / "poam" / "poam.csv").write_text(
+        header + "Untrusted TLS certificate,127.0.0.1,medium,CPG 2.W;PR.DS-02;PR.DS-10,Replace cert,,,open\n",
+        encoding="utf-8",
+    )
+    scope = ROOT / "dropbox" / "SCOPE.docker-estate.yaml"
+    new_engagement("docker-estate-product", scope, evidence_label="lab-sim", artifact_src=src_a, counts={"pack_mapped": 1, "poam_rows": 1})
+    new_engagement("24h-cold", scope, evidence_label="lab-sim", artifact_src=src_b, counts={"pack_mapped": 1, "poam_rows": 1})
+    a = (tmp_path / "docker-estate-product" / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
+    b = (tmp_path / "24h-cold" / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
+    assert "Cleartext HTTP" in a
+    assert "Untrusted TLS certificate" not in a
+    assert "Untrusted TLS certificate" in b
+    assert "Cleartext HTTP" not in b
+    assert not (tmp_path / "docker-estate-product" / "out" / "orchestrator" / "discover.json").is_file()
+    assert not (tmp_path / "24h-cold" / "out" / "orchestrator" / "discover.json").is_file()
+    new_engagement("docker-estate-product", scope, evidence_label="lab-sim", artifact_src=src_a, counts={"pack_mapped": 1})
+    b2 = (tmp_path / "24h-cold" / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
+    assert b2 == b
+    (tmp_path / "24h-cold" / ".env").write_text("CISO_TOKEN=nope\n", encoding="utf-8")
+    zpath = package_slug("24h-cold")
+    names = zipfile.ZipFile(zpath).namelist()
+    assert not any(n.endswith(".env") or n.split("/")[-1] == ".env" for n in names)
+    man = json.loads((tmp_path / "24h-cold" / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert man["client_facing_ready"] is False
+
+
+def test_zip_contract_four_mapped_names_facing_false(tmp_path, monkeypatch) -> None:
+    """T10: zip has no .env, four mapped web/TLS names, facing false."""
+    import zipfile
+
+    monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
+    from dropbox.new_engagement import new_engagement
+    from dropbox.package_engagement import package_slug
+
+    header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
+    rows = (
+        "Cleartext HTTP,127.0.0.1,medium,CPG 2.W;PR.DS-02,Enforce TLS,,,open\n"
+        "Missing HSTS,127.0.0.1,medium,CPG 2.W;PR.DS-02,Add HSTS,,,open\n"
+        "Missing web security headers,127.0.0.1,low,CPG 2.W;PR.PS-01,Set XFO/CSP,,,open\n"
+        "Server banner disclosure,127.0.0.1,low,CPG 2.T;PR.PS-01,Reduce Server,,,open\n"
+        "Untrusted TLS certificate,127.0.0.1,medium,CPG 2.W;PR.DS-02;PR.DS-10,Replace cert,,,open\n"
+    )
+    src = tmp_path / "estate-out"
+    (src / "poam").mkdir(parents=True)
+    (src / "poam" / "poam.csv").write_text(header + rows, encoding="utf-8")
+    (tmp_path / "docker-estate-product").mkdir()
+    (tmp_path / "docker-estate-product" / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    rec = new_engagement(
+        "docker-estate-product",
+        ROOT / "dropbox" / "SCOPE.docker-estate.yaml",
+        evidence_label="lab-sim",
+        artifact_src=src,
+        counts={"pack_mapped": 5, "poam_rows": 5},
+    )
+    assert rec["client_facing_ready"] is False
+    zpath = package_slug("docker-estate-product")
+    with zipfile.ZipFile(zpath) as zf:
+        names = zf.namelist()
+        assert not any(n.split("/")[-1].endswith(".env") or n.split("/")[-1] == ".env" for n in names)
+        poam = zf.read("docker-estate-product/out/poam/poam.csv").decode("utf-8")
+        man = json.loads(zf.read("docker-estate-product/MANIFEST.json"))
+    for name in (
+        "Cleartext HTTP",
+        "Missing HSTS",
+        "Missing web security headers",
+        "Server banner disclosure",
+    ):
+        assert name in poam
+    assert "SMBv1" not in poam
+    assert man["client_facing_ready"] is False
+
+
+def test_estate_simplerisk_is_not_only_smbv1(tmp_path) -> None:
+    """T12: leave-behind CSV is estate web/TLS, not fixture SMBv1."""
+    from dropbox.orchestrator.poam import export_simplerisk, map_finding
+
+    rows = []
+    for name in ("Cleartext HTTP", "Untrusted TLS certificate"):
+        rec = map_finding(name, "127.0.0.1", "medium")
+        rec["asset"] = "127.0.0.1"
+        rec["weakness"] = rec.get("weakness") or name
+        rows.append(rec)
+    dest = tmp_path / "risks_import.csv"
+    export_simplerisk(rows, dest)
+    text = dest.read_text(encoding="utf-8")
+    assert "Cleartext HTTP" in text
+    assert "Untrusted TLS" in text
+    assert "SMBv1" not in text
+    live = ROOT / "out-estate" / "simplerisk" / "risks_import.csv"
+    if live.is_file():
+        blob = live.read_text(encoding="utf-8")
+        assert "SMBv1" not in blob
+        assert "Cleartext HTTP" in blob
+
+
+def test_client_assess_doc_is_checklist_only() -> None:
+    text = (ROOT / "docs" / "CLIENT_ASSESS.md").read_text(encoding="utf-8")
+    assert "EVERGREEN_ORCH_LIVE" in text
+    assert "WRAP_DEAD" in text
+    assert "assets.csv" in text
+    assert "/api/risks" in text
+    assert "192.168.10.0/24" in text
+    assert "do not" in text.lower() or "not a scan" in text.lower()
+    qs = (ROOT / "docs" / "QUICKSTART.md").read_text(encoding="utf-8")
+    prod = (ROOT / "PRODUCT.md").read_text(encoding="utf-8")
+    assert "dropbox.product_demo --help" in qs
+    assert "CLIENT_ASSESS.md" in qs
+    assert "not Litware" in prod
+    assert (ROOT / "VERSION").read_text(encoding="utf-8").strip() == "0.5.0-rc.1"
+    ready = (ROOT / "CLIENT_READY.md").read_text(encoding="utf-8")
+    assert "client_facing_ready: false" in ready
+    assert "paying_day: NO" in ready
+
+
 def test_readme_leads_with_assessment() -> None:
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "Authorized assessment" in text
@@ -136,6 +267,11 @@ def test_product_demo_module_exists() -> None:
     assert (ROOT / "scripts" / "product_demo.ps1").is_file()
     text = (ROOT / "dropbox" / "product_demo.py").read_text(encoding="utf-8")
     assert "POST /api/risks" not in text
+    console = (ROOT / "dropbox" / "orchestrator" / "console.py").read_text(encoding="utf-8")
+    assert 'HOST = "127.0.0.1"' in console
+    assert "0.0.0.0" not in console
+    assert "18765" in console
+    assert "405" in console
     assert "WRAP_DEAD" in text or "lab-sim" in text
     assert "192.168.10.0/24" in text
     assert "estate_down" in text

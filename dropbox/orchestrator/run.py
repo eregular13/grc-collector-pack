@@ -851,7 +851,12 @@ def run(scope_path: Path, stage: str, dest: Path | None = None) -> dict[str, Any
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "workers").mkdir(exist_ok=True)
     stage = (stage or "plan").lower()
-    result: dict[str, Any] = {"scope": str(scope.path), "stage": stage}
+    leftover_alive = _destroy_leftover_workers(dest)
+    result: dict[str, Any] = {
+        "scope": str(scope.path),
+        "stage": stage,
+        "leftover_alive_destroyed": leftover_alive,
+    }
     refuse = scope.refuse_live() or runtime_over_budget(scope)
 
     def _done(payload: dict[str, Any]) -> dict[str, Any]:

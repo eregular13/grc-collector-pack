@@ -167,7 +167,8 @@ def new_engagement(
 
     brake, leftover_client = leftover_discover_brake(scope.client_legal_name)
     orch = PACK / "dropbox" / "out"
-    if not brake and (orch / "discover.json").is_file():
+    # Estate slugs keep their own POA&M. Do not copy leftover discover.json from another slug.
+    if (not estate) and (not brake) and (orch / "discover.json").is_file():
         (dest / "out" / "orchestrator").mkdir(parents=True, exist_ok=True)
         shutil.copy2(orch / "discover.json", dest / "out" / "orchestrator" / "discover.json")
 
