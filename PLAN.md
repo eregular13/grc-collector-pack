@@ -32,9 +32,9 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 | saas-idp | saas/* | SAAS- | ScubaGear/Graph/Okta |
 | grc-loader | out/canonical | — | all GRC files |
 
-## This window (2026-09-04 afternoon)
+## This window (2026-09-06)
 
-Afternoon window **ended 16:00 PT 2026-09-04** (cycle 81 freeze). Cycles 59–81 stand. **Stop vanity Layer C parsers.** Remaining work is Reid-only (CTA, Eval npm start, KEEP in/ drop, compose-on-Docker, merge PR #1) — not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. `FARM_TOOL_BIN` never resolves locked scanners. `SCOPE.example.yaml` does not default-allowlist nmap/nessus. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever (review-only; no login/POST). DEMO ≠ client. pytest greens are not assessment-ready. Hexstrike pattern-only. MCP stub is not USB `evergreen_assessment_mcp`.
+Cycle **82**: KEEP→Eval file-drop handoff + `farm_toolbin_status` live_ready honesty. Cycles 59–81 stand. **Stop vanity Layer C parsers.** keep-lab uses redacted samples until Reid drops real KEEP into pack `in/`. Remaining work is Reid-only (CTA, Eval npm start, real KEEP in/ drop, compose-on-Docker, merge PR #1) — not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. `FARM_TOOL_BIN` never resolves locked scanners. `SCOPE.example.yaml` does not default-allowlist nmap/nessus. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever (review-only; no login/POST). DEMO ≠ client. SAMPLE ≠ client KEEP. pytest greens are not a paying-day stamp. Hexstrike pattern-only. MCP stub is not USB `evergreen_assessment_mcp`.
 
 ## STOP rules
 

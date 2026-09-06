@@ -63,12 +63,17 @@ def _load_json(path: Path) -> Any:
 
 
 def _hk_csv(text: str) -> bool:
-    head = text[:800].lower()
+    first = ""
+    for line in text.splitlines():
+        if line.strip():
+            first = line.strip().lstrip("\ufeff")
+            break
+    if not first or first[0] in "{[":
+        return False
+    head = first.lower().replace(" ", "")
     if "result" not in head:
         return False
-    return "severity" in head and ("name" in head or "id" in head) and (
-        "computername" in head or "hostname" in head or "failed" in text.lower()
-    )
+    return "severity" in head or "name" in head or "id" in head
 
 
 def _maester(payload: Any) -> bool:
@@ -109,7 +114,7 @@ def detect_family(path: Path) -> str | None:
         return None
     suffix = path.suffix.lower()
     text = path.read_text(encoding="utf-8", errors="replace")
-    if suffix == ".csv" or _hk_csv(text[:2000]):
+    if suffix == ".csv" or _hk_csv(text):
         return "hardeningkitty" if _hk_csv(text) else None
     payload = _load_json(path)
     if payload is None:

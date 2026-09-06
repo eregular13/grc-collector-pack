@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 82):** KEEP→Eval file-drop handoff + `farm_toolbin_status` live_ready. `make keep-lab` lands redacted samples under `keep/work/` (**SAMPLE ≠ client KEEP**). Eval artifact is `handoff.json` (max-5, no HTTP). DEMO stubs may `will_run`; `live_ready` stays 0 on DEMO SCOPE. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 81 counts; pytest **328**.
+
 **Delta (cycle 81):** deadline freeze / verify-green / no-diff (16:00 America/Los_Angeles). Full lab suite re-run clean. No code change. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 80; pytest **320**.
 
 **Delta (cycle 80):** verify-green / no-diff. Full lab suite re-run clean. No code change. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 79; pytest **320**.

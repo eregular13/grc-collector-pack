@@ -2,7 +2,14 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 81):** deadline freeze / verify-green / no-diff
+**This window (cycle 82):** KEEP→Eval file-drop handoff +
+`farm_toolbin_status` live_ready. `make keep-lab` uses redacted samples
+(**SAMPLE ≠ client KEEP**). No Eval HTTP. Wrap stays **dead**. Paying-day
+**FAIL**. DEMO ≠ client. Catalog unchanged. pytest **328**. Runtime still
+**ABSENT** (`docker CLI not on PATH`) — not a PASS. Cycle 74 Reid-only
+blockers stay locked.
+
+**Cycle 81 (stands):** deadline freeze / verify-green / no-diff
 (16:00 America/Los_Angeles). Backlog (a)–(e statics) MET. Runtime still
 **ABSENT** (`docker CLI not on PATH`) — not a PASS. No product code.
 Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers

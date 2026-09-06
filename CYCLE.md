@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 82 — KEEP→Eval handoff + farm_toolbin_status live_ready (2026-09-06)
+
+Slice B: pack `in/` still has no client KEEP files. Redacted `fixtures/keep-samples/` + `keep/adapters.py` file-drop landers feed existing Layer C parsers. `make keep-lab` writes `keep/work/out/eval/handoff.json` (max-5 findings, `posted: false`, `http: false`). SAMPLE ≠ client KEEP. No Eval HTTP. No `/api/risks`.
+
+Slice C: `farm_toolbin_status` now reports `allowlisted` / `will_run` / `live_ready` / `demo_scope`. DEMO stubs may `will_run` in e2e; `live_ready` stays 0 on DEMO SCOPE. Catalog **unchanged** **111 / 32 / 30 / 81**. pytest **328**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. keep-lab sample 6/6 poam 8 handoff 5. Compose ABSENT. Paying-day FAIL. Wrap review-only.
+
+```json
+{"pytest": 328, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
 ## cycle 81 — deadline freeze / verify-green / no-diff (2026-09-04 16:00 PT)
 
 Afternoon orchestrator-build freeze. Full lab suite re-run. No regression. No code change. Catalog **111 / 32 / 30 / 81**. pytest **320**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. Compose ABSENT (`docker CLI not on PATH`). Paying-day FAIL. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. DEMO ≠ client. No new parsers.
