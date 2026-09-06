@@ -195,7 +195,29 @@ def parse_nmap_xml(path: Path) -> list:
                 continue
             service_el = port.find("service")
             service = service_el.get("name") if service_el is not None else ""
+            product = (service_el.get("product") or "") if service_el is not None else ""
+            version = (service_el.get("version") or "") if service_el is not None else ""
             open_ports.append((portid, service or ""))
+            blob = f"{service} {product} {version}".lower()
+            if "openssh" in blob and re.search(r"\b5\.\d", blob):
+                records.append(
+                    finding(
+                        PREFIX,
+                        f"{name}-{portid}-openssh5",
+                        f"Outdated SSH server OpenSSH 5.x on {name}",
+                        description=f"Open tcp/{portid} {product} {version} on {name} ({ip}).",
+                        severity="high",
+                        source=SOURCE,
+                        related_assets=[name],
+                        labels=["nmap", "ssh", "outdated"],
+                        extra=control_extra(
+                            "CTL-SSH-UPGRADE",
+                            "Upgrade OpenSSH; restrict management SSH",
+                            csf_function="protect",
+                            priority="2",
+                        ),
+                    )
+                )
         records.extend(_host_records(name, ip, open_ports, via="xml", hostname_type=htype))
     return records
 

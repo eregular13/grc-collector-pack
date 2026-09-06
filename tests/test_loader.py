@@ -1369,6 +1369,32 @@ def test_nmap_gnmap_parses_hosts() -> None:
     assert any("FTP" in r.name or "445" in r.name or "SMB" in r.name for r in findings)
 
 
+def test_nmap_xml_openssh5_is_finding(tmp_path) -> None:
+    from collectors.inventory_nmap import parse_nmap_xml
+
+    path = tmp_path / "honeypot.xml"
+    path.write_text(
+        """<?xml version="1.0"?>
+<nmaprun scanner="nmap" args="lab">
+  <host>
+    <status state="up"/>
+    <address addr="127.0.0.1" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="2222">
+        <state state="open"/>
+        <service name="ssh" product="OpenSSH" version="5.3p1 Debian-3ubuntu7"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>
+""",
+        encoding="utf-8",
+    )
+    records = parse_nmap_xml(path)
+    findings = [r for r in records if r.kind == "finding"]
+    assert any("OpenSSH 5" in r.name for r in findings)
+
+
 def test_nmap_xml_prefers_user_hostname_over_ptr() -> None:
     from collectors.inventory_nmap import parse_files as parse_nmap_files
     from collectors.inventory_nmap import parse_nmap_xml

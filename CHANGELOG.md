@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 131
+
+Palisade LLM honeypot lab: isolated `grc-honeypot-24h` `172.28.150.0/24`, loopback SSH `:12222` + dash `:18088`. Combined probe maps outdated OpenSSH 5.3, any-password SSH, ANSI hidden traps, dashboard Cleartext HTTP. `inventory_nmap` flags OpenSSH 5.x from XML version. Cowrie needs interactive shell. Palisade `init.py` is not drop-in on Cowrie 3 `command_modules`. Facing false. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted loader+orchestrator.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 130
 
 T24-wait (not freeze): SCOPE `10.0.0.0/8` (whole class A / supernet) is `forbidden_cidr` plan-only; fixture `10.0.0.0/24` unchanged. Extra isolated compose `grc-xwait-24h` on `172.28.130.0/24` loopback 18281/18282/18243. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
