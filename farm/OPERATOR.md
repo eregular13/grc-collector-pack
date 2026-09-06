@@ -2,7 +2,45 @@
 
 **Written SCOPE required.** Drop-box only under written SCOPE. Not a public Hub image. Layer C parses `in/<sensor>/` only.
 
+## Argus fail-closed bar
+
+Do not contradict these stamps:
+
+- DEMO e2e ≠ client; `live_ready` fail-closed on stubs
+- SAMPLE/fixture KEEP ≠ client KEEP (0/4 real still open)
+- Pack MCP truth = `evergreen_assessment_mcp` only; farm MCP never pack truth
+- Compose PASS only on DESKTOP Docker proof — agent-VM ABSENT ≠ pass
+- Signed SCOPE + HITL kill before any PATH/live invoke; file_drop default
+- RiskReady wrap/POST stay-out forever
+- Hexstrike pattern-only
+
+One-shot KEEP-minimum: `python3 -m dropbox schedule` (not cron). CISO path:
+`python3 -m dropbox ciso` — landed sensors only, no fixtures/demo fallback.
+`--live` is HITL and is refused on DEMO SCOPE or `live_ready_count=0`.
+
 See `dropbox/ARCHITECTURE.md` Layer A / B / C.
+
+## Day-of (Desktop — no make / no gh)
+
+Signed SCOPE first. File-drop default. `--live` is HITL and is refused on DEMO.
+
+```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+python3 -m dropbox gate
+python3 -m dropbox mcp farm_toolbin_status
+python3 -m dropbox schedule          # dry-run KEEP-minimum; not --live
+python3 -m dropbox ciso              # landed → out/ciso-assistant/*.csv (operator SoR)
+# Desktop: clica  or  bash push_ciso.sh   (posted:false unless CISO_PUSH=1)
+python -m keep lab                   # keep/work; never writes pack in/
+```
+
+schedule / ingest / ciso default is **file-drop read-only** against pack `in/`.
+They never land copies there unless `--write-pack-in` or `PACK_IN_WRITE=1`.
+keep-lab this-run guard: pre-existing pack `in/` estate is not a fail. Sample
+keep-lab only fails if **this run** mutates pack `in/`. Desktop has no `make`
+/ `gh` — use the python modules above. `posted:false` unless `CISO_PUSH=1`.
+Never HTTP. Never POST `/api/risks`.
 
 ## Copy-paste runbook (bare Linux → CISO zip)
 
@@ -106,6 +144,11 @@ On a host where `docker compose version` works, under written SCOPE, with
    `out/summary.json` exists; image probe finds no nmap/nuclei/openvas/nessus/gvm/zeek
    (`command -v` must fail for those names). This is **not** a paying-day PASS.
    Empty pack `in/` is still DEMO fixtures.
+
+   **Estate already in pack `in/`:** `docker compose config --services` should
+   still list 10. Optional `up` parses **that estate** (no fixtures-park).
+   Park/move estate `in/` aside only if you want fixture counts. Or skip
+   `up` and run `python -m keep lab` — keep-lab never writes pack `in/`.
 
 2. **Dropbox profiles (what `make dropbox-compose` runs when Docker is up)**
 
@@ -324,6 +367,9 @@ truth. Do not invent a TypeScript refuse matrix. It must start from the
 
 **Cursor** — project file `.cursor/mcp.json` (or user `~/.cursor/mcp.json`):
 
+Two servers — do **not** merge. Pack truth stays USB `evergreen_assessment_mcp`.
+Conductor is `dropbox.mcp_stub` (`grc-dropbox`) only. See `schemas/mcp.example.json`.
+
 ```json
 {
   "mcpServers": {
@@ -338,6 +384,11 @@ truth. Do not invent a TypeScript refuse matrix. It must start from the
         "CISO_PUSH": "0",
         "RISKREADY_PUSH": "0"
       }
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
     }
   }
 }
@@ -352,6 +403,11 @@ builds ignore `cwd`; point `command` at the wrapper:
   "mcpServers": {
     "grc-dropbox": {
       "command": "/absolute/path/to/grc-collector-pack/scripts/mcp_stdio.sh"
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
     }
   }
 }
@@ -362,8 +418,12 @@ order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
 `stage_discover`, `stage_deepen`, `stage_ingest`, `farm_slots`,
 `farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`).
 `farm_slot_status` accepts an optional `{ "category": "discover" }`
-argument. `farm_toolbin_status` lists wired invoke resolve as
-`present` / `missing` / `demo_stub`. `orchestrator_plan` returns the
+argument. `farm_toolbin_status` lists per-slot `live_ready` plus
+`live_ready_count` / `slots[]`. DEMO stubs may `will_run` in
+`make farm-toolbin-e2e`; `live_ready` stays 0 on DEMO SCOPE, lab stubs,
+or file_drop-only names even if a binary is under `FARM_TOOL_BIN`.
+`tools/call` is plan-only. Real `--live` needs a signed non-DEMO SCOPE
+and an allowlisted real binary. `orchestrator_plan` returns the
 per-stage `will_run` map already in plan JSON.
 
 Live deepen stays fail-closed (`DROPBOX_LIVE=0`) unless the operator

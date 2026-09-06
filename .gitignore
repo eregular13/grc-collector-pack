@@ -10,6 +10,7 @@ out/raw/*
 out/canonical/*
 out/ciso-assistant/*.csv
 out/poam/*
+out/simplerisk/*
 out/riskready/*.json
 out/ocsf/*.json
 out/summary.json
@@ -23,4 +24,5 @@ product-lab/tmp/
 dropbox/work/
 dropbox/out/
 farm/work/
+keep/work/
 in/**/dropbox-*

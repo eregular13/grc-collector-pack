@@ -64,6 +64,8 @@ Or `make lab` (`PYTHON=python` on Windows, `python3` on Linux) or `scripts/lab.s
 
 Consented drop-box (internal + external → `in/`): `dropbox/OPERATOR.md`. `make dropbox-lab` is fixtures + demo overlays, not a client estate.
 
+KEEP-chain → Origin Eval file-drop: `make keep-lab` (HardeningKitty / Maester / testssl / Prowler|ScoutSuite). Uses redacted `fixtures/keep-samples/` until pack `in/` has those four exports. **SAMPLE ≠ client KEEP.** Artifact: `keep/work/out/eval/handoff.json` (max-5 findings). No Eval HTTP from this pack. See `docs/KEEP_EVAL_HANDOFF.md`.
+
 ## Private drop-box farm
 
 Consented operator path — not the public parse-only pack. Three layers

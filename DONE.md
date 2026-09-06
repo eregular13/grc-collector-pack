@@ -1,6 +1,6 @@
 GREEN
 
-Afternoon orchestrator-build freeze **2026-09-04 16:00 America/Los_Angeles** (cycle 81). Verify-green / no-diff vs cycle 80. Paying-day **FAIL**. Compose **ABSENT**. Not a paying-day PASS. Reid-only blockers remain.
+Cycle **88** two-MCP cross-wire fail-closed. Pack truth = USB `evergreen_assessment_mcp`; conductor refuses `check_scope` / `license_guard`. Estate protect + CISO SoR stand. **SAMPLE ≠ client KEEP**, **0/4**. Paying-day **FAIL**. Compose **ABSENT ≠ pass**. Reid-only blockers remain.
 
 Two consecutive green labs after critic ≥ 8 (zero P0/P1). Cycle 5 closed; KEEP improve window GREEN.
 
@@ -8,18 +8,18 @@ out/summary.json counts:
 
 ```json
 {
-  "assets": 62,
-  "findings": 59,
-  "vulnerabilities": 15,
-  "evidences": 10,
-  "applied_controls": 74,
-  "risk_scenarios": 74,
-  "incidents": 58,
-  "risks_proposed": 57,
-  "ocsf": 59,
-  "canonical": 137,
+  "assets": 64,
+  "findings": 79,
+  "vulnerabilities": 19,
+  "evidences": 27,
+  "applied_controls": 98,
+  "poam": 82,
+  "risk_scenarios": 98,
+  "incidents": 78,
+  "risks_proposed": 77,
+  "ocsf": 79,
+  "canonical": 163,
   "demo": true,
-  "generated_at": "2026-09-03T05:02:06Z"
+  "generated_at": "2026-09-06T06:37:32Z"
 }
 ```
-

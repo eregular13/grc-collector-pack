@@ -2,7 +2,65 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 81):** deadline freeze / verify-green / no-diff
+**This window (cycle 88):** Hephaestus two-MCP contract.
+Conductor refuses pack-truth tools (`check_scope` / `license_guard`);
+merged or swapped mcp.json fails closed. Pack truth = USB
+`evergreen_assessment_mcp` only. Estate protect + CISO SoR stand.
+DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Compose **ABSENT ≠ pass**.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+pytest **347**. Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 87 (stands):** pack `in/` estate protect.
+schedule / ingest / ciso default file-drop is read-only; land only
+with `--write-pack-in` or `PACK_IN_WRITE=1`. Hexstrike refused on
+the KEEP-minimum schedule. CISO SoR + Day-of stand. keep-lab
+this-run guard stands. Argus bar stands. DEMO e2e ≠ client.
+SAMPLE KEEP **0/4**. Pack truth = USB `evergreen_assessment_mcp`
+only. Compose **ABSENT ≠ pass**. Catalog unchanged (111 / 32 wired /
+30 invoke / 81 file_drop). pytest **345**. Cycle 74 Reid-only
+blockers stay locked.
+
+**Cycle 86 (stands):** CISO SoR path
+(`python3 -m dropbox ciso` → `out/ciso-assistant/*.csv`;
+`posted:false` unless `CISO_PUSH=1`) + scheduler CLI e2e (vanity
+refuse + DEMO `--live` exit 2) + OPERATOR Day-of (no make/gh;
+clica / `bash push_ciso.sh`). keep-lab this-run guard stands.
+Argus bar stands. DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth
+= USB `evergreen_assessment_mcp` only. Compose **ABSENT ≠ pass**.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+pytest **342**. Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 85 (stands):** keep-lab this-run pack `in/` guard +
+desktop `python -m keep lab`. Pre-existing estate no longer fails
+sample isolation. Estate-only compose park noted. Argus bar stands.
+DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth = USB
+`evergreen_assessment_mcp` only. Compose **ABSENT ≠ pass**. Catalog
+unchanged (111 / 32 wired / 30 invoke / 81 file_drop). pytest **340**.
+Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 84 (stands):** Argus fail-closed bar + KEEP-minimum
+one-shot scheduler. DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth
+= USB `evergreen_assessment_mcp` only; farm MCP never pack truth.
+Compose **ABSENT ≠ pass**. HITL before live. Wrap stay-out. Hexstrike
+pattern-only. Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). pytest **339**. Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 83 (stands):** Hephaestus contract — file_drop/demo never
+`live_ready`; `tools/call` plan-only; two MCP servers unmerged; CISO
+`posted` gate; SimpleRisk `out/` leave-behind. Wrap stays **dead**.
+Paying-day **FAIL**. DEMO ≠ client. Catalog unchanged (111 / 32 wired /
+30 invoke / 81 file_drop). pytest **331**. Runtime still **ABSENT**
+(`docker CLI not on PATH`) — not a PASS. Cycle 74 Reid-only blockers
+stay locked. USB `evergreen_assessment_mcp` remains pack truth.
+
+**Cycle 82 (stands):** KEEP→Eval file-drop handoff +
+`farm_toolbin_status` live_ready. `make keep-lab` uses redacted samples
+(**SAMPLE ≠ client KEEP**). No Eval HTTP. Wrap stays **dead**. Paying-day
+**FAIL**. DEMO ≠ client. Catalog unchanged. pytest **328**. Runtime still
+**ABSENT** (`docker CLI not on PATH`) — not a PASS. Cycle 74 Reid-only
+blockers stay locked.
+
+**Cycle 81 (stands):** deadline freeze / verify-green / no-diff
 (16:00 America/Los_Angeles). Backlog (a)–(e statics) MET. Runtime still
 **ABSENT** (`docker CLI not on PATH`) — not a PASS. No product code.
 Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers

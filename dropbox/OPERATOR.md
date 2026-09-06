@@ -5,6 +5,40 @@
 
 This directory is the **gated runner**. The public pack stays parse-only. Do not turn the collectors into a scanner suite.
 
+## Argus fail-closed bar
+
+- DEMO e2e ≠ client; `live_ready` fail-closed on stubs
+- SAMPLE/fixture KEEP ≠ client KEEP (0/4 real still open)
+- Pack MCP truth = `evergreen_assessment_mcp` only; farm MCP never pack truth
+- Compose PASS only on DESKTOP Docker proof — agent-VM ABSENT ≠ pass
+- Signed SCOPE + HITL kill before any PATH/live invoke; file_drop default
+- RiskReady wrap/POST stay-out forever
+- Hexstrike pattern-only
+
+`python3 -m dropbox schedule` is one-shot KEEP-minimum (not cron).
+`python3 -m dropbox ciso` parses landed KEEP-minimum files only.
+
+## Day-of (Desktop — no make / no gh)
+
+Signed SCOPE → schedule dry-run → ingest landed files → `out/ciso-assistant`.
+
+```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+python3 -m dropbox gate
+python3 -m dropbox mcp farm_toolbin_status
+python3 -m dropbox schedule          # dry-run KEEP-minimum; not --live
+python3 -m dropbox ciso              # landed → out/ciso-assistant/*.csv (operator SoR)
+# Desktop: clica  or  bash push_ciso.sh   (posted:false unless CISO_PUSH=1)
+python -m keep lab                   # keep/work; never writes pack in/
+```
+
+schedule / ingest / ciso default is **file-drop read-only** against pack `in/`.
+Never writes unless `--write-pack-in` or `PACK_IN_WRITE=1`. keep-lab this-run
+guard: pre-existing pack `in/` estate is not a fail. Desktop has no `make` /
+`gh`. Vanity slots (nuclei/trivy/nessus/hexstrike) stay off the schedule unless
+the file already landed. DEMO `--live` is refused.
+
 ## Three layers (see `ARCHITECTURE.md`)
 
 - **Layer A — BYO tool zoo.** Consent SCOPE names host tools already on the drop box. This repo does not embed Nmap/Nessus/Nuclei/OpenVAS.
@@ -129,13 +163,20 @@ Output: `in/easm/dropbox-tls.jsonl` (existing easm collector).
 
 ## Ingest → CISO
 
+Operator SoR is `python3 -m dropbox ciso` → `out/ciso-assistant/*.csv` (landed
+KEEP-minimum only; empty sensors do **not** load fixtures/demo). Day-of Desktop
+path is above — no `make` / `gh`. Prefer **clica** or `bash push_ciso.sh`.
+`posted` stays false unless `CISO_PUSH=1`. `export_ciso_poam` lists those files.
+
 ```bash
-bash scripts/lab.sh
-# or: make lab
-python3 -m product          # http://127.0.0.1:18765/
+python3 -m dropbox ciso
+# Desktop: clica  or  bash push_ciso.sh
+python3 -m product          # http://127.0.0.1:18765/  (optional console zip)
 ```
 
-Collectors parse `in/<sensor>/`. Empty sensors still fall back to `fixtures/demo/` and label `demo`. Zip `out/` (or the console drop zip) for CISO Assistant. Prefer **clica / UI** CSV import. Hand `out/poam/poam.csv` as the POA&M draft — a human fills owner and due. Do not invent FindingsAssessment UUIDs.
+The nine-collector `bash scripts/lab.sh` path still falls back to `fixtures/demo/`
+on empty sensors and labels `demo`. Hand `out/poam/poam.csv` as the POA&M draft —
+a human fills owner and due. Do not invent FindingsAssessment UUIDs.
 
 RiskReady JSON is LICENSE-LOCK stay-out — review on disk. `push_riskready.sh` never logs in or POSTs.
 

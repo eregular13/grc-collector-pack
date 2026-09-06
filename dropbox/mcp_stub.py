@@ -24,7 +24,10 @@ from dropbox.orchestrator.pipeline import (
     integrity_stops,
     orchestrate,
 )
-from dropbox.scope import GateError, load_scope
+from dropbox.scope import ALLOWED_RUNNERS, GateError, LICENSE_LOCK_SPAWN, ORCH_BYO, load_scope
+
+# Goose-style live_ready allowlist (Metis). File-drop / LICENSE-LOCK never join.
+LIVE_READY_ALLOW = frozenset(ORCH_BYO) | frozenset(ALLOWED_RUNNERS)
 
 OPERATOR_TOOLS = (
     "scope_status",
@@ -48,9 +51,25 @@ TOOL_DESC = {
     "stage_ingest": "Copy artifacts into in/. Does not scan.",
     "farm_slots": "Private SLOTS catalog counts under written SCOPE. No binaries.",
     "farm_slot_status": "Full slot matrix. Optional category filter.",
-    "farm_toolbin_status": "FARM_TOOL_BIN resolve for wired invoke slots: present/missing/demo_stub.",
-    "export_ciso_poam": "SCOPE-gated paths to CISO CSVs and poam.csv. Owner/due stay blank.",
+    "farm_toolbin_status": (
+        "FARM_TOOL_BIN resolve: per-slot live_ready plus live_ready_count/slots[]. "
+        "Never live_ready for demo_stub or file_drop-only names."
+    ),
+    "export_ciso_poam": (
+        "Reads out/ciso-assistant/ + out/poam/ + out/simplerisk/. "
+        "posted false unless CISO_PUSH=1. Conductor http is always false."
+    ),
 }
+
+# Pack-truth tools live on the USB assessment MCP only. Conductor refuses them.
+PACK_TRUTH_TOOLS = frozenset(
+    {
+        "check_scope",
+        "license_guard",
+        "assessment_ready",
+        "assessment-ready",
+    }
+)
 
 # Substrings that must never become callable tools.
 REFUSED_ATTACK = (
@@ -128,17 +147,48 @@ def farm_slot_status_tool(scope_path: Path | None = None, category: str | None =
     }
 
 
+def _slot_live_ready(
+    *,
+    name: str,
+    binary: str,
+    state: str,
+    allowlisted: bool,
+    demo_scope: bool,
+) -> bool:
+    """live_ready is never true for demo_stub, file_drop-only, or LICENSE-LOCK."""
+    from farm.adapters.catalog import FILE_DROP_ONLY
+
+    if demo_scope or not allowlisted or state != "present":
+        return False
+    if name in FILE_DROP_ONLY or binary in FILE_DROP_ONLY:
+        return False
+    if name in LICENSE_LOCK_SPAWN or binary in LICENSE_LOCK_SPAWN:
+        return False
+    return name in LIVE_READY_ALLOW or binary in LIVE_READY_ALLOW
+
+
 def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
-    """Resolve wired invoke slots via FARM_TOOL_BIN then PATH. Does not invoke."""
+    """Resolve wired invoke slots via FARM_TOOL_BIN then PATH. Does not invoke.
+
+    Honesty for quiet→loud: DEMO stubs may will_run in farm-toolbin-e2e.
+    live_ready stays 0 on DEMO SCOPE, lab stubs, or file_drop-only names
+    even if a binary sits under FARM_TOOL_BIN. Real --live needs a signed
+    non-DEMO SCOPE plus an allowlisted real binary on the Goose list.
+    """
     from dropbox.scanner_free import is_demo_lab_stub
-    from farm.adapters.catalog import invoke_slots
+    from farm.adapters.catalog import FILE_DROP_ONLY, invoke_slots, load_slots
 
     scope = load_scope(scope_path)
     raw = (os.environ.get("FARM_TOOL_BIN") or "").strip()
+    allow = {str(t).strip().lower() for t in scope.allow_tools if str(t).strip()}
+    demo_scope = "DEMO" in scope.client_name.upper()
     rows: list[dict[str, Any]] = []
-    present = missing = demo_stub = 0
+    present = missing = demo_stub = file_drop = will_run = live_ready = 0
+    seen: set[str] = set()
     for name, slot in sorted(invoke_slots().items()):
         binary = str(slot.get("binary") or name).lower()
+        seen.add(name)
+        seen.add(binary)
         exe = byo.farm_which(binary)
         if not exe:
             state = "missing"
@@ -149,14 +199,53 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         else:
             state = "present"
             present += 1
+        allowlisted = name in allow or binary in allow
+        drop_only = name in FILE_DROP_ONLY or binary in FILE_DROP_ONLY
+        can_run = allowlisted and bool(exe) and not drop_only
+        ready = _slot_live_ready(
+            name=name,
+            binary=binary,
+            state=state,
+            allowlisted=allowlisted,
+            demo_scope=demo_scope,
+        )
+        if can_run:
+            will_run += 1
+        if ready:
+            live_ready += 1
         rows.append(
             {
                 "slot": name,
                 "binary": binary,
                 "path": exe or "",
                 "state": state,
+                "stage": str(slot.get("category") or slot.get("stage") or ""),
+                "allowlisted": allowlisted,
+                "will_run": can_run,
+                "live_ready": ready,
             }
         )
+    catalog = load_slots()
+    for name in sorted(FILE_DROP_ONLY):
+        if name in seen:
+            continue
+        slot = catalog.get(name) or {}
+        binary = str(slot.get("binary") or name).lower()
+        exe = byo.farm_which(binary)
+        file_drop += 1
+        rows.append(
+            {
+                "slot": name,
+                "binary": binary,
+                "path": exe or "",
+                "state": "file_drop",
+                "stage": str(slot.get("category") or slot.get("stage") or "file_drop"),
+                "allowlisted": name in allow or binary in allow,
+                "will_run": False,
+                "live_ready": False,
+            }
+        )
+    refused = [name for name in sorted(LICENSE_LOCK_SPAWN) if byo.farm_which(name) is None]
     return {
         "tool": "farm_toolbin_status",
         "ok": True,
@@ -169,9 +258,20 @@ def farm_toolbin_status_tool(scope_path: Path | None = None) -> dict[str, Any]:
         "present": present,
         "missing": missing,
         "demo_stub": demo_stub,
+        "file_drop": file_drop,
+        "will_run_count": will_run,
+        "live_ready_count": live_ready,
+        "demo_scope": demo_scope,
+        "license_lock_refused": refused,
         "slots": rows,
-        "demo": "DEMO" in scope.client_name.upper(),
-        "note": "Resolve only. Does not invoke. LICENSE-LOCK names are not invoke slots.",
+        "demo": demo_scope,
+        "note": (
+            "Resolve only. Does not invoke. LICENSE-LOCK names stay refused. "
+            "DEMO stubs may will_run in farm-toolbin-e2e; live_ready stays 0 on "
+            "DEMO SCOPE, lab stubs, or file_drop-only names even if a binary "
+            "is under FARM_TOOL_BIN. Real --live needs signed non-DEMO SCOPE "
+            "plus an allowlisted real binary. DEMO ≠ client estate."
+        ),
     }
 
 
@@ -219,6 +319,16 @@ def refuse_attack_name(name: str) -> None:
             raise GateError(f"operator MCP refuses {name!r} (no exploit/attack API)")
 
 
+def refuse_cross_wire(name: str) -> None:
+    """Pack-truth tools are not conductor tools. Fail closed."""
+    tool = (name or "").strip().lower().replace("_", "-")
+    packed = (name or "").strip().lower()
+    if packed in PACK_TRUTH_TOOLS or tool in PACK_TRUTH_TOOLS:
+        raise GateError(
+            f"conductor refuses pack-truth tool {name!r} (cross-wire; USB assessment MCP only)"
+        )
+
+
 def dispatch(
     name: str,
     *,
@@ -228,6 +338,7 @@ def dispatch(
 ) -> dict[str, Any]:
     """Run one operator tool. Deepen stays fail-closed. Live still BYO-only."""
     refuse_attack_name(name)
+    refuse_cross_wire(name)
     tool = (name or "").strip().lower()
     if tool not in OPERATOR_TOOLS:
         raise GateError(f"unknown operator tool {name!r}")
@@ -350,32 +461,55 @@ def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
 
 
 def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
-    """Point at existing CISO/POA&M files. Does not invent owner or due."""
-    import os
+    """Point at existing CISO/POA&M/SimpleRisk files. Does not invent owner or due.
 
+    posted is false unless CISO_PUSH=1 and DRY_RUN!=1. Conductor http is
+    always false — RISKREADY_PUSH never enables HTTP.
+    """
     scope = load_scope(scope_path)
     raw = os.environ.get("OUT_DIR")
     root = Path(raw) if raw else Path(__file__).resolve().parents[1] / "out"
     ciso = root / "ciso-assistant"
     poam = root / "poam"
+    simplerisk = root / "simplerisk"
     files = []
-    for folder in (ciso, poam):
+    for folder in (ciso, poam, simplerisk):
         if not folder.is_dir():
             continue
         for path in sorted(folder.iterdir()):
             if path.is_file():
                 files.append(str(path))
+    ciso_push = os.environ.get("CISO_PUSH", "0") == "1"
+    dry_run = os.environ.get("DRY_RUN", "1") == "1"
+    posted = bool(ciso_push and not dry_run)
+    ciso_files = [
+        str(path)
+        for path in files
+        if Path(path).parent.name == "ciso-assistant" and path.endswith(".csv")
+    ]
     return {
         "tool": "export_ciso_poam",
         "ciso_dir": str(ciso),
         "poam_dir": str(poam),
+        "simplerisk_dir": str(simplerisk),
         "files": files,
+        "ciso_files": ciso_files,
+        "sor": "ciso-assistant",
         "owner_due": "blank — human fills",
-        "posted": False,
+        "posted": posted,
+        "http": False,
+        "ciso_push": "1" if ciso_push else "0",
+        "clica": "Desktop: clica or CISO UI import of out/ciso-assistant/*.csv — do not invent FindingsAssessment UUIDs",
+        "push_ciso": "Desktop: bash push_ciso.sh (no make/gh). Dry unless CISO_PUSH=1 and DRY_RUN!=1; assets/evidences only",
         "scope_gated": True,
         "client": scope.client_name,
         "demo": "DEMO" in scope.client_name.upper(),
         "wrap": "review-only",
+        "note": (
+            "Operator SoR is out/ciso-assistant/*.csv. posted false unless "
+            "CISO_PUSH=1 and DRY_RUN!=1. Conductor never HTTP. RISKREADY_PUSH "
+            "is ignored. SimpleRisk is leave-behind under out/ only."
+        ),
     }
 
 
@@ -387,6 +521,9 @@ def tool_catalog() -> dict[str, Any]:
         "hexstrike": False,
         "exploit_api": False,
         "scope_gated": True,
+        "pack_truth": False,
+        "farm_mcp_pack_truth": False,
+        "cross_wire": "fail-closed",
         "tools": [{"name": name, "scope_gated": True} for name in OPERATOR_TOOLS],
     }
 
@@ -410,7 +547,9 @@ def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None)
     if method == "tools/call":
         params = req.get("params") if isinstance(req.get("params"), dict) else {}
         name = str(params.get("name") or "")
-        arguments = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+        raw_args = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+        # tools/call is plan-only. Never honor arguments.live / params.live.
+        arguments = {k: v for k, v in raw_args.items() if str(k).lower() != "live"}
         try:
             refuse_attack_name(name)
             result = dispatch(name, live=False, scope_path=scope_path, arguments=arguments)

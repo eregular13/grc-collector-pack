@@ -12,6 +12,11 @@ def test_push_flags_default_zero() -> None:
     assert "RISKREADY_PUSH=0" in ENV
     assert "GRC_LIVE_SCAN=0" in ENV
     assert "DRY_RUN=1" in ENV
+    stdio = (ROOT / "scripts" / "mcp_stdio.sh").read_text(encoding="utf-8")
+    assert 'DROPBOX_LIVE="${DROPBOX_LIVE:-0}"' in stdio
+    assert 'GRC_LIVE_SCAN="${GRC_LIVE_SCAN:-0}"' in stdio
+    assert 'CISO_PUSH="${CISO_PUSH:-0}"' in stdio
+    assert 'RISKREADY_PUSH="${RISKREADY_PUSH:-0}"' in stdio
 
 
 def test_no_post_api_risks() -> None:

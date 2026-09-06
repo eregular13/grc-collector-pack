@@ -12,8 +12,8 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `stage_ingest` | `ingest_stage` | Copies discover/deepen artifacts into `in/`. Inventories dropped external files. Does not scan |
 | `farm_slots` | `farm/SLOTS.yaml` | Catalog + wired adapters under written SCOPE. No binaries |
 | `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Optional `{ "category": "discover" }`. Plan-only |
-| `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Wired invoke resolve: `present` / `missing` / `demo_stub`. Does not invoke |
-| `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` | SCOPE-gated paths only. Does not invent owner/due. Never POSTs |
+| `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Per-slot `live_ready` plus `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or file_drop-only names even if a binary is under `FARM_TOOL_BIN`. DEMO stubs may `will_run` in e2e. Does not invoke |
+| `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/` | SCOPE-gated paths. `posted` false unless `CISO_PUSH=1`. Conductor `http` always false. Does not invent owner/due |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -34,6 +34,11 @@ ignore `cwd` still resolve `python3 -m dropbox.mcp_stub`.
 
 **Cursor** — project `.cursor/mcp.json` or user `~/.cursor/mcp.json`:
 
+Two servers — do **not** merge. Pack truth is USB `evergreen_assessment_mcp`.
+This repo's conductor is `dropbox.mcp_stub` only. See `schemas/mcp.example.json`.
+Cross-wire (`check_scope` / `license_guard` on the conductor, or one merged
+server) fails closed.
+
 ```json
 {
   "mcpServers": {
@@ -48,6 +53,11 @@ ignore `cwd` still resolve `python3 -m dropbox.mcp_stub`.
         "CISO_PUSH": "0",
         "RISKREADY_PUSH": "0"
       }
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
     }
   }
 }
@@ -62,15 +72,24 @@ ignore `cwd` still resolve `python3 -m dropbox.mcp_stub`.
   "mcpServers": {
     "grc-dropbox": {
       "command": "/absolute/path/to/grc-collector-pack/scripts/mcp_stdio.sh"
+    },
+    "evergreen-assessment": {
+      "command": "python3",
+      "args": ["-m", "evergreen_assessment_mcp"],
+      "cwd": "/absolute/path/to/usb/evergreen-assessment"
     }
   }
 }
 ```
 
 `tools/list` order is stable (`OPERATOR_TOOLS`). `farm_slot_status` may
-filter with `params.arguments.category`. `tools/call` `orchestrator_plan`
-returns `will_run` (`discover` / `deepen` / `external` → slot → bool).
-External entries stay `false`.
+filter with `params.arguments.category`. `farm_toolbin_status` adds
+per-slot `live_ready` plus `live_ready_count` / `slots[]`. DEMO stubs
+and file_drop-only names are never live-ready, even if a binary is
+under `FARM_TOOL_BIN`. `tools/call` is plan-only (ignores `arguments.live`).
+`orchestrator_plan` returns `will_run`
+(`discover` / `deepen` / `external` → slot → bool). External entries stay
+`false`.
 
 ## JSON-RPC examples (stdio stub)
 

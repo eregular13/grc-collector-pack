@@ -55,6 +55,10 @@ def assert_lab() -> None:
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
     poam_h = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status"
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
+    sr_path = OUT / "simplerisk" / "poam.csv"
+    if sr_path.is_file():
+        sr = _csv_rows(sr_path, poam_h)
+        assert len(sr) == len(poam)
 
     rr_assets = _json(OUT / "riskready" / "assets.json")
     rr_inc = _json(OUT / "riskready" / "incidents.json")

@@ -1,5 +1,69 @@
 # CYCLE log
 
+## cycle 88 — Hephaestus two-MCP cross-wire fail-closed (2026-09-06)
+
+Pack truth stays USB `evergreen_assessment_mcp`. Conductor `dropbox.mcp_stub` refuses `check_scope` / `license_guard` (dispatch, JSON-RPC `tools/call`, CLI exit 2). `validate_two_mcp_servers` refuses merged `grc-dropbox-evergreen` and swapped module args. `mcp_stub.py` still does not contain `evergreen_assessment_mcp`. Estate protect + KEEP-minimum dry path + CISO SoR stand. No new parsers. Catalog **111 / 32 / 30 / 81**. pytest **347**. Labs no-diff vs cycle 87.
+
+```json
+{"pytest": 347, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
+## cycle 87 — pack in/ estate protect (2026-09-06)
+
+schedule / ingest / ciso default file-drop is **read-only** against pack `in/`. Landing copies require `--write-pack-in` or `PACK_IN_WRITE=1`. This-run fingerprint fails closed. Hexstrike added to vanity refuse. KEEP-minimum dry path still discover→deepen→ingest→SoR (HK/Lynis/nmap/testssl/Maester/cloud). CISO SoR `out/ciso-assistant` + `posted:false` unless `CISO_PUSH=1` stands. No new parsers. Catalog **111 / 32 / 30 / 81**. pytest **345**. Labs no-diff vs cycle 86.
+
+```json
+{"pytest": 345, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
+## cycle 86 — CISO SoR + scheduler CLI e2e + Day-of OPERATOR (2026-09-06)
+
+Harden `python3 -m dropbox ciso` / `export_ciso_poam`: operator SoR is `out/ciso-assistant/*.csv`; `posted:false` unless `CISO_PUSH=1` and `DRY_RUN!=1`; `http` always false (`RISKREADY_PUSH` ignored). Desktop docs: clica or `bash push_ciso.sh` (no make/gh). One-shot scheduler CLI e2e refuses vanity extras (nuclei/trivy/nessus) and DEMO `--live` (exit 2). OPERATOR Day-of: signed SCOPE → schedule dry-run → ingest → ciso files; keep-lab this-run estate guard + no make/gh. No new parsers. No RiskReady HTTP. No catalog inflation. Catalog **111 / 32 / 30 / 81**. pytest **342**. Labs no-diff vs cycle 85.
+
+```json
+{"pytest": 342, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
+## cycle 85 — keep-lab pack in/ this-run guard (DESKTOP proof) (2026-09-06)
+
+Desktop proof at `5a876de` failed sample keep-lab when pack `in/` already had estate files (`keep-lab wrote pack in/`) even though the run only wrote `keep/work/`. Guard now fingerprints pack `in/` before/after and fails only on THIS-run mutation. Pre-existing estate is ignored. Docs lead with `python -m keep lab` (no `make`/`gh` on DESKTOP). OPERATOR notes estate-only compose park vs fixtures-park. Hephaestus live_ready + Themis scheduler stand. Catalog **111 / 32 / 30 / 81**. pytest **340**. Labs no-diff vs cycle 84.
+
+```json
+{"pytest": 340, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
+## cycle 84 — Argus fail-closed bar + KEEP-minimum scheduler (2026-09-06)
+
+Argus bar stamped into STATUS / farm+dropbox OPERATOR / INTEGRITY / brakes JSON. DEMO e2e ≠ client; live_ready fail-closed on stubs; SAMPLE KEEP ≠ client KEEP (0/4); pack truth = `evergreen_assessment_mcp` only; farm MCP never pack truth; compose PASS only on DESKTOP Docker (agent-VM ABSENT ≠ pass); signed SCOPE + HITL before PATH/live; file_drop default; RiskReady wrap stay-out; Hexstrike pattern-only.
+
+Themis one-shot `python3 -m dropbox schedule` + landed-only `python3 -m dropbox ciso`. KEEP-minimum only (HK / Lynis / nmap / testssl / Maester / cloud). Vanity (nuclei/trivy/nessus) refused unless the file already landed. Empty `in/` does not load fixtures/demo. `--live` refused on DEMO SCOPE or `live_ready_count=0`. No new parsers. Catalog **111 / 32 / 30 / 81**. pytest **339**. Labs no-diff vs cycle 83 counts.
+
+```json
+{"pytest": 339, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
+## cycle 83 — Hephaestus live_ready + two-MCP contract (2026-09-06)
+
+P0: `farm_toolbin_status` per-slot `live_ready` + `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or FILE_DROP_ONLY names even if a binary is under `FARM_TOOL_BIN`. `tools/call` stays plan-only (`arguments.live` ignored). `farm_which` still refuses `LICENSE_LOCK_SPAWN`. `push_riskready.sh` stays review-only (no curl/login/POST even if `RISKREADY_PUSH=1`).
+
+P1: `export_ciso_poam` reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/`. `posted` false unless `CISO_PUSH=1` and `DRY_RUN!=1`; conductor `http` always false. Loader writes SimpleRisk leave-behind under `out/` only. `schemas/mcp.example.json` + OPERATOR snippets are two servers (`grc-dropbox` + `evergreen-assessment`), not one merged server.
+
+P2: `scripts/mcp_stdio.sh` + `farm/QUICKSTART.md` default `DROPBOX_LIVE=0 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0`. Catalog **unchanged** **111 / 32 / 30 / 81**. pytest **331**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. keep-lab sample 6/6 poam 8 handoff 5. Compose ABSENT. Paying-day FAIL. Wrap review-only. USB evergreen-assessment untouched.
+
+```json
+{"pytest": 331, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
+## cycle 82 — KEEP→Eval handoff + farm_toolbin_status live_ready (2026-09-06)
+
+Slice B: pack `in/` still has no client KEEP files. Redacted `fixtures/keep-samples/` + `keep/adapters.py` file-drop landers feed existing Layer C parsers. `make keep-lab` writes `keep/work/out/eval/handoff.json` (max-5 findings, `posted: false`, `http: false`). SAMPLE ≠ client KEEP. No Eval HTTP. No `/api/risks`.
+
+Slice C: `farm_toolbin_status` now reports `allowlisted` / `will_run` / `live_ready` / `demo_scope`. DEMO stubs may `will_run` in e2e; `live_ready` stays 0 on DEMO SCOPE. Catalog **unchanged** **111 / 32 / 30 / 81**. pytest **328**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. keep-lab sample 6/6 poam 8 handoff 5. Compose ABSENT. Paying-day FAIL. Wrap review-only.
+
+```json
+{"pytest": 328, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "license_lock_will_run": "never", "scope_gap": "none"}
+```
+
 ## cycle 81 — deadline freeze / verify-green / no-diff (2026-09-04 16:00 PT)
 
 Afternoon orchestrator-build freeze. Full lab suite re-run. No regression. No code change. Catalog **111 / 32 / 30 / 81**. pytest **320**. Host 64/79/19/27 poam 82. farm 64/79 poam 82. e2e 64/80 poam 82. dropbox 69/88 poam 85. Compose ABSENT (`docker CLI not on PATH`). Paying-day FAIL. Cycle 79 conductor stdio e2e stays locked. Cycle 74 Reid-only blockers stay locked. DEMO ≠ client. No new parsers.

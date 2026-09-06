@@ -45,6 +45,13 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 79 done: conductor stdio MCP e2e (`mcp serve --once/--stdio`, empty/unsigned SCOPE refuse).
 - Cycle 80 done: verify-green / no-diff. Full lab suite clean vs cycle 79.
 - Cycle 81 done: deadline freeze / verify-green / no-diff. Full lab suite clean vs cycle 80. Afternoon window ended 16:00 PT.
+- Cycle 82 done: KEEP→Eval handoff (`make keep-lab`, samples ≠ client KEEP) + farm_toolbin_status live_ready honesty. Catalog unchanged.
+- Cycle 83 done: Hephaestus contract (file_drop/demo never live_ready; tools/call plan-only; two MCP servers; CISO posted gate; SimpleRisk out/ leave-behind; default-off env). Catalog unchanged.
+- Cycle 84 done: Argus fail-closed bar stamped; KEEP-minimum one-shot scheduler + landed-only CISO path. 0/4 real KEEP still open. Catalog unchanged.
+- Cycle 85 done: keep-lab this-run pack `in/` guard; desktop `python -m keep lab`; estate-only compose park note. Catalog unchanged.
+- Cycle 86 done: CISO SoR (`out/ciso-assistant`) + scheduler CLI e2e (vanity + DEMO `--live`) + OPERATOR Day-of. Catalog unchanged.
+- Cycle 87 done: pack in/ estate protect (schedule/ingest/ciso read-only unless `--write-pack-in`). Catalog unchanged.
+- Cycle 88 done: Hephaestus two-MCP cross-wire fail-closed (`check_scope`/`license_guard` refused on conductor). Catalog unchanged.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

@@ -295,3 +295,29 @@ def test_ingest_copies_gnmap_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert copied.is_file()
     assert str(copied) in marker["copied"]
     assert not (dest / "vuln" / "dropbox-deepen-plan.json").exists()
+    assert marker["pack_in_written"] is False
+    assert marker["file_drop_read_only"] is True
+
+
+def test_ingest_stage_never_writes_pack_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dropbox.orchestrator.estate import fingerprint, pack_in_dir
+
+    orch = tmp_path / "orch"
+    (orch / "discover").mkdir(parents=True)
+    (orch / "discover" / "shard.gnmap").write_text(
+        "Host: 10.20.30.5 (app-01.demo.internal)\tPorts: 22/open/tcp//ssh///\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(orch))
+    pack = pack_in_dir()
+    before = fingerprint(pack)
+    leak_name = "dropbox-discover-shard.gnmap"
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
+    marker = ingest_stage(scope, dest_in=pack)
+    after = fingerprint(pack)
+    assert before == after
+    assert marker["copied"] == []
+    assert marker["pack_in_written"] is False
+    assert marker["file_drop_read_only"] is True
+    assert marker["write_pack_in"] is False
+    assert not (pack / "nmap" / leak_name).exists() or leak_name in before
