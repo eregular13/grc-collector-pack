@@ -176,6 +176,46 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_tls_hostname_mismatch_parser_and_map() -> None:
+    """Observed on grc-mismatch-24h: alpine curl --cacert → SAN does not match IP."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    err = "curl: (60) SSL: no alternative certificate subject name matches target ipv4 address '172.28.170.12'\n"
+    rows = curl_byo.parse_curl_tls(err, "https://172.28.170.12/")
+    assert rows and rows[0]["name"] == "TLS hostname mismatch"
+    mapped = map_finding("TLS hostname mismatch", "172.28.170.12", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "TLS hostname mismatch"
+    assert curl_byo.parse_curl_tls(err, "http://127.0.0.1:18681/") == []
+    untrusted = curl_byo.parse_curl_tls(
+        "curl: (60) SSL certificate problem: self-signed certificate\n",
+        "https://172.28.170.12/",
+    )
+    assert untrusted and untrusted[0]["name"] == "Untrusted TLS certificate"
+
+
+def test_mismatch_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.170.0/24 loopback 18681/18643. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.mismatch.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.170.0/24" in live
+    assert "grc-mismatch-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:18681:80" in live
+    assert "127.0.0.1:18643:443" in live
+    assert "0.0.0.0:18681" not in live
+    assert "0.0.0.0:18643" not in live
+    assert "grc-estate-c11" not in live
+    assert "wrong.lab.example" in live
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.170.0/24" not in main
+
+
 def test_expired_tls_parser_and_map() -> None:
     """Observed on grc-expired-24h: alpine curl --cacert → certificate has expired."""
     from dropbox.orchestrator.adapters import curl_byo

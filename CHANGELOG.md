@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 134
+
+T24-wait extra: hostname-mismatch TLS estate `grc-mismatch-24h` on `172.28.170.0/24` loopback 18681/18643, cert SAN `wrong.lab.example`. Alpine curl `--cacert` observed `no alternative certificate subject name matches target ipv4 address`; map `TLS hostname mismatch`. Do not invent mismatch from UNTRUSTED_ROOT alone. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 133
 
 T24-wait extra: TLS 1.0-only estate `grc-weak-24h` on `172.28.160.0/24` loopback 18581/18543. nmap ssl-enum-ciphers (isolated net only) saw TLSv1.0 AES128-SHA; Windows `--tlsv1.0` 200, `--tlsv1.2` SEC_E_UNSUPPORTED_FUNCTION. `map_finding`/`parse_testssl_text` no longer treat TLSv1.2 as Weak TLS. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

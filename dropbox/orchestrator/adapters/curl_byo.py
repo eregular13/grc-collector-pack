@@ -187,6 +187,17 @@ def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
             "error 10 at 0 depth lookup",
         )
     )
+    mismatch = any(
+        tok in low
+        for tok in (
+            "no alternative certificate subject name matches",
+            "does not match target host",
+            "cert_e_cn_no_match",
+            "cn name does not match",
+            "hostname mismatch",
+            "does not match the passed value",
+        )
+    )
     untrusted = any(
         tok in low
         for tok in (
@@ -199,9 +210,11 @@ def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
             "not trusted",
         )
     )
-    # Generic "ssl certificate problem" is untrusted only when expiry was not the sampled reason.
+    # Generic "ssl certificate problem" is untrusted only when expiry/mismatch was not the sampled reason.
     if expired:
         rows.append(_row("Expired TLS certificate"))
+    elif mismatch:
+        rows.append(_row("TLS hostname mismatch"))
     elif untrusted or "ssl certificate problem" in low:
         rows.append(_row("Untrusted TLS certificate"))
     return rows

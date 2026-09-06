@@ -66,6 +66,17 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(
+            r"tls hostname mismatch|no alternative certificate subject name matches|cert_e_cn_no_match",
+            re.I,
+        ),
+        "weakness": "TLS hostname mismatch",
+        "cpg": ["CPG 2.W"],
+        "csf": ["PR.DS-02", "PR.DS-10"],
+        "action": "Issue a certificate whose SAN/CN matches the name clients use; do not serve IP-only names with a wrong DNS SAN.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"expired tls|certificate has expired|cert_e_expired|expired certificate", re.I),
         "weakness": "Expired TLS certificate",
         "cpg": ["CPG 2.W"],
