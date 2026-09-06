@@ -122,8 +122,115 @@ def test_ciso_path_keep_samples_not_client_keep(tmp_path: Path) -> None:
     assert "grc_loader.py" in result["collectors"]
     assert result["quote"]["price"] is None
     assert result["quote"]["posted"] is False
+    assert result["posted"] is False
+    assert result["sor"] == "ciso-assistant"
+    assert result["ciso_files"]
+    assert all(name.endswith(".csv") for name in result["ciso_files"])
     assert (dest_out / "quote-shaped.json").is_file()
-    assert (dest_out / "ciso-assistant").is_dir() or result["counts"]["assets"] is not None
+    assert (dest_out / "ciso-assistant" / "assets.csv").is_file()
+
+
+def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
+    """Process e2e: schedule dry-run refuses vanity extras; DEMO --live exits 2."""
+    empty_in = tmp_path / "in"
+    empty_in.mkdir()
+    out = tmp_path / "sched-out"
+    proc = subprocess.run(
+        [
+            "python3",
+            "-m",
+            "dropbox",
+            "schedule",
+            "--scope",
+            str(SCOPE),
+            "--in-dir",
+            str(empty_in),
+            "--out-dir",
+            str(out),
+            "--extra",
+            "nuclei,trivy,nessus",
+        ],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout[proc.stdout.find("{") :])
+    refused = {row["slot"]: row["reason"] for row in data["refused"]}
+    assert "nuclei" in refused
+    assert "trivy" in refused
+    assert "nessus" in refused
+    planned = {row["slot"] for row in data["planned"]}
+    assert "nuclei" not in planned
+    assert data["live"] is False
+    assert data["plan_only"] is True
+    live = subprocess.run(
+        [
+            "python3",
+            "-m",
+            "dropbox",
+            "schedule",
+            "--scope",
+            str(SCOPE),
+            "--in-dir",
+            str(empty_in),
+            "--out-dir",
+            str(out),
+            "--live",
+        ],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert live.returncode == 2
+    blob = (live.stderr or "") + (live.stdout or "")
+    assert "DEMO" in blob
+    assert "SCOPE gate" in blob or "HITL" in blob or "live" in blob.lower()
+
+
+def test_ciso_cli_sor_posted_false_riskready_no_http(tmp_path: Path) -> None:
+    """Process e2e: python3 -m dropbox ciso writes SoR CSVs; posted/http stay false."""
+    import os
+
+    out = tmp_path / "ciso-out"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["CISO_PUSH"] = "0"
+    env["DRY_RUN"] = "1"
+    env["RISKREADY_PUSH"] = "1"
+    env["GRC_LIVE_SCAN"] = "0"
+    env["DROPBOX_LIVE"] = "0"
+    proc = subprocess.run(
+        [
+            "python3",
+            "-m",
+            "dropbox",
+            "ciso",
+            "--scope",
+            str(SCOPE),
+            "--in-dir",
+            str(ROOT / "fixtures" / "keep-samples"),
+            "--out-dir",
+            str(out),
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout[proc.stdout.find("{") :])
+    assert data["posted"] is False
+    assert data["http"] is False
+    assert data["sor"] == "ciso-assistant"
+    assert data["ciso_files"]
+    assert (out / "ciso-assistant" / "assets.csv").is_file()
+    assert (out / "ciso-assistant" / "findings.csv").is_file()
+    assert "clica" in data["clica"]
+    assert "push_ciso" in data["push_ciso"] or "push_ciso.sh" in data["push_ciso"]
 
 
 def test_schedule_cli_scope_and_keep_samples(tmp_path: Path) -> None:

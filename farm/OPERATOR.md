@@ -20,6 +20,26 @@ One-shot KEEP-minimum: `python3 -m dropbox schedule` (not cron). CISO path:
 
 See `dropbox/ARCHITECTURE.md` Layer A / B / C.
 
+## Day-of (Desktop — no make / no gh)
+
+Signed SCOPE first. File-drop default. `--live` is HITL and is refused on DEMO.
+
+```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+python3 -m dropbox gate
+python3 -m dropbox mcp farm_toolbin_status
+python3 -m dropbox schedule          # dry-run KEEP-minimum; not --live
+python3 -m dropbox ciso              # landed → out/ciso-assistant/*.csv (operator SoR)
+# Desktop: clica  or  bash push_ciso.sh   (posted:false unless CISO_PUSH=1)
+python -m keep lab                   # keep/work; never writes pack in/
+```
+
+keep-lab this-run guard: pre-existing pack `in/` estate is not a fail. Sample
+keep-lab only fails if **this run** mutates pack `in/`. Desktop has no `make`
+/ `gh` — use the python modules above. `posted:false` unless `CISO_PUSH=1`.
+Never HTTP. Never POST `/api/risks`.
+
 ## Copy-paste runbook (bare Linux → CISO zip)
 
 ```bash

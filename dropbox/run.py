@@ -187,7 +187,7 @@ def cmd_ciso(args: argparse.Namespace) -> int:
         os.environ.get("IN_DIR") or (ROOT / "in")
     )
     dest_out = Path(args.out_dir) if getattr(args, "out_dir", None) else Path(
-        os.environ.get("OUT_DIR") or (ROOT / "dropbox" / "work" / "ciso-out")
+        os.environ.get("OUT_DIR") or (ROOT / "out")
     )
     result = run_ciso_path(dest_in, dest_out, scope_path=Path(args.scope) if args.scope else None)
     print(json.dumps(result, indent=2, default=str))

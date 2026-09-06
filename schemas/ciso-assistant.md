@@ -3,13 +3,25 @@
 Auth: `Authorization: Token <PAT>`
 API default: `http://localhost:8000/api`
 
-CISO Assistant is Reid-side SoR. Prefer [clica](https://github.com/intuitem/ciso-assistant-community) or UI CSV import. Do not invent FindingsAssessment UUIDs.
+CISO Assistant is Reid-side SoR. Operator source of record is `out/ciso-assistant/*.csv` from `python3 -m dropbox ciso`. Prefer [clica](https://github.com/intuitem/ciso-assistant-community) or UI CSV import. Do not invent FindingsAssessment UUIDs.
 
 `push_ciso.sh` defaults to dry-run. REST may POST `/api/assets/` and `/api/evidences/` only when `CISO_PUSH=1` and `DRY_RUN!=1`. Never POST `/api/risks`.
 
 Conductor `export_ciso_poam` reads `out/ciso-assistant/` + `out/poam/` (+ SimpleRisk leave-behind under `out/simplerisk/`). `posted` is **false** unless `CISO_PUSH=1` and `DRY_RUN!=1`. Conductor `http` is always **false** — `RISKREADY_PUSH=1` does not enable HTTP.
 
 Files land in `out/ciso-assistant/`.
+
+## Desktop (no make / no gh)
+
+```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+python3 -m dropbox ciso              # landed KEEP-minimum → out/ciso-assistant/*.csv
+# then: clica   or   bash push_ciso.sh
+python3 -m dropbox mcp export_ciso_poam
+```
+
+`posted` stays false unless `CISO_PUSH=1`. This agent never runs `push_ciso.sh`. Desktop has no `make` / `gh`.
 
 ## assets.csv
 

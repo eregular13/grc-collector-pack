@@ -461,25 +461,33 @@ def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
     ciso_push = os.environ.get("CISO_PUSH", "0") == "1"
     dry_run = os.environ.get("DRY_RUN", "1") == "1"
     posted = bool(ciso_push and not dry_run)
+    ciso_files = [
+        str(path)
+        for path in files
+        if Path(path).parent.name == "ciso-assistant" and path.endswith(".csv")
+    ]
     return {
         "tool": "export_ciso_poam",
         "ciso_dir": str(ciso),
         "poam_dir": str(poam),
         "simplerisk_dir": str(simplerisk),
         "files": files,
+        "ciso_files": ciso_files,
+        "sor": "ciso-assistant",
         "owner_due": "blank — human fills",
         "posted": posted,
         "http": False,
         "ciso_push": "1" if ciso_push else "0",
-        "clica": "prefer clica or CISO UI import — do not invent FindingsAssessment UUIDs",
-        "push_ciso": "push_ciso.sh dry unless CISO_PUSH=1 and DRY_RUN!=1; assets/evidences only",
+        "clica": "Desktop: clica or CISO UI import of out/ciso-assistant/*.csv — do not invent FindingsAssessment UUIDs",
+        "push_ciso": "Desktop: bash push_ciso.sh (no make/gh). Dry unless CISO_PUSH=1 and DRY_RUN!=1; assets/evidences only",
         "scope_gated": True,
         "client": scope.client_name,
         "demo": "DEMO" in scope.client_name.upper(),
         "wrap": "review-only",
         "note": (
-            "Conductor never HTTP. RISKREADY_PUSH is ignored. SimpleRisk is "
-            "leave-behind under out/ only."
+            "Operator SoR is out/ciso-assistant/*.csv. posted false unless "
+            "CISO_PUSH=1 and DRY_RUN!=1. Conductor never HTTP. RISKREADY_PUSH "
+            "is ignored. SimpleRisk is leave-behind under out/ only."
         ),
     }
 

@@ -53,6 +53,8 @@ def test_architecture_docs_three_layers() -> None:
     assert "clica" in ciso_md
     assert "export_ciso_poam" in ciso_md
     assert "CISO_PUSH=1" in ciso_md
+    assert "python3 -m dropbox ciso" in ciso_md
+    assert "Desktop" in ciso_md or "no make" in ciso_md.lower()
     assert "check_scope" in farm_op
     assert "license_guard" in farm_op
     assert "TypeScript refuse" in farm_op
@@ -464,7 +466,10 @@ def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.Monk
     assert any("ciso-assistant" in p and p.endswith("assets.csv") for p in data["files"])
     assert any(p.endswith("poam.csv") and "poam" in p for p in data["files"])
     assert any("simplerisk" in p for p in data["files"])
+    assert data["sor"] == "ciso-assistant"
+    assert any(p.endswith("assets.csv") for p in data["ciso_files"])
     assert "clica" in data["clica"]
+    assert "Desktop" in data["clica"] or "clica" in data["clica"]
 
 
 def test_export_ciso_poam_posted_only_when_ciso_push(

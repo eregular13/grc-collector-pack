@@ -24,6 +24,14 @@ SENSOR_COLLECTORS = {
     "identity": "identity_ad.py",
     "saas": "saas_idp.py",
 }
+CISO_CSVS = (
+    "assets.csv",
+    "applied_controls.csv",
+    "evidences.csv",
+    "findings.csv",
+    "vulnerabilities.csv",
+    "risk_scenarios.csv",
+)
 
 ENV_KEYS = (
     "IN_DIR",
@@ -87,6 +95,9 @@ def run_ciso_path(
     sensors = sorted(s for s in landed_sensors(landed) if s in SENSOR_COLLECTORS)
     sensors = [s for s in sensors if _has_input_files(stage_in / s)]
     sample = any(row.get("sample") for row in rows) or "DEMO" in scope.client_name.upper()
+    caller_push = os.environ.get("CISO_PUSH", "0") == "1"
+    caller_dry = os.environ.get("DRY_RUN", "1") == "1"
+    posted = bool(caller_push and not caller_dry)
     saved = {key: os.environ.get(key) for key in ENV_KEYS}
     ran: list[str] = []
     try:
@@ -94,7 +105,7 @@ def run_ciso_path(
         os.environ["OUT_DIR"] = str(dest_out)
         os.environ["DRY_RUN"] = "1"
         os.environ["GRC_LIVE_SCAN"] = "0"
-        os.environ["CISO_PUSH"] = os.environ.get("CISO_PUSH", "0")
+        os.environ["CISO_PUSH"] = "1" if caller_push else "0"
         os.environ["RISKREADY_PUSH"] = "0"
         os.environ["DROPBOX_LIVE"] = "0"
         os.environ["DROPBOX_DEMO"] = "1" if sample else "0"
@@ -141,17 +152,19 @@ def run_ciso_path(
     summary_path = dest_out / "summary.json"
     if summary_path.is_file():
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    ciso_push = os.environ.get("CISO_PUSH", "0") == "1"
-    dry_run = os.environ.get("DRY_RUN", "1") == "1"
+    ciso_dir = dest_out / "ciso-assistant"
+    ciso_files = [
+        str(ciso_dir / name) for name in CISO_CSVS if (ciso_dir / name).is_file()
+    ]
     quote = {
         "kind": "quote-shaped",
-        "posted": False,
+        "posted": posted,
         "http": False,
         "price": None,
         "currency": None,
         "owner_due": "blank — human fills",
         "note": "no invented prices",
-        "ciso_dir": str(dest_out / "ciso-assistant"),
+        "ciso_dir": str(ciso_dir),
         "poam_dir": str(dest_out / "poam"),
         "simplerisk_dir": str(dest_out / "simplerisk"),
     }
@@ -177,13 +190,20 @@ def run_ciso_path(
             "poam": summary.get("poam", 0),
             "demo": summary.get("demo"),
         },
-        "posted": bool(ciso_push and not dry_run),
+        "posted": posted,
         "http": False,
+        "ciso_push": "1" if caller_push else "0",
+        "sor": "ciso-assistant",
+        "ciso_dir": str(ciso_dir),
+        "ciso_files": ciso_files,
+        "clica": "Desktop: clica or CISO UI import of out/ciso-assistant/*.csv — do not invent FindingsAssessment UUIDs",
+        "push_ciso": "Desktop: bash push_ciso.sh (no make/gh) after CSVs exist; dry unless CISO_PUSH=1 and DRY_RUN!=1",
         "wrap": "review-only",
         "quote": quote,
         "quote_path": str(quote_path),
         "note": (
-            "Landed KEEP-minimum only. Empty sensors do not load fixtures/demo. "
-            "CISO via clica/UI. RISKREADY_PUSH never HTTP."
+            "Operator SoR is out/ciso-assistant/*.csv. Empty sensors do not "
+            "load fixtures/demo. This path never HTTP. RISKREADY_PUSH ignored. "
+            "posted false unless CISO_PUSH=1 and DRY_RUN!=1."
         ),
     }
