@@ -133,7 +133,7 @@ def parse_testssl_text(blob: str, host: str) -> list[dict[str, Any]]:
         name = ""
         if "sslv3" in low or "ssl 3" in low:
             name = "SSLv3 offered"
-        elif "tlsv1.0" in low or "tls 1.0" in low or re.search(r"\btlsv1\b", low):
+        elif re.search(r"tlsv1\.0|tls 1\.0|(?<![\w.])tlsv1(?![.\d])", low):
             name = "TLSv1.0 offered"
         elif "weak cipher" in low or "rc4" in low or "export cipher" in low:
             name = "Weak TLS cipher"

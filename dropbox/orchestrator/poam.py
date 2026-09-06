@@ -82,7 +82,7 @@ _MAP = [
         "severity": "medium",
     },
     {
-        "match": re.compile(r"tlsv?1(\.0)?|sslv?3|weak cipher", re.I),
+        "match": re.compile(r"sslv?3|(?:tlsv?1(?:\.0)?|tls 1\.0)(?!\.\d)|weak cipher", re.I),
         "weakness": "Weak TLS/SSL",
         "cpg": ["CPG 2.K"],
         "csf": ["PR.DS-10", "PR.PS-01"],

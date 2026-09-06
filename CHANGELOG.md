@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 133
+
+T24-wait extra: TLS 1.0-only estate `grc-weak-24h` on `172.28.160.0/24` loopback 18581/18543. nmap ssl-enum-ciphers (isolated net only) saw TLSv1.0 AES128-SHA; Windows `--tlsv1.0` 200, `--tlsv1.2` SEC_E_UNSUPPORTED_FUNCTION. `map_finding`/`parse_testssl_text` no longer treat TLSv1.2 as Weak TLS. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product+testssl.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 132
 
 T24-wait extra: expired TLS estate `grc-expired-24h` on `172.28.140.0/24` loopback 18381/18343. Alpine curl `--cacert` observed `certificate has expired`; map `Expired TLS certificate`. Eval pytest-a/b bind-mount leftover still extra-lab, not SKU floor. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
