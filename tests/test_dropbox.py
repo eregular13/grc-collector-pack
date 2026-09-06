@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from dropbox.runners import refuse_offscope_external, write_inventory, write_lynis, write_tls_headers
-from dropbox.scope import FORBIDDEN_TOOLS, GateError, load_scope
+from dropbox.scope import FORBIDDEN_TOOLS, GateError, attestation_digest, load_scope
 from dropbox.yaml_lite import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +26,117 @@ def test_example_scope_loads() -> None:
     assert scope.stage_deepen is True
     assert scope.allows_internal_target("127.0.0.1")
     assert not scope.allows_internal_target("8.8.8.8")
+
+
+def test_committed_scope_attestation_matches_consent() -> None:
+    """CI must fail if DEMO consent bytes drift from SCOPE.attestation_sha256."""
+    scope_path = ROOT / "dropbox" / "SCOPE.yaml"
+    consent_path = ROOT / "dropbox" / "consent" / "DEMO-WRITTEN-CONSENT.md"
+    declared = str(load_yaml(scope_path.read_text(encoding="utf-8"))["consent"]["attestation_sha256"])
+    declared = declared.strip().lower()
+    raw = consent_path.read_bytes()
+    assert b"\r" not in raw, "committed consent must stay LF (see .gitattributes)"
+    digest = attestation_digest(raw)
+    assert digest == hashlib.sha256(raw).hexdigest()
+    assert declared == digest, f"SCOPE hash {declared} != consent {digest}"
+    scope = load_scope(scope_path)
+    assert scope.consent_sha256 == digest
+
+
+def test_gate_accepts_crlf_checkout_of_committed_hash(tmp_path: Path) -> None:
+    """Windows autocrlf rewrites consent to CRLF; committed hash is the LF blob."""
+    lf = (ROOT / "dropbox" / "consent" / "DEMO-WRITTEN-CONSENT.md").read_bytes()
+    crlf = lf.replace(b"\n", b"\r\n")
+    raw_crlf = hashlib.sha256(crlf).hexdigest()
+    assert raw_crlf.startswith("69e94d5f"), raw_crlf
+    declared = str(load_yaml((ROOT / "dropbox" / "SCOPE.yaml").read_text(encoding="utf-8"))["consent"]["attestation_sha256"])
+    assert attestation_digest(crlf) == declared.strip().lower()
+    att = tmp_path / "consent.md"
+    att.write_bytes(crlf)
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: DEMO — not a client estate\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {declared}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+        encoding="utf-8",
+    )
+    loaded = load_scope(scope)
+    assert loaded.consent_sha256 == declared.strip().lower()
+
+
+def test_gate_refuses_consent_text_drift(tmp_path: Path) -> None:
+    att = tmp_path / "consent.md"
+    att.write_text("written consent v1\n", encoding="utf-8")
+    digest = attestation_digest(att.read_bytes())
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + f"\n  attestation_sha256: {digest}\nengagement:\n  start: 2026-09-01\n"
+        "  end: 2026-12-31\ninternal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n",
+        encoding="utf-8",
+    )
+    load_scope(scope)
+    att.write_text("written consent v1 — edited without attest\n", encoding="utf-8")
+    with pytest.raises(GateError, match="hash mismatch"):
+        load_scope(scope)
+
+
+def test_attest_write_stamps_hash_then_gate_passes(tmp_path: Path) -> None:
+    att = tmp_path / "consent.md"
+    att.write_text("operator memo\n", encoding="utf-8")
+    scope = tmp_path / "SCOPE.yaml"
+    scope.write_text(
+        "client:\n  name: X\nconsent:\n  attestation_path: "
+        + str(att)
+        + "\n  attestation_sha256: 00deadbeef00deadbeef00deadbeef00deadbeef00deadbeef00deadbeef00de\n"
+        "engagement:\n  start: 2026-09-01\n  end: 2026-12-31\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\nexternal:\n  hosts:\n    - vpn.example.com\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="hash mismatch"):
+        load_scope(scope)
+    proc = subprocess.run(
+        ["python3", "-m", "dropbox", "attest", "--write", "--scope", str(scope)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    digest = attestation_digest(att.read_bytes())
+    assert digest in proc.stdout
+    assert "stale" in proc.stdout
+    assert digest in scope.read_text(encoding="utf-8")
+    load_scope(scope)
+    gate = subprocess.run(
+        ["python3", "-m", "dropbox", "gate", "--scope", str(scope)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert gate.returncode == 0, gate.stderr
+
+
+def test_gate_has_no_skip_hash() -> None:
+    from dropbox.run import build_parser
+
+    help_text = build_parser().format_help()
+    assert "--skip-hash" not in help_text
+    refused = subprocess.run(
+        ["python3", "-m", "dropbox", "gate", "--skip-hash"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert refused.returncode != 0
+    blob = (refused.stderr + refused.stdout).lower()
+    assert "unrecognized" in blob or "invalid" in blob or "error" in blob
 
 
 def test_gate_missing_scope(tmp_path: Path) -> None:
@@ -171,6 +282,15 @@ def test_demo_ingest_writes_existing_formats(tmp_path: Path, monkeypatch: pytest
 
 
 def test_cli_gate_and_missing(tmp_path: Path) -> None:
+    default_ok = subprocess.run(
+        ["python3", "-m", "dropbox", "gate"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert default_ok.returncode == 0, default_ok.stderr
+    assert "SCOPE gate OK" in default_ok.stdout
     ok = subprocess.run(
         ["python3", "-m", "dropbox", "gate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),

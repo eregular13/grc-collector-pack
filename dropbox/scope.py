@@ -263,6 +263,78 @@ def default_scope_path() -> Path:
     return ROOT / "dropbox" / "SCOPE.yaml"
 
 
+def canonical_attestation_bytes(raw: bytes) -> bytes:
+    """LF-canonical consent bytes. Git on Windows may check out CRLF; do not skip the hash."""
+    return raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
+def attestation_digest(raw: bytes) -> str:
+    """SHA-256 hex of LF-canonical attestation bytes. Required; never skip."""
+    return hashlib.sha256(canonical_attestation_bytes(raw)).hexdigest()
+
+
+def resolve_attestation_path(att_rel: str) -> Path:
+    att_path = Path(att_rel)
+    if not att_path.is_absolute():
+        att_path = (ROOT / att_rel).resolve()
+    return att_path
+
+
+def consent_file_from_scope(scope_path: Path) -> tuple[Path, str]:
+    """Resolve attestation path + declared hash. Does not verify the hash (attest uses this)."""
+    if not scope_path.is_file():
+        raise GateError(f"no SCOPE file at {scope_path}")
+    data = load_yaml(scope_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not data:
+        raise GateError("SCOPE.yaml is empty or not a mapping")
+    consent = data.get("consent") if isinstance(data.get("consent"), dict) else {}
+    att_rel = str(consent.get("attestation_path") or "").strip()
+    att_hash = str(consent.get("attestation_sha256") or "").strip().lower()
+    if not att_rel:
+        raise GateError("consent.attestation_path is required")
+    att_path = resolve_attestation_path(att_rel)
+    if not att_path.is_file():
+        raise GateError(f"consent attestation missing: {att_path}")
+    return att_path, att_hash
+
+
+def write_attestation_hash(scope_path: Path, digest: str) -> None:
+    """Stamp consent.attestation_sha256 in place. Refuses to invent a skip-hash."""
+    hex_digest = str(digest or "").strip().lower()
+    if len(hex_digest) != 64 or any(c not in "0123456789abcdef" for c in hex_digest):
+        raise GateError("attestation digest must be a 64-char sha256 hex")
+    text = scope_path.read_text(encoding="utf-8")
+    if not text:
+        raise GateError("SCOPE.yaml is empty")
+    lines = text.splitlines(keepends=True)
+    updated = False
+    out: list[str] = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith("attestation_sha256:"):
+            indent = line[: len(line) - len(stripped)]
+            rest = stripped.split(":", 1)[1].strip()
+            quote = rest[0] if rest[:1] in {"'", '"'} else ""
+            if line.endswith("\r\n"):
+                newline = "\r\n"
+            elif line.endswith("\n"):
+                newline = "\n"
+            elif line.endswith("\r"):
+                newline = "\r"
+            else:
+                newline = ""
+            if quote:
+                out.append(f"{indent}attestation_sha256: {quote}{hex_digest}{quote}{newline}")
+            else:
+                out.append(f"{indent}attestation_sha256: {hex_digest}{newline}")
+            updated = True
+        else:
+            out.append(line)
+    if not updated:
+        raise GateError("consent.attestation_sha256 line not found")
+    scope_path.write_text("".join(out), encoding="utf-8")
+
+
 def load_scope(path: Path | None = None) -> Scope:
     scope_path = Path(path) if path else default_scope_path()
     if not scope_path.is_file():
@@ -283,14 +355,14 @@ def load_scope(path: Path | None = None) -> Scope:
         raise GateError("consent.attestation_path is required")
     if not att_hash:
         raise GateError("consent.attestation_sha256 is required")
-    att_path = Path(att_rel)
-    if not att_path.is_absolute():
-        att_path = (ROOT / att_rel).resolve()
+    att_path = resolve_attestation_path(att_rel)
     if not att_path.is_file():
         raise GateError(f"consent attestation missing: {att_path}")
-    digest = hashlib.sha256(att_path.read_bytes()).hexdigest()
+    digest = attestation_digest(att_path.read_bytes())
     if digest != att_hash:
-        raise GateError("consent attestation hash mismatch")
+        raise GateError(
+            f"consent attestation hash mismatch expected {att_hash} got {digest}"
+        )
 
     eng = data.get("engagement") if isinstance(data.get("engagement"), dict) else {}
     start = _parse_day(eng.get("start") or eng.get("begin"), "engagement.start")

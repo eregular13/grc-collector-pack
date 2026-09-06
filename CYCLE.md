@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 89 — DESKTOP SCOPE attestation hash (CRLF) (2026-09-06)
+
+Committed `SCOPE.yaml` hash `ab5fb873…` is the LF SHA-256 of `DEMO-WRITTEN-CONSENT.md`. DESKTOP `core.autocrlf` rewrote the memo to CRLF (`69e94d5f…`) so `python -m dropbox gate` / schedule / ciso exited 2. Gate now hashes LF-canonical consent bytes (hash still required; no skip-hash). `.gitattributes` locks consent/SCOPE to LF. `python -m dropbox attest --write` stamps the hash after consent edits. Pytest locks committed match, CRLF checkout, text drift, attest→gate, and refuses `--skip-hash`. Catalog **unchanged**. pytest **352**. Labs no-diff vs cycle 88.
+
+```json
+{"pytest": 352, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 64, "findings": 79, "vulns": 19, "evidence": 27, "poam": 82}, "farm_lab": {"assets": 64, "findings": 79, "poam": 82, "demo": true}, "farm_toolbin_e2e": {"assets": 64, "findings": 80, "vulns": 19, "poam": 82, "demo": true}, "dropbox_lab": {"assets": 69, "findings": 88, "vulns": 19, "poam": 85, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 88 — Hephaestus two-MCP cross-wire fail-closed (2026-09-06)
 
 Pack truth stays USB `evergreen_assessment_mcp`. Conductor `dropbox.mcp_stub` refuses `check_scope` / `license_guard` (dispatch, JSON-RPC `tools/call`, CLI exit 2). `validate_two_mcp_servers` refuses merged `grc-dropbox-evergreen` and swapped module args. `mcp_stub.py` still does not contain `evergreen_assessment_mcp`. Estate protect + KEEP-minimum dry path + CISO SoR stand. No new parsers. Catalog **111 / 32 / 30 / 81**. pytest **347**. Labs no-diff vs cycle 87.

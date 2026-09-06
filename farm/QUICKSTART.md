@@ -10,11 +10,12 @@ Wrap review-only. DEMO ≠ client. Paying-day **FAIL**. LICENSE-LOCK /
 file_drop-only names never `will_run` or `live_ready`. `FARM_TOOL_BIN`
 never resolves locked scanners.
 
-1. **Consent** — store the signed memo next to the box; record its sha256.
+1. **Consent** — store the signed memo next to the box.
 2. **SCOPE** — copy `dropbox/SCOPE.example.yaml` → `dropbox/SCOPE.yaml`.
-   Fill client, attestation hash, window, named CIDRs/hosts.
+   Fill client, window, named CIDRs/hosts. Stamp the hash with
+   `python -m dropbox attest --write` (LF-canonical; no skip-hash).
    Example does **not** allowlist nmap/nessus (not free-day live).
-   `python3 -m dropbox gate`
+   `python -m dropbox gate`
 3. **tool-bin** — DEMO: `farm/tool-bin/lab/` stubs. Real: you install;
    set `FARM_TOOL_BIN` or PATH. Never apt from this tree.
 4. **DEMO quiet→loud** (`farm/work/e2e`, not pack `in/`):
