@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 121
+
+Clean-clone pytest: `.env.example` un-ignored; conftest seeds stub `out/` CSVs if missing so factory tests run without a prior `run_lab.ps1`. VERSION 0.4.2. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: 216 passed.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 120
 
 Product-ready 0.4.1: `docs/QUICKSTART.md` (venv → pytest → estate compose → product_demo --help). `docs/ESTATE.md` for `172.28.90.0/24` loopback. CI `.github/workflows/lab.yml` (pytest 3.12, no Docker estate required). Slug Cleartext HTTP survives pack `out/poam` fixture overwrite (`tests/test_product_ready.py`). Lab-sim ≠ customer pack. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
