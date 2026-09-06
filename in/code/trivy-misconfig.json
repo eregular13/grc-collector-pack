@@ -1,0 +1,46 @@
+{
+  "Results": [
+    {
+      "Target": "deploy/api.Dockerfile",
+      "Class": "config",
+      "Type": "dockerfile",
+      "Misconfigurations": [
+        {
+          "Type": "Dockerfile Security Check",
+          "ID": "DS002",
+          "AVDID": "AVD-DS-0002",
+          "Title": "Image user should not be 'root'",
+          "Description": "Running as root increases impact of a container breakout.",
+          "Message": "Specify a non-root USER in deploy/api.Dockerfile",
+          "Severity": "HIGH",
+          "Status": "FAIL"
+        },
+        {
+          "ID": "DS005",
+          "AVDID": "AVD-DS-0005",
+          "Title": "ADD instead of COPY",
+          "Description": "ADD has extra features that COPY does not need.",
+          "Severity": "LOW",
+          "Status": "PASS"
+        }
+      ]
+    },
+    {
+      "Target": "k8s/privileged-pod.yaml",
+      "Class": "config",
+      "Type": "kubernetes",
+      "Misconfigurations": [
+        {
+          "Type": "Kubernetes Security Check",
+          "ID": "KSV017",
+          "AVDID": "AVD-KSV-0017",
+          "Title": "Privileged container",
+          "Description": "Privileged containers have access to all host devices.",
+          "Message": "container allowPrivilegeEscalation / privileged is true",
+          "Severity": "CRITICAL",
+          "Status": "FAIL"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "00u1appadmin",
+    "status": "ACTIVE",
+    "profile": {
+      "firstName": "App",
+      "lastName": "Admin",
+      "login": "okta-appadmin@contoso.com",
+      "email": "okta-appadmin@contoso.com"
+    },
+    "credentials": {
+      "provider": {"type": "OKTA", "name": "OKTA"}
+    }
+  },
+  {
+    "id": "00u1contractor",
+    "status": "ACTIVE",
+    "profile": {
+      "firstName": "Pat",
+      "lastName": "Contractor",
+      "login": "okta-contractor@contoso.com",
+      "email": "okta-contractor@contoso.com"
+    },
+    "credentials": {
+      "provider": {"type": "OKTA", "name": "OKTA"}
+    }
+  },
+  {
+    "id": "00u1mfauser",
+    "status": "ACTIVE",
+    "profile": {
+      "firstName": "Ana",
+      "lastName": "Analyst",
+      "login": "okta-analyst@contoso.com",
+      "email": "okta-analyst@contoso.com"
+    },
+    "credentials": {
+      "provider": {"type": "OKTA", "name": "OKTA"}
+    },
+    "factors": [
+      {
+        "id": "mfa1",
+        "factorType": "token:software:totp",
+        "provider": "GOOGLE",
+        "status": "ACTIVE"
+      }
+    ]
+  },
+  {
+    "id": "00u1federated",
+    "status": "ACTIVE",
+    "profile": {
+      "firstName": "Fed",
+      "lastName": "User",
+      "login": "okta-federated@contoso.com",
+      "email": "okta-federated@contoso.com"
+    },
+    "credentials": {
+      "provider": {"type": "FEDERATION", "name": "FEDERATION"}
+    }
+  }
+]

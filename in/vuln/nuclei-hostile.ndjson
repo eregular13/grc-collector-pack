@@ -1,0 +1,4 @@
+
+
+{not valid json
+{"template-id":"blank-line-neighbor","info":{"name":"OpenSSH version disclosure","severity":"low","description":"Banner leak on jump host"},"host":"jump01.corp.local","matched-at":"ssh://jump01.corp.local:22"}

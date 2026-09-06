@@ -1,0 +1,41 @@
+{
+  "agent": {"id": "003", "name": "srv-finance"},
+  "data": {
+    "affected_items": [
+      {
+        "id": 19111,
+        "policy_id": "cis_win2019",
+        "title": "Ensure 'Guest account status' is set to 'Disabled'",
+        "description": "The Guest account allows unauthenticated logon to the system.",
+        "rationale": "Guest enables anonymous access to the host.",
+        "remediation": "Disable the Guest account via local security policy.",
+        "compliance": [{"key": "cis", "value": "2.3.1.2"}],
+        "result": "failed"
+      },
+      {
+        "id": 19200,
+        "policy_id": "cis_win2019",
+        "title": "Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On'",
+        "description": "The domain profile firewall is turned off.",
+        "remediation": "Enable Windows Firewall for the domain profile.",
+        "compliance": [{"key": "cis", "value": "9.1.1"}],
+        "result": "failed"
+      },
+      {
+        "id": 19350,
+        "policy_id": "cis_win2019",
+        "title": "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'",
+        "description": "Anonymous SAM enumeration is allowed.",
+        "remediation": "Set RestrictAnonymousSAM to 1.",
+        "result": "failed"
+      },
+      {
+        "id": 19000,
+        "policy_id": "cis_win2019",
+        "title": "Ensure 'Enforce password history' is set to '24 or more password(s)'",
+        "description": "Password history is already 24.",
+        "result": "passed"
+      }
+    ]
+  }
+}

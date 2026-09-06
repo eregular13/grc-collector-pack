@@ -1,0 +1,15 @@
+﻿[
+  {
+    "CheckID": "guardduty_is_enabled",
+    "CheckTitle": "GuardDuty detector disabled (UTF-8 BOM fixture)",
+    "Status": "FAIL",
+    "Severity": "high",
+    "ResourceId": "detector-demo-bom",
+    "ResourceArn": "arn:aws:guardduty:us-east-1:111122223333:detector/demo-bom",
+    "ResourceType": "AwsAccount",
+    "ResourceName": "aws-account-111122223333-gd",
+    "Region": "us-east-1",
+    "Provider": "aws",
+    "StatusExtended": "GuardDuty is not enabled (hostile UTF-8 BOM JSON still parsed)."
+  }
+]

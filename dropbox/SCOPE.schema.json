@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evergreen drop-box SCOPE",
+  "type": "object",
+  "required": [
+    "client_legal_name",
+    "named_contact",
+    "consent_attested",
+    "window_start",
+    "window_end",
+    "allow_tools"
+  ],
+  "properties": {
+    "client_legal_name": { "type": "string" },
+    "named_contact": { "type": "string" },
+    "consent_attested": { "type": "boolean" },
+    "window_start": { "type": "string" },
+    "window_end": { "type": "string" },
+    "internal": {
+      "type": "object",
+      "properties": {
+        "cidrs": { "type": "array", "items": { "type": "string" } },
+        "hosts": { "type": "array", "items": { "type": "string" } },
+        "endpoints": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "external": {
+      "type": "object",
+      "properties": {
+        "hostnames": { "type": "array", "items": { "type": "string" } },
+        "urls": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "cloud": {
+      "type": "object",
+      "properties": {
+        "accounts": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "entra": {
+      "type": "object",
+      "properties": {
+        "tenants": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "allow_tools": { "type": "array", "items": { "type": "string" } },
+    "profiles": { "type": "array", "items": { "type": "string" } },
+    "batch": {
+      "type": "object",
+      "properties": {
+        "discover_shard_size": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "deepen_batch_size": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "max_concurrent_discover": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "max_concurrent_deepen": { "type": "integer", "minimum": 1, "maximum": 2 }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "properties": {
+        "timeouts_seconds": { "type": "integer" },
+        "max_runtime_seconds": { "type": "integer" },
+        "refuse_if_unsigned": {
+          "type": "boolean",
+          "description": "Informational. Unsigned/consent-false always refuses live; false cannot bypass."
+        },
+        "refuse_if_empty_targets": {
+          "type": "boolean",
+          "description": "Informational. Empty technical targets always refuse live; false cannot bypass."
+        },
+        "allow_live_exec": { "type": "boolean" }
+      }
+    }
+  }
+}

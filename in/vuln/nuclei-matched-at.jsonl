@@ -1,0 +1,1 @@
+{"template-id":"CVE-2019-11510","info":{"name":"Pulse Secure arbitrary file read","severity":"critical","description":"Unauthenticated file read on Pulse Secure VPN (demo)."},"matched-at":"https://pulse-legacy.corp.local:443/dana-na/"}

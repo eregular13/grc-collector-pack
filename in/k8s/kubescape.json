@@ -1,0 +1,48 @@
+{
+  "cluster": "prod-eks",
+  "resources": [
+    {
+      "resourceID": "/v1/kube-system/pod/debug-priv",
+      "object": {
+        "kind": "Pod",
+        "name": "debug-priv",
+        "namespace": "kube-system",
+        "privileged": true
+      }
+    },
+    {
+      "resourceID": "/v1/default/serviceaccount/default",
+      "object": {
+        "kind": "ServiceAccount",
+        "name": "default",
+        "namespace": "default"
+      }
+    }
+  ],
+  "results": [
+    {
+      "controlID": "C-0055",
+      "name": "Privileged container",
+      "status": "failed",
+      "severity": "high",
+      "resource": "debug-priv",
+      "description": "Pod debug-priv runs privileged: true."
+    },
+    {
+      "controlID": "C-0018",
+      "name": "Anonymous access to Kubernetes API",
+      "status": "failed",
+      "severity": "critical",
+      "resource": "kube-apiserver",
+      "description": "Anonymous authentication is enabled on the API server."
+    },
+    {
+      "controlID": "C-0034",
+      "name": "Automatic mapping of service account tokens",
+      "status": "failed",
+      "severity": "medium",
+      "resource": "default",
+      "description": "default service account automounts API tokens."
+    }
+  ]
+}

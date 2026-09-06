@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "gitleaks",
+          "informationUri": "https://github.com/gitleaks/gitleaks",
+          "rules": [
+            {
+              "id": "slack-bot-token",
+              "name": "Slack Bot Token",
+              "shortDescription": {"text": "Slack Bot Token"}
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "slack-bot-token",
+          "level": "error",
+          "message": {
+            "text": "slack-bot-token has detected secret for file ci/secrets.env."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "ci/secrets.env"},
+                "region": {
+                  "startLine": 4,
+                  "snippet": {"text": "ghp_sarifSnippetMustNotLeakAAAA"}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

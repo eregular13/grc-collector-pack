@@ -1,0 +1,3 @@
+{"name":"sharepoint-old.example-corp.com","domain":"example-corp.com","tag":"cert","sources":["Crtsh"]}
+{"fqdn":"remote.example-corp.com","domain":"example-corp.com","tag":"dns"}
+{"name":"admin-vpn.example-corp.com","addresses":[{"ip":"203.0.113.10"}]}

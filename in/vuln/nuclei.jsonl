@@ -1,0 +1,6 @@
+{"template-id":"CVE-2021-44228","info":{"name":"Apache Log4j RCE","severity":"critical","description":"Log4Shell on app tier"},"host":"web01.corp.local","matched-at":"https://web01.corp.local:443","matcher-name":"jndi"}
+{"template-id":"CVE-2023-23397","info":{"name":"Outlook NTLM leak","severity":"high","description":"Outlook privilege elevation / NTLM relay"},"host":"mail.corp.local","matched-at":"https://mail.corp.local"}
+{"template-id":"network-telnet-detect","info":{"name":"Telnet service exposed","severity":"medium","description":"Cleartext telnet banner"},"host":"10.0.0.22","matched-at":"telnet://10.0.0.22:23"}
+{"template-id":"exposed-git-dir","info":{"name":"Git directory exposed","severity":"medium","description":"/.git/config reachable"},"host":"dev-api.example-corp.com","matched-at":"https://dev-api.example-corp.com/.git/config"}
+{"template-id":"CVE-2022-22965","info":{"name":"Spring4Shell","severity":"high","description":"Spring Framework RCE"},"host":"staging.example-corp.com","matched-at":"https://staging.example-corp.com"}
+{"template-id":"CVE-2017-0144","info":{"name":"SMBv1 EternalBlue signature","severity":"critical","description":"Legacy SMB signing / MS17-010 class issue"},"host":"file01.corp.local","matched-at":"smb://file01.corp.local:445"}

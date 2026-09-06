@@ -1,0 +1,65 @@
+{
+  "data": [
+    {
+      "kind": "User",
+      "kinds": ["User"],
+      "objectId": "S-1-5-21-9000-8000-7000-1101",
+      "properties": {
+        "name": "SVC-SQL@AW.LOCAL",
+        "displayname": "SQL Service",
+        "domain": "AW.LOCAL",
+        "hasspn": true,
+        "enabled": true
+      }
+    },
+    {
+      "kind": "User",
+      "kinds": ["User"],
+      "objectId": "S-1-5-21-9000-8000-7000-1102",
+      "properties": {
+        "name": "JDOE@AW.LOCAL",
+        "displayname": "Jane Doe",
+        "domain": "AW.LOCAL",
+        "dontreqpreauth": true
+      }
+    },
+    {
+      "kind": "User",
+      "kinds": ["User"],
+      "objectId": "S-1-5-21-9000-8000-7000-1103",
+      "properties": {
+        "name": "ANALYST@AW.LOCAL",
+        "displayname": "Analyst",
+        "domain": "AW.LOCAL",
+        "enabled": true
+      }
+    },
+    {
+      "kind": "User",
+      "kinds": ["User"],
+      "objectId": "S-1-5-21-9000-8000-7000-1104",
+      "properties": {
+        "name": "CONTRACTOR@AW.LOCAL",
+        "displayname": "Contractor",
+        "domain": "AW.LOCAL"
+      }
+    },
+    {
+      "kind": "Computer",
+      "kinds": ["Computer"],
+      "objectId": "S-1-5-21-9000-8000-7000-1002",
+      "isTierZero": true,
+      "properties": {
+        "name": "DC02.AW.LOCAL",
+        "domain": "AW.LOCAL"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "kind": "GenericAll",
+      "source": "S-1-5-21-9000-8000-7000-1104",
+      "target": "S-1-5-21-9000-8000-7000-1002"
+    }
+  ]
+}

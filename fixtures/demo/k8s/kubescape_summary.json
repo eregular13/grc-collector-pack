@@ -1,0 +1,49 @@
+{
+  "cluster": "prod-aks",
+  "summaryDetails": {
+    "score": 42.5,
+    "resourcesSeverity": {
+      "criticalSeverity": 1,
+      "highSeverity": 2,
+      "mediumSeverity": 3,
+      "lowSeverity": 1
+    },
+    "controls": {
+      "C-0002": {
+        "controlID": "C-0002",
+        "name": "Exec into container",
+        "status": "failed",
+        "scoreFactor": 8,
+        "failedResources": 1,
+        "description": "Workloads allow kubectl exec (Kubescape summaryDetails)."
+      },
+      "C-0057": {
+        "controlID": "C-0057",
+        "name": "Privileged container (summary)",
+        "status": "failed",
+        "scoreFactor": 9,
+        "failedResources": 1,
+        "description": "Privileged container via summaryDetails.controls."
+      },
+      "C-0004": {
+        "controlID": "C-0004",
+        "name": "Resources memory limit and request",
+        "status": "passed",
+        "scoreFactor": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "resourceID": "/v1/kube-system/pod/break-glass",
+      "controls": {
+        "C-0002": {
+          "controlID": "C-0002",
+          "name": "Exec into container",
+          "status": {"status": "failed"},
+          "description": "Pod break-glass allows exec."
+        }
+      }
+    }
+  ]
+}

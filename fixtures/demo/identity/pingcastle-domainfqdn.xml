@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HealthcheckData DomainFQDN="ad.tailspintoys.local" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <EngineVersion>3.3.0.1</EngineVersion>
+  <Host></Host>
+  <DomainFQDN></DomainFQDN>
+  <NetBIOSName>TAILSPIN</NetBIOSName>
+  <ForestFQDN>tailspintoys.local</ForestFQDN>
+  <RiskRules>
+    <HealthcheckRiskRule>
+      <Points>20</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>AccountTakeOver</Model>
+      <RiskId>P-AdminPwdTooOld</RiskId>
+      <Rationale>Admin passwords older than 3 years: 2</Rationale>
+    </HealthcheckRiskRule>
+  </RiskRules>
+</HealthcheckData>

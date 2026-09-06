@@ -1,0 +1,20 @@
+{
+  "ProductName": "AAD",
+  "MetaData": {"TenantId": "contoso.onmicrosoft.com"},
+  "Results": [
+    {
+      "CheckID": "MS.AAD.7.4v1",
+      "Requirement": "Privileged users shall be managed with PIM",
+      "Outcome": "Fail",
+      "Criticality": "Shall",
+      "Details": "Global Administrator standing assignment; no Privileged Identity Management."
+    },
+    {
+      "CheckID": "MS.AAD.3.2v1",
+      "Requirement": "Phishing-resistant MFA for privileged users",
+      "Outcome": "Fail",
+      "Criticality": "Shall",
+      "Details": "Privileged users accept password+SMS MFA."
+    }
+  ]
+}

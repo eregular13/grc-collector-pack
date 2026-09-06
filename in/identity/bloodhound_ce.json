@@ -1,0 +1,75 @@
+{
+  "data": {
+    "nodes": {
+      "1": {
+        "kind": "User",
+        "kinds": ["User"],
+        "objectId": "S-1-5-21-1000-2000-3000-1104",
+        "isTierZero": false,
+        "properties": {
+          "name": "HELPDESK@CORP.LOCAL",
+          "displayname": "Help Desk",
+          "domain": "CORP.LOCAL",
+          "enabled": true
+        }
+      },
+      "2": {
+        "kind": "Computer",
+        "kinds": ["Computer"],
+        "objectId": "S-1-5-21-1000-2000-3000-1001",
+        "isTierZero": true,
+        "properties": {
+          "name": "DC01.CORP.LOCAL",
+          "unconstraineddelegation": true,
+          "domain": "CORP.LOCAL"
+        }
+      },
+      "3": {
+        "kind": "User",
+        "kinds": ["User"],
+        "objectId": "S-1-5-21-1000-2000-3000-1110",
+        "properties": {
+          "name": "INTERN@CORP.LOCAL",
+          "displayname": "Intern",
+          "domain": "CORP.LOCAL"
+        }
+      },
+      "4": {
+        "kind": "Group",
+        "kinds": ["Group"],
+        "objectId": "S-1-5-21-1000-2000-3000-512",
+        "isTierZero": true,
+        "properties": {
+          "name": "DOMAIN ADMINS@CORP.LOCAL",
+          "domain": "CORP.LOCAL"
+        }
+      },
+      "5": {
+        "kind": "User",
+        "kinds": ["User"],
+        "objectId": "S-1-5-21-1000-2000-3000-1200",
+        "properties": {
+          "name": "SVC-IIS@CORP.LOCAL",
+          "hasspn": true,
+          "dontreqpreauth": true,
+          "serviceprincipalnames": ["HTTP/intranet.corp.local"],
+          "domain": "CORP.LOCAL"
+        }
+      },
+      "6": {
+        "kind": "Computer",
+        "kinds": ["Computer"],
+        "objectId": "S-1-5-21-1000-2000-3000-1108",
+        "properties": {
+          "name": "WS-HELP.CORP.LOCAL",
+          "domain": "CORP.LOCAL"
+        }
+      }
+    },
+    "edges": [
+      {"source": "1", "target": "2", "kind": "GenericAll", "label": "GenericAll"},
+      {"source": "3", "target": "4", "kind": "MemberOf", "label": "MemberOf"},
+      {"source": "6", "target": "2", "kind": "HasSession", "label": "HasSession"}
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+# Isolated authorized-lab estate. Not 192.168.10.0/24. Not SCOPE.example.
+# Pack Dockerfile must not apt nmap/nessus/nuclei. Scanner sidecar is optional profile.
+name: grc-estate
+
+services:
+  estate-web:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:18081:80"
+    volumes:
+      - ./estate/web:/usr/share/nginx/html:ro
+    networks:
+      grc-estate:
+        ipv4_address: 172.28.90.10
+
+  estate-api:
+    image: traefik/whoami
+    ports:
+      - "127.0.0.1:18082:80"
+    networks:
+      grc-estate:
+        ipv4_address: 172.28.90.11
+
+  estate-nmap:
+    image: instrumentisto/nmap:latest
+    profiles: ["scan"]
+    networks:
+      - grc-estate
+    entrypoint: ["nmap"]
+    command: ["-sn", "-n", "--max-retries", "1", "172.28.90.0/24"]
+
+networks:
+  grc-estate:
+    name: grc-estate
+    ipam:
+      config:
+        - subnet: 172.28.90.0/24

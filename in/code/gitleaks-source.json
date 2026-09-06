@@ -1,0 +1,17 @@
+[
+  {
+    "RuleID": "hashicorp-tf-password",
+    "Description": "Terraform password (empty File, Source path)",
+    "File": "  ",
+    "Source": "terraform/prod.tfvars",
+    "StartLine": 4,
+    "Secret": "tf-demo-password-not-real"
+  },
+  {
+    "RuleID": "jwt",
+    "Description": "JWT in mobile config (Source only, no File key)",
+    "Source": "mobile/config.json",
+    "StartLine": 12,
+    "Secret": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.demo"
+  }
+]

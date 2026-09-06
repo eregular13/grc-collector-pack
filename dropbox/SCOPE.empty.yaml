@@ -1,0 +1,18 @@
+client_legal_name: "Interview Only LLC"
+named_contact: "Pat Lab"
+consent_attested: true
+window_start: "2026-09-03T00:00:00-07:00"
+window_end: "2026-09-05T09:00:00-07:00"
+internal:
+  cidrs: []
+  hosts: []
+external:
+  hostnames: []
+  urls: []
+allow_tools:
+  - nmap
+batch:
+  deepen_batch_size: 3
+integrity:
+  refuse_if_empty_targets: true
+  allow_live_exec: false

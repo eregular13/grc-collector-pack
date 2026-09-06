@@ -1,0 +1,26 @@
+{
+  "Results": [
+    {
+      "Target": "package-lock.json",
+      "Class": "lang-pkgs",
+      "Type": "npm",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-33883",
+          "PkgName": "lodash",
+          "InstalledVersion": "4.17.20",
+          "FixedVersion": "4.17.21",
+          "Severity": "HIGH",
+          "Title": "Prototype pollution in lodash"
+        },
+        {
+          "VulnerabilityID": "CVE-2023-42282",
+          "PkgName": "ip",
+          "InstalledVersion": "1.1.8",
+          "Severity": "MEDIUM",
+          "Title": "ip SSRF via improper parsing"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "CheckID": "s3_bucket_default_encryption_kms",
+    "CheckTitle": "Ensure S3 bucket default encryption uses KMS",
+    "Status": "  ",
+    "CheckStatus": "FAIL",
+    "Severity": "high",
+    "ResourceId": "corp-audit-plain",
+    "ResourceArn": "arn:aws:s3:::corp-audit-plain",
+    "ResourceType": "AwsS3Bucket",
+    "ResourceName": "corp-audit-plain",
+    "StatusExtended": "Bucket corp-audit-plain has no KMS default encryption (CheckStatus, empty Status)."
+  },
+  {
+    "CheckID": "kms_cmk_rotation_enabled",
+    "CheckTitle": "Ensure KMS CMK rotation is enabled",
+    "check_status": "FAIL",
+    "Severity": "critical",
+    "ResourceId": "kms-unrotated-key",
+    "ResourceArn": "arn:aws:kms:us-east-1:111122223333:key/kms-unrotated-key",
+    "ResourceType": "AwsKmsKey",
+    "ResourceName": "kms-unrotated-key",
+    "StatusExtended": "CMK kms-unrotated-key has rotation disabled (check_status, no Status)."
+  },
+  {
+    "CheckID": "ec2_ebs_volume_encryption",
+    "CheckTitle": "Ensure EBS volumes are encrypted",
+    "CheckStatus": "PASS",
+    "Severity": "medium",
+    "ResourceId": "vol-0skipenc",
+    "ResourceType": "AwsEc2Volume",
+    "ResourceName": "vol-0skipenc",
+    "StatusExtended": "Volume vol-0skipenc is encrypted."
+  }
+]

@@ -1,0 +1,3 @@
+{"host":"git.example-corp.com","input":"example-corp.com","source":"crtsh"}
+{"host":"admin-sso.example-corp.com","input":"example-corp.com","source":"alienvault"}
+{"hostname":"citrix.example-corp.com","source":"virustotal"}

@@ -1,0 +1,25 @@
+{
+  "cluster": "staging-gke",
+  "clusterName": "staging-gke",
+  "failedControls": [
+    {
+      "controlID": "C-0016",
+      "name": "Allow privilege escalation",
+      "severity": "high",
+      "description": "Containers may escalate privileges (Kubescape failedControls, no resources array)."
+    },
+    {
+      "controlID": "C-0048",
+      "name": "HostPath mount",
+      "scoreFactor": 8,
+      "description": "Workloads mount hostPath volumes (Kubescape failedControls, controlID only)."
+    },
+    {
+      "controlID": "C-0005",
+      "name": "API server insecure port is enabled",
+      "status": "passed",
+      "severity": "high",
+      "description": "Passed control must not emit from failedControls."
+    }
+  ]
+}

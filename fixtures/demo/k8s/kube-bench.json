@@ -1,0 +1,44 @@
+{
+  "Controls": [
+    {
+      "id": "1.2",
+      "text": "API Server",
+      "tests": [
+        {
+          "results": [
+            {
+              "test_number": "1.2.1",
+              "test_desc": "Ensure that the --anonymous-auth argument is set to false",
+              "status": "FAIL"
+            },
+            {
+              "test_number": "1.2.16",
+              "test_desc": "Ensure that the --profiling argument is set to false",
+              "status": "FAIL"
+            },
+            {
+              "test_number": "1.2.6",
+              "test_desc": "Ensure that the --kubelet-certificate-authority argument is set as appropriate",
+              "status": "WARN"
+            },
+            {
+              "test_number": "1.2.20",
+              "test_desc": "Ensure that the --authorization-mode argument includes Node",
+              "status": "PASS"
+            },
+            {
+              "test_number": "1.2.7",
+              "test_desc": "Ensure that the --authorization-mode argument includes RBAC",
+              "status": "Fail"
+            },
+            {
+              "test_number": "1.2.8",
+              "test_desc": "Ensure that the admission control plugin NodeRestriction is set",
+              "status": "Failed"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

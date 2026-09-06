@@ -1,0 +1,6 @@
+.env
+*.env
+*.pem
+*token*
+*secret*
+_archive/

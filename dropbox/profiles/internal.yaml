@@ -1,0 +1,8 @@
+# Internal profile overlay (LAN via drop box). Does not spray the public internet.
+profile: internal
+allow_tools_extra:
+  - nmap
+  - nessus
+  - lynis
+  - ss
+note: identity/cloud/k8s only if named in SCOPE

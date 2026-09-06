@@ -1,0 +1,18 @@
+[
+  {
+    "Description": "Slack bot token (RuleID empty; Fingerprint supplies rule)",
+    "File": "ops/pager.env",
+    "StartLine": 8,
+    "Fingerprint": "ops/pager.env:slack-bot-token:8",
+    "Secret": "xoxb-exampleExampleExample"
+  },
+  {
+    "RuleID": "",
+    "DetectorName": "private-key",
+    "Description": "PEM private key (DetectorName when RuleID blank)",
+    "File": "certs/legacy.pem",
+    "StartLine": 1,
+    "Fingerprint": "certs/legacy.pem:ignored-rule:1",
+    "Secret": "-----BEGIN RSA PRIVATE KEY-----"
+  }
+]

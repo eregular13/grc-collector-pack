@@ -1,0 +1,17 @@
+[
+  {
+    "RuleID": "aws-access-token",
+    "Description": "AWS Access Key in repository",
+    "Secret": "AKIAIOSFODNN7EXAMPLE",
+    "File": "deploy/.env",
+    "StartLine": 3,
+    "Author": "ci-bot"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Generic API key (already rotated)",
+    "Secret": "ghp_exampleExampleExampleExampleExamp",
+    "File": "scripts/legacy.sh",
+    "StartLine": 12
+  }
+]

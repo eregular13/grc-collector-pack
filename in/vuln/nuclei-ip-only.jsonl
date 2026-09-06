@@ -1,0 +1,1 @@
+{"template-id":"CVE-2018-13379","info":{"name":"Fortinet FortiOS SSL VPN path traversal","severity":"critical","description":"Unauthenticated path traversal on FortiOS SSL VPN (demo)."},"ip":"10.0.0.55"}

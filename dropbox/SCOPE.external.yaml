@@ -1,0 +1,34 @@
+# External-only lab SCOPE. Internal CIDRs in this file must be ignored by the orchestrator.
+# Not a client estate.
+client_legal_name: "Litware External Lab LLC"
+named_contact: "Pat Lab / lab@litware.example"
+consent_attested: true
+window_start: "2026-09-03T00:00:00-07:00"
+window_end: "2026-09-05T09:00:00-07:00"
+internal:
+  cidrs:
+    - "10.0.0.0/16"
+  hosts:
+    - "inside.corp.local"
+external:
+  hostnames:
+    - "vpn.example-corp.com"
+  urls:
+    - "https://vpn.example-corp.com"
+allow_tools:
+  - testssl
+  - curl
+  - nmap
+profiles:
+  - external
+batch:
+  discover_shard_size: 32
+  deepen_batch_size: 3
+  max_concurrent_discover: 2
+  max_concurrent_deepen: 1
+integrity:
+  timeouts_seconds: 600
+  max_runtime_seconds: 14400
+  refuse_if_unsigned: true
+  refuse_if_empty_targets: true
+  allow_live_exec: false

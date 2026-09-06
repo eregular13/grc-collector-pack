@@ -1,0 +1,21 @@
+{
+  "DomainFQDN": "fabrikam.local",
+  "NetBIOSName": "FABRIKAM",
+  "MaturityLevel": 1,
+  "HealthcheckRisk": [
+    {
+      "RiskId": "P-TrustedCreds",
+      "Points": 20,
+      "Category": "PrivilegedAccounts",
+      "Model": "AccountTakeOver",
+      "Rationale": "Accounts with trusted-for-delegation and stored credentials: 2"
+    },
+    {
+      "RiskId": "A-NullSession",
+      "Points": 10,
+      "Category": "Anomalies",
+      "Model": "Reconnaissance",
+      "Rationale": "NULL session enumeration is possible on 1 DC"
+    }
+  ]
+}

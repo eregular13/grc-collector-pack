@@ -1,0 +1,40 @@
+# Authorized Docker estate rehearsal. Not a client LAN. Not Litware.
+# Targets: compose network 172.28.90.0/24 and loopback maps 127.0.0.1:18081/18082 only.
+client_legal_name: "Evergreen Docker Estate LLC"
+named_contact: "Reid Schram"
+consent_attested: true
+window_start: "2026-09-05T09:17:59-07:00"
+window_end: "2026-09-12T10:17:59-07:00"
+internal:
+  cidrs:
+    - "172.28.90.0/24"
+  hosts:
+    - "172.28.90.10"
+    - "172.28.90.11"
+  endpoints: []
+external:
+  hostnames:
+    - "127.0.0.1"
+  urls:
+    - "http://127.0.0.1:18081/"
+    - "http://127.0.0.1:18082/"
+cloud:
+  accounts: []
+entra:
+  tenants: []
+allow_tools:
+  - curl
+  - nmap
+profiles:
+  - both
+batch:
+  discover_shard_size: 32
+  deepen_batch_size: 3
+  max_concurrent_discover: 2
+  max_concurrent_deepen: 1
+integrity:
+  timeouts_seconds: 600
+  max_runtime_seconds: 14400
+  refuse_if_unsigned: true
+  refuse_if_empty_targets: true
+  allow_live_exec: true

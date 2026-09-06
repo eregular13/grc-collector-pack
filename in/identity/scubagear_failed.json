@@ -1,0 +1,21 @@
+{
+  "ProductName": "EXO",
+  "MetaData": {"TenantId": "contoso.onmicrosoft.com"},
+  "Results": [
+    {
+      "CheckID": "MS.EXO.1.1v1",
+      "Requirement": "Automated forwarding reports shall be reviewed",
+      "Outcome": "Pass",
+      "Details": "Passing Result must not hide Failed entries."
+    }
+  ],
+  "Failed": [
+    {
+      "CheckID": "MS.EXO.4.1v1",
+      "PolicyName": "MS.EXO.4.1v1",
+      "Requirement": "Automatic forwarding to remote domains shall be disabled",
+      "Criticality": "Shall",
+      "Details": "Remote domain * allows auto-forward to external addresses."
+    }
+  ]
+}

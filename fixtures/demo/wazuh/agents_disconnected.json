@@ -1,0 +1,13 @@
+{
+  "data": {
+    "affected_items": [
+      {
+        "id": "006",
+        "name": "jump-legacy",
+        "ip": "10.0.0.90",
+        "status": "Disconnected",
+        "os": {"name": "Windows", "version": "10"}
+      }
+    ]
+  }
+}

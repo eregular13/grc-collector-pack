@@ -1,0 +1,13 @@
+# NOTICE
+
+## Nmap / Npcap — use, do not ship
+
+Evergreen may **use** Reid-owned Nmap/Npcap on a drop box under signed SCOPE (BYO on PATH). This pack does **not** embed, apt-get, Docker-vendor, or redistribute Nmap, Npcap, or NPSL-licensed bits. Orchestrator adapters print a plan and refuse live exec unless SCOPE integrity.allow_live_exec is true **and** EVERGREEN_ORCH_LIVE=1.
+
+## RiskReady — stay-out
+
+RiskReady Community Edition is LICENSE-LOCK stay-out. `push_riskready.sh` / `push_riskready.ps1` never POST (assets, incidents, evidence, auth/login, /api/risks), even if RISKREADY_PUSH=1. `out/riskready/*.json` including `risks_proposed.json` is human review only.
+
+## Scanners in this pack
+
+Collector containers are parse-only. They do not run nmap, nessus, nuclei, openvas, or any live scanner. `GRC_LIVE_SCAN=1` is ignored.

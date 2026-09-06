@@ -1,0 +1,35 @@
+{
+  "m365": {
+    "tenant": "contoso.onmicrosoft.com",
+    "legacy_auth_enabled": true,
+    "findings": [
+      {
+        "id": "MS.AAD.1.1",
+        "name": "Legacy authentication protocols enabled",
+        "severity": "high",
+        "description": "SMTP AUTH / basic auth still allowed for mailbox protocols."
+      },
+      {
+        "id": "MS.AAD.7.1",
+        "name": "Guest access unrestricted",
+        "severity": "medium",
+        "description": "Guest users can invite additional guests."
+      }
+    ]
+  },
+  "okta": {
+    "org": "contoso.okta.com",
+    "admins": [
+      {
+        "login": "okta-superadmin@contoso.com",
+        "mfa": false,
+        "role": "SUPER_ADMIN"
+      },
+      {
+        "login": "okta-helpdesk@contoso.com",
+        "mfa": true,
+        "role": "HELP_DESK"
+      }
+    ]
+  }
+}

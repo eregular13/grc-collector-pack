@@ -1,0 +1,28 @@
+{
+  "ProductName": "teams",
+  "MetaData": {"TenantId": "fabrikam.onmicrosoft.com"},
+  "Results": [
+    {
+      "CheckID": "",
+      "PolicyName": "",
+      "Requirement": "External meeting chat shall be disabled for unmanaged users",
+      "Outcome": "Fail",
+      "Criticality": "Shall",
+      "Details": "Anonymous meeting chat is enabled (ScubaGear RelativePath id).",
+      "RelativePath": "baselines/teams.md#ms.teams.2.1v1"
+    },
+    {
+      "CheckID": "   ",
+      "Requirement": "Safe Links for email shall be enabled",
+      "Outcome": "Fail",
+      "Details": "Safe Links policy missing for all users (RelativePath fallback).",
+      "RelativePath": "baselines\\defender.md#MS.DEFENDER.1.4v1"
+    },
+    {
+      "RelativePath": "baselines/sharepoint.md#ms.sharepoint.1.1v1",
+      "Requirement": "SharePoint sharing shall not be Anyone",
+      "Outcome": "Pass",
+      "Details": "Pass must not emit from RelativePath-only row."
+    }
+  ]
+}

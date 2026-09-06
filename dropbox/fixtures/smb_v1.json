@@ -1,0 +1,11 @@
+{
+  "label": "golden-fixture",
+  "slogan": "Pentera finds SMBv1. Evergreen maps it, plans it, quotes the fix.",
+  "findings": [
+    {
+      "asset": "file01.corp.local",
+      "weakness": "SMBv1 enabled",
+      "severity": "critical"
+    }
+  ]
+}

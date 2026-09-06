@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<report>
+  <results>
+    <result>
+      <host>struts-legacy.corp.local</host>
+      <nvt oid="1.3.6.1.4.1.25623.1.0.103793">
+        <name>Apache Struts2 Content-Type OGNL RCE</name>
+        <cve>NOCVE</cve>
+        <refs>
+          <ref type="cve" id="CVE-2017-5638"/>
+        </refs>
+      </nvt>
+      <threat>Critical</threat>
+      <description>Greenbone result with placeholder NOCVE; real id is ref type=cve.</description>
+    </result>
+    <result>
+      <host>tomcat-legacy.corp.local</host>
+      <nvt oid="1.3.6.1.4.1.25623.1.0.143591">
+        <name>Apache Tomcat AJP Ghostcat</name>
+        <cves>
+          <cve>CVE-2020-1938</cve>
+        </cves>
+      </nvt>
+      <threat>High</threat>
+      <severity>8.1</severity>
+      <description>Greenbone result with nested cves child and no top-level cve text.</description>
+    </result>
+    <result>
+      <host>scanner-info.corp.local</host>
+      <nvt oid="1.3.6.1.4.1.25623.1.0.90022">
+        <name>OpenVAS TCP timestamps</name>
+        <cve>NOCVE</cve>
+      </nvt>
+      <threat>Low</threat>
+      <description>Informational NVT with only NOCVE and no refs must not emit VULN-NOCVE.</description>
+    </result>
+  </results>
+</report>

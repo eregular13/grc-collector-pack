@@ -1,0 +1,34 @@
+{
+  "controls": [
+    {
+      "id": "4.2",
+      "text": "Kubelet",
+      "Tests": [
+        {
+          "Results": [
+            {
+              "test-number": "4.2.1",
+              "test-desc": "Ensure that the --anonymous-auth argument is set to false",
+              "test-result": "FAIL"
+            },
+            {
+              "test-number": "4.2.4",
+              "test-desc": "Ensure that the --read-only-port argument is set to 0",
+              "test-result": "fail"
+            },
+            {
+              "test-number": "4.2.6",
+              "test-desc": "Ensure that the --protect-kernel-defaults argument is set to true",
+              "test-result": "WARN"
+            },
+            {
+              "test-number": "4.2.13",
+              "test-desc": "Ensure that the Kubelet only makes use of Strong Cryptographic Ciphers",
+              "test-result": "PASS"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

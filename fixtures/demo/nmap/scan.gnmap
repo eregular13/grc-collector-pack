@@ -1,0 +1,8 @@
+# Nmap 7.94 scan initiated as: nmap -oG scan.gnmap (demo fixture, not a live scan)
+Host: 10.0.0.77 (legacy-ftp.corp.local)	Status: Up	Ports: 21/open/tcp//ftp///
+Host: 10.0.0.88 ()	Status: Up	Ports: 445/open/tcp//microsoft-ds///
+Host: 10.0.0.40 (legacy-telnet.corp.local)	Status: Up
+Host: 10.0.0.40 (legacy-telnet.corp.local)	Ports: 23/open/tcp//telnet///, 80/closed/tcp//http///	Ignored State: closed (65533)
+Host: 10.0.0.41 ()	Status: Up	Ports: 3389/open/tcp//ms-wbt-server///, 445/filtered/tcp//microsoft-ds///
+Host: 10.0.0.42 (down-host.corp.local)	Status: Down
+# Nmap done at 2024-01-15 00:00 UTC -- 5 IP addresses (4 hosts up) scanned

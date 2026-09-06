@@ -1,0 +1,40 @@
+{
+  "domain": "corp.local",
+  "nodes": [
+    {"kind": "Domain", "properties": {"name": "CORP.LOCAL", "distinguishedname": "DC=corp,DC=local"}},
+    {"kind": "User", "properties": {"name": "JSMITH@CORP.LOCAL", "displayname": "Jane Smith"}},
+    {"kind": "User", "properties": {"name": "SVC-SQL@CORP.LOCAL", "hasspn": true, "serviceprincipalnames": ["MSSQLSvc/file01.corp.local"]}},
+    {"kind": "User", "properties": {"name": "ADM-GA@CORP.ONMICROSOFT.COM", "displayname": "Entra Global Admin", "admincount": true}},
+    {"kind": "Group", "properties": {"name": "BACKUP OPERATORS@CORP.LOCAL"}}
+  ],
+  "findings": [
+    {
+      "id": "PC-BACKUP-OPERATORS",
+      "title": "Privileged Backup Operators membership",
+      "severity": "high",
+      "principal": "JSMITH@CORP.LOCAL",
+      "description": "JSMITH is a member of Backup Operators and can read ntds.dit."
+    },
+    {
+      "id": "BH-KERBEROASTABLE-SPN",
+      "title": "Kerberoastable service account",
+      "severity": "high",
+      "principal": "SVC-SQL@CORP.LOCAL",
+      "description": "SVC-SQL has an SPN and a guessable password class; roastable."
+    },
+    {
+      "id": "SG-ENTRA-GA-NO-PIM",
+      "title": "Entra Global Administrator without PIM",
+      "severity": "critical",
+      "principal": "ADM-GA@CORP.ONMICROSOFT.COM",
+      "description": "Standing Global Administrator role; no Privileged Identity Management."
+    },
+    {
+      "id": "PC-UNCONSTRAINED-DELEGATION",
+      "title": "Unconstrained delegation on DC",
+      "severity": "high",
+      "principal": "DC01$",
+      "description": "Domain controller allows unconstrained Kerberos delegation."
+    }
+  ]
+}

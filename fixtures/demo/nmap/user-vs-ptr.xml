@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<nmaprun scanner="nmap" args="demo-fixture-user-vs-ptr" start="1700000300" version="7.94">
+  <host>
+    <status state="up"/>
+    <address addr="10.0.0.77" addrtype="ipv4"/>
+    <hostnames>
+      <hostname name="ip-10-0-0-77.ec2.internal" type="PTR"/>
+      <hostname name="bastion-prod.corp.local" type="user"/>
+    </hostnames>
+    <ports>
+      <port protocol="tcp" portid="3389"><state state="open"/><service name="ms-wbt-server"/></port>
+    </ports>
+  </host>
+</nmaprun>

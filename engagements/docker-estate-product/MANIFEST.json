@@ -1,0 +1,23 @@
+{
+  "slug": "docker-estate-product",
+  "client": "Evergreen Docker Estate LLC",
+  "scope": "C:\\GRC Collector\\grc-collector-pack\\dropbox\\SCOPE.docker-estate.yaml",
+  "written_at": "2026-09-06T05:25:28Z",
+  "evidence_label": "lab-sim",
+  "client_facing_ready": false,
+  "blocked_by": "lab_sim_not_client_estate",
+  "leftover_discover_brake": null,
+  "leftover_discover_client": "Evergreen Docker Estate LLC",
+  "allow_live_exec": true,
+  "counts": {
+    "assets": null,
+    "findings": 4,
+    "evidence": 0,
+    "incidents": null,
+    "vulnerabilities": null,
+    "pack_mapped": 4,
+    "poam_rows": 4
+  },
+  "pytest_stamp": "see pack run_lab.ps1 / CHANGELOG",
+  "note": "Lab-sim estate kit. Not a customer estate. Not a paying-day PASS. POA&M from this run, not Litware fixture CSVs."
+}

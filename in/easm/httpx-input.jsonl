@@ -1,0 +1,4 @@
+{"host":"","input":"https://admin-confluence.example-corp.com:443/login","status_code":200,"title":"Confluence"}
+{"host":"   ","input":"https://owa-legacy.example-corp.com","status_code":401,"title":"Outlook Web Access"}
+{"input":"https://fileshare.example-corp.com/dav","url":"https://fileshare.example-corp.com/dav","status_code":200,"webserver":"IIS"}
+{"host":"","input":"","url":"","status_code":200}

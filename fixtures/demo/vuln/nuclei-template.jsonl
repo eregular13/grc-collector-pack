@@ -1,0 +1,3 @@
+{"template":"http/cves/2020/CVE-2020-14882.yaml","template-id":"  ","info":{"name":"Oracle WebLogic Console RCE","severity":"critical","description":"Unauthenticated WebLogic console RCE (empty template-id, template path)."},"host":"weblogic-legacy.corp.local"}
+{"template-path":"/opt/nuclei-templates/http/cves/2021/CVE-2021-21972.yaml","info":{"name":"VMware vSphere Client RCE","severity":"critical","description":"vCenter plugin upload RCE (template-path, no template-id)."},"host":"vsphere-legacy.corp.local"}
+{"template":"http/misconfig/exposed-kibana.yaml","template-id":"","info":{"name":"Kibana login exposed","severity":"medium","description":"Non-CVE template path; basename is not a CVE."},"host":"kibana-template.corp.local"}

@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<NessusClientData_v2>
+  <Report name="demo-parse">
+    <ReportHost name="10.0.88.12">
+      <HostProperties>
+        <tag name="host-ip">10.0.88.12</tag>
+        <tag name="host-fqdn">dc-legacy.corp.local</tag>
+      </HostProperties>
+      <ReportItem port="445" svc_name="cifs" protocol="tcp" severity="4" pluginID="57482" pluginName="MS-NRPC Zerologon">
+        <description>Netlogon elevation of privilege (Zerologon).</description>
+        <cve>CVE-2020-1472</cve>
+        <cvss3_base_score>10.0</cvss3_base_score>
+        <risk_factor>Critical</risk_factor>
+      </ReportItem>
+      <ReportItem port="0" svc_name="general" protocol="tcp" severity="0" pluginID="19506" pluginName="Nessus Scan Information">
+        <description>Informational plugin must be skipped.</description>
+        <risk_factor>None</risk_factor>
+      </ReportItem>
+    </ReportHost>
+    <ReportHost name="print-legacy.corp.local">
+      <HostProperties>
+        <tag name="host-ip">10.0.88.19</tag>
+        <tag name="host-fqdn">  </tag>
+      </HostProperties>
+      <ReportItem port="445" svc_name="smb" protocol="tcp" severity="3" pluginID="150360" pluginName="Windows Print Spooler RCE">
+        <description>PrintNightmare remote code execution.</description>
+        <cve>CVE-2021-34527</cve>
+        <cvss3_base_score>8.8</cvss3_base_score>
+        <risk_factor>High</risk_factor>
+      </ReportItem>
+    </ReportHost>
+  </Report>
+</NessusClientData_v2>

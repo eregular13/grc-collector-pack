@@ -1,0 +1,22 @@
+{
+  "Findings": [
+    {
+      "SchemaVersion": "2018-10-08",
+      "Id": "prowler-ebs_snapshot_public/us-east-1/snap-0abc",
+      "ProductArn": "arn:aws:securityhub:us-east-1::product/prowler/prowler",
+      "GeneratorId": "prowler-ebs_snapshot_public",
+      "AwsAccountId": "111122223333",
+      "Types": ["Software and Configuration Checks"],
+      "Title": "EBS snapshot is public",
+      "Description": "Snapshot snap-0abc is restorable by anyone.",
+      "Severity": {"Label": "HIGH"},
+      "Compliance": {"Status": "FAILED"},
+      "Resources": [
+        {
+          "Type": "AwsEc2Snapshot",
+          "Id": "snap-0abc"
+        }
+      ]
+    }
+  ]
+}

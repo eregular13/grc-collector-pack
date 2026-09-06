@@ -1,0 +1,34 @@
+{
+  "id": "4",
+  "version": "cis-1.24",
+  "text": "Worker Node Security Configuration",
+  "node_type": "node",
+  "tests": [
+    {
+      "section": "4.1",
+      "desc": "Worker Node Configuration Files",
+      "results": [
+        {
+          "test_number": "4.1.1",
+          "test_desc": "Ensure that the kubelet service file permissions are set to 600 or more restrictive",
+          "status": "FAIL"
+        },
+        {
+          "test_number": "4.1.2",
+          "test_desc": "Ensure that the kubelet service file ownership is set to root:root",
+          "status": "FAIL"
+        },
+        {
+          "test_number": "4.1.9",
+          "test_desc": "Ensure that the kubelet --event-qps argument is set to 0 or a level which ensures appropriate event capture",
+          "status": "WARN"
+        },
+        {
+          "test_number": "4.1.10",
+          "test_desc": "Ensure that the --tls-cert-file and --tls-private-key-file arguments are set as appropriate",
+          "status": "PASS"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "label": "fixture",
+  "note": "Not a client estate. Fixture deepen findings for ingest/POA&M demo.",
+  "findings": [
+    {
+      "host": "file01.corp.local",
+      "asset": "file01.corp.local",
+      "name": "SMBv1 enabled",
+      "weakness": "SMBv1 / TCP 445 exposed (MS17-010 class)",
+      "severity": "critical"
+    },
+    {
+      "host": "smb-legacy.corp.local",
+      "asset": "smb-legacy.corp.local",
+      "name": "SMBv1 enabled",
+      "weakness": "SMBv1 enabled on file share",
+      "severity": "critical"
+    }
+  ]
+}

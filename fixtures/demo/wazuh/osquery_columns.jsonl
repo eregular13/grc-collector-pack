@@ -1,0 +1,2 @@
+{"name":"listening_ports","hostIdentifier":"smb-legacy.corp.local","unixTime":1700000000,"action":"added","columns":{"pid":"4","port":"445","protocol":"6","family":"2","address":"0.0.0.0"}}
+{"name":"listening_ports","hostIdentifier":"jump-rdp.corp.local","action":"added","decorations":{"hostname":"jump-rdp.corp.local"},"columns":{"pid":"1234","port":"3389","protocol":"6","address":"0.0.0.0","path":"C:\\\\Windows\\\\System32\\\\svchost.exe"}}

@@ -1,0 +1,21 @@
+{
+  "slug": "docker-estate",
+  "client": "Evergreen Docker Estate LLC",
+  "scope": "dropbox\\SCOPE.docker-estate.yaml",
+  "written_at": "2026-09-05T17:19:18Z",
+  "evidence_label": "fixture",
+  "client_facing_ready": false,
+  "blocked_by": "fixture_not_client_estate",
+  "leftover_discover_brake": null,
+  "leftover_discover_client": "Evergreen Docker Estate LLC",
+  "allow_live_exec": true,
+  "counts": {
+    "assets": 132,
+    "findings": 155,
+    "evidence": 9,
+    "incidents": 110,
+    "vulnerabilities": 29
+  },
+  "pytest_stamp": "see pack run_lab.ps1 / CHANGELOG",
+  "note": "Lab/fixture kit. Not a client estate. Not a paying-day PASS."
+}

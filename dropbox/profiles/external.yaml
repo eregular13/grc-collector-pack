@@ -1,0 +1,6 @@
+# External profile: named internet-facing hosts/URLs only. No adjacent ranges.
+profile: external
+allow_tools_extra:
+  - testssl
+  - curl
+note: never use internal CIDRs on this profile

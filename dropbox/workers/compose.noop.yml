@@ -1,0 +1,11 @@
+# Optional lab tear-down drill. Does NOT embed Nmap, Nessus, Nuclei, or OpenVAS.
+# Not a scanner farm. Short-lived noop only; orchestrator still owns worker .alive markers.
+services:
+  discover-noop:
+    image: python:3.12-slim
+    command: ["python", "-c", "print('noop discover worker; no scanner')"]
+    restart: "no"
+  deepen-noop:
+    image: python:3.12-slim
+    command: ["python", "-c", "print('noop deepen worker; no scanner')"]
+    restart: "no"

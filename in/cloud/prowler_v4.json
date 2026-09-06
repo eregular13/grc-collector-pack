@@ -1,0 +1,22 @@
+[
+  {
+    "Metadata": {
+      "EventID": "prowler-aws-ec2_instance_imdsv1_enabled-us-east-1-i-0cafe",
+      "ProductName": "Prowler",
+      "CheckID": "ec2_instance_imdsv1_enabled",
+      "CheckTitle": "Ensure EC2 instance metadata IMDSv2 is required",
+      "Severity": "high",
+      "Provider": "aws"
+    },
+    "Status": {
+      "Status": "FAIL",
+      "StatusExtended": "Instance i-0cafe allows IMDSv1."
+    },
+    "Resource": {
+      "Uid": "i-0cafe",
+      "Name": "i-0cafe",
+      "Type": "AwsEc2Instance",
+      "Arn": "arn:aws:ec2:us-east-1:111122223333:instance/i-0cafe"
+    }
+  }
+]

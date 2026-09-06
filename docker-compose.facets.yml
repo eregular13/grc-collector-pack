@@ -1,0 +1,295 @@
+name: grc-facet
+
+x-facet: &facet
+  build: .
+  working_dir: /pack
+  environment:
+    PYTHONPATH: /pack
+    PACK_ROOT: /pack
+    OUT_DIR: /pack/out-facet
+    DRY_RUN: "1"
+    CISO_PUSH: "0"
+    RISKREADY_PUSH: "0"
+    GRC_LIVE_SCAN: "0"
+    PYTEST_ADDOPTS: "-p no:cacheprovider"
+  volumes:
+    - ./:/pack
+
+services:
+  matrix:
+    <<: *facet
+    command: python tests/run_facet_matrix.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+      SINK_URL: http://facet_sink:8080
+    depends_on:
+      facet_sink:
+        condition: service_started
+  safety:
+    <<: *facet
+    command: python -m pytest tests/test_safety.py tests/test_loader.py tests/test_pipeline.py -q
+  iso_cloud:
+    <<: *facet
+    command: python collectors/cloud_prowler.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_nmap:
+    <<: *facet
+    command: python collectors/inventory_nmap.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_vuln:
+    <<: *facet
+    command: python collectors/vuln_scan.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_wazuh:
+    <<: *facet
+    command: python collectors/host_wazuh.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_identity:
+    <<: *facet
+    command: python collectors/identity_ad.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_easm:
+    <<: *facet
+    command: python collectors/easm.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_k8s:
+    <<: *facet
+    command: python collectors/k8s_kubescape.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_code:
+    <<: *facet
+    command: python collectors/code_secrets.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_saas:
+    <<: *facet
+    command: python collectors/saas_idp.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+  iso_loader:
+    <<: *facet
+    command: python collectors/grc_loader.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+    depends_on:
+      iso_cloud:
+        condition: service_completed_successfully
+      iso_nmap:
+        condition: service_completed_successfully
+      iso_vuln:
+        condition: service_completed_successfully
+      iso_wazuh:
+        condition: service_completed_successfully
+      iso_identity:
+        condition: service_completed_successfully
+      iso_easm:
+        condition: service_completed_successfully
+      iso_k8s:
+        condition: service_completed_successfully
+      iso_code:
+        condition: service_completed_successfully
+      iso_saas:
+        condition: service_completed_successfully
+  iso_lab:
+    <<: *facet
+    command:
+      - sh
+      - -c
+      - mkdir -p /pack/out-facet/iso/evidence && cp /pack/out-facet/iso/summary.json /pack/out-facet/iso/evidence/summary-pass1.json && python collectors/grc_loader.py && python tests/lab_outputs.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/iso
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "0"
+    depends_on:
+      iso_loader:
+        condition: service_completed_successfully
+  live_cloud:
+    <<: *facet
+    command: python collectors/cloud_prowler.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_nmap:
+    <<: *facet
+    command: python collectors/inventory_nmap.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_vuln:
+    <<: *facet
+    command: python collectors/vuln_scan.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_wazuh:
+    <<: *facet
+    command: python collectors/host_wazuh.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_identity:
+    <<: *facet
+    command: python collectors/identity_ad.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_easm:
+    <<: *facet
+    command: python collectors/easm.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_k8s:
+    <<: *facet
+    command: python collectors/k8s_kubescape.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_code:
+    <<: *facet
+    command: python collectors/code_secrets.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  live_saas:
+    <<: *facet
+    command: python collectors/saas_idp.py
+    environment:
+      PYTHONPATH: /pack
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out-facet/live
+      GRC_LIVE_SCAN: "1"
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+  facet_sink:
+    <<: *facet
+    command: python tests/mock_grc_sink.py
+    ports:
+      - "18081:8080"
+  push_probe:
+    <<: *facet
+    command: python tests/hit_mock_sink.py
+    environment:
+      PYTHONPATH: /pack
+      SINK_URL: http://facet_sink:8080
+    depends_on:
+      facet_sink:
+        condition: service_started

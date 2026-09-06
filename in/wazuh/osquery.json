@@ -1,0 +1,20 @@
+{
+  "pack": "incident-response",
+  "name": "listening_ports",
+  "rows": [
+    {
+      "hostname": "telnet-legacy.corp.local",
+      "port": "23",
+      "protocol": "tcp",
+      "address": "0.0.0.0",
+      "name": "telnetd"
+    },
+    {
+      "hostname": "jump01.corp.local",
+      "port": "22",
+      "protocol": "tcp",
+      "address": "0.0.0.0",
+      "name": "sshd"
+    }
+  ]
+}

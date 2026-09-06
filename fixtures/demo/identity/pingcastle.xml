@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HealthcheckData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <EngineVersion>3.3.0.1</EngineVersion>
+  <GenerationDate>2024-01-15T00:00:00</GenerationDate>
+  <Level>Normal</Level>
+  <MaturityLevel>2</MaturityLevel>
+  <DomainFQDN>corp.local</DomainFQDN>
+  <NetBIOSName>CORP</NetBIOSName>
+  <ForestFQDN>corp.local</ForestFQDN>
+  <DomainSid>S-1-5-21-1000-2000-3000</DomainSid>
+  <RiskRules>
+    <HealthcheckRiskRule>
+      <Points>20</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>AccountTakeOver</Model>
+      <RiskId>P-Delegated</RiskId>
+      <Rationale>Admin accounts without "account is sensitive and cannot be delegated": 1</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>15</Points>
+      <Category>Anomalies</Category>
+      <Model>PassTheCredential</Model>
+      <RiskId>A-LAPS-Not-Installed</RiskId>
+      <Rationale>LAPS doesn't seem to be installed</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>IrreversibleChange</Model>
+      <RiskId>P-SchemaAdmin</RiskId>
+      <Rationale>The group Schema Admins is not empty: 1 account(s)</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>Anomalies</Category>
+      <Model>PassTheCredential</Model>
+      <RiskId>A-DC-Spooler</RiskId>
+      <Rationale>The spooler service is remotely accessible from 1 DC</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>5</Points>
+      <Category>StaleObjects</Category>
+      <Model>Inactive</Model>
+      <RiskId>S-Inactive</RiskId>
+      <Rationale>Inactive user accounts detected: 12</Rationale>
+    </HealthcheckRiskRule>
+  </RiskRules>
+</HealthcheckData>

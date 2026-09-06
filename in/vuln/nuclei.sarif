@@ -1,0 +1,81 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Nuclei",
+          "informationUri": "https://github.com/projectdiscovery/nuclei",
+          "version": "3.2.0",
+          "rules": [
+            {
+              "id": "CVE-2024-21762",
+              "name": "Fortinet FortiOS out-of-bounds write",
+              "shortDescription": {"text": "FortiOS SSL VPN out-of-bounds write"},
+              "fullDescription": {"text": "Unauthenticated RCE class issue on FortiOS SSL VPN (demo parse, not a live scan)."},
+              "defaultConfiguration": {"level": "error"},
+              "properties": {"security-severity": "9.8", "tags": ["cve", "fortinet"]}
+            },
+            {
+              "id": "CVE-2019-19781",
+              "name": "Citrix ADC directory traversal",
+              "shortDescription": {"text": "Citrix ADC/NetScaler path traversal"},
+              "fullDescription": {"text": "Directory traversal on Citrix ADC (demo)."},
+              "defaultConfiguration": {"level": "error"},
+              "properties": {"security-severity": "9.8"}
+            },
+            {
+              "id": "exposed-grafana",
+              "name": "Grafana login panel exposed",
+              "shortDescription": {"text": "Grafana HTTP panel reachable"},
+              "defaultConfiguration": {"level": "warning"},
+              "properties": {"security-severity": "5.3"}
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2024-21762",
+          "level": "error",
+          "message": {"text": "Nuclei SARIF match CVE-2024-21762 on vpn.example-corp.com"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "https://vpn.example-corp.com:443/remote/login"}
+              }
+            }
+          ],
+          "properties": {"issue_severity": "critical", "host": "vpn.example-corp.com"}
+        },
+        {
+          "ruleId": "CVE-2019-19781",
+          "level": "error",
+          "message": {"text": "Nuclei SARIF match CVE-2019-19781 on citrix.corp.local"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "https://citrix.corp.local/vpn/../vpns/cfg/smb.conf"}
+              }
+            }
+          ],
+          "properties": {"issue_severity": "critical"}
+        },
+        {
+          "ruleId": "exposed-grafana",
+          "level": "warning",
+          "message": {"text": "Grafana panel on grafana.corp.local"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "https://grafana.corp.local/login"}
+              }
+            }
+          ],
+          "properties": {"issue_severity": "medium"}
+        }
+      ]
+    }
+  ]
+}

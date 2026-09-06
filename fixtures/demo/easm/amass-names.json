@@ -1,0 +1,12 @@
+{
+  "names": [
+    "vpn.backup.example-corp.com",
+    "admin-portal.example-corp.com",
+    "intranet.example-corp.com",
+    ""
+  ],
+  "domains": [
+    {"fqdn": "staging-old.example-corp.com"},
+    "www.example-corp.com"
+  ]
+}

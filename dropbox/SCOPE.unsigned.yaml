@@ -1,0 +1,17 @@
+client_legal_name: "Unsigned Example"
+named_contact: ""
+consent_attested: false
+window_start: ""
+window_end: ""
+internal:
+  cidrs:
+    - "10.9.9.0/24"
+  hosts:
+    - "should-not-scan.example"
+allow_tools:
+  - nmap
+batch:
+  deepen_batch_size: 3
+integrity:
+  refuse_if_unsigned: true
+  allow_live_exec: false

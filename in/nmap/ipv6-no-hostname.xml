@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<nmaprun scanner="nmap" args="demo-fixture-ipv6-no-hostnames" start="1700000200" version="7.94">
+  <host>
+    <status state="up"/>
+    <address addr="2001:db8::9" addrtype="ipv6"/>
+    <ports>
+      <port protocol="tcp" portid="445"><state state="open"/><service name="microsoft-ds"/></port>
+    </ports>
+  </host>
+</nmaprun>

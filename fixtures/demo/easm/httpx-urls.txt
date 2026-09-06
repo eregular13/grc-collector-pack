@@ -1,0 +1,4 @@
+# httpx -silent URL-only output (scheme + host, optional port/path)
+https://test.example-corp.com
+https://test.example-corp.com:8443/healthz
+https://portal-legacy.example-corp.com/login

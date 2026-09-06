@@ -1,0 +1,93 @@
+name: grc-collector
+
+x-pack: &pack
+  build: .
+  working_dir: /pack
+  environment:
+    PYTHONPATH: /pack
+    DRY_RUN: "1"
+    CISO_PUSH: "0"
+    RISKREADY_PUSH: "0"
+    GRC_LIVE_SCAN: "0"
+    PACK_ROOT: /pack
+    OUT_DIR: /pack/out
+    PRODUCT_LAB_DROP: /product-lab/drop
+    PYTEST_ADDOPTS: "-p no:cacheprovider"
+  volumes:
+    - ./:/pack
+    - ../product-lab:/product-lab
+
+services:
+  cloud_prowler:
+    <<: *pack
+    command: python collectors/cloud_prowler.py
+  inventory_nmap:
+    <<: *pack
+    command: python collectors/inventory_nmap.py
+  vuln_scan:
+    <<: *pack
+    command: python collectors/vuln_scan.py
+  host_wazuh:
+    <<: *pack
+    command: python collectors/host_wazuh.py
+  identity_ad:
+    <<: *pack
+    command: python collectors/identity_ad.py
+  easm:
+    <<: *pack
+    command: python collectors/easm.py
+  k8s_kubescape:
+    <<: *pack
+    command: python collectors/k8s_kubescape.py
+  code_secrets:
+    <<: *pack
+    command: python collectors/code_secrets.py
+  saas_idp:
+    <<: *pack
+    command: python collectors/saas_idp.py
+  grc_loader:
+    <<: *pack
+    command: python collectors/grc_loader.py
+    depends_on:
+      cloud_prowler:
+        condition: service_completed_successfully
+      inventory_nmap:
+        condition: service_completed_successfully
+      vuln_scan:
+        condition: service_completed_successfully
+      host_wazuh:
+        condition: service_completed_successfully
+      identity_ad:
+        condition: service_completed_successfully
+      easm:
+        condition: service_completed_successfully
+      k8s_kubescape:
+        condition: service_completed_successfully
+      code_secrets:
+        condition: service_completed_successfully
+      saas_idp:
+        condition: service_completed_successfully
+  lab:
+    <<: *pack
+    command: ["sh", "-c", "python -m pytest tests -q && python tests/lab_outputs.py"]
+    depends_on:
+      grc_loader:
+        condition: service_completed_successfully
+  mock_sink:
+    <<: *pack
+    profiles: ["extra"]
+    command: python tests/mock_grc_sink.py
+    ports:
+      - "18080:8080"
+  live_scan_ignored:
+    <<: *pack
+    profiles: ["extra"]
+    environment:
+      PYTHONPATH: /pack
+      DRY_RUN: "1"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      GRC_LIVE_SCAN: "1"
+      PACK_ROOT: /pack
+      OUT_DIR: /pack/out
+    command: python collectors/inventory_nmap.py

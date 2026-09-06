@@ -1,0 +1,4 @@
+PROFILE,ACCOUNT_ID,REGION,CHECK_ID,CHECK_TITLE,STATUS,STATUS_EXTENDED,RESOURCE_ID,RESOURCE_ARN,RESOURCE_TYPE,SEVERITY
+default,123456789012,us-east-1,s3_bucket_object_lock_enabled,Ensure S3 Object Lock is enabled,FAIL,Object Lock is not enabled on corp-lock-bucket,corp-lock-bucket,arn:aws:s3:::corp-lock-bucket,AwsS3Bucket,high
+default,123456789012,us-east-1,iam_password_policy_minimum_length_14,Password policy minimum length 14,FAIL,Account password policy minimum length is 8,password-policy,arn:aws:iam::123456789012:account-password-policy,AwsIamPasswordPolicy,medium
+default,123456789012,us-east-1,ec2_instance_managed_by_ssm,EC2 instance managed by SSM,PASS,Instance i-0ssm is managed by SSM,i-0ssm,arn:aws:ec2:us-east-1:123456789012:instance/i-0ssm,AwsEc2Instance,low

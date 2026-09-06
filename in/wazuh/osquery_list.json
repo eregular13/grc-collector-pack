@@ -1,0 +1,30 @@
+{
+  "calendarTime": "Thu Sep 3 11:59:00 2026 UTC",
+  "osquery": [
+    {
+      "name": "listening_ports",
+      "hostIdentifier": "nas-legacy.corp.local",
+      "action": "snapshot",
+      "columns": {
+        "pid": "4",
+        "port": "445",
+        "protocol": "6",
+        "address": "0.0.0.0"
+      }
+    },
+    {
+      "name": "listening_ports",
+      "hostIdentifier": "modem-legacy.corp.local",
+      "port": "23",
+      "address": "0.0.0.0",
+      "protocol": "tcp"
+    },
+    {
+      "name": "listening_ports",
+      "hostIdentifier": "helper-ssh.corp.local",
+      "port": "22",
+      "address": "0.0.0.0",
+      "protocol": "tcp"
+    }
+  ]
+}

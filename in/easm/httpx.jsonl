@@ -1,0 +1,4 @@
+{"host":"vpn.example-corp.com","input":"vpn.example-corp.com","status_code":200,"title":"Corporate VPN Portal","tech":["Pulse Secure"]}
+{"host":"dev-api.example-corp.com","input":"dev-api.example-corp.com","status_code":200,"title":"Internal API (dev)","tech":["nginx"]}
+{"host":"staging.example-corp.com","input":"staging.example-corp.com","status_code":200,"title":"Staging","tech":["IIS"]}
+{"host":"admin-old.example-corp.com","input":"admin-old.example-corp.com","status_code":401,"title":"Legacy Admin"}

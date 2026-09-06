@@ -1,0 +1,55 @@
+{
+  "data": {
+    "affected_items": [
+      {
+        "id": "001",
+        "name": "web01",
+        "ip": "10.0.0.10",
+        "status": "active",
+        "os": {"name": "Ubuntu", "version": "22.04"}
+      },
+      {
+        "id": "002",
+        "name": "laptop-ceo",
+        "ip": "10.0.1.50",
+        "status": "disconnected",
+        "os": {"name": "Windows", "version": "11"}
+      },
+      {
+        "id": "003",
+        "name": "srv-finance",
+        "ip": "10.0.0.40",
+        "status": "active",
+        "os": {"name": "Windows", "version": "Server 2019"}
+      },
+      {
+        "id": "004",
+        "name": "dc01",
+        "ip": "10.0.0.5",
+        "status": "active",
+        "os": {"name": "Windows", "version": "Server 2022"}
+      },
+      {
+        "id": "005",
+        "name": "wazuh-manager",
+        "ip": "10.0.0.2",
+        "status": "active",
+        "os": {"name": "Ubuntu", "version": "22.04"}
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "id": "alert-9002",
+      "rule": {"id": "504", "description": "Wazuh agent disconnected", "level": 12},
+      "agent": {"name": "laptop-ceo"},
+      "severity": "high"
+    },
+    {
+      "id": "alert-554",
+      "rule": {"id": "554", "description": "Integrity checksum changed", "level": 7},
+      "agent": {"name": "srv-finance"},
+      "severity": "medium"
+    }
+  ]
+}

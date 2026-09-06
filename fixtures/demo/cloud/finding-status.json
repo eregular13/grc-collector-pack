@@ -1,0 +1,43 @@
+[
+  {
+    "CheckID": "guardduty_no_high_severity_findings",
+    "CheckTitle": "Ensure GuardDuty has no high severity findings",
+    "Status": "MANUAL",
+    "Severity": "medium",
+    "ResourceId": "aws-account-111122223333",
+    "ResourceArn": "arn:aws:iam::111122223333:root",
+    "ResourceType": "AwsAccount",
+    "ResourceName": "aws-account-111122223333",
+    "Region": "us-east-1",
+    "Provider": "aws",
+    "StatusExtended": "GuardDuty high-severity review is a manual check (demo)."
+  },
+  {
+    "CheckID": "ec2_instance_public_ip",
+    "CheckTitle": "Ensure EC2 instances do not have public IPs",
+    "Status": "FAIL",
+    "Severity": "low",
+    "ResourceId": "i-0closed",
+    "ResourceArn": "arn:aws:ec2:us-east-1:111122223333:instance/i-0closed",
+    "ResourceType": "AwsEc2Instance",
+    "ResourceName": "i-0closed",
+    "Region": "us-east-1",
+    "Provider": "aws",
+    "WorkflowStatus": "RESOLVED",
+    "StatusExtended": "Public IP finding closed after ENI detach (demo)."
+  },
+  {
+    "CheckID": "s3_bucket_acl_prohibited",
+    "CheckTitle": "Ensure S3 bucket ACLs are prohibited",
+    "Status": "FAIL",
+    "Severity": "medium",
+    "ResourceId": "corp-acl-bucket",
+    "ResourceArn": "arn:aws:s3:::corp-acl-bucket",
+    "ResourceType": "AwsS3Bucket",
+    "ResourceName": "corp-acl-bucket",
+    "Region": "us-east-1",
+    "Provider": "aws",
+    "FindingStatus": "IN PROGRESS",
+    "StatusExtended": "ACL prohibition remediating (demo)."
+  }
+]

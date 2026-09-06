@@ -1,0 +1,10 @@
+{
+  "label": "fixture",
+  "note": "Not a client estate. Quiet discover stub for lab path without BYO nmap.",
+  "hosts": [
+    {"host": "file01.corp.local", "live": true, "in_scope": true, "ports": [445]},
+    {"host": "smb-legacy.corp.local", "live": true, "in_scope": true, "ports": [445]},
+    {"host": "bastion-prod.corp.local", "live": true, "in_scope": true, "ports": [22]},
+    {"host": "printer-down.corp.local", "live": false, "in_scope": true}
+  ]
+}
