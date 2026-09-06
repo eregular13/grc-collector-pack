@@ -1,6 +1,6 @@
-cycle: 88
+cycle: 89
 phase: DONE
-item: TWO-MCP-CROSS-WIRE
+item: DESKTOP-SCOPE-ATTESTATION-HASH
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 347
+pytest: 352
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -43,4 +43,4 @@ argus_invoke: signed SCOPE + HITL kill before PATH/live
 argus_file_drop: default
 argus_wrap: stay-out forever
 argus_hexstrike: pattern-only
-next_action: Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #1. No fake greens.
+next_action: Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #4 (`python -m dropbox gate`). No fake greens.

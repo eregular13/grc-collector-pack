@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 89):** DESKTOP SCOPE attestation. Gate hashes LF-canonical consent bytes so Windows `core.autocrlf` CRLF checkout no longer mismatches committed `ab5fb873…`. `python -m dropbox attest --write` after consent edits. No skip-hash. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 88.
+
 **Delta (cycle 88):** Hephaestus two-MCP contract. Conductor refuses `check_scope` / `license_guard` (cross-wire fail-closed). Merged or swapped mcp.json refused. Pack truth stays USB `evergreen_assessment_mcp`. Estate protect + CISO SoR stand. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 87 counts; pytest **347**.
 
 **Delta (cycle 87):** pack `in/` estate protect. schedule / ingest / ciso never write pack `in/` unless `--write-pack-in` or `PACK_IN_WRITE=1`. Hexstrike refused on KEEP-minimum extras. CISO SoR + Day-of stand. Cycle 74 Reid-only blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 86 counts; pytest **345**.
