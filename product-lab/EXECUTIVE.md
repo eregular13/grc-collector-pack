@@ -2,7 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 84):** Argus fail-closed bar + KEEP-minimum
+**This window (cycle 85):** keep-lab this-run pack `in/` guard +
+desktop `python -m keep lab`. Pre-existing estate no longer fails
+sample isolation. Estate-only compose park noted. Argus bar stands.
+DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth = USB
+`evergreen_assessment_mcp` only. Compose **ABSENT ≠ pass**. Catalog
+unchanged (111 / 32 wired / 30 invoke / 81 file_drop). pytest **340**.
+Cycle 74 Reid-only blockers stay locked.
+
+**Cycle 84 (stands):** Argus fail-closed bar + KEEP-minimum
 one-shot scheduler. DEMO e2e ≠ client. SAMPLE KEEP **0/4**. Pack truth
 = USB `evergreen_assessment_mcp` only; farm MCP never pack truth.
 Compose **ABSENT ≠ pass**. HITL before live. Wrap stay-out. Hexstrike

@@ -48,6 +48,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 82 done: KEEP→Eval handoff (`make keep-lab`, samples ≠ client KEEP) + farm_toolbin_status live_ready honesty. Catalog unchanged.
 - Cycle 83 done: Hephaestus contract (file_drop/demo never live_ready; tools/call plan-only; two MCP servers; CISO posted gate; SimpleRisk out/ leave-behind; default-off env). Catalog unchanged.
 - Cycle 84 done: Argus fail-closed bar stamped; KEEP-minimum one-shot scheduler + landed-only CISO path. 0/4 real KEEP still open. Catalog unchanged.
+- Cycle 85 done: keep-lab this-run pack `in/` guard; desktop `python -m keep lab`; estate-only compose park note. Catalog unchanged.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 
