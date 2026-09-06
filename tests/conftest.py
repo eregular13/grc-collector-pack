@@ -32,11 +32,13 @@ def _seed_pack_out_if_missing() -> None:
             encoding="utf-8",
         )
     quote = root / "out" / "quote"
-    if not (quote / "quote.csv").is_file():
-        quote.mkdir(parents=True, exist_ok=True)
-        (quote / "quote.csv").write_text(
+    quote.mkdir(parents=True, exist_ok=True)
+    qfile = quote / "quote.csv"
+    qtext = qfile.read_text(encoding="utf-8") if qfile.is_file() else ""
+    if "draft" not in qtext:
+        qfile.write_text(
             "weakness,asset,severity,control_refs,recommended_action,hours,rate_usd,total_usd,status\n"
-            ",,,,,,,draft\n",
+            ",,,,,,,,draft\n",
             encoding="utf-8",
         )
     sr = root / "out" / "simplerisk"
