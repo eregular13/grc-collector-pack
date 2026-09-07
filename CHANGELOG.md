@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 142
+
+T24-wait extra: dummy SQL dump estate `grc-bak-24h` on `172.28.240.0/24` loopback 19581. GET `/dump.sql` observed `CREATE TABLE lab_only`; map `Backup file exposed` from GET body + `.sql`/`.bak` path only. HEAD 200 does not invent it. Dummy lab dump only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 141
 
 Factory quote honesty: `new_engagement` seeds `out/quote/quote.csv` with a blank `status=draft` row when pack `out/quote` is header-only (empty ingest after refused `run --stage all`). `export_quote([])` also stamps draft — hours/rate/total stay blank, no `$`. `client_facing_ready` stays false. T24-wait estate maps untouched. WRAP_DEAD unchanged. No I-069.

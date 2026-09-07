@@ -168,7 +168,7 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
 
 
 def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
-    """Directory listing / stub_status from a GET body only. HEAD samples are not enough."""
+    """Directory listing / stub_status / leaked files from a GET body only. HEAD samples are not enough."""
     host = urlparse(url).hostname or url
     low = (blob or "").lower()
     rows: list[dict[str, Any]] = []
@@ -210,6 +210,23 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "asset": host,
                 "name": "Environment file exposed",
                 "weakness": "Environment file exposed",
+                "severity": "high",
+            }
+        )
+    backup_path = bool(re.search(r"\.(?:sql|bak|old|backup)(?:$|/)", path) or path.endswith("~"))
+    backup_body = bool(
+        re.search(
+            r"(?is)(?:^|\n)\s*(?:--\s*mysql dump|create table|insert into|pg_dump|<\?php)",
+            blob or "",
+        )
+    )
+    if backup_path and backup_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Backup file exposed",
+                "weakness": "Backup file exposed",
                 "severity": "high",
             }
         )

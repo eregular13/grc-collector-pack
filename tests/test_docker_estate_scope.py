@@ -176,6 +176,58 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_backup_file_parser_and_map() -> None:
+    """Observed on grc-bak-24h GET /dump.sql : CREATE TABLE lab_only."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "-- lab-only dummy dump. not a client database.\n"
+        "-- MySQL dump\n"
+        "CREATE TABLE lab_only (\n"
+        "  id INT PRIMARY KEY,\n"
+        "  note VARCHAR(64)\n"
+        ");\n"
+        "INSERT INTO lab_only VALUES (1, 'lab-only-not-a-secret');\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:19581/dump.sql")
+    assert rows and rows[0]["name"] == "Backup file exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:19581/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/octet-stream\n\n",
+        "http://127.0.0.1:19581/dump.sql",
+    ) == []
+    php_bak = curl_byo.parse_curl_body("<?php // lab-only dummy backup\n", "http://127.0.0.1:19581/config.php.bak")
+    assert php_bak and php_bak[0]["name"] == "Backup file exposed"
+    assert curl_byo.parse_curl_body("<?php echo 'hi';", "http://127.0.0.1:19581/index.php") == []
+    mapped = map_finding("Backup file exposed", "127.0.0.1", "high")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Backup file exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_bak_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.240.0/24 loopback 19581 dump.sql. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.bak.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.240.0/24" in live
+    assert "grc-bak-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19581:80" in live
+    assert "0.0.0.0:19581" not in live
+    assert "grc-estate-c11" not in live
+    dump = Path(r"C:\GRC Collector\product-lab\24h\bakweb\dump.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE lab_only" in dump
+    assert "lab-only-not-a-secret" in dump
+    assert "AWS_SECRET_ACCESS_KEY" not in dump
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.240.0/24" not in main
+
+
 def test_env_file_parser_and_map() -> None:
     """Observed on grc-env-24h GET /.env : LAB_TOKEN=lab-only-not-a-secret."""
     from dropbox.orchestrator.adapters import curl_byo

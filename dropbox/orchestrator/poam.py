@@ -82,6 +82,14 @@ _MAP = [
         "severity": "high",
     },
     {
+        "match": re.compile(r"backup file exposed|\.(?:sql|bak) dump", re.I),
+        "weakness": "Backup file exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Remove database dumps and *.bak from the web root; store backups off the application host and rotate anything that was reachable.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],
