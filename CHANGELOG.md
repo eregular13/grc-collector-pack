@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 141
+
+Factory quote honesty: `new_engagement` seeds `out/quote/quote.csv` with a blank `status=draft` row when pack `out/quote` is header-only (empty ingest after refused `run --stage all`). `export_quote([])` also stamps draft — hours/rate/total stay blank, no `$`. `client_facing_ready` stays false. T24-wait estate maps untouched. WRAP_DEAD unchanged. No I-069.
+pytest: engagement kit + honesty + full `tests`.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 140
 
 T24-wait extra: dummy `.env` estate `grc-env-24h` on `172.28.230.0/24` loopback 19481. GET `/.env` observed `LAB_TOKEN=` KEY=value; map `Environment file exposed` from GET body + `/.env` path only. HEAD 200 does not invent it. Dummy lab values only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
