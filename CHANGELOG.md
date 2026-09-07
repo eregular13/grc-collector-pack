@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 140
+
+T24-wait extra: dummy `.env` estate `grc-env-24h` on `172.28.230.0/24` loopback 19481. GET `/.env` observed `LAB_TOKEN=` KEY=value; map `Environment file exposed` from GET body + `/.env` path only. HEAD 200 does not invent it. Dummy lab values only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 139
 
 T24-wait extra: CORS estate `grc-cors-24h` on `172.28.220.0/24` loopback 19381. HEAD `/` observed `Access-Control-Allow-Origin: *`; map `Permissive CORS policy`. Missing ACAO on the main estate is not invented; a specific origin is not mapped. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

@@ -203,6 +203,16 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "medium",
             }
         )
+    if path.rstrip("/") in {"/.env", "/.env.example"} and re.search(r"(?m)^[A-Z][A-Z0-9_]+=", blob or ""):
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Environment file exposed",
+                "weakness": "Environment file exposed",
+                "severity": "high",
+            }
+        )
     return rows
 
 

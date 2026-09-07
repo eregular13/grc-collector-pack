@@ -74,6 +74,14 @@ _MAP = [
         "severity": "medium",
     },
     {
+        "match": re.compile(r"environment file exposed|\.env exposed", re.I),
+        "weakness": "Environment file exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Do not publish `.env` on a web root; rotate any values that were reachable.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],
