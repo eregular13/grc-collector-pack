@@ -58,6 +58,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"insecure session cookie", re.I),
+        "weakness": "Insecure session cookie",
+        "cpg": ["CPG 2.W"],
+        "csf": ["PR.AA-05", "PR.DS-02"],
+        "action": "Set Secure and HttpOnly on session cookies; prefer __Host- prefix and a tight SameSite.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

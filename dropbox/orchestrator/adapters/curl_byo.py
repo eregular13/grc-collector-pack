@@ -157,6 +157,11 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
         rows.append(_row("Missing CSP", "low"))
     if re.search(r"(?im)^server:", blob or ""):
         rows.append(_row("Server banner disclosure", "low"))
+    for match in re.finditer(r"(?im)^set-cookie:\s*(.+)$", blob or ""):
+        cookie = (match.group(1) or "").lower()
+        if "secure" not in cookie or "httponly" not in cookie:
+            rows.append(_row("Insecure session cookie", "medium"))
+            break
     return rows
 
 

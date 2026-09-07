@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 138
+
+T24-wait extra: insecure-cookie estate `grc-cookie-24h` on `172.28.210.0/24` loopback 19281. HEAD `/` observed `Set-Cookie: session=labonly; Path=/` without Secure/HttpOnly; map `Insecure session cookie`. Main estate HEAD has no Set-Cookie — not invented. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 137
 
 T24-wait extra: exposed `.git` estate `grc-git-24h` on `172.28.200.0/24` loopback 19181. GET `/.git/HEAD` observed `ref: refs/heads/main`; map `Git metadata exposed` from GET body + `/.git/` path only. HEAD 200 does not invent it. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

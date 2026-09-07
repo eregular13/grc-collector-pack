@@ -176,6 +176,59 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_insecure_cookie_parser_and_map() -> None:
+    """Observed on grc-cookie-24h HEAD / : Set-Cookie session=labonly; Path=/ without Secure/HttpOnly."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    blob = (
+        "HTTP/1.1 200 OK\n"
+        "Server: nginx/1.31.5\n"
+        "Set-Cookie: session=labonly; Path=/\n"
+        "\n"
+    )
+    names = {r["name"] for r in curl_byo.parse_curl_headers(blob, "http://127.0.0.1:19281/")}
+    assert "Insecure session cookie" in names
+    estate = (
+        "HTTP/1.1 200 OK\n"
+        "Server: nginx/1.31.5\n"
+        "Content-Type: text/html\n"
+        "\n"
+    )
+    estate_names = {r["name"] for r in curl_byo.parse_curl_headers(estate, "http://127.0.0.1:18081/")}
+    assert "Insecure session cookie" not in estate_names
+    safe = (
+        "HTTP/1.1 200 OK\n"
+        "Set-Cookie: session=labonly; Path=/; Secure; HttpOnly\n"
+        "\n"
+    )
+    safe_names = {r["name"] for r in curl_byo.parse_curl_headers(safe, "https://127.0.0.1:18443/")}
+    assert "Insecure session cookie" not in safe_names
+    mapped = map_finding("Insecure session cookie", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Insecure session cookie"
+
+
+def test_cookie_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.210.0/24 loopback 19281 Set-Cookie. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.cookie.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.210.0/24" in live
+    assert "grc-cookie-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19281:80" in live
+    assert "0.0.0.0:19281" not in live
+    assert "grc-estate-c11" not in live
+    conf = Path(r"C:\GRC Collector\product-lab\24h\cookie\default.conf").read_text(encoding="utf-8")
+    assert "Set-Cookie" in conf
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.210.0/24" not in main
+
+
 def test_git_metadata_parser_and_map() -> None:
     """Observed on grc-git-24h GET /.git/HEAD : ref: refs/heads/main."""
     from dropbox.orchestrator.adapters import curl_byo
