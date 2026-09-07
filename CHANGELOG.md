@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 147
+
+T24-wait extra: dummy source-map estate `grc-sourcemap-24h` on `172.28.254.0/24` loopback 20081. GET `/app.js.map` observed `"version"` + `"sources"`; map `JavaScript source map exposed` from GET body + `.js.map` path only. HEAD 200 and `/app.js` do not invent it. Dummy lab map only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 146
 
 T24-wait extra: dummy HTTP Basic estate `grc-basic-24h` on `172.28.253.0/24` loopback 19981. HEAD `/` observed `WWW-Authenticate: Basic` on `http://`; map `HTTP Basic auth without TLS` from that header + cleartext scheme only. HTTPS Basic and Digest are not mapped. No credentials stored. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

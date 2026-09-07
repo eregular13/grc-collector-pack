@@ -176,6 +176,57 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_sourcemap_parser_and_map() -> None:
+    """Observed on grc-sourcemap-24h GET /app.js.map : version + sources."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        '{\n  "version": 3,\n  "file": "app.js",\n  "sources": ["lab-only.ts"],\n'
+        '  "sourcesContent": ["// lab-only dummy source map.\\n"],\n'
+        '  "mappings": "AAAA"\n}\n'
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20081/app.js.map")
+    assert rows and rows[0]["name"] == "JavaScript source map exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20081/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
+        "http://127.0.0.1:20081/app.js.map",
+    ) == []
+    js = curl_byo.parse_curl_body(
+        '// lab-only dummy bundle.\n//# sourceMappingURL=app.js.map\n',
+        "http://127.0.0.1:20081/app.js",
+    )
+    assert js == []
+    mapped = map_finding("JavaScript source map exposed", "127.0.0.1", "low")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "JavaScript source map exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_sourcemap_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.254.0/24 loopback 20081 app.js.map. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.sourcemap.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.254.0/24" in live
+    assert "grc-sourcemap-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20081:80" in live
+    assert "0.0.0.0:20081" not in live
+    assert "grc-estate-c11" not in live
+    smap = Path(r"C:\GRC Collector\product-lab\24h\mapweb\app.js.map").read_text(encoding="utf-8")
+    assert '"version"' in smap
+    assert '"sources"' in smap
+    assert "lab-only-not-a-secret" in smap
+    assert "AWS_SECRET_ACCESS_KEY" not in smap
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.254.0/24" not in main
+
+
 def test_openapi_parser_and_map() -> None:
     """Observed on grc-openapi-24h GET /openapi.json : openapi 3.0.3."""
     from dropbox.orchestrator.adapters import curl_byo

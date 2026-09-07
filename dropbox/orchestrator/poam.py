@@ -122,6 +122,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"javascript source map exposed|source map exposed", re.I),
+        "weakness": "JavaScript source map exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Do not publish `.js.map` / `.css.map` on a public listener; keep source maps off production web roots.",
+        "severity": "low",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

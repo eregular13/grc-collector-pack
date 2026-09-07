@@ -271,6 +271,17 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "low",
             }
         )
+    sourcemap_path = bool(re.search(r"\.(?:js|mjs|css)\.map$", path))
+    if sourcemap_path and '"version"' in low and '"sources"' in low:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "JavaScript source map exposed",
+                "weakness": "JavaScript source map exposed",
+                "severity": "low",
+            }
+        )
     return rows
 
 
