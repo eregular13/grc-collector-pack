@@ -241,6 +241,17 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "medium",
             }
         )
+    metrics_path = path.rstrip("/") in {"/metrics", "/prometheus", "/actuator/prometheus"}
+    if metrics_path and "# help" in low and "# type" in low:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Prometheus metrics exposed",
+                "weakness": "Prometheus metrics exposed",
+                "severity": "low",
+            }
+        )
     return rows
 
 

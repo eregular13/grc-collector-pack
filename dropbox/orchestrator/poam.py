@@ -98,6 +98,14 @@ _MAP = [
         "severity": "medium",
     },
     {
+        "match": re.compile(r"prometheus metrics exposed", re.I),
+        "weakness": "Prometheus metrics exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Do not publish /metrics on a public listener; ACL Prometheus scrapes to the monitoring network.",
+        "severity": "low",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

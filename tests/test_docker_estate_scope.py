@@ -176,6 +176,54 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_prometheus_metrics_parser_and_map() -> None:
+    """Observed on grc-metrics-24h GET /metrics : # HELP + # TYPE."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "# HELP lab_only_info Lab-only dummy metric. not a client estate.\n"
+        "# TYPE lab_only_info gauge\n"
+        'lab_only_info{note="lab-only-not-a-secret"} 1\n'
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:19781/metrics")
+    assert rows and rows[0]["name"] == "Prometheus metrics exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:19781/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: text/plain\n\n",
+        "http://127.0.0.1:19781/metrics",
+    ) == []
+    actuator = curl_byo.parse_curl_body(body, "http://127.0.0.1:19781/actuator/prometheus")
+    assert actuator and actuator[0]["name"] == "Prometheus metrics exposed"
+    mapped = map_finding("Prometheus metrics exposed", "127.0.0.1", "low")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Prometheus metrics exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_metrics_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.251.0/24 loopback 19781 /metrics. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.metrics.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.251.0/24" in live
+    assert "grc-metrics-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19781:80" in live
+    assert "0.0.0.0:19781" not in live
+    assert "grc-estate-c11" not in live
+    page = Path(r"C:\GRC Collector\product-lab\24h\metricsweb\metrics").read_text(encoding="utf-8")
+    assert "# HELP" in page
+    assert "# TYPE" in page
+    assert "lab-only-not-a-secret" in page
+    assert "AWS_SECRET_ACCESS_KEY" not in page
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.251.0/24" not in main
+
+
 def test_phpinfo_parser_and_map() -> None:
     """Observed on grc-phpinfo-24h GET /phpinfo.php : phpinfo() + PHP Version."""
     from dropbox.orchestrator.adapters import curl_byo
