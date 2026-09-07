@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 154
+
+T24 freeze at hard stop 2026-09-07T09:52:00-07:00 (tick clock 10:12 PT). `DONE_24H.md` GREEN. Scheduler cancelled. Estate+sink left up. `client_facing_ready` false. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069. No T25.
+pytest: freeze targeted SCOPE+safety+product 84 passed (T17 run_lab.ps1 x2 LAB_GREEN ~229).
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 153
 
 T24-wait extra: dummy Docker config.json estate `grc-dockercfg-24h` on `172.29.15.0/24` loopback 20681. GET `/.docker/config.json` observed `auths` + `auth`; map `Docker config.json exposed` from GET body + docker config path only. HEAD 200 does not invent it. Dummy lab token only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
