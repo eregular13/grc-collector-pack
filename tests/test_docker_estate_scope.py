@@ -176,6 +176,54 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_graphql_introspection_parser_and_map() -> None:
+    """Observed on grc-graphql-24h GET /graphql : __schema + types."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        '{\n  "data": {\n    "__schema": {\n'
+        '      "queryType": {"name": "Query"},\n'
+        '      "types": [{"name": "Query"}, {"name": "LabOnly"}]\n'
+        "    }\n  }\n}\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20281/graphql")
+    assert rows and rows[0]["name"] == "GraphQL introspection enabled"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20281/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
+        "http://127.0.0.1:20281/graphql",
+    ) == []
+    empty = curl_byo.parse_curl_body('{"data":{"lab":"ok"}}', "http://127.0.0.1:20281/graphql")
+    assert empty == []
+    mapped = map_finding("GraphQL introspection enabled", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "GraphQL introspection enabled"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_graphql_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.29.11.0/24 loopback 20281 /graphql. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.graphql.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.29.11.0/24" in live
+    assert "grc-graphql-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20281:80" in live
+    assert "0.0.0.0:20281" not in live
+    assert "grc-estate-c11" not in live
+    spec = Path(r"C:\GRC Collector\product-lab\24h\graphqlweb\graphql.json").read_text(encoding="utf-8")
+    assert '"__schema"' in spec
+    assert "lab-only-not-a-secret" in spec
+    assert "AWS_SECRET_ACCESS_KEY" not in spec
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.29.11.0/24" not in main
+
+
 def test_actuator_parser_and_map() -> None:
     """Observed on grc-actuator-24h GET /actuator : _links health/info."""
     from dropbox.orchestrator.adapters import curl_byo

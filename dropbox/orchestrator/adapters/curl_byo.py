@@ -297,6 +297,17 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "medium",
             }
         )
+    graphql_path = p in {"/graphql", "/graphiql", "/api/graphql"}
+    if graphql_path and '"__schema"' in low and '"types"' in low:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "GraphQL introspection enabled",
+                "weakness": "GraphQL introspection enabled",
+                "severity": "medium",
+            }
+        )
     return rows
 
 

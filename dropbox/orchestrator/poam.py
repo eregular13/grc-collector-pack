@@ -138,6 +138,14 @@ _MAP = [
         "severity": "medium",
     },
     {
+        "match": re.compile(r"graphql introspection enabled", re.I),
+        "weakness": "GraphQL introspection enabled",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Disable GraphQL introspection on public listeners; keep schema docs off production APIs.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

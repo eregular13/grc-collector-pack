@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 149
+
+T24-wait extra: dummy GraphQL estate `grc-graphql-24h` on `172.29.11.0/24` loopback 20281. GET `/graphql` observed `"__schema"` + `"types"`; map `GraphQL introspection enabled` from GET body + `/graphql` path only. HEAD 200 and a non-introspection GraphQL body do not invent it. Dummy lab schema only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 148
 
 T24-wait extra: dummy Spring Actuator estate `grc-actuator-24h` on `172.29.10.0/24` loopback 20181. GET `/actuator` observed `_links` health/info; map `Spring Actuator endpoint exposed` from GET body + `/actuator` path only. HEAD 200 and `/health` without `/actuator` do not invent it. Dummy lab JSON only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
