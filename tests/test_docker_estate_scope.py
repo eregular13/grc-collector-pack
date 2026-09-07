@@ -176,6 +176,56 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_kubeconfig_parser_and_map() -> None:
+    """Observed on grc-kube-24h GET /kubeconfig : kind Config + clusters."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "# lab-only dummy kubeconfig. not a client cluster.\n"
+        "apiVersion: v1\n"
+        "kind: Config\n"
+        "clusters:\n- name: lab-only\n"
+        "users:\n- name: lab-only\n"
+        "  user:\n    token: lab-only-not-a-secret\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20481/kubeconfig")
+    assert rows and rows[0]["name"] == "Kubernetes kubeconfig exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20481/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: text/plain\n\n",
+        "http://127.0.0.1:20481/kubeconfig",
+    ) == []
+    dot = curl_byo.parse_curl_body(body, "http://127.0.0.1:20481/.kube/config")
+    assert dot and dot[0]["name"] == "Kubernetes kubeconfig exposed"
+    mapped = map_finding("Kubernetes kubeconfig exposed", "127.0.0.1", "high")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Kubernetes kubeconfig exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_kube_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.29.13.0/24 loopback 20481 /kubeconfig. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.kube.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.29.13.0/24" in live
+    assert "grc-kube-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20481:80" in live
+    assert "0.0.0.0:20481" not in live
+    assert "grc-estate-c11" not in live
+    cfg = Path(r"C:\GRC Collector\product-lab\24h\kubeweb\kubeconfig").read_text(encoding="utf-8")
+    assert "kind: Config" in cfg
+    assert "lab-only-not-a-secret" in cfg
+    assert "AWS_SECRET_ACCESS_KEY" not in cfg
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.29.13.0/24" not in main
+
+
 def test_private_key_parser_and_map() -> None:
     """Observed on grc-key-24h GET /id_rsa : dummy BEGIN RSA PRIVATE KEY (not a real key)."""
     from dropbox.orchestrator.adapters import curl_byo

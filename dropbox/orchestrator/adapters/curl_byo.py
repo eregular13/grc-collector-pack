@@ -323,6 +323,20 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "high",
             }
         )
+    kube_path = p in {"/kubeconfig", "/.kube/config"}
+    kube_body = "kind: config" in low and "apiversion: v1" in low and (
+        "clusters:" in low or "users:" in low
+    )
+    if kube_path and kube_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Kubernetes kubeconfig exposed",
+                "weakness": "Kubernetes kubeconfig exposed",
+                "severity": "high",
+            }
+        )
     return rows
 
 

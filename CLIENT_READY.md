@@ -10,7 +10,7 @@ This is the **software** a first client assessment would run. Docker-sim is not 
 | Bar | Status |
 | --- | --- |
 | Isolated HTTP + HTTPS self-signed estate | PASS (`:18081` / `:18082` / `:18443`) |
-| Mapped web/TLS POA&M `pack_mapped ≥ 4` | PASS (`5` on docker-estate; extra expired / TLS1.0 / mismatch / dirlist / stub_status / .git / cookie / CORS / .env / dump.sql / phpinfo / metrics / openapi / basic-http / sourcemap / actuator / graphql / id_rsa) |
+| Mapped web/TLS POA&M `pack_mapped ≥ 4` | PASS (`5` on docker-estate; extra expired / TLS1.0 / mismatch / dirlist / stub_status / .git / cookie / CORS / .env / dump.sql / phpinfo / metrics / openapi / basic-http / sourcemap / actuator / graphql / id_rsa / kubeconfig) |
 | `python -m dropbox.product_demo` / `--help` | PASS (`--help` no sink HTTP) |
 | `docs/CLIENT_ASSESS.md` checklist | PASS (do not scan a client from this lab) |
 | LAN CIDR refuse plan-only | PASS (`192.168.10.0/24`, `0.0.0.0/0`, `10.0.0.0/8`) |

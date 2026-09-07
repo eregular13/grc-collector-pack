@@ -154,6 +154,14 @@ _MAP = [
         "severity": "high",
     },
     {
+        "match": re.compile(r"kubernetes kubeconfig exposed", re.I),
+        "weakness": "Kubernetes kubeconfig exposed",
+        "cpg": ["CPG 2.A", "CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Do not publish kubeconfig on a web root; rotate any token that was reachable; keep cluster creds off the application host.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],
