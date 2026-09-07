@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 145
+
+T24-wait extra: dummy OpenAPI estate `grc-openapi-24h` on `172.28.252.0/24` loopback 19881. GET `/openapi.json` observed `"openapi": "3.0.3"`; map `OpenAPI specification exposed` from GET body + openapi/swagger path only. HEAD 200 does not invent it. Dummy lab spec only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 144
 
 T24-wait extra: dummy Prometheus estate `grc-metrics-24h` on `172.28.251.0/24` loopback 19781. GET `/metrics` observed `# HELP` + `# TYPE`; map `Prometheus metrics exposed` from GET body + `/metrics` path only. HEAD 200 does not invent it. Dummy lab metric only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

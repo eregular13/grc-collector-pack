@@ -106,6 +106,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"openapi specification exposed|swagger ui exposed", re.I),
+        "weakness": "OpenAPI specification exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Do not publish OpenAPI/Swagger on a public listener unless the API is intentionally public; restrict docs to an admin network.",
+        "severity": "low",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

@@ -176,6 +176,52 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_openapi_parser_and_map() -> None:
+    """Observed on grc-openapi-24h GET /openapi.json : openapi 3.0.3."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        '{\n  "openapi": "3.0.3",\n  "info": {"title": "lab-only dummy API", "version": "0.0.0-lab"},\n'
+        '  "paths": {"/lab": {"get": {"summary": "lab-only-not-a-secret"}}}\n}\n'
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:19881/openapi.json")
+    assert rows and rows[0]["name"] == "OpenAPI specification exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:19881/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
+        "http://127.0.0.1:19881/openapi.json",
+    ) == []
+    swagger = curl_byo.parse_curl_body('{"swagger": "2.0", "info": {"title": "lab"}}', "http://127.0.0.1:19881/swagger.json")
+    assert swagger and swagger[0]["name"] == "OpenAPI specification exposed"
+    mapped = map_finding("OpenAPI specification exposed", "127.0.0.1", "low")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "OpenAPI specification exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_openapi_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.252.0/24 loopback 19881 /openapi.json. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.openapi.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.252.0/24" in live
+    assert "grc-openapi-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19881:80" in live
+    assert "0.0.0.0:19881" not in live
+    assert "grc-estate-c11" not in live
+    spec = Path(r"C:\GRC Collector\product-lab\24h\openapiweb\openapi.json").read_text(encoding="utf-8")
+    assert '"openapi"' in spec
+    assert "lab-only-not-a-secret" in spec
+    assert "AWS_SECRET_ACCESS_KEY" not in spec
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.252.0/24" not in main
+
+
 def test_prometheus_metrics_parser_and_map() -> None:
     """Observed on grc-metrics-24h GET /metrics : # HELP + # TYPE."""
     from dropbox.orchestrator.adapters import curl_byo

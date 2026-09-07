@@ -252,6 +252,23 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "low",
             }
         )
+    openapi_path = path.rstrip("/") in {
+        "/openapi.json",
+        "/swagger.json",
+        "/v3/api-docs",
+        "/api-docs",
+    } or "swagger-ui" in path
+    openapi_body = '"openapi"' in low or '"swagger"' in low or "swagger ui" in low
+    if openapi_path and openapi_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "OpenAPI specification exposed",
+                "weakness": "OpenAPI specification exposed",
+                "severity": "low",
+            }
+        )
     return rows
 
 
