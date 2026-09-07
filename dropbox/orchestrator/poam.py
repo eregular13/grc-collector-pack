@@ -130,6 +130,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"spring actuator endpoint exposed", re.I),
+        "weakness": "Spring Actuator endpoint exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Do not publish /actuator on a public listener; disable or ACL health/env/info to the monitoring network.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

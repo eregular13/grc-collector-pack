@@ -176,6 +176,63 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_actuator_parser_and_map() -> None:
+    """Observed on grc-actuator-24h GET /actuator : _links health/info."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        '{\n  "_links": {\n'
+        '    "self": {"href": "http://127.0.0.1:20181/actuator"},\n'
+        '    "health": {"href": "http://127.0.0.1:20181/actuator/health"}\n'
+        "  }\n}\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20181/actuator")
+    assert rows and rows[0]["name"] == "Spring Actuator endpoint exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20181/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
+        "http://127.0.0.1:20181/actuator",
+    ) == []
+    health = curl_byo.parse_curl_body(
+        '{"status":"UP","components":{"ping":{"status":"UP"}}}',
+        "http://127.0.0.1:20181/actuator/health",
+    )
+    assert health and health[0]["name"] == "Spring Actuator endpoint exposed"
+    assert curl_byo.parse_curl_body(
+        '{"status":"UP","components":{"ping":{"status":"UP"}}}',
+        "http://127.0.0.1:20181/health",
+    ) == []
+    mapped = map_finding("Spring Actuator endpoint exposed", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Spring Actuator endpoint exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_actuator_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.29.10.0/24 loopback 20181 /actuator. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.actuator.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.29.10.0/24" in live
+    assert "grc-actuator-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20181:80" in live
+    assert "0.0.0.0:20181" not in live
+    assert "grc-estate-c11" not in live
+    idx = Path(r"C:\GRC Collector\product-lab\24h\actuatorweb\actuator.json").read_text(encoding="utf-8")
+    assert '"_links"' in idx
+    assert "health" in idx
+    health = Path(r"C:\GRC Collector\product-lab\24h\actuatorweb\health.json").read_text(encoding="utf-8")
+    assert "lab-only-not-a-secret" in health
+    assert "AWS_SECRET_ACCESS_KEY" not in health
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.29.10.0/24" not in main
+
+
 def test_sourcemap_parser_and_map() -> None:
     """Observed on grc-sourcemap-24h GET /app.js.map : version + sources."""
     from dropbox.orchestrator.adapters import curl_byo

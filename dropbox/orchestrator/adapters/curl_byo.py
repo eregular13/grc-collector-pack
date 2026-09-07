@@ -282,6 +282,21 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "low",
             }
         )
+    p = path.rstrip("/")
+    actuator_path = p == "/actuator" or p.startswith("/actuator/")
+    actuator_body = ('"_links"' in low and ("health" in low or "actuator" in low)) or (
+        '"status"' in low and '"up"' in low and ("components" in low or "groups" in low)
+    )
+    if actuator_path and actuator_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Spring Actuator endpoint exposed",
+                "weakness": "Spring Actuator endpoint exposed",
+                "severity": "medium",
+            }
+        )
     return rows
 
 
