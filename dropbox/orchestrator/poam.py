@@ -58,6 +58,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"permissive cors|access-control-allow-origin:\s*\*", re.I),
+        "weakness": "Permissive CORS policy",
+        "cpg": ["CPG 2.W"],
+        "csf": ["PR.AA-05", "PR.DS-02"],
+        "action": "Do not use Access-Control-Allow-Origin: *; list explicit origins.",
+        "severity": "low",
+    },
+    {
         "match": re.compile(r"insecure session cookie", re.I),
         "weakness": "Insecure session cookie",
         "cpg": ["CPG 2.W"],

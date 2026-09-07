@@ -176,6 +176,59 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_permissive_cors_parser_and_map() -> None:
+    """Observed on grc-cors-24h HEAD / : Access-Control-Allow-Origin: *."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    blob = (
+        "HTTP/1.1 200 OK\n"
+        "Server: nginx/1.31.5\n"
+        "Access-Control-Allow-Origin: *\n"
+        "\n"
+    )
+    names = {r["name"] for r in curl_byo.parse_curl_headers(blob, "http://127.0.0.1:19381/")}
+    assert "Permissive CORS policy" in names
+    estate = (
+        "HTTP/1.1 200 OK\n"
+        "Server: nginx/1.31.5\n"
+        "Content-Type: text/html\n"
+        "\n"
+    )
+    estate_names = {r["name"] for r in curl_byo.parse_curl_headers(estate, "http://127.0.0.1:18081/")}
+    assert "Permissive CORS policy" not in estate_names
+    tight = (
+        "HTTP/1.1 200 OK\n"
+        "Access-Control-Allow-Origin: https://app.example.invalid\n"
+        "\n"
+    )
+    tight_names = {r["name"] for r in curl_byo.parse_curl_headers(tight, "http://127.0.0.1:19381/")}
+    assert "Permissive CORS policy" not in tight_names
+    mapped = map_finding("Permissive CORS policy", "127.0.0.1", "low")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Permissive CORS policy"
+
+
+def test_cors_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.220.0/24 loopback 19381 ACAO *. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.cors.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.220.0/24" in live
+    assert "grc-cors-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19381:80" in live
+    assert "0.0.0.0:19381" not in live
+    assert "grc-estate-c11" not in live
+    conf = Path(r"C:\GRC Collector\product-lab\24h\cors\default.conf").read_text(encoding="utf-8")
+    assert "Access-Control-Allow-Origin *" in conf
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.220.0/24" not in main
+
+
 def test_insecure_cookie_parser_and_map() -> None:
     """Observed on grc-cookie-24h HEAD / : Set-Cookie session=labonly; Path=/ without Secure/HttpOnly."""
     from dropbox.orchestrator.adapters import curl_byo

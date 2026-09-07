@@ -162,6 +162,8 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
         if "secure" not in cookie or "httponly" not in cookie:
             rows.append(_row("Insecure session cookie", "medium"))
             break
+    if re.search(r"(?im)^access-control-allow-origin:\s*\*\s*$", blob or ""):
+        rows.append(_row("Permissive CORS policy", "low"))
     return rows
 
 
