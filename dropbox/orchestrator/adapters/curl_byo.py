@@ -185,6 +185,17 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "low",
             }
         )
+    path = (urlparse(url).path or "").lower()
+    if "/.git/" in path and ("ref: refs/" in low or "repositoryformatversion" in low):
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Git metadata exposed",
+                "weakness": "Git metadata exposed",
+                "severity": "medium",
+            }
+        )
     return rows
 
 

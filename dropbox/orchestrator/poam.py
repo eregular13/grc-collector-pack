@@ -58,6 +58,14 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
+        "weakness": "Git metadata exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Do not publish `.git` on a web root; block dot-directories and rotate any leaked credentials.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(
             r"web server status page|nginx stub_status|stub_status",
             re.I,

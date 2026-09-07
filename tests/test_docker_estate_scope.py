@@ -176,6 +176,41 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_git_metadata_parser_and_map() -> None:
+    """Observed on grc-git-24h GET /.git/HEAD : ref: refs/heads/main."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = "ref: refs/heads/main\n"
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:19181/.git/HEAD")
+    assert rows and rows[0]["name"] == "Git metadata exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:19181/") == []
+    assert curl_byo.parse_curl_body("HTTP/1.1 200 OK\nContent-Type: application/octet-stream\n\n", "http://127.0.0.1:19181/.git/HEAD") == []
+    mapped = map_finding("Git metadata exposed", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Git metadata exposed"
+
+
+def test_gitweb_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.200.0/24 loopback 19181 .git. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.gitweb.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.200.0/24" in live
+    assert "grc-git-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19181:80" in live
+    assert "0.0.0.0:19181" not in live
+    assert "grc-estate-c11" not in live
+    head = Path(r"C:\GRC Collector\product-lab\24h\gitweb\.git\HEAD").read_text(encoding="utf-8")
+    assert "ref: refs/heads/main" in head
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.200.0/24" not in main
+
+
 def test_stub_status_parser_and_map() -> None:
     """Observed on grc-status-24h GET /nginx_status : Active connections + accepts handled."""
     from dropbox.orchestrator.adapters import curl_byo
