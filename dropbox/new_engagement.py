@@ -26,6 +26,11 @@ SENSOR_EVIDENCE = (
     "saas",
 )
 SLUG_OK = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
+# Header + one blank draft row. Hours/rate/total empty — never invent $.
+_DRAFT_QUOTE_CSV = (
+    "weakness,asset,severity,control_refs,recommended_action,hours,rate_usd,total_usd,status\n"
+    ",,,,,,,,draft\n"
+)
 
 
 class EngagementError(SystemExit):
@@ -65,6 +70,17 @@ def _summary() -> dict[str, Any]:
     path = PACK / "out" / "summary.json"
     data = _read_json(path) or {}
     return data
+
+
+def _ensure_draft_quote(dest: Path) -> None:
+    """Fixture kits stamp status=draft. Pack out/quote can be header-only after an empty ingest."""
+    qdir = dest / "out" / "quote"
+    qdir.mkdir(parents=True, exist_ok=True)
+    qfile = qdir / "quote.csv"
+    text = qfile.read_text(encoding="utf-8") if qfile.is_file() else ""
+    if "draft" in text:
+        return
+    qfile.write_text(_DRAFT_QUOTE_CSV, encoding="utf-8")
 
 
 def leftover_discover_brake(scope_client: str) -> tuple[str | None, str]:
@@ -164,6 +180,8 @@ def new_engagement(
             if src.is_file():
                 shutil.copy2(src, ev_dest / f"{name}.md")
                 evidence_paths.append(f"out/evidence/{name}.md")
+
+    _ensure_draft_quote(dest)
 
     brake, leftover_client = leftover_discover_brake(scope.client_legal_name)
     orch = PACK / "dropbox" / "out"

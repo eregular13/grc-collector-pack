@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import zipfile
 from pathlib import Path
@@ -19,9 +20,17 @@ def test_factory_creates_slug_not_client_facing(tmp_path, monkeypatch) -> None:
     assert (dest / "out" / "ciso-assistant" / "assets.csv").is_file()
     assert (dest / "out" / "poam" / "poam.csv").is_file()
     assert (dest / "out" / "quote" / "quote.csv").is_file()
-    quote = (dest / "out" / "quote" / "quote.csv").read_text(encoding="utf-8")
+    quote_path = dest / "out" / "quote" / "quote.csv"
+    quote = quote_path.read_text(encoding="utf-8")
     assert "draft" in quote
     assert "$" not in quote
+    with quote_path.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows, "factory quote.csv must stamp a draft row, not a header-only sheet"
+    assert all(row.get("status") == "draft" for row in rows)
+    assert all((row.get("hours") or "") == "" for row in rows)
+    assert all((row.get("rate_usd") or "") == "" for row in rows)
+    assert all((row.get("total_usd") or "") == "" for row in rows)
     assert manifest["client_facing_ready"] is False
     assert manifest["blocked_by"]
     data = json.loads((dest / "MANIFEST.json").read_text(encoding="utf-8"))
@@ -30,6 +39,50 @@ def test_factory_creates_slug_not_client_facing(tmp_path, monkeypatch) -> None:
     assert "evidence_files:" in exec_md
     assert "findings:" in exec_md
     assert "not a customer" in exec_md.lower() or "fixture" in exec_md.lower()
+
+
+def test_factory_seeds_draft_when_pack_quote_header_only(tmp_path, monkeypatch) -> None:
+    """Refused ingest can leave pack out/quote header-only. Kit must still stamp draft."""
+    monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
+    qfile = ROOT / "out" / "quote" / "quote.csv"
+    qfile.parent.mkdir(parents=True, exist_ok=True)
+    prior = qfile.read_text(encoding="utf-8") if qfile.is_file() else None
+    qfile.write_text(
+        "weakness,asset,severity,control_refs,recommended_action,hours,rate_usd,total_usd,status\n",
+        encoding="utf-8",
+    )
+    try:
+        from dropbox.new_engagement import new_engagement
+
+        new_engagement("litware-lab", ROOT / "dropbox" / "SCOPE.example.yaml")
+        quote = (tmp_path / "litware-lab" / "out" / "quote" / "quote.csv").read_text(encoding="utf-8")
+        assert "draft" in quote
+        assert "$" not in quote
+        with (tmp_path / "litware-lab" / "out" / "quote" / "quote.csv").open(
+            encoding="utf-8", newline=""
+        ) as handle:
+            rows = list(csv.DictReader(handle))
+        assert rows and all(row.get("status") == "draft" for row in rows)
+    finally:
+        if prior is None:
+            qfile.unlink(missing_ok=True)
+        else:
+            qfile.write_text(prior, encoding="utf-8")
+
+
+def test_export_quote_empty_rows_stamps_draft(tmp_path) -> None:
+    from dropbox.orchestrator.poam import export_quote
+
+    dest = tmp_path / "quote.csv"
+    export_quote([], dest)
+    text = dest.read_text(encoding="utf-8")
+    assert "draft" in text
+    assert "$" not in text
+    with dest.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows
+    assert all(row["status"] == "draft" for row in rows)
+    assert all(row["hours"] == row["rate_usd"] == row["total_usd"] == "" for row in rows)
 
 
 def test_other_client_discover_not_packaged_as_slug(tmp_path, monkeypatch) -> None:

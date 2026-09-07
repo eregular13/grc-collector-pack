@@ -389,7 +389,10 @@ def export_quote(rows: list[dict[str, Any]], dest_csv: Path) -> Path:
             ],
         )
         writer.writeheader()
-        for row in rows:
+        # Empty ingest still stamps status=draft so a kit is never a header-only
+        # price sheet. Hours/rate/total stay blank — never invent a price.
+        payload = rows or [{}]
+        for row in payload:
             writer.writerow(
                 {
                     "weakness": row.get("weakness") or "",
