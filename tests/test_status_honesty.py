@@ -39,6 +39,18 @@ def test_status_paying_day_fail_and_compose_absent_until_proven() -> None:
         assert status.get("compose_lab") in {"absent", "pass", "skip"}
 
 
+def _live_reid_only_blockers(text: str) -> str:
+    """Current-truth blocker list, not historical cycle-74 notes."""
+    for needle in (
+        "**Still open (Reid-only blockers",
+        "**Reid-only blockers (no fake greens):**",
+    ):
+        if needle in text:
+            idx = text.index(needle)
+            return text[idx:].split("\n\n", 1)[0]
+    return ""
+
+
 def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
@@ -48,9 +60,15 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "eval" in low and "npm start" in low
     assert "keep" in low and "in/" in action
     assert "compose" in low and "docker" in low
-    assert "pr #1" in low
     assert "no fake greens" in low
     assert "absent" in low and "not a pass" in low
+    # Durable blockers only — a frozen PR number is not a Reid-only blocker.
+    # PR #4 (SCOPE hash / gate) is already on master; do not instruct merge.
+    assert "merge pr #" not in low
+    assert "gate" in low or "hash" in low
+    assert "already" in low or "on master" in low
+    if "pr #" in low:
+        assert any(tok in low for tok in ("merged", "already", "on master"))
     assert status.get("paying_day") == "FAIL"
     assert status.get("compose_lab") == "absent"
     assert status.get("scope_gap") == "none"
@@ -60,8 +78,19 @@ def test_status_next_action_is_reid_only_blockers() -> None:
         assert "Reid-only" in text
         assert "CTA" in text
         assert "npm start" in text
-        assert "PR #1" in text
         assert "ABSENT" in text
+        assert "KEEP" in text
+        live = _live_reid_only_blockers(text)
+        assert live, f"{rel} missing live Reid-only blocker list"
+        live_low = live.lower()
+        assert "cta" in live_low
+        assert "npm start" in live_low
+        assert "keep" in live_low
+        assert "in/" in live
+        assert "absent" in live_low
+        assert "merge pr #" not in live_low
+        assert "gate" in live_low or "hash" in live_low
+        assert "already" in live_low or "on master" in live_low
 
 
 def test_argus_fail_closed_bar_is_stamped() -> None:

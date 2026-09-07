@@ -53,6 +53,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 87 done: pack in/ estate protect (schedule/ingest/ciso read-only unless `--write-pack-in`). Catalog unchanged.
 - Cycle 88 done: Hephaestus two-MCP cross-wire fail-closed (`check_scope`/`license_guard` refused on conductor). Catalog unchanged.
 - Cycle 89 done: DESKTOP SCOPE attestation hash (LF-canonical + `attest --write`; no skip-hash). Catalog unchanged.
+- Cycle 90 done: Honesty next_action sync (durable Reid-only blockers; gate/hash already on master; no stale merge-PR). Catalog unchanged.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

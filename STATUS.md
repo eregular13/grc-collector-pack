@@ -1,6 +1,6 @@
-cycle: 89
+cycle: 90
 phase: DONE
-item: DESKTOP-SCOPE-ATTESTATION-HASH
+item: HONESTY-NEXT-ACTION-SYNC
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -43,4 +43,4 @@ argus_invoke: signed SCOPE + HITL kill before PATH/live
 argus_file_drop: default
 argus_wrap: stay-out forever
 argus_hexstrike: pattern-only
-next_action: Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS); merge PR #4 (`python -m dropbox gate`). No fake greens.
+next_action: Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS). Gate/hash already on master (`python -m dropbox gate`). No fake greens.

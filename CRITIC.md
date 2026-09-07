@@ -1,6 +1,6 @@
-# CRITIC — cycle 89 (DESKTOP SCOPE attestation hash)
+# CRITIC — cycle 90 (honesty next_action sync)
 
-**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. Committed SCOPE hash stays `ab5fb873…` (LF blob). Gate hashes LF-canonical consent so DESKTOP CRLF checkout (`69e94d5f…` raw) no longer exit-2s. `attest --write` regenerates after edits. No skip-hash. Estate protect + CISO SoR + two-MCP cross-wire stand. pytest **352**. Labs no-diff vs cycle 88. Wrap **dead**. Paying-day **FAIL**. SAMPLE KEEP **0/4**.
+**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**. STATUS `next_action` and live EXECUTIVE blocker lists match current truth: durable Reid-only (CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker ABSENT ≠ PASS). Gate/hash already on master — do not instruct merge of PR #4. Honesty test no longer freezes a stale PR number. Cycle 89 LF-canonical attestation stands. Argus fail-closed stamps intact. pytest **352**. Labs no-diff vs cycle 89. Wrap **dead**. Paying-day **FAIL**. SAMPLE KEEP **0/4**.
 
 −1 compose runtime still absent on this agent VM (DESKTOP `config` is 10 services; optional `up` is estate-only).  
 −1 0/4 real KEEP still open.
