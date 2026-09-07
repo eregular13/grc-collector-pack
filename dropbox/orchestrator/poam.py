@@ -162,6 +162,14 @@ _MAP = [
         "severity": "high",
     },
     {
+        "match": re.compile(r"terraform state file exposed|\.tfstate", re.I),
+        "weakness": "Terraform state file exposed",
+        "cpg": ["CPG 2.A", "CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Do not publish terraform.tfstate on a web root; rotate any secrets that were reachable; store state in a locked backend off the application host.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

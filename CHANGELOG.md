@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 152
+
+T24-wait extra: dummy terraform.tfstate estate `grc-tfstate-24h` on `172.29.14.0/24` loopback 20581. GET `/terraform.tfstate` observed `terraform_version` + `resources`; map `Terraform state file exposed` from GET body + tfstate path only. HEAD 200 does not invent it. Dummy lab token only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 151
 
 T24-wait extra: dummy kubeconfig estate `grc-kube-24h` on `172.29.13.0/24` loopback 20481. GET `/kubeconfig` observed `kind: Config` + clusters/users; map `Kubernetes kubeconfig exposed` from GET body + kubeconfig path only. HEAD 200 does not invent it. Dummy lab token only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

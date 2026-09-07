@@ -337,6 +337,18 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "high",
             }
         )
+    tf_path = bool(re.search(r"terraform\.tfstate(?:\.backup)?$", path))
+    tf_body = '"terraform_version"' in low and '"resources"' in low
+    if tf_path and tf_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Terraform state file exposed",
+                "weakness": "Terraform state file exposed",
+                "severity": "high",
+            }
+        )
     return rows
 
 

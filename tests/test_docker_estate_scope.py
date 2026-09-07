@@ -226,6 +226,57 @@ def test_kube_compose_isolated_if_present() -> None:
     assert "172.29.13.0/24" not in main
 
 
+def test_tfstate_parser_and_map() -> None:
+    """Observed on grc-tfstate-24h GET /terraform.tfstate : terraform_version + resources."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "{\n"
+        '  "version": 4,\n'
+        '  "terraform_version": "1.5.7",\n'
+        '  "serial": 1,\n'
+        '  "lineage": "lab-only-not-a-secret",\n'
+        '  "resources": [{"type": "null_resource", "name": "lab_only"}]\n'
+        "}\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20581/terraform.tfstate")
+    assert rows and rows[0]["name"] == "Terraform state file exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20581/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
+        "http://127.0.0.1:20581/terraform.tfstate",
+    ) == []
+    hidden = curl_byo.parse_curl_body(body, "http://127.0.0.1:20581/.terraform/terraform.tfstate")
+    assert hidden and hidden[0]["name"] == "Terraform state file exposed"
+    mapped = map_finding("Terraform state file exposed", "127.0.0.1", "high")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Terraform state file exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_tfstate_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.29.14.0/24 loopback 20581 /terraform.tfstate. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.tfstate.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.29.14.0/24" in live
+    assert "grc-tfstate-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20581:80" in live
+    assert "0.0.0.0:20581" not in live
+    assert "grc-estate-c11" not in live
+    state = Path(r"C:\GRC Collector\product-lab\24h\tfweb\terraform.tfstate").read_text(encoding="utf-8")
+    assert "terraform_version" in state
+    assert "lab-only-not-a-secret" in state
+    assert "AWS_SECRET_ACCESS_KEY" not in state
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.29.14.0/24" not in main
+
+
 def test_private_key_parser_and_map() -> None:
     """Observed on grc-key-24h GET /id_rsa : dummy BEGIN RSA PRIVATE KEY (not a real key)."""
     from dropbox.orchestrator.adapters import curl_byo
