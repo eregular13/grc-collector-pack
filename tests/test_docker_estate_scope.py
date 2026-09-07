@@ -222,6 +222,67 @@ def test_openapi_compose_isolated_if_present() -> None:
     assert "172.28.252.0/24" not in main
 
 
+def test_basic_auth_without_tls_parser_and_map() -> None:
+    """Observed on grc-basic-24h HEAD / : WWW-Authenticate Basic on http://."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    blob = (
+        "HTTP/1.1 401 Unauthorized\n"
+        "Server: nginx/1.31.5\n"
+        'WWW-Authenticate: Basic realm="lab-only"\n'
+        "\n"
+    )
+    names = {r["name"] for r in curl_byo.parse_curl_headers(blob, "http://127.0.0.1:19981/")}
+    assert "HTTP Basic auth without TLS" in names
+    assert "Cleartext HTTP" in names
+    https_names = {r["name"] for r in curl_byo.parse_curl_headers(blob, "https://127.0.0.1:18443/")}
+    assert "HTTP Basic auth without TLS" not in https_names
+    estate = (
+        "HTTP/1.1 200 OK\n"
+        "Server: nginx/1.31.5\n"
+        "Content-Type: text/html\n"
+        "\n"
+    )
+    estate_names = {r["name"] for r in curl_byo.parse_curl_headers(estate, "http://127.0.0.1:18081/")}
+    assert "HTTP Basic auth without TLS" not in estate_names
+    digest = (
+        "HTTP/1.1 401 Unauthorized\n"
+        'WWW-Authenticate: Digest realm="lab-only"\n'
+        "\n"
+    )
+    digest_names = {r["name"] for r in curl_byo.parse_curl_headers(digest, "http://127.0.0.1:19981/")}
+    assert "HTTP Basic auth without TLS" not in digest_names
+    mapped = map_finding("HTTP Basic auth without TLS", "127.0.0.1", "high")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "HTTP Basic auth without TLS"
+    assert "UNMAPPED" not in mapped["control_refs"]
+    clear = map_finding("Cleartext HTTP", "127.0.0.1", "medium")
+    assert clear["weakness"] == "Cleartext HTTP"
+
+
+def test_basic_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.253.0/24 loopback 19981 Basic on HTTP. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.basic.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.253.0/24" in live
+    assert "grc-basic-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19981:80" in live
+    assert "0.0.0.0:19981" not in live
+    assert "grc-estate-c11" not in live
+    conf = Path(r"C:\GRC Collector\product-lab\24h\basicweb\default.conf").read_text(encoding="utf-8")
+    assert "WWW-Authenticate" in conf
+    assert 'Basic realm="lab-only"' in conf
+    assert "AWS_SECRET_ACCESS_KEY" not in conf
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.253.0/24" not in main
+
+
 def test_prometheus_metrics_parser_and_map() -> None:
     """Observed on grc-metrics-24h GET /metrics : # HELP + # TYPE."""
     from dropbox.orchestrator.adapters import curl_byo

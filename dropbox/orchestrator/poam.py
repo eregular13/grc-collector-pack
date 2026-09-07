@@ -42,6 +42,14 @@ _MAP = [
         "severity": "medium",
     },
     {
+        "match": re.compile(r"http basic auth without tls", re.I),
+        "weakness": "HTTP Basic auth without TLS",
+        "cpg": ["CPG 2.W", "CPG 2.A"],
+        "csf": ["PR.DS-02", "PR.AA-05"],
+        "action": "Do not offer HTTP Basic on a cleartext listener; require TLS and prefer a stronger authn method.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"missing hsts", re.I),
         "weakness": "Missing HSTS",
         "cpg": ["CPG 2.W"],

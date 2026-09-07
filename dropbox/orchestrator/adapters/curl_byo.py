@@ -164,6 +164,8 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
             break
     if re.search(r"(?im)^access-control-allow-origin:\s*\*\s*$", blob or ""):
         rows.append(_row("Permissive CORS policy", "low"))
+    if url.lower().startswith("http://") and re.search(r"(?im)^www-authenticate:\s*basic\b", blob or ""):
+        rows.append(_row("HTTP Basic auth without TLS", "high"))
     return rows
 
 
