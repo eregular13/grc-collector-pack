@@ -308,6 +308,21 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "medium",
             }
         )
+    key_path = bool(
+        re.search(r"(?:^|/)(?:\.ssh/)?(?:id_rsa|id_ed25519|id_ecdsa)$", path)
+        or re.search(r"(?:^|/)(?:privkey|server)\.(?:pem|key)$", path)
+    )
+    key_body = "-----begin" in low and "private key-----" in low
+    if key_path and key_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Private key file exposed",
+                "weakness": "Private key file exposed",
+                "severity": "high",
+            }
+        )
     return rows
 
 

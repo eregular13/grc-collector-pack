@@ -176,6 +176,57 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_private_key_parser_and_map() -> None:
+    """Observed on grc-key-24h GET /id_rsa : dummy BEGIN RSA PRIVATE KEY (not a real key)."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "-----BEGIN RSA PRIVATE KEY-----\n"
+        "LAB-ONLY-NOT-A-REAL-KEY\n"
+        "lab-only-not-a-secret\n"
+        "-----END RSA PRIVATE KEY-----\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20381/id_rsa")
+    assert rows and rows[0]["name"] == "Private key file exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20381/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: text/plain\n\n",
+        "http://127.0.0.1:20381/id_rsa",
+    ) == []
+    cert = curl_byo.parse_curl_body(
+        "-----BEGIN CERTIFICATE-----\nLAB-ONLY\n-----END CERTIFICATE-----\n",
+        "http://127.0.0.1:20381/id_rsa",
+    )
+    assert cert == []
+    mapped = map_finding("Private key file exposed", "127.0.0.1", "high")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Private key file exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_key_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.29.12.0/24 loopback 20381 /id_rsa. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.key.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.29.12.0/24" in live
+    assert "grc-key-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20381:80" in live
+    assert "0.0.0.0:20381" not in live
+    assert "grc-estate-c11" not in live
+    key = Path(r"C:\GRC Collector\product-lab\24h\keyweb\id_rsa").read_text(encoding="utf-8")
+    assert "BEGIN RSA PRIVATE KEY" in key
+    assert "LAB-ONLY-NOT-A-REAL-KEY" in key
+    assert "AWS_SECRET_ACCESS_KEY" not in key
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.29.12.0/24" not in main
+
+
 def test_graphql_introspection_parser_and_map() -> None:
     """Observed on grc-graphql-24h GET /graphql : __schema + types."""
     from dropbox.orchestrator.adapters import curl_byo

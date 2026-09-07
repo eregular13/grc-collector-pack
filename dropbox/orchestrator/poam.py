@@ -146,6 +146,14 @@ _MAP = [
         "severity": "medium",
     },
     {
+        "match": re.compile(r"private key file exposed", re.I),
+        "weakness": "Private key file exposed",
+        "cpg": ["CPG 2.A", "CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Remove private keys from the web root; rotate any key that was reachable; store keys off the application host.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

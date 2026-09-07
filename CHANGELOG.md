@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 150
+
+T24-wait extra: dummy private-key estate `grc-key-24h` on `172.29.12.0/24` loopback 20381. GET `/id_rsa` observed `BEGIN RSA PRIVATE KEY` with `LAB-ONLY-NOT-A-REAL-KEY`; map `Private key file exposed` from GET body + id_rsa/privkey path only. HEAD 200 and a certificate PEM do not invent it. Not a real key. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 149
 
 T24-wait extra: dummy GraphQL estate `grc-graphql-24h` on `172.29.11.0/24` loopback 20281. GET `/graphql` observed `"__schema"` + `"types"`; map `GraphQL introspection enabled` from GET body + `/graphql` path only. HEAD 200 and a non-introspection GraphQL body do not invent it. Dummy lab schema only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
