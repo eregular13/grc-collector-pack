@@ -349,6 +349,18 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "high",
             }
         )
+    docker_path = p in {"/.docker/config.json", "/docker/config.json", "/.dockercfg"}
+    docker_body = '"auths"' in low and ('"auth"' in low or '"identitytoken"' in low)
+    if docker_path and docker_body:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Docker config.json exposed",
+                "weakness": "Docker config.json exposed",
+                "severity": "high",
+            }
+        )
     return rows
 
 

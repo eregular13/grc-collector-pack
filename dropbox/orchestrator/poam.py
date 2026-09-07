@@ -170,6 +170,14 @@ _MAP = [
         "severity": "high",
     },
     {
+        "match": re.compile(r"docker config(?:\.json)? exposed|\.docker/config\.json|\.dockercfg", re.I),
+        "weakness": "Docker config.json exposed",
+        "cpg": ["CPG 2.A", "CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.DS-01"],
+        "action": "Do not publish Docker config.json or .dockercfg on a web root; rotate any registry token that was reachable; keep registry creds off the application host.",
+        "severity": "high",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],

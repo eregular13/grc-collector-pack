@@ -277,6 +277,57 @@ def test_tfstate_compose_isolated_if_present() -> None:
     assert "172.29.14.0/24" not in main
 
 
+def test_dockercfg_parser_and_map() -> None:
+    """Observed on grc-dockercfg-24h GET /.docker/config.json : auths + auth."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "{\n"
+        '  "auths": {\n'
+        '    "127.0.0.1:5000": {\n'
+        '      "auth": "lab-only-not-a-secret"\n'
+        "    }\n"
+        "  }\n"
+        "}\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:20681/.docker/config.json")
+    assert rows and rows[0]["name"] == "Docker config.json exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:20681/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
+        "http://127.0.0.1:20681/.docker/config.json",
+    ) == []
+    old = curl_byo.parse_curl_body(body, "http://127.0.0.1:20681/.dockercfg")
+    assert old and old[0]["name"] == "Docker config.json exposed"
+    mapped = map_finding("Docker config.json exposed", "127.0.0.1", "high")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "Docker config.json exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_dockercfg_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.29.15.0/24 loopback 20681 /.docker/config.json. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.dockercfg.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.29.15.0/24" in live
+    assert "grc-dockercfg-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:20681:80" in live
+    assert "0.0.0.0:20681" not in live
+    assert "grc-estate-c11" not in live
+    cfg = Path(r"C:\GRC Collector\product-lab\24h\dockercfgweb\config.json").read_text(encoding="utf-8")
+    assert '"auths"' in cfg
+    assert "lab-only-not-a-secret" in cfg
+    assert "AWS_SECRET_ACCESS_KEY" not in cfg
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.29.15.0/24" not in main
+
+
 def test_private_key_parser_and_map() -> None:
     """Observed on grc-key-24h GET /id_rsa : dummy BEGIN RSA PRIVATE KEY (not a real key)."""
     from dropbox.orchestrator.adapters import curl_byo
