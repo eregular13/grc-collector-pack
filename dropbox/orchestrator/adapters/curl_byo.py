@@ -161,11 +161,12 @@ def parse_curl_headers(blob: str, url: str) -> list[dict[str, Any]]:
 
 
 def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
-    """Directory listing from a GET body only. HEAD samples are not a listing."""
+    """Directory listing / stub_status from a GET body only. HEAD samples are not enough."""
     host = urlparse(url).hostname or url
     low = (blob or "").lower()
+    rows: list[dict[str, Any]] = []
     if "index of /" in low or "<title>index of" in low:
-        return [
+        rows.append(
             {
                 "host": host,
                 "asset": host,
@@ -173,8 +174,18 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "weakness": "Directory listing enabled",
                 "severity": "low",
             }
-        ]
-    return []
+        )
+    if "active connections:" in low and "server accepts handled requests" in low:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "Web server status page exposed",
+                "weakness": "Web server status page exposed",
+                "severity": "low",
+            }
+        )
+    return rows
 
 
 def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:

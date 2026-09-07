@@ -58,6 +58,17 @@ _MAP = [
         "severity": "low",
     },
     {
+        "match": re.compile(
+            r"web server status page|nginx stub_status|stub_status",
+            re.I,
+        ),
+        "weakness": "Web server status page exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Disable or ACL stub_status / server-status; do not publish worker counts on the internet.",
+        "severity": "low",
+    },
+    {
         "match": re.compile(r"directory listing(?: enabled)?|nginx autoindex", re.I),
         "weakness": "Directory listing enabled",
         "cpg": ["CPG 2.T"],
