@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 143
+
+T24-wait extra: dummy phpinfo estate `grc-phpinfo-24h` on `172.28.250.0/24` loopback 19681. GET `/phpinfo.php` observed `phpinfo()` + `PHP Version`; map `phpinfo page exposed` from GET body + phpinfo.php/info.php path only. HEAD 200 does not invent it. Dummy lab HTML only, no PHP runtime. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 142
 
 T24-wait extra: dummy SQL dump estate `grc-bak-24h` on `172.28.240.0/24` loopback 19581. GET `/dump.sql` observed `CREATE TABLE lab_only`; map `Backup file exposed` from GET body + `.sql`/`.bak` path only. HEAD 200 does not invent it. Dummy lab dump only. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

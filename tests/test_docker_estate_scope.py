@@ -176,6 +176,57 @@ def test_tls12_is_not_weak_tls() -> None:
     assert "TLSv1.2 offered" not in names
 
 
+def test_phpinfo_parser_and_map() -> None:
+    """Observed on grc-phpinfo-24h GET /phpinfo.php : phpinfo() + PHP Version."""
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.poam import map_finding
+
+    body = (
+        "<!DOCTYPE html>\n<html>\n<head><title>phpinfo()</title></head>\n<body>\n"
+        "<h1>PHP Version 8.3.0-lab-only</h1>\n"
+        "<table>\n<tr><td>System</td><td>Linux lab-only</td></tr>\n"
+        "<tr><td>SERVER_API</td><td>lab-only-not-a-secret</td></tr>\n"
+        "</table>\n</body>\n</html>\n"
+    )
+    rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:19681/phpinfo.php")
+    assert rows and rows[0]["name"] == "phpinfo page exposed"
+    assert curl_byo.parse_curl_body(body, "http://127.0.0.1:19681/") == []
+    assert curl_byo.parse_curl_body(
+        "HTTP/1.1 200 OK\nContent-Type: text/html\n\n",
+        "http://127.0.0.1:19681/phpinfo.php",
+    ) == []
+    info = curl_byo.parse_curl_body(body, "http://127.0.0.1:19681/info.php")
+    assert info and info[0]["name"] == "phpinfo page exposed"
+    assert curl_byo.parse_curl_body("<?php echo 'hi';", "http://127.0.0.1:19681/index.php") == []
+    mapped = map_finding("phpinfo page exposed", "127.0.0.1", "medium")
+    assert mapped["mapped"] is True
+    assert mapped["weakness"] == "phpinfo page exposed"
+    assert "UNMAPPED" not in mapped["control_refs"]
+
+
+def test_phpinfo_compose_isolated_if_present() -> None:
+    """T24-wait extra: 172.28.250.0/24 loopback 19681 phpinfo.php. Not office LAN. Not c11."""
+    path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.phpinfo.yml")
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8-sig")
+    live = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.250.0/24" in live
+    assert "grc-phpinfo-24h" in live
+    assert "192.168.10.0/24" not in live
+    assert "127.0.0.1:19681:80" in live
+    assert "0.0.0.0:19681" not in live
+    assert "grc-estate-c11" not in live
+    page = Path(r"C:\GRC Collector\product-lab\24h\phpinfo\phpinfo.php").read_text(encoding="utf-8")
+    assert "phpinfo()" in page
+    assert "PHP Version" in page
+    assert "lab-only-not-a-secret" in page
+    assert "AWS_SECRET_ACCESS_KEY" not in page
+    main = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    assert "172.28.90.0/24" in main
+    assert "172.28.250.0/24" not in main
+
+
 def test_backup_file_parser_and_map() -> None:
     """Observed on grc-bak-24h GET /dump.sql : CREATE TABLE lab_only."""
     from dropbox.orchestrator.adapters import curl_byo

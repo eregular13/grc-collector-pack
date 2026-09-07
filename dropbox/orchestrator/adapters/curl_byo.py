@@ -230,6 +230,17 @@ def parse_curl_body(blob: str, url: str) -> list[dict[str, Any]]:
                 "severity": "high",
             }
         )
+    phpinfo_path = bool(re.search(r"(?:^|/)(?:phpinfo|info)\.php$", path))
+    if phpinfo_path and "phpinfo()" in low and "php version" in low:
+        rows.append(
+            {
+                "host": host,
+                "asset": host,
+                "name": "phpinfo page exposed",
+                "weakness": "phpinfo page exposed",
+                "severity": "medium",
+            }
+        )
     return rows
 
 

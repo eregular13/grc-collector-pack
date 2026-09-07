@@ -90,6 +90,14 @@ _MAP = [
         "severity": "high",
     },
     {
+        "match": re.compile(r"phpinfo page exposed|phpinfo\(\)", re.I),
+        "weakness": "phpinfo page exposed",
+        "cpg": ["CPG 2.T"],
+        "csf": ["PR.AA-05", "PR.PS-01"],
+        "action": "Remove phpinfo.php / info.php from the web root; do not leave interpreter or module details on a public listener.",
+        "severity": "medium",
+    },
+    {
         "match": re.compile(r"git metadata exposed|\.git/(?:head|config)|ref: refs/heads", re.I),
         "weakness": "Git metadata exposed",
         "cpg": ["CPG 2.T"],
