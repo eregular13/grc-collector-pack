@@ -2,7 +2,16 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 88):** Hephaestus two-MCP contract.
+**This window (cycle 90):** Honesty next_action sync.
+STATUS / EXECUTIVE name durable Reid-only blockers only (CTA;
+Eval `npm start`; real KEEP `in/` drop; compose-on-Docker
+**ABSENT ≠ pass**). Gate/hash already on master
+(`python -m dropbox gate`). Do not instruct merge of PR #4.
+Cycle 89 attestation hash stands. Cycle 74 durable blockers stay
+locked. Wrap stays **dead**. Paying-day **FAIL**. Compose **ABSENT**.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+
+**Cycle 88 (stands):** Hephaestus two-MCP contract.
 Conductor refuses pack-truth tools (`check_scope` / `license_guard`);
 merged or swapped mcp.json fails closed. Pack truth = USB
 `evergreen_assessment_mcp` only. Estate protect + CISO SoR stand.
@@ -291,6 +300,7 @@ stages.deepen/discover enabled AND binary on PATH/FARM_TOOL_BIN.
 **Still open (Reid-only blockers — no fake greens):** LinkedIn CTA;
 Origin Eval `npm start`; real KEEP-chain files dropped into pack `in/`
 (fixtures are not a client estate); compose runtime on a Docker host
-(this VM stamps **ABSENT**, not a PASS); merge PR #1. Live BYO on this
+(this VM stamps **ABSENT**, not a PASS). Gate/hash already on master
+(`python -m dropbox gate`). Live BYO on this
 box is DEMO stubs. Catalog ≠ 100 running binaries. Overnight loop ended
 2026-09-02 — do not re-arm. Paying-day stays **FAIL**.

@@ -1,6 +1,6 @@
 GREEN
 
-Cycle **89** DESKTOP SCOPE attestation hash (LF-canonical; no skip-hash). `python -m dropbox gate` is the operator command. Cycle **88** two-MCP cross-wire stands. Estate protect + CISO SoR stand. **SAMPLE ≠ client KEEP**, **0/4**. Paying-day **FAIL**. Compose **ABSENT ≠ pass**. Reid-only blockers remain.
+Cycle **90** honesty next_action sync (durable Reid-only blockers; gate/hash already on master). Cycle **89** DESKTOP SCOPE attestation hash (LF-canonical; no skip-hash). `python -m dropbox gate` is the operator command. Cycle **88** two-MCP cross-wire stands. Estate protect + CISO SoR stand. **SAMPLE ≠ client KEEP**, **0/4**. Paying-day **FAIL**. Compose **ABSENT ≠ pass**. Reid-only blockers remain.
 
 Two consecutive green labs after critic ≥ 8 (zero P0/P1). Cycle 5 closed; KEEP improve window GREEN.
 
