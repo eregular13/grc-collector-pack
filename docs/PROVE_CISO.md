@@ -56,10 +56,11 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #5 honesty sync. Covey `E2E_PROVEN` = nmap + rustscan + fping at HEAD
-`1c7fb46`. Pack does not start Covey adapter work. Tests/docs only.
-Reid-only blockers remain (CTA; real KEEP `in/`; Eval `npm start`;
-compose on a Docker host — this VM `compose_lab` absent ≠ PASS).
+CoS #6 honesty sync. Covey `E2E_PROVEN` = nmap + rustscan + fping +
+naabu at HEAD `14a41bd`. Pack does not start Covey adapter work.
+Tests/docs only. Reid-only blockers remain (CTA; real KEEP `in/`;
+Eval `npm start`; compose on a Docker host — this VM `compose_lab`
+absent ≠ PASS).
 
 Lane map: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).

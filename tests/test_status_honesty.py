@@ -8,6 +8,12 @@ from dropbox.scanner_free import compose_lab, docker_available
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Covey HEAD E2E_PROVEN set. STATUS next_action + PLAN this-window must
+# name every tool so the pack cannot lag a later Covey brick again.
+COVEY_E2E_PROVEN = ("nmap", "rustscan", "fping", "naabu")
+COVEY_E2E_HEAD = "14a41bd"
+STALE_E2E_HEAD = "1c7fb46"
+
 
 def _status() -> dict[str, str]:
     out: dict[str, str] = {}
@@ -55,18 +61,21 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #5" in low
+    assert "cos #6" in low
     assert "honesty sync" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
     assert "cos #4" not in low
+    assert "cos #5" not in low
     assert "covey" in low
     assert "e2e_proven" in low
-    assert "nmap" in low and "rustscan" in low and "fping" in low
-    assert "1c7fb46" in low
+    for name in COVEY_E2E_PROVEN:
+        assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
+    assert COVEY_E2E_HEAD in low
+    assert STALE_E2E_HEAD not in low
     assert "no pack" in low and "adapter" in low
-    # Covey already proved fping at HEAD 1c7fb46. Pack STATUS must not
-    # claim the third brick is still held because this VM lacks BYO fping.
+    # Covey already proved naabu at HEAD 14a41bd. Pack STATUS must not
+    # restamp the three-tool set (nmap+rustscan+fping @ 1c7fb46) as current.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -112,10 +121,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-98 notes."""
+    """Current-cycle window / newest delta — not historical cycle-99 notes."""
     for needle in (
         "**This window",
-        "**Delta (cycle 99):",
+        "**Delta (cycle 100):",
     ):
         if needle in text:
             idx = text.index(needle)
@@ -123,7 +132,27 @@ def _live_this_window(text: str) -> str:
     return ""
 
 
-def test_status_and_live_docs_match_cos5_covey_e2e_proven() -> None:
+def _plan_this_window() -> str:
+    text = (ROOT / "PLAN.md").read_text(encoding="utf-8")
+    idx = text.find("## This window")
+    return text[idx:].split("## STOP", 1)[0] if idx >= 0 else ""
+
+
+def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
+    """STATUS next_action and PLAN this-window must name every Covey E2E tool."""
+    action = _status().get("next_action", "")
+    window = _plan_this_window()
+    assert action and window
+    for where, text in (("STATUS next_action", action), ("PLAN this-window", window)):
+        low = text.lower()
+        missing = [name for name in COVEY_E2E_PROVEN if name not in low]
+        assert not missing, f"{where} lags Covey E2E set; missing {missing}"
+        assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
+        assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
+        assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
+
+
+def test_status_and_live_docs_match_cos6_covey_e2e_proven() -> None:
     """Pack next_action / this-window docs follow Covey HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
@@ -134,8 +163,10 @@ def test_status_and_live_docs_match_cos5_covey_e2e_proven() -> None:
     assert status.get("argus_keep_real") == "0/4"
     assert status.get("argus_pack_truth") == "evergreen_assessment_mcp only"
     assert "e2e_proven" in low
-    assert "nmap" in low and "rustscan" in low and "fping" in low
-    assert "1c7fb46" in low
+    for name in COVEY_E2E_PROVEN:
+        assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
+    assert COVEY_E2E_HEAD in low
+    assert STALE_E2E_HEAD not in low
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -157,17 +188,18 @@ def test_status_and_live_docs_match_cos5_covey_e2e_proven() -> None:
             elif path.name == "CRITIC.md":
                 window = "\n".join(text.splitlines()[:8])
             elif path.name == "PLAN.md":
-                idx = text.find("## This window")
-                window = text[idx:].split("## STOP", 1)[0] if idx >= 0 else text
+                window = _plan_this_window() or text
             elif path.name == "PROVE_CISO.md":
-                idx = text.find("CoS #5")
+                idx = text.find("CoS #6")
                 window = text[idx:] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #5 this-window copy"
+        assert window, f"{path} missing CoS #6 this-window copy"
         win_low = window.lower()
-        assert "cos #5" in win_low, f"{path} this-window is not CoS #5"
+        assert "cos #6" in win_low, f"{path} this-window is not CoS #6"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
-        assert "nmap" in win_low and "rustscan" in win_low and "fping" in win_low
-        assert "1c7fb46" in win_low
+        missing = [name for name in COVEY_E2E_PROVEN if name not in win_low]
+        assert not missing, f"{path} this-window lags Covey E2E set; missing {missing}"
+        assert COVEY_E2E_HEAD in win_low, f"{path} this-window missing HEAD {COVEY_E2E_HEAD}"
+        assert STALE_E2E_HEAD not in win_low, f"{path} this-window still stamps stale HEAD"
         assert "held" not in win_low, f"{path} this-window still claims brick held"
         assert "not in flight" not in win_low, f"{path} this-window still claims not in flight"
 
@@ -218,14 +250,18 @@ def test_status_scope_inventory_no_remaining_entrypoint_gap() -> None:
 
 
 def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
-    ok, _reason = docker_available()
+    """STATUS stays absent on this pack; runtime stamp is its own probe (no TOCTOU)."""
     stamp = compose_lab()
-    if not ok:
-        assert stamp.get("status") == "absent"
+    status = _status()
+    assert status.get("compose_lab") == "absent"
+    assert status.get("compose_lab") != "pass"
+    if stamp.get("status") == "absent":
         assert stamp.get("status") != "pass"
         assert stamp.get("profiles_run") == []
         note = str(stamp.get("note") or "")
         assert "not a compose" in note.lower() or "runtime compose not run" in note.lower()
+    else:
+        assert stamp.get("status") in {"pass", "fail"}
 
 
 def test_docs_and_status_cannot_flip_compose_lab_absent_to_pass() -> None:
