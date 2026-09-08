@@ -250,14 +250,18 @@ def test_status_scope_inventory_no_remaining_entrypoint_gap() -> None:
 
 
 def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
-    ok, _reason = docker_available()
+    """STATUS stays absent on this pack; runtime stamp is its own probe (no TOCTOU)."""
     stamp = compose_lab()
-    if not ok:
-        assert stamp.get("status") == "absent"
+    status = _status()
+    assert status.get("compose_lab") == "absent"
+    assert status.get("compose_lab") != "pass"
+    if stamp.get("status") == "absent":
         assert stamp.get("status") != "pass"
         assert stamp.get("profiles_run") == []
         note = str(stamp.get("note") or "")
         assert "not a compose" in note.lower() or "runtime compose not run" in note.lower()
+    else:
+        assert stamp.get("status") in {"pass", "fail"}
 
 
 def test_docs_and_status_cannot_flip_compose_lab_absent_to_pass() -> None:

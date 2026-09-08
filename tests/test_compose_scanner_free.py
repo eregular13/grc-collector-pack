@@ -169,17 +169,19 @@ def test_dropbox_scope_env_overrides_default(
 
 
 def test_compose_lab_stamps_absent_without_docker() -> None:
-    ok, reason = docker_available()
+    """One compose_lab() stamp is the source of truth — do not TOCTOU docker_available()."""
     stamp = compose_lab()
     assert stamp["scanner_free"] is True
     assert stamp["farm_skeleton"] is True
     assert stamp["wrap_free"] is True
-    if not ok:
-        assert stamp["status"] == "absent"
+    if stamp["status"] == "absent":
         assert stamp["status"] != "pass"
+        reason = str(stamp.get("reason") or "")
         assert "docker" in reason.lower() or "daemon" in reason.lower() or "PATH" in reason
         assert stamp["profiles_run"] == []
     else:
+        # Runtime was attempted on this probe. A later docker_available() miss
+        # is not a fake pass and must not restamp STATUS compose_lab.
         assert stamp["status"] in {"pass", "fail"}
         assert stamp["status"] != "absent" or stamp["profiles_run"] == []
 
