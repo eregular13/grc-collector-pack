@@ -55,6 +55,28 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     csf = [CSF_STAMP.get(fn, "csf_PR"), f"csf_{fn}"]
     cpg = [CPG_WEAK_SERVICE]
     key_medium = False
+    source = str(rec.get("source") or "").lower()
+    category = str(rec.get("category") or "").lower()
+    if (
+        source in {"honeypot", "honeypot-sensor"}
+        or category in {"honeypot", "deception-sensor"}
+        or extra.get("honesty") == "deception-sensor"
+        or "deception-sensor" in text
+    ):
+        return {
+            "control_name": "Review deception-sensor telemetry",
+            "recommended_fix": (
+                "Treat this as deception-sensor evidence / an agent-behavior signal. "
+                "A honeypot stage hit is not a full control failure and does not mean "
+                "the network is compromised. Review the trap session; do not open a "
+                "compromise incident from the stage hit alone."
+            ),
+            "cpg": [CPG_EXPOSURE],
+            "csf": [CSF_STAMP["detect"], "csf_detect"],
+            "csf_function": "detect",
+            "include_poam": False,
+            "framework_refs": ",".join(dict.fromkeys([CPG_EXPOSURE, CSF_STAMP["detect"], "csf_detect"])),
+        }
 
     if (
         "admin$" in text

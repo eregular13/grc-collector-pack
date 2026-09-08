@@ -392,6 +392,30 @@ def test_sarif_sql_injection_maps_to_poam() -> None:
     assert "SARIF" in mapped["recommended_fix"]
 
 
+def test_honeypot_stage_hit_is_not_compromise_poam() -> None:
+    rec = make_record(
+        kind="finding",
+        source="honeypot",
+        ref_id="HPOT-ssh-canary-s2",
+        name="Deception-sensor stage-2 hit on ssh-canary-01",
+        description=(
+            "This is deception-sensor evidence / an agent-behavior signal. "
+            "A honeypot stage hit is not a full control failure and does not mean "
+            "the network is compromised."
+        ),
+        severity="medium",
+        category="deception-sensor",
+        assets=["ssh-canary-01"],
+        extra={"honesty": "deception-sensor", "stage": 2, "trap_id": "ssh-canary-01"},
+    )
+    mapped = map_finding(rec)
+    assert mapped["include_poam"] is False
+    assert "deception-sensor" in mapped["control_name"].lower() or "deception-sensor" in mapped["recommended_fix"]
+    assert "not a full control failure" in mapped["recommended_fix"]
+    assert "CVE-" not in mapped["recommended_fix"]
+    assert mapped["csf_function"] == "detect"
+
+
 def test_extra_labels_wizard_safe_no_colon() -> None:
     stamps = extra_labels()
     assert "cpg_2_W" in stamps

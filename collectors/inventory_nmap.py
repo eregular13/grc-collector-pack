@@ -18,6 +18,7 @@ from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.nbtscan import parse_nbtscan
 from shared.netdiscover import parse_netdiscover
+from shared.pack_drop import parse_pack_drop
 from shared.smbmap import parse_smbmap
 from shared.schema import make_record, make_ref
 from shared.unicornscan import parse_unicornscan
@@ -92,6 +93,10 @@ def _emit_host(
             title = f"Open port {portid}/{svc or 'unknown'}"
         if portid == "443":
             continue
+        find_labels = list(LABELS) + [f"port-{portid}"]
+        for lab in extra_labels or []:
+            if lab not in find_labels:
+                find_labels.append(lab)
         records.append(
             make_record(
                 kind="finding",
@@ -102,7 +107,7 @@ def _emit_host(
                 severity=sev,
                 category="exposure",
                 assets=[name],
-                labels=LABELS + [f"port-{portid}"],
+                labels=find_labels,
                 collected_at=now,
                 extra={"port": portid, "service": svc, "ip": addr},
             )
@@ -197,6 +202,17 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
 def parse_file(path: Path) -> list[dict]:
     raw = read_text(path)
     now = iso_now()
+    covey = parse_pack_drop(
+        path,
+        raw,
+        now,
+        source=SOURCE,
+        labels=list(LABELS),
+        host_emitter=_emit_host,
+    )
+    if covey is not None:
+        _stamp_demo(covey, _is_dropbox_demo(path, raw))
+        return covey
     mass = parse_masscan(path, raw)
     if mass is not None:
         records: list[dict] = []
@@ -454,7 +470,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json", ".jsonl"), parse_file)
+    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json", ".jsonl", ".md"), parse_file)
 
 
 if __name__ == "__main__":

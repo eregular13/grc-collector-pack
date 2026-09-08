@@ -11,3 +11,6 @@ Each lab emits:
 Names are unique. Floor after this pack: **≥ 18** evidence rows. That is still thinner than findings; it is enough to show which sensor and family produced the high/critical set.
 
 Import these as CISO evidences or RiskReady `TECHNICAL` / `SENSOR` / `DRAFT` evidence. A human attaches screenshots later if the GRC requires them.
+
+Assessment lane → `in/<lane>/` map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
+Covey pack_drop on the nmap lane: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md).

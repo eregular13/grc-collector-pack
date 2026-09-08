@@ -1,0 +1,8 @@
+{
+  "schema": "honeypot.meta.v1",
+  "source": "fleet-sensor",
+  "sensor": "honeypot",
+  "generated_at": "2026-09-08T00:02:00Z",
+  "demo": true,
+  "note": "File-drop fixture. Not a live trap and not a compromise."
+}

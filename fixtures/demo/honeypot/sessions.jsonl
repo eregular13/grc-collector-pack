@@ -1,0 +1,1 @@
+{"session_id":"sess-canary-001","trap_id":"ssh-canary-01","stage":2,"session_summary":"Agent touched the SSH canary, then issued whoami and a passwd read. Deception-sensor evidence only.","conceal_detected":true,"level2_emitted":true,"ts":"2026-09-08T00:01:12Z","canary":"ssh-22"}

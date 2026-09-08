@@ -1,0 +1,27 @@
+# Assessment lane → pack in/<lane>/.
+# Names align with evergreen-covey docs/evidence_matrix.yaml (sibling; do not block).
+version: 1
+sor: ciso-assistant
+wrap: stay-out
+lanes:
+  - assessment: IdP
+    pack_in: identity
+    notes: BloodHound / PingCastle / HardeningKitty file_drop
+  - assessment: MDM
+    pack_in: wazuh
+    notes: Fleet / osquery / Wazuh coverage file_drop
+  - assessment: cloud
+    pack_in: cloud
+    notes: Prowler / ScoutSuite / ASFF file_drop
+  - assessment: DNS/email
+    pack_in: easm
+    notes: Amass / Subfinder / httpx / WhatWeb file_drop
+  - assessment: Covey
+    pack_in: nmap
+    notes: pack_drop assets.jsonl + findings.jsonl + meta.json + evidence/
+  - assessment: VM
+    pack_in: vuln
+    notes: OpenVAS-class / Nuclei / Trivy / Nessus file_drop only
+  - assessment: honeypot
+    pack_in: honeypot
+    notes: fleet-sensor honeypot_event.v1; deception-sensor evidence, not compromise
