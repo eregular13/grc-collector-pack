@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 162
+
+R11 refine: `python -m dropbox.product_demo` stdout JSON includes `mapped_classes` (POA&M weakness names, skip UNMAPPED). `--help` still does not hit the mock sink (`received` delta 0). No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 161
 
 R10 refine: UNMAPPED audit of folded estate classes (Git metadata, directory listing, insecure cookie, permissive CORS, `.env`, plus live Cleartext HTTP/HSTS/headers/banner/Untrusted TLS). Each has CPG+CSF stubs; unknown HTTP widget stays UNMAPPED with `unmapped_reason`. HTTP classes do not map to SMBv1 / TCP 445. Live `out-estate` POA&M has no UNMAPPED/SMBv1. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

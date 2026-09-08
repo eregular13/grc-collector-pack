@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -69,6 +73,23 @@ def test_product_demo_estate_down(monkeypatch, tmp_path) -> None:
     assert demo.main(["run"]) == 2
 
 
+def test_mapped_classes_from_poam(tmp_path) -> None:
+    from dropbox.product_demo import mapped_classes_from_poam
+
+    path = tmp_path / "poam.csv"
+    path.write_text(
+        "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
+        "Cleartext HTTP,127.0.0.1,medium,CPG 2.W;PR.DS-02,Enforce TLS,,,open\n"
+        "Git metadata exposed,127.0.0.1,medium,CPG 2.T;PR.AA-05;PR.DS-01,Do not publish .git,,,open\n"
+        "Lab widget,127.0.0.1,low,UNMAPPED,Triage,,,open\n"
+        "Cleartext HTTP,127.0.0.1,medium,CPG 2.W;PR.DS-02,Enforce TLS,,,open\n",
+        encoding="utf-8",
+    )
+    names = mapped_classes_from_poam(path)
+    assert names == ["Cleartext HTTP", "Git metadata exposed"]
+    assert mapped_classes_from_poam(tmp_path / "missing.csv") == []
+
+
 def test_product_demo_help_does_not_hit_sink(monkeypatch) -> None:
     import dropbox.product_demo as demo
 
@@ -81,6 +102,35 @@ def test_product_demo_help_does_not_hit_sink(monkeypatch) -> None:
         demo.main(["--help"])
     assert exc.value.code == 0
     assert called == []
+
+
+def _sink_received() -> int | None:
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:18080/health", timeout=2) as resp:
+            blob = json.loads(resp.read().decode("utf-8"))
+        return int(blob.get("received") or 0)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+@pytest.mark.skipif(_sink_received() is None, reason="mock_sink :18080 down")
+def test_product_demo_help_sink_delta_zero() -> None:
+    """R11: --help does not increment mock_sink received. No POST /api/risks."""
+    before = _sink_received()
+    assert before is not None
+    proc = subprocess.run(
+        [sys.executable, "-m", "dropbox.product_demo", "--help"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+    )
+    assert proc.returncode == 0
+    assert "usage:" in (proc.stdout or "").lower() or "Isolated Docker estate demo" in (proc.stdout or "")
+    after = _sink_received()
+    assert after == before
 
 
 def test_product_demo_dry_run_is_plan(monkeypatch) -> None:

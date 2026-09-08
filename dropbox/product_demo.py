@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import shutil
@@ -151,6 +152,23 @@ def _export_estate_out(orch: Path) -> Path:
     return ESTATE_OUT
 
 
+def mapped_classes_from_poam(path: Path) -> list[str]:
+    """POA&M weakness names that are mapped (not UNMAPPED). Order preserved."""
+    if not path.is_file():
+        return []
+    names: list[str] = []
+    seen: set[str] = set()
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            name = (row.get("weakness") or "").strip()
+            refs = row.get("control_refs") or ""
+            if not name or name in seen or "UNMAPPED" in refs:
+                continue
+            seen.add(name)
+            names.append(name)
+    return names
+
+
 def plan_only() -> dict[str, Any]:
     """--dry-run / plan: no sink POST, no zip, no orchestrator run."""
     _scope_ok()
@@ -194,6 +212,7 @@ def run_demo() -> dict[str, Any]:
     blocked = (ge.get("hitl") or {}).get("blocked_by") if isinstance(ge.get("hitl"), dict) else None
 
     estate_out = _export_estate_out(dest)
+    classes = mapped_classes_from_poam(estate_out / "poam" / "poam.csv")
     posted: list[str] = []
     manifest = new_engagement(
         SLUG,
@@ -222,6 +241,7 @@ def run_demo() -> dict[str, Any]:
         f"web: {WEB}",
         f"api: {API}",
         f"pack_mapped: {mapped}",
+        f"mapped_classes: {'; '.join(classes)}",
         f"poam_rows: {poam_rows}",
         f"ingest_label: {ingest.get('label')}",
         f"client_facing_ready: {facing}",
@@ -243,6 +263,7 @@ def run_demo() -> dict[str, Any]:
         "ok": True,
         "slug": SLUG,
         "pack_mapped": mapped,
+        "mapped_classes": classes,
         "poam_rows": poam_rows,
         "client_facing_ready": facing,
         "blocked_by": blocked,

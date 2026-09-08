@@ -2,7 +2,7 @@
   "slug": "docker-estate-product",
   "client": "Evergreen Docker Estate LLC",
   "scope": "C:\\GRC Collector\\grc-collector-pack\\dropbox\\SCOPE.docker-estate.yaml",
-  "written_at": "2026-09-08T11:28:54Z",
+  "written_at": "2026-09-08T14:29:11Z",
   "evidence_label": "lab-sim",
   "client_facing_ready": false,
   "blocked_by": "lab_sim_not_client_estate",

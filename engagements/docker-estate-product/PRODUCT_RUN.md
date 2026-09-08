@@ -13,6 +13,7 @@ python -m dropbox.product_demo
 web: http://127.0.0.1:18081/
 api: http://127.0.0.1:18082/
 pack_mapped: 10
+mapped_classes: Cleartext HTTP; Missing HSTS; Missing web security headers; Server banner disclosure; Git metadata exposed; Directory listing enabled; Environment file exposed; Insecure session cookie; Permissive CORS policy; Untrusted TLS certificate
 poam_rows: 10
 ingest_label: live-byo
 client_facing_ready: False
