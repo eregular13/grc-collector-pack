@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 95):** Beelzebub honeypot pack_drop on existing `in/honeypot/` (PR #7 lane), rebased onto IdP/MDM #9 + DNS/email #8/#10. Session/cmd/login only; `stage=null` (Palisade stages stay Palisade-only). Not a 12th compose service. Catalog unchanged (111 / 32 / 30 / 81). Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Reid-only blockers stay (CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker ABSENT ≠ pass).
+
 **Delta (cycle 94):** IdP + MDM file-drop intake rebased on CoS prove-bar #10 + DNS/email #8 + honeypot #7. saas-idp parses Entra/Okta/Google user inventory; host-wazuh parses Intune/Jamf (`in/mdm/` alias). Assessment findings (MFA gap, standing GA, stale guest, encryption %, missing EDR, MDM unenrolled). DESKTOP prove bar: file_drop fixture → `out/canonical` (SAMPLE ≠ client). No live Graph/osquery. Catalog unchanged (111 / 32 / 30 / 81). Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT.
 
 **Delta (cycle 93):** CoS city review #1 prove bar for the DNS/email Seen lane. Fixture file_drop → `collectors/dns_email.py` → `out/canonical/dns-email.jsonl`. SAMPLE/DEMO ≠ client. No RiskReady POST. Paying-day FAIL. Catalog unchanged (111 / 32 / 30 / 81). Compose 11 services. Wrap stays dead.

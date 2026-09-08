@@ -2,17 +2,25 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 94):** IdP + MDM file-drop intake rebased
+**This window (cycle 95):** Beelzebub honeypot pack_drop on
+existing `in/honeypot/` (PR #7 lane), rebased onto IdP/MDM #9
++ DNS/email #8/#10. Session/cmd/login only; `stage=null`
+(Palisade-only stages). Not a 12th compose service. Catalog
+unchanged (111 / 32 wired / 30 invoke / 81 file_drop). Cycle 94
+IdP/MDM stands. Cycle 93 DNS/email CoS prove bar stands. Cycle
+92 DNS/email Seen stands. Cycle 91 honeypot + Covey pack_drop
+stands. Cycle 90 honesty next_action stands. Cycle 74 durable
+blockers stay locked. Wrap stays **dead**. Paying-day **FAIL**.
+Compose **ABSENT**.
+
+**Cycle 94 (stands):** IdP + MDM file-drop intake rebased
 on CoS prove-bar #10 + DNS/email #8 + honeypot #7. saas-idp
 parses Entra/Okta/Google user inventory; host-wazuh parses
 Intune/Jamf (`in/mdm/` alias, not a new catalog sensor).
 Assessment findings only. No live Graph/osquery. DESKTOP prove
 bar: file_drop fixture → detect → `out/canonical` (SAMPLE ≠
 client). Catalog unchanged (111 / 32 wired / 30 invoke /
-81 file_drop). Cycle 93 DNS/email CoS prove bar stands. Cycle 92
-DNS/email Seen stands. Cycle 91 honeypot + Covey pack_drop
-stands. Cycle 90 honesty next_action stands. Cycle 74 durable
-blockers stay locked. Wrap stays **dead**. Paying-day **FAIL**.
+81 file_drop). Wrap stays **dead**. Paying-day **FAIL**.
 Compose **ABSENT**.
 
 **Cycle 93 (stands):** CoS prove bar — fixture file_drop
