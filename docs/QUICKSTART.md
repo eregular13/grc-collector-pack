@@ -16,6 +16,8 @@ docker compose -f docker-compose.estate.yml up -d
 
 `--help` prints usage and exits (no HTTP). Default `run` needs estate-web on `127.0.0.1:18081` or exits 2 `estate_down`. It does **not** fall back to Litware CSVs.
 
+If `grc-estate` is already answering `127.0.0.1:18081`, skip `docker compose -f docker-compose.estate.yml up -d` from a second copy of this pack (project name `grc-estate` would remount the running estate). `--help` does not need Docker. Never compose c11. Never scan `192.168.10.0/24`.
+
 Zip lands under `engagements/`. Import path: [IMPORT_CISO.md](IMPORT_CISO.md). HITL: [HITL.md](HITL.md). Estate net: [ESTATE.md](ESTATE.md). Future client checklist: [CLIENT_ASSESS.md](CLIENT_ASSESS.md). Safety: [SECURITY.md](../SECURITY.md), [NOTICE](../NOTICE).
 
 Unix/macOS: `source .venv/bin/activate` then the same `python -m` commands. `run_lab.ps1` is the Windows fixture lab (pytest + collectors); it must not wipe `engagements/docker-estate-product`.

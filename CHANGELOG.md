@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 169
+
+R18 refine: QUICKSTART literal pass from copy folder `_refine/quick` (venv → pip → pytest → `product_demo --help`). Skip `compose up` from a second copy when `grc-estate` already answers `:18081` (same project name would remount). `--help` does not need Docker and does not hit the sink. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 168
 
 R17 refine: WRAP_DEAD still fail-closed (`push_riskready.ps1`/`.sh` exit 2 when RISKREADY_PUSH=1, no HTTP). Mock sink GET+POST `/api/risks` 403; forbidden POSTs no longer increment `received`. In-process unit test does not hit live `:18080`. `product_demo` still never POSTs `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. No I-069.

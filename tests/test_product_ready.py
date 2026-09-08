@@ -26,6 +26,10 @@ def test_quickstart_and_estate_docs() -> None:
     assert ".venv\\Scripts\\python.exe" in qs or '.venv/Scripts/python.exe' in qs
     assert "docker compose -f docker-compose.estate.yml up -d" in qs
     assert r"C:\Users\R" not in qs
+    assert "skip `docker compose -f docker-compose.estate.yml up -d`" in qs
+    assert "192.168.10.0/24" in qs
+    assert "Never compose c11" in qs
+    assert r"C:\GRC Collector\grc-collector-pack" not in qs
     estate = (ROOT / "docs" / "ESTATE.md").read_text(encoding="utf-8")
     assert "172.28.90.0/24" in estate
     assert "127.0.0.1:18081" in estate
