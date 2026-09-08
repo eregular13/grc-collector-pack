@@ -87,6 +87,26 @@ def test_product_demo_estate_down(monkeypatch, tmp_path) -> None:
     assert demo.main(["run"]) == 2
 
 
+def test_product_demo_estate_down_does_not_package_litware(monkeypatch, capsys) -> None:
+    """R15: estate-down exits 2; no orchestrator, no Litware kit, no sink POST."""
+    import dropbox.product_demo as demo
+
+    called: list[str] = []
+    monkeypatch.setattr(demo, "estate_up", lambda: False)
+    monkeypatch.setattr(demo, "new_engagement", lambda *_a, **_k: called.append("eng") or {})
+    monkeypatch.setattr(demo, "package_slug", lambda *_a, **_k: called.append("zip"))
+    monkeypatch.setattr(demo, "_post_importer", lambda _p: called.append("post") or 200)
+    monkeypatch.setattr(demo, "_write_hitl", lambda _d: called.append("hitl") or {})
+    monkeypatch.setattr(demo, "run", lambda *_a, **_k: called.append("run") or {})
+    monkeypatch.setattr(demo, "_export_estate_out", lambda _p: called.append("export") or Path("x"))
+    assert demo.main(["run"]) == 2
+    out = capsys.readouterr().out
+    assert "estate_down" in out
+    assert called == []
+    assert "132" not in out
+    assert "Litware" not in out
+
+
 def test_mapped_classes_from_poam(tmp_path) -> None:
     from dropbox.product_demo import mapped_classes_from_poam
 
