@@ -2,16 +2,26 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 95):** Beelzebub honeypot pack_drop on
+**This window (cycle 96):** CISO Assistant export prove,
+rebased onto Beelzebub #11. Fixture Covey pack_drop +
+Palisade/Beelzebub honeypot → existing `dropbox ciso` SoR →
+`out/ciso-assistant`. SAMPLE/DEMO ≠ client. Paying-day stays
+**FAIL** (not a PASS stamp). After this: Hephaestus pauses
+brick-adding (tests/docs only). Catalog unchanged (111 / 32 wired /
+30 invoke / 81 file_drop). Cycle 95 Beelzebub stands. Cycle 94
+IdP/MDM stands. Cycle 93 DNS/email CoS prove bar stands. Cycle
+90 honesty next_action stands. Cycle 74 durable blockers stay
+locked. Wrap stays **dead**. Compose **ABSENT**. Reid-only
+blockers stay (CTA; Eval `npm start`; real KEEP `in/` drop;
+compose-on-Docker **ABSENT ≠ pass**). Gate/hash already on master
+(`python -m dropbox gate`).
+
+**Cycle 95 (stands):** Beelzebub honeypot pack_drop on
 existing `in/honeypot/` (PR #7 lane), rebased onto IdP/MDM #9
 + DNS/email #8/#10. Session/cmd/login only; `stage=null`
 (Palisade-only stages). Not a 12th compose service. Catalog
-unchanged (111 / 32 wired / 30 invoke / 81 file_drop). Cycle 94
-IdP/MDM stands. Cycle 93 DNS/email CoS prove bar stands. Cycle
-92 DNS/email Seen stands. Cycle 91 honeypot + Covey pack_drop
-stands. Cycle 90 honesty next_action stands. Cycle 74 durable
-blockers stay locked. Wrap stays **dead**. Paying-day **FAIL**.
-Compose **ABSENT**.
+unchanged (111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
+**dead**. Paying-day **FAIL**. Compose **ABSENT**.
 
 **Cycle 94 (stands):** IdP + MDM file-drop intake rebased
 on CoS prove-bar #10 + DNS/email #8 + honeypot #7. saas-idp

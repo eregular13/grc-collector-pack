@@ -53,6 +53,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 87 done: pack in/ estate protect (schedule/ingest/ciso read-only unless `--write-pack-in`). Catalog unchanged.
 - Cycle 88 done: Hephaestus two-MCP cross-wire fail-closed (`check_scope`/`license_guard` refused on conductor). Catalog unchanged.
 - Cycle 89 done: DESKTOP SCOPE attestation hash (LF-canonical + `attest --write`; no skip-hash). Catalog unchanged.
+- Cycle 96 done: CISO Assistant export prove rebased onto Beelzebub #11 (fixture Covey pack_drop + Palisade/Beelzebub honeypot → `out/ciso-assistant`). SAMPLE ≠ client. Paying-day FAIL. Pause brick-adding after this. Catalog unchanged.
 - Cycle 95 done: Beelzebub honeypot pack_drop on `in/honeypot/` (stage=null; Palisade-only stages), rebased onto IdP/MDM #9 + DNS/email #8/#10. Not a 12th compose service. Catalog unchanged.
 - Cycle 94 done: IdP + MDM file-drop intake rebased on CoS prove-bar #10 + DNS/email #8 + honeypot #7 (saas-idp Entra/Okta/Google users; host-wazuh Intune/Jamf; `in/mdm/` alias). Catalog unchanged.
 - Cycle 91 done: honeypot file_drop lane + Covey pack_drop on `in/nmap/` + evidence matrix. Not an 11th compose service. Catalog unchanged.
