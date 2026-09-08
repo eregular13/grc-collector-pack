@@ -20,6 +20,6 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "ocsf": 105,
   "canonical": 210,
   "demo": true,
-  "generated_at": "2026-09-08T13:25:44Z"
+  "generated_at": "2026-09-08T15:35:20Z"
 }
 ```
