@@ -10,9 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Covey HEAD E2E_PROVEN set. STATUS next_action + PLAN this-window must
 # name every tool so the pack cannot lag a later Covey brick again.
-COVEY_E2E_PROVEN = ("nmap", "rustscan", "fping", "naabu", "nping", "httpx", "sslscan")
-COVEY_E2E_HEAD = "e29c4e4"
-STALE_E2E_HEAD = "a4b84d7"
+COVEY_E2E_PROVEN = (
+    "nmap",
+    "rustscan",
+    "fping",
+    "naabu",
+    "nping",
+    "httpx",
+    "sslscan",
+    "tlsx",
+)
+COVEY_E2E_HEAD = "1f1a4c7"
+STALE_E2E_HEAD = "e29c4e4"
 
 
 def _status() -> dict[str, str]:
@@ -61,7 +70,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #9" in low
+    assert "cos #10" in low
     assert "honesty sync" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
@@ -70,16 +79,17 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #6" not in low
     assert "cos #7" not in low
     assert "cos #8" not in low
+    assert "cos #9" not in low
     assert "covey" in low
     assert "e2e_proven" in low
-    assert len(COVEY_E2E_PROVEN) == 7
+    assert len(COVEY_E2E_PROVEN) == 8
     for name in COVEY_E2E_PROVEN:
         assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
     assert COVEY_E2E_HEAD in low
     assert STALE_E2E_HEAD not in low
     assert "no pack" in low and "adapter" in low
-    # Covey already proved sslscan at HEAD e29c4e4. Pack STATUS must not
-    # restamp the six-tool set (nmap+rustscan+fping+naabu+nping+httpx @ a4b84d7) as current.
+    # Covey already proved tlsx at HEAD 1f1a4c7. Pack STATUS must not
+    # restamp the seven-tool set (… + sslscan @ e29c4e4) as current.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -125,10 +135,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-102 notes."""
+    """Current-cycle window / newest delta — not historical cycle-103 notes."""
     for needle in (
         "**This window",
-        "**Delta (cycle 103):",
+        "**Delta (cycle 104):",
     ):
         if needle in text:
             idx = text.index(needle)
@@ -149,7 +159,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
     assert action and window
     for where, text in (("STATUS next_action", action), ("PLAN this-window", window)):
         low = text.lower()
-        assert len(COVEY_E2E_PROVEN) == 7, f"{where} honesty lock is not the seven-name set"
+        assert len(COVEY_E2E_PROVEN) == 8, f"{where} honesty lock is not the eight-name set"
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
@@ -157,7 +167,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
 
 
-def test_status_and_live_docs_match_cos9_covey_e2e_proven() -> None:
+def test_status_and_live_docs_match_cos10_covey_e2e_proven() -> None:
     """Pack next_action / this-window docs follow Covey HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
@@ -195,11 +205,11 @@ def test_status_and_live_docs_match_cos9_covey_e2e_proven() -> None:
             elif path.name == "PLAN.md":
                 window = _plan_this_window() or text
             elif path.name == "PROVE_CISO.md":
-                idx = text.find("CoS #9")
+                idx = text.find("CoS #10")
                 window = text[idx:] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #9 this-window copy"
+        assert window, f"{path} missing CoS #10 this-window copy"
         win_low = window.lower()
-        assert "cos #9" in win_low, f"{path} this-window is not CoS #9"
+        assert "cos #10" in win_low, f"{path} this-window is not CoS #10"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         missing = [name for name in COVEY_E2E_PROVEN if name not in win_low]
         assert not missing, f"{path} this-window lags Covey E2E set; missing {missing}"
