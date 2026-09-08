@@ -31,6 +31,8 @@ See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs
 | saas-idp | ScubaGear / Graph / Okta / Maester (file-drop; no Graph/Okta API) | SaaS posture |
 | grc-loader | `out/canonical/*.jsonl` | all GRC files |
 
+Optional file_drop stub (not an 11th container): `in/honeypot/` via `python collectors/honeypot.py`. Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md).
+
 One `python:3.12-slim` image. `grc-loader` waits on the nine collectors (`condition: service_completed_successfully`).
 
 ```bash

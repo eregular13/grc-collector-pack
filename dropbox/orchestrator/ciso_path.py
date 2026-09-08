@@ -30,6 +30,7 @@ SENSOR_COLLECTORS = {
     "wazuh": "host_wazuh.py",
     "identity": "identity_ad.py",
     "saas": "saas_idp.py",
+    "honeypot": "honeypot.py",
 }
 CISO_CSVS = (
     "assets.csv",

@@ -1,0 +1,8 @@
+{
+  "schema": "covey.pack_drop.v1",
+  "source": "evergreen-covey",
+  "adapter": "nmap",
+  "lane": "nmap",
+  "generated_at": "2026-09-08T00:00:00Z",
+  "demo": true
+}

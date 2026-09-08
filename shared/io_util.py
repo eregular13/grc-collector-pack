@@ -22,6 +22,7 @@ SENSOR_IN = {
     "k8s-kubescape": "k8s",
     "code-secrets": "code",
     "saas-idp": "saas",
+    "honeypot": "honeypot",
 }
 
 _SECRET_RES = [

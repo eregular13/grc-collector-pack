@@ -75,6 +75,7 @@ PREFIX = {
     "k8s-kubescape": "K8S",
     "code-secrets": "CODE",
     "saas-idp": "SAAS",
+    "honeypot": "HPOT",
 }
 
 
