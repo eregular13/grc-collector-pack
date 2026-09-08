@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -194,6 +195,73 @@ def test_load_inputs_falls_back_to_fixtures(tmp_path: Path, monkeypatch: pytest.
     names = {p.name for p in files}
     assert "dns-txt.json" in names
     assert "crtsh.json" in names
+
+
+def _status_text() -> str:
+    return (ROOT / "STATUS.md").read_text(encoding="utf-8")
+
+
+def test_prove_bar_fixture_file_drop_writes_canonical(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CoS prove bar: fixture file_drop → collector → out/canonical. SAMPLE ≠ client."""
+    in_root = tmp_path / "in"
+    lane = in_root / "dns_email"
+    lane.mkdir(parents=True)
+    for src in sorted(DEMO.iterdir()):
+        if src.is_file():
+            (lane / src.name).write_bytes(src.read_bytes())
+    out_root = tmp_path / "out"
+    out_root.mkdir()
+    monkeypatch.setenv("IN_DIR", str(in_root))
+    monkeypatch.setenv("OUT_DIR", str(out_root))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    monkeypatch.setenv("CISO_PUSH", "0")
+    monkeypatch.setenv("RISKREADY_PUSH", "0")
+    monkeypatch.setenv("GRC_LIVE_SCAN", "0")
+    monkeypatch.setenv("DRY_RUN", "1")
+    dns_email.main()
+    dest = out_root / "canonical" / "dns-email.jsonl"
+    assert dest.is_file()
+    rows = [json.loads(line) for line in dest.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert any(r["kind"] == "asset" for r in rows)
+    assert any(r["kind"] == "finding" for r in rows)
+    assert any(r["kind"] == "evidence" for r in rows)
+    assert any("DMARC missing" in r["name"] for r in rows if r["kind"] == "finding")
+    blob = dest.read_text(encoding="utf-8")
+    assert "not a breach" in blob.lower()
+    assert "/api/risks" not in blob
+    collector = (ROOT / "collectors" / "dns_email.py").read_text(encoding="utf-8")
+    assert "urllib" not in collector
+    assert "requests" not in collector
+    assert "/api/risks" not in collector
+    status = _status_text()
+    assert "paying_day: FAIL" in status
+    assert "DEMO — not a client estate" in status
+    assert "wrap: review-only" in status
+    assert "argus_keep: SAMPLE/fixture KEEP ≠ client KEEP" in status
+
+
+def test_prove_bar_empty_in_stamps_demo_not_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty in/dns_email/ falls back to fixtures and stamps demo — not a client estate."""
+    in_root = tmp_path / "in"
+    (in_root / "dns_email").mkdir(parents=True)
+    out_root = tmp_path / "out"
+    out_root.mkdir()
+    monkeypatch.setenv("IN_DIR", str(in_root))
+    monkeypatch.setenv("OUT_DIR", str(out_root))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    dns_email.main()
+    dest = out_root / "canonical" / "dns-email.jsonl"
+    rows = [json.loads(line) for line in dest.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert rows
+    assert all("demo" in (r.get("labels") or []) for r in rows)
+    assert all("client" not in [str(x).lower() for x in (r.get("labels") or [])] for r in rows)
+    status = _status_text()
+    assert "paying_day: FAIL" in status
+    assert "DEMO — not a client estate" in status
 
 
 def test_control_map_dmarc_record() -> None:
