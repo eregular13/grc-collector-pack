@@ -1292,6 +1292,52 @@ def test_expired_tls_parser_and_map() -> None:
     assert self_signed and self_signed[0]["name"] == "Untrusted TLS certificate"
 
 
+def test_r10_unmapped_audit_folded_classes() -> None:
+    """R10: every folded/live estate class has CPG+CSF. Unknown stays UNMAPPED with a reason. No SMBv1 from HTTP."""
+    from dropbox.orchestrator.poam import map_finding
+
+    classes = (
+        "Cleartext HTTP",
+        "Missing HSTS",
+        "Missing X-Frame-Options",
+        "Missing CSP",
+        "Server banner disclosure",
+        "Git metadata exposed",
+        "Directory listing enabled",
+        "Insecure session cookie",
+        "Permissive CORS policy",
+        "Environment file exposed",
+        "Untrusted TLS certificate",
+    )
+    for name in classes:
+        rec = map_finding(name, "127.0.0.1", "medium")
+        assert rec["mapped"] is True, name
+        assert rec["cpg"], name
+        assert rec["csf"], name
+        assert "UNMAPPED" not in rec["control_refs"], name
+        assert rec.get("unmapped_reason") is None
+        assert "smb" not in rec["weakness"].lower(), name
+        assert "445" not in rec["recommended_action"], name
+        assert "eternalblue" not in rec["recommended_action"].lower(), name
+    unknown = map_finding("Lab-only HTTP widget (not a catalog class)", "127.0.0.1", "low")
+    assert unknown["mapped"] is False
+    assert unknown["control_refs"] == ["UNMAPPED"]
+    assert unknown.get("unmapped_reason") == "no stub rule for this finding text"
+    assert unknown["cpg"] == []
+    assert unknown["csf"] == []
+    poam = ROOT / "engagements" / "docker-estate-product" / "out" / "poam" / "poam.csv"
+    live = ROOT / "out-estate" / "poam" / "poam.csv"
+    for path in (poam, live):
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        assert "UNMAPPED" not in text
+        assert "SMBv1" not in text
+        assert "Git metadata exposed" in text
+        assert "Directory listing enabled" in text
+        assert "Environment file exposed" in text
+
+
 def test_r09_skip_expired_mismatch_on_main_18443() -> None:
     """R09 skip: one :18443 cert. Host schannel reports UNTRUSTED_ROOT before expiry/CN mismatch.
     24h labs needed alpine curl --cacert on a second project. Not invented from UNTRUSTED_ROOT."""
