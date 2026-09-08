@@ -1,6 +1,6 @@
-cycle: 98
+cycle: 99
 phase: DONE
-item: COS4-REFINE
+item: COS5-HONESTY
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 405
+pytest: 406
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -43,4 +43,4 @@ argus_invoke: signed SCOPE + HITL kill before PATH/live
 argus_file_drop: default
 argus_wrap: stay-out forever
 argus_hexstrike: pattern-only
-next_action: CoS #4 refine-only — third live Covey brick held (fping preferred; BYO fping missing on this VM, not in flight). Reid-only blockers remain — CTA; real KEEP in/ drop; Eval npm start; Docker compose on a real host (this VM compose_lab absent ≠ PASS, not a PASS). Gate/hash already on master (`python -m dropbox gate`). paying_day FAIL. DEMO ≠ client. SAMPLE KEEP ≠ client. No fake greens.
+next_action: CoS #5 honesty sync — Covey E2E_PROVEN = nmap + rustscan + fping at HEAD 1c7fb46. No pack Covey adapter work. Reid-only blockers remain — CTA; real KEEP in/ drop; Eval npm start; Docker compose on a real host (this VM compose_lab absent ≠ PASS, not a PASS). Gate/hash already on master (`python -m dropbox gate`). paying_day FAIL. DEMO ≠ client. SAMPLE KEEP ≠ client. No fake greens.

@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 99 — CoS #5 honesty sync; Covey E2E_PROVEN (2026-09-08)
+
+STATUS `next_action` no longer restamps CoS #4 / third live Covey brick unfinished. Current truth: CoS #5 honesty sync — Covey `E2E_PROVEN` = nmap + rustscan + fping at HEAD `1c7fb46`. Pack does not start Covey adapter work. Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Pytest lock: STATUS/docs cannot restamp fping as unproven, and `compose_lab` absent cannot flip to pass. No new collectors. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**. DEMO ≠ client. Compose ABSENT ≠ pass.
+
+```json
+{"pytest": 406, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 98 — CoS #4 refine-only; third Covey brick held (2026-09-08)
 
 STATUS `next_action` no longer says “after CoS #2/#3”. Current truth: CoS #4 refine-only — third live Covey brick **held** (fping preferred; BYO fping missing on this VM, not in flight). Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Pytest lock: STATUS/docs cannot flip `compose_lab` absent → pass. No new collectors. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**. DEMO ≠ client. Compose ABSENT ≠ pass.

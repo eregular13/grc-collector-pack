@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from dropbox.scanner_free import compose_lab, docker_available
@@ -56,20 +55,21 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "refine-only" in low
+    assert "cos #5" in low
+    assert "honesty sync" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
-    assert "cos #4" in low
+    assert "cos #4" not in low
     assert "covey" in low
-    assert "fping" in low
-    assert "byo" in low
-    # Honest: fping preferred, but held when the BYO binary is missing.
-    if shutil.which("fping") is None:
-        assert "held" in low
-        assert "missing" in low
-        assert "not in flight" in low
-    else:
-        assert "in flight" in low or "held" in low
+    assert "e2e_proven" in low
+    assert "nmap" in low and "rustscan" in low and "fping" in low
+    assert "1c7fb46" in low
+    assert "no pack" in low and "adapter" in low
+    # Covey already proved fping at HEAD 1c7fb46. Pack STATUS must not
+    # claim the third brick is still held because this VM lacks BYO fping.
+    assert "held" not in low
+    assert "missing" not in low
+    assert "not in flight" not in low
     assert "reid-only" in low
     assert "cta" in low
     assert "eval" in low and "npm start" in low
@@ -109,6 +109,67 @@ def test_status_next_action_is_reid_only_blockers() -> None:
         assert "merge pr #" not in live_low
         assert "gate" in live_low or "hash" in live_low
         assert "already" in live_low or "on master" in live_low
+
+
+def _live_this_window(text: str) -> str:
+    """Current-cycle window / newest delta — not historical cycle-98 notes."""
+    for needle in (
+        "**This window",
+        "**Delta (cycle 99):",
+    ):
+        if needle in text:
+            idx = text.index(needle)
+            return text[idx:].split("\n\n", 1)[0]
+    return ""
+
+
+def test_status_and_live_docs_match_cos5_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow Covey HEAD E2E_PROVEN."""
+    status = _status()
+    action = status.get("next_action", "")
+    low = action.lower()
+    assert status.get("paying_day") == "FAIL"
+    assert status.get("compose_lab") == "absent"
+    assert status.get("demo") == "true"
+    assert status.get("argus_keep_real") == "0/4"
+    assert status.get("argus_pack_truth") == "evergreen_assessment_mcp only"
+    assert "e2e_proven" in low
+    assert "nmap" in low and "rustscan" in low and "fping" in low
+    assert "1c7fb46" in low
+    assert "held" not in low
+    assert "missing" not in low
+    assert "not in flight" not in low
+    live = (
+        ROOT / "CRITIC.md",
+        ROOT / "DONE.md",
+        ROOT / "PLAN.md",
+        ROOT / "product-lab" / "EXECUTIVE.md",
+        ROOT / "dropbox" / "EXECUTIVE.md",
+        ROOT / "docs" / "PROVE_CISO.md",
+    )
+    for path in live:
+        text = path.read_text(encoding="utf-8")
+        window = _live_this_window(text)
+        if not window:
+            # CRITIC / PLAN / DONE / PROVE_CISO current-truth is the lead copy.
+            if path.name == "DONE.md":
+                window = "\n".join(text.splitlines()[1:8])
+            elif path.name == "CRITIC.md":
+                window = "\n".join(text.splitlines()[:8])
+            elif path.name == "PLAN.md":
+                idx = text.find("## This window")
+                window = text[idx:].split("## STOP", 1)[0] if idx >= 0 else text
+            elif path.name == "PROVE_CISO.md":
+                idx = text.find("CoS #5")
+                window = text[idx:] if idx >= 0 else ""
+        assert window, f"{path} missing CoS #5 this-window copy"
+        win_low = window.lower()
+        assert "cos #5" in win_low, f"{path} this-window is not CoS #5"
+        assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
+        assert "nmap" in win_low and "rustscan" in win_low and "fping" in win_low
+        assert "1c7fb46" in win_low
+        assert "held" not in win_low, f"{path} this-window still claims brick held"
+        assert "not in flight" not in win_low, f"{path} this-window still claims not in flight"
 
 
 def test_argus_fail_closed_bar_is_stamped() -> None:
