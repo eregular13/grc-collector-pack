@@ -13,7 +13,11 @@ from dropbox.orchestrator.scope import Scope
 
 MAX_DEEPEN_TARGETS = 5
 MAX_STDOUT_BYTES = 200_000
+MAX_LEAK_GET_BYTES = 16384
 _HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$")
+_FORBIDDEN_LEAK_NETS = (ipaddress.ip_network("192.168.10.0/24"),)
+# Same-origin leak GET after HEAD on site root. R04: git only. Not a path spray.
+LEAK_GET_PATHS = ("/.git/HEAD",)
 
 
 def binary_name() -> str:
@@ -72,6 +76,31 @@ def as_url(target: str) -> str:
     return f"https://{t}"
 
 
+def _host_forbidden_leak(host: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return any(ip in net for net in _FORBIDDEN_LEAK_NETS)
+
+
+def leak_get_urls(url: str) -> list[str]:
+    """Same-origin /.git/HEAD from a site-root URL only. Never office LAN. Never a path spray."""
+    parsed = urlparse(url)
+    if (parsed.scheme or "").lower() not in {"http", "https"}:
+        return []
+    host = parsed.hostname or ""
+    if not host or _host_forbidden_leak(host):
+        return []
+    path = parsed.path or "/"
+    if path not in {"", "/"}:
+        return []
+    origin = f"{parsed.scheme}://{host}"
+    if parsed.port:
+        origin += f":{parsed.port}"
+    return [origin + p for p in LEAK_GET_PATHS]
+
+
 def shard_brake(batch: list[str]) -> str | None:
     if not batch:
         return "empty_batch"
@@ -117,7 +146,8 @@ def describe(scope: Scope, batch: list[str]) -> dict[str, Any]:
         "command": plan_command(batch) if batch else plan_command(["https://example.invalid"]),
         "brake": "named URLs/hostnames only; never a CIDR; never the whole internet",
         "note": (
-            "BYO only; pack does not embed curl scanners. HEAD-only. "
+            "BYO only; pack does not embed curl scanners. HEAD on named URLs; "
+            "allowlisted same-origin GET for leaked /.git/HEAD only. "
             "Live exec requires allow_live_exec + EVERGREEN_ORCH_LIVE=1. "
             + ("binary missing — plan-only." if missing else "")
             + ("" if tool_ok else " curl not in allow_tools or target kind.")
@@ -425,7 +455,7 @@ def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
 
 
 def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[str, Any]:
-    """HEAD-only curl on named URLs. Never CIDR. Never shell=True. Never download."""
+    """HEAD on named URLs; allowlisted same-origin GET for leaked /.git/HEAD. Never CIDR. Never shell=True."""
     desc = describe(scope, batch)
     desc["executed"] = False
     desc["findings"] = []
@@ -491,6 +521,39 @@ def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[
                 findings.extend(parse_curl_headers((proc2.stdout or "")[:MAX_STDOUT_BYTES], url))
             except (subprocess.TimeoutExpired, OSError):
                 pass
+        for get_url in leak_get_urls(url):
+            if not _safe_external(get_url):
+                continue
+            get_cmd = [
+                binary_name(),
+                "-sS",
+                "--max-time",
+                str(seconds),
+                "--max-redirs",
+                "0",
+                "--max-filesize",
+                str(MAX_LEAK_GET_BYTES),
+                "--proto",
+                "=http,https",
+                "--",
+                get_url,
+            ]
+            if get_url.lower().startswith("https://"):
+                get_cmd = [get_cmd[0], "-k", *get_cmd[1:]]
+            if get_cmd[0] not in {"curl", "curl.exe"}:
+                continue
+            try:
+                gproc = subprocess.run(
+                    get_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=seconds + 2,
+                    check=False,
+                    shell=False,
+                )
+            except (subprocess.TimeoutExpired, OSError):
+                continue
+            findings.extend(parse_curl_body((gproc.stdout or "")[:MAX_STDOUT_BYTES], get_url))
         desc["returncode"] = proc.returncode
         desc["stderr_bytes"] = len(proc.stderr or "")
     uniq: list[dict[str, Any]] = []

@@ -12,15 +12,15 @@ python -m dropbox.product_demo
 
 web: http://127.0.0.1:18081/
 api: http://127.0.0.1:18082/
-pack_mapped: 5
-poam_rows: 5
+pack_mapped: 6
+poam_rows: 6
 ingest_label: live-byo
 client_facing_ready: False
 blocked_by: lab_sim_not_client_estate
 hitl_attested: True evidence_label=lab-sim
 sink: not posted from pack Litware CSVs (see docs/OUT_DIR.md)
 mock_push: skipped
-zip: C:\GRC Collector\grc-collector-pack\engagements\engagement-docker-estate-product-20260906.zip
+zip: C:\GRC Collector\grc-collector-pack\engagements\engagement-docker-estate-product-20260908.zip
 kit_facing: False
 kit_blocked_by: lab_sim_not_client_estate
 kit_evidence_label: lab-sim

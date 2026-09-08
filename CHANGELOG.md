@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 155
+
+R04 refine: dummy Git metadata on main `grc-estate` estate-web (`/.git/HEAD` → `estate/web/git-meta/`, loopback :18081). Curl live exec HEADs named URLs then allowlisted same-origin GET `/.git/HEAD` (max 16KiB, no redirects, not 192.168.10.0/24). Map `Git metadata exposed` from GET body + `/.git/` path only. HEAD 200 does not invent it. No second 172.28.200 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 154
 
 T24 freeze at hard stop 2026-09-07T09:52:00-07:00 (tick clock 10:12 PT). `DONE_24H.md` GREEN. Scheduler cancelled. Estate+sink left up. `client_facing_ready` false. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069. No T25.

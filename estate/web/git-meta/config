@@ -1,0 +1,7 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+[remote "origin"]
+	url = git@lab.invalid:not-a-client.git
+	fetch = +refs/heads/*:refs/remotes/origin/*

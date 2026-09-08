@@ -950,6 +950,71 @@ def test_git_metadata_parser_and_map() -> None:
     assert mapped["weakness"] == "Git metadata exposed"
 
 
+def test_estate_web_git_static_folded() -> None:
+    """R04: dummy .git on main estate-web, not a second 172.28.200 farm."""
+    head = (ROOT / "estate" / "web" / "git-meta" / "HEAD").read_text(encoding="utf-8")
+    assert "ref: refs/heads/main" in head
+    cfg = (ROOT / "estate" / "web" / "git-meta" / "config").read_text(encoding="utf-8")
+    assert "repositoryformatversion" in cfg
+    assert "lab.invalid" in cfg
+    conf = (ROOT / "estate" / "nginx-web.conf").read_text(encoding="utf-8")
+    assert "location /.git/" in conf
+    assert "git-meta" in conf
+    compose = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    live = "\n".join(ln for ln in compose.splitlines() if not ln.lstrip().startswith("#"))
+    assert "estate/nginx-web.conf" in live
+    assert "172.28.90.0/24" in live
+    assert "172.28.200.0/24" not in live
+    assert "192.168.10.0/24" not in live
+
+
+def test_curl_leak_get_urls_git_root_only() -> None:
+    from dropbox.orchestrator.adapters import curl_byo
+
+    assert curl_byo.leak_get_urls("http://127.0.0.1:18081/") == ["http://127.0.0.1:18081/.git/HEAD"]
+    assert curl_byo.leak_get_urls("http://127.0.0.1:18081") == ["http://127.0.0.1:18081/.git/HEAD"]
+    assert curl_byo.leak_get_urls("https://127.0.0.1:18443/") == ["https://127.0.0.1:18443/.git/HEAD"]
+    assert curl_byo.leak_get_urls("http://127.0.0.1:18081/.git/HEAD") == []
+    assert curl_byo.leak_get_urls("http://127.0.0.1:18081/index.html") == []
+    assert curl_byo.leak_get_urls("http://192.168.10.1/") == []
+    assert curl_byo.leak_get_urls("file:///etc/passwd") == []
+
+
+def test_curl_execute_gets_git_head_from_root(monkeypatch) -> None:
+    from dropbox.orchestrator.adapters import curl_byo
+    from dropbox.orchestrator.scope import load_scope
+
+    cmds: list[list[str]] = []
+
+    class _Proc:
+        def __init__(self, stdout: str, stderr: str = "", returncode: int = 0) -> None:
+            self.stdout = stdout
+            self.stderr = stderr
+            self.returncode = returncode
+
+    def fake_run(cmd, **kwargs):
+        assert kwargs.get("shell") is False
+        cmds.append(list(cmd))
+        if "-I" in cmd:
+            return _Proc("HTTP/1.1 200 OK\nServer: nginx/1.31.5\n\n")
+        if any(str(a).endswith("/.git/HEAD") for a in cmd):
+            return _Proc("ref: refs/heads/main\n")
+        return _Proc("")
+
+    monkeypatch.setenv("EVERGREEN_ORCH_LIVE", "1")
+    monkeypatch.setattr(curl_byo, "on_path", lambda: True)
+    monkeypatch.setattr(curl_byo.subprocess, "run", fake_run)
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.docker-estate.yaml")
+    rec = curl_byo.execute(scope, ["http://127.0.0.1:18081/"])
+    names = {r["name"] for r in rec["findings"]}
+    assert "Git metadata exposed" in names
+    assert "Cleartext HTTP" in names
+    assert any("-I" in c for c in cmds)
+    git_gets = [c for c in cmds if any(str(a).endswith("/.git/HEAD") for a in c)]
+    assert git_gets and all("-I" not in c and "-sS" in c for c in git_gets)
+    assert not any("192.168.10" in str(c) for c in cmds)
+
+
 def test_gitweb_compose_isolated_if_present() -> None:
     """T24-wait extra: 172.28.200.0/24 loopback 19181 .git. Not office LAN. Not c11."""
     path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.gitweb.yml")

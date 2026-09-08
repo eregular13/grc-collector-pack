@@ -9,6 +9,7 @@ services:
       - "127.0.0.1:18081:80"
     volumes:
       - ./estate/web:/usr/share/nginx/html:ro
+      - ./estate/nginx-web.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       grc-estate:
         ipv4_address: 172.28.90.10
