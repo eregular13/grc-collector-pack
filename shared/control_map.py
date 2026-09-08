@@ -363,7 +363,7 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     ):
         name = "Require MFA for privileged SaaS admins"
         fix = (
-            "Enforce MFA on privileged Okta/Entra/Google roles from the dropped IdP export. "
+            "Enforce MFA on privileged Okta/Entra/Google roles from the dropped ScubaGear or Okta export. "
             "This is not a Graph or Okta API call."
         )
     elif "global administrator" in text and (
