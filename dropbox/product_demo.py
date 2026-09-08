@@ -117,7 +117,9 @@ def _scope_ok() -> None:
         raise SystemExit("SCOPE.docker-estate.yaml drifted onto office LAN")
     if "172.28.90.0/24" not in text:
         raise SystemExit("SCOPE.docker-estate.yaml missing isolated 172.28.90.0/24")
-    load_scope(SCOPE)
+    scope = load_scope(SCOPE)
+    if scope.forbidden_cidr_reason():
+        raise SystemExit("SCOPE.docker-estate.yaml drifted onto office LAN")
     if "127.0.0.1:18081" not in text or "127.0.0.1:18082" not in text:
         raise SystemExit("SCOPE.docker-estate.yaml missing loopback publishes")
     if "127.0.0.1:18443" not in text:

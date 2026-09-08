@@ -176,6 +176,36 @@ def test_product_demo_dry_run_is_plan(monkeypatch) -> None:
     assert demo.main(["plan"]) == 0
 
 
+def test_product_demo_scope_ok_refuses_lan_drift(tmp_path, monkeypatch) -> None:
+    """R16: poisoned docker-estate SCOPE (CIDR or host) fails closed. No orchestrator. No scan."""
+    import dropbox.product_demo as demo
+
+    base = (ROOT / "dropbox" / "SCOPE.docker-estate.yaml").read_text(encoding="utf-8")
+    cidr_path = tmp_path / "SCOPE.cidr.yaml"
+    cidr_path.write_text(
+        base.replace('- "172.28.90.0/24"', '- "172.28.90.0/24"\n    - "192.168.10.0/24"', 1),
+        encoding="utf-8",
+    )
+    host_path = tmp_path / "SCOPE.host.yaml"
+    host_path.write_text(base.replace('- "172.28.90.10"', '- "192.168.10.50"', 1), encoding="utf-8")
+    called: list[str] = []
+    monkeypatch.setattr(demo, "run", lambda *_a, **_k: called.append("run") or {})
+    monkeypatch.setattr(demo, "estate_up", lambda: True)
+    monkeypatch.setattr(demo, "SCOPE", cidr_path)
+    with pytest.raises(SystemExit) as exc:
+        demo._scope_ok()
+    assert "office LAN" in str(exc.value)
+    with pytest.raises(SystemExit):
+        demo.plan_only()
+    with pytest.raises(SystemExit):
+        demo.run_demo()
+    monkeypatch.setattr(demo, "SCOPE", host_path)
+    with pytest.raises(SystemExit) as host_exc:
+        demo._scope_ok()
+    assert "office LAN" in str(host_exc.value)
+    assert called == []
+
+
 def test_estate_slug_poam_is_cleartext_not_litware(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
     from dropbox.new_engagement import new_engagement

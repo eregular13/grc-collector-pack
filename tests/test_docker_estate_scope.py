@@ -156,6 +156,39 @@ def test_class_a_host_lan_exact_cidr_refused(tmp_path, monkeypatch) -> None:
     assert load_scope(path24).forbidden_cidr_reason() is None
 
 
+def test_office_lan_overlapping_cidr_is_plan_only(tmp_path, monkeypatch) -> None:
+    """R16: 192.168.10.0/23 overlaps office LAN. Plan-only. nmap never execs."""
+    from dropbox.orchestrator.adapters import nmap_byo
+    from dropbox.orchestrator.plan import build_plan
+    from dropbox.orchestrator.run import run
+    from dropbox.orchestrator.scope import load_scope
+
+    poisoned = _estate_scope_text().replace('- "172.28.90.0/24"', '- "192.168.10.0/23"', 1)
+    path = tmp_path / "SCOPE.lan-overlap.yaml"
+    path.write_text(poisoned, encoding="utf-8")
+    called: list[int] = []
+    monkeypatch.setenv("EVERGREEN_ORCH_LIVE", "1")
+    monkeypatch.setattr(nmap_byo, "on_path", lambda: True)
+    monkeypatch.setattr(nmap_byo.subprocess, "run", lambda *_a, **_k: called.append(1))
+    scope = load_scope(path)
+    assert scope.refuse_live() == "forbidden_cidr"
+    plan = build_plan(scope)
+    assert plan["label"] == "plan-only"
+    assert plan["brakes"]["refuse_live"] == "forbidden_cidr"
+    payload = run(path, "all", dest=tmp_path / "out-overlap")
+    assert payload.get("refused") == "forbidden_cidr"
+    assert (payload.get("grc_export") or {}).get("client_facing_ready") is False
+    assert called == []
+
+
+def test_live_docker_estate_scope_not_forbidden_cidr() -> None:
+    from dropbox.orchestrator.scope import load_scope
+
+    scope = load_scope(ROOT / "dropbox" / "SCOPE.docker-estate.yaml")
+    assert scope.forbidden_cidr_reason() is None
+    assert "192.168.10.0/24" not in scope.internal_cidrs
+
+
 def test_tls12_is_not_weak_tls() -> None:
     """TLSv1.2 must not map as Weak TLS/SSL. TLSv1.0 still does."""
     from dropbox.orchestrator.adapters import testssl_byo

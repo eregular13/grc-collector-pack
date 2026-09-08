@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 167
+
+R16 refine: SCOPE + `192.168.10.0/24` still `forbidden_cidr` plan-only (nmap never execs). `product_demo._scope_ok` now also refuses parsed office-LAN hosts/overlapping CIDRs, not only the `/24` string. Live `SCOPE.docker-estate.yaml` stays `172.28.90.0/24`. SCOPE.example untouched. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24 scan. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 166
 
 R15 refine: estate-down still fail-closed — `python -m dropbox.product_demo` exits 2 `estate_down` without orchestrator run, Litware kit copy, slug zip rewrite, or sink POST. Host lab stopped estate-web/api/tls (not mock_sink, not `down -v`), confirmed slug zip/POA&M unchanged, then `compose start` brought the same containers back. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
