@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 158
+
+R07 refine: dummy `Access-Control-Allow-Origin: *` on main `grc-estate` estate-web stub `/cors` only. Curl live exec allowlisted same-origin HEAD `/cors`; map `Permissive CORS policy` from that header. Root HEAD still has no ACAO — not invented. A specific origin is not mapped. No second 172.28.220 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 157
 
 R06 refine: dummy insecure `Set-Cookie: session=labonly; Path=/` (no Secure/HttpOnly) on main `grc-estate` estate-web stub `/cookie` only. Curl live exec allowlisted same-origin HEAD `/cookie` after named HEAD; map `Insecure session cookie` from that header. Root HEAD still has no Set-Cookie — not invented. No second 172.28.210 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

@@ -18,7 +18,7 @@ _HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$")
 _FORBIDDEN_LEAK_NETS = (ipaddress.ip_network("192.168.10.0/24"),)
 # Same-origin leak probes after HEAD on site root. Allowlist only. Not a path spray.
 LEAK_GET_PATHS = ("/.git/HEAD", "/listing/")
-LEAK_HEAD_PATHS = ("/cookie",)
+LEAK_HEAD_PATHS = ("/cookie", "/cors")
 
 
 def binary_name() -> str:
@@ -156,7 +156,7 @@ def describe(scope: Scope, batch: list[str]) -> dict[str, Any]:
         "brake": "named URLs/hostnames only; never a CIDR; never the whole internet",
         "note": (
             "BYO only; pack does not embed curl scanners. HEAD on named URLs; "
-            "allowlisted same-origin GET /.git/HEAD /listing/ and HEAD /cookie only. "
+            "allowlisted same-origin GET /.git/HEAD /listing/ and HEAD /cookie /cors only. "
             "Live exec requires allow_live_exec + EVERGREEN_ORCH_LIVE=1. "
             + ("binary missing — plan-only." if missing else "")
             + ("" if tool_ok else " curl not in allow_tools or target kind.")
@@ -464,7 +464,7 @@ def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
 
 
 def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[str, Any]:
-    """HEAD on named URLs; allowlisted same-origin GET /.git/HEAD /listing/ and HEAD /cookie. Never CIDR. Never shell=True."""
+    """HEAD on named URLs; allowlisted same-origin GET /.git/HEAD /listing/ and HEAD /cookie /cors. Never CIDR. Never shell=True."""
     desc = describe(scope, batch)
     desc["executed"] = False
     desc["findings"] = []

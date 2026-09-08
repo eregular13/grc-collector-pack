@@ -1,8 +1,8 @@
 # PRODUCT
 demo_command: python -m dropbox.product_demo
-live_finding_classes: Cleartext HTTP; Missing HSTS; Missing X-Frame-Options/CSP (mapped as Missing web security headers); Server banner disclosure; Git metadata exposed; Directory listing enabled; Insecure session cookie; Untrusted TLS certificate
-pack_mapped: 8
-poam_rows_from_estate: 8
+live_finding_classes: Cleartext HTTP; Missing HSTS; Missing X-Frame-Options/CSP (mapped as Missing web security headers); Server banner disclosure; Git metadata exposed; Directory listing enabled; Insecure session cookie; Permissive CORS policy; Untrusted TLS certificate
+pack_mapped: 9
+poam_rows_from_estate: 9
 client_facing_ready: false
 why_not_paying_day: docker-sim HITL is attested lab-sim (`blocked_by=lab_sim_not_client_estate`). Estate slug copies `out-estate/` POA&M, not Litware 132/155/9 CISO CSVs. SCOPE.example stays historically closed. No signed live drop box.
 ciso_import: docs/IMPORT_CISO.md

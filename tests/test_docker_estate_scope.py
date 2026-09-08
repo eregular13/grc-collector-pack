@@ -862,6 +862,18 @@ def test_permissive_cors_parser_and_map() -> None:
     assert mapped["weakness"] == "Permissive CORS policy"
 
 
+def test_estate_web_cors_stub_folded() -> None:
+    """R07: ACAO * on /cors of main estate-web, not a second 172.28.220 farm."""
+    conf = (ROOT / "estate" / "nginx-web.conf").read_text(encoding="utf-8")
+    assert "location = /cors" in conf
+    assert "Access-Control-Allow-Origin *" in conf
+    compose = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    live = "\n".join(ln for ln in compose.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.90.0/24" in live
+    assert "172.28.220.0/24" not in live
+    assert "192.168.10.0/24" not in live
+
+
 def test_cors_compose_isolated_if_present() -> None:
     """T24-wait extra: 172.28.220.0/24 loopback 19381 ACAO *. Not office LAN. Not c11."""
     path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.cors.yml")
@@ -1007,10 +1019,20 @@ def test_curl_leak_get_urls_git_root_only() -> None:
 def test_curl_leak_head_urls_cookie_root_only() -> None:
     from dropbox.orchestrator.adapters import curl_byo
 
-    assert curl_byo.leak_head_urls("http://127.0.0.1:18081/") == ["http://127.0.0.1:18081/cookie"]
-    assert curl_byo.leak_head_urls("http://127.0.0.1:18081") == ["http://127.0.0.1:18081/cookie"]
-    assert curl_byo.leak_head_urls("https://127.0.0.1:18443/") == ["https://127.0.0.1:18443/cookie"]
+    assert curl_byo.leak_head_urls("http://127.0.0.1:18081/") == [
+        "http://127.0.0.1:18081/cookie",
+        "http://127.0.0.1:18081/cors",
+    ]
+    assert curl_byo.leak_head_urls("http://127.0.0.1:18081") == [
+        "http://127.0.0.1:18081/cookie",
+        "http://127.0.0.1:18081/cors",
+    ]
+    assert curl_byo.leak_head_urls("https://127.0.0.1:18443/") == [
+        "https://127.0.0.1:18443/cookie",
+        "https://127.0.0.1:18443/cors",
+    ]
     assert curl_byo.leak_head_urls("http://127.0.0.1:18081/cookie") == []
+    assert curl_byo.leak_head_urls("http://127.0.0.1:18081/cors") == []
     assert curl_byo.leak_head_urls("http://192.168.10.1/") == []
     assert curl_byo.leak_head_urls("file:///etc/passwd") == []
 
@@ -1033,6 +1055,8 @@ def test_curl_execute_gets_git_head_from_root(monkeypatch) -> None:
         if "-I" in cmd:
             if any(str(a).rstrip("/").endswith("/cookie") for a in cmd):
                 return _Proc("HTTP/1.1 200 OK\nSet-Cookie: session=labonly; Path=/\n\n")
+            if any(str(a).rstrip("/").endswith("/cors") for a in cmd):
+                return _Proc("HTTP/1.1 200 OK\nAccess-Control-Allow-Origin: *\n\n")
             return _Proc("HTTP/1.1 200 OK\nServer: nginx/1.31.5\n\n")
         if any(str(a).endswith("/.git/HEAD") for a in cmd):
             return _Proc("ref: refs/heads/main\n")
@@ -1049,6 +1073,7 @@ def test_curl_execute_gets_git_head_from_root(monkeypatch) -> None:
     assert "Git metadata exposed" in names
     assert "Directory listing enabled" in names
     assert "Insecure session cookie" in names
+    assert "Permissive CORS policy" in names
     assert "Cleartext HTTP" in names
     assert any("-I" in c for c in cmds)
     git_gets = [c for c in cmds if any(str(a).endswith("/.git/HEAD") for a in c)]
@@ -1057,6 +1082,8 @@ def test_curl_execute_gets_git_head_from_root(monkeypatch) -> None:
     assert list_gets and all("-I" not in c and "-sS" in c for c in list_gets)
     cookie_heads = [c for c in cmds if "-I" in c and any(str(a).rstrip("/").endswith("/cookie") for a in c)]
     assert cookie_heads
+    cors_heads = [c for c in cmds if "-I" in c and any(str(a).rstrip("/").endswith("/cors") for a in c)]
+    assert cors_heads
     assert not any("192.168.10" in str(c) for c in cmds)
 
 

@@ -12,8 +12,8 @@ python -m dropbox.product_demo
 
 web: http://127.0.0.1:18081/
 api: http://127.0.0.1:18082/
-pack_mapped: 8
-poam_rows: 8
+pack_mapped: 9
+poam_rows: 9
 ingest_label: live-byo
 client_facing_ready: False
 blocked_by: lab_sim_not_client_estate
