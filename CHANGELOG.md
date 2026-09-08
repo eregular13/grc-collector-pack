@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 170
+
+R19 refine: CI `.github/workflows/lab.yml` still valid (name lab, Python 3.12, `pytest tests -q`, DRY_RUN/CISO_PUSH/RISKREADY_PUSH/GRC_LIVE_SCAN, no Docker estate, no office LAN, no `/api/risks`). Pytest collection ≥ 229. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 169
 
 R18 refine: QUICKSTART literal pass from copy folder `_refine/quick` (venv → pip → pytest → `product_demo --help`). Skip `compose up` from a second copy when `grc-estate` already answers `:18081` (same project name would remount). `--help` does not need Docker and does not hit the sink. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

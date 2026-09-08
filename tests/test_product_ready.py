@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
+import re
 import socket
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -40,6 +44,75 @@ def test_quickstart_and_estate_docs() -> None:
     ci = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
     assert "python -m pytest tests -q" in ci
     assert "3.12" in ci
+
+
+def test_ci_lab_yml_valid_and_pytest_collects() -> None:
+    """R19: lab.yml contract + pytest collection (no Docker estate required)."""
+    path = ROOT / ".github" / "workflows" / "lab.yml"
+    text = path.read_text(encoding="utf-8")
+    assert "\t" not in text
+    assert text.lstrip().startswith("name:")
+    for needle in (
+        "name: lab",
+        "runs-on: ubuntu-latest",
+        'python-version: "3.12"',
+        "pip install -r requirements.txt",
+        "python -m pytest tests -q",
+        "PYTHONPATH: .",
+        'DRY_RUN: "1"',
+        'CISO_PUSH: "0"',
+        'RISKREADY_PUSH: "0"',
+        'GRC_LIVE_SCAN: "0"',
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "no Docker estate required",
+    ):
+        assert needle in text, needle
+    assert "docker compose" not in text.lower()
+    assert "192.168.10" not in text
+    assert "/api/risks" not in text
+    assert "EVERGREEN_ORCH_LIVE" not in text
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        yaml = None
+    if yaml is not None:
+        data = yaml.safe_load(text)
+        assert isinstance(data, dict)
+        assert data.get("name") == "lab"
+        job = (data.get("jobs") or {}).get("pytest") or {}
+        env = job.get("env") or {}
+        assert env.get("DRY_RUN") == "1"
+        assert env.get("CISO_PUSH") == "0"
+        assert env.get("RISKREADY_PUSH") == "0"
+        assert env.get("GRC_LIVE_SCAN") == "0"
+        assert env.get("PYTHONPATH") == "."
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(ROOT),
+        "DRY_RUN": "1",
+        "CISO_PUSH": "0",
+        "RISKREADY_PUSH": "0",
+        "GRC_LIVE_SCAN": "0",
+    }
+    env.pop("EVERGREEN_ORCH_LIVE", None)
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests", "--collect-only", "-q"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env=env,
+    )
+    blob = (proc.stdout or "") + (proc.stderr or "")
+    assert proc.returncode == 0, blob[-2000:]
+    match = re.search(r"(\d+) tests? collected", blob)
+    if match:
+        n = int(match.group(1))
+    else:
+        n = sum(int(m.group(1)) for m in re.finditer(r": (\d+)\s*$", proc.stdout or "", re.M))
+    assert n >= 229, blob[-1500:]
 
 
 def test_run_lab_ps1_does_not_touch_engagements() -> None:
