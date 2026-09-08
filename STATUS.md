@@ -1,6 +1,6 @@
-cycle: 99
+cycle: 100
 phase: DONE
-item: COS5-HONESTY
+item: COS6-HONESTY
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -43,4 +43,4 @@ argus_invoke: signed SCOPE + HITL kill before PATH/live
 argus_file_drop: default
 argus_wrap: stay-out forever
 argus_hexstrike: pattern-only
-next_action: CoS #5 honesty sync — Covey E2E_PROVEN = nmap + rustscan + fping at HEAD 1c7fb46. No pack Covey adapter work. Reid-only blockers remain — CTA; real KEEP in/ drop; Eval npm start; Docker compose on a real host (this VM compose_lab absent ≠ PASS, not a PASS). Gate/hash already on master (`python -m dropbox gate`). paying_day FAIL. DEMO ≠ client. SAMPLE KEEP ≠ client. No fake greens.
+next_action: CoS #6 honesty sync — Covey E2E_PROVEN = nmap + rustscan + fping + naabu at HEAD 14a41bd. No pack Covey adapter work. Reid-only blockers remain — CTA; real KEEP in/ drop; Eval npm start; Docker compose on a real host (this VM compose_lab absent ≠ PASS, not a PASS). Gate/hash already on master (`python -m dropbox gate`). paying_day FAIL. DEMO ≠ client. SAMPLE KEEP ≠ client. No fake greens. argus_pack_truth evergreen_assessment_mcp only.

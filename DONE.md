@@ -1,6 +1,6 @@
 GREEN
 
-Cycle **99** CoS #5 honesty sync: STATUS `next_action` is Covey `E2E_PROVEN` = nmap + rustscan + fping at HEAD `1c7fb46`. No pack Covey adapter work. Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Paying-day **FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**. Cycle **98** CoS #4 stands as history. Cycle **97** CoS #3 stands. Cycle **96** CISO prove stands. Cycle **95** Beelzebub stands. Cycle **94** IdP/MDM stands. Cycle **93** DNS/email CoS prove bar stands. Compose **ABSENT ≠ pass**. No invented greens.
+Cycle **100** CoS #6 honesty sync: STATUS `next_action` is Covey `E2E_PROVEN` = nmap + rustscan + fping + naabu at HEAD `14a41bd`. No pack Covey adapter work. Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Paying-day **FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**. `argus_pack_truth` evergreen_assessment_mcp only. Cycle **99** CoS #5 stands as history. Cycle **98** CoS #4 stands. Cycle **97** CoS #3 stands. Cycle **96** CISO prove stands. Cycle **95** Beelzebub stands. Cycle **94** IdP/MDM stands. Cycle **93** DNS/email CoS prove bar stands. Compose **ABSENT ≠ pass**. No invented greens.
 
 Two consecutive green labs after critic ≥ 8 (zero P0/P1). Cycle 5 closed; KEEP improve window GREEN.
 
