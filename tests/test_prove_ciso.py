@@ -73,6 +73,21 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     banner = (Path(stamp["in_dir"]) / "SAMPLE.txt").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO" in banner
     assert "not a client" in banner.lower()
+    assert stamp["estate"] == "SAMPLE/DEMO — not a client estate"
+    prove_json = dest / "prove-ciso.json"
+    assert prove_json.is_file()
+    disk = json.loads(prove_json.read_text(encoding="utf-8"))
+    assert disk["sample"] is True and disk["client"] is False
+    assert "SAMPLE/DEMO" in disk["estate"] and "not a client" in disk["estate"].lower()
+    summary_path = Path(stamp["out_dir"]) / "summary.json"
+    if summary_path.is_file():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        assert summary.get("demo") is True
+    for blob in (assets, findings, evid, banner, json.dumps(stamp)):
+        low = blob.lower()
+        if "client estate" in low:
+            assert "not a client" in low or "sample" in low or "demo" in low
+        assert "paying-day pass" not in low or "not" in low
 
 
 def test_ciso_path_sees_pack_drop_without_keepmin(tmp_path: Path) -> None:
@@ -109,12 +124,17 @@ def test_prove_ciso_cli_and_docs() -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stdout + "\n" + proc.stderr
+    blob = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    assert "SAMPLE/DEMO" in blob
+    assert "Not a client" in blob or "not a client" in blob.lower()
+    assert "paying_day=FAIL" in blob or "Paying-day stays FAIL" in blob
     work = ROOT / "prove" / "work"
     stamp = json.loads((work / "prove-ciso.json").read_text(encoding="utf-8"))
     assert stamp["status"] == "pass", stamp.get("reason")
     assert stamp["paying_day"] == "FAIL"
     assert stamp["sample"] is True
     assert stamp["client"] is False
+    assert stamp["estate"] == "SAMPLE/DEMO — not a client estate"
     assert (work / "out" / "ciso-assistant" / "assets.csv").is_file()
     docs = DOCS.read_text(encoding="utf-8")
     assert "python3 scripts/prove_ciso.py" in docs

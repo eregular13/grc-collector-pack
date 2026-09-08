@@ -1,12 +1,11 @@
-# CRITIC — cycle 96 (CISO export prove, rebased on Beelzebub #11)
+# CRITIC — cycle 97 (CoS #3 refine-only honesty locks)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-Rebased onto master after Beelzebub #11 (`56b588d`). One honest CISO
-prove: fixture Covey pack_drop + Palisade/Beelzebub honeypot → existing
-`dropbox ciso` SoR → `out/ciso-assistant`. SAMPLE/DEMO ≠ client.
-Paying-day stays **FAIL** (not a PASS stamp). Wrap **dead**. SAMPLE KEEP
-**0/4**. Beelzebub `stage=null` stands. After this: pause brick-adding
-(tests/docs only).
+Refine-only after CoS #2/#3: STATUS `next_action` is current truth
+(tests/docs; no brick-adding). Pytest extends wrap PUSH=1 fail-closed,
+CISO SAMPLE/DEMO labels, two-MCP `PACK_TRUTH_TOOLS` refuse +
+`argus_pack_truth`. Paying-day stays **FAIL**. Wrap **dead**. SAMPLE KEEP
+**0/4**. Cycle 96 CISO prove stands. No invented greens.
 
 −1 compose runtime still absent on this agent VM (DESKTOP `config` is 11 services; optional `up` is estate-only).  
 −1 0/4 real KEEP still open.

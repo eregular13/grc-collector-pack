@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 97 — CoS #3 refine-only honesty locks (2026-09-08)
+
+STATUS `next_action` no longer says “After CoS #1…”. Current truth: refine-only after CoS #2/#3 (tests/docs). Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Extended existing pytest: RiskReady `PUSH=1` fail-closed (no login/HTTP/POST); CISO prove labels SAMPLE/DEMO not client; two-MCP `PACK_TRUTH_TOOLS` refused on `mcp_stub` + STATUS `argus_pack_truth`. No new collectors. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**. DEMO ≠ client. Compose ABSENT ≠ pass.
+
+```json
+{"pytest": 404, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 96 — CISO Assistant export prove (rebase on Beelzebub #11) (2026-09-08)
 
 One honest prove, rebased onto Beelzebub #11 (`56b588d`): fixture Covey pack_drop + Palisade/Beelzebub honeypot → existing collectors → loader → `out/ciso-assistant` (`python3 scripts/prove_ciso.py` / `make prove-ciso`). Uses the existing SoR path (`run_ciso_path` / `python3 -m dropbox ciso`). Already-on-disk sensor dirs (nmap pack_drop / honeypot) are parsed in addition to KEEP-minimum inventory. Keepmin schedule set unchanged. No new collectors. No catalog inflation. SAMPLE/DEMO ≠ client. Paying-day stays FAIL. Beelzebub `stage=null` stands. After this: Hephaestus pauses brick-adding; tests/docs only until next CoS review.

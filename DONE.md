@@ -1,6 +1,6 @@
 GREEN
 
-Cycle **96** CISO Assistant export prove, rebased onto Beelzebub #11: fixture Covey pack_drop + Palisade/Beelzebub honeypot → existing `dropbox ciso` SoR → `out/ciso-assistant`. SAMPLE/DEMO ≠ client. Paying-day **FAIL** (not a PASS stamp). After this: Hephaestus pauses brick-adding (tests/docs only). Cycle **95** Beelzebub stands. Cycle **94** IdP/MDM stands. Cycle **93** DNS/email CoS prove bar stands. **SAMPLE ≠ client KEEP**, **0/4**. Compose **ABSENT ≠ pass**. Reid-only blockers remain.
+Cycle **97** CoS #3 refine-only: STATUS `next_action` is refine-only after CoS #2/#3 (tests/docs). Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Paying-day **FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**. Cycle **96** CISO prove stands. Cycle **95** Beelzebub stands. Cycle **94** IdP/MDM stands. Cycle **93** DNS/email CoS prove bar stands. Compose **ABSENT ≠ pass**. No invented greens.
 
 Two consecutive green labs after critic ≥ 8 (zero P0/P1). Cycle 5 closed; KEEP improve window GREEN.
 

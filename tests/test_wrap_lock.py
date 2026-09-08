@@ -39,18 +39,25 @@ def test_riskready_script_has_no_http_client() -> None:
     assert "-X POST" not in text
     assert "--data-binary" not in text
     assert "Authorization: Bearer" not in text
+    for lib in ("urllib", "requests", "httpx", "httplib", "http.client"):
+        assert lib not in code, f"HTTP client in wrap script: {lib}"
+    assert "login" not in code.lower() or "no login" in code.lower()
     for path in WRAP_PATHS:
         assert path not in code, f"wrap path in executable line: {path}"
 
 
 def test_riskready_push_1_is_review_only(tmp_path: Path) -> None:
-    marker = tmp_path / "curl_invoked"
-    fake = tmp_path / "curl"
-    fake.write_text(
-        "#!/bin/sh\necho invoked > \"%s\"\nexit 0\n" % marker.as_posix(),
-        encoding="utf-8",
-    )
-    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    """RISKREADY_PUSH=1 stays fail-closed: no login, no HTTP, no POST."""
+    markers: dict[str, Path] = {}
+    for name in ("curl", "wget", "python", "python3", "nc", "ncat"):
+        marker = tmp_path / f"{name}_invoked"
+        markers[name] = marker
+        fake = tmp_path / name
+        fake.write_text(
+            "#!/bin/sh\necho invoked > \"%s\"\nexit 0\n" % marker.as_posix(),
+            encoding="utf-8",
+        )
+        fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
     env = os.environ.copy()
     env["PATH"] = str(tmp_path) + os.pathsep + env.get("PATH", "")
     env["RISKREADY_PUSH"] = "1"
@@ -67,10 +74,18 @@ def test_riskready_push_1_is_review_only(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stderr
-    assert "LICENSE-LOCK" in proc.stdout
-    assert "review-only" in proc.stdout.lower() or "Review-only" in proc.stdout
-    assert "risks_proposed.json" in proc.stdout
-    assert not marker.exists(), "curl was invoked — wrap POSTs reappeared"
+    out = proc.stdout
+    low = out.lower()
+    assert "LICENSE-LOCK" in out
+    assert "review-only" in low
+    assert "risks_proposed.json" in out
+    assert "no login" in low
+    assert "no http" in low
+    assert "ignored" in low
+    for path in WRAP_PATHS:
+        assert path not in out, f"wrap path leaked to stdout: {path}"
+    for name, marker in markers.items():
+        assert not marker.exists(), f"{name} was invoked — wrap POSTs reappeared"
 
 
 def test_ciso_never_invents_findings_assessment() -> None:

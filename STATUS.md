@@ -1,6 +1,6 @@
-cycle: 96
-phase: DONE
-item: CISO-EXPORT-PROVE
+cycle: 97
+phase: BUILD
+item: COS3-REFINE
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -43,4 +43,4 @@ argus_invoke: signed SCOPE + HITL kill before PATH/live
 argus_file_drop: default
 argus_wrap: stay-out forever
 argus_hexstrike: pattern-only
-next_action: After CoS #1 CISO prove: Hephaestus pauses brick-adding (tests/docs only). Reid-only blockers — CTA; Eval npm start; real KEEP in/ drop; compose on a Docker host (this VM ABSENT, not a PASS). Gate/hash already on master (`python -m dropbox gate`). No fake greens.
+next_action: Refine-only after CoS #2/#3 (tests/docs). Reid-only blockers remain — CTA; real KEEP in/ drop; Eval npm start; Docker compose on a real host (this VM compose_lab absent ≠ PASS, not a PASS). Gate/hash already on master (`python -m dropbox gate`). paying_day FAIL. DEMO ≠ client. SAMPLE KEEP ≠ client. No fake greens.
