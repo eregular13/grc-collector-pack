@@ -1,0 +1,8 @@
+{
+  "schema": "honeypot.meta.v1",
+  "source": "beelzebub",
+  "sensor": "honeypot",
+  "generated_at": "2026-09-08T03:13:00Z",
+  "demo": true,
+  "note": "Beelzebub pack_drop fixture. Session/cmd/login only. Stages are Palisade-only; stage is null. Not a live trap and not a compromise. SAMPLE ≠ client."
+}

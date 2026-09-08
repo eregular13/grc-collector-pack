@@ -1,0 +1,1 @@
+{"schema":"honeypot_event.v1","source":"beelzebub","event":"session","session_id":"bz-ssh-001","session_summary":"SSH session: root login, uname -a, passwd read, wget. Beelzebub deception evidence only — no Palisade stage.","src_ip":"198.51.100.44","protocol":"ssh","ts":"2026-09-08T03:12:20Z","stage":null,"instance":"beelzebub-ssh","demo":true}

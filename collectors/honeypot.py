@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Parse fleet-sensor honeypot events under in/honeypot/.
+"""Parse honeypot events under in/honeypot/ (Palisade + Beelzebub pack_drop).
 
 Parse-only file_drop. Does not run a honeypot, scanner, or live trap.
 Findings are deception-sensor / agent-behavior signals — not compromise.
+Palisade may emit stage 1|2. Beelzebub is session/cmd/login only (stage=null).
 """
 
 from __future__ import annotations

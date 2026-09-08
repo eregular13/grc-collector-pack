@@ -27,4 +27,4 @@ lanes:
     notes: OpenVAS-class / Nuclei / Trivy / Nessus file_drop only
   - assessment: honeypot
     pack_in: honeypot
-    notes: fleet-sensor honeypot_event.v1; deception-sensor evidence, not compromise
+    notes: Palisade fleet-sensor stage 1|2 or Beelzebub pack_drop (session/cmd/login, stage null); deception-sensor evidence, not compromise

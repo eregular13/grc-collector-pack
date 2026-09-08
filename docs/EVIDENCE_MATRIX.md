@@ -16,7 +16,7 @@ Machine-readable twin: [`evidence_matrix.yaml`](evidence_matrix.yaml)
 | DNS/email EASM | `in/easm/` | Amass / Subfinder / httpx / WhatWeb / ffuf file_drop | exists |
 | Covey | `in/nmap/` | pack_drop `assets.jsonl` + `findings.jsonl` + `meta.json` + `evidence/` (also gnmap/XML/masscan/…) | exists — see [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md) |
 | VM | `in/vuln/` | OpenVAS/Greenbone / Nuclei / Trivy / Nessus / Nikto / testssl / SARIF **file_drop only** | exists |
-| honeypot | `in/honeypot/` | fleet-sensor `events.jsonl` / `sessions.jsonl` / `meta.json` (`honeypot_event.v1`) | stubbed + fixture |
+| honeypot | `in/honeypot/` | fleet-sensor (Palisade stage 1\|2) **or** Beelzebub pack_drop `events.jsonl` / `sessions.jsonl` / `meta.json` (`honeypot_event.v1`; Beelzebub `stage` is null) | stubbed + fixture — [HONEYPOT_BEELZEBUB.md](HONEYPOT_BEELZEBUB.md) |
 
 Also present (not in the Covey matrix, still Layer C): `in/k8s/`, `in/code/`, `in/saas/`.
 
@@ -24,6 +24,9 @@ Also present (not in the Covey matrix, still Layer C): `in/k8s/`, `in/code/`, `i
 
 - Honeypot stage hits are **deception-sensor evidence / agent-behavior signals**.
   They are not “network compromised” and not a full control failure.
+  **Stages are Palisade-only.** Beelzebub is session/cmd/login evidence;
+  the parser fails closed with `stage=null` (does not invent trap_id /
+  stage-1 / stage-2).
 - OpenVAS-class and Nuclei-class are file_drop. This image does not ship those binaries.
 - Empty `in/<lane>/` still falls back to `fixtures/demo/<lane>/` for the ten
   compose collectors. Honeypot is **not** a compose service — run

