@@ -4,5 +4,6 @@
   "adapter": "nmap",
   "lane": "nmap",
   "generated_at": "2026-09-08T00:00:00Z",
-  "demo": true
+  "demo": true,
+  "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."
 }

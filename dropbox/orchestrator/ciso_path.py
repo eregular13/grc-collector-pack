@@ -1,4 +1,4 @@
-"""CISO SoR path: landed KEEP-minimum files → existing collectors → loader.
+"""CISO SoR path: landed KEEP-minimum or already-on-disk sensor dirs → loader.
 
 Never falls back to fixtures/demo. Never POSTs. No invented prices.
 """
@@ -54,11 +54,45 @@ ENV_KEYS = (
 )
 
 
+SKIP_INPUT_NAMES = frozenset({".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md"})
+
+
 def _has_input_files(sensor_dir: Path) -> bool:
     if not sensor_dir.is_dir():
         return False
-    for path in sensor_dir.iterdir():
-        if path.is_file() and path.name not in {".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md"}:
+    for path in sensor_dir.rglob("*"):
+        if path.is_file() and path.name not in SKIP_INPUT_NAMES:
+            return True
+    return False
+
+
+def _disk_sensor_files(stage_in: Path) -> list[str]:
+    names: list[str] = []
+    for sensor in SENSOR_COLLECTORS:
+        folder = stage_in / sensor
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.rglob("*")):
+            if path.is_file() and path.name not in SKIP_INPUT_NAMES:
+                names.append(path.name)
+    return names
+
+
+def _sample_banner_present(folder: Path) -> bool:
+    if not folder.is_dir():
+        return False
+    for path in folder.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.name == "SAMPLE.txt":
+            return True
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "DEMO — not a client estate" in text or "DEMO -- not a client estate" in text:
+            return True
+        if "SAMPLE" in text and "not a client" in text.lower():
             return True
     return False
 
@@ -89,10 +123,11 @@ def run_ciso_path(
     scope_path: Path | None = None,
     write_pack_in: bool | None = None,
 ) -> dict[str, Any]:
-    """Parse only sensors that already have KEEP-minimum files. No demo fallback.
+    """Parse landed KEEP-minimum files and already-on-disk sensor dirs.
 
-    Default file-drop is read-only against pack in/. Landing copies go under
-    dest_out/in unless the operator opts in with --write-pack-in.
+    Empty sensors do not load fixtures/demo. Default file-drop is read-only
+    against pack in/. Landing copies go under dest_out/in unless the
+    operator opts in with --write-pack-in.
     """
     scope = load_scope(scope_path)
     dest_in = Path(dest_in)
@@ -111,9 +146,15 @@ def run_ciso_path(
     else:
         stage_in = dest_out / "in"
         landed = _land_keepmin(rows, stage_in)
-    sensors = sorted(s for s in landed_sensors(landed) if s in SENSOR_COLLECTORS)
+    keepmin_sensors = {s for s in landed_sensors(landed) if s in SENSOR_COLLECTORS}
+    disk_sensors = {s for s in SENSOR_COLLECTORS if _has_input_files(stage_in / s)}
+    sensors = sorted(keepmin_sensors | disk_sensors)
     sensors = [s for s in sensors if _has_input_files(stage_in / s)]
-    sample = any(row.get("sample") for row in rows) or "DEMO" in scope.client_name.upper()
+    sample = (
+        any(row.get("sample") for row in rows)
+        or "DEMO" in scope.client_name.upper()
+        or _sample_banner_present(stage_in)
+    )
     caller_push = os.environ.get("CISO_PUSH", "0") == "1"
     caller_dry = os.environ.get("DRY_RUN", "1") == "1"
     posted = bool(caller_push and not caller_dry)
@@ -204,7 +245,7 @@ def run_ciso_path(
         "client_keep": False if sample else bool(rows) and not sample,
         "dest_in": str(stage_in),
         "dest_out": str(dest_out),
-        "landed": [row.get("name") for row in landed],
+        "landed": [row.get("name") for row in landed] or _disk_sensor_files(stage_in),
         "sensors": sensors,
         "collectors": ran,
         "counts": {

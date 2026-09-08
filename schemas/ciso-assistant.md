@@ -16,9 +16,10 @@ Files land in `out/ciso-assistant/`.
 ```bash
 export PYTHONPATH="$PWD"
 export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
-python3 -m dropbox ciso              # landed KEEP-minimum → out/ciso-assistant/*.csv
+python3 -m dropbox ciso              # landed KEEP-minimum or sensor-dir files → out/ciso-assistant/*.csv
 # then: clica   or   bash push_ciso.sh
 python3 -m dropbox mcp export_ciso_poam
+python3 scripts/prove_ciso.py        # SAMPLE/DEMO fixture prove → prove/work/out/ciso-assistant (≠ paying-day PASS)
 ```
 
 `posted` stays false unless `CISO_PUSH=1`. This agent never runs `push_ciso.sh`. Desktop has no `make` / `gh`.

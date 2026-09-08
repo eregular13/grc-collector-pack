@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab prove-ciso
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -79,3 +79,7 @@ farm-toolbin-e2e:
 # SAMPLE KEEP-chain → Eval handoff under keep/work/. Not pack in/. Not a client KEEP drop.
 keep-lab:
 	$(PYTHON) -m keep lab
+
+# SAMPLE/DEMO: fixture Covey pack_drop + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
+prove-ciso:
+	$(PYTHON) scripts/prove_ciso.py
