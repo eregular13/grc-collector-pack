@@ -473,6 +473,25 @@ def test_client_assess_doc_is_checklist_only() -> None:
     assert "paying_day: NO" in ready
 
 
+def test_client_docs_match_pack_mapped_live() -> None:
+    """R14: CLIENT_ASSESS + CLIENT_READY + PRODUCT.md match live pack_mapped 10."""
+    prod = (ROOT / "PRODUCT.md").read_text(encoding="utf-8")
+    ready = (ROOT / "CLIENT_READY.md").read_text(encoding="utf-8")
+    assess = (ROOT / "docs" / "CLIENT_ASSESS.md").read_text(encoding="utf-8")
+    for blob in (prod, ready, assess):
+        assert "pack_mapped: 10" in blob
+        assert "client_facing_ready: false" in blob
+    assert "paying_day: NO" in ready
+    assert "`5` on docker-estate" not in ready
+    assert "pack_mapped: 5" not in ready
+    assert "pack_mapped: 5" not in prod
+    for name in ESTATE_MAPPED_CLASSES:
+        assert name in ready
+        assert name in prod or (
+            name == "Missing web security headers" and "Missing X-Frame-Options/CSP" in prod
+        )
+
+
 def test_readme_leads_with_assessment() -> None:
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "Authorized assessment" in text

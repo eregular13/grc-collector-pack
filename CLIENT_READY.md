@@ -1,16 +1,17 @@
 # CLIENT_READY (software bar)
 
-written_at: 2026-09-07T10:12:43-07:00
+written_at: 2026-09-08T09:26:14-07:00
 version: 0.5.0-rc.1
 client_facing_ready: false
 paying_day: NO
+pack_mapped: 10
 
 This is the **software** a first client assessment would run. Docker-sim is not a paying client.
 
 | Bar | Status |
 | --- | --- |
 | Isolated HTTP + HTTPS self-signed estate | PASS (`:18081` / `:18082` / `:18443`) |
-| Mapped web/TLS POA&M `pack_mapped ≥ 4` | PASS (`5` on docker-estate; extra expired / TLS1.0 / mismatch / dirlist / stub_status / .git / cookie / CORS / .env / dump.sql / phpinfo / metrics / openapi / basic-http / sourcemap / actuator / graphql / id_rsa / kubeconfig / terraform.tfstate / Docker config.json) |
+| Mapped web/TLS POA&M `pack_mapped: 10` | PASS (docker-estate live: Cleartext HTTP; Missing HSTS; Missing web security headers; Server banner disclosure; Git metadata exposed; Directory listing enabled; Environment file exposed; Insecure session cookie; Permissive CORS policy; Untrusted TLS certificate). 24h extra farms torn down (R01); expired/mismatch not folded (R09). |
 | `python -m dropbox.product_demo` / `--help` | PASS (`--help` no sink HTTP) |
 | `docs/CLIENT_ASSESS.md` checklist | PASS (do not scan a client from this lab) |
 | LAN CIDR refuse plan-only | PASS (`192.168.10.0/24`, `0.0.0.0/0`, `10.0.0.0/8`) |

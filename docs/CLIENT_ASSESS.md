@@ -1,6 +1,9 @@
 # Client assessment runbook (software)
 
-This is the **operator checklist** for a future signed client drop box. It is not a scan. Do **not** run it against `192.168.10.0/24`, pve, Hermes, Probo, or this lab host LAN. Docker-sim is not a paying client. `client_facing_ready` stays false until a real signed SCOPE + HITL.
+pack_mapped: 10
+client_facing_ready: false
+
+This is the **operator checklist** for a future signed client drop box. It is not a scan. Do **not** run it against `192.168.10.0/24`, pve, Hermes, Probo, or this lab host LAN. Docker-sim is not a paying client. `client_facing_ready` stays false until a real signed SCOPE + HITL. Lab-sim isolated docker-estate `pack_mapped: 10` (PRODUCT.md / CLIENT_READY.md) is this estate, not a paying-day count.
 
 ## Before live
 

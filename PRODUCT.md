@@ -4,6 +4,8 @@ live_finding_classes: Cleartext HTTP; Missing HSTS; Missing X-Frame-Options/CSP 
 pack_mapped: 10
 poam_rows_from_estate: 10
 client_facing_ready: false
+client_ready: CLIENT_READY.md
+client_assess: docs/CLIENT_ASSESS.md
 why_not_paying_day: docker-sim HITL is attested lab-sim (`blocked_by=lab_sim_not_client_estate`). Estate slug copies `out-estate/` POA&M, not Litware 132/155/9 CISO CSVs. SCOPE.example stays historically closed. No signed live drop box.
 ciso_import: docs/IMPORT_CISO.md
 riskready: WRAP_DEAD

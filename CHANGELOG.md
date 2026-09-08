@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 165
+
+R14 refine: `docs/CLIENT_ASSESS.md` + `CLIENT_READY.md` + `PRODUCT.md` all stamp `pack_mapped: 10` (live docker-estate folded classes). CLIENT_READY no longer claims pack_mapped 5 or torn-down 24h farms as the live count. `client_facing_ready` stays false. VERSION remains 0.5.0-rc.1 (R20). No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 164
 
 R13 refine: SimpleRisk leave-behind (`out-estate/simplerisk` + slug `engagements/<slug>/out/simplerisk` + zip member) includes all folded mapped classes (Git metadata, directory listing, insecure cookie, permissive CORS, `.env`, plus live Cleartext HTTP/HSTS/headers/banner/Untrusted TLS). Pack `out/simplerisk` fixture overwrite (`run_lab.ps1`) does not clobber slug dir or zip. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
