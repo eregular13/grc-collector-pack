@@ -1,6 +1,6 @@
-cycle: 91
+cycle: 92
 phase: DONE
-item: HONEYPOT-COVEY-PACK-DROP
+item: DNS-EMAIL-SEEN
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,16 +8,16 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 369
+pytest: 366
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
 farm_lab: pass
 farm_toolbin_e2e: pass
 keep_lab: pass
-e2e_assets: 64
-e2e_findings: 80
-e2e_poam: 82
+e2e_assets: 69
+e2e_findings: 87
+e2e_poam: 87
 demo: true
 estate: DEMO — not a client estate
 compose_lab: absent
