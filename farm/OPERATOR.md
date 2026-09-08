@@ -280,8 +280,12 @@ ScubaGear / Okta assessment JSON (or JSONL) is file-drop ingest under
 `in/saas/`. Layer C parses Failed/high Scuba `Results` and inactive Okta
 MFA_ENROLL policies only — Pass / Skip / empty invent nothing. Wrappers
 (`data` / `ScubaResults` / `okta`) unwrap. High MFA and standing Global
-Administrator rows map to existing CISO/POA&M. The collector never calls
-Microsoft Graph or the Okta API. scuba / okta-logs stay file_drop.
+Administrator rows map to existing CISO/POA&M. Also drop Entra / Okta /
+Google **user-inventory** JSON or CSV (`users`, Graph users, `primaryEmail`)
+under `in/saas/`: explicit MFA-not-registered, standing Global Administrator,
+and stale guest rows are assessment findings (not breaches). Missing MFA
+fields invent nothing. The collector never calls Microsoft Graph or the
+Okta API. scuba / okta-logs / entra-export / graph-export stay file_drop.
 
 BloodHound CE / SharpHound JSON is file-drop ingest under `in/identity/`.
 Layer C parses `data.nodes` / `data.edges`, graph `nodes`/`edges`, or
@@ -304,6 +308,13 @@ Fleet host/policy JSON is file-drop ingest under `in/wazuh/`. Layer C parses
 Offline hosts are coverage gaps. Disk encryption off and MDM enrollment Off
 map to existing CISO/POA&M. Empty hosts/policies invent nothing. No Fleet
 API / fleetctl / osqueryi.
+
+Intune / Jamf **device inventory** is file-drop ingest under `in/mdm/`
+(host-wazuh extra path) or `in/wazuh/`. Layer C parses Graph `managedDevices`,
+Jamf `computers`, or a device CSV. Encryption compliance below 100%, missing
+EDR, and MDM unenrolled map to existing CISO/POA&M as assessment findings
+(not breaches). Fleet/Wazuh shapes are not stolen. Empty exports invent
+nothing. No Graph / Intune / Jamf / osqueryi.
 
 CIS-CAT / XCCDF JSON or XML is file-drop ingest under `in/wazuh/` or
 `in/identity/`. Failed rows only. Empty results invent nothing. High rows

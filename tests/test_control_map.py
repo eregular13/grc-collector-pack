@@ -310,6 +310,56 @@ def test_saas_mfa_and_admin_highs_map_to_poam() -> None:
     assert "not a Graph API" in mapped["recommended_fix"]
 
 
+def test_idp_mdm_inventory_highs_map_to_poam() -> None:
+    cases = [
+        (
+            "MFA not registered",
+            "Export lists bob@contoso.onmicrosoft.com without MFA registered. assessment finding",
+            "mfa",
+        ),
+        (
+            "Privileged MFA gap",
+            "Export lists it-admin@example.com without MFA registered while holding SUPER_ADMIN.",
+            "mfa",
+        ),
+        (
+            "Standing Global Administrator",
+            "Export lists a standing Global Administrator assignment for ga@contoso.onmicrosoft.com (not PIM-eligible).",
+            "global administrator",
+        ),
+        (
+            "Stale guest account",
+            "Export lists guest vendor with a stale last-sign-in.",
+            "guest",
+        ),
+        (
+            "intune encryption compliance 33.3%",
+            "Export shows 1/3 measured devices encrypted (33.3% compliance).",
+            "disk encryption",
+        ),
+        (
+            "Missing EDR on jump-unmanaged",
+            "jump-unmanaged export lists endpoint detection / antivirus as missing.",
+            "endpoint detection",
+        ),
+    ]
+    for name, desc, needle in cases:
+        rec = make_record(
+            kind="finding",
+            source="saas-idp" if "guest" in name.lower() or "mfa" in name.lower() or "administrator" in name.lower() else "host-wazuh",
+            ref_id="INV-map",
+            name=name,
+            description=desc,
+            severity="high",
+            category="identity-gap",
+            assets=["demo"],
+        )
+        mapped = map_finding(rec)
+        assert mapped["include_poam"] is True, name
+        assert needle in mapped["control_name"].lower(), (name, mapped["control_name"])
+        assert "CVE-" not in mapped["recommended_fix"]
+
+
 def test_hk_and_lynis_high_map_to_poam_not_cve() -> None:
     cases = [
         (

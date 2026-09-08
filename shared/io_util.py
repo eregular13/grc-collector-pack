@@ -26,6 +26,12 @@ SENSOR_IN = {
     "dns-email": "dns_email",
 }
 
+# Extra operator drop folders that reuse an existing Layer C parser.
+# in/mdm/ is an alias for host-wazuh (Intune/Jamf) — not a new catalog sensor.
+SENSOR_EXTRA = {
+    "host-wazuh": ("mdm",),
+}
+
 _SECRET_RES = [
     re.compile(r"AKIA[0-9A-Z]{16}"),
     re.compile(r"ASIA[0-9A-Z]{16}"),
@@ -103,13 +109,23 @@ def list_files(folder: Path, suffixes: Iterable[str] | None = None) -> list[Path
     return out
 
 
-def load_inputs(source: str, suffixes: Iterable[str] | None = None) -> tuple[list[Path], bool]:
-    """Return (files, used_demo). Empty in/ → fixtures/demo/<sensor>."""
+def _sensor_folders(source: str) -> list[str]:
     sensor = SENSOR_IN.get(source, source)
-    live = list_files(in_dir() / sensor, suffixes)
+    extras = list(SENSOR_EXTRA.get(source, ()))
+    return [sensor, *[e for e in extras if e != sensor]]
+
+
+def load_inputs(source: str, suffixes: Iterable[str] | None = None) -> tuple[list[Path], bool]:
+    """Return (files, used_demo). Empty in/ → fixtures/demo/<sensor> (+ extras)."""
+    folders = _sensor_folders(source)
+    live: list[Path] = []
+    for folder in folders:
+        live.extend(list_files(in_dir() / folder, suffixes))
     if live:
         return live, False
-    demo = list_files(fixtures_dir() / sensor, suffixes)
+    demo: list[Path] = []
+    for folder in folders:
+        demo.extend(list_files(fixtures_dir() / folder, suffixes))
     return demo, True
 
 
@@ -199,15 +215,15 @@ def run_collector(source: str, suffixes: Iterable[str], parse_file) -> list[dict
             write_raw_copy(source, path, {"error": "parse-failed", "file": path.name})
     if not parsed_any:
         demo = True
-        sensor = SENSOR_IN.get(source, source)
-        for path in list_files(fixtures_dir() / sensor, suffixes):
-            try:
-                recs = list(parse_file(path) or [])
-            except Exception:
-                recs = []
-            if recs:
-                records.extend(recs)
-                write_raw_copy(source, path, recs)
+        for folder in _sensor_folders(source):
+            for path in list_files(fixtures_dir() / folder, suffixes):
+                try:
+                    recs = list(parse_file(path) or [])
+                except Exception:
+                    recs = []
+                if recs:
+                    records.extend(recs)
+                    write_raw_copy(source, path, recs)
     records = mark_demo(records, demo)
     write_canonical(source, records)
     return records

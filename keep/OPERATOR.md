@@ -73,7 +73,10 @@ live Eval URL.
 ## Real KEEP drop (operator)
 
 1. Land client exports in pack `in/identity/*.csv`, `in/saas/*.json`,
-   `in/vuln/*.json`, `in/cloud/*.json`.
+   `in/vuln/*.json`, `in/cloud/*.json`. IdP user-inventory (Entra/Okta/Google)
+   also lands in `in/saas/`; Intune/Jamf device inventory in `in/mdm/` or
+   `in/wazuh/` (host-wazuh extra path). Those are file-drop assessment
+   collectors, not additional KEEP families.
 2. Re-run `python -m keep lab`. Stamp flips to `client_keep: true` only if all
    four families parse and are not samples.
 3. Human reviews `handoff.json` before Eval import.

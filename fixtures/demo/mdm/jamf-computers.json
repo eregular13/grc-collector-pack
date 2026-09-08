@@ -1,0 +1,24 @@
+{
+  "computers": [
+    {
+      "general": {
+        "name": "fleet-laptop-07",
+        "platform": "Mac",
+        "mdm_capable": true,
+        "mdm_capable_users": {"mdm_capable_user": []}
+      },
+      "disk_encryption": {"filevault2_enabled": false},
+      "security": {"antivirus_status": "disabled"}
+    },
+    {
+      "general": {
+        "name": "mac-ok-01",
+        "platform": "Mac",
+        "mdm_capable": true,
+        "mdm_capable_users": {"mdm_capable_user": [{"name": "it"}]}
+      },
+      "disk_encryption": {"filevault2_enabled": true},
+      "security": {"antivirus_status": "enabled"}
+    }
+  ]
+}

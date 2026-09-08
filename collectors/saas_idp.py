@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from shared.idp_inventory import parse_idp_file
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
 from shared.schema import make_record, make_ref
 
@@ -80,7 +81,120 @@ def _high_enough(sev: Any) -> bool:
     return str(sev or "high").strip().lower() not in _LOW
 
 
+_ASSESS = (
+    "This is an identity-posture assessment finding from a dropped IdP export, "
+    "not evidence of a breach or a live Graph/Okta/Google API call."
+)
+
+
+def _emit_idp_inventory(inv: dict, now: str) -> list[dict]:
+    records: list[dict] = []
+    tenant = str(inv.get("tenant") or "idp")
+    provider = str(inv.get("provider") or "idp")
+    extra_labels = [provider, "inventory"]
+    seen: set[str] = set()
+
+    def add_asset(name: str, desc: str, category: str) -> None:
+        key = name.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        records.append(
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{name}"),
+                name=name,
+                description=desc,
+                category=category,
+                assets=[name],
+                labels=LABELS + extra_labels,
+                collected_at=now,
+                extra={"asset_type": "SP", "provider": provider},
+            )
+        )
+
+    add_asset(tenant, f"{provider} tenant {tenant}", "saas-tenant")
+    for user in inv.get("users") or []:
+        if not isinstance(user, dict):
+            continue
+        login = str(user.get("name") or "")
+        if not login:
+            continue
+        add_asset(login, f"{provider} identity {login}", "identity")
+        assets = [login, tenant]
+        if user.get("mfa_registered") is False:
+            priv = user.get("privileged_roles") or []
+            sev = "critical" if priv else "high"
+            title = "Privileged MFA gap" if priv else "MFA not registered"
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"mfa-gap-{login}"),
+                    name=title,
+                    description=(
+                        f"Export lists {login} without MFA registered"
+                        f"{' while holding ' + ', '.join(str(r) for r in priv) if priv else ''}. "
+                        f"{_ASSESS}"
+                    ),
+                    severity=sev,
+                    category="identity-gap",
+                    assets=assets,
+                    labels=LABELS + extra_labels + ["mfa"],
+                    collected_at=now,
+                    extra={"mfa_registered": False, "roles": user.get("roles") or []},
+                )
+            )
+        if user.get("privileged_roles") and user.get("pim_eligible") is not True:
+            roles = [str(r) for r in (user.get("privileged_roles") or [])]
+            standing_ga = any("global administrator" in r.lower() for r in roles)
+            title = "Standing Global Administrator" if standing_ga else "Standing privileged role"
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"standing-admin-{login}"),
+                    name=title,
+                    description=(
+                        f"Export lists a standing {roles[0]} assignment for {login} "
+                        f"(not PIM-eligible in this drop). {_ASSESS}"
+                    ),
+                    severity="critical" if standing_ga else "high",
+                    category="identity-gap",
+                    assets=assets,
+                    labels=LABELS + extra_labels + ["privileged"],
+                    collected_at=now,
+                    extra={"role": roles[0], "pim_eligible": False},
+                )
+            )
+        if user.get("stale_guest"):
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"stale-guest-{login}"),
+                    name="Stale guest account",
+                    description=(
+                        f"Export lists guest {login} with a stale last-sign-in "
+                        f"({user.get('last_sign_in') or 'never'}). Review guest access hygiene. "
+                        f"{_ASSESS}"
+                    ),
+                    severity="high",
+                    category="identity-gap",
+                    assets=assets,
+                    labels=LABELS + extra_labels + ["guest"],
+                    collected_at=now,
+                    extra={"user_type": "Guest", "last_sign_in": user.get("last_sign_in")},
+                )
+            )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
+    inv = parse_idp_file(path)
+    if inv:
+        return _emit_idp_inventory(inv, iso_now())
     payload = _as_scuba(_unwrap(_load(path)))
     now = iso_now()
     records: list[dict] = []
@@ -291,7 +405,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".jsonl"), parse_file)
+    run_collector(SOURCE, (".json", ".jsonl", ".csv"), parse_file)
 
 
 if __name__ == "__main__":

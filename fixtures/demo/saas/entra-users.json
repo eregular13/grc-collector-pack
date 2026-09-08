@@ -1,0 +1,44 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users",
+  "tenant": "contoso.onmicrosoft.com",
+  "value": [
+    {
+      "userPrincipalName": "alice@contoso.onmicrosoft.com",
+      "displayName": "Alice Contoso",
+      "userType": "Member",
+      "accountEnabled": true,
+      "isMfaRegistered": true,
+      "assignedRoles": ["User"],
+      "signInActivity": {"lastSignInDateTime": "2026-09-01T12:00:00Z"}
+    },
+    {
+      "userPrincipalName": "bob@contoso.onmicrosoft.com",
+      "displayName": "Bob Contoso",
+      "userType": "Member",
+      "accountEnabled": true,
+      "isMfaRegistered": false,
+      "assignedRoles": ["User"],
+      "signInActivity": {"lastSignInDateTime": "2026-08-20T08:00:00Z"}
+    },
+    {
+      "userPrincipalName": "ga@contoso.onmicrosoft.com",
+      "displayName": "Standing GA",
+      "userType": "Member",
+      "accountEnabled": true,
+      "isMfaRegistered": true,
+      "assignedRoles": ["Global Administrator"],
+      "pimEligible": false,
+      "signInActivity": {"lastSignInDateTime": "2026-09-02T09:00:00Z"}
+    },
+    {
+      "userPrincipalName": "vendor_ext#EXT#@contoso.onmicrosoft.com",
+      "mail": "vendor@partner.example",
+      "displayName": "Stale Guest",
+      "userType": "Guest",
+      "accountEnabled": true,
+      "isMfaRegistered": true,
+      "signInActivity": {"lastSignInDateTime": "2024-01-15T00:00:00Z"},
+      "createdDateTime": "2023-06-01T00:00:00Z"
+    }
+  ]
+}

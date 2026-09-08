@@ -12,6 +12,7 @@ from typing import Any
 
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.osquery_checks import iter_osquery_failures
 from shared.schema import make_record, make_ref
 
@@ -230,11 +231,134 @@ def _emit_check_rows(
     return records
 
 
+_ASSESS = (
+    "This is an endpoint-posture assessment finding from a dropped MDM export, "
+    "not evidence of a breach or a live Intune/Jamf/osquery query."
+)
+
+
+def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
+    records: list[dict] = []
+    provider = str(inv.get("provider") or "mdm")
+    extra_labels = [provider, "mdm", "inventory"]
+    seen: set[str] = set()
+
+    def add_asset(name: str) -> None:
+        key = name.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        records.append(
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{name}"),
+                name=name,
+                description=f"{provider} endpoint {name}",
+                category="host",
+                assets=[name],
+                labels=LABELS + extra_labels,
+                collected_at=now,
+                extra={"asset_type": "PR", "provider": provider},
+            )
+        )
+
+    pct = inv.get("encryption_pct")
+    measured = int(inv.get("measured_count") or 0)
+    if pct is not None and measured and pct < 100:
+        estate = f"{provider}-estate"
+        add_asset(estate)
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"enc-compliance-{provider}"),
+                name=f"{provider} encryption compliance {pct}%",
+                description=(
+                    f"Export shows {inv.get('encrypted_count')}/{measured} measured devices encrypted "
+                    f"({pct}% compliance). {_ASSESS}"
+                ),
+                severity="high",
+                category="host-posture",
+                assets=[estate],
+                labels=LABELS + extra_labels + ["disk-encryption"],
+                collected_at=now,
+                extra={"encryption_pct": pct, "measured_count": measured},
+            )
+        )
+    for device in inv.get("devices") or []:
+        if not isinstance(device, dict):
+            continue
+        name = str(device.get("name") or "")
+        if not name:
+            continue
+        add_asset(name)
+        if device.get("encrypted") is False:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"diskenc-{provider}-{name}"),
+                    name=f"Disk encryption disabled on {name}",
+                    description=(
+                        f"{name} export lists disk encryption as not enabled. {_ASSESS}"
+                    ),
+                    severity="high",
+                    category="host-posture",
+                    assets=[name],
+                    labels=LABELS + extra_labels + ["disk-encryption"],
+                    collected_at=now,
+                    extra={"disk_encryption_enabled": False, "provider": provider},
+                )
+            )
+        if device.get("mdm_enrolled") is False:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"mdm-{provider}-{name}"),
+                    name=f"MDM enrollment off on {name}",
+                    description=(
+                        f"{name} is not enrolled in MDM according to the dropped {provider} export. "
+                        f"{_ASSESS}"
+                    ),
+                    severity="high",
+                    category="host-posture",
+                    assets=[name],
+                    labels=LABELS + extra_labels,
+                    collected_at=now,
+                    extra={"mdm_enrollment": "unenrolled", "provider": provider},
+                )
+            )
+        if device.get("edr_present") is False:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"edr-{provider}-{name}"),
+                    name=f"Missing EDR on {name}",
+                    description=(
+                        f"{name} export lists endpoint detection / antivirus as missing. {_ASSESS}"
+                    ),
+                    severity="high",
+                    category="coverage-gap",
+                    assets=[name],
+                    labels=LABELS + extra_labels + ["edr"],
+                    collected_at=now,
+                    extra={"edr_present": False, "provider": provider},
+                )
+            )
+    return records
+
+
 def parse_file(path: Path) -> list[dict]:
     if path.suffix.lower() in {".txt", ".log", ".dat"}:
         return parse_lynis_report(read_text(path), iso_now())
     text = read_text(path)
     now = iso_now()
+    if path.suffix.lower() == ".csv":
+        mdm = parse_mdm_file(path)
+        return _emit_mdm_inventory(mdm, now) if mdm else []
     if path.suffix.lower() == ".xml" or text.lstrip().startswith("<"):
         if is_cis_cat(name=path.name, text=text):
             return _emit_check_rows(
@@ -400,11 +524,14 @@ def parse_file(path: Path) -> list[dict]:
             title_fmt="osquery {id}: {title}",
         )
     )
+    mdm = parse_mdm_inventory(payload, name=path.name, text=text)
+    if mdm:
+        records.extend(_emit_mdm_inventory(mdm, now))
     return records
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".xml", ".txt", ".log", ".dat"), parse_file)
+    run_collector(SOURCE, (".json", ".xml", ".txt", ".log", ".dat", ".csv"), parse_file)
 
 
 if __name__ == "__main__":
