@@ -2,22 +2,30 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 102):** CoS #8 honesty sync. STATUS
+**This window (cycle 103):** CoS #9 honesty sync. STATUS
 `next_action` is current truth — Covey `E2E_PROVEN` = nmap +
-rustscan + fping + naabu + nping + httpx at HEAD `a4b84d7`.
-Pack does not start Covey adapter work. Reid-only blockers
-remain (CTA; real KEEP `in/` drop; Eval `npm start`; Docker
-compose on a real host — this VM `compose_lab` **ABSENT ≠
-pass**). Paying-day stays **FAIL**. DEMO ≠ client. SAMPLE KEEP
+rustscan + fping + naabu + nping + httpx + sslscan at HEAD
+`e29c4e4`. Pack does not start Covey adapter work. Reid-only
+blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
+Docker compose on a real host — this VM `compose_lab` **ABSENT
+≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client. SAMPLE KEEP
 **0/4**. Catalog unchanged (111 / 32 wired / 30 invoke /
-81 file_drop). Cycle 101 CoS #7 stands as history. Cycle 100
-CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands.
-Cycle 97 CoS #3 stands. Cycle 96 CISO prove stands. Cycle 95
-Beelzebub stands. Cycle 94 IdP/MDM stands. Cycle 93 DNS/email
-CoS prove bar stands. Cycle 90 honesty next_action stands.
-Cycle 74 durable blockers stay locked. Wrap stays **dead**.
-Compose **ABSENT**. Gate/hash already on master
-(`python -m dropbox gate`).
+81 file_drop). Cycle 102 CoS #8 stands as history. Cycle 101
+CoS #7 stands. Cycle 100 CoS #6 stands. Cycle 99 CoS #5 stands.
+Cycle 98 CoS #4 stands. Cycle 97 CoS #3 stands. Cycle 96 CISO
+prove stands. Cycle 95 Beelzebub stands. Cycle 94 IdP/MDM
+stands. Cycle 93 DNS/email CoS prove bar stands. Cycle 90
+honesty next_action stands. Cycle 74 durable blockers stay
+locked. Wrap stays **dead**. Compose **ABSENT**. Gate/hash
+already on master (`python -m dropbox gate`).
+
+**Cycle 102 (stands):** CoS #8 honesty sync. STATUS
+`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
++ naabu + nping + httpx at HEAD `a4b84d7`. That claim is
+historical — Covey later proved sslscan at HEAD `e29c4e4`.
+Reid-only blockers remain. Catalog unchanged (111 / 32 wired /
+30 invoke / 81 file_drop). Wrap stays **dead**. Compose
+**ABSENT**.
 
 **Cycle 101 (stands):** CoS #7 honesty sync. STATUS
 `next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
