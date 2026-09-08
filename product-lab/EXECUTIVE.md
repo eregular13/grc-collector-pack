@@ -2,18 +2,26 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 97):** CoS #3 refine-only. STATUS
-`next_action` is current truth after CoS #2/#3 (tests/docs; no
-brick-adding). Reid-only blockers remain (CTA; real KEEP `in/`
-drop; Eval `npm start`; Docker compose on a real host — this VM
+**This window (cycle 98):** CoS #4 refine-only. STATUS
+`next_action` is current truth — third live Covey brick **held**
+(fping preferred; BYO fping missing on this VM, not in flight).
+Reid-only blockers remain (CTA; real KEEP `in/` drop; Eval
+`npm start`; Docker compose on a real host — this VM
 `compose_lab` **ABSENT ≠ pass**). Paying-day stays **FAIL**.
 DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32
-wired / 30 invoke / 81 file_drop). Cycle 96 CISO prove stands.
-Cycle 95 Beelzebub stands. Cycle 94 IdP/MDM stands. Cycle 93
-DNS/email CoS prove bar stands. Cycle 90 honesty next_action
-stands. Cycle 74 durable blockers stay locked. Wrap stays
-**dead**. Compose **ABSENT**. Gate/hash already on master
-(`python -m dropbox gate`).
+wired / 30 invoke / 81 file_drop). Cycle 97 CoS #3 stands.
+Cycle 96 CISO prove stands. Cycle 95 Beelzebub stands. Cycle 94
+IdP/MDM stands. Cycle 93 DNS/email CoS prove bar stands. Cycle
+90 honesty next_action stands. Cycle 74 durable blockers stay
+locked. Wrap stays **dead**. Compose **ABSENT**. Gate/hash
+already on master (`python -m dropbox gate`).
+
+**Cycle 97 (stands):** CoS #3 refine-only. STATUS
+`next_action` was refine-only after CoS #2/#3 (tests/docs).
+Reid-only blockers remain. Pytest locks wrap PUSH=1
+fail-closed, CISO SAMPLE/DEMO labels, two-MCP pack-truth
+refuse. Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 96 (stands):** CISO Assistant export prove,
 rebased onto Beelzebub #11. Fixture Covey pack_drop +

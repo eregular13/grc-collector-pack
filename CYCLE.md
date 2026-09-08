@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 98 — CoS #4 refine-only; third Covey brick held (2026-09-08)
+
+STATUS `next_action` no longer says “after CoS #2/#3”. Current truth: CoS #4 refine-only — third live Covey brick **held** (fping preferred; BYO fping missing on this VM, not in flight). Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Pytest lock: STATUS/docs cannot flip `compose_lab` absent → pass. No new collectors. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**. DEMO ≠ client. Compose ABSENT ≠ pass.
+
+```json
+{"pytest": 405, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 97 — CoS #3 refine-only honesty locks (2026-09-08)
 
 STATUS `next_action` no longer says “After CoS #1…”. Current truth: refine-only after CoS #2/#3 (tests/docs). Reid-only blockers remain CTA + real KEEP `in/` + Eval `npm start` + Docker compose on a real host (this VM `compose_lab` absent ≠ PASS). Extended existing pytest: RiskReady `PUSH=1` fail-closed (no login/HTTP/POST); CISO prove labels SAMPLE/DEMO not client; two-MCP `PACK_TRUTH_TOOLS` refused on `mcp_stub` + STATUS `argus_pack_truth`. No new collectors. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**. DEMO ≠ client. Compose ABSENT ≠ pass.
