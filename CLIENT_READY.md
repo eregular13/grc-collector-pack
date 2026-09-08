@@ -1,7 +1,7 @@
 # CLIENT_READY (software bar)
 
-written_at: 2026-09-08T09:26:14-07:00
-version: 0.5.0-rc.1
+written_at: 2026-09-08T15:26:41-07:00
+version: 0.5.0-rc.2
 client_facing_ready: false
 paying_day: NO
 pack_mapped: 10

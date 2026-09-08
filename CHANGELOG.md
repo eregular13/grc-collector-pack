@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 171
+
+R20 refine: VERSION `0.5.0-rc.2` (code landed this window: folded estate classes, mapped_classes, slug zip/SimpleRisk, pack_mapped 10 docs, estate-down, LAN refuse, WRAP_DEAD `/api/risks` 403, QUICKSTART copy, CI collection). Still not a paying-day PASS. `client_facing_ready` false. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 170
 
 R19 refine: CI `.github/workflows/lab.yml` still valid (name lab, Python 3.12, `pytest tests -q`, DRY_RUN/CISO_PUSH/RISKREADY_PUSH/GRC_LIVE_SCAN, no Docker estate, no office LAN, no `/api/risks`). Pytest collection ≥ 229. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

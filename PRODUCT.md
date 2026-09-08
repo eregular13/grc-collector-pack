@@ -1,4 +1,5 @@
 # PRODUCT
+version: 0.5.0-rc.2
 demo_command: python -m dropbox.product_demo
 live_finding_classes: Cleartext HTTP; Missing HSTS; Missing X-Frame-Options/CSP (mapped as Missing web security headers); Server banner disclosure; Git metadata exposed; Directory listing enabled; Insecure session cookie; Permissive CORS policy; Environment file exposed; Untrusted TLS certificate
 pack_mapped: 10

@@ -517,10 +517,13 @@ def test_client_assess_doc_is_checklist_only() -> None:
     assert "dropbox.product_demo --help" in qs
     assert "CLIENT_ASSESS.md" in qs
     assert "not Litware" in prod
-    assert (ROOT / "VERSION").read_text(encoding="utf-8").strip() == "0.5.0-rc.1"
+    assert (ROOT / "VERSION").read_text(encoding="utf-8").strip() == "0.5.0-rc.2"
     ready = (ROOT / "CLIENT_READY.md").read_text(encoding="utf-8")
+    assert "version: 0.5.0-rc.2" in ready
     assert "client_facing_ready: false" in ready
     assert "paying_day: NO" in ready
+    assert "0.5.0-rc.2" in (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "version: 0.5.0-rc.2" in prod
 
 
 def test_client_docs_match_pack_mapped_live() -> None:
