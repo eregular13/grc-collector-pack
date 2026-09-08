@@ -1,6 +1,6 @@
-cycle: 93
+cycle: 94
 phase: DONE
-item: DNS-EMAIL-PROVE-BAR
+item: IDP-MDM-FILE-DROP
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,16 +8,16 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 385
+pytest: 393
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
 farm_lab: pass
 farm_toolbin_e2e: pass
 keep_lab: pass
-e2e_assets: 69
-e2e_findings: 87
-e2e_poam: 87
+e2e_assets: 81
+e2e_findings: 106
+e2e_poam: 106
 demo: true
 estate: DEMO — not a client estate
 compose_lab: absent

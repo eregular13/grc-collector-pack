@@ -305,11 +305,22 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "Remove standing Domain Admins members. "
             "This is a dropped identity export, not a live directory call."
         )
-    elif "disk encryption" in text or "filevault" in text or "bitlocker" in text:
+    elif (
+        "disk encryption" in text
+        or "filevault" in text
+        or "bitlocker" in text
+        or "encryption compliance" in text
+    ):
         name = "Enable full-disk encryption"
         fix = (
             "Enable FileVault, BitLocker, or LUKS on the endpoint. "
-            "This is a Fleet file-drop finding, not a live agent query."
+            "This is a Fleet/Intune/Jamf file-drop finding, not a live agent query."
+        )
+    elif "missing edr" in text or ("edr" in text and "missing" in text):
+        name = "Deploy endpoint detection and response"
+        fix = (
+            "Install the approved EDR/antivirus agent and confirm it reports healthy. "
+            "This is an MDM file-drop assessment finding, not a live agent query."
         )
     elif "mdm" in text and (
         "enroll" in text or "unenroll" in text or "enrollment off" in text or "not enrolled" in text
@@ -317,7 +328,13 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Enroll the endpoint in MDM"
         fix = (
             "Enroll the host in the approved MDM. "
-            "This is a Fleet file-drop finding, not a live agent query."
+            "This is a Fleet/Intune/Jamf file-drop finding, not a live agent query."
+        )
+    elif "stale guest" in text or ("guest" in text and "stale" in text):
+        name = "Review and expire stale guest accounts"
+        fix = (
+            "Disable or remove guest accounts with stale last-sign-in. "
+            "This is an IdP file-drop assessment finding, not a Graph/Okta API call."
         )
     elif "coverage gap" in text or "agent disconnected" in text:
         name = "Restore endpoint coverage"
@@ -340,10 +357,13 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         or "admin mfa" in text
         or "mfa enrollment" in text
         or "mfa not enforced" in text
+        or "mfa not registered" in text
+        or "mfa gap" in text
+        or "privileged mfa" in text
     ):
         name = "Require MFA for privileged SaaS admins"
         fix = (
-            "Enforce MFA on privileged Okta/Entra roles from the dropped ScubaGear or Okta export. "
+            "Enforce MFA on privileged Okta/Entra/Google roles from the dropped ScubaGear or Okta export. "
             "This is not a Graph or Okta API call."
         )
     elif "global administrator" in text and (

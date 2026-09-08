@@ -6,10 +6,10 @@ wrap: stay-out
 lanes:
   - assessment: IdP
     pack_in: identity
-    notes: BloodHound / PingCastle / HardeningKitty file_drop
+    notes: BloodHound / PingCastle / HardeningKitty file_drop; Entra/Okta/Google users also in/saas/
   - assessment: MDM
     pack_in: wazuh
-    notes: Fleet / osquery / Wazuh coverage file_drop
+    notes: Fleet / osquery / Wazuh coverage file_drop; Intune/Jamf also in/mdm/ (host-wazuh alias)
   - assessment: cloud
     pack_in: cloud
     notes: Prowler / ScoutSuite / ASFF file_drop

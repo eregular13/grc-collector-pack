@@ -1,0 +1,32 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#deviceManagement/managedDevices",
+  "value": [
+    {
+      "deviceName": "fleet-laptop-07",
+      "operatingSystem": "Windows",
+      "complianceState": "noncompliant",
+      "isEncrypted": false,
+      "azureADRegistered": true,
+      "managementState": "managed",
+      "antivirusStatus": "notUpdated"
+    },
+    {
+      "deviceName": "jump-unmanaged",
+      "operatingSystem": "Windows",
+      "complianceState": "unknown",
+      "isEncrypted": false,
+      "azureADRegistered": false,
+      "managementState": "retirePending",
+      "antivirusStatus": "notInstalled"
+    },
+    {
+      "deviceName": "win-ok-01",
+      "operatingSystem": "Windows",
+      "complianceState": "compliant",
+      "isEncrypted": true,
+      "azureADRegistered": true,
+      "managementState": "managed",
+      "antivirusStatus": "enabled"
+    }
+  ]
+}

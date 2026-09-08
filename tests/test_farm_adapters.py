@@ -203,6 +203,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "SaaS file-drop" in md
     assert "ScubaGear" in md
     assert "scuba-wrap.json" in md
+    assert "entra-users.json" in md
+    assert "Intune" in md
+    assert "in/mdm/" in md
     assert "Secrets / IaC file-drop" in md
     assert "failed_checks" in md
     assert "SARIF file-drop" in md

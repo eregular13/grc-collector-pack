@@ -9,8 +9,8 @@ Machine-readable twin: [`evidence_matrix.yaml`](evidence_matrix.yaml)
 
 | Assessment | Pack `in/` | What lands | Status |
 |---|---|---|---|
-| IdP | `in/identity/` | BloodHound / PingCastle / HardeningKitty / CIS-CAT / enum4linux-ng file_drop | exists |
-| MDM | `in/wazuh/` | Fleet / osquery / Wazuh / Lynis coverage file_drop | exists |
+| IdP | `in/identity/` + `in/saas/` | BloodHound / PingCastle / HardeningKitty / CIS-CAT / enum4linux-ng; Entra/Okta/Google user-inventory file_drop | exists |
+| MDM | `in/wazuh/` + `in/mdm/` | Fleet / osquery / Wazuh / Lynis; Intune/Jamf device inventory (`in/mdm/` is a host-wazuh alias) | exists |
 | cloud | `in/cloud/` | Prowler / ScoutSuite / Steampipe / Custodian / ASFF file_drop | exists |
 | DNS/email | `in/dns_email/` | SPF/DKIM/DMARC/MX + PEM/crt.sh Seen (Covey `email_dns`) | exists |
 | DNS/email EASM | `in/easm/` | Amass / Subfinder / httpx / WhatWeb / ffuf file_drop | exists |

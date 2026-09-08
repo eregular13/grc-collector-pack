@@ -24,19 +24,19 @@ PLAN → BUILD hooks + pack → SELF-CHECK → LAB → CRITIC → FIX → REGRES
 | cloud-prowler | cloud/*.json | CLD- | Prowler FAIL → findings + OCSF |
 | inventory-nmap | nmap/*.xml | NMAP- | hosts PR + exposure findings |
 | vuln-scan | vuln/* | VULN- | Nuclei/Trivy/Greenbone/SARIF → vulns |
-| host-wazuh | wazuh/* | WAZ- | coverage gaps + incidents |
+| host-wazuh | wazuh/* + mdm/* | WAZ- | coverage gaps + Intune/Jamf inventory |
 | identity-ad | identity/* | ID- | BloodHound/PingCastle → SP |
 | easm | easm/* | EASM- | Amass/Subfinder/httpx hosts |
 | k8s-kubescape | k8s/* | K8S- | cluster findings |
 | code-secrets | code/* | CODE- | secrets/SAST/SARIF redacted |
-| saas-idp | saas/* | SAAS- | ScubaGear/Graph/Okta |
+| saas-idp | saas/* | SAAS- | ScubaGear/Graph/Okta + Entra/Okta/Google user inventory |
 | honeypot (stub, not a compose service) | honeypot/* | HPOT- | fleet-sensor events; deception-sensor evidence, not compromise |
 | dns-email | dns_email/* | DNS- | SPF/DKIM/DMARC/MX/cert Seen (file_drop) |
 | grc-loader | out/canonical | — | all GRC files |
 
 ## This window (2026-09-08)
 
-Cycle **93** (this brick): CoS prove bar — fixture file_drop → collector → `out/canonical` (SAMPLE ≠ client). Cycle **91** (master): Honeypot file_drop lane + Covey pack_drop on existing `in/nmap/` + evidence matrix. Not a compose service. Cycle **92**: Email/DNS Seen collector (`in/dns_email/`, Covey `email_dns` lane). File-drop SPF/DKIM/DMARC/MX + optional PEM/crt.sh. Missing DMARC = control gap, not a breach. Live DNS only behind `--live` + signed SCOPE allowlist. Catalog **not inflated** (`dig` remapped to `in/dns_email/`). Compose is 11 services (10 collectors + loader); honeypot stays an optional stub. Cycle **90** honesty next_action sync stands. Cycle **89** DESKTOP SCOPE attestation stands. keep-lab uses redacted samples until Reid drops real KEEP into pack `in/` (0/4 real still open). Remaining Reid-only blockers (CTA, Eval npm start, real KEEP in/ drop, compose-on-Docker) stay open. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. File-drop-only names never `live_ready`. `FARM_TOOL_BIN` never resolves locked scanners. `SCOPE.example.yaml` does not default-allowlist nmap/nessus. No slot inflation. No live probes from collectors. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever. DEMO ≠ client. SAMPLE ≠ client KEEP. Hexstrike pattern-only.
+Cycle **94**: IdP + MDM file-drop intake rebased on CoS prove-bar #10 + DNS/email #8 + honeypot #7 — extend saas-idp (Entra/Okta/Google user inventory) and host-wazuh (Intune/Jamf device inventory). `in/mdm/` is a host-wazuh extra path, not a new Layer C catalog sensor. Assessment findings only. No live Graph/osquery. DESKTOP prove bar: file_drop fixture → detect → `out/canonical` (SAMPLE ≠ client). No slot inflation. Catalog **111 / 32 / 30 / 81**. Cycle **93** DNS/email CoS prove bar stands. Cycle **92** DNS/email Seen stands. Cycle **91** honeypot + Covey pack_drop stands (not a 12th compose service). Cycle **90** honesty next_action sync stands. Cycle **89** DESKTOP SCOPE attestation stands. **Stop vanity Layer C parsers** (this brick reused existing collectors). keep-lab uses redacted samples until Reid drops real KEEP into pack `in/` (0/4 real still open). Remaining work is Reid-only (CTA, Eval npm start, real KEEP in/ drop, compose-on-Docker) — not catalog inflation. File-drop remains the default. LICENSE-LOCK / BloodHound / Nuclei-class never `will_run=true`. File-drop-only names never `live_ready`. `FARM_TOOL_BIN` never resolves locked scanners. `SCOPE.example.yaml` does not default-allowlist nmap/nessus. nmap/nessus invoke only when SCOPE.allow_tools + stage + PATH + HITL. No slot inflation. No live probes. No fake compose pass. Paying-day stays FAIL. Compose ABSENT until proven on a Docker host. Wrap dead forever (review-only; no login/POST). DEMO ≠ client. SAMPLE ≠ client KEEP. pytest greens are not a paying-day stamp. Hexstrike pattern-only. MCP stub is not USB `evergreen_assessment_mcp`.
 
 ## STOP rules
 

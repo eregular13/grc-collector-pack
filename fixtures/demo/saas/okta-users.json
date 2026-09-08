@@ -1,0 +1,30 @@
+{
+  "org": "example.okta.com",
+  "users": [
+    {
+      "id": "00u1admin",
+      "profile": {"login": "it-admin@example.com"},
+      "status": "ACTIVE",
+      "roles": ["SUPER_ADMIN"],
+      "mfaRegistered": false,
+      "lastLogin": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "00u2user",
+      "profile": {"login": "jane@example.com"},
+      "status": "ACTIVE",
+      "roles": [],
+      "mfaRegistered": true,
+      "lastLogin": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "00u3guest",
+      "profile": {"login": "contractor@example.com"},
+      "status": "ACTIVE",
+      "userType": "Guest",
+      "roles": [],
+      "mfaRegistered": true,
+      "lastLogin": "2024-02-01T00:00:00Z"
+    }
+  ]
+}

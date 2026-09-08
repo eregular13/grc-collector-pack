@@ -1,0 +1,4 @@
+primaryEmail,name.fullName,isAdmin,isEnrolledIn2Sv,isEnforcedIn2Sv,lastLoginTime,isGuest,orgUnitPath
+admin@example.com,Admin User,True,False,False,2026-08-01T00:00:00Z,False,/
+user@example.com,Regular User,False,True,True,2026-09-01T00:00:00Z,False,/Staff
+guest.ext@example.com,Stale Contractor,False,True,True,2024-02-01T00:00:00Z,True,/Guests

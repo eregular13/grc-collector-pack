@@ -1,4 +1,7 @@
+import json
 from pathlib import Path
+
+import pytest
 
 from collectors import cloud_prowler, code_secrets, easm, host_wazuh, identity_ad, inventory_nmap, k8s_kubescape, saas_idp, vuln_scan
 
@@ -1065,10 +1068,12 @@ def test_empty_in_still_loads_fleet(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-wazuh"))
     (tmp_path / "empty-wazuh" / "wazuh").mkdir(parents=True)
-    files, demo = load_inputs("host-wazuh", (".json", ".xml", ".txt", ".log", ".dat"))
+    files, demo = load_inputs("host-wazuh", (".json", ".xml", ".txt", ".log", ".dat", ".csv"))
     assert demo is True
     names = {p.name for p in files}
     assert "fleet.json" in names
+    assert "intune-devices.json" in names
+    assert "jamf-computers.json" in names
 
 
 def test_host_wazuh_no_live_agent() -> None:
@@ -1570,13 +1575,16 @@ def test_empty_in_still_loads_maester(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-saas"))
     (tmp_path / "empty-saas" / "saas").mkdir(parents=True)
-    files, demo = load_inputs("saas-idp", (".json", ".jsonl"))
+    files, demo = load_inputs("saas-idp", (".json", ".jsonl", ".csv"))
     assert demo is True
     names = {p.name for p in files}
     assert "maester.json" in names
     assert "scuba.json" in names
     assert "okta.json" in names
     assert "scuba-wrap.json" in names
+    assert "entra-users.json" in names
+    assert "okta-users.json" in names
+    assert "google-users.csv" in names
 
 
 def test_graph_empty_members_does_not_invent(tmp_path) -> None:
@@ -2055,3 +2063,214 @@ def test_saas_parser_no_live() -> None:
     assert "socket.socket" not in src
     assert "nessuscli scan" not in src
     assert "nessuscli --" not in src
+    inv = (ROOT / "shared" / "idp_inventory.py").read_text(encoding="utf-8")
+    assert "import subprocess" not in inv
+    assert "urllib.request" not in inv
+    assert "graph.microsoft.com/v1.0" not in inv or "parse-only" in inv.lower()
+
+
+def test_entra_okta_google_idp_inventory() -> None:
+    from shared.control_map import map_finding
+
+    entra = saas_idp.parse_file(DEMO / "saas" / "entra-users.json")
+    findings = [r for r in entra if r["kind"] == "finding"]
+    names = [r["name"] for r in findings]
+    assert any(r["kind"] == "asset" and r["name"] == "contoso.onmicrosoft.com" for r in entra)
+    assert any(r["kind"] == "asset" and r["name"] == "bob@contoso.onmicrosoft.com" for r in entra)
+    assert "MFA not registered" in names
+    assert "Standing Global Administrator" in names
+    assert "Stale guest account" in names
+    assert not any("alice@contoso.onmicrosoft.com" in (r.get("description") or "") and r["kind"] == "finding" and "MFA" in r["name"] for r in entra)
+    for rec in findings:
+        assert "assessment finding" in rec["description"]
+        assert "not evidence of a breach" in rec["description"]
+        mapped = map_finding(rec)
+        assert mapped["include_poam"] is True
+        assert "CVE-" not in mapped["recommended_fix"]
+        assert "not a Graph" in mapped["recommended_fix"] or "file-drop" in mapped["recommended_fix"]
+
+    okta = saas_idp.parse_file(DEMO / "saas" / "okta-users.json")
+    okta_findings = [r for r in okta if r["kind"] == "finding"]
+    assert any("Privileged MFA gap" in r["name"] for r in okta_findings)
+    assert any("Stale guest" in r["name"] for r in okta_findings)
+    assert any("it-admin@example.com" in r["assets"] for r in okta_findings)
+    assert all("assessment finding" in r["description"] for r in okta_findings)
+
+    google = saas_idp.parse_file(DEMO / "saas" / "google-users.csv")
+    g_findings = [r for r in google if r["kind"] == "finding"]
+    assert any("MFA" in r["name"] and "admin@example.com" in r["assets"] for r in g_findings)
+    assert any("Stale guest" in r["name"] for r in g_findings)
+    assert not any("user@example.com" in r["assets"] and r["kind"] == "finding" for r in google)
+
+
+def test_idp_empty_and_pass_invent_nothing(tmp_path) -> None:
+    empty = tmp_path / "users-empty.json"
+    empty.write_text('{"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#users","value":[]}', encoding="utf-8")
+    assert saas_idp.parse_file(empty) == []
+    compliant = tmp_path / "users-ok.json"
+    compliant.write_text(
+        """{"tenant":"contoso.onmicrosoft.com","value":[
+        {"userPrincipalName":"ok@contoso.onmicrosoft.com","userType":"Member",
+         "isMfaRegistered":true,"assignedRoles":["User"],
+         "signInActivity":{"lastSignInDateTime":"2026-09-01T00:00:00Z"}}]}""",
+        encoding="utf-8",
+    )
+    recs = saas_idp.parse_file(compliant)
+    assert recs
+    assert not any(r["kind"] == "finding" for r in recs)
+    policy_only = saas_idp.parse_file(DEMO / "saas" / "okta.json")
+    assert any(r["name"] == "Okta admin MFA gap" for r in policy_only if r["kind"] == "finding")
+    assert not any("Stale guest" in r["name"] for r in policy_only)
+
+
+def test_intune_jamf_mdm_inventory() -> None:
+    from shared.control_map import map_finding
+
+    intune = host_wazuh.parse_file(DEMO / "mdm" / "intune-devices.json")
+    findings = [r for r in intune if r["kind"] == "finding"]
+    names = [r["name"] for r in findings]
+    assert any("encryption compliance" in n for n in names)
+    assert any("Disk encryption" in n and "jump-unmanaged" in n for n in names)
+    assert any("MDM enrollment" in n and "jump-unmanaged" in n for n in names)
+    assert any("Missing EDR" in n for n in names)
+    assert any(r["kind"] == "asset" and r["name"] == "fleet-laptop-07" for r in intune)
+    assert any(r["kind"] == "asset" and r["name"] == "win-ok-01" for r in intune)
+    assert not any(r["kind"] == "finding" and "win-ok-01" in r["name"] for r in intune)
+    for rec in findings:
+        assert "assessment finding" in rec["description"]
+        assert "not evidence of a breach" in rec["description"]
+        mapped = map_finding(rec)
+        assert mapped["include_poam"] is True
+        assert "CVE-" not in mapped["recommended_fix"]
+        assert "file-drop" in mapped["recommended_fix"] or "not a live" in mapped["recommended_fix"]
+
+    jamf = host_wazuh.parse_file(DEMO / "mdm" / "jamf-computers.json")
+    jamf_findings = [r for r in jamf if r["kind"] == "finding"]
+    assert any("encryption compliance" in r["name"] for r in jamf_findings)
+    assert any("Disk encryption" in r["name"] and "fleet-laptop-07" in r["name"] for r in jamf_findings)
+    assert not any(r["kind"] == "finding" and "mac-ok-01" in r["name"] for r in jamf)
+    assert all("assessment finding" in r["description"] for r in jamf_findings)
+
+
+def test_mdm_empty_and_fleet_not_stolen(tmp_path) -> None:
+    empty = tmp_path / "intune-empty.json"
+    empty.write_text(
+        '{"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#deviceManagement/managedDevices","value":[]}',
+        encoding="utf-8",
+    )
+    assert host_wazuh.parse_file(empty) == []
+    fleet = host_wazuh.parse_file(DEMO / "wazuh" / "fleet.json")
+    assert any(r["kind"] == "asset" and r["name"] == "fleet-laptop-07" for r in fleet)
+    assert not any("encryption compliance" in r["name"] for r in fleet)
+    csv = tmp_path / "intune.csv"
+    csv.write_text(
+        "Device Name,Encryption,EDR,MDM Enrollment\n"
+        "jump-unmanaged,Not Encrypted,Not Installed,Not enrolled\n",
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(csv)
+    assert any("Disk encryption" in r["name"] for r in recs if r["kind"] == "finding")
+    assert any("Missing EDR" in r["name"] for r in recs if r["kind"] == "finding")
+    assert any("MDM enrollment" in r["name"] for r in recs if r["kind"] == "finding")
+
+
+def test_mdm_parser_no_live() -> None:
+    src = (ROOT / "collectors" / "host_wazuh.py").read_text(encoding="utf-8")
+    assert "osqueryi" not in src
+    mdm = (ROOT / "shared" / "mdm_inventory.py").read_text(encoding="utf-8")
+    assert "import subprocess" not in mdm
+    assert "urllib.request" not in mdm
+    assert "socket.socket" not in mdm
+    assert "osqueryi" not in mdm
+
+
+def _status_text() -> str:
+    return (ROOT / "STATUS.md").read_text(encoding="utf-8")
+
+
+def _jsonl(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def test_idp_mdm_prove_bar_fixture_file_drop_writes_canonical(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CoS DESKTOP prove bar: file_drop fixture → detect → out/canonical. SAMPLE ≠ client."""
+    in_root = tmp_path / "in"
+    saas = in_root / "saas"
+    mdm = in_root / "mdm"
+    saas.mkdir(parents=True)
+    mdm.mkdir(parents=True)
+    (in_root / "wazuh").mkdir(parents=True)
+    for name in ("entra-users.json", "okta-users.json", "google-users.csv"):
+        src = DEMO / "saas" / name
+        (saas / name).write_bytes(src.read_bytes())
+    for name in ("intune-devices.json", "jamf-computers.json"):
+        src = DEMO / "mdm" / name
+        (mdm / name).write_bytes(src.read_bytes())
+    out_root = tmp_path / "out"
+    out_root.mkdir()
+    monkeypatch.setenv("IN_DIR", str(in_root))
+    monkeypatch.setenv("OUT_DIR", str(out_root))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    monkeypatch.setenv("CISO_PUSH", "0")
+    monkeypatch.setenv("RISKREADY_PUSH", "0")
+    monkeypatch.setenv("GRC_LIVE_SCAN", "0")
+    monkeypatch.setenv("DRY_RUN", "1")
+    saas_idp.main()
+    host_wazuh.main()
+    idp_dest = out_root / "canonical" / "saas-idp.jsonl"
+    mdm_dest = out_root / "canonical" / "host-wazuh.jsonl"
+    assert idp_dest.is_file()
+    assert mdm_dest.is_file()
+    idp_rows = _jsonl(idp_dest)
+    mdm_rows = _jsonl(mdm_dest)
+    assert any(r["kind"] == "asset" for r in idp_rows)
+    assert any(r["kind"] == "finding" for r in idp_rows)
+    assert any(r["name"] == "MFA not registered" for r in idp_rows if r["kind"] == "finding")
+    assert any(r["name"] == "Standing Global Administrator" for r in idp_rows if r["kind"] == "finding")
+    assert any("Stale guest" in r["name"] for r in idp_rows if r["kind"] == "finding")
+    assert any("encryption compliance" in r["name"] for r in mdm_rows if r["kind"] == "finding")
+    assert any("Missing EDR" in r["name"] for r in mdm_rows if r["kind"] == "finding")
+    assert any("MDM enrollment" in r["name"] for r in mdm_rows if r["kind"] == "finding")
+    blob = idp_dest.read_text(encoding="utf-8") + mdm_dest.read_text(encoding="utf-8")
+    assert "not evidence of a breach" in blob
+    assert "/api/risks" not in blob
+    for rel in ("collectors/saas_idp.py", "collectors/host_wazuh.py", "shared/idp_inventory.py", "shared/mdm_inventory.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "/api/risks" not in src
+        assert "osqueryi" not in src
+    evidence = (ROOT / "docs" / "EVIDENCE.md").read_text(encoding="utf-8")
+    assert "DESKTOP / prove bar" in evidence
+    assert "SAMPLE ≠ client" in evidence
+    status = _status_text()
+    assert "paying_day: FAIL" in status
+    assert "DEMO — not a client estate" in status
+    assert "wrap: review-only" in status
+    assert "argus_keep: SAMPLE/fixture KEEP ≠ client KEEP" in status
+
+
+def test_idp_mdm_prove_bar_empty_in_stamps_demo_not_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty in/saas + in/mdm falls back to fixtures and stamps demo — not a client estate."""
+    in_root = tmp_path / "in"
+    (in_root / "saas").mkdir(parents=True)
+    (in_root / "mdm").mkdir(parents=True)
+    (in_root / "wazuh").mkdir(parents=True)
+    out_root = tmp_path / "out"
+    out_root.mkdir()
+    monkeypatch.setenv("IN_DIR", str(in_root))
+    monkeypatch.setenv("OUT_DIR", str(out_root))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    saas_idp.main()
+    host_wazuh.main()
+    idp_rows = _jsonl(out_root / "canonical" / "saas-idp.jsonl")
+    mdm_rows = _jsonl(out_root / "canonical" / "host-wazuh.jsonl")
+    assert idp_rows and mdm_rows
+    assert all("demo" in (r.get("labels") or []) for r in idp_rows)
+    assert all("demo" in (r.get("labels") or []) for r in mdm_rows)
+    assert all("client" not in [str(x).lower() for x in (r.get("labels") or [])] for r in idp_rows + mdm_rows)
+    status = _status_text()
+    assert "paying_day: FAIL" in status
+    assert "DEMO — not a client estate" in status

@@ -1,0 +1,13 @@
+{
+  "$comment": "Stub only. Future read-only Microsoft Graph GET for IdP/MDM file_drop prove. This pack never calls Graph and does not ship tokens.",
+  "live": false,
+  "methods": ["GET"],
+  "paths": [
+    "/v1.0/users",
+    "/v1.0/users?$select=userPrincipalName,userType,signInActivity",
+    "/v1.0/reports/authenticationMethods/userRegistrationDetails",
+    "/v1.0/directoryRoles",
+    "/v1.0/deviceManagement/managedDevices"
+  ],
+  "operator_note": "Until a live read-only client exists, drop Entra/Intune JSON/CSV under in/saas/ or in/mdm/. Parse-only. No POST /api/risks. No osquery live wrap."
+}

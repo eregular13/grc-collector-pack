@@ -54,6 +54,10 @@ Every `output_glob` must land under an existing Layer C sensor directory:
 
 `in/cloud/` `in/nmap/` `in/vuln/` `in/wazuh/` `in/identity/` `in/easm/` `in/k8s/` `in/code/` `in/saas/` `in/dns_email/`
 
+`in/mdm/` is an operator alias read by host-wazuh (Intune/Jamf file-drop).
+It is **not** a tenth Layer C catalog sensor. Slot globs still land in the
+nine dirs above.
+
 `audit_output_globs()` fails the catalog if a glob uses any other prefix.
 New sensor directories need a Layer C parser first — do not invent theater
 parsers. Document a TODO instead.
