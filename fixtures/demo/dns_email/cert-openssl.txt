@@ -1,0 +1,19 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 4096 (0x1000)
+        Issuer: CN = Demo CA
+        Validity
+            Not Before: Jan  1 00:00:00 2023 GMT
+            Not After : Jan  1 00:00:00 2024 GMT
+        Subject: CN = vpn.example.invalid
+        X509v3 extensions:
+            X509v3 Subject Alternative Name:
+                DNS:vpn.example.invalid
+-----BEGIN CERTIFICATE-----
+MIIBhTCCASugAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwEjEQMA4GA1UEAwwHRGVt
+byBDQTAeFw0yMzAxMDEwMDAwMDBaFw0yNDAxMDEwMDAwMDBaMBwxGjAYBgNVBAMM
+EXZwbi5leGFtcGxlLmludmFsaWQwXDANBgkqhkiG9w0BAQEFAANLADBIAkEAz0Rl
+bW9Pbmx5Tm90QUNMSUVOVEtleUZpeHR1cmUMA0GCSqGSIb3DQEBCwUAA0EAb2Zm
+bGluZS1maXh0dXJlLW5vdC1hLWNsaWVudC1jZXJ0
+-----END CERTIFICATE-----

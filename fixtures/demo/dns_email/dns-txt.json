@@ -1,0 +1,23 @@
+{
+  "schema": "dns_email.v1",
+  "lane": "email_dns",
+  "sample": true,
+  "dkim_selectors": ["selector1"],
+  "domains": [
+    {
+      "domain": "mail.example.invalid",
+      "spf": "v=spf1 include:_spf.google.com ~all",
+      "dmarc": "",
+      "dkim": [{"selector": "selector1", "record": ""}],
+      "mx": [{"hostname": "aspmx.l.google.invalid", "preference": 10}],
+      "ns": ["ns1.example.invalid"]
+    },
+    {
+      "domain": "corp.example.invalid",
+      "spf": "v=spf1 +all",
+      "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@corp.example.invalid",
+      "dkim": [{"selector": "selector1", "record": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A"}],
+      "mx": ["mx1.corp.example.invalid"]
+    }
+  ]
+}

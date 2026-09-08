@@ -2,7 +2,7 @@
 
 [![lab](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml/badge.svg)](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml)
 
-The product is a **local operator console** plus ten collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest. This is not CISO Assistant and not RiskReady.
+The product is a **local operator console** plus parse-only collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest. This is not CISO Assistant and not RiskReady.
 
 Double-click `Start-GRC-Pack.cmd` or, from the clone root:
 
@@ -12,11 +12,11 @@ python -m product
 
 Then open **http://127.0.0.1:18765/**. You get the estate (assets, findings, vulns, proposed risks), a refresh that re-runs collectors on local files, and a drop zip for import. The console binds localhost only. It never POSTs `/api/risks`.
 
-This is not a GRC platform and not an eleventh Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`. Demo fixtures only until you drop files in `in/`. **DEMO ≠ client estate.** Paying-day **FAIL**. Compose **ABSENT** on a box without Docker (hole, not a PASS). RiskReady wrap is **review-only**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. `SCOPE.example.yaml` does **not** allowlist nmap/nessus (not free-day live). Pack truth is USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`); `dropbox.mcp_stub` is conductor UX only.
+This is not a GRC platform and not a twelfth Docker service. Demo mode is the default: zero credentials, zero live scans. Collectors parse `in/<sensor>/` or fall back to `fixtures/demo/`. Demo fixtures only until you drop files in `in/`. **DEMO ≠ client estate.** Paying-day **FAIL**. Compose **ABSENT** on a box without Docker (hole, not a PASS). RiskReady wrap is **review-only**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**. `SCOPE.example.yaml` does **not** allowlist nmap/nessus (not free-day live). Pack truth is USB `evergreen_assessment_mcp` (`check_scope` / `license_guard`); `dropbox.mcp_stub` is conductor UX only.
 
 See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs/PUBLIC_CLONE.md).
 
-## Ten containers
+## Eleven containers
 
 | Service | Input | Output |
 |---|---|---|
@@ -29,19 +29,20 @@ See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs
 | k8s-kubescape | Kubescape / kube-bench | cluster findings |
 | code-secrets | Gitleaks / Semgrep / Trivy | secrets / SAST (redacted) |
 | saas-idp | ScubaGear / Graph / Okta / Maester (file-drop; no Graph/Okta API) | SaaS posture |
+| dns-email | SPF/DKIM/DMARC/MX + optional cert file_drop (`in/dns_email/`) | email/DNS Seen (not a breach) |
 | grc-loader | `out/canonical/*.jsonl` | all GRC files |
 
-Optional file_drop stub (not an 11th container): `in/honeypot/` via `python collectors/honeypot.py`. Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md).
+Optional file_drop stub (not a 12th container): `in/honeypot/` via `python collectors/honeypot.py`. Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md).
 
-One `python:3.12-slim` image. `grc-loader` waits on the nine collectors (`condition: service_completed_successfully`).
+One `python:3.12-slim` image. `grc-loader` waits on the ten collectors (`condition: service_completed_successfully`).
 
 ```bash
 # operator Docker host only — this VM stamps compose ABSENT (not a PASS)
-docker compose config --services    # exactly 10
+docker compose config --services    # exactly 11
 docker compose up --build --exit-code-from grc-loader
 ```
 
-PASS on that host is loader exit 0, 10 services, no published ports — **not** a paying-day PASS.
+PASS on that host is loader exit 0, 11 services, no published ports — **not** a paying-day PASS.
 
 Local lab (no Docker):
 
@@ -58,6 +59,7 @@ python collectors/easm.py
 python collectors/k8s_kubescape.py
 python collectors/code_secrets.py
 python collectors/saas_idp.py
+python collectors/dns_email.py
 python collectors/grc_loader.py
 python tests/lab_outputs.py
 ```
@@ -72,8 +74,8 @@ KEEP-chain → Origin Eval file-drop: `make keep-lab` (HardeningKitty / Maester 
 
 Consented operator path — not the public parse-only pack. Three layers
 ([dropbox/ARCHITECTURE.md](dropbox/ARCHITECTURE.md)): **Layer A** BYO tools
-under written SCOPE, **Layer B** orchestrator brakes, **Layer C** ten
-parse-only collectors.
+under written SCOPE, **Layer B** orchestrator brakes, **Layer C** eleven
+parse-only containers (ten collectors + loader).
 Short runbook: [farm/QUICKSTART.md](farm/QUICKSTART.md).
 `make farm-toolbin-e2e` is DEMO stubs (`demo: true`) — **not a client estate**.
 Real `--live` only on a consented drop box with tools you installed.
@@ -128,7 +130,7 @@ Do not restore wrap POSTs to `/api/auth/login`, `/itsm/assets`, `/evidence`, `/i
 
 ## Drop real scanner output
 
-Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`, `wazuh`, `identity`, `easm`, `k8s`, `code`, `saas`). Empty `in/` uses `fixtures/demo/` and labels include `demo`. Parse failure falls back to fixtures.
+Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`, `wazuh`, `identity`, `easm`, `k8s`, `code`, `saas`, `dns_email`, `honeypot`). Empty `in/` uses `fixtures/demo/` and labels include `demo`. Parse failure falls back to fixtures.
 
 OSS / fair-use only (Prowler, Nmap, Nuclei, Trivy, Wazuh, BloodHound CE, Amass, Kubescape, Gitleaks, ScubaGear, official cloud APIs, …). No Wiz / Orca / Prisma / CrowdStrike / Qualys / Tenable / Vanta / Drata required.
 

@@ -110,6 +110,46 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Restrict RDP to approved paths"
         fix = "Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE."
         key_medium = True
+    elif "dmarc missing" in text or "dmarc_missing" in text.replace(" ", "").replace("-", "_"):
+        name = "Publish a DMARC policy"
+        fix = (
+            "Publish a _dmarc TXT record (start at p=none, move to quarantine/reject). "
+            "This is a Seen DNS control-gap candidate, not mailbox compromise and not a breach."
+        )
+        key_medium = True
+    elif "dmarc p=none" in text or "dmarc_monitor_only" in text.replace(" ", "").replace("-", "_"):
+        name = "Tighten DMARC beyond p=none"
+        fix = (
+            "Move DMARC from p=none to quarantine or reject after reviewing aggregate reports. "
+            "A TXT record is Seen, not Shown mailbox protection."
+        )
+    elif "spf +all" in text or "spf_pass_all" in text.replace(" ", "").replace("-", "_"):
+        name = "Restrict SPF +all"
+        fix = (
+            "Replace SPF +all with -all (or a scoped include). "
+            "This is a Seen DNS control-gap candidate, not a breach."
+        )
+        key_medium = True
+    elif "spf missing" in text or "spf_missing" in text.replace(" ", "").replace("-", "_"):
+        name = "Publish an SPF record"
+        fix = (
+            "Publish a v=spf1 TXT that names approved senders and ends in -all. "
+            "This is a Seen DNS control-gap candidate, not a breach."
+        )
+        key_medium = True
+    elif "spf softfail" in text or "spf_softfail_only" in text.replace(" ", "").replace("-", "_"):
+        name = "Tighten SPF softfail (~all)"
+        fix = (
+            "Move SPF from ~all to -all once senders are inventoried. "
+            "Softfail-only is a hygiene gap, not a breach."
+        )
+    elif "dkim" in text and ("missing" in text or "selector" in text):
+        name = "Publish DKIM for the listed selector"
+        fix = (
+            "Publish v=DKIM1 at <selector>._domainkey for in-SCOPE domains. "
+            "This is a Seen DNS control-gap candidate, not a breach."
+        )
+        key_medium = True
     elif "heartbleed" in text:
         name = "Remediate Heartbleed-vulnerable TLS"
         fix = (

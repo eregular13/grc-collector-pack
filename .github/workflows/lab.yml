@@ -34,6 +34,7 @@ jobs:
           python collectors/k8s_kubescape.py
           python collectors/code_secrets.py
           python collectors/saas_idp.py
+          python collectors/dns_email.py
           python collectors/grc_loader.py
       - name: Lab outputs
         run: python tests/lab_outputs.py

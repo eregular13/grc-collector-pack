@@ -140,7 +140,7 @@ On a host where `docker compose version` works, under written SCOPE, with
    docker compose up --build --exit-code-from grc-loader
    ```
 
-   **PASS criteria:** loader exit 0; exactly 10 services; no published ports;
+   **PASS criteria:** loader exit 0; exactly 11 services; no published ports;
    `out/summary.json` exists; image probe finds no nmap/nuclei/openvas/nessus/gvm/zeek
    (`command -v` must fail for those names). This is **not** a paying-day PASS.
    Empty pack `in/` is still DEMO fixtures.

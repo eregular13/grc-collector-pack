@@ -183,6 +183,9 @@ def test_catalog_has_forty_plus_slots_and_required_fields() -> None:
     assert "ScoutSuite" in md
     assert "ASFF" in md
     assert "EASM file-drop" in md
+    assert "Email / DNS file-drop" in md
+    assert "in/dns_email/" in md
+    assert "dmarc" in md.lower()
     assert "httpx" in md
     assert "Amass" in md
     assert "ffuf" in md

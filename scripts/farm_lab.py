@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-SENSORS = ("cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas")
+SENSORS = ("cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas", "dns_email")
 COLLECTORS = (
     "cloud_prowler.py",
     "inventory_nmap.py",
@@ -28,6 +28,7 @@ COLLECTORS = (
     "k8s_kubescape.py",
     "code_secrets.py",
     "saas_idp.py",
+    "dns_email.py",
     "grc_loader.py",
 )
 

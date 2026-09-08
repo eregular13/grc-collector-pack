@@ -23,6 +23,7 @@ SENSOR_IN = {
     "code-secrets": "code",
     "saas-idp": "saas",
     "honeypot": "honeypot",
+    "dns-email": "dns_email",
 }
 
 _SECRET_RES = [

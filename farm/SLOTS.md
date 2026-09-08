@@ -32,7 +32,8 @@ Every `output_glob` lands in an existing Layer C sensor directory.
 |---|---:|---:|---:|
 | in/cloud/ | 9 | 1 | 8 |
 | in/code/ | 8 | 0 | 8 |
-| in/easm/ | 24 | 10 | 14 |
+| in/dns_email/ | 1 | 1 | 0 |
+| in/easm/ | 23 | 9 | 14 |
 | in/identity/ | 10 | 1 | 9 |
 | in/k8s/ | 10 | 1 | 9 |
 | in/nmap/ | 24 | 11 | 13 |
@@ -198,6 +199,19 @@ gobuster/whatweb subprocess. Empty `in/` still loads `fixtures/demo/easm/`
 (`httpx.jsonl`, `httpx.json`, `amass.jsonl`, `ffuf.json`, `whatweb.json`).
 amass / subfinder / ffuf / gobuster / whatweb stay file_drop; httpx
 *invoke* is separate BYO. No new catalog slots.
+
+## Email / DNS file-drop (Layer C)
+
+Drop **checkdmarc** / `dns_email.v1` JSON, **dig** TXT/MX transcripts,
+crt.sh-style JSON, or an operator PEM / `openssl x509 -text` under
+`in/dns_email/`. Missing DMARC is a control-gap candidate — never a
+breach. SPF `~all` is hygiene; `+all` is a high gap. Empty exports
+invent nothing. Parse-only — Layer C never queries DNS. Optional
+`python -m shared.dns_email_live --live --scope SCOPE.yaml` writes a
+file_drop after a signed domain allowlist (`dig` already on PATH).
+Empty `in/` still loads `fixtures/demo/dns_email/`. The farm `dig`
+invoke slot lands `in/dns_email/*.txt` (catalog not inflated).
+No RiskReady POST. See `docs/DNS_EMAIL.md` (Covey `email_dns` lane).
 
 ## Nuclei JSON file-drop (Layer C)
 

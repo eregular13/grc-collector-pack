@@ -76,6 +76,7 @@ PREFIX = {
     "code-secrets": "CODE",
     "saas-idp": "SAAS",
     "honeypot": "HPOT",
+    "dns-email": "DNS",
 }
 
 

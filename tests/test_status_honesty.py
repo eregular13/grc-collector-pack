@@ -199,7 +199,7 @@ def test_root_readme_honesty_rails() -> None:
     assert "dropbox.mcp_stub" in text
     assert "not" in low and "allowlist nmap" in low
     assert "exit-code-from grc-loader" in text
-    assert "exactly 10" in text
+    assert "exactly 11" in text
     assert "this vm stamps compose absent" in low
 
 

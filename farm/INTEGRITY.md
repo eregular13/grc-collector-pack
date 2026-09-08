@@ -52,14 +52,15 @@ them as farm slots.
 
 Every `output_glob` must land under an existing Layer C sensor directory:
 
-`in/cloud/` `in/nmap/` `in/vuln/` `in/wazuh/` `in/identity/` `in/easm/` `in/k8s/` `in/code/` `in/saas/`
+`in/cloud/` `in/nmap/` `in/vuln/` `in/wazuh/` `in/identity/` `in/easm/` `in/k8s/` `in/code/` `in/saas/` `in/dns_email/`
 
 `audit_output_globs()` fails the catalog if a glob uses any other prefix.
 New sensor directories need a Layer C parser first — do not invent theater
 parsers. Document a TODO instead.
 
-Cycle 21: every SLOTS `output_glob` already lands in one of the nine Layer C
-dirs above. No new sensor stub. No theater parser.
+Cycle 91: `dig` lands in `in/dns_email/` (email_dns Seen). Catalog counts
+unchanged. Cycle 21: every other glob still lands in the original Layer C
+dirs. No theater parser.
 
 ## Cycle 20 catalog stands
 
