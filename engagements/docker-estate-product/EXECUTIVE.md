@@ -5,7 +5,7 @@ label: **lab-sim** (not a customer estate)
 client_facing_ready: **false**
 blocked_by: lab_sim_not_client_estate
 
-findings: 6
+findings: 7
 evidence_files: 0
 Estate POA&M is out/poam/poam.csv from this run. Pack loader 132/155/9 is not this estate.
 

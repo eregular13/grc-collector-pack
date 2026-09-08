@@ -16,8 +16,8 @@ MAX_STDOUT_BYTES = 200_000
 MAX_LEAK_GET_BYTES = 16384
 _HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$")
 _FORBIDDEN_LEAK_NETS = (ipaddress.ip_network("192.168.10.0/24"),)
-# Same-origin leak GET after HEAD on site root. R04: git only. Not a path spray.
-LEAK_GET_PATHS = ("/.git/HEAD",)
+# Same-origin leak GET after HEAD on site root. Allowlist only. Not a path spray.
+LEAK_GET_PATHS = ("/.git/HEAD", "/listing/")
 
 
 def binary_name() -> str:
@@ -85,7 +85,7 @@ def _host_forbidden_leak(host: str) -> bool:
 
 
 def leak_get_urls(url: str) -> list[str]:
-    """Same-origin /.git/HEAD from a site-root URL only. Never office LAN. Never a path spray."""
+    """Same-origin allowlisted leak paths from a site-root URL only. Never office LAN. Never a path spray."""
     parsed = urlparse(url)
     if (parsed.scheme or "").lower() not in {"http", "https"}:
         return []
@@ -147,7 +147,7 @@ def describe(scope: Scope, batch: list[str]) -> dict[str, Any]:
         "brake": "named URLs/hostnames only; never a CIDR; never the whole internet",
         "note": (
             "BYO only; pack does not embed curl scanners. HEAD on named URLs; "
-            "allowlisted same-origin GET for leaked /.git/HEAD only. "
+            "allowlisted same-origin GET for leaked /.git/HEAD and /listing/ only. "
             "Live exec requires allow_live_exec + EVERGREEN_ORCH_LIVE=1. "
             + ("binary missing — plan-only." if missing else "")
             + ("" if tool_ok else " curl not in allow_tools or target kind.")
@@ -455,7 +455,7 @@ def parse_curl_tls(stderr: str, url: str) -> list[dict[str, Any]]:
 
 
 def execute(scope: Scope, batch: list[str], timeout: int | None = None) -> dict[str, Any]:
-    """HEAD on named URLs; allowlisted same-origin GET for leaked /.git/HEAD. Never CIDR. Never shell=True."""
+    """HEAD on named URLs; allowlisted same-origin GET for leaked /.git/HEAD and /listing/. Never CIDR. Never shell=True."""
     desc = describe(scope, batch)
     desc["executed"] = False
     desc["findings"] = []

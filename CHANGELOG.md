@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 156
+
+R05 refine: dummy nginx autoindex on main `grc-estate` estate-web subpath `/listing/` (not site root). Curl live exec allowlisted same-origin GET `/listing/` after HEAD; map `Directory listing enabled` from GET body (`Index of`) only. HEAD 200 does not invent it. No second 172.28.180 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 155
 
 R04 refine: dummy Git metadata on main `grc-estate` estate-web (`/.git/HEAD` → `estate/web/git-meta/`, loopback :18081). Curl live exec HEADs named URLs then allowlisted same-origin GET `/.git/HEAD` (max 16KiB, no redirects, not 192.168.10.0/24). Map `Git metadata exposed` from GET body + `/.git/` path only. HEAD 200 does not invent it. No second 172.28.200 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
