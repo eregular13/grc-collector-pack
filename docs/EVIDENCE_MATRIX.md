@@ -38,3 +38,4 @@ Also present (not in the Covey matrix, still Layer C): `in/k8s/`, `in/code/`, `i
 1. Land the export under the `in/<lane>/` directory in the table.
 2. Run the matching collector (or `make lab` for the nine + loader).
 3. Import `out/ciso-assistant/*.csv`. Do not POST `/api/risks`.
+   Fixture prove (SAMPLE ≠ client, not a paying-day PASS): [PROVE_CISO.md](PROVE_CISO.md).

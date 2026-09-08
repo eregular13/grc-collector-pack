@@ -16,7 +16,9 @@ This directory is the **gated runner**. The public pack stays parse-only. Do not
 - Hexstrike pattern-only
 
 `python3 -m dropbox schedule` is one-shot KEEP-minimum (not cron).
-`python3 -m dropbox ciso` parses landed KEEP-minimum files only.
+`python3 -m dropbox ciso` parses landed KEEP-minimum files and already-on-disk
+sensor dirs (nmap pack_drop / honeypot). Empty sensors do not load fixtures/demo.
+SAMPLE/DEMO fixture prove: `python3 scripts/prove_ciso.py` — not a paying-day PASS.
 
 ## Day-of (Desktop — no make / no gh)
 
@@ -170,7 +172,8 @@ Output: `in/easm/dropbox-tls.jsonl` (existing easm collector).
 ## Ingest → CISO
 
 Operator SoR is `python3 -m dropbox ciso` → `out/ciso-assistant/*.csv` (landed
-KEEP-minimum only; empty sensors do **not** load fixtures/demo). Day-of Desktop
+KEEP-minimum or already-on-disk sensor dirs; empty sensors do **not** load
+fixtures/demo). Day-of Desktop
 path is above — no `make` / `gh`. Prefer **clica** or `bash push_ciso.sh`.
 `posted` stays false unless `CISO_PUSH=1`. `export_ciso_poam` lists those files.
 

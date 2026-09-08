@@ -15,7 +15,9 @@ Do not contradict these stamps:
 - Hexstrike pattern-only
 
 One-shot KEEP-minimum: `python3 -m dropbox schedule` (not cron). CISO path:
-`python3 -m dropbox ciso` — landed sensors only, no fixtures/demo fallback.
+`python3 -m dropbox ciso` — landed KEEP-minimum or already-on-disk sensor dirs
+(nmap pack_drop / honeypot), no fixtures/demo fallback. SAMPLE/DEMO prove:
+`python3 scripts/prove_ciso.py` — not a paying-day PASS.
 `--live` is HITL and is refused on DEMO SCOPE or `live_ready_count=0`.
 
 See `dropbox/ARCHITECTURE.md` Layer A / B / C.

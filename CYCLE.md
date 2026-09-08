@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 96 — CISO Assistant export prove (rebase on Beelzebub #11) (2026-09-08)
+
+One honest prove, rebased onto Beelzebub #11 (`56b588d`): fixture Covey pack_drop + Palisade/Beelzebub honeypot → existing collectors → loader → `out/ciso-assistant` (`python3 scripts/prove_ciso.py` / `make prove-ciso`). Uses the existing SoR path (`run_ciso_path` / `python3 -m dropbox ciso`). Already-on-disk sensor dirs (nmap pack_drop / honeypot) are parsed in addition to KEEP-minimum inventory. Keepmin schedule set unchanged. No new collectors. No catalog inflation. SAMPLE/DEMO ≠ client. Paying-day stays FAIL. Beelzebub `stage=null` stands. After this: Hephaestus pauses brick-adding; tests/docs only until next CoS review.
+
+```json
+{"pytest": 404, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 81, "findings": 105, "vulns": 19, "evidence": 33, "poam": 106}, "farm_lab": {"assets": 81, "findings": 105, "poam": 106, "demo": true}, "farm_toolbin_e2e": {"assets": 81, "findings": 106, "vulns": 19, "poam": 106, "demo": true}, "dropbox_lab": {"assets": 86, "findings": 114, "vulns": 19, "poam": 109, "demo": true}, "prove_ciso": {"assets": 3, "findings": 11, "poam": 3, "sample": true, "client": false, "posted": false, "paying_day": "FAIL"}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 95 — Beelzebub honeypot pack_drop (rebase on #9/#10) (2026-09-08)
 
 Beelzebub pack_drop on the existing `in/honeypot/` lane (PR #7), rebased onto IdP/MDM #9 + DNS/email #8/#10. `collectors/honeypot.py` / `shared/honeypot.py` accept `honeypot_event.v1` login/cmd/session rows without inventing Palisade `trap_id` / stage-1 / stage-2. Beelzebub `stage` is JSON `null` (fail-closed; stuffed Palisade fields on a Beelzebub-sourced row are ignored). Fixture `fixtures/demo/honeypot_beelzebub/`. Prove bar: `in/honeypot/pack_drop/` → collector → `out/canonical/honeypot.jsonl` with `demo` labels. Docs: `docs/HONEYPOT_BEELZEBUB.md`. Palisade demo fixture unchanged. Not a 12th compose service. Catalog **not inflated**. IdP/MDM + DNS/email Seen stand. Paying-day FAIL. Compose ABSENT. Wrap dead. SAMPLE ≠ client.

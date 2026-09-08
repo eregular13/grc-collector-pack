@@ -76,6 +76,10 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "assets.jsonl" in docs
     assert "in/nmap/" in docs
     assert "CISO" in docs
+    assert "PROVE_CISO.md" in docs or "prove_ciso" in docs.lower()
+    prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
+    assert "out/ciso-assistant" in prove
+    assert "SAMPLE" in prove
     matrix = (ROOT / "docs" / "evidence_matrix.yaml").read_text(encoding="utf-8")
     assert "pack_in: identity" in matrix
     assert "pack_in: wazuh" in matrix

@@ -305,7 +305,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="opt-in: allow landing copies into pack in/ (default file-drop reads only)",
     )
     sch.set_defaults(func=cmd_schedule)
-    ciso = sub.add_parser("ciso", help="landed KEEP-minimum → CISO CSVs (no demo fallback)")
+    ciso = sub.add_parser("ciso", help="landed KEEP-minimum or sensor-dir files → CISO CSVs (no empty-sensor demo fallback)")
     ciso.add_argument("--scope", help="path to SCOPE.yaml (default dropbox/SCOPE.yaml)")
     ciso.add_argument("--in-dir", dest="in_dir", help="Layer C in/")
     ciso.add_argument("--out-dir", dest="out_dir", help="out/")

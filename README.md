@@ -32,7 +32,7 @@ See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs
 | dns-email | SPF/DKIM/DMARC/MX + optional cert file_drop (`in/dns_email/`) | email/DNS Seen (not a breach) |
 | grc-loader | `out/canonical/*.jsonl` | all GRC files |
 
-Optional file_drop stub (not a 12th container): `in/honeypot/` via `python collectors/honeypot.py`. Palisade fleet-sensor may emit stage 1|2; Beelzebub pack_drop is session/cmd/login only (`stage` null) — [docs/HONEYPOT_BEELZEBUB.md](docs/HONEYPOT_BEELZEBUB.md). Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md).
+Optional file_drop stub (not a 12th container): `in/honeypot/` via `python collectors/honeypot.py`. Palisade fleet-sensor may emit stage 1|2; Beelzebub pack_drop is session/cmd/login only (`stage` null) — [docs/HONEYPOT_BEELZEBUB.md](docs/HONEYPOT_BEELZEBUB.md). Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md). SAMPLE/DEMO CISO prove (not a paying-day PASS): [docs/PROVE_CISO.md](docs/PROVE_CISO.md) / `python3 scripts/prove_ciso.py`.
 
 One `python:3.12-slim` image. `grc-loader` waits on the ten collectors (`condition: service_completed_successfully`).
 

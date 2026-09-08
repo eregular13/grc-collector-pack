@@ -44,5 +44,8 @@ masscan / naabu drops are unchanged. Empty / header-only invent nothing.
   already runs. No eleventh compose service. No farm slot inflation.
 
 Fixture used by tests (not loaded on empty `in/nmap/`): `fixtures/pack_drop/nmap/`.
+**SAMPLE/DEMO ≠ client.** End-to-end CISO prove: [PROVE_CISO.md](PROVE_CISO.md)
+(`python3 scripts/prove_ciso.py` → `prove/work/out/ciso-assistant`). Not a
+paying-day PASS.
 
 Lane map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
