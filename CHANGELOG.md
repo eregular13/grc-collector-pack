@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 163
+
+R12 refine: slug zip POA&M includes folded mapped rows (Git metadata, directory listing, insecure cookie, permissive CORS, `.env`, plus live Cleartext HTTP/HSTS/headers/banner/Untrusted TLS). `package_slug` writes `engagement-<slug>-ready.zip`. Pack `out/poam` fixture overwrite (`run_lab.ps1`) does not clobber slug dir or zip. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 162
 
 R11 refine: `python -m dropbox.product_demo` stdout JSON includes `mapped_classes` (POA&M weakness names, skip UNMAPPED). `--help` still does not hit the mock sink (`received` delta 0). No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

@@ -11,6 +11,20 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Folded onto main estate (R04–R09) plus live web/TLS. Zip contract for R12.
+ESTATE_MAPPED_CLASSES = (
+    "Cleartext HTTP",
+    "Missing HSTS",
+    "Missing web security headers",
+    "Server banner disclosure",
+    "Git metadata exposed",
+    "Directory listing enabled",
+    "Environment file exposed",
+    "Insecure session cookie",
+    "Permissive CORS policy",
+    "Untrusted TLS certificate",
+)
+
 
 def test_hitl_doc_and_lab_file() -> None:
     text = (ROOT / "docs" / "HITL.md").read_text(encoding="utf-8")
@@ -214,20 +228,16 @@ def test_two_slugs_do_not_steal_poam(tmp_path, monkeypatch) -> None:
 
 
 def test_zip_contract_four_mapped_names_facing_false(tmp_path, monkeypatch) -> None:
-    """T10: zip has no .env, four mapped web/TLS names, facing false."""
+    """R12: zip has no .env, ten mapped web/TLS names, facing false, not SMBv1."""
     import zipfile
 
     monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
     from dropbox.new_engagement import new_engagement
-    from dropbox.package_engagement import package_slug
+    from dropbox.package_engagement import package_slug, slug_zip_poam
 
     header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
-    rows = (
-        "Cleartext HTTP,127.0.0.1,medium,CPG 2.W;PR.DS-02,Enforce TLS,,,open\n"
-        "Missing HSTS,127.0.0.1,medium,CPG 2.W;PR.DS-02,Add HSTS,,,open\n"
-        "Missing web security headers,127.0.0.1,low,CPG 2.W;PR.PS-01,Set XFO/CSP,,,open\n"
-        "Server banner disclosure,127.0.0.1,low,CPG 2.T;PR.PS-01,Reduce Server,,,open\n"
-        "Untrusted TLS certificate,127.0.0.1,medium,CPG 2.W;PR.DS-02;PR.DS-10,Replace cert,,,open\n"
+    rows = "".join(
+        f"{name},127.0.0.1,medium,CPG 2.W;PR.DS-02,fix,,,open\n" for name in ESTATE_MAPPED_CLASSES
     )
     src = tmp_path / "estate-out"
     (src / "poam").mkdir(parents=True)
@@ -239,24 +249,79 @@ def test_zip_contract_four_mapped_names_facing_false(tmp_path, monkeypatch) -> N
         ROOT / "dropbox" / "SCOPE.docker-estate.yaml",
         evidence_label="lab-sim",
         artifact_src=src,
-        counts={"pack_mapped": 5, "poam_rows": 5},
+        counts={"pack_mapped": 10, "poam_rows": 10},
     )
     assert rec["client_facing_ready"] is False
     zpath = package_slug("docker-estate-product")
+    ready = tmp_path / "engagement-docker-estate-product-ready.zip"
+    assert ready.is_file()
     with zipfile.ZipFile(zpath) as zf:
         names = zf.namelist()
         assert not any(n.split("/")[-1].endswith(".env") or n.split("/")[-1] == ".env" for n in names)
-        poam = zf.read("docker-estate-product/out/poam/poam.csv").decode("utf-8")
         man = json.loads(zf.read("docker-estate-product/MANIFEST.json"))
-    for name in (
-        "Cleartext HTTP",
-        "Missing HSTS",
-        "Missing web security headers",
-        "Server banner disclosure",
-    ):
+    poam = slug_zip_poam(zpath, "docker-estate-product")
+    poam_ready = slug_zip_poam(ready, "docker-estate-product")
+    for name in ESTATE_MAPPED_CLASSES:
         assert name in poam
+        assert name in poam_ready
     assert "SMBv1" not in poam
+    assert "SMBv1" not in poam_ready
     assert man["client_facing_ready"] is False
+
+
+def test_slug_zip_poam_survives_pack_overwrite(tmp_path, monkeypatch) -> None:
+    """R12: pack out/poam SMBv1 overwrite must not change slug dir or zip POA&M."""
+    monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
+    from dropbox.new_engagement import new_engagement
+    from dropbox.package_engagement import package_slug, slug_zip_poam
+
+    header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
+    rows = "".join(
+        f"{name},127.0.0.1,medium,CPG 2.W;PR.DS-02,fix,,,open\n" for name in ESTATE_MAPPED_CLASSES
+    )
+    src = tmp_path / "estate-out"
+    (src / "poam").mkdir(parents=True)
+    (src / "poam" / "poam.csv").write_text(header + rows, encoding="utf-8")
+    new_engagement(
+        "docker-estate-product",
+        ROOT / "dropbox" / "SCOPE.docker-estate.yaml",
+        evidence_label="lab-sim",
+        artifact_src=src,
+        counts={"pack_mapped": 10, "poam_rows": 10},
+    )
+    zpath = package_slug("docker-estate-product")
+    ready = tmp_path / "engagement-docker-estate-product-ready.zip"
+    before = slug_zip_poam(zpath, "docker-estate-product")
+    ready_bytes = ready.read_bytes()
+    zip_bytes = zpath.read_bytes()
+    slug_poam = tmp_path / "docker-estate-product" / "out" / "poam" / "poam.csv"
+    slug_before = slug_poam.read_text(encoding="utf-8")
+
+    pack_poam = ROOT / "out" / "poam" / "poam.csv"
+    pack_poam.parent.mkdir(parents=True, exist_ok=True)
+    prior_pack = pack_poam.read_text(encoding="utf-8") if pack_poam.is_file() else None
+    try:
+        pack_poam.write_text(
+            header + "SMBv1 / TCP 445 exposed,10.0.0.9,high,CPG 2.H,Disable SMBv1,,,open\n",
+            encoding="utf-8",
+        )
+        assert slug_poam.read_text(encoding="utf-8") == slug_before
+        assert zpath.read_bytes() == zip_bytes
+        assert ready.read_bytes() == ready_bytes
+        after = slug_zip_poam(zpath, "docker-estate-product")
+        assert after == before
+        for name in ESTATE_MAPPED_CLASSES:
+            assert name in after
+            assert name in slug_before
+        assert "SMBv1" not in after
+        assert "SMBv1" not in slug_before
+        assert "SMBv1" in pack_poam.read_text(encoding="utf-8")
+    finally:
+        if prior_pack is None:
+            if pack_poam.is_file():
+                pack_poam.unlink()
+        else:
+            pack_poam.write_text(prior_pack, encoding="utf-8")
 
 
 def test_estate_simplerisk_is_not_only_smbv1(tmp_path) -> None:

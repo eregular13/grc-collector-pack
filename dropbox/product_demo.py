@@ -250,6 +250,7 @@ def run_demo() -> dict[str, Any]:
         "sink: not posted from pack Litware CSVs (see docs/OUT_DIR.md)",
         f"mock_push: {posted or 'skipped'}",
         f"zip: {zpath}",
+        f"zip_ready: {PACK / 'engagements' / f'engagement-{SLUG}-ready.zip'}",
         f"kit_facing: {manifest.get('client_facing_ready')}",
         f"kit_blocked_by: {manifest.get('blocked_by')}",
         f"kit_evidence_label: {manifest.get('evidence_label')}",
@@ -259,6 +260,7 @@ def run_demo() -> dict[str, Any]:
     ]
     run_md.write_text("\n".join(lines), encoding="utf-8")
     zpath = package_slug(SLUG)
+    ready = PACK / "engagements" / f"engagement-{SLUG}-ready.zip"
     rec = {
         "ok": True,
         "slug": SLUG,
@@ -269,6 +271,7 @@ def run_demo() -> dict[str, Any]:
         "blocked_by": blocked,
         "hitl": hitl,
         "zip": str(zpath),
+        "zip_ready": str(ready),
         "product_run": str(run_md),
         "posted": posted,
         "estate_web": WEB,

@@ -5,8 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.test_product import ESTATE_MAPPED_CLASSES
+
 ROOT = Path(__file__).resolve().parents[1]
 SLUG_POAM = ROOT / "engagements" / "docker-estate-product" / "out" / "poam" / "poam.csv"
+READY_ZIP = ROOT / "engagements" / "engagement-docker-estate-product-ready.zip"
 
 
 def _estate_web_up() -> bool:
@@ -43,24 +46,65 @@ def test_run_lab_ps1_does_not_touch_engagements() -> None:
 
 
 def test_slug_cleartext_survives_pack_poam_overwrite() -> None:
-    """run_lab overwrites pack out/poam with fixture SMBv1; slug must keep estate rows."""
+    """run_lab overwrites pack out/poam with fixture SMBv1; slug dir+zip keep estate rows."""
     SLUG_POAM.parent.mkdir(parents=True, exist_ok=True)
     header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
-    row = "Cleartext HTTP,127.0.0.1,medium,CPG 2.W;PR.DS-02,Enforce TLS,,,open\n"
     prior = SLUG_POAM.read_text(encoding="utf-8") if SLUG_POAM.is_file() else ""
     if "Cleartext HTTP" not in prior:
-        SLUG_POAM.write_text(header + row, encoding="utf-8")
-    zip_path = ROOT / "engagements" / "engagement-docker-estate-product-ready.zip"
-    zip_path.write_bytes(b"PK\x05\x06" + b"\x00" * 18)
+        rows = "".join(
+            f"{name},127.0.0.1,medium,CPG 2.W;PR.DS-02,fix,,,open\n" for name in ESTATE_MAPPED_CLASSES
+        )
+        SLUG_POAM.write_text(header + rows, encoding="utf-8")
+    slug_before = SLUG_POAM.read_text(encoding="utf-8")
+    ready_before = READY_ZIP.read_bytes() if READY_ZIP.is_file() else None
+    dated = {
+        p: p.read_bytes()
+        for p in (ROOT / "engagements").glob("engagement-docker-estate-product-20*.zip")
+        if p.is_file()
+    }
     pack_poam = ROOT / "out" / "poam" / "poam.csv"
     pack_poam.parent.mkdir(parents=True, exist_ok=True)
     pack_poam.write_text(
         header + "SMBv1 / TCP 445 exposed,10.0.0.9,high,CPG 2.H,Disable SMBv1,,,open\n",
         encoding="utf-8",
     )
-    assert "Cleartext HTTP" in SLUG_POAM.read_text(encoding="utf-8")
-    assert zip_path.is_file()
+    after = SLUG_POAM.read_text(encoding="utf-8")
+    assert after == slug_before
+    assert "Cleartext HTTP" in after
+    assert "SMBv1" not in after
+    for name in ESTATE_MAPPED_CLASSES:
+        if name in slug_before:
+            assert name in after
+    if ready_before is not None:
+        assert READY_ZIP.read_bytes() == ready_before
+    for path, blob in dated.items():
+        assert path.read_bytes() == blob
     assert "SMBv1" in pack_poam.read_text(encoding="utf-8")
+
+
+def test_live_slug_zip_poam_has_folded_rows() -> None:
+    """Host lab: newest/ready zip POA&M has folded classes. Skip on CI with no zip."""
+    from dropbox.package_engagement import slug_zip_poam
+
+    dated = sorted(
+        p
+        for p in (ROOT / "engagements").glob("engagement-docker-estate-product-20*.zip")
+        if p.is_file() and p.stat().st_size > 64
+    )
+    if READY_ZIP.is_file() and READY_ZIP.stat().st_size > 64:
+        zpath = READY_ZIP
+    elif dated:
+        zpath = dated[-1]
+    else:
+        pytest.skip("no slug zip on disk")
+    try:
+        poam = slug_zip_poam(zpath, "docker-estate-product")
+    except KeyError:
+        pytest.skip("zip has no poam.csv")
+    for name in ESTATE_MAPPED_CLASSES:
+        assert name in poam
+    assert "SMBv1" not in poam
+    assert "UNMAPPED" not in poam
 
 
 @pytest.mark.skipif(not _estate_web_up(), reason="estate-web :18081 down (CI / cold host)")

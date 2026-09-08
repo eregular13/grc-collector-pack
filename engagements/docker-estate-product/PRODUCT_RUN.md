@@ -22,6 +22,7 @@ hitl_attested: True evidence_label=lab-sim
 sink: not posted from pack Litware CSVs (see docs/OUT_DIR.md)
 mock_push: skipped
 zip: C:\GRC Collector\grc-collector-pack\engagements\engagement-docker-estate-product-20260908.zip
+zip_ready: C:\GRC Collector\grc-collector-pack\engagements\engagement-docker-estate-product-ready.zip
 kit_facing: False
 kit_blocked_by: lab_sim_not_client_estate
 kit_evidence_label: lab-sim

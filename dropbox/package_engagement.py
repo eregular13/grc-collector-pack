@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import shutil
 import sys
 import zipfile
 from datetime import datetime, timezone
@@ -27,6 +28,13 @@ def _skip(rel: str, name: str) -> bool:
     return False
 
 
+def slug_zip_poam(zpath: Path, slug: str) -> str:
+    """POA&M CSV text from a packaged engagement zip. Missing member raises KeyError."""
+    member = f"{slug}/out/poam/poam.csv"
+    with zipfile.ZipFile(zpath) as zf:
+        return zf.read(member).decode("utf-8")
+
+
 def package_slug(slug: str) -> Path:
     root = engagement_root()
     src = root / slug
@@ -42,6 +50,8 @@ def package_slug(slug: str) -> Path:
             if _skip(rel, path.name):
                 continue
             zf.write(path, f"{slug}/{rel}")
+    ready = root / f"engagement-{slug}-ready.zip"
+    shutil.copyfile(dest, ready)
     return dest
 
 
