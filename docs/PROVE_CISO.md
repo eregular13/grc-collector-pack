@@ -56,7 +56,8 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-After this prove, brick-adding pauses. Tests/docs only until the next CoS review.
+Refine-only after CoS #2/#3. Tests/docs only. Reid-only blockers remain
+(CTA; real KEEP `in/`; Eval `npm start`; compose on a Docker host).
 
 Lane map: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).

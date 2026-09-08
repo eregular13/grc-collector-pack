@@ -55,6 +55,9 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
+    assert "refine-only" in low
+    assert "after cos #1" not in low
+    assert "cos #2" in low or "cos #3" in low or "#2/#3" in action
     assert "reid-only" in low
     assert "cta" in low
     assert "eval" in low and "npm start" in low
@@ -62,6 +65,9 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "compose" in low and "docker" in low
     assert "no fake greens" in low
     assert "absent" in low and "not a pass" in low
+    assert "demo" in low and "client" in low
+    assert "sample" in low
+    assert "fail" in low
     # Durable blockers only — a frozen PR number is not a Reid-only blocker.
     # PR #4 (SCOPE hash / gate) is already on master; do not instruct merge.
     assert "merge pr #" not in low

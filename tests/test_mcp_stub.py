@@ -114,7 +114,9 @@ def test_two_mcp_cross_wire_fails_closed() -> None:
     assert not (PACK_TRUTH_TOOLS & set(OPERATOR_TOOLS))
     blob = (ROOT / "dropbox" / "mcp_stub.py").read_text(encoding="utf-8")
     assert "evergreen_assessment_mcp" not in blob
-    for name in ("check_scope", "license_guard", "assessment_ready"):
+    assert "check_scope" in PACK_TRUTH_TOOLS
+    assert "license_guard" in PACK_TRUTH_TOOLS
+    for name in PACK_TRUTH_TOOLS:
         with pytest.raises(GateError, match="cross-wire"):
             refuse_cross_wire(name)
         with pytest.raises(GateError, match="cross-wire"):
@@ -124,6 +126,9 @@ def test_two_mcp_cross_wire_fails_closed() -> None:
     assert catalog["farm_mcp_pack_truth"] is False
     assert catalog["cross_wire"] == "fail-closed"
     assert catalog["server"] == "dropbox-operator-mcp"
+    status = (ROOT / "STATUS.md").read_text(encoding="utf-8")
+    assert "argus_pack_truth: evergreen_assessment_mcp only" in status
+    assert "argus_farm_mcp: never pack truth" in status
     example = json.loads((ROOT / "schemas" / "mcp.example.json").read_text(encoding="utf-8"))
     ok = validate_two_mcp_servers(example)
     assert ok["merged"] is False
@@ -162,20 +167,22 @@ def test_cross_wire_cli_and_jsonrpc_fail_closed() -> None:
     )
     assert proc.returncode == 2
     assert "cross-wire" in (proc.stderr or "") + (proc.stdout or "")
-    body = handle_jsonrpc(
-        {
-            "jsonrpc": "2.0",
-            "id": 99,
-            "method": "tools/call",
-            "params": {"name": "license_guard", "arguments": {}},
-        }
-    )
-    assert body.get("error")
-    assert "cross-wire" in body["error"]["message"]
+    from dropbox.mcp_stub import PACK_TRUTH_TOOLS
+
+    for idx, name in enumerate(sorted(PACK_TRUTH_TOOLS), start=90):
+        body = handle_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": idx,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": {}},
+            }
+        )
+        assert body.get("error"), name
+        assert "cross-wire" in body["error"]["message"], name
     listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
     names = [t["name"] for t in listed["result"]["tools"]]
-    assert "check_scope" not in names
-    assert "license_guard" not in names
+    assert PACK_TRUTH_TOOLS.isdisjoint(names)
     assert names == list(OPERATOR_TOOLS)
 
 
