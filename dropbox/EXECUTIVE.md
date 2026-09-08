@@ -12,11 +12,11 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 
 | Run | Assets | Findings | Vulns | Evidence | POA&M | `demo` |
 |---|---|---|---|---|---|---|
-| `make lab` (empty pack `in/` → fixtures) | 69 | 86 | 19 | 33 | 87 | true |
-| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 74 | 95 | 19 | 33 | 90 | true |
-| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 69 | 87 | 19 | 33 | 87 | true |
+| `make lab` (empty pack `in/` → fixtures) | 81 | 105 | 19 | 33 | 106 | true |
+| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 86 | 114 | 19 | 33 | 109 | true |
+| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 81 | 106 | 19 | 33 | 106 | true |
 
-pytest **385 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 69/86/33 poam 87 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages and no scanner argv on `command`/`entrypoint`. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **389 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 81/105/33 poam 106 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages and no scanner argv on `command`/`entrypoint`. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 94):** IdP + MDM file-drop intake rebased on CoS prove-bar #10 + DNS/email #8 + honeypot #7. saas-idp parses Entra/Okta/Google user inventory; host-wazuh parses Intune/Jamf (`in/mdm/` alias). Assessment findings (MFA gap, standing GA, stale guest, encryption %, missing EDR, MDM unenrolled). DESKTOP prove bar: file_drop fixture → `out/canonical` (SAMPLE ≠ client). No live Graph/osquery. Catalog unchanged (111 / 32 / 30 / 81). Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT.
 
 **Delta (cycle 93):** CoS city review #1 prove bar for the DNS/email Seen lane. Fixture file_drop → `collectors/dns_email.py` → `out/canonical/dns-email.jsonl`. SAMPLE/DEMO ≠ client. No RiskReady POST. Paying-day FAIL. Catalog unchanged (111 / 32 / 30 / 81). Compose 11 services. Wrap stays dead.
 

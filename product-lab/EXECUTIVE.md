@@ -2,7 +2,20 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 93):** CoS prove bar — fixture file_drop
+**This window (cycle 94):** IdP + MDM file-drop intake rebased
+on CoS prove-bar #10 + DNS/email #8 + honeypot #7. saas-idp
+parses Entra/Okta/Google user inventory; host-wazuh parses
+Intune/Jamf (`in/mdm/` alias, not a new catalog sensor).
+Assessment findings only. No live Graph/osquery. DESKTOP prove
+bar: file_drop fixture → detect → `out/canonical` (SAMPLE ≠
+client). Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). Cycle 93 DNS/email CoS prove bar stands. Cycle 92
+DNS/email Seen stands. Cycle 91 honeypot + Covey pack_drop
+stands. Cycle 90 honesty next_action stands. Cycle 74 durable
+blockers stay locked. Wrap stays **dead**. Paying-day **FAIL**.
+Compose **ABSENT**.
+
+**Cycle 93 (stands):** CoS prove bar — fixture file_drop
 → `collectors/dns_email.py` → `out/canonical/dns-email.jsonl`.
 SAMPLE/DEMO ≠ client. No RiskReady POST. Paying-day **FAIL**.
 Cycle **92** DNS/email Seen collector (`in/dns_email/`, Covey
@@ -10,6 +23,15 @@ Cycle **92** DNS/email Seen collector (`in/dns_email/`, Covey
 Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
 Compose **11** services; honeypot stays an optional stub. Wrap
 stays **dead**. Compose **ABSENT**.
+
+**Cycle 92 (stands):** Email/DNS Seen collector
+(`in/dns_email/`, Covey `email_dns`) rebased onto honeypot +
+Covey pack_drop. File-drop SPF/DKIM/DMARC/MX + optional cert
+snapshot. Missing DMARC is a control gap, not a breach. Live DNS
+only behind `--live` + signed SCOPE. Catalog unchanged (111 / 32
+wired / 30 invoke / 81 file_drop). Compose **11** services;
+honeypot stays an optional stub. Wrap stays **dead**. Paying-day
+**FAIL**. Compose **ABSENT**.
 
 **Cycle 91 (stands):** Honeypot file_drop lane + Covey
 pack_drop on existing `in/nmap/` + evidence matrix. Not a compose
@@ -256,16 +278,16 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**320 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**389 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 
 | Surface | Assets | Findings | Vulns | Evidence | POA&M | demo |
 |---|---:|---:|---:|---:|---:|---|
-| Host `make lab` | 64 | 79 | 19 | 27 | 82 | true |
-| `make farm-lab` | 64 | 79 | 19 | 27 | 82 | true |
-| `make farm-toolbin-e2e` | 64 | 80 | 19 | 27 | 82 | true |
-| `make dropbox-lab` | 69 | 88 | 19 | 27 | 85 | true |
+| Host `make lab` | 81 | 105 | 19 | 33 | 106 | true |
+| `make farm-lab` | 81 | 105 | 19 | 33 | 106 | true |
+| `make farm-toolbin-e2e` | 81 | 106 | 19 | 33 | 106 | true |
+| `make dropbox-lab` | 86 | 114 | 19 | 33 | 109 | true |
 
 **Deltas vs cycle 80:** lab counts unchanged. pytest **320**. No-diff
 deadline freeze. (e) runtime still ABSENT. Catalog / wrap / compose /

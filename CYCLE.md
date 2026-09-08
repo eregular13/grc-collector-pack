@@ -1,5 +1,25 @@
 # CYCLE log
 
+## cycle 94 — IdP + MDM file-drop intake (rebase on #10) (2026-09-08)
+
+Rebase onto master after honeypot #7, DNS/email #8, and CoS prove-bar #10.
+Extend saas-idp and host-wazuh (no new catalog slots) for operator-landed
+Entra/Okta/Google user inventory and Intune/Jamf device inventory.
+Findings are assessment language (MFA gap, standing Global Administrator,
+stale guest, encryption compliance %, missing EDR, MDM unenrolled) — not
+breaches. `in/mdm/` is a host-wazuh extra drop path, not a Layer C sensor.
+Empty / missing MFA fields invent nothing. No Graph/Okta/Jamf/osquery live.
+No RiskReady POST. DESKTOP prove bar: `python collectors/saas_idp.py` +
+`python collectors/host_wazuh.py` → `out/canonical/*.jsonl`. SAMPLE ≠ client.
+DNS/email Seen + honeypot + Covey pack_drop stand. Catalog **unchanged**
+111 / 32 / 30 / 81. pytest **389** (1 skipped). Host 81/105/19/33 poam 106.
+farm 81/105 poam 106. e2e 81/106 poam 106. dropbox 86/114 poam 109.
+Paying-day FAIL. Compose ABSENT.
+
+```json
+{"pytest": 389, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 81, "findings": 105, "vulns": 19, "evidence": 33, "poam": 106}, "farm_lab": {"assets": 81, "findings": 105, "poam": 106, "demo": true}, "farm_toolbin_e2e": {"assets": 81, "findings": 106, "vulns": 19, "poam": 106, "demo": true}, "dropbox_lab": {"assets": 86, "findings": 114, "vulns": 19, "poam": 109, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 93 — DNS/email CoS prove bar (2026-09-08)
 
 CoS city review #1 (binding): PR #8 finishes only when rebase is clean, pytest is green, and GitHub reports mergeable. Prove bar: `fixtures/demo/dns_email/` file_drop → `in/dns_email/` → `python collectors/dns_email.py` → `out/canonical/dns-email.jsonl`. Empty `in/` stamps `demo` labels. SAMPLE/DEMO ≠ client estate. No RiskReady POST. Paying-day **FAIL**. Catalog **unchanged**. pytest **385** (1 skipped). Labs no-diff vs cycle 92. Compose ABSENT.

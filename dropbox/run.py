@@ -20,7 +20,7 @@ from dropbox.scope import (
 )
 from dropbox import runners
 
-SENSORS = ("cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas", "dns_email")
+SENSORS = ("cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas", "dns_email", "mdm")
 
 
 def _print_gate(scope) -> None:

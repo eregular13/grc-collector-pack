@@ -56,4 +56,3 @@ rg -n "MFA not registered|Standing Global Administrator|Stale guest|encryption c
 Operator drop on a real estate: land Entra/Okta/Google under `in/saas/`,
 Intune/Jamf under `in/mdm/` (or `in/wazuh/`), then re-run those two collectors.
 Fixtures prove the parser; they are not a client KEEP.
->>>>>>> f54e3cf (Add file-drop IdP and MDM inventory intake.)
