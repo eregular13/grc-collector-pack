@@ -61,7 +61,9 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "SMB" in findings
     assert "demo" in findings.lower() or "SAMPLE" in findings
     assert "deception-sensor" in findings.lower()
+    assert "beelzebub" in findings.lower() or "beelzebub" in assets.lower()
     assert "compromised" not in findings.lower() or "not" in findings.lower()
+    assert (Path(stamp["in_dir"]) / "honeypot" / "pack_drop" / "events.jsonl").is_file()
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2

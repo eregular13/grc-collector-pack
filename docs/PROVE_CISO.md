@@ -1,7 +1,7 @@
 # CISO Assistant export prove (SAMPLE/DEMO)
 
-One honest file-drop prove: fixture **Covey pack_drop** + **honeypot** → existing
-collectors → `grc_loader` → **`out/ciso-assistant/*.csv`**.
+One honest file-drop prove: fixture **Covey pack_drop** + **Palisade/Beelzebub
+honeypot** → existing collectors → `grc_loader` → **`out/ciso-assistant/*.csv`**.
 
 This is not a client estate. It is not a paying-day PASS. HITL stays required
 before any live PATH tool or `CISO_PUSH`. RiskReady wrap stays review-only —
@@ -22,10 +22,12 @@ or `make prove-ciso`.
 What that does (isolated under `prove/work/`, never pack `in/`):
 
 1. Copy `fixtures/pack_drop/nmap/` → `prove/work/in/nmap/pack_drop/`
-2. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/`
-3. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-4. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-5. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+2. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+3. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+   (Beelzebub login/cmd/session; `stage` null)
+4. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+5. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+6. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 

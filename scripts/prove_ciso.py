@@ -65,15 +65,19 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     dest_in.mkdir(parents=True)
     nmap_drop = dest_in / "nmap" / "pack_drop"
     honeypot = dest_in / "honeypot"
+    beelzebub = dest_in / "honeypot" / "pack_drop"
     _copy_tree(root / "fixtures" / "pack_drop" / "nmap", nmap_drop)
     _copy_tree(root / "fixtures" / "demo" / "honeypot", honeypot)
+    _copy_tree(root / "fixtures" / "demo" / "honeypot_beelzebub", beelzebub)
     (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (nmap_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     return {
         "dest_in": str(dest_in),
         "covey": str(nmap_drop),
         "honeypot": str(honeypot),
+        "beelzebub": str(beelzebub),
         "sample": True,
         "client": False,
     }
@@ -133,6 +137,7 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         and "filesrv.corp.local" in assets_text
         and "SMB" in findings_text
         and "deception-sensor" in findings_text.lower()
+        and ("beelzebub" in findings_text.lower() or "beelzebub" in assets_text.lower())
         and result.get("posted") is False
         and result.get("http") is False
         and after == before
