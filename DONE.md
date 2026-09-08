@@ -1,6 +1,6 @@
 GREEN
 
-Cycle **92** DNS/email Seen collector rebased onto master honeypot + Covey pack_drop (`in/honeypot/` and `in/nmap/` pack_drop kept). `in/dns_email/` is Covey `email_dns`. Cycle **91** honeypot/Covey stands. Cycle **90** honesty next_action sync. Cycle **89** DESKTOP SCOPE attestation hash. `python -m dropbox gate` is the operator command. **SAMPLE ≠ client KEEP**, **0/4**. Paying-day **FAIL**. Compose **ABSENT ≠ pass**. Reid-only blockers remain.
+Cycle **93** CoS prove bar for PR #8: fixture file_drop → collector → `out/canonical` (SAMPLE ≠ client). Cycle **92** DNS/email Seen rebased onto honeypot + Covey pack_drop. Cycle **91** honeypot/Covey stands. `python -m dropbox gate` is the operator command. **SAMPLE ≠ client KEEP**, **0/4**. Paying-day **FAIL**. Compose **ABSENT ≠ pass**. No RiskReady POST. Reid-only blockers remain.
 
 Two consecutive green labs after critic ≥ 8 (zero P0/P1). Cycle 5 closed; KEEP improve window GREEN.
 
@@ -20,6 +20,6 @@ out/summary.json counts:
   "ocsf": 86,
   "canonical": 179,
   "demo": true,
-  "generated_at": "2026-09-08T05:14:37Z"
+  "generated_at": "2026-09-08T05:17:36Z"
 }
 ```

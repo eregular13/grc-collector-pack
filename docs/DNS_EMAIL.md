@@ -24,6 +24,19 @@ DKIM selectors are configurable on the JSON (`dkim_selectors`) or `GRC_DKIM_SELE
 
 `collectors/dns_email.py` → `out/canonical/dns-email.jsonl`
 
+## Prove bar (CoS)
+
+```
+fixtures/demo/dns_email/*  →  in/dns_email/ (file_drop)
+                           →  python collectors/dns_email.py
+                           →  out/canonical/dns-email.jsonl
+```
+
+Empty `in/dns_email/` loads the same fixtures and stamps `demo` labels.
+This is SAMPLE / DEMO fixture theater — **not a client estate**. No
+RiskReady POST. Paying-day stays **FAIL**. Locked by
+`tests/test_dns_email.py` (`test_prove_bar_*`).
+
 | SoR | When |
 |---|---|
 | asset `domain` / `mail_org` | Domain or MX host already in the export |
