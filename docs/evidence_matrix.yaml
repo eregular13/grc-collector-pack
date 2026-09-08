@@ -14,6 +14,9 @@ lanes:
     pack_in: cloud
     notes: Prowler / ScoutSuite / ASFF file_drop
   - assessment: DNS/email
+    pack_in: dns_email
+    notes: SPF/DKIM/DMARC/MX/cert Seen (Covey email_dns); missing DMARC is a control gap
+  - assessment: DNS/email EASM
     pack_in: easm
     notes: Amass / Subfinder / httpx / WhatWeb file_drop
   - assessment: Covey

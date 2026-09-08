@@ -55,7 +55,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 89 done: DESKTOP SCOPE attestation hash (LF-canonical + `attest --write`; no skip-hash). Catalog unchanged.
 - Cycle 91 done: honeypot file_drop lane + Covey pack_drop on `in/nmap/` + evidence matrix. Not an 11th compose service. Catalog unchanged.
 - Cycle 90 done: Honesty next_action sync (durable Reid-only blockers; gate/hash already on master; no stale merge-PR). Catalog unchanged.
-- Cycle 91 done: DNS/email Seen collector (`in/dns_email/`, Covey `email_dns`). Catalog unchanged. Compose 11 services.
+- Cycle 92 done: DNS/email Seen collector (`in/dns_email/`, Covey `email_dns`). Catalog unchanged. Compose 11 services. Rebased onto honeypot/Covey master.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

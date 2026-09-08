@@ -20,6 +20,6 @@ out/summary.json counts:
   "ocsf": 86,
   "canonical": 179,
   "demo": true,
-  "generated_at": "2026-09-08T05:10:36Z"
+  "generated_at": "2026-09-08T05:14:37Z"
 }
 ```

@@ -58,9 +58,9 @@ Every `output_glob` must land under an existing Layer C sensor directory:
 New sensor directories need a Layer C parser first — do not invent theater
 parsers. Document a TODO instead.
 
-Cycle 91: `dig` lands in `in/dns_email/` (email_dns Seen). Catalog counts
-unchanged. Cycle 21: every other glob still lands in the original Layer C
-dirs. No theater parser.
+Cycle 92: `dig` lands in `in/dns_email/` (email_dns Seen). Honeypot stays
+an optional stub, not a catalog glob. Catalog counts unchanged. Cycle 21:
+every other glob still lands in the original Layer C dirs. No theater parser.
 
 ## Cycle 20 catalog stands
 

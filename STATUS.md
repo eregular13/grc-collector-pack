@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 366
+pytest: 383
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
