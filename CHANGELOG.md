@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 168
+
+R17 refine: WRAP_DEAD still fail-closed (`push_riskready.ps1`/`.sh` exit 2 when RISKREADY_PUSH=1, no HTTP). Mock sink GET+POST `/api/risks` 403; forbidden POSTs no longer increment `received`. In-process unit test does not hit live `:18080`. `product_demo` still never POSTs `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 167
 
 R16 refine: SCOPE + `192.168.10.0/24` still `forbidden_cidr` plan-only (nmap never execs). `product_demo._scope_ok` now also refuses parsed office-LAN hosts/overlapping CIDRs, not only the `/24` string. Live `SCOPE.docker-estate.yaml` stays `172.28.90.0/24`. SCOPE.example untouched. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24 scan. WRAP_DEAD unchanged. No I-069.

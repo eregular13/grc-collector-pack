@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
+import threading
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -36,6 +41,49 @@ def test_riskready_wrap_dead_source() -> None:
         ).lower()
         for tok in tokens:
             assert tok.lower() not in code, f"{name} still contains {tok}"
+
+
+def test_mock_sink_api_risks_is_403(tmp_path, monkeypatch) -> None:
+    """R17: in-process mock. GET+POST /api/risks 403. Does not hit live :18080."""
+    from tests import mock_grc_sink as sink
+
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    prior = list(sink.LOG)
+    sink.LOG.clear()
+    server = ThreadingHTTPServer(("127.0.0.1", 0), sink.Sink)
+    port = int(server.server_address[1])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{port}"
+    try:
+        for method in ("POST", "GET"):
+            req = urllib.request.Request(
+                base + "/api/risks",
+                data=b"{}" if method == "POST" else None,
+                method=method,
+                headers={"Content-Type": "application/json"},
+            )
+            with pytest.raises(urllib.error.HTTPError) as exc:
+                urllib.request.urlopen(req, timeout=5)
+            assert exc.value.code == 403
+            body = json.loads(exc.value.read().decode("utf-8"))
+            assert "forbidden" in str(body.get("error") or "").lower()
+        with urllib.request.urlopen(base + "/health", timeout=5) as resp:
+            health = json.loads(resp.read().decode("utf-8"))
+        assert health.get("ok") is True
+        assert int(health.get("received") or 0) == 0
+        req_ok = urllib.request.Request(
+            base + "/api/importer/",
+            data=b"a,b\n1,2\n",
+            method="POST",
+            headers={"Content-Type": "text/csv"},
+        )
+        with urllib.request.urlopen(req_ok, timeout=5) as resp:
+            assert resp.status == 200
+    finally:
+        server.shutdown()
+        server.server_close()
+        sink.LOG[:] = prior
 
 
 def test_riskready_push_1_fail_closed() -> None:

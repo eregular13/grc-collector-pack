@@ -26,10 +26,17 @@ class Sink(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _is_risks(self, path: str) -> bool:
+        lowered = path.lower().rstrip("/")
+        return lowered.endswith("/risks") or lowered.endswith("/api/risks")
+
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path in {"/health", "/"}:
             self._send(200, {"ok": True, "received": len(LOG)})
+            return
+        if self._is_risks(path):
+            self._send(403, {"error": "proposed-risks upload is forbidden"})
             return
         self._send(404, {"error": "not found"})
 
@@ -37,15 +44,14 @@ class Sink(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length) if length else b""
+        if self._is_risks(path):
+            self._send(403, {"error": "proposed-risks upload is forbidden"})
+            return
         LOG.append({"method": "POST", "path": path, "bytes": len(body)})
         try:
             write_json(get_out() / "evidence" / "sink-log.json", LOG)
         except OSError:
             pass
-        lowered = path.lower().rstrip("/")
-        if lowered.endswith("/risks") or lowered.endswith("/api/risks"):
-            self._send(403, {"error": "proposed-risks upload is forbidden"})
-            return
         if any(path.startswith(prefix) for prefix in ALLOWED_PREFIXES):
             self._send(200, {"accepted": True, "path": path})
             return
