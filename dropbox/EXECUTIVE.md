@@ -26,6 +26,8 @@ CISO Assistant is the system of record (CSV + optional assets/evidences REST). R
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
 
+**Delta (cycle 91):** Honeypot file_drop lane (`in/honeypot/`) + Covey pack_drop on existing `in/nmap/` + evidence matrix. Not an 11th compose service. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 90. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Reid-only blockers stay (CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker ABSENT ≠ pass).
+
 **Delta (cycle 90):** Honesty next_action sync. STATUS / EXECUTIVE name durable Reid-only blockers only (CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker ABSENT ≠ pass). Gate/hash already on master (`python -m dropbox gate`). Do not instruct merge of PR #4. Cycle 89 attestation hash stands. Cycle 74 durable blockers stay locked. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Catalog unchanged (111 / 32 / 30 / 81).
 
 **Delta (cycle 89):** DESKTOP SCOPE attestation. Gate hashes LF-canonical consent bytes so Windows `core.autocrlf` CRLF checkout no longer mismatches committed `ab5fb873…`. `python -m dropbox attest --write` after consent edits. No skip-hash. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 88.

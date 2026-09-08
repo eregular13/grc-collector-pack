@@ -2,7 +2,16 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 90):** Honesty next_action sync.
+**This window (cycle 91):** Honeypot file_drop lane + Covey
+pack_drop on existing `in/nmap/` + evidence matrix. Not an 11th
+compose service. Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). Labs no-diff vs cycle 90. Wrap stays **dead**.
+Paying-day **FAIL**. Compose **ABSENT**. Reid-only blockers stay
+(CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker
+**ABSENT ≠ pass**). Gate/hash already on master
+(`python -m dropbox gate`). Cycle 90 honesty sync stands.
+
+**Cycle 90 (stands):** Honesty next_action sync.
 STATUS / EXECUTIVE name durable Reid-only blockers only (CTA;
 Eval `npm start`; real KEEP `in/` drop; compose-on-Docker
 **ABSENT ≠ pass**). Gate/hash already on master
