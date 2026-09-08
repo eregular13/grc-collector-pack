@@ -2,20 +2,28 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 100):** CoS #6 honesty sync. STATUS
+**This window (cycle 101):** CoS #7 honesty sync. STATUS
 `next_action` is current truth — Covey `E2E_PROVEN` = nmap +
-rustscan + fping + naabu at HEAD `14a41bd`. Pack does not start
-Covey adapter work. Reid-only blockers remain (CTA; real KEEP
-`in/` drop; Eval `npm start`; Docker compose on a real host —
-this VM `compose_lab` **ABSENT ≠ pass**). Paying-day stays
-**FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog unchanged
-(111 / 32 wired / 30 invoke / 81 file_drop). Cycle 99 CoS #5
-stands as history. Cycle 98 CoS #4 stands. Cycle 97 CoS #3
-stands. Cycle 96 CISO prove stands. Cycle 95 Beelzebub stands.
-Cycle 94 IdP/MDM stands. Cycle 93 DNS/email CoS prove bar
-stands. Cycle 90 honesty next_action stands. Cycle 74 durable
-blockers stay locked. Wrap stays **dead**. Compose **ABSENT**.
-Gate/hash already on master (`python -m dropbox gate`).
+rustscan + fping + naabu + nping at HEAD `16eaadc`. Pack does
+not start Covey adapter work. Reid-only blockers remain (CTA;
+real KEEP `in/` drop; Eval `npm start`; Docker compose on a
+real host — this VM `compose_lab` **ABSENT ≠ pass**). Paying-day
+stays **FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog
+unchanged (111 / 32 wired / 30 invoke / 81 file_drop). Cycle
+100 CoS #6 stands as history. Cycle 99 CoS #5 stands. Cycle 98
+CoS #4 stands. Cycle 97 CoS #3 stands. Cycle 96 CISO prove
+stands. Cycle 95 Beelzebub stands. Cycle 94 IdP/MDM stands.
+Cycle 93 DNS/email CoS prove bar stands. Cycle 90 honesty
+next_action stands. Cycle 74 durable blockers stay locked.
+Wrap stays **dead**. Compose **ABSENT**. Gate/hash already on
+master (`python -m dropbox gate`).
+
+**Cycle 100 (stands):** CoS #6 honesty sync. STATUS
+`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
++ naabu at HEAD `14a41bd`. That claim is historical — Covey
+later proved nping at HEAD `16eaadc`. Reid-only blockers
+remain. Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 99 (stands):** CoS #5 honesty sync. STATUS
 `next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
