@@ -53,6 +53,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 87 done: pack in/ estate protect (schedule/ingest/ciso read-only unless `--write-pack-in`). Catalog unchanged.
 - Cycle 88 done: Hephaestus two-MCP cross-wire fail-closed (`check_scope`/`license_guard` refused on conductor). Catalog unchanged.
 - Cycle 89 done: DESKTOP SCOPE attestation hash (LF-canonical + `attest --write`; no skip-hash). Catalog unchanged.
+- Cycle 98 done: CoS #4 refine-only. STATUS `next_action` is third live Covey brick held (fping preferred; BYO fping missing on this VM, not in flight). Reid-only blockers remain CTA + real KEEP `in/` + Eval npm start + Docker compose on a real host (this VM ABSENT ≠ PASS). Pytest locks STATUS/docs so compose_lab absent cannot flip to pass. Catalog unchanged.
 - Cycle 97 done: CoS #3 refine-only. STATUS `next_action` is refine-only after CoS #2/#3; Reid-only blockers remain CTA + real KEEP `in/` + Eval npm start + Docker compose on a real host (this VM ABSENT ≠ PASS). Pytest locks wrap PUSH=1 fail-closed, CISO SAMPLE/DEMO labels, two-MCP pack-truth refuse. Catalog unchanged.
 - Cycle 96 done: CISO Assistant export prove rebased onto Beelzebub #11 (fixture Covey pack_drop + Palisade/Beelzebub honeypot → `out/ciso-assistant`). SAMPLE ≠ client. Paying-day FAIL. Pause brick-adding after this. Catalog unchanged.
 - Cycle 95 done: Beelzebub honeypot pack_drop on `in/honeypot/` (stage=null; Palisade-only stages), rebased onto IdP/MDM #9 + DNS/email #8/#10. Not a 12th compose service. Catalog unchanged.

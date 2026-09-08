@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from dropbox.scanner_free import compose_lab, docker_available
@@ -57,7 +58,18 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     low = action.lower()
     assert "refine-only" in low
     assert "after cos #1" not in low
-    assert "cos #2" in low or "cos #3" in low or "#2/#3" in action
+    assert "after cos #2/#3" not in low
+    assert "cos #4" in low
+    assert "covey" in low
+    assert "fping" in low
+    assert "byo" in low
+    # Honest: fping preferred, but held when the BYO binary is missing.
+    if shutil.which("fping") is None:
+        assert "held" in low
+        assert "missing" in low
+        assert "not in flight" in low
+    else:
+        assert "in flight" in low or "held" in low
     assert "reid-only" in low
     assert "cta" in low
     assert "eval" in low and "npm start" in low
@@ -153,6 +165,42 @@ def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
         assert stamp.get("profiles_run") == []
         note = str(stamp.get("note") or "")
         assert "not a compose" in note.lower() or "runtime compose not run" in note.lower()
+
+
+def test_docs_and_status_cannot_flip_compose_lab_absent_to_pass() -> None:
+    """STATUS/docs cannot stamp compose_lab pass while Docker is missing."""
+    ok, reason = docker_available()
+    status = _status()
+    if not ok:
+        assert status.get("compose_lab") == "absent"
+        assert status.get("compose_lab") != "pass"
+        lab_reason = status.get("compose_lab_reason", "")
+        assert lab_reason
+        assert "docker" in lab_reason.lower() or "PATH" in lab_reason
+        assert "docker" in reason.lower() or "PATH" in reason
+        action = status.get("next_action", "")
+        assert "absent" in action.lower()
+        assert "not a pass" in action.lower() or "≠" in action
+        assert "compose_lab: pass" not in (ROOT / "STATUS.md").read_text(encoding="utf-8").lower()
+    live = (
+        ROOT / "STATUS.md",
+        ROOT / "CRITIC.md",
+        ROOT / "DONE.md",
+        ROOT / "PLAN.md",
+        ROOT / "product-lab" / "EXECUTIVE.md",
+        ROOT / "dropbox" / "EXECUTIVE.md",
+    )
+    for path in live:
+        text = path.read_text(encoding="utf-8")
+        if not ok:
+            assert "compose_lab: pass" not in text.lower(), f"{path} flipped compose_lab absent → pass"
+            assert '"compose_lab": "pass"' not in text, f"{path} JSON flipped compose_lab to pass"
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.lower().startswith("compose_lab:"):
+                    value = stripped.split(":", 1)[1].strip().lower()
+                    assert value == "absent", f"{path} compose_lab={value} while Docker is absent"
+                    assert value != "pass"
 
 
 def test_executive_does_not_stamp_paying_day_or_assessment_ready() -> None:
