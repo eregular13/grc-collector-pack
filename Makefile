@@ -23,6 +23,7 @@ collectors:
 	$(PYTHON) collectors/k8s_kubescape.py
 	$(PYTHON) collectors/code_secrets.py
 	$(PYTHON) collectors/saas_idp.py
+	$(PYTHON) collectors/dns_email.py
 
 loader:
 	$(PYTHON) collectors/grc_loader.py

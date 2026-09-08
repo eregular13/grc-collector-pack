@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 92 — DNS/email Seen rebased onto honeypot/Covey (2026-09-08)
+
+Rebase of PR #8 onto master after PR #7. `in/honeypot/` + Covey pack_drop on `in/nmap/` kept. `in/dns_email/` parse-only lane for Covey `email_dns`. SPF/DKIM/DMARC/MX + optional PEM/crt.sh. Missing DMARC is a control-gap candidate, not a breach. Live `dig` only behind `--live` + signed SCOPE allowlist. Evidence matrix now maps DNS/email Seen → `in/dns_email/` (Amass-class stays `in/easm/`). Catalog **unchanged** (`dig` remapped). Compose 11 services; honeypot stays an optional stub. pytest **383** (1 skipped). Host 69/86/19/33 poam 87. farm 69/86 poam 87. e2e 69/87 poam 87. dropbox 74/95 poam 90. Paying-day FAIL. Compose ABSENT.
+
+```json
+{"pytest": 383, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 69, "findings": 86, "vulns": 19, "evidence": 33, "poam": 87}, "farm_lab": {"assets": 69, "findings": 86, "poam": 87, "demo": true}, "farm_toolbin_e2e": {"assets": 69, "findings": 87, "vulns": 19, "poam": 87, "demo": true}, "dropbox_lab": {"assets": 74, "findings": 95, "vulns": 19, "poam": 90, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 91 — Honeypot lane + Covey pack_drop (2026-09-08)
 
 `in/honeypot/` ingest stub + `collectors/honeypot.py` parse fleet-sensor `honeypot_event.v1` (`events.jsonl` / `sessions.jsonl` / `meta.json`) into pack-canonical assets/findings/evidence. Findings text is deception-sensor / agent-behavior — not “network compromised.” `map_finding` keeps honeypot off POA&M as a compromise row. Covey pack_drop (`assets.jsonl` / `findings.jsonl` / `meta.json` / `evidence/`) accepted on the existing inventory-nmap lane (`shared/pack_drop.py`); host-shaped rows reuse `_emit_host`. Evidence matrix (`docs/EVIDENCE_MATRIX.md` + `docs/evidence_matrix.yaml`) maps IdP→identity, MDM→wazuh, cloud→cloud, DNS/email→easm, Covey→nmap, VM→vuln, honeypot→honeypot. Not an 11th compose service. Catalog **not inflated**. pytest **369**. Labs no-diff vs cycle 90. Paying-day FAIL. Compose ABSENT. Wrap dead.

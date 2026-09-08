@@ -83,15 +83,15 @@ not a PASS, and never a paying-day stamp.
 If Docker is available on an operator host:
 
 ```bash
-docker compose config --services    # exactly 10
+docker compose config --services    # exactly 11
 docker compose up --build --exit-code-from grc-loader
 ```
 
-**PASS criteria:** loader exit 0; 10 services; no published ports;
+**PASS criteria:** loader exit 0; 11 services; no published ports;
 `out/summary.json` present. Image must not contain nmap/nuclei/openvas/nessus/gvm/zeek.
 Empty pack `in/` is DEMO fixtures. Do not stamp paying-day from this run.
 
-If pack `in/` already has estate files, `config` still lists 10. Optional
+If pack `in/` already has estate files, `config` still lists 11. Optional
 `up` is **estate-only** (no fixtures-park). Park estate `in/` first only
 if you want fixture counts. `python -m keep lab` never writes pack `in/`.
 

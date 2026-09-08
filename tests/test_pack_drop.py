@@ -81,11 +81,13 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "pack_in: wazuh" in matrix
     assert "pack_in: cloud" in matrix
     assert "pack_in: easm" in matrix
+    assert "pack_in: dns_email" in matrix
     assert "pack_in: nmap" in matrix
     assert "pack_in: vuln" in matrix
     assert "pack_in: honeypot" in matrix
     page = (ROOT / "docs" / "EVIDENCE_MATRIX.md").read_text(encoding="utf-8")
     assert "in/honeypot/" in page
+    assert "in/dns_email/" in page
     assert "deception-sensor" in page
 
 

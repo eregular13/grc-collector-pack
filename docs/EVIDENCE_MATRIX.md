@@ -12,7 +12,8 @@ Machine-readable twin: [`evidence_matrix.yaml`](evidence_matrix.yaml)
 | IdP | `in/identity/` | BloodHound / PingCastle / HardeningKitty / CIS-CAT / enum4linux-ng file_drop | exists |
 | MDM | `in/wazuh/` | Fleet / osquery / Wazuh / Lynis coverage file_drop | exists |
 | cloud | `in/cloud/` | Prowler / ScoutSuite / Steampipe / Custodian / ASFF file_drop | exists |
-| DNS/email | `in/easm/` | Amass / Subfinder / httpx / WhatWeb / ffuf file_drop | exists |
+| DNS/email | `in/dns_email/` | SPF/DKIM/DMARC/MX + PEM/crt.sh Seen (Covey `email_dns`) | exists |
+| DNS/email EASM | `in/easm/` | Amass / Subfinder / httpx / WhatWeb / ffuf file_drop | exists |
 | Covey | `in/nmap/` | pack_drop `assets.jsonl` + `findings.jsonl` + `meta.json` + `evidence/` (also gnmap/XML/masscan/…) | exists — see [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md) |
 | VM | `in/vuln/` | OpenVAS/Greenbone / Nuclei / Trivy / Nessus / Nikto / testssl / SARIF **file_drop only** | exists |
 | honeypot | `in/honeypot/` | fleet-sensor `events.jsonl` / `sessions.jsonl` / `meta.json` (`honeypot_event.v1`) | stubbed + fixture |
@@ -24,8 +25,8 @@ Also present (not in the Covey matrix, still Layer C): `in/k8s/`, `in/code/`, `i
 - Honeypot stage hits are **deception-sensor evidence / agent-behavior signals**.
   They are not “network compromised” and not a full control failure.
 - OpenVAS-class and Nuclei-class are file_drop. This image does not ship those binaries.
-- Empty `in/<lane>/` still falls back to `fixtures/demo/<lane>/` for the nine
-  compose collectors. Honeypot is **not** one of those nine — run
+- Empty `in/<lane>/` still falls back to `fixtures/demo/<lane>/` for the ten
+  compose collectors. Honeypot is **not** a compose service — run
   `python collectors/honeypot.py` only when you want that lane.
 - RiskReady wrap stays review-only forever.
 

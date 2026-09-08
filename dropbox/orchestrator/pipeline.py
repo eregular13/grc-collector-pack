@@ -39,6 +39,7 @@ _SENSOR_COPY = (
     ("discover", "nmap", {".gnmap", ".xml", ".nmap"}),
     ("deepen", "vuln", {".nessus", ".xml", ".json", ".txt"}),
     ("external", "easm", {".jsonl", ".json", ".txt"}),
+    ("external", "dns_email", {".jsonl", ".json", ".txt", ".pem"}),
     ("endpoint", "wazuh", {".json", ".txt"}),
     ("cloud", "cloud", {".json"}),
     ("identity", "identity", {".json", ".xml", ".csv"}),

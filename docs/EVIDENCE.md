@@ -14,3 +14,6 @@ Import these as CISO evidences or RiskReady `TECHNICAL` / `SENSOR` / `DRAFT` evi
 
 Assessment lane → `in/<lane>/` map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 Covey pack_drop on the nmap lane: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md).
+Email / DNS (`in/dns_email/`) is the pack **Seen** twin of Covey lane `email_dns`.
+Missing DMARC is a control-gap candidate. A TXT record is not mailbox proof
+and not a breach. See [DNS_EMAIL.md](DNS_EMAIL.md).

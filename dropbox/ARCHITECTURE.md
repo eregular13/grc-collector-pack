@@ -24,9 +24,9 @@ Quiet → loud. Integrity over coverage ego.
 
 `python3 -m dropbox status` prints the stage graph (`plan → shard → discover → destroy → deepen → destroy → external (plan-only) → ingest → grc_export`), last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). See `farm/OPERATOR.md`.
 
-## Layer C — existing 10 containers (parse-only)
+## Layer C — existing 11 containers (parse-only)
 
-Nine collectors + `grc-loader`. They read **files already in `in/`** (or `fixtures/demo/` when empty) and emit CISO CSVs, POA&M (`owner`/`due` blank), RiskReady review JSON, SimpleRisk leave-behind docs.
+Ten collectors + `grc-loader`. They read **files already in `in/`** (or `fixtures/demo/` when empty) and emit CISO CSVs, POA&M (`owner`/`due` blank), RiskReady review JSON, SimpleRisk leave-behind docs.
 
 They do **not** live-scan. They do **not** POST `/api/risks`.
 
@@ -51,5 +51,5 @@ Layer B  discover → deepen → destroy → external (plan-only) → ingest
    in/<sensor>/
     │
     ▼
-Layer C  9 collectors + loader  →  CISO / POA&M / SimpleRisk leave-behind
+Layer C  10 collectors + loader  →  CISO / POA&M / SimpleRisk leave-behind
 ```

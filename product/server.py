@@ -32,6 +32,7 @@ COLLECTORS = [
     "k8s_kubescape.py",
     "code_secrets.py",
     "saas_idp.py",
+    "dns_email.py",
     "grc_loader.py",
 ]
 

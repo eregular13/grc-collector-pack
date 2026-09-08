@@ -14,6 +14,7 @@ MODULES = [
     "collectors.k8s_kubescape",
     "collectors.code_secrets",
     "collectors.saas_idp",
+    "collectors.dns_email",
     "collectors.grc_loader",
 ]
 
@@ -35,12 +36,13 @@ def test_compose_has_ten_services() -> None:
         "k8s-kubescape",
         "code-secrets",
         "saas-idp",
+        "dns-email",
         "grc-loader",
     ]
     for n in names:
         assert f"{n}:" in text
     assert "service_completed_successfully" in text
-    assert text.count("condition:") >= 9
+    assert text.count("condition:") >= 10
 
 
 def test_csv_header_strings() -> None:

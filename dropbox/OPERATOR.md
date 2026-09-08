@@ -43,7 +43,7 @@ the file already landed. DEMO `--live` is refused.
 
 - **Layer A — BYO tool zoo.** Consent SCOPE names host tools already on the drop box. This repo does not embed Nmap/Nessus/Nuclei/OpenVAS.
 - **Layer B — orchestrator = brakes.** Quiet discover → gated deepen → destroy workers → **external (plan-only)** → ingest into `in/` (including inventory of dropped `in/easm|…` files) → grc_export. `python3 -m dropbox status` prints the stage graph, last integrity stop, shard/batch counters, and `allow_tools ∩ PATH ∩ SLOTS` (present/missing). Private farm install path: `farm/OPERATOR.md`.
-- **Layer C — 10 containers (9 collectors + loader).** Parse-only files in `in/` → CISO / POA&M / SimpleRisk leave-behind.
+- **Layer C — 11 containers (10 collectors + loader).** Parse-only files in `in/` → CISO / POA&M / SimpleRisk leave-behind.
 
 Layer B **feeds** Layer C via `in/`. It does **not** turn Layer C into live scanners. “100 tools” means parser file-family inputs, not 100 binaries in compose.
 
@@ -180,7 +180,7 @@ python3 -m dropbox ciso
 python3 -m product          # http://127.0.0.1:18765/  (optional console zip)
 ```
 
-The nine-collector `bash scripts/lab.sh` path still falls back to `fixtures/demo/`
+The ten-collector `bash scripts/lab.sh` path still falls back to `fixtures/demo/`
 on empty sensors and labels `demo`. Hand `out/poam/poam.csv` as the POA&M draft —
 a human fills owner and due. Do not invent FindingsAssessment UUIDs.
 

@@ -92,7 +92,7 @@ If pack `in/` already has client/estate files:
   fixtures-park pattern. With estate present there is no fixtures-park.
   Either run compose as **estate-only** (current `in/`) **or** park/move
   estate `in/` aside first if you want fixture counts.
-- `docker compose config --services` should list exactly 10. Optional
+- `docker compose config --services` should list exactly 11. Optional
   `up` is skipped when you do not want to mix estate + fixtures.
 
 ## Do not

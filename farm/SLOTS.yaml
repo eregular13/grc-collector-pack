@@ -251,8 +251,8 @@ slots:
     stage: external
     category: external
     scope_key: allow_tools
-    sensor: easm
-    output_glob: in/easm/*.txt
+    sensor: dns_email
+    output_glob: in/dns_email/*.txt
     license_class: oss_byo
     default_batch: 1
     wired: true

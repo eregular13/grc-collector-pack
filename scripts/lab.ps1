@@ -18,6 +18,7 @@ python -m pytest tests -q
   "k8s_kubescape.py",
   "code_secrets.py",
   "saas_idp.py",
+  "dns_email.py",
   "grc_loader.py"
 ) | ForEach-Object { python (Join-Path $Root "collectors\$_") }
 python (Join-Path $Root "scripts\preview_probo.py")

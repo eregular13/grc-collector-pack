@@ -2,14 +2,22 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 91):** Honeypot file_drop lane + Covey
-pack_drop on existing `in/nmap/` + evidence matrix. Not an 11th
-compose service. Catalog unchanged (111 / 32 wired / 30 invoke /
-81 file_drop). Labs no-diff vs cycle 90. Wrap stays **dead**.
-Paying-day **FAIL**. Compose **ABSENT**. Reid-only blockers stay
-(CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker
-**ABSENT ≠ pass**). Gate/hash already on master
-(`python -m dropbox gate`). Cycle 90 honesty sync stands.
+**This window (cycle 92):** Email/DNS Seen collector
+(`in/dns_email/`, Covey `email_dns`) rebased onto honeypot +
+Covey pack_drop. File-drop SPF/DKIM/DMARC/MX + optional cert
+snapshot. Missing DMARC is a control gap, not a breach. Live DNS
+only behind `--live` + signed SCOPE. Catalog unchanged (111 / 32
+wired / 30 invoke / 81 file_drop). Compose **11** services;
+honeypot stays an optional stub. Wrap stays **dead**. Paying-day
+**FAIL**. Compose **ABSENT**.
+
+**Cycle 91 (stands):** Honeypot file_drop lane + Covey
+pack_drop on existing `in/nmap/` + evidence matrix. Not a compose
+service. Catalog unchanged (111 / 32 wired / 30 invoke /
+81 file_drop). Wrap stays **dead**. Paying-day **FAIL**. Compose
+**ABSENT**. Reid-only blockers stay (CTA; Eval `npm start`; real
+KEEP `in/` drop; compose-on-Docker **ABSENT ≠ pass**). Gate/hash
+already on master (`python -m dropbox gate`).
 
 **Cycle 90 (stands):** Honesty next_action sync.
 STATUS / EXECUTIVE name durable Reid-only blockers only (CTA;

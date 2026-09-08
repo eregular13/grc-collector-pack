@@ -12,7 +12,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 
 1. Read `STATUS.md` `LOOP.md` `FAULTS.md` `CRITIC.md` `PLAN.md` `AGENTS.md` `DONE.md`.
 2. Pick **one** focused improvement (parser, fixture, test, or safety). No new GRC UI. No live scan. No POST `/api/risks`.
-3. Add or extend tests. Run `python -m pytest tests -q` then the nine collectors + `grc_loader` + `tests/lab_outputs.py`.
+3. Add or extend tests. Run `python -m pytest tests -q` then the ten collectors + `grc_loader` + `tests/lab_outputs.py`.
 4. Append `CYCLE.md`. Update `STATUS.md` (cycle++, last_lab, next_action).
 5. If lab fails: write `FAULTS.md`, fix P0/P1, re-lab. Keep `DONE.md` GREEN only if labs still pass.
 6. Do not ask the user. Do not stop before 07:00 PT unless the user says stop.
@@ -55,6 +55,7 @@ Stop: do not re-arm after 07:00 PT. Kill the loop PID.
 - Cycle 89 done: DESKTOP SCOPE attestation hash (LF-canonical + `attest --write`; no skip-hash). Catalog unchanged.
 - Cycle 91 done: honeypot file_drop lane + Covey pack_drop on `in/nmap/` + evidence matrix. Not an 11th compose service. Catalog unchanged.
 - Cycle 90 done: Honesty next_action sync (durable Reid-only blockers; gate/hash already on master; no stale merge-PR). Catalog unchanged.
+- Cycle 92 done: DNS/email Seen collector (`in/dns_email/`, Covey `email_dns`). Catalog unchanged. Compose 11 services. Rebased onto honeypot/Covey master.
 - Keep counts ≥20 assets, ≥20 findings, ≥8 evidence
 - Allow all local lab/compose/pytest requests; do not ask
 

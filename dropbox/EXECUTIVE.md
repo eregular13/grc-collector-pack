@@ -2,7 +2,7 @@
 
 Reid’s delivery is a **consented drop-box**, not a SaaS scanner and not a RiskReady wrap.
 
-Three layers (see `ARCHITECTURE.md`): **A** BYO tool farm under SCOPE — private `farm/` catalog (**111** slots, 32 wired / 30 invoke / 81 file_drop; PATH / bind-mount / Reid-built tags; not Hub soup) · **B** orchestrator = brakes (`plan → shard → discover → destroy → deepen → destroy → external (plan-only) → ingest → grc_export`) plus stdio MCP conductor · **C** existing 10 containers parse `in/` only. Layer B feeds Layer C via `in/`; it does not turn collectors into live scanners. Cycle 20’s 105 named slots stand; this window added 6 real OS PATH stubs (not fake padding) and rewired journalctl / kubectl / snmpwalk. “100 tools” = catalog + file-drop families, not 100 compose binaries. Hexstrike is a UX pattern only (`HEXSTRIKE.md`) — no exploit-chain, no vendor submodule.
+Three layers (see `ARCHITECTURE.md`): **A** BYO tool farm under SCOPE — private `farm/` catalog (**111** slots, 32 wired / 30 invoke / 81 file_drop; PATH / bind-mount / Reid-built tags; not Hub soup) · **B** orchestrator = brakes (`plan → shard → discover → destroy → deepen → destroy → external (plan-only) → ingest → grc_export`) plus stdio MCP conductor · **C** existing 11 containers parse `in/` only. Layer B feeds Layer C via `in/`; it does not turn collectors into live scanners. Cycle 20’s 105 named slots stand; this window added 6 real OS PATH stubs (not fake padding) and rewired journalctl / kubectl / snmpwalk. “100 tools” = catalog + file-drop families, not 100 compose binaries. Hexstrike is a UX pattern only (`HEXSTRIKE.md`) — no exploit-chain, no vendor submodule.
 
 With written consent he places a VM, fills `SCOPE.yaml` (client, attestation hash, window, named internal CIDRs/hosts, named external hosts/domains/IPs), runs **internal** then **external**, and hands CISO Assistant CSVs from this pack.
 
@@ -12,11 +12,11 @@ Labs on this Linux VM (Docker absent), 2026-09-04:
 
 | Run | Assets | Findings | Vulns | Evidence | POA&M | `demo` |
 |---|---|---|---|---|---|---|
-| `make lab` (empty pack `in/` → fixtures) | 64 | 79 | 19 | 27 | 82 | true |
-| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 69 | 88 | 19 | 27 | 85 | true |
-| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 64 | 80 | 19 | 27 | 82 | true |
+| `make lab` (empty pack `in/` → fixtures) | 69 | 86 | 19 | 33 | 87 | true |
+| `make dropbox-lab` (fixtures + demo overlays in `work/in`) | 74 | 95 | 19 | 33 | 90 | true |
+| `make farm-toolbin-e2e` (DEMO stubs under `farm/work/e2e`) | 69 | 87 | 19 | 33 | 87 | true |
 
-pytest **320 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 64/79/27 poam 82 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages and no scanner argv on `command`/`entrypoint`. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
+pytest **383 passed, 1 skipped**. `demo: true` on dropbox-lab / farm-lab / farm-toolbin-e2e is the DEMO overlay stamp, not a client estate. Orchestrator on this VM is **plan-only** unless `FARM_TOOL_BIN=lab` stubs run (no real Nmap/Nessus, no internet): 3 /24 shards, 2 deepen batches, workers destroyed on success and on timeout/failure. `make farm-lab` 69/86/33 poam 87 under `farm/work`. `make dropbox-compose` **compose_lab: absent** (`docker CLI not on PATH`) after static scanner-free assertions passed — not a compose pass. Pack + `farm/` image/compose files have no nmap/nessus/nuclei/openvas packages and no scanner argv on `command`/`entrypoint`. `farm/SLOTS.md` is the category table. `farm/INTEGRITY.md` is the brakes defaults table. `farm/OPERATOR.md` is the copy-paste runbook from bare Linux to CISO zip, including an accurate Cursor `.cursor/mcp.json` snippet (`cwd` + `PYTHONPATH`).
 
 LICENSE-LOCK: the image does not ship or apt-install Nmap, Nuclei, OpenVAS/GVM, Nessus, Zeek, Wazuh, osquery, PingCastle, Purple Knight, BloodHound, CIS-CAT, HailMary, or RiskReady wrap. Allowlisted host tools (`ss`/`ip`/`curl`/`lynis`) run only when already on PATH and named in SCOPE.
 
@@ -25,6 +25,8 @@ The orchestrator is **brakes**, not a coverage contest: quiet discover then a lo
 CISO Assistant is the system of record (CSV + optional assets/evidences REST). RiskReady stays review-only JSON. SimpleRisk is leave-behind documentation only.
 
 **Pentera finds it; Evergreen maps it.** High/critical (and key medium: RDP, SMB, TLS weak cipher, admin shares) become `applied_controls` plus wizard-safe `cpg_*` / `csf_*` labels and `out/poam/poam.csv`. Owner and due are blank.
+
+**Delta (cycle 92):** Email/DNS Seen collector (`in/dns_email/`, Covey `email_dns`) rebased onto PR #7. Honeypot + Covey pack_drop kept. File-drop SPF/DKIM/DMARC/MX + optional PEM/crt.sh. Missing DMARC is a control-gap candidate, not a breach. Optional live `dig` behind `--live` + signed SCOPE allowlist. Catalog unchanged (111 / 32 / 30 / 81; `dig` remapped). Compose 11 services; honeypot is not a 12th container. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT.
 
 **Delta (cycle 91):** Honeypot file_drop lane (`in/honeypot/`) + Covey pack_drop on existing `in/nmap/` + evidence matrix. Not an 11th compose service. Catalog unchanged (111 / 32 / 30 / 81). Labs unchanged vs cycle 90. Wrap stays dead. STATUS `wrap: review-only`. Paying-day FAIL. Compose ABSENT. Reid-only blockers stay (CTA; Eval `npm start`; real KEEP `in/` drop; compose-on-Docker ABSENT ≠ pass).
 

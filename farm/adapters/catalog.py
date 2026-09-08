@@ -13,7 +13,7 @@ FARM_ROOT = Path(__file__).resolve().parents[1]
 SLOTS_PATH = FARM_ROOT / "SLOTS.yaml"
 LICENSE_CLASSES = frozenset({"use_dont_ship", "commercial_byo", "oss_byo"})
 LAYER_C_SENSORS = frozenset(
-    {"cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas"}
+    {"cloud", "nmap", "vuln", "wazuh", "identity", "easm", "k8s", "code", "saas", "dns_email"}
 )
 FILE_DROP_ONLY = frozenset(
     {"nikto", "gobuster", "ffuf", "amass", "subfinder", "scoutsuite", "checkov"}
@@ -593,6 +593,19 @@ def render_slots_md() -> str:
             "(`httpx.jsonl`, `httpx.json`, `amass.jsonl`, `ffuf.json`, `whatweb.json`).",
             "amass / subfinder / ffuf / gobuster / whatweb stay file_drop; httpx",
             "*invoke* is separate BYO. No new catalog slots.",
+            "",
+            "## Email / DNS file-drop (Layer C)",
+            "",
+            "Drop **checkdmarc** / `dns_email.v1` JSON, **dig** TXT/MX transcripts,",
+            "crt.sh-style JSON, or an operator PEM / `openssl x509 -text` under",
+            "`in/dns_email/`. Missing DMARC is a control-gap candidate — never a",
+            "breach. SPF `~all` is hygiene; `+all` is a high gap. Empty exports",
+            "invent nothing. Parse-only — Layer C never queries DNS. Optional",
+            "`python -m shared.dns_email_live --live --scope SCOPE.yaml` writes a",
+            "file_drop after a signed domain allowlist (`dig` already on PATH).",
+            "Empty `in/` still loads `fixtures/demo/dns_email/`. The farm `dig`",
+            "invoke slot lands `in/dns_email/*.txt` (catalog not inflated).",
+            "No RiskReady POST. See `docs/DNS_EMAIL.md` (Covey `email_dns` lane).",
             "",
             "## Nuclei JSON file-drop (Layer C)",
             "",
