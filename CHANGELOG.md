@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 160
+
+R09 refine skip: hostname-mismatch / expired TLS not folded onto main `grc-estate` `:18443`. Host curl (Windows schannel) reports `SEC_E_UNTRUSTED_ROOT` even when the listener cert is expired (tried 2020 `not_after`; restored original `-days 2` CN=localhost). `parse_curl_tls` is if/elif so one TLS class per URL; Untrusted TLS is already mapped from this listener. 24h expired/mismatch farms needed alpine curl `--cacert` on a second project — not this window. No second 172.28.140/170 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 159
 
 R08 refine: dummy `/.env` on main `grc-estate` estate-web (`estate/web/env-meta/lab.env`, values already `[REDACTED]`). Curl live exec allowlisted same-origin GET `/.env`; map `Environment file exposed` from GET body + `/.env` path only. HEAD 200 does not invent it. Finding rows do not copy the body. No dummy token in `out/`. No second 172.28.230 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

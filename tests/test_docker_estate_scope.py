@@ -1292,6 +1292,30 @@ def test_expired_tls_parser_and_map() -> None:
     assert self_signed and self_signed[0]["name"] == "Untrusted TLS certificate"
 
 
+def test_r09_skip_expired_mismatch_on_main_18443() -> None:
+    """R09 skip: one :18443 cert. Host schannel reports UNTRUSTED_ROOT before expiry/CN mismatch.
+    24h labs needed alpine curl --cacert on a second project. Not invented from UNTRUSTED_ROOT."""
+    from dropbox.orchestrator.adapters import curl_byo
+
+    compose = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    live = "\n".join(ln for ln in compose.splitlines() if not ln.lstrip().startswith("#"))
+    assert "127.0.0.1:18443:443" in live
+    assert "0.0.0.0:18443" not in live
+    assert "/CN=localhost" in compose
+    assert "-days 2" in compose
+    assert "172.28.140.0/24" not in live
+    assert "172.28.170.0/24" not in live
+    assert "192.168.10.0/24" not in live
+    win = (
+        "curl: (60) schannel: SEC_E_UNTRUSTED_ROOT (0x80090325) - "
+        "The certificate chain was issued by an authority that is not trusted.\n"
+    )
+    names = {r["name"] for r in curl_byo.parse_curl_tls(win, "https://127.0.0.1:18443/")}
+    assert names == {"Untrusted TLS certificate"}
+    assert "Expired TLS certificate" not in names
+    assert "TLS hostname mismatch" not in names
+
+
 def test_weak_compose_isolated_if_present() -> None:
     """T24-wait extra: 172.28.160.0/24 loopback 18581/18543 TLS 1.0-only. Not office LAN. Not c11."""
     path = Path(r"C:\GRC Collector\product-lab\24h\docker-compose.weak.yml")
