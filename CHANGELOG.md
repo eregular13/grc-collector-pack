@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 159
+
+R08 refine: dummy `/.env` on main `grc-estate` estate-web (`estate/web/env-meta/lab.env`, values already `[REDACTED]`). Curl live exec allowlisted same-origin GET `/.env`; map `Environment file exposed` from GET body + `/.env` path only. HEAD 200 does not invent it. Finding rows do not copy the body. No dummy token in `out/`. No second 172.28.230 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted SCOPE+safety+product plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 158
 
 R07 refine: dummy `Access-Control-Allow-Origin: *` on main `grc-estate` estate-web stub `/cors` only. Curl live exec allowlisted same-origin HEAD `/cors`; map `Permissive CORS policy` from that header. Root HEAD still has no ACAO — not invented. A specific origin is not mapped. No second 172.28.220 farm. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

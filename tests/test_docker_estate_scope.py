@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -801,11 +802,31 @@ def test_env_file_parser_and_map() -> None:
     body = "# lab-only dummy. not a client secret.\nLAB_DB_URL=postgres://lab:lab@127.0.0.1:5432/lab\nLAB_TOKEN=lab-only-not-a-secret\n"
     rows = curl_byo.parse_curl_body(body, "http://127.0.0.1:19481/.env")
     assert rows and rows[0]["name"] == "Environment file exposed"
+    assert "lab-only-not-a-secret" not in json.dumps(rows)
     assert curl_byo.parse_curl_body(body, "http://127.0.0.1:19481/") == []
     assert curl_byo.parse_curl_body("HTTP/1.1 200 OK\nContent-Type: application/octet-stream\n\n", "http://127.0.0.1:19481/.env") == []
     mapped = map_finding("Environment file exposed", "127.0.0.1", "high")
     assert mapped["mapped"] is True
     assert mapped["weakness"] == "Environment file exposed"
+    redacted = curl_byo.parse_curl_body("LAB_TOKEN=[REDACTED]\nLAB_DB_URL=[REDACTED]\n", "http://127.0.0.1:18081/.env")
+    assert redacted and redacted[0]["name"] == "Environment file exposed"
+
+
+def test_estate_web_env_static_folded() -> None:
+    """R08: dummy /.env on main estate-web with [REDACTED] values, not a second 172.28.230 farm."""
+    env = (ROOT / "estate" / "web" / "env-meta" / "lab.env").read_text(encoding="utf-8")
+    assert "LAB_TOKEN=[REDACTED]" in env
+    assert "LAB_DB_URL=[REDACTED]" in env
+    assert "lab-only-not-a-secret" not in env
+    assert "AWS_SECRET_ACCESS_KEY" not in env
+    conf = (ROOT / "estate" / "nginx-web.conf").read_text(encoding="utf-8")
+    assert "location = /.env" in conf
+    assert "env-meta" in conf
+    compose = (ROOT / "docker-compose.estate.yml").read_text(encoding="utf-8")
+    live = "\n".join(ln for ln in compose.splitlines() if not ln.lstrip().startswith("#"))
+    assert "172.28.90.0/24" in live
+    assert "172.28.230.0/24" not in live
+    assert "192.168.10.0/24" not in live
 
 
 def test_env_compose_isolated_if_present() -> None:
@@ -1000,17 +1021,21 @@ def test_curl_leak_get_urls_git_root_only() -> None:
     assert curl_byo.leak_get_urls("http://127.0.0.1:18081/") == [
         "http://127.0.0.1:18081/.git/HEAD",
         "http://127.0.0.1:18081/listing/",
+        "http://127.0.0.1:18081/.env",
     ]
     assert curl_byo.leak_get_urls("http://127.0.0.1:18081") == [
         "http://127.0.0.1:18081/.git/HEAD",
         "http://127.0.0.1:18081/listing/",
+        "http://127.0.0.1:18081/.env",
     ]
     assert curl_byo.leak_get_urls("https://127.0.0.1:18443/") == [
         "https://127.0.0.1:18443/.git/HEAD",
         "https://127.0.0.1:18443/listing/",
+        "https://127.0.0.1:18443/.env",
     ]
     assert curl_byo.leak_get_urls("http://127.0.0.1:18081/.git/HEAD") == []
     assert curl_byo.leak_get_urls("http://127.0.0.1:18081/listing/") == []
+    assert curl_byo.leak_get_urls("http://127.0.0.1:18081/.env") == []
     assert curl_byo.leak_get_urls("http://127.0.0.1:18081/index.html") == []
     assert curl_byo.leak_get_urls("http://192.168.10.1/") == []
     assert curl_byo.leak_get_urls("file:///etc/passwd") == []
@@ -1062,6 +1087,8 @@ def test_curl_execute_gets_git_head_from_root(monkeypatch) -> None:
             return _Proc("ref: refs/heads/main\n")
         if any(str(a).endswith("/listing/") for a in cmd):
             return _Proc("<html><head><title>Index of /listing/</title></head><body><h1>Index of /listing/</h1></body></html>\n")
+        if any(str(a).endswith("/.env") for a in cmd):
+            return _Proc("LAB_TOKEN=[REDACTED]\nLAB_DB_URL=[REDACTED]\n")
         return _Proc("")
 
     monkeypatch.setenv("EVERGREEN_ORCH_LIVE", "1")
@@ -1074,12 +1101,18 @@ def test_curl_execute_gets_git_head_from_root(monkeypatch) -> None:
     assert "Directory listing enabled" in names
     assert "Insecure session cookie" in names
     assert "Permissive CORS policy" in names
+    assert "Environment file exposed" in names
     assert "Cleartext HTTP" in names
+    dumped = json.dumps(rec["findings"])
+    assert "lab-only-not-a-secret" not in dumped
+    assert "postgres://lab" not in dumped
     assert any("-I" in c for c in cmds)
     git_gets = [c for c in cmds if any(str(a).endswith("/.git/HEAD") for a in c)]
     assert git_gets and all("-I" not in c and "-sS" in c for c in git_gets)
     list_gets = [c for c in cmds if any(str(a).endswith("/listing/") for a in c)]
     assert list_gets and all("-I" not in c and "-sS" in c for c in list_gets)
+    env_gets = [c for c in cmds if any(str(a).endswith("/.env") for a in c)]
+    assert env_gets and all("-I" not in c and "-sS" in c for c in env_gets)
     cookie_heads = [c for c in cmds if "-I" in c and any(str(a).rstrip("/").endswith("/cookie") for a in c)]
     assert cookie_heads
     cors_heads = [c for c in cmds if "-I" in c and any(str(a).rstrip("/").endswith("/cors") for a in c)]

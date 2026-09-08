@@ -14,6 +14,6 @@ docker compose -f docker-compose.estate.yml up -d
 | estate-tls (nginx self-signed) | `127.0.0.1:18443` → `172.28.90.12` |
 | network | `grc-estate` `172.28.90.0/24` |
 
-Publish binds **loopback only**. SCOPE: `dropbox/SCOPE.docker-estate.yaml` (Evergreen Docker Estate LLC). Tools: curl HEAD + allowlisted same-origin GET `/.git/HEAD` `/listing/` and HEAD `/cookie` `/cors` (dummy lab Git metadata, autoindex, insecure cookie, CORS * stubs on estate-web) + optional sidecar nmap `-sn` on that CIDR (`--profile scan`). Pack image does not apt-install nmap.
+Publish binds **loopback only**. SCOPE: `dropbox/SCOPE.docker-estate.yaml` (Evergreen Docker Estate LLC). Tools: curl HEAD + allowlisted same-origin GET `/.git/HEAD` `/listing/` `/.env` and HEAD `/cookie` `/cors` (dummy lab Git metadata, autoindex, redacted `.env`, insecure cookie, CORS * stubs on estate-web) + optional sidecar nmap `-sn` on that CIDR (`--profile scan`). Pack image does not apt-install nmap.
 
 Do **not** scan the host LAN (`192.168.10.0/24`), pve, or public internet. This estate is lab-sim, not a customer.
