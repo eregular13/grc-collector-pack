@@ -18,7 +18,7 @@ This is the **operator checklist** for a future signed client drop box. It is no
 9. Leftover `.alive` workers are destroyed even if discover is skipped.
 10. Two engagement slugs (e.g. `docker-estate-product` vs `24h-cold`) must not steal each other’s POA&M. Estate kits copy `artifact_src` only — not pack Litware `out/ciso-assistant`.
 11. CISO auto-push (if ever gated on) is **assets.csv + evidences.csv** only. Findings/POA&M stay HITL. Never POST `/api/risks`. RiskReady WRAP_DEAD.
-12. SimpleRisk leave-behind is `out/simplerisk/risks_import.csv` (or estate `out-estate/simplerisk/`) — CSV only, no API.
+12. SimpleRisk leave-behind is `out/simplerisk/risks_import.csv` (or estate `out-estate/simplerisk/` and `engagements/<slug>/out/simplerisk/`) — CSV only, no API. Estate slug rows are the mapped web/TLS classes from this run; pack `out/simplerisk` after `run_lab.ps1` is fixture SMBv1 and is not the estate leave-behind.
 
 ## After
 

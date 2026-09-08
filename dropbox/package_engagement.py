@@ -28,11 +28,21 @@ def _skip(rel: str, name: str) -> bool:
     return False
 
 
-def slug_zip_poam(zpath: Path, slug: str) -> str:
-    """POA&M CSV text from a packaged engagement zip. Missing member raises KeyError."""
-    member = f"{slug}/out/poam/poam.csv"
+def slug_zip_text(zpath: Path, slug: str, rel: str) -> str:
+    """UTF-8 text of one engagement zip member. Missing member raises KeyError."""
+    member = f"{slug}/{rel.lstrip('/').replace('\\', '/')}"
     with zipfile.ZipFile(zpath) as zf:
         return zf.read(member).decode("utf-8")
+
+
+def slug_zip_poam(zpath: Path, slug: str) -> str:
+    """POA&M CSV text from a packaged engagement zip. Missing member raises KeyError."""
+    return slug_zip_text(zpath, slug, "out/poam/poam.csv")
+
+
+def slug_zip_simplerisk(zpath: Path, slug: str) -> str:
+    """SimpleRisk leave-behind CSV from a packaged engagement zip."""
+    return slug_zip_text(zpath, slug, "out/simplerisk/risks_import.csv")
 
 
 def package_slug(slug: str) -> Path:

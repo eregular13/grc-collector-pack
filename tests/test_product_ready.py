@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_product import ESTATE_MAPPED_CLASSES
+from tests.test_product import ESTATE_MAPPED_CLASSES, _assert_simplerisk_estate_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG_POAM = ROOT / "engagements" / "docker-estate-product" / "out" / "poam" / "poam.csv"
@@ -80,6 +80,31 @@ def test_slug_cleartext_survives_pack_poam_overwrite() -> None:
     for path, blob in dated.items():
         assert path.read_bytes() == blob
     assert "SMBv1" in pack_poam.read_text(encoding="utf-8")
+
+
+def test_live_slug_zip_simplerisk_has_folded_rows() -> None:
+    """Host lab: newest/ready zip SimpleRisk CSV has folded classes. Skip on CI with no zip."""
+    from dropbox.package_engagement import slug_zip_simplerisk
+
+    dated = sorted(
+        p
+        for p in (ROOT / "engagements").glob("engagement-docker-estate-product-20*.zip")
+        if p.is_file() and p.stat().st_size > 64
+    )
+    if READY_ZIP.is_file() and READY_ZIP.stat().st_size > 64:
+        zpath = READY_ZIP
+    elif dated:
+        zpath = dated[-1]
+    else:
+        pytest.skip("no slug zip on disk")
+    try:
+        blob = slug_zip_simplerisk(zpath, "docker-estate-product")
+    except KeyError:
+        pytest.skip("zip has no simplerisk CSV")
+    _assert_simplerisk_estate_rows(blob)
+    slug_sr = ROOT / "engagements" / "docker-estate-product" / "out" / "simplerisk" / "risks_import.csv"
+    if slug_sr.is_file():
+        _assert_simplerisk_estate_rows(slug_sr.read_text(encoding="utf-8"))
 
 
 def test_live_slug_zip_poam_has_folded_rows() -> None:

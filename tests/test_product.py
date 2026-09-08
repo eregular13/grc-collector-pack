@@ -324,27 +324,134 @@ def test_slug_zip_poam_survives_pack_overwrite(tmp_path, monkeypatch) -> None:
             pack_poam.write_text(prior_pack, encoding="utf-8")
 
 
+def _assert_simplerisk_estate_rows(text: str) -> None:
+    assert "SMBv1" not in text
+    assert "No API wrap" in text
+    for name in ESTATE_MAPPED_CLASSES:
+        assert name in text
+
+
 def test_estate_simplerisk_is_not_only_smbv1(tmp_path) -> None:
-    """T12: leave-behind CSV is estate web/TLS, not fixture SMBv1."""
+    """R13: leave-behind CSV is folded estate web/TLS classes, not fixture SMBv1."""
     from dropbox.orchestrator.poam import export_simplerisk, map_finding
 
     rows = []
-    for name in ("Cleartext HTTP", "Untrusted TLS certificate"):
+    for name in ESTATE_MAPPED_CLASSES:
         rec = map_finding(name, "127.0.0.1", "medium")
         rec["asset"] = "127.0.0.1"
         rec["weakness"] = rec.get("weakness") or name
+        assert rec.get("mapped") is True, name
+        assert "UNMAPPED" not in (rec.get("control_refs") or [])
         rows.append(rec)
     dest = tmp_path / "risks_import.csv"
     export_simplerisk(rows, dest)
-    text = dest.read_text(encoding="utf-8")
-    assert "Cleartext HTTP" in text
-    assert "Untrusted TLS" in text
-    assert "SMBv1" not in text
+    _assert_simplerisk_estate_rows(dest.read_text(encoding="utf-8"))
     live = ROOT / "out-estate" / "simplerisk" / "risks_import.csv"
     if live.is_file():
-        blob = live.read_text(encoding="utf-8")
-        assert "SMBv1" not in blob
-        assert "Cleartext HTTP" in blob
+        _assert_simplerisk_estate_rows(live.read_text(encoding="utf-8"))
+    slug_sr = ROOT / "engagements" / "docker-estate-product" / "out" / "simplerisk" / "risks_import.csv"
+    if slug_sr.is_file():
+        _assert_simplerisk_estate_rows(slug_sr.read_text(encoding="utf-8"))
+
+
+def test_estate_simplerisk_copied_into_slug_zip(tmp_path, monkeypatch) -> None:
+    """R13: estate artifact_src simplerisk lands in slug dir + dated/ready zip."""
+    monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
+    from dropbox.new_engagement import new_engagement
+    from dropbox.orchestrator.poam import export_simplerisk, map_finding
+    from dropbox.package_engagement import package_slug, slug_zip_simplerisk
+
+    header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
+    rows = "".join(
+        f"{name},127.0.0.1,medium,CPG 2.W;PR.DS-02,fix,,,open\n" for name in ESTATE_MAPPED_CLASSES
+    )
+    src = tmp_path / "estate-out"
+    (src / "poam").mkdir(parents=True)
+    (src / "poam" / "poam.csv").write_text(header + rows, encoding="utf-8")
+    sr_rows = []
+    for name in ESTATE_MAPPED_CLASSES:
+        rec = map_finding(name, "127.0.0.1", "medium")
+        rec["asset"] = "127.0.0.1"
+        rec["weakness"] = rec.get("weakness") or name
+        sr_rows.append(rec)
+    (src / "simplerisk").mkdir(parents=True)
+    export_simplerisk(sr_rows, src / "simplerisk" / "risks_import.csv")
+    new_engagement(
+        "docker-estate-product",
+        ROOT / "dropbox" / "SCOPE.docker-estate.yaml",
+        evidence_label="lab-sim",
+        artifact_src=src,
+        counts={"pack_mapped": 10, "poam_rows": 10},
+    )
+    slug_sr = tmp_path / "docker-estate-product" / "out" / "simplerisk" / "risks_import.csv"
+    _assert_simplerisk_estate_rows(slug_sr.read_text(encoding="utf-8"))
+    zpath = package_slug("docker-estate-product")
+    ready = tmp_path / "engagement-docker-estate-product-ready.zip"
+    _assert_simplerisk_estate_rows(slug_zip_simplerisk(zpath, "docker-estate-product"))
+    _assert_simplerisk_estate_rows(slug_zip_simplerisk(ready, "docker-estate-product"))
+
+
+def test_slug_simplerisk_survives_pack_overwrite(tmp_path, monkeypatch) -> None:
+    """R13: pack out/simplerisk SMBv1 overwrite must not change slug dir or zip CSV."""
+    monkeypatch.setenv("ENGAGEMENT_ROOT", str(tmp_path))
+    from dropbox.new_engagement import new_engagement
+    from dropbox.orchestrator.poam import export_simplerisk, map_finding
+    from dropbox.package_engagement import package_slug, slug_zip_simplerisk
+
+    header = "weakness,asset,severity,control_refs,recommended_action,owner,milestone,status\n"
+    rows = "".join(
+        f"{name},127.0.0.1,medium,CPG 2.W;PR.DS-02,fix,,,open\n" for name in ESTATE_MAPPED_CLASSES
+    )
+    src = tmp_path / "estate-out"
+    (src / "poam").mkdir(parents=True)
+    (src / "poam" / "poam.csv").write_text(header + rows, encoding="utf-8")
+    sr_rows = []
+    for name in ESTATE_MAPPED_CLASSES:
+        rec = map_finding(name, "127.0.0.1", "medium")
+        rec["asset"] = "127.0.0.1"
+        rec["weakness"] = rec.get("weakness") or name
+        sr_rows.append(rec)
+    (src / "simplerisk").mkdir(parents=True)
+    export_simplerisk(sr_rows, src / "simplerisk" / "risks_import.csv")
+    new_engagement(
+        "docker-estate-product",
+        ROOT / "dropbox" / "SCOPE.docker-estate.yaml",
+        evidence_label="lab-sim",
+        artifact_src=src,
+        counts={"pack_mapped": 10, "poam_rows": 10},
+    )
+    zpath = package_slug("docker-estate-product")
+    ready = tmp_path / "engagement-docker-estate-product-ready.zip"
+    slug_sr = tmp_path / "docker-estate-product" / "out" / "simplerisk" / "risks_import.csv"
+    slug_before = slug_sr.read_text(encoding="utf-8")
+    zip_before = slug_zip_simplerisk(zpath, "docker-estate-product")
+    zip_bytes = zpath.read_bytes()
+    ready_bytes = ready.read_bytes()
+    _assert_simplerisk_estate_rows(slug_before)
+    _assert_simplerisk_estate_rows(zip_before)
+
+    pack_sr = ROOT / "out" / "simplerisk" / "risks_import.csv"
+    pack_sr.parent.mkdir(parents=True, exist_ok=True)
+    prior_pack = pack_sr.read_text(encoding="utf-8") if pack_sr.is_file() else None
+    try:
+        pack_sr.write_text(
+            "Subject,Status,Category,Scoring,Mitigation,Regulation,Notes\n"
+            "SMBv1 / TCP 445 exposed on 10.0.0.9,New,Vulnerability,high,Disable SMBv1,CPG 2.H,fixture\n",
+            encoding="utf-8",
+        )
+        assert slug_sr.read_text(encoding="utf-8") == slug_before
+        assert zpath.read_bytes() == zip_bytes
+        assert ready.read_bytes() == ready_bytes
+        after = slug_zip_simplerisk(zpath, "docker-estate-product")
+        assert after == zip_before
+        _assert_simplerisk_estate_rows(after)
+        assert "SMBv1" in pack_sr.read_text(encoding="utf-8")
+    finally:
+        if prior_pack is None:
+            if pack_sr.is_file():
+                pack_sr.unlink()
+        else:
+            pack_sr.write_text(prior_pack, encoding="utf-8")
 
 
 def test_client_assess_doc_is_checklist_only() -> None:
