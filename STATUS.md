@@ -1,5 +1,5 @@
 cycle: 97
-phase: BUILD
+phase: DONE
 item: COS3-REFINE
 critic_score: 8/10
 open_p0:
