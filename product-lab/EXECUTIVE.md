@@ -278,7 +278,7 @@ SMB POA&M. Empty/NO ACCESS invent nothing. No live SMB.
 
 **Honest stamp:** compose **ABSENT** (hole, not a PASS). Host `make lab` /
 `make farm-lab` / `make farm-toolbin-e2e` / `make dropbox-lab` / pytest
-**389 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
+**393 passed, 1 skipped**. Catalog **111 / 32 wired / 30 invoke / 81 file_drop**.
 Wrap review-only. **Paying-day FAIL.** No USB copy. Cycle 20 (105) stands.
 DEMO ≠ client. LICENSE-LOCK / file_drop-only names never `will_run=true`.
 

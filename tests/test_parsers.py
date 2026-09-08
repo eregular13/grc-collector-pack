@@ -1,4 +1,7 @@
+import json
 from pathlib import Path
+
+import pytest
 
 from collectors import cloud_prowler, code_secrets, easm, host_wazuh, identity_ad, inventory_nmap, k8s_kubescape, saas_idp, vuln_scan
 
@@ -2179,3 +2182,95 @@ def test_mdm_parser_no_live() -> None:
     assert "urllib.request" not in mdm
     assert "socket.socket" not in mdm
     assert "osqueryi" not in mdm
+
+
+def _status_text() -> str:
+    return (ROOT / "STATUS.md").read_text(encoding="utf-8")
+
+
+def _jsonl(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def test_idp_mdm_prove_bar_fixture_file_drop_writes_canonical(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CoS DESKTOP prove bar: file_drop fixture → detect → out/canonical. SAMPLE ≠ client."""
+    in_root = tmp_path / "in"
+    saas = in_root / "saas"
+    mdm = in_root / "mdm"
+    saas.mkdir(parents=True)
+    mdm.mkdir(parents=True)
+    (in_root / "wazuh").mkdir(parents=True)
+    for name in ("entra-users.json", "okta-users.json", "google-users.csv"):
+        src = DEMO / "saas" / name
+        (saas / name).write_bytes(src.read_bytes())
+    for name in ("intune-devices.json", "jamf-computers.json"):
+        src = DEMO / "mdm" / name
+        (mdm / name).write_bytes(src.read_bytes())
+    out_root = tmp_path / "out"
+    out_root.mkdir()
+    monkeypatch.setenv("IN_DIR", str(in_root))
+    monkeypatch.setenv("OUT_DIR", str(out_root))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    monkeypatch.setenv("CISO_PUSH", "0")
+    monkeypatch.setenv("RISKREADY_PUSH", "0")
+    monkeypatch.setenv("GRC_LIVE_SCAN", "0")
+    monkeypatch.setenv("DRY_RUN", "1")
+    saas_idp.main()
+    host_wazuh.main()
+    idp_dest = out_root / "canonical" / "saas-idp.jsonl"
+    mdm_dest = out_root / "canonical" / "host-wazuh.jsonl"
+    assert idp_dest.is_file()
+    assert mdm_dest.is_file()
+    idp_rows = _jsonl(idp_dest)
+    mdm_rows = _jsonl(mdm_dest)
+    assert any(r["kind"] == "asset" for r in idp_rows)
+    assert any(r["kind"] == "finding" for r in idp_rows)
+    assert any(r["name"] == "MFA not registered" for r in idp_rows if r["kind"] == "finding")
+    assert any(r["name"] == "Standing Global Administrator" for r in idp_rows if r["kind"] == "finding")
+    assert any("Stale guest" in r["name"] for r in idp_rows if r["kind"] == "finding")
+    assert any("encryption compliance" in r["name"] for r in mdm_rows if r["kind"] == "finding")
+    assert any("Missing EDR" in r["name"] for r in mdm_rows if r["kind"] == "finding")
+    assert any("MDM enrollment" in r["name"] for r in mdm_rows if r["kind"] == "finding")
+    blob = idp_dest.read_text(encoding="utf-8") + mdm_dest.read_text(encoding="utf-8")
+    assert "not evidence of a breach" in blob
+    assert "/api/risks" not in blob
+    for rel in ("collectors/saas_idp.py", "collectors/host_wazuh.py", "shared/idp_inventory.py", "shared/mdm_inventory.py"):
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        assert "/api/risks" not in src
+        assert "osqueryi" not in src
+    evidence = (ROOT / "docs" / "EVIDENCE.md").read_text(encoding="utf-8")
+    assert "DESKTOP / prove bar" in evidence
+    assert "SAMPLE ≠ client" in evidence
+    status = _status_text()
+    assert "paying_day: FAIL" in status
+    assert "DEMO — not a client estate" in status
+    assert "wrap: review-only" in status
+    assert "argus_keep: SAMPLE/fixture KEEP ≠ client KEEP" in status
+
+
+def test_idp_mdm_prove_bar_empty_in_stamps_demo_not_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty in/saas + in/mdm falls back to fixtures and stamps demo — not a client estate."""
+    in_root = tmp_path / "in"
+    (in_root / "saas").mkdir(parents=True)
+    (in_root / "mdm").mkdir(parents=True)
+    (in_root / "wazuh").mkdir(parents=True)
+    out_root = tmp_path / "out"
+    out_root.mkdir()
+    monkeypatch.setenv("IN_DIR", str(in_root))
+    monkeypatch.setenv("OUT_DIR", str(out_root))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    saas_idp.main()
+    host_wazuh.main()
+    idp_rows = _jsonl(out_root / "canonical" / "saas-idp.jsonl")
+    mdm_rows = _jsonl(out_root / "canonical" / "host-wazuh.jsonl")
+    assert idp_rows and mdm_rows
+    assert all("demo" in (r.get("labels") or []) for r in idp_rows)
+    assert all("demo" in (r.get("labels") or []) for r in mdm_rows)
+    assert all("client" not in [str(x).lower() for x in (r.get("labels") or [])] for r in idp_rows + mdm_rows)
+    status = _status_text()
+    assert "paying_day: FAIL" in status
+    assert "DEMO — not a client estate" in status

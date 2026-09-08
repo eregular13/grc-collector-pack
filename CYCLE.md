@@ -12,12 +12,12 @@ Empty / missing MFA fields invent nothing. No Graph/Okta/Jamf/osquery live.
 No RiskReady POST. DESKTOP prove bar: `python collectors/saas_idp.py` +
 `python collectors/host_wazuh.py` → `out/canonical/*.jsonl`. SAMPLE ≠ client.
 DNS/email Seen + honeypot + Covey pack_drop stand. Catalog **unchanged**
-111 / 32 / 30 / 81. pytest **389** (1 skipped). Host 81/105/19/33 poam 106.
+111 / 32 / 30 / 81. pytest **393** (1 skipped). Host 81/105/19/33 poam 106.
 farm 81/105 poam 106. e2e 81/106 poam 106. dropbox 86/114 poam 109.
 Paying-day FAIL. Compose ABSENT.
 
 ```json
-{"pytest": 389, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 81, "findings": 105, "vulns": 19, "evidence": 33, "poam": 106}, "farm_lab": {"assets": 81, "findings": 105, "poam": 106, "demo": true}, "farm_toolbin_e2e": {"assets": 81, "findings": 106, "vulns": 19, "poam": 106, "demo": true}, "dropbox_lab": {"assets": 86, "findings": 114, "vulns": 19, "poam": 109, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 393, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": {"sample": true, "client_keep": false, "handoff_findings": 5, "pack_in_written": false, "demo": true}, "host_lab": {"assets": 81, "findings": 105, "vulns": 19, "evidence": 33, "poam": 106}, "farm_lab": {"assets": 81, "findings": 105, "poam": 106, "demo": true}, "farm_toolbin_e2e": {"assets": 81, "findings": 106, "vulns": 19, "poam": 106, "demo": true}, "dropbox_lab": {"assets": 86, "findings": 114, "vulns": 19, "poam": 109, "demo": true}, "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
 
 ## cycle 93 — DNS/email CoS prove bar (2026-09-08)
