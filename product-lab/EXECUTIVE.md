@@ -2,21 +2,23 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 114):** CoS #20 honesty sync. Covey
-HEAD `30d2197f` multi-adapter pack_drop export for all 16
-`E2E_PROVEN` (PR #20 already on Covey). 20-adapter lane
-**CLOSED** stands. Pack prior HEAD `a01c5056`. STATUS
+**This window (cycle 115):** CoS #20 item 2 — pack-side rustscan
+stdout-class pack_drop → CISO prove. CoS #20 honesty sync
+stands. Covey HEAD `30d2197f` multi-adapter pack_drop export
+for all 16 `E2E_PROVEN` (PR #20 already on Covey). 20-adapter
+lane **CLOSED** stands. Pack prior HEAD `a01c5056`. STATUS
 `next_action` is current truth — Covey `E2E_PROVEN`
 sixteen-set remains: nmap + rustscan + fping + naabu +
 nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap —
 do not claim a 17th live. Pack does not start Covey adapter
-work. Reid-only blockers remain (CTA; real KEEP `in/` drop;
+work. Stop for CoS #21. Reid-only blockers remain (CTA; real KEEP `in/` drop;
 Eval `npm start`; Docker compose on a real host — this VM
 `compose_lab` **ABSENT ≠ pass**). Paying-day stays **FAIL**.
 DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog unchanged
-(111 / 32 wired / 30 invoke / 81 file_drop). Cycle 113
+(111 / 32 wired / 30 invoke / 81 file_drop). Cycle 114
+CoS #20 honesty stands as history. Cycle 113
 CoS #19 stands as history. Cycle 112 CoS #18 stands as history. Cycle 111 CoS #17
 stands as history. Cycle 110 CoS #16 stands as history.
 Cycle 109 CoS #15 stands as history. Cycle 108 CoS #14

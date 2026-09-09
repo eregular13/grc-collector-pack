@@ -58,12 +58,28 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     findings = (ciso / "findings.csv").read_text(encoding="utf-8")
     evid = (ciso / "evidences.csv").read_text(encoding="utf-8")
     assert "filesrv.corp.local" in assets
+    assert "10.9.8.7" in assets
+    assert "10.9.8.8" in assets
     assert "SMB" in findings
+    assert (
+        "open_port_observed" in findings.lower()
+        or "tcp/80" in findings.lower()
+        or "open tcp/80" in findings.lower()
+    )
+    assert "rustscan" in evid.lower() or "10.9.8.7" in evid or "open_port" in evid.lower()
     assert "demo" in findings.lower() or "SAMPLE" in findings
     assert "deception-sensor" in findings.lower()
     assert "beelzebub" in findings.lower() or "beelzebub" in assets.lower()
     assert "compromised" not in findings.lower() or "not" in findings.lower()
     assert (Path(stamp["in_dir"]) / "honeypot" / "pack_drop" / "events.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "assets.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json").is_file()
+    rust_meta = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
+    ).read_text(encoding="utf-8")
+    assert "evergreen.pack_drop.v1" in rust_meta
+    assert "rustscan" in rust_meta
+    assert "SAMPLE/DEMO — not a client estate" in rust_meta
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
@@ -172,11 +188,25 @@ def test_fixture_banners_are_sample_not_client() -> None:
         encoding="utf-8"
     )
     sample = (ROOT / "fixtures" / "pack_drop" / "nmap" / "SAMPLE.txt").read_text(encoding="utf-8")
+    rust_meta = (ROOT / "fixtures" / "pack_drop" / "rustscan" / "meta.json").read_text(
+        encoding="utf-8"
+    )
+    rust_note = (
+        ROOT / "fixtures" / "pack_drop" / "rustscan" / "evidence" / "note.md"
+    ).read_text(encoding="utf-8")
+    rust_sample = (ROOT / "fixtures" / "pack_drop" / "rustscan" / "SAMPLE.txt").read_text(
+        encoding="utf-8"
+    )
     hp = (ROOT / "fixtures" / "demo" / "honeypot" / "SAMPLE.txt").read_text(encoding="utf-8")
     hp_meta = (ROOT / "fixtures" / "demo" / "honeypot" / "meta.json").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO — not a client estate" in meta
     assert "SAMPLE/DEMO — not a client estate" in note
     assert "not a client" in sample.lower() and "SAMPLE" in sample
+    assert "SAMPLE/DEMO — not a client estate" in rust_meta
+    assert "SAMPLE/DEMO — not a client estate" in rust_note
+    assert "not a client" in rust_sample.lower() and "SAMPLE" in rust_sample
+    assert "evergreen.pack_drop.v1" in rust_meta
+    assert '"adapter": "rustscan"' in rust_meta or '"adapter":"rustscan"' in rust_meta
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
 

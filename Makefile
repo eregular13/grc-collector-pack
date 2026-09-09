@@ -80,6 +80,6 @@ farm-toolbin-e2e:
 keep-lab:
 	$(PYTHON) -m keep lab
 
-# SAMPLE/DEMO: fixture Covey pack_drop + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
+# SAMPLE/DEMO: fixture Covey pack_drop (nmap + rustscan) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
 prove-ciso:
 	$(PYTHON) scripts/prove_ciso.py

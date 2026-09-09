@@ -5,6 +5,12 @@ A sibling export lands a **pack_drop** (not a scanner binary) that this pack acc
 on the existing **inventory-nmap** lane. CISO Assistant remains the system of record.
 RiskReady stays review-only — never wrap or POST.
 
+Covey HEAD `30d2197f` `export_pack` writes the same layout for all 16
+`E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and one
+**stdout-class** fixture (**rustscan**). Other stdout-class adapters
+(httpx, …) use the same files when dropped here — no 17th live adapter,
+no pack Covey adapter work.
+
 ## Drop shape
 
 Copy the export onto the nmap lane (flat or nested). `list_files` already rglob's
@@ -28,9 +34,9 @@ in/nmap/pack_drop/evidence/<artifact>
 
 | File | Accepted as |
 |---|---|
-| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. |
-| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. |
-| `meta.json` | One evidence attestation (`covey.pack_drop.v1`). Empty invents nothing. |
+| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. |
+| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). |
+| `meta.json` | One evidence attestation (`covey.pack_drop.v1` or `evergreen.pack_drop.v1`). Empty invents nothing. |
 | `evidence/` | Artifact rows (or `kind:evidence` JSON). Not parsed as Nmap XML. |
 
 Detection is filename + `schema` / `source: evergreen-covey`. Ordinary gnmap / XML /
@@ -43,9 +49,11 @@ masscan / naabu drops are unchanged. Empty / header-only invent nothing.
 - `python collectors/inventory_nmap.py` is the same collector the nine-service lab
   already runs. No eleventh compose service. No farm slot inflation.
 
-Fixture used by tests (not loaded on empty `in/nmap/`): `fixtures/pack_drop/nmap/`.
-**SAMPLE/DEMO ≠ client.** End-to-end CISO prove: [PROVE_CISO.md](PROVE_CISO.md)
+Fixtures used by tests (not loaded on empty `in/nmap/`):
+`fixtures/pack_drop/nmap/` and stdout-class `fixtures/pack_drop/rustscan/`
+(Covey `export_pack` shape). **SAMPLE/DEMO ≠ client.** End-to-end CISO
+prove: [PROVE_CISO.md](PROVE_CISO.md)
 (`python3 scripts/prove_ciso.py` → `prove/work/out/ciso-assistant`). Not a
-paying-day PASS.
+paying-day PASS. Not a client KEEP.
 
 Lane map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
