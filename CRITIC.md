@@ -1,24 +1,24 @@
-# CRITIC — cycle 113 (CoS #19 honesty sync; Covey 20-adapter lane CLOSED)
+# CRITIC — cycle 114 (CoS #20 honesty sync; Covey pack_drop HEAD 30d2197f)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #19 honesty sync: Covey 20-adapter lane **CLOSED** at Covey HEAD
-`40583459` / pack `c6f67e07`. STATUS `next_action` is current truth —
-Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan + fping +
-naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
-onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan @
-refine HEAD `40583459` (unicornscan live was `0906c29c`; refine lock
-is `40583459`). UNPROVEN fail-closed: masscan, arp-scan, netdiscover,
-zmap — do not claim a 17th live. Pack does not start Covey adapter work.
+CoS #20 honesty sync: Covey HEAD `30d2197f` multi-adapter pack_drop
+export for all 16 E2E_PROVEN (PR #20). 20-adapter lane **CLOSED**
+stands. Pack prior HEAD `a01c5056`. STATUS `next_action` is current
+truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
+fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
+onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
+UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
+claim a 17th live. Pack does not start Covey adapter work.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag the sixteen-name Covey E2E set, and so `compose_lab`
+cannot lag Covey HEAD `30d2197f` / CoS #20, and so `compose_lab`
 absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 112
-CoS #18 stands as history. Cycle 111 CoS #17 stands as history.
-Cycle 110 CoS #16 stands as history. Cycle 109 CoS #15 stands as history.
-Cycle 108 CoS #14 stands as history. Cycle 107 CoS #13 stands as history.
-Cycle 106 CoS #12 stands as history. Cycle 105 CoS #11 stands.
-Cycle 104 CoS #10 stands. Cycle 103 CoS #9
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 113
+CoS #19 stands as history. Cycle 112 CoS #18 stands as history.
+Cycle 111 CoS #17 stands as history. Cycle 110 CoS #16 stands as history.
+Cycle 109 CoS #15 stands as history. Cycle 108 CoS #14 stands as history.
+Cycle 107 CoS #13 stands as history. Cycle 106 CoS #12 stands as history.
+Cycle 105 CoS #11 stands. Cycle 104 CoS #10 stands. Cycle 103 CoS #9
 stands. Cycle 102 CoS #8 stands. Cycle 101 CoS #7 stands. Cycle 100
 CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 stands. Cycle 96 CISO prove stands. No invented greens.
 

@@ -2,21 +2,22 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 113):** CoS #19 honesty sync. Covey
-20-adapter lane **CLOSED** at Covey HEAD `40583459` / pack
-`c6f67e07`. STATUS `next_action` is current truth — Covey
-`E2E_PROVEN` sixteen-set remains: nmap + rustscan + fping +
-naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
-onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan
-@ refine HEAD `40583459` (unicornscan live was `0906c29c`;
-refine lock is `40583459`). UNPROVEN fail-closed: masscan,
-arp-scan, netdiscover, zmap — do not claim a 17th live. Pack
-does not start Covey adapter work. Reid-only blockers remain
-(CTA; real KEEP `in/` drop; Eval `npm start`; Docker compose
-on a real host — this VM `compose_lab` **ABSENT ≠ pass**).
-Paying-day stays **FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**.
-Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
-Cycle 112 CoS #18 stands as history. Cycle 111 CoS #17
+**This window (cycle 114):** CoS #20 honesty sync. Covey
+HEAD `30d2197f` multi-adapter pack_drop export for all 16
+`E2E_PROVEN` (PR #20 already on Covey). 20-adapter lane
+**CLOSED** stands. Pack prior HEAD `a01c5056`. STATUS
+`next_action` is current truth — Covey `E2E_PROVEN`
+sixteen-set remains: nmap + rustscan + fping + naabu +
+nping + httpx + sslscan + tlsx + whatweb + hping3 +
+onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
+UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap —
+do not claim a 17th live. Pack does not start Covey adapter
+work. Reid-only blockers remain (CTA; real KEEP `in/` drop;
+Eval `npm start`; Docker compose on a real host — this VM
+`compose_lab` **ABSENT ≠ pass**). Paying-day stays **FAIL**.
+DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog unchanged
+(111 / 32 wired / 30 invoke / 81 file_drop). Cycle 113
+CoS #19 stands as history. Cycle 112 CoS #18 stands as history. Cycle 111 CoS #17
 stands as history. Cycle 110 CoS #16 stands as history.
 Cycle 109 CoS #15 stands as history. Cycle 108 CoS #14
 stands as history. Cycle 107 CoS #13 stands as history.
@@ -30,6 +31,14 @@ IdP/MDM stands. Cycle 93 DNS/email CoS prove bar stands.
 Cycle 90 honesty next_action stands. Cycle 74 durable
 blockers stay locked. Wrap stays **dead**. Compose **ABSENT**.
 Gate/hash already on master (`python -m dropbox gate`).
+
+**Cycle 113 (stands):** CoS #19 honesty sync. STATUS
+`next_action` was Covey 20-adapter lane **CLOSED** at Covey
+HEAD `40583459` / pack `c6f67e07`. That claim is historical —
+Covey later shipped multi-adapter pack_drop export at HEAD
+`30d2197f`. Reid-only blockers remain. Catalog unchanged
+(111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
+**dead**. Compose **ABSENT**.
 
 **Cycle 112 (stands):** CoS #18 honesty sync. STATUS
 `next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
