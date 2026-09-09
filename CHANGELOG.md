@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 172
+
+R23 refine: `REFINE_READY.md` scorecard (what folded onto main estate, what 24h farms torn down, GitHub `ship-0.4.0` sha `ab121a4`). `pack_mapped: 10`. `extras_down: yes`. `client_facing_ready` false. Still not a paying-day PASS. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069. R24 still owns hard-stop + scheduler cancel.
+pytest: targeted product scorecard plus host run_lab.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 171
 
 R20 refine: VERSION `0.5.0-rc.2` (code landed this window: folded estate classes, mapped_classes, slug zip/SimpleRisk, pack_mapped 10 docs, estate-down, LAN refuse, WRAP_DEAD `/api/risks` 403, QUICKSTART copy, CI collection). Still not a paying-day PASS. `client_facing_ready` false. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

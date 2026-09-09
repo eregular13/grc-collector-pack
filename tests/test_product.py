@@ -545,6 +545,25 @@ def test_client_docs_match_pack_mapped_live() -> None:
         )
 
 
+def test_refine_ready_scorecard() -> None:
+    """R23: REFINE_READY.md records folds, extras down, GitHub sha; facing stays false."""
+    text = (ROOT / "REFINE_READY.md").read_text(encoding="utf-8")
+    assert "pack_mapped: 10" in text
+    assert "extras_down: yes" in text
+    assert "client_facing_ready: false" in text
+    assert "paying_day: NO" in text
+    assert "ship-0.4.0" in text
+    assert "ab121a4f6bdae0cd18c5a4b540692c023bed9abb" in text
+    assert "192.168.10.0/24" in text
+    assert "/api/risks" in text
+    assert "172.28.110" in text
+    assert "grc-estate" in text
+    assert "R09" in text
+    assert "client_facing_ready: true" not in text
+    for name in ESTATE_MAPPED_CLASSES:
+        assert name in text
+
+
 def test_readme_leads_with_assessment() -> None:
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "Authorized assessment" in text
