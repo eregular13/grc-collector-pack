@@ -24,9 +24,10 @@ COVEY_E2E_PROVEN = (
     "onesixtyone",
     "nbtscan",
     "braa",
+    "ike-scan",
 )
-COVEY_E2E_HEAD = "417ac399"
-STALE_E2E_HEAD = "d7e36421"
+COVEY_E2E_HEAD = "b8f6e124"
+STALE_E2E_HEAD = "417ac399"
 
 
 def _status() -> dict[str, str]:
@@ -75,7 +76,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #15" in low
+    assert "cos #16" in low
     assert "honesty sync" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
@@ -90,16 +91,17 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #12" not in low
     assert "cos #13" not in low
     assert "cos #14" not in low
+    assert "cos #15" not in low
     assert "covey" in low
     assert "e2e_proven" in low
-    assert len(COVEY_E2E_PROVEN) == 13
+    assert len(COVEY_E2E_PROVEN) == 14
     for name in COVEY_E2E_PROVEN:
         assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
     assert COVEY_E2E_HEAD in low
     assert STALE_E2E_HEAD not in low
     assert "no pack" in low and "adapter" in low
-    # Covey already proved braa at HEAD 417ac399. Pack STATUS must not
-    # restamp the twelve-tool set (… + nbtscan @ d7e36421) as current.
+    # Covey already proved ike-scan at HEAD b8f6e124. Pack STATUS must not
+    # restamp the thirteen-tool set (… + braa @ 417ac399) as current.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -145,10 +147,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-108 notes."""
+    """Current-cycle window / newest delta — not historical cycle-109 notes."""
     for needle in (
         "**This window",
-        "**Delta (cycle 109):",
+        "**Delta (cycle 110):",
     ):
         if needle in text:
             idx = text.index(needle)
@@ -169,7 +171,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
     assert action and window
     for where, text in (("STATUS next_action", action), ("PLAN this-window", window)):
         low = text.lower()
-        assert len(COVEY_E2E_PROVEN) == 13, f"{where} honesty lock is not the thirteen-name set"
+        assert len(COVEY_E2E_PROVEN) == 14, f"{where} honesty lock is not the fourteen-name set"
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
@@ -177,7 +179,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
 
 
-def test_status_and_live_docs_match_cos15_covey_e2e_proven() -> None:
+def test_status_and_live_docs_match_cos16_covey_e2e_proven() -> None:
     """Pack next_action / this-window docs follow Covey HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
@@ -215,11 +217,11 @@ def test_status_and_live_docs_match_cos15_covey_e2e_proven() -> None:
             elif path.name == "PLAN.md":
                 window = _plan_this_window() or text
             elif path.name == "PROVE_CISO.md":
-                idx = text.find("CoS #15")
+                idx = text.find("CoS #16")
                 window = text[idx:] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #15 this-window copy"
+        assert window, f"{path} missing CoS #16 this-window copy"
         win_low = window.lower()
-        assert "cos #15" in win_low, f"{path} this-window is not CoS #15"
+        assert "cos #16" in win_low, f"{path} this-window is not CoS #16"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         missing = [name for name in COVEY_E2E_PROVEN if name not in win_low]
         assert not missing, f"{path} this-window lags Covey E2E set; missing {missing}"
