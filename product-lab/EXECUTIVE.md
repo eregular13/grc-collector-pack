@@ -2,16 +2,17 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 111):** CoS #17 honesty sync. STATUS
+**This window (cycle 112):** CoS #18 honesty sync. STATUS
 `next_action` is current truth — Covey `E2E_PROVEN` = nmap +
 rustscan + fping + naabu + nping + httpx + sslscan + tlsx +
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
-svmap at HEAD `f15756ce`. Pack does not start Covey adapter
-work. Reid-only blockers remain (CTA; real KEEP `in/` drop;
-Eval `npm start`; Docker compose on a real host — this VM
-`compose_lab` **ABSENT ≠ pass**). Paying-day stays **FAIL**.
-DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog unchanged (111 /
-32 wired / 30 invoke / 81 file_drop). Cycle 110 CoS #16
+svmap + unicornscan at HEAD `0906c29c`. Pack does not start
+Covey adapter work. Reid-only blockers remain (CTA; real
+KEEP `in/` drop; Eval `npm start`; Docker compose on a real
+host — this VM `compose_lab` **ABSENT ≠ pass**). Paying-day
+stays **FAIL**. DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog
+unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+Cycle 111 CoS #17 stands as history. Cycle 110 CoS #16
 stands as history. Cycle 109 CoS #15 stands as history.
 Cycle 108 CoS #14 stands as history. Cycle 107 CoS #13
 stands as history. Cycle 106 CoS #12 stands as history.
@@ -25,6 +26,15 @@ prove bar stands. Cycle 90 honesty next_action stands.
 Cycle 74 durable blockers stay locked. Wrap stays **dead**.
 Compose **ABSENT**. Gate/hash already on master
 (`python -m dropbox gate`).
+
+**Cycle 111 (stands):** CoS #17 honesty sync. STATUS
+`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
++ naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
+onesixtyone + nbtscan + braa + ike-scan + svmap at HEAD
+`f15756ce`. That claim is historical — Covey later proved
+unicornscan at HEAD `0906c29c`. Reid-only blockers remain.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81
+file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 110 (stands):** CoS #16 honesty sync. STATUS
 `next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
