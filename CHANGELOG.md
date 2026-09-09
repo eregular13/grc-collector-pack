@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 173
+
+R24 refine freeze at hard stop 2026-09-08T21:18:00-07:00 (tick clock 21:27 PT). `DONE_24H_REFINE.md` GREEN. Scheduler cancelled. Estate+sink left up. extras_down yes. pack_mapped 10. `client_facing_ready` false. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069. No R25 Cowrie. No T25 whoami.
+pytest: host run_lab LAB_GREEN (301).
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 172
 
 R23 refine: `REFINE_READY.md` scorecard (what folded onto main estate, what 24h farms torn down, GitHub `ship-0.4.0` sha `ab121a4`). `pack_mapped: 10`. `extras_down: yes`. `client_facing_ready` false. Still not a paying-day PASS. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069. R24 still owns hard-stop + scheduler cancel.
