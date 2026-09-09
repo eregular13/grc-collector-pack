@@ -1,21 +1,23 @@
-# CRITIC — cycle 115 (CoS #20 rustscan pack_drop → CISO prove)
+# CRITIC — cycle 116 (CoS #21 honesty sync; pack HEAD ef233924)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #20 item 2: pack-side rustscan stdout-class pack_drop lifts into
-CISO prove (`fixtures/pack_drop/rustscan/`, `evergreen.pack_drop.v1`).
-CoS #20 honesty sync stands: Covey HEAD `30d2197f` multi-adapter pack_drop
-export for all 16 E2E_PROVEN (PR #20). 20-adapter lane **CLOSED**
-stands. Pack prior HEAD `a01c5056`. STATUS `next_action` is current
+CoS #21 item 1: pack honesty sync only. Pack HEAD `ef233924`
+(PR #31 rustscan pack_drop→CISO already on master). Item
+**COS20-PACK-DROP-RUSTSCAN** = DONE. Covey HEAD still `30d2197f`
+multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
+lane **CLOSED** stands. STATUS `next_action` is current
 truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #21.
+claim a 17th live. Pack does not start Covey adapter work.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag Covey HEAD `30d2197f` / CoS #20, and so `compose_lab`
-absent cannot flip to pass. Paying-day stays
+cannot lag CoS #21 / pack HEAD `ef233924` / Covey HEAD `30d2197f`,
+and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 113
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 115
+rustscan pack_drop→CISO prove stands as history. Cycle 114
+CoS #20 honesty stands as history. Cycle 113
 CoS #19 stands as history. Cycle 112 CoS #18 stands as history.
 Cycle 111 CoS #17 stands as history. Cycle 110 CoS #16 stands as history.
 Cycle 109 CoS #15 stands as history. Cycle 108 CoS #14 stands as history.
