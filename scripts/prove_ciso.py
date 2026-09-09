@@ -29,7 +29,7 @@ CISO_CSVS = (
 )
 SAMPLE_BANNER = (
     "SAMPLE/DEMO — not a client estate.\n"
-    "Fixture Covey pack_drop + honeypot file_drop. Not a client export.\n"
+    "Fixture Covey pack_drop (nmap + rustscan) + honeypot file_drop. Not a client export.\n"
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 
@@ -64,18 +64,22 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
         shutil.rmtree(dest_in)
     dest_in.mkdir(parents=True)
     nmap_drop = dest_in / "nmap" / "pack_drop"
+    rustscan_drop = dest_in / "nmap" / "pack_drop" / "rustscan"
     honeypot = dest_in / "honeypot"
     beelzebub = dest_in / "honeypot" / "pack_drop"
     _copy_tree(root / "fixtures" / "pack_drop" / "nmap", nmap_drop)
+    _copy_tree(root / "fixtures" / "pack_drop" / "rustscan", rustscan_drop)
     _copy_tree(root / "fixtures" / "demo" / "honeypot", honeypot)
     _copy_tree(root / "fixtures" / "demo" / "honeypot_beelzebub", beelzebub)
     (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (nmap_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    (rustscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     return {
         "dest_in": str(dest_in),
         "covey": str(nmap_drop),
+        "rustscan": str(rustscan_drop),
         "honeypot": str(honeypot),
         "beelzebub": str(beelzebub),
         "sample": True,
@@ -135,7 +139,13 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
     ok = (
         bool(ciso_files)
         and "filesrv.corp.local" in assets_text
+        and "10.9.8.7" in assets_text
         and "SMB" in findings_text
+        and (
+            "open_port_observed" in findings_text.lower()
+            or "tcp/80" in findings_text.lower()
+            or "open tcp/80" in findings_text.lower()
+        )
         and "deception-sensor" in findings_text.lower()
         and ("beelzebub" in findings_text.lower() or "beelzebub" in assets_text.lower())
         and result.get("posted") is False
@@ -177,8 +187,8 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
         "note": (
-            "Fixture Covey pack_drop + honeypot → existing collectors → "
-            "grc_loader → out/ciso-assistant. SAMPLE ≠ client. "
+            "Fixture Covey pack_drop (nmap + rustscan stdout-class) + honeypot → "
+            "existing collectors → grc_loader → out/ciso-assistant. SAMPLE ≠ client. "
             "This prove is not a paying-day PASS."
         ),
     }

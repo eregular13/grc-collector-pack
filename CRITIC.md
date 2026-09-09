@@ -1,14 +1,16 @@
-# CRITIC — cycle 114 (CoS #20 honesty sync; Covey pack_drop HEAD 30d2197f)
+# CRITIC — cycle 115 (CoS #20 rustscan pack_drop → CISO prove)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #20 honesty sync: Covey HEAD `30d2197f` multi-adapter pack_drop
+CoS #20 item 2: pack-side rustscan stdout-class pack_drop lifts into
+CISO prove (`fixtures/pack_drop/rustscan/`, `evergreen.pack_drop.v1`).
+CoS #20 honesty sync stands: Covey HEAD `30d2197f` multi-adapter pack_drop
 export for all 16 E2E_PROVEN (PR #20). 20-adapter lane **CLOSED**
 stands. Pack prior HEAD `a01c5056`. STATUS `next_action` is current
 truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #21.
 Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag Covey HEAD `30d2197f` / CoS #20, and so `compose_lab`
 absent cannot flip to pass. Paying-day stays
@@ -26,5 +28,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 407, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 411, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```

@@ -15,7 +15,17 @@ PACK_DROP_NAMES = frozenset({"assets.jsonl", "findings.jsonl", "meta.json"})
 PACK_DROP_SCHEMAS = {
     "covey.pack_drop.v1",
     "evergreen-covey.pack_drop.v1",
+    "evergreen.pack_drop.v1",
     "pack_drop.v1",
+}
+KIND_ALIASES = {
+    "host": "asset",
+    "service": "finding",
+    "observation": "finding",
+    "asset": "asset",
+    "finding": "finding",
+    "evidence": "evidence",
+    "incident": "incident",
 }
 EVIDENCE_DIR_NAMES = frozenset({"evidence", "pack_drop"})
 
@@ -81,6 +91,37 @@ def _iter_rows(raw: str) -> list[Any]:
     return rows
 
 
+def _row_address(row: dict[str, Any]) -> str:
+    return str(row.get("ip") or row.get("addr") or row.get("address") or "").strip()
+
+
+def _row_kind(row: dict[str, Any], default_kind: str) -> str:
+    raw = str(row.get("kind") or default_kind).strip().lower()
+    mapped = KIND_ALIASES.get(raw, default_kind)
+    if mapped not in {"asset", "finding", "evidence", "incident"}:
+        return default_kind
+    return mapped
+
+
+def _row_name(row: dict[str, Any], default_kind: str) -> str:
+    port = row.get("port")
+    addr = _row_address(row)
+    titled = str(row.get("name") or row.get("title") or row.get("ref_id") or "").strip()
+    if titled:
+        return titled
+    if port not in (None, "") and addr:
+        proto = str(row.get("protocol") or "tcp").upper()
+        svc = str(row.get("service") or "").strip()
+        if svc:
+            return f"Open {svc} on {proto}/{port} observed"
+        return f"Open {proto}/{port} observed"
+    if addr:
+        return addr
+    if default_kind == "finding":
+        return "covey-observation"
+    return "covey-row"
+
+
 def _ports(row: dict[str, Any]) -> list[tuple[str, str]]:
     ports: list[tuple[str, str]] = []
     raw = row.get("ports") or []
@@ -106,12 +147,13 @@ def _ports(row: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def _host_fields(row: dict[str, Any]) -> tuple[str, str, str]:
-    addr = str(row.get("ip") or row.get("addr") or row.get("address") or "").strip()
+    addr = _row_address(row)
     hostname = str(
         row.get("hostname") or row.get("host") or (row.get("name") if not row.get("kind") else "")
         or ""
     ).strip()
-    if row.get("kind") == "asset":
+    kind = str(row.get("kind") or "").strip().lower()
+    if kind in {"asset", "host"}:
         hostname = str(row.get("hostname") or row.get("host") or row.get("name") or hostname).strip()
     name = hostname or addr or str(row.get("name") or "").strip() or "unknown-host"
     return name, addr, hostname
@@ -125,25 +167,40 @@ def _lift_record(
     labels: list[str],
     default_kind: str,
 ) -> dict[str, Any]:
-    kind = str(row.get("kind") or default_kind)
-    if kind not in {"asset", "finding", "evidence", "incident"}:
-        kind = default_kind
-    name = str(row.get("name") or row.get("ref_id") or "covey-row").strip()
+    kind = _row_kind(row, default_kind)
+    name = _row_name(row, kind)
     extra = row.get("extra") if isinstance(row.get("extra"), dict) else {}
     extra_out = dict(extra)
     extra_out.setdefault("pack_drop", "covey")
-    for key in ("ip", "addr", "hostname", "port", "service", "adapter", "lane"):
+    for key in (
+        "ip",
+        "addr",
+        "address",
+        "hostname",
+        "port",
+        "service",
+        "adapter",
+        "lane",
+        "claim",
+        "protocol",
+        "title",
+    ):
         if row.get(key) not in (None, "") and key not in extra_out:
-            extra_out[key] = row.get(key)
+            extra_out[key] = str(row.get(key)) if key == "port" else row.get(key)
+    if row.get("not_claimed") and "not_claimed" not in extra_out:
+        extra_out["not_claimed"] = row.get("not_claimed")
     rec_labels = list(labels)
     for lab in row.get("labels") or []:
         if str(lab) and str(lab) not in rec_labels:
             rec_labels.append(str(lab))
+    adapter = str(row.get("adapter") or "").strip()
+    if adapter and adapter not in rec_labels:
+        rec_labels.append(adapter)
     if "covey" not in rec_labels:
         rec_labels.append("covey")
     assets = row.get("assets") or []
     if not assets:
-        host = str(row.get("hostname") or row.get("name") or row.get("ip") or "")
+        host = str(row.get("hostname") or row.get("name") or row.get("ip") or row.get("address") or "")
         if host:
             assets = [host]
     key = str(row.get("ref_id") or row.get("id") or f"{kind}-{name}")
@@ -164,21 +221,25 @@ def _lift_record(
 
 def _meta_evidence(row: dict[str, Any], now: str, *, source: str, labels: list[str]) -> dict[str, Any]:
     adapter = str(row.get("adapter") or row.get("tool") or "nmap")
-    generated = str(row.get("generated_at") or row.get("ts") or now)
+    generated = str(row.get("generated_at") or row.get("created_at") or row.get("ts") or now)
     schema = str(row.get("schema") or "covey.pack_drop.v1")
+    honesty = row.get("honesty") if isinstance(row.get("honesty"), dict) else {}
+    extra_labels = list(labels) + ["covey", "pack_drop"]
+    if adapter and adapter not in extra_labels:
+        extra_labels.append(adapter)
     return make_record(
         kind="evidence",
         source=source,
         ref_id=make_ref(source, f"covey-meta-{adapter}-{generated}"),
         name=f"Covey pack_drop ({adapter})",
         description=(
-            f"Accepted evergreen-covey pack_drop {schema} via in/nmap/ at {generated}. "
+            f"Accepted evergreen-covey pack_drop {schema} ({adapter}) via in/nmap/ at {generated}. "
             "Parse-only file_drop into the existing inventory-nmap → CISO Assistant path. "
-            "Not a live scan."
+            "Not a live scan. SAMPLE/DEMO ≠ client."
         ),
         severity="info",
         category="pack_drop",
-        labels=list(labels) + ["covey", "pack_drop"],
+        labels=extra_labels,
         collected_at=now,
         extra={
             "schema": schema,
@@ -186,6 +247,9 @@ def _meta_evidence(row: dict[str, Any], now: str, *, source: str, labels: list[s
             "lane": str(row.get("lane") or "nmap"),
             "source": str(row.get("source") or "evergreen-covey"),
             "demo": bool(row.get("demo")),
+            "run_id": str(row.get("run_id") or ""),
+            "honesty": honesty,
+            "ingest": row.get("ingest") if isinstance(row.get("ingest"), dict) else {},
         },
     )
 
@@ -241,7 +305,10 @@ def parse_pack_drop(
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            if not any(row.get(k) for k in ("schema", "adapter", "source", "generated_at", "lane")):
+            if not any(
+                row.get(k)
+                for k in ("schema", "adapter", "source", "generated_at", "created_at", "lane")
+            ):
                 continue
             recs.append(_meta_evidence(row, now, source=source, labels=labels))
         return recs
@@ -267,11 +334,24 @@ def parse_pack_drop(
             or row.get("schema")
         ):
             continue
-        hostish = bool(row.get("ip") or row.get("hostname") or row.get("addr") or ports)
-        if host_emitter and hostish and kind in {"", "asset"} and name != "findings.jsonl":
+        hostish = bool(
+            row.get("ip") or row.get("hostname") or row.get("addr") or row.get("address") or ports
+        )
+        if (
+            host_emitter
+            and hostish
+            and kind in {"", "asset", "host"}
+            and name != "findings.jsonl"
+        ):
             hname, addr, hostname = _host_fields(row)
             extra = {k: row.get(k) for k in ("mac", "vendor") if row.get(k)}
             extra["pack_drop"] = "covey"
+            if row.get("adapter"):
+                extra["adapter"] = row.get("adapter")
+            extra_labels = ["covey", "pack_drop"]
+            adapter = str(row.get("adapter") or "").strip()
+            if adapter and adapter not in extra_labels:
+                extra_labels.append(adapter)
             host_emitter(
                 records,
                 now,
@@ -280,7 +360,7 @@ def parse_pack_drop(
                 hostname or hname,
                 ports,
                 extra=extra or None,
-                extra_labels=["covey", "pack_drop"],
+                extra_labels=extra_labels,
             )
             continue
         if kind == "evidence" or name == "meta.json":
