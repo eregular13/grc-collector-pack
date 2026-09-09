@@ -21,9 +21,10 @@ COVEY_E2E_PROVEN = (
     "tlsx",
     "whatweb",
     "hping3",
+    "onesixtyone",
 )
-COVEY_E2E_HEAD = "d522922"
-STALE_E2E_HEAD = "c7e77b9"
+COVEY_E2E_HEAD = "1dc36844"
+STALE_E2E_HEAD = "d522922"
 
 
 def _status() -> dict[str, str]:
@@ -72,7 +73,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #12" in low
+    assert "cos #13" in low
     assert "honesty sync" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
@@ -84,16 +85,17 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #9" not in low
     assert "cos #10" not in low
     assert "cos #11" not in low
+    assert "cos #12" not in low
     assert "covey" in low
     assert "e2e_proven" in low
-    assert len(COVEY_E2E_PROVEN) == 10
+    assert len(COVEY_E2E_PROVEN) == 11
     for name in COVEY_E2E_PROVEN:
         assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
     assert COVEY_E2E_HEAD in low
     assert STALE_E2E_HEAD not in low
     assert "no pack" in low and "adapter" in low
-    # Covey already proved hping3 at HEAD d522922. Pack STATUS must not
-    # restamp the nine-tool set (… + whatweb @ c7e77b9) as current.
+    # Covey already proved onesixtyone at HEAD 1dc36844. Pack STATUS must not
+    # restamp the ten-tool set (… + hping3 @ d522922) as current.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -139,10 +141,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-105 notes."""
+    """Current-cycle window / newest delta — not historical cycle-106 notes."""
     for needle in (
         "**This window",
-        "**Delta (cycle 106):",
+        "**Delta (cycle 107):",
     ):
         if needle in text:
             idx = text.index(needle)
@@ -163,7 +165,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
     assert action and window
     for where, text in (("STATUS next_action", action), ("PLAN this-window", window)):
         low = text.lower()
-        assert len(COVEY_E2E_PROVEN) == 10, f"{where} honesty lock is not the ten-name set"
+        assert len(COVEY_E2E_PROVEN) == 11, f"{where} honesty lock is not the eleven-name set"
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
@@ -171,7 +173,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
 
 
-def test_status_and_live_docs_match_cos12_covey_e2e_proven() -> None:
+def test_status_and_live_docs_match_cos13_covey_e2e_proven() -> None:
     """Pack next_action / this-window docs follow Covey HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
@@ -209,11 +211,11 @@ def test_status_and_live_docs_match_cos12_covey_e2e_proven() -> None:
             elif path.name == "PLAN.md":
                 window = _plan_this_window() or text
             elif path.name == "PROVE_CISO.md":
-                idx = text.find("CoS #12")
+                idx = text.find("CoS #13")
                 window = text[idx:] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #12 this-window copy"
+        assert window, f"{path} missing CoS #13 this-window copy"
         win_low = window.lower()
-        assert "cos #12" in win_low, f"{path} this-window is not CoS #12"
+        assert "cos #13" in win_low, f"{path} this-window is not CoS #13"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         missing = [name for name in COVEY_E2E_PROVEN if name not in win_low]
         assert not missing, f"{path} this-window lags Covey E2E set; missing {missing}"
