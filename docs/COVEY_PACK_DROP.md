@@ -6,10 +6,10 @@ on the existing **inventory-nmap** lane. CISO Assistant remains the system of re
 RiskReady stays review-only — never wrap or POST.
 
 Covey HEAD `30d2197f` `export_pack` writes the same layout for all 16
-`E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and one
-**stdout-class** fixture (**rustscan**). Other stdout-class adapters
-(httpx, …) use the same files when dropped here — no 17th live adapter,
-no pack Covey adapter work.
+`E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and
+stdout-class fixtures (**rustscan**, **httpx**). Other stdout-class
+adapters (sslscan, …) use the same files when dropped here — no 17th
+live adapter, no pack Covey adapter work.
 
 ## Drop shape
 
@@ -51,7 +51,8 @@ masscan / naabu drops are unchanged. Empty / header-only invent nothing.
 
 Fixtures used by tests (not loaded on empty `in/nmap/`):
 `fixtures/pack_drop/nmap/` and stdout-class `fixtures/pack_drop/rustscan/`
-(Covey `export_pack` shape). **SAMPLE/DEMO ≠ client.** End-to-end CISO
+plus `fixtures/pack_drop/httpx/` (Covey `export_pack` shape).
+**SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)
 (`python3 scripts/prove_ciso.py` → `prove/work/out/ciso-assistant`). Not a
 paying-day PASS. Not a client KEEP.

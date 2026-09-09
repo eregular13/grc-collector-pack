@@ -89,7 +89,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #21" in low
     assert "honesty sync" in low
     assert "cos20-pack-drop-rustscan" in low
-    assert status.get("item") == "COS20-PACK-DROP-RUSTSCAN"
+    assert "cos21-pack-drop-httpx" in low
+    assert status.get("item") == "COS21-PACK-DROP-HTTPX"
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
     assert "cos #4" not in low
@@ -172,10 +173,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-115 notes."""
+    """Current-cycle window / newest delta — not historical cycle-116 notes."""
     for needle in (
         "**This window",
-        "**Delta (cycle 116):",
+        "**Delta (cycle 117):",
     ):
         if needle in text:
             idx = text.index(needle)
