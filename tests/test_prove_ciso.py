@@ -72,6 +72,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "10.9.8.71" in assets
     assert "10.9.8.80" in assets
     assert "10.9.8.81" in assets
+    assert "10.9.8.90" in assets
+    assert "10.9.8.91" in assets
     assert "SMB" in findings
     assert (
         "open_port_observed" in findings.lower()
@@ -85,6 +87,12 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "tlsx" in evid.lower() or "10.9.8.60" in evid or "853" in findings
     assert "whatweb" in evid.lower() or "10.9.8.70" in evid or "8000" in findings
     assert "hping3" in evid.lower() or "10.9.8.80" in evid or "host_up" in findings.lower()
+    assert (
+        "onesixtyone" in evid.lower()
+        or "10.9.8.90" in evid
+        or "snmp_community" in findings.lower()
+        or "sysdescr" in findings.lower()
+    )
     assert "demo" in findings.lower() or "SAMPLE" in findings
     assert "deception-sensor" in findings.lower()
     assert "beelzebub" in findings.lower() or "beelzebub" in assets.lower()
@@ -104,6 +112,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "whatweb" / "meta.json").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "hping3" / "assets.jsonl").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "hping3" / "meta.json").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "onesixtyone" / "assets.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "onesixtyone" / "meta.json").is_file()
     rust_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
     ).read_text(encoding="utf-8")
@@ -147,6 +157,14 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "hping3" in hping3_meta
     assert "SAMPLE/DEMO — not a client estate" in hping3_meta
     assert "host_only" in hping3_meta or "host-only" in hping3_meta
+    onesixtyone_meta = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "onesixtyone" / "meta.json"
+    ).read_text(encoding="utf-8")
+    assert "evergreen.pack_drop.v1" in onesixtyone_meta
+    assert "onesixtyone" in onesixtyone_meta
+    assert "SAMPLE/DEMO — not a client estate" in onesixtyone_meta
+    assert "host_only" in onesixtyone_meta or "host-only" in onesixtyone_meta
+    assert "snmp" in onesixtyone_meta.lower() or "sysdescr" in onesixtyone_meta.lower()
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
@@ -318,6 +336,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     hping3_sample = (ROOT / "fixtures" / "pack_drop" / "hping3" / "SAMPLE.txt").read_text(
         encoding="utf-8"
     )
+    onesixtyone_meta = (ROOT / "fixtures" / "pack_drop" / "onesixtyone" / "meta.json").read_text(
+        encoding="utf-8"
+    )
+    onesixtyone_note = (
+        ROOT / "fixtures" / "pack_drop" / "onesixtyone" / "evidence" / "note.md"
+    ).read_text(encoding="utf-8")
+    onesixtyone_sample = (ROOT / "fixtures" / "pack_drop" / "onesixtyone" / "SAMPLE.txt").read_text(
+        encoding="utf-8"
+    )
     hp = (ROOT / "fixtures" / "demo" / "honeypot" / "SAMPLE.txt").read_text(encoding="utf-8")
     hp_meta = (ROOT / "fixtures" / "demo" / "honeypot" / "meta.json").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO — not a client estate" in meta
@@ -359,6 +386,14 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "evergreen.pack_drop.v1" in hping3_meta
     assert '"adapter": "hping3"' in hping3_meta or '"adapter":"hping3"' in hping3_meta
     assert '"host_only": true' in hping3_meta or '"host_only":true' in hping3_meta
+    assert "SAMPLE/DEMO — not a client estate" in onesixtyone_meta
+    assert "SAMPLE/DEMO — not a client estate" in onesixtyone_note
+    assert "not a client" in onesixtyone_sample.lower() and "SAMPLE" in onesixtyone_sample
+    assert "evergreen.pack_drop.v1" in onesixtyone_meta
+    assert '"adapter": "onesixtyone"' in onesixtyone_meta or '"adapter":"onesixtyone"' in onesixtyone_meta
+    assert '"host_only": true' in onesixtyone_meta or '"host_only":true' in onesixtyone_meta
+    assert "open_ports_invented" in onesixtyone_meta
+    assert "snmp" in onesixtyone_meta.lower() or "sysdescr" in onesixtyone_meta.lower()
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
 

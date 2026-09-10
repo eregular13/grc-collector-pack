@@ -80,6 +80,6 @@ farm-toolbin-e2e:
 keep-lab:
 	$(PYTHON) -m keep lab
 
-# SAMPLE/DEMO: fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
+# SAMPLE/DEMO: fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
 prove-ciso:
 	$(PYTHON) scripts/prove_ciso.py

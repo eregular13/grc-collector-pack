@@ -37,12 +37,15 @@ What that does (isolated under `prove/work/`, never pack `in/`):
 8. Copy `fixtures/pack_drop/hping3/` → `prove/work/in/nmap/pack_drop/hping3/`
    (host-only ICMP stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
    no invented open ports)
-9. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-10. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+9. Copy `fixtures/pack_drop/onesixtyone/` → `prove/work/in/nmap/pack_drop/onesixtyone/`
+   (SNMP community/sysDescr stdout-class Covey `export_pack`;
+   `evergreen.pack_drop.v1`; no invented open TCP ports)
+10. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+11. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-11. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-12. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-13. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+12. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+13. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+14. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -71,10 +74,12 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #27 honesty sync. Pack HEAD `17f55dc4`
-(PR #43 hping3 host-only pack_drop→CISO already on master). Covey HEAD
-still `30d2197f` multi-adapter pack_drop export for all 16
-`E2E_PROVEN`. Item **COS26-PACK-DROP-HPING3** = DONE.
+CoS #27 item 2 — pack-side onesixtyone stdout-class pack_drop → CISO
+prove (`fixtures/pack_drop/onesixtyone/`, SNMP community/sysDescr;
+no invented TCP ports). CoS #27 honesty sync stands. Pack HEAD
+`17f55dc4` (PR #43 hping3 host-only pack_drop→CISO already on
+master). Covey HEAD still `30d2197f` multi-adapter pack_drop export
+for all 16 `E2E_PROVEN`. Item **COS26-PACK-DROP-HPING3** = DONE.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
