@@ -29,7 +29,7 @@ CISO_CSVS = (
 )
 SAMPLE_BANNER = (
     "SAMPLE/DEMO — not a client estate.\n"
-    "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu) + honeypot file_drop. Not a client export.\n"
+    "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping) + honeypot file_drop. Not a client export.\n"
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 
@@ -74,6 +74,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     onesixtyone_drop = dest_in / "nmap" / "pack_drop" / "onesixtyone"
     fping_drop = dest_in / "nmap" / "pack_drop" / "fping"
     naabu_drop = dest_in / "nmap" / "pack_drop" / "naabu"
+    nping_drop = dest_in / "nmap" / "pack_drop" / "nping"
     honeypot = dest_in / "honeypot"
     beelzebub = dest_in / "honeypot" / "pack_drop"
     _copy_tree(root / "fixtures" / "pack_drop" / "nmap", nmap_drop)
@@ -87,6 +88,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     _copy_tree(root / "fixtures" / "pack_drop" / "onesixtyone", onesixtyone_drop)
     _copy_tree(root / "fixtures" / "pack_drop" / "fping", fping_drop)
     _copy_tree(root / "fixtures" / "pack_drop" / "naabu", naabu_drop)
+    _copy_tree(root / "fixtures" / "pack_drop" / "nping", nping_drop)
     _copy_tree(root / "fixtures" / "demo" / "honeypot", honeypot)
     _copy_tree(root / "fixtures" / "demo" / "honeypot_beelzebub", beelzebub)
     (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
@@ -101,6 +103,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     (onesixtyone_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (fping_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (naabu_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    (nping_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     return {
@@ -116,6 +119,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
         "onesixtyone": str(onesixtyone_drop),
         "fping": str(fping_drop),
         "naabu": str(naabu_drop),
+        "nping": str(nping_drop),
         "honeypot": str(honeypot),
         "beelzebub": str(beelzebub),
         "sample": True,
@@ -189,6 +193,8 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         and "10.9.8.11" in assets_text
         and "10.9.8.30" in assets_text
         and "10.9.8.31" in assets_text
+        and "10.9.8.32" in assets_text
+        and "10.9.8.33" in assets_text
         and "SMB" in findings_text
         and (
             "open_port_observed" in findings_text.lower()
@@ -236,7 +242,7 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
         "note": (
-            "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu stdout-class) + honeypot → "
+            "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping stdout-class) + honeypot → "
             "existing collectors → grc_loader → out/ciso-assistant. SAMPLE ≠ client. "
             "This prove is not a paying-day PASS."
         ),
