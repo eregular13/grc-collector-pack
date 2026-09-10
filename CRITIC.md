@@ -1,7 +1,10 @@
-# CRITIC — cycle 128 (CoS #27 honesty sync; pack HEAD 17f55dc4)
+# CRITIC — cycle 129 (CoS #27 onesixtyone pack_drop → CISO prove)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #27 honesty sync: Pack HEAD `17f55dc4`
+CoS #27 item 2: pack-side onesixtyone stdout-class pack_drop lifts into
+CISO prove (`fixtures/pack_drop/onesixtyone/`, `evergreen.pack_drop.v1`,
+SNMP community/sysDescr discover; no invented open TCP ports).
+CoS #27 honesty sync stands: Pack HEAD `17f55dc4`
 (PR #43 hping3 host-only pack_drop→CISO already on master). Item
 **COS26-PACK-DROP-HPING3** = DONE. Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
@@ -15,7 +18,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #27 / pack HEAD `17f55dc4` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 127
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 128
+CoS #27 honesty stands as history. Cycle 127
 hping3 pack_drop→CISO prove stands as history. Cycle 126
 CoS #26 honesty stands as history. Cycle 125
 whatweb pack_drop→CISO prove stands as history. Cycle 124
@@ -42,5 +46,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 435, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 439, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```

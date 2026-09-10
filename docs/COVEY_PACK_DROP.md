@@ -8,10 +8,11 @@ RiskReady stays review-only — never wrap or POST.
 Covey HEAD `30d2197f` `export_pack` writes the same layout for all 16
 `E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and
 stdout/XML-class fixtures (**rustscan**, **httpx**, **unicornscan**,
-**sslscan**, **tlsx**, **whatweb**, **hping3**). Other stdout-class
-adapters (onesixtyone, …) use the same files when dropped here —
+**sslscan**, **tlsx**, **whatweb**, **hping3**, **onesixtyone**). Other
+stdout-class adapters (nbtscan, …) use the same files when dropped here —
 no 17th live adapter, no pack Covey adapter work. hping3 is
-**host-only** (ICMP discover); the fixture does not invent open ports.
+**host-only** (ICMP discover); onesixtyone is **SNMP community/sysDescr**
+discover. Neither fixture invents open TCP ports.
 
 ## Drop shape
 
@@ -36,8 +37,8 @@ in/nmap/pack_drop/evidence/<artifact>
 
 | File | Accepted as |
 |---|---|
-| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Host-only adapters (hping3 ICMP) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. |
-| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` with no `port`. |
+| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Host-only adapters (hping3 ICMP; onesixtyone SNMP community/sysDescr) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. |
+| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP) or `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone) with no `port`. |
 | `meta.json` | One evidence attestation (`covey.pack_drop.v1` or `evergreen.pack_drop.v1`). Empty invents nothing. |
 | `evidence/` | Artifact rows (or `kind:evidence` JSON). Not parsed as Nmap XML. |
 
@@ -56,8 +57,9 @@ Fixtures used by tests (not loaded on empty `in/nmap/`):
 plus `fixtures/pack_drop/httpx/`, `fixtures/pack_drop/unicornscan/`,
 stdout/XML-class `fixtures/pack_drop/sslscan/`, stdout-class
 `fixtures/pack_drop/tlsx/`, stdout-class
-`fixtures/pack_drop/whatweb/`, and host-only stdout-class
-`fixtures/pack_drop/hping3/`
+`fixtures/pack_drop/whatweb/`, host-only stdout-class
+`fixtures/pack_drop/hping3/`, and SNMP community/sysDescr stdout-class
+`fixtures/pack_drop/onesixtyone/`
 (Covey `export_pack` shape).
 **SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)

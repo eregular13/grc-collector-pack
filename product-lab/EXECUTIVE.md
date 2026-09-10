@@ -2,25 +2,29 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 128):** CoS #27 honesty sync. Pack HEAD
-`17f55dc4` (PR #43 hping3 host-only pack_drop→CISO already on
-master). Covey HEAD still `30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item
-**COS26-PACK-DROP-HPING3** = DONE. 20-adapter lane
-**CLOSED** stands. STATUS `next_action` is current truth —
-Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
-fping + naabu + nping + httpx + sslscan + tlsx + whatweb +
-hping3 + onesixtyone + nbtscan + braa + ike-scan + svmap +
-unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
+**This window (cycle 129):** CoS #27 item 2 — pack-side
+onesixtyone stdout-class pack_drop → CISO prove
+(`fixtures/pack_drop/onesixtyone/`, evergreen.pack_drop.v1,
+SNMP community/sysDescr; no invented TCP ports). CoS #27
+honesty sync stands. Pack HEAD `17f55dc4` (PR #43 hping3
+host-only pack_drop→CISO already on master). Covey HEAD still
+`30d2197f` multi-adapter pack_drop export for all 16
+`E2E_PROVEN`. Item **COS26-PACK-DROP-HPING3** = DONE.
+20-adapter lane **CLOSED** stands. STATUS `next_action` is
+current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
++ rustscan + fping + naabu + nping + httpx + sslscan + tlsx +
+whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
+svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
 start Covey adapter work. Stop for CoS #28. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 127 hping3 pack_drop→CISO
-prove stands as history. Cycle 126 CoS #26 honesty stands as
-history. Cycle 125 whatweb pack_drop→CISO
+invoke / 81 file_drop). Cycle 128 CoS #27 honesty stands as
+history. Cycle 127 hping3 pack_drop→CISO prove stands as
+history. Cycle 126 CoS #26 honesty stands as history. Cycle
+125 whatweb pack_drop→CISO
 prove stands as history. Cycle 124 CoS #25 honesty stands as
 history. Cycle 123 tlsx pack_drop→CISO
 prove stands as history. Cycle 122 CoS #24 honesty stands as
