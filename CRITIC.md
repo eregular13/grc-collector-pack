@@ -1,12 +1,9 @@
-# CRITIC — cycle 135 (CoS #30 item 2 nping pack_drop → CISO prove)
+# CRITIC — cycle 136 (CoS #31 honesty sync; pack HEAD 7c7ef17c)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #30 item 2: pack-side nping port/service pack_drop lifts into
-CISO prove (`fixtures/pack_drop/nping/`, `evergreen.pack_drop.v1`,
-hosts `10.9.8.32`/`10.9.8.33` + open TCP 80/443/22;
-`open_port_observed` only). CoS #30 honesty sync stands: Pack HEAD
-`8c5356c6` (PR #49 naabu pack_drop→CISO already on master).
-Item **COS29-PACK-DROP-NAABU** = DONE. Next brick named = nping.
+CoS #31 honesty sync: Pack HEAD `7c7ef17c`
+(PR #51 nping pack_drop→CISO already on master). Item
+**COS30-PACK-DROP-NPING** = DONE. Next brick named = nbtscan.
 Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -14,13 +11,14 @@ truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #31.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #32.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #30 / pack HEAD `8c5356c6` / Covey HEAD `30d2197f`,
+cannot lag CoS #31 / pack HEAD `7c7ef17c` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 134
-CoS #30 honesty stands as history. Cycle 133
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 135
+nping pack_drop→CISO prove stands as history. Cycle 134
+COS30 honesty stands as history. Cycle 133
 naabu pack_drop→CISO prove stands as history. Cycle 132
 COS29 honesty stands as history. Cycle 131
 fping pack_drop→CISO prove stands as history. Cycle 130
