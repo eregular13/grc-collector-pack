@@ -55,12 +55,16 @@ What that does (isolated under `prove/work/`, never pack `in/`):
 14. Copy `fixtures/pack_drop/braa/` → `prove/work/in/nmap/pack_drop/braa/`
    (host-only SNMP GET sweeper stdout-class Covey `export_pack`;
    `evergreen.pack_drop.v1`; community/OID/sysDescr; no invented open TCP ports)
-15. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-16. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+15. Copy `fixtures/pack_drop/ike-scan/` → `prove/work/in/nmap/pack_drop/ike-scan/`
+   (host-only IKE Main Mode / Aggressive Mode sweeper stdout-class Covey
+   `export_pack`; `evergreen.pack_drop.v1`; handshake / VPN responder;
+   IKE/VPN discover ≠ open TCP port; no invented open TCP ports)
+16. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+17. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-17. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-18. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-19. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+18. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+19. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+20. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -89,7 +93,8 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #33 honesty stamp. Pack HEAD
+CoS #33 item 2 — pack-side ike-scan host-only IKE/VPN pack_drop → CISO
+prove. CoS #33 honesty stamp stands. Pack HEAD
 `ae9ec27c` (PR #55 braa SNMP host-only pack_drop→CISO already on
 master; DEMO hosts `10.9.8.92`/`10.9.8.93`). Covey HEAD still
 `30d2197f` multi-adapter pack_drop export

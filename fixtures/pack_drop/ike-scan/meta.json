@@ -1,0 +1,36 @@
+{
+  "schema": "evergreen.pack_drop.v1",
+  "run_id": "ike-scan-fixture",
+  "adapter": "ike-scan",
+  "source": "evergreen-covey",
+  "lane": "nmap",
+  "demo": true,
+  "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. IKE Main Mode / Aggressive Mode sweeper (nonzero responder cookie); IKE/VPN discover \u2260 open TCP port. No invented open TCP ports.",
+  "scope": {
+    "signer": "prove-lab",
+    "purpose": "evergreen-covey ike-scan export fixture"
+  },
+  "honesty": {
+    "surface_map": true,
+    "host_only": true,
+    "ike_handshake": true,
+    "ike_responder": true,
+    "open_ports_invented": false,
+    "honeypot_validated": false,
+    "control_operating_effectiveness": false,
+    "note": "IKE/VPN discover \u2260 open TCP port \u2260 honeypot validated \u2260 control operating effectiveness"
+  },
+  "ingest": {
+    "mode": "file_drop",
+    "riskready_post": false,
+    "ciso_assistant": "leave-behind file_drop only"
+  },
+  "created_at": "2026-09-08T00:00:00Z",
+  "generated_at": "2026-09-08T00:00:00Z",
+  "counts": {
+    "assets": 2,
+    "findings": 4,
+    "hosts": 2,
+    "services": 0
+  }
+}

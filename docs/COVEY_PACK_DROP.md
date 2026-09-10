@@ -9,14 +9,16 @@ Covey HEAD `30d2197f` `export_pack` writes the same layout for all 16
 `E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and
 stdout/XML-class fixtures (**rustscan**, **httpx**, **unicornscan**,
 **sslscan**, **tlsx**, **whatweb**, **hping3**, **onesixtyone**,
-**fping**, **naabu**, **nping**, **nbtscan**, **braa**). Other
-stdout-class adapters (ike-scan, svmap, …) use the same
+**fping**, **naabu**, **nping**, **nbtscan**, **braa**, **ike-scan**). Other
+stdout-class adapters (svmap, …) use the same
 files when dropped here — no 17th live adapter, no pack Covey adapter
 work. hping3 and fping are **host-only** (ICMP / reachability discover);
 onesixtyone is **SNMP community/sysDescr** discover; braa is an
 **SNMP GET sweeper** (OID / sysDescr / sysName); nbtscan is
 **NetBIOS name-table** host discover (real NetBIOS names only, not
-`<unknown>` / MAC-only). naabu and nping are
+`<unknown>` / MAC-only); ike-scan is an **IKE Main Mode / Aggressive
+Mode sweeper** (hosts that printed a handshake with a nonzero responder
+cookie; IKE/VPN discover ≠ open TCP port). naabu and nping are
 **port/service discovery** (open TCP ports + `open_port_observed` only;
 nping from ICMP echo replies + TCP handshake completed, not RST/refused).
 Host-only fixtures invent no open TCP ports.
@@ -44,8 +46,8 @@ in/nmap/pack_drop/evidence/<artifact>
 
 | File | Accepted as |
 |---|---|
-| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Host-only adapters (hping3/fping ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName; nbtscan NetBIOS name-table) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. |
-| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP/reachability), `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone), `claim:snmp_community_observed` / `claim:sysdescr_observed` / `claim:oid_observed` (braa), or `claim:netbios_name_observed` (nbtscan) with no `port`. |
+| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Host-only adapters (hping3/fping ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName; nbtscan NetBIOS name-table; ike-scan IKE/VPN handshake) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. |
+| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP/reachability), `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone), `claim:snmp_community_observed` / `claim:sysdescr_observed` / `claim:oid_observed` (braa), `claim:netbios_name_observed` (nbtscan), or `claim:ike_handshake_observed` / `claim:ike_responder_observed` (ike-scan) with no `port`. |
 | `meta.json` | One evidence attestation (`covey.pack_drop.v1` or `evergreen.pack_drop.v1`). Empty invents nothing. |
 | `evidence/` | Artifact rows (or `kind:evidence` JSON). Not parsed as Nmap XML. |
 
@@ -70,9 +72,10 @@ stdout/XML-class `fixtures/pack_drop/sslscan/`, stdout-class
 stdout-class `fixtures/pack_drop/fping/`, port/service
 stdout-class `fixtures/pack_drop/naabu/`, port/service
 stdout-class `fixtures/pack_drop/nping/`, host-only NetBIOS
-name-table stdout-class `fixtures/pack_drop/nbtscan/`, and
+name-table stdout-class `fixtures/pack_drop/nbtscan/`,
 SNMP GET sweeper (OID/sysDescr/sysName) stdout-class
-`fixtures/pack_drop/braa/`
+`fixtures/pack_drop/braa/`, and host-only IKE/VPN handshake
+stdout-class `fixtures/pack_drop/ike-scan/`
 (Covey `export_pack` shape).
 **SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)

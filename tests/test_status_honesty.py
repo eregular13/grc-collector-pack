@@ -187,9 +187,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-139 notes."""
+    """Current-cycle window / newest delta — not historical cycle-140 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 141):",
         "**Delta (cycle 140):",
         "**Delta (cycle 139):",
         "**Delta (cycle 138):",
