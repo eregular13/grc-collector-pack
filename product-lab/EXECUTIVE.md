@@ -2,44 +2,43 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 119):** CoS #22 item 2 — pack-side unicornscan
-stdout-class pack_drop → CISO prove. CoS #22 honesty sync
-stands. Pack HEAD `eedca686` (PR #33 httpx pack_drop→CISO
-already on master). Covey HEAD still `30d2197f` multi-adapter
-pack_drop export for all 16 `E2E_PROVEN`. Item
-**COS21-PACK-DROP-HTTPX** = DONE. Fixture
-`fixtures/pack_drop/unicornscan/` (evergreen.pack_drop.v1). Stop for
-CoS #23. 20-adapter lane **CLOSED** stands. STATUS
-`next_action` is current truth — Covey `E2E_PROVEN`
-sixteen-set remains: nmap + rustscan + fping + naabu +
-nping + httpx + sslscan + tlsx + whatweb + hping3 +
-onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
-UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap —
-do not claim a 17th live. Pack does not start Covey adapter
-work. Reid-only blockers remain (CTA; real KEEP `in/` drop;
-Eval `npm start`; Docker compose on a real host — this VM
-`compose_lab` **ABSENT ≠ pass**). Paying-day stays **FAIL**.
-DEMO ≠ client. SAMPLE KEEP **0/4**. Catalog unchanged
-(111 / 32 wired / 30 invoke / 81 file_drop). Cycle 118
-CoS #22 honesty stands as history. Cycle 117
-httpx pack_drop→CISO prove stands as history. Cycle 116
-CoS #21 honesty stands as history. Cycle 115
-rustscan pack_drop→CISO prove stands as history. Cycle 114
-CoS #20 honesty stands as history. Cycle 113
-CoS #19 stands as history. Cycle 112 CoS #18 stands as history. Cycle 111 CoS #17
-stands as history. Cycle 110 CoS #16 stands as history.
-Cycle 109 CoS #15 stands as history. Cycle 108 CoS #14
-stands as history. Cycle 107 CoS #13 stands as history.
-Cycle 106 CoS #12 stands as history. Cycle 105 CoS #11
-stands as history. Cycle 104 CoS #10 stands. Cycle 103
-CoS #9 stands. Cycle 102 CoS #8 stands. Cycle 101 CoS #7
-stands. Cycle 100 CoS #6 stands. Cycle 99 CoS #5 stands.
-Cycle 98 CoS #4 stands. Cycle 97 CoS #3 stands. Cycle 96
-CISO prove stands. Cycle 95 Beelzebub stands. Cycle 94
-IdP/MDM stands. Cycle 93 DNS/email CoS prove bar stands.
-Cycle 90 honesty next_action stands. Cycle 74 durable
-blockers stay locked. Wrap stays **dead**. Compose **ABSENT**.
-Gate/hash already on master (`python -m dropbox gate`).
+**This window (cycle 120):** CoS #23 honesty sync. Pack HEAD
+`5bd77cde` (PR #35 unicornscan pack_drop→CISO already on
+master). Covey HEAD still `30d2197f` multi-adapter pack_drop
+export for all 16 `E2E_PROVEN`. Item
+**COS22-PACK-DROP-UNICORNSCAN** = DONE. 20-adapter lane
+**CLOSED** stands. STATUS `next_action` is current truth —
+Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
+fping + naabu + nping + httpx + sslscan + tlsx + whatweb +
+hping3 + onesixtyone + nbtscan + braa + ike-scan + svmap +
+unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
+netdiscover, zmap — do not claim a 17th live. Pack does not
+start Covey adapter work. Stop for CoS #24. Reid-only
+blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
+Docker compose on a real host — this VM `compose_lab`
+**ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
+SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
+invoke / 81 file_drop). Cycle 119 unicornscan pack_drop→CISO
+prove stands as history. Cycle 118 CoS #22 honesty stands as
+history. Cycle 117 httpx pack_drop→CISO prove stands as
+history. Cycle 116 CoS #21 honesty stands as history. Cycle
+115 rustscan pack_drop→CISO prove stands as history. Cycle
+114 CoS #20 honesty stands as history. Cycle 113 CoS #19
+stands as history. Cycle 112 CoS #18 stands as history.
+Cycle 111 CoS #17 stands as history. Cycle 110 CoS #16
+stands as history. Cycle 109 CoS #15 stands as history.
+Cycle 108 CoS #14 stands as history. Cycle 107 CoS #13
+stands as history. Cycle 106 CoS #12 stands as history.
+Cycle 105 CoS #11 stands as history. Cycle 104 CoS #10
+stands. Cycle 103 CoS #9 stands. Cycle 102 CoS #8 stands.
+Cycle 101 CoS #7 stands. Cycle 100 CoS #6 stands. Cycle 99
+CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3
+stands. Cycle 96 CISO prove stands. Cycle 95 Beelzebub
+stands. Cycle 94 IdP/MDM stands. Cycle 93 DNS/email CoS
+prove bar stands. Cycle 90 honesty next_action stands.
+Cycle 74 durable blockers stay locked. Wrap stays **dead**.
+Compose **ABSENT**. Gate/hash already on master
+(`python -m dropbox gate`).
 
 **Cycle 113 (stands):** CoS #19 honesty sync. STATUS
 `next_action` was Covey 20-adapter lane **CLOSED** at Covey

@@ -62,20 +62,18 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #22 honesty sync. Pack HEAD `eedca686` (PR #33 httpx
+CoS #23 honesty sync. Pack HEAD `5bd77cde` (PR #35 unicornscan
 pack_drop→CISO already on master). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 `E2E_PROVEN`. Item
-**COS21-PACK-DROP-HTTPX** = DONE. CoS #22 item 2 lifts unicornscan
-stdout-class `fixtures/pack_drop/unicornscan/` into CISO prove. Stop for
-CoS #23. 20-adapter lane **CLOSED**
+**COS22-PACK-DROP-UNICORNSCAN** = DONE. 20-adapter lane **CLOSED**
 stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Tests/docs only. Reid-only blockers remain (CTA;
-real KEEP `in/`; Eval `npm start`; compose on a Docker host — this VM
-`compose_lab` absent ≠ PASS).
+Covey adapter work. Tests/docs only. Stop for CoS #24. Reid-only
+blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
+Docker host — this VM `compose_lab` absent ≠ PASS).
 
 Lane map: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).
