@@ -1,24 +1,23 @@
-# CRITIC — cycle 129 (CoS #27 onesixtyone pack_drop → CISO prove)
+# CRITIC — cycle 130 (CoS #28 honesty sync; pack HEAD f15573dd)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #27 item 2: pack-side onesixtyone stdout-class pack_drop lifts into
-CISO prove (`fixtures/pack_drop/onesixtyone/`, `evergreen.pack_drop.v1`,
-SNMP community/sysDescr discover; no invented open TCP ports).
-CoS #27 honesty sync stands: Pack HEAD `17f55dc4`
-(PR #43 hping3 host-only pack_drop→CISO already on master). Item
-**COS26-PACK-DROP-HPING3** = DONE. Covey HEAD still `30d2197f`
+CoS #28 honesty sync: Pack HEAD `f15573dd`
+(PR #45 onesixtyone SNMP pack_drop→CISO already on master). Item
+**COS27-PACK-DROP-ONESIXTYONE** = DONE. Next brick named = fping.
+Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
 truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #28.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #29.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #27 / pack HEAD `17f55dc4` / Covey HEAD `30d2197f`,
+cannot lag CoS #28 / pack HEAD `f15573dd` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 128
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 129
+onesixtyone pack_drop→CISO prove stands as history. Cycle 128
 CoS #27 honesty stands as history. Cycle 127
 hping3 pack_drop→CISO prove stands as history. Cycle 126
 CoS #26 honesty stands as history. Cycle 125
