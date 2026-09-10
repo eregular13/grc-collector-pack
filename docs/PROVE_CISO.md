@@ -26,12 +26,14 @@ What that does (isolated under `prove/work/`, never pack `in/`):
    (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
 3. Copy `fixtures/pack_drop/httpx/` → `prove/work/in/nmap/pack_drop/httpx/`
    (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
-4. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-5. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+4. Copy `fixtures/pack_drop/unicornscan/` → `prove/work/in/nmap/pack_drop/unicornscan/`
+   (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+5. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+6. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-6. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-7. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-8. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+7. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+8. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+9. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -63,7 +65,9 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 CoS #22 honesty sync. Pack HEAD `eedca686` (PR #33 httpx
 pack_drop→CISO already on master). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 `E2E_PROVEN`. Item
-**COS21-PACK-DROP-HTTPX** = DONE. 20-adapter lane **CLOSED**
+**COS21-PACK-DROP-HTTPX** = DONE. CoS #22 item 2 lifts unicornscan
+stdout-class `fixtures/pack_drop/unicornscan/` into CISO prove. Stop for
+CoS #23. 20-adapter lane **CLOSED**
 stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +

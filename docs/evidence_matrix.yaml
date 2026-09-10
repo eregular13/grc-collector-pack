@@ -21,7 +21,7 @@ lanes:
     notes: Amass / Subfinder / httpx / WhatWeb file_drop
   - assessment: Covey
     pack_in: nmap
-    notes: pack_drop assets.jsonl + findings.jsonl + meta.json + evidence/ (nmap + rustscan + httpx stdout-class)
+    notes: pack_drop assets.jsonl + findings.jsonl + meta.json + evidence/ (nmap + rustscan + httpx + unicornscan stdout-class)
   - assessment: VM
     pack_in: vuln
     notes: OpenVAS-class / Nuclei / Trivy / Nessus file_drop only
