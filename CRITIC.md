@@ -1,7 +1,9 @@
-# CRITIC — cycle 122 (CoS #24 honesty sync; pack HEAD cccfa800)
+# CRITIC — cycle 123 (CoS #24 tlsx pack_drop → CISO prove)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #24 honesty sync: Pack HEAD `cccfa800`
+CoS #24 item 2: pack-side tlsx stdout-class pack_drop lifts into
+CISO prove (`fixtures/pack_drop/tlsx/`, `evergreen.pack_drop.v1`).
+CoS #24 honesty sync stands: Pack HEAD `cccfa800`
 (PR #37 sslscan pack_drop→CISO already on master). Item
 **COS23-PACK-DROP-SSLSCAN** = DONE. Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
@@ -15,7 +17,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #24 / pack HEAD `cccfa800` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 121
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 122
+CoS #24 honesty stands as history. Cycle 121
 sslscan pack_drop→CISO prove stands as history. Cycle 120
 CoS #23 honesty stands as history. Cycle 119
 unicornscan pack_drop→CISO prove stands as history. Cycle 118
@@ -36,5 +39,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 423, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 427, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
