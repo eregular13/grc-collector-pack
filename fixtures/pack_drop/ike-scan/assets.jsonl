@@ -1,0 +1,2 @@
+{"kind":"host","address":"10.9.8.94","state":"up","source":"parse_live_hosts","adapter":"ike-scan","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. IKE Main Mode handshake observed; IKE/VPN discover \u2260 open TCP port."}
+{"kind":"host","address":"10.9.8.95","state":"up","source":"parse_live_hosts","adapter":"ike-scan","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. IKE Main Mode handshake observed; IKE/VPN discover \u2260 open TCP port."}

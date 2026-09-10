@@ -84,6 +84,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "10.9.8.35" in assets
     assert "10.9.8.92" in assets
     assert "10.9.8.93" in assets
+    assert "10.9.8.94" in assets
+    assert "10.9.8.95" in assets
     assert "SMB" in findings
     assert (
         "open_port_observed" in findings.lower()
@@ -120,6 +122,12 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
         or "sysdescr" in findings.lower()
         or "oid_observed" in findings.lower()
     )
+    assert (
+        "ike-scan" in evid.lower()
+        or "10.9.8.94" in evid
+        or "ike_handshake" in findings.lower()
+        or "ike_responder" in findings.lower()
+    )
     for line in findings.splitlines():
         if "10.9.8.34" in line or "10.9.8.35" in line:
             low = line.lower()
@@ -128,6 +136,12 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
             assert "tcp/443" not in low
             assert "tcp/22" not in low
         if "10.9.8.92" in line or "10.9.8.93" in line:
+            low = line.lower()
+            assert "open_port_observed" not in low
+            assert "tcp/80" not in low
+            assert "tcp/443" not in low
+            assert "tcp/22" not in low
+        if "10.9.8.94" in line or "10.9.8.95" in line:
             low = line.lower()
             assert "open_port_observed" not in low
             assert "tcp/80" not in low
@@ -164,6 +178,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "meta.json").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "braa" / "assets.jsonl").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "braa" / "meta.json").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "assets.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "meta.json").is_file()
     rust_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
     ).read_text(encoding="utf-8")
@@ -271,6 +287,24 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert '"port"' not in braa_findings
     assert "10.9.8.92" in braa_findings
     assert "10.9.8.93" in braa_findings
+    ike_scan_meta = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "meta.json"
+    ).read_text(encoding="utf-8")
+    assert "evergreen.pack_drop.v1" in ike_scan_meta
+    assert "ike-scan" in ike_scan_meta
+    assert "SAMPLE/DEMO — not a client estate" in ike_scan_meta
+    assert "host_only" in ike_scan_meta or "host-only" in ike_scan_meta
+    assert "open_ports_invented" in ike_scan_meta
+    assert "ike" in ike_scan_meta.lower() or "vpn" in ike_scan_meta.lower()
+    ike_scan_findings = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "findings.jsonl"
+    ).read_text(encoding="utf-8")
+    assert "ike_handshake_observed" in ike_scan_findings or "ike_responder_observed" in ike_scan_findings
+    assert '"claim":"open_port_observed"' not in ike_scan_findings
+    assert '"claim": "open_port_observed"' not in ike_scan_findings
+    assert '"port"' not in ike_scan_findings
+    assert "10.9.8.94" in ike_scan_findings
+    assert "10.9.8.95" in ike_scan_findings
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
@@ -496,6 +530,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     braa_sample = (ROOT / "fixtures" / "pack_drop" / "braa" / "SAMPLE.txt").read_text(
         encoding="utf-8"
     )
+    ike_scan_meta = (ROOT / "fixtures" / "pack_drop" / "ike-scan" / "meta.json").read_text(
+        encoding="utf-8"
+    )
+    ike_scan_note = (
+        ROOT / "fixtures" / "pack_drop" / "ike-scan" / "evidence" / "note.md"
+    ).read_text(encoding="utf-8")
+    ike_scan_sample = (ROOT / "fixtures" / "pack_drop" / "ike-scan" / "SAMPLE.txt").read_text(
+        encoding="utf-8"
+    )
     hp = (ROOT / "fixtures" / "demo" / "honeypot" / "SAMPLE.txt").read_text(encoding="utf-8")
     hp_meta = (ROOT / "fixtures" / "demo" / "honeypot" / "meta.json").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO — not a client estate" in meta
@@ -580,6 +623,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "open_ports_invented" in braa_meta
     assert "snmp" in braa_meta.lower() or "sysdescr" in braa_meta.lower() or "oid" in braa_meta.lower()
     assert '"services": 0' in braa_meta or '"services":0' in braa_meta
+    assert "SAMPLE/DEMO — not a client estate" in ike_scan_meta
+    assert "SAMPLE/DEMO — not a client estate" in ike_scan_note
+    assert "not a client" in ike_scan_sample.lower() and "SAMPLE" in ike_scan_sample
+    assert "evergreen.pack_drop.v1" in ike_scan_meta
+    assert '"adapter": "ike-scan"' in ike_scan_meta or '"adapter":"ike-scan"' in ike_scan_meta
+    assert '"host_only": true' in ike_scan_meta or '"host_only":true' in ike_scan_meta
+    assert "open_ports_invented" in ike_scan_meta
+    assert "ike" in ike_scan_meta.lower() or "vpn" in ike_scan_meta.lower()
+    assert '"services": 0' in ike_scan_meta or '"services":0' in ike_scan_meta
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
 
