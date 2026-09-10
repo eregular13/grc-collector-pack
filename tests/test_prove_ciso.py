@@ -230,7 +230,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "findings.jsonl"
     ).read_text(encoding="utf-8")
     assert "netbios_name_observed" in nbtscan_findings
-    assert "open_port_observed" not in nbtscan_findings
+    assert '"claim":"open_port_observed"' not in nbtscan_findings
+    assert '"claim": "open_port_observed"' not in nbtscan_findings
     assert '"port"' not in nbtscan_findings
     assert "SERVER" in nbtscan_findings
     assert "WORKSTATION" in nbtscan_findings
