@@ -2,7 +2,10 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 120):** CoS #23 honesty sync. Pack HEAD
+**This window (cycle 121):** CoS #23 item 2 — pack-side
+sslscan stdout/XML-class pack_drop → CISO prove
+(`fixtures/pack_drop/sslscan/`, evergreen.pack_drop.v1). CoS
+#23 honesty sync stands. Pack HEAD
 `5bd77cde` (PR #35 unicornscan pack_drop→CISO already on
 master). Covey HEAD still `30d2197f` multi-adapter pack_drop
 export for all 16 `E2E_PROVEN`. Item
@@ -18,7 +21,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 119 unicornscan pack_drop→CISO
+invoke / 81 file_drop). Cycle 120 CoS #23 honesty stands as
+history. Cycle 119 unicornscan pack_drop→CISO
 prove stands as history. Cycle 118 CoS #22 honesty stands as
 history. Cycle 117 httpx pack_drop→CISO prove stands as
 history. Cycle 116 CoS #21 honesty stands as history. Cycle
