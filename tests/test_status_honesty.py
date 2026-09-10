@@ -30,9 +30,9 @@ COVEY_E2E_PROVEN = (
 )
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "1b365957"
-STALE_PACK_HEAD = "7c7ef17c"
-STALE_PACK_HONESTY = "adc479e3"
+COVEY_PACK_HEAD = "ae9ec27c"
+STALE_PACK_HEAD = "1b365957"
+STALE_PACK_HONESTY = "53233649"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -87,11 +87,11 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #32" in low
+    assert "cos #33" in low
     assert "honesty sync" in low
-    assert "cos31-pack-drop-nbtscan" in low
-    assert status.get("item") == "COS32-PACK-DROP-BRAA"
-    assert "next brick" in low and "braa" in low
+    assert "cos32-pack-drop-braa" in low
+    assert status.get("item") == "COS33-PACK-DROP-IKE-SCAN"
+    assert "next brick" in low and "ike-scan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
     assert "cos #4" not in low
@@ -122,6 +122,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #29" not in low
     assert "cos #30" not in low
     assert "cos #31" not in low
+    assert "cos #32" not in low
     assert "covey" in low
     assert "e2e_proven" in low
     assert "closed" in low
@@ -139,8 +140,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD 1b365957 (PR #53). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #31 / pack 7c7ef17c / adc479e3.
+    # Pack HEAD ae9ec27c (PR #55). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #32 / pack 1b365957 / 53233649.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -186,14 +187,14 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-137 notes."""
+    """Current-cycle window / newest delta — not historical cycle-139 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 140):",
+        "**Delta (cycle 139):",
         "**Delta (cycle 138):",
         "**Delta (cycle 137):",
         "**Delta (cycle 136):",
-        "**Delta (cycle 135):",
-        "**Delta (cycle 134):",
     ):
         if needle in text:
             idx = text.index(needle)
@@ -218,8 +219,11 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #32" in low, f"{where} missing CoS #32 stamp"
-        assert "next brick" in low, f"{where} missing next brick = braa"
+        assert "cos #33" in low, f"{where} missing CoS #33 stamp"
+        assert "next brick" in low, f"{where} missing next brick = ike-scan"
+        assert "ike-scan" in low, f"{where} missing next brick = ike-scan"
+        assert "cos32-pack-drop-braa" in low, f"{where} missing COS32-PACK-DROP-BRAA DONE"
+        assert "stop for cos #34" in low, f"{where} missing Stop for CoS #34"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -232,8 +236,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos32_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #32 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos33_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #33 pack HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
@@ -263,6 +267,7 @@ def test_status_and_live_docs_match_cos32_covey_e2e_proven() -> None:
     assert "cos #29" not in low
     assert "cos #30" not in low
     assert "cos #31" not in low
+    assert "cos #32" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
@@ -283,11 +288,11 @@ def test_status_and_live_docs_match_cos32_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #32")
+                idx = text.find("CoS #33")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #32 this-window copy"
+        assert window, f"{path} missing CoS #33 this-window copy"
         win_low = window.lower()
-        assert "cos #32" in win_low, f"{path} this-window is not CoS #32"
+        assert "cos #33" in win_low, f"{path} this-window is not CoS #33"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
         assert "pack_drop" in win_low, f"{path} this-window missing pack_drop export"
