@@ -1,0 +1,5 @@
+SAMPLE/DEMO — not a client estate.
+Covey sslscan stdout/XML-class pack_drop fixture for the CISO Assistant export prove.
+Shaped like evergreen-covey export_pack (evergreen.pack_drop.v1).
+Aligned with shared/sslscan.py + fixtures/demo/vuln/sslscan.xml (SAMPLE).
+Not a client export. Not a paying-day stamp. Not a client KEEP.
