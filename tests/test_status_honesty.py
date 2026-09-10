@@ -90,7 +90,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #28" in low
     assert "honesty sync" in low
     assert "cos27-pack-drop-onesixtyone" in low
-    assert status.get("item") == "COS27-PACK-DROP-ONESIXTYONE"
+    assert status.get("item") == "COS28-PACK-DROP-FPING"
     assert "next brick" in low and "fping" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
@@ -185,10 +185,10 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-127 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 131):",
         "**Delta (cycle 130):",
         "**Delta (cycle 129):",
         "**Delta (cycle 128):",
-        "**Delta (cycle 127):",
     ):
         if needle in text:
             idx = text.index(needle)

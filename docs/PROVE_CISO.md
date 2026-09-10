@@ -40,12 +40,15 @@ What that does (isolated under `prove/work/`, never pack `in/`):
 9. Copy `fixtures/pack_drop/onesixtyone/` → `prove/work/in/nmap/pack_drop/onesixtyone/`
    (SNMP community/sysDescr stdout-class Covey `export_pack`;
    `evergreen.pack_drop.v1`; no invented open TCP ports)
-10. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-11. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+10. Copy `fixtures/pack_drop/fping/` → `prove/work/in/nmap/pack_drop/fping/`
+   (host-only ICMP/reachability stdout-class Covey `export_pack`;
+   `evergreen.pack_drop.v1`; no invented open ports)
+11. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+12. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-12. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-13. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-14. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+13. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+14. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+15. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -74,10 +77,12 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #28 honesty sync. Pack HEAD `f15573dd`
-(PR #45 onesixtyone SNMP pack_drop→CISO already on master). Covey HEAD
-still `30d2197f` multi-adapter pack_drop export for all 16
-`E2E_PROVEN`. Item **COS27-PACK-DROP-ONESIXTYONE** = DONE.
+CoS #28 item 2 — pack-side fping host-only pack_drop → CISO
+prove (`fixtures/pack_drop/fping/`, ICMP/reachability discover;
+no invented ports). CoS #28 honesty sync stands. Pack HEAD
+`f15573dd` (PR #45 onesixtyone SNMP pack_drop→CISO already on
+master). Covey HEAD still `30d2197f` multi-adapter pack_drop export
+for all 16 `E2E_PROVEN`. Item **COS27-PACK-DROP-ONESIXTYONE** = DONE.
 Next brick named = fping.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +

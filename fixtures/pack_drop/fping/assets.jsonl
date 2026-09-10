@@ -1,0 +1,2 @@
+{"kind":"host","address":"10.9.8.10","state":"up","source":"parse_live_hosts","adapter":"fping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. Host-only ICMP/reachability discover; no invented open ports."}
+{"kind":"host","address":"10.9.8.11","state":"up","source":"parse_live_hosts","adapter":"fping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. Host-only ICMP/reachability discover; no invented open ports."}
