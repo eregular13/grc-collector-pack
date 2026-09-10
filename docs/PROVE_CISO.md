@@ -60,12 +60,10 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #21 honesty sync. Pack HEAD `ef233924` (PR #31 rustscan
+CoS #22 honesty sync. Pack HEAD `eedca686` (PR #33 httpx
 pack_drop→CISO already on master). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 `E2E_PROVEN`. Item
-**COS20-PACK-DROP-RUSTSCAN** = DONE. CoS #21 item 2 lifts httpx
-stdout-class `fixtures/pack_drop/httpx/` into CISO prove. Stop for
-CoS #22. 20-adapter lane **CLOSED**
+**COS21-PACK-DROP-HTTPX** = DONE. 20-adapter lane **CLOSED**
 stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
