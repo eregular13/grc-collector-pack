@@ -2,7 +2,8 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 124):** CoS #25 honesty sync. Pack HEAD
+**This window (cycle 125):** CoS #25 item 2 — pack-side whatweb
+stdout-class pack_drop → CISO prove. Pack HEAD
 `437b77dd` (PR #39 tlsx pack_drop→CISO already on
 master). Covey HEAD still `30d2197f` multi-adapter pack_drop
 export for all 16 `E2E_PROVEN`. Item
@@ -18,7 +19,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 123 tlsx pack_drop→CISO
+invoke / 81 file_drop). Cycle 124 CoS #25 honesty stands as
+history. Cycle 123 tlsx pack_drop→CISO
 prove stands as history. Cycle 122 CoS #24 honesty stands as
 history. Cycle 121 sslscan pack_drop→CISO
 prove stands as history. Cycle 120 CoS #23 honesty stands as
