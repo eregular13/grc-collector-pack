@@ -186,10 +186,10 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-131 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 133):",
         "**Delta (cycle 132):",
         "**Delta (cycle 131):",
         "**Delta (cycle 130):",
-        "**Delta (cycle 129):",
     ):
         if needle in text:
             idx = text.index(needle)

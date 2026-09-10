@@ -21,7 +21,7 @@ lanes:
     notes: Amass / Subfinder / httpx / WhatWeb file_drop
   - assessment: Covey
     pack_in: nmap
-    notes: pack_drop assets.jsonl + findings.jsonl + meta.json + evidence/ (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping stdout/XML-class; hping3/fping host-only ICMP; onesixtyone SNMP community/sysDescr)
+    notes: pack_drop assets.jsonl + findings.jsonl + meta.json + evidence/ (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu stdout/XML-class; hping3/fping host-only ICMP; onesixtyone SNMP community/sysDescr; naabu port/service open_port_observed)
   - assessment: VM
     pack_in: vuln
     notes: OpenVAS-class / Nuclei / Trivy / Nessus file_drop only

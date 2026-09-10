@@ -76,6 +76,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "10.9.8.91" in assets
     assert "10.9.8.10" in assets
     assert "10.9.8.11" in assets
+    assert "10.9.8.30" in assets
+    assert "10.9.8.31" in assets
     assert "SMB" in findings
     assert (
         "open_port_observed" in findings.lower()
@@ -96,6 +98,7 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
         or "sysdescr" in findings.lower()
     )
     assert "fping" in evid.lower() or "10.9.8.10" in evid or "host_up" in findings.lower()
+    assert "naabu" in evid.lower() or "10.9.8.30" in evid or "open_port" in findings.lower()
     assert "demo" in findings.lower() or "SAMPLE" in findings
     assert "deception-sensor" in findings.lower()
     assert "beelzebub" in findings.lower() or "beelzebub" in assets.lower()
@@ -119,6 +122,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "onesixtyone" / "meta.json").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "fping" / "assets.jsonl").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "fping" / "meta.json").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "naabu" / "assets.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "naabu" / "meta.json").is_file()
     rust_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
     ).read_text(encoding="utf-8")
@@ -177,6 +182,12 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "fping" in fping_meta
     assert "SAMPLE/DEMO — not a client estate" in fping_meta
     assert "host_only" in fping_meta or "host-only" in fping_meta
+    naabu_meta = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "naabu" / "meta.json"
+    ).read_text(encoding="utf-8")
+    assert "evergreen.pack_drop.v1" in naabu_meta
+    assert "naabu" in naabu_meta
+    assert "SAMPLE/DEMO — not a client estate" in naabu_meta
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
@@ -366,6 +377,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     fping_sample = (ROOT / "fixtures" / "pack_drop" / "fping" / "SAMPLE.txt").read_text(
         encoding="utf-8"
     )
+    naabu_meta = (ROOT / "fixtures" / "pack_drop" / "naabu" / "meta.json").read_text(
+        encoding="utf-8"
+    )
+    naabu_note = (
+        ROOT / "fixtures" / "pack_drop" / "naabu" / "evidence" / "note.md"
+    ).read_text(encoding="utf-8")
+    naabu_sample = (ROOT / "fixtures" / "pack_drop" / "naabu" / "SAMPLE.txt").read_text(
+        encoding="utf-8"
+    )
     hp = (ROOT / "fixtures" / "demo" / "honeypot" / "SAMPLE.txt").read_text(encoding="utf-8")
     hp_meta = (ROOT / "fixtures" / "demo" / "honeypot" / "meta.json").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO — not a client estate" in meta
@@ -422,6 +442,11 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert '"adapter": "fping"' in fping_meta or '"adapter":"fping"' in fping_meta
     assert '"host_only": true' in fping_meta or '"host_only":true' in fping_meta
     assert "open_ports_invented" in fping_meta
+    assert "SAMPLE/DEMO — not a client estate" in naabu_meta
+    assert "SAMPLE/DEMO — not a client estate" in naabu_note
+    assert "not a client" in naabu_sample.lower() and "SAMPLE" in naabu_sample
+    assert "evergreen.pack_drop.v1" in naabu_meta
+    assert '"adapter": "naabu"' in naabu_meta or '"adapter":"naabu"' in naabu_meta
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
 
