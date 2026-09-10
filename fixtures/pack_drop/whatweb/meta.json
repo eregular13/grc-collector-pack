@@ -1,0 +1,32 @@
+{
+  "schema": "evergreen.pack_drop.v1",
+  "run_id": "whatweb-fixture",
+  "adapter": "whatweb",
+  "source": "evergreen-covey",
+  "lane": "nmap",
+  "demo": true,
+  "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export.",
+  "scope": {
+    "signer": "prove-lab",
+    "purpose": "evergreen-covey whatweb export fixture"
+  },
+  "honesty": {
+    "surface_map": true,
+    "honeypot_validated": false,
+    "control_operating_effectiveness": false,
+    "note": "surface map ≠ honeypot validated ≠ control operating effectiveness"
+  },
+  "ingest": {
+    "mode": "file_drop",
+    "riskready_post": false,
+    "ciso_assistant": "leave-behind file_drop only"
+  },
+  "created_at": "2026-09-08T00:00:00Z",
+  "generated_at": "2026-09-08T00:00:00Z",
+  "counts": {
+    "assets": 5,
+    "findings": 3,
+    "hosts": 2,
+    "services": 3
+  }
+}

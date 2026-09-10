@@ -16,6 +16,7 @@ HTTPX = ROOT / "fixtures" / "pack_drop" / "httpx"
 UNI = ROOT / "fixtures" / "pack_drop" / "unicornscan"
 SSL = ROOT / "fixtures" / "pack_drop" / "sslscan"
 TLSX = ROOT / "fixtures" / "pack_drop" / "tlsx"
+WHATWEB = ROOT / "fixtures" / "pack_drop" / "whatweb"
 DEMO_NMAP = ROOT / "fixtures" / "demo" / "nmap"
 
 
@@ -459,6 +460,95 @@ def test_pack_drop_tlsx_does_not_break_nmap_rustscan_httpx_unicornscan_or_sslsca
     assert all((r.get("extra") or {}).get("port") != "8443" for r in tlsx if r["kind"] == "finding")
 
 
+def test_pack_drop_whatweb_hosts_and_services() -> None:
+    recs = inventory_nmap.parse_file(WHATWEB / "assets.jsonl")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    names = {r["name"] for r in assets}
+    assert "10.9.8.70" in names
+    assert "10.9.8.71" in names
+    assert all("covey" in (r.get("labels") or []) for r in assets)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
+    assert {"8000", "8888", "9000"} <= ports
+    assert any("10.9.8.70" in (r.get("assets") or []) for r in findings)
+    assert all(r["source"] == "inventory-nmap" for r in recs)
+    assert all(r["ref_id"].startswith("NMAP-") for r in recs)
+
+
+def test_pack_drop_whatweb_observations_lift() -> None:
+    recs = inventory_nmap.parse_file(WHATWEB / "findings.jsonl")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert all(r["source"] == "inventory-nmap" for r in findings)
+    assert all(r["ref_id"].startswith("NMAP-") for r in findings)
+    titles = [r["name"] for r in findings]
+    assert any("8000" in t for t in titles)
+    assert any("8888" in t for t in titles)
+    assert any("9000" in t for t in titles)
+    claims = {(r.get("extra") or {}).get("claim") for r in findings}
+    assert "open_port_observed" in claims
+    assert any("10.9.8.70" in (r.get("assets") or []) for r in findings)
+    assert any("whatweb" in (r.get("labels") or []) for r in findings)
+    not_claimed = (findings[0].get("extra") or {}).get("not_claimed") or []
+    assert "vulnerability" in not_claimed
+    assert "control_operating_effectiveness" in not_claimed
+
+
+def test_pack_drop_whatweb_meta_and_evidence() -> None:
+    meta = inventory_nmap.parse_file(WHATWEB / "meta.json")
+    evid = [r for r in meta if r["kind"] == "evidence"]
+    assert evid
+    extra = evid[0].get("extra") or {}
+    assert extra.get("adapter") == "whatweb"
+    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    honesty = extra.get("honesty") or {}
+    assert honesty.get("surface_map") is True
+    assert honesty.get("control_operating_effectiveness") is False
+    ingest = extra.get("ingest") or {}
+    assert ingest.get("riskready_post") is False
+    note = inventory_nmap.parse_file(WHATWEB / "evidence" / "note.md")
+    assert note
+    assert all(r["kind"] == "evidence" for r in note)
+    assert looks_like_pack_drop(WHATWEB / "evidence" / "note.md")
+    sample = (WHATWEB / "SAMPLE.txt").read_text(encoding="utf-8")
+    assert "SAMPLE/DEMO — not a client estate" in sample
+    assert "not a client" in sample.lower()
+
+
+def test_pack_drop_whatweb_does_not_break_nmap_rustscan_httpx_unicornscan_sslscan_or_tlsx() -> None:
+    nmap = inventory_nmap.parse_file(DROP / "assets.jsonl")
+    rust = inventory_nmap.parse_file(RUST / "assets.jsonl")
+    httpx = inventory_nmap.parse_file(HTTPX / "assets.jsonl")
+    uni = inventory_nmap.parse_file(UNI / "assets.jsonl")
+    ssl = inventory_nmap.parse_file(SSL / "assets.jsonl")
+    tlsx = inventory_nmap.parse_file(TLSX / "assets.jsonl")
+    whatweb = inventory_nmap.parse_file(WHATWEB / "assets.jsonl")
+    assert any(r["name"] == "filesrv.corp.local" for r in nmap if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "445" for r in nmap if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.7" for r in rust if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "22" for r in rust if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.20" for r in httpx if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8080" for r in httpx if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.40" for r in uni if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "21" for r in uni if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.50" for r in ssl if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8443" for r in ssl if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.60" for r in tlsx if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "853" for r in tlsx if r["kind"] == "finding")
+    assert all(r["name"] != "filesrv.corp.local" for r in whatweb if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.7" for r in whatweb if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.20" for r in whatweb if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.40" for r in whatweb if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.50" for r in whatweb if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.60" for r in whatweb if r["kind"] == "asset")
+    assert all((r.get("extra") or {}).get("port") != "445" for r in whatweb if r["kind"] == "finding")
+    assert all((r.get("extra") or {}).get("port") != "22" for r in whatweb if r["kind"] == "finding")
+    assert all((r.get("extra") or {}).get("port") != "8080" for r in whatweb if r["kind"] == "finding")
+    assert all((r.get("extra") or {}).get("port") != "21" for r in whatweb if r["kind"] == "finding")
+    assert all((r.get("extra") or {}).get("port") != "8443" for r in whatweb if r["kind"] == "finding")
+    assert all((r.get("extra") or {}).get("port") != "853" for r in whatweb if r["kind"] == "finding")
+
+
 def test_pack_drop_docs_and_matrix() -> None:
     docs = (ROOT / "docs" / "COVEY_PACK_DROP.md").read_text(encoding="utf-8")
     assert "assets.jsonl" in docs
@@ -470,12 +560,14 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "unicornscan" in docs.lower()
     assert "sslscan" in docs.lower()
     assert "tlsx" in docs.lower()
+    assert "whatweb" in docs.lower()
     assert "evergreen.pack_drop.v1" in docs
     assert "fixtures/pack_drop/rustscan" in docs or "pack_drop/rustscan" in docs
     assert "fixtures/pack_drop/httpx" in docs or "pack_drop/httpx" in docs
     assert "fixtures/pack_drop/unicornscan" in docs or "pack_drop/unicornscan" in docs
     assert "fixtures/pack_drop/sslscan" in docs or "pack_drop/sslscan" in docs
     assert "fixtures/pack_drop/tlsx" in docs or "pack_drop/tlsx" in docs
+    assert "fixtures/pack_drop/whatweb" in docs or "pack_drop/whatweb" in docs
     prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
     assert "out/ciso-assistant" in prove
     assert "SAMPLE" in prove
