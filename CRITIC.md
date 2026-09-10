@@ -1,13 +1,9 @@
-# CRITIC — cycle 137 (CoS #31 item 2 nbtscan pack_drop → CISO prove)
+# CRITIC — cycle 138 (CoS #32 honesty sync; pack HEAD 1b365957)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #31 item 2: pack-side nbtscan host-only pack_drop lifts into
-CISO prove (`fixtures/pack_drop/nbtscan/`, `evergreen.pack_drop.v1`,
-hosts `10.9.8.34`/`10.9.8.35` + NetBIOS names SERVER/WORKSTATION;
-`netbios_name_observed` only; no invented open TCP ports). CoS #31
-honesty sync stands: Pack HEAD `7c7ef17c`
-(PR #51 nping pack_drop→CISO already on master). Item
-**COS30-PACK-DROP-NPING** = DONE. Next brick named = nbtscan.
+CoS #32 honesty sync: Pack HEAD `1b365957`
+(PR #53 nbtscan host-only pack_drop→CISO already on master). Item
+**COS31-PACK-DROP-NBTSCAN** = DONE. Next brick named = braa.
 Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -15,13 +11,14 @@ truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #32.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #33.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #31 / pack HEAD `7c7ef17c` / Covey HEAD `30d2197f`,
+cannot lag CoS #32 / pack HEAD `1b365957` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 136
-CoS #31 honesty stands as history. Cycle 135
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 137
+nbtscan pack_drop→CISO prove stands as history. Cycle 136
+COS31 honesty stands as history. Cycle 135
 nping pack_drop→CISO prove stands as history. Cycle 134
 COS30 honesty stands as history. Cycle 133
 naabu pack_drop→CISO prove stands as history. Cycle 132
