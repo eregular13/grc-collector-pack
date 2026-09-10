@@ -22,6 +22,7 @@ ONESIXTYONE = ROOT / "fixtures" / "pack_drop" / "onesixtyone"
 FPING = ROOT / "fixtures" / "pack_drop" / "fping"
 NAABU = ROOT / "fixtures" / "pack_drop" / "naabu"
 NPING = ROOT / "fixtures" / "pack_drop" / "nping"
+NBTSCAN = ROOT / "fixtures" / "pack_drop" / "nbtscan"
 DEMO_NMAP = ROOT / "fixtures" / "demo" / "nmap"
 
 
@@ -1035,6 +1036,132 @@ def test_pack_drop_nping_does_not_break_prior_adapters() -> None:
     assert any((r.get("extra") or {}).get("port") == "80" for r in nping if r["kind"] == "finding")
 
 
+def test_pack_drop_nbtscan_hosts_only() -> None:
+    recs = inventory_nmap.parse_file(NBTSCAN / "assets.jsonl")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = {r["name"] for r in assets}
+    assert "10.9.8.34" in names
+    assert "10.9.8.35" in names
+    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("nbtscan" in (r.get("labels") or []) for r in assets)
+    assert findings == []
+    assert all(not (r.get("extra") or {}).get("port") for r in recs)
+    assert all(not (r.get("extra") or {}).get("service") for r in recs)
+    assert all(r["source"] == "inventory-nmap" for r in recs)
+    assert all(r["ref_id"].startswith("NMAP-") for r in recs)
+
+
+def test_pack_drop_nbtscan_observations_lift() -> None:
+    recs = inventory_nmap.parse_file(NBTSCAN / "findings.jsonl")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) >= 2
+    assert all(r["source"] == "inventory-nmap" for r in findings)
+    assert all(r["ref_id"].startswith("NMAP-") for r in findings)
+    titles = [r["name"] for r in findings]
+    assert any("10.9.8.34" in t and "SERVER" in t for t in titles)
+    assert any("10.9.8.35" in t and "WORKSTATION" in t for t in titles)
+    extras = [r.get("extra") or {} for r in findings]
+    claims = {e.get("claim") for e in extras}
+    assert "netbios_name_observed" in claims
+    assert "open_port_observed" not in claims
+    assert all(not e.get("port") for e in extras)
+    assert all(not e.get("service") for e in extras)
+    names = {e.get("netbios_name") for e in extras if e.get("netbios_name")}
+    assert "SERVER" in names
+    assert "WORKSTATION" in names
+    assert any("10.9.8.34" in (r.get("assets") or []) for r in findings)
+    assert any("10.9.8.35" in (r.get("assets") or []) for r in findings)
+    assert any("nbtscan" in (r.get("labels") or []) for r in findings)
+    not_claimed = extras[0].get("not_claimed") or []
+    assert "open_port_observed" in not_claimed
+    assert "control_failure" in not_claimed
+    assert "control_operating_effectiveness" in not_claimed
+    assert "honeypot_validated" in not_claimed
+    assert "vulnerability" in not_claimed
+    assert "riskready_post" in not_claimed
+
+
+def test_pack_drop_nbtscan_meta_and_evidence() -> None:
+    meta = inventory_nmap.parse_file(NBTSCAN / "meta.json")
+    evid = [r for r in meta if r["kind"] == "evidence"]
+    assert evid
+    extra = evid[0].get("extra") or {}
+    assert extra.get("adapter") == "nbtscan"
+    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    honesty = extra.get("honesty") or {}
+    assert honesty.get("surface_map") is True
+    assert honesty.get("host_only") is True
+    assert honesty.get("open_ports_invented") is False
+    assert honesty.get("honeypot_validated") is False
+    assert honesty.get("control_operating_effectiveness") is False
+    ingest = extra.get("ingest") or {}
+    assert ingest.get("riskready_post") is False
+    counts = (NBTSCAN / "meta.json").read_text(encoding="utf-8")
+    assert '"services": 0' in counts or '"services":0' in counts
+    note = inventory_nmap.parse_file(NBTSCAN / "evidence" / "note.md")
+    assert note
+    assert all(r["kind"] == "evidence" for r in note)
+    assert looks_like_pack_drop(NBTSCAN / "evidence" / "note.md")
+    sample = (NBTSCAN / "SAMPLE.txt").read_text(encoding="utf-8")
+    assert "SAMPLE/DEMO — not a client estate" in sample
+    assert "not a client" in sample.lower()
+    assert "netbios" in sample.lower() or "nbtscan" in sample.lower()
+    assert "no invented" in sample.lower() or "tcp" in sample.lower()
+
+
+def test_pack_drop_nbtscan_does_not_break_prior_adapters() -> None:
+    nmap = inventory_nmap.parse_file(DROP / "assets.jsonl")
+    rust = inventory_nmap.parse_file(RUST / "assets.jsonl")
+    httpx = inventory_nmap.parse_file(HTTPX / "assets.jsonl")
+    uni = inventory_nmap.parse_file(UNI / "assets.jsonl")
+    ssl = inventory_nmap.parse_file(SSL / "assets.jsonl")
+    tlsx = inventory_nmap.parse_file(TLSX / "assets.jsonl")
+    whatweb = inventory_nmap.parse_file(WHATWEB / "assets.jsonl")
+    hping3 = inventory_nmap.parse_file(HPING3 / "assets.jsonl")
+    onesixtyone = inventory_nmap.parse_file(ONESIXTYONE / "assets.jsonl")
+    fping = inventory_nmap.parse_file(FPING / "assets.jsonl")
+    naabu = inventory_nmap.parse_file(NAABU / "assets.jsonl")
+    nping = inventory_nmap.parse_file(NPING / "assets.jsonl")
+    nbtscan = inventory_nmap.parse_file(NBTSCAN / "assets.jsonl")
+    assert any(r["name"] == "filesrv.corp.local" for r in nmap if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "445" for r in nmap if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.7" for r in rust if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "22" for r in rust if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.20" for r in httpx if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8080" for r in httpx if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.40" for r in uni if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "21" for r in uni if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.50" for r in ssl if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8443" for r in ssl if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.60" for r in tlsx if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "853" for r in tlsx if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.70" for r in whatweb if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8000" for r in whatweb if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.80" for r in hping3 if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in hping3)
+    assert any(r["name"] == "10.9.8.90" for r in onesixtyone if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in onesixtyone)
+    assert any(r["name"] == "10.9.8.10" for r in fping if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in fping)
+    assert any(r["name"] == "10.9.8.30" for r in naabu if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "80" for r in naabu if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.32" for r in nping if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "80" for r in nping if r["kind"] == "finding")
+    assert all(r["name"] != "filesrv.corp.local" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.7" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.10" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.20" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.30" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.32" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.80" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.90" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in nbtscan)
+    assert all(not (r.get("extra") or {}).get("port") for r in nbtscan)
+    assert any(r["name"] == "10.9.8.34" for r in nbtscan if r["kind"] == "asset")
+    assert any(r["name"] == "10.9.8.35" for r in nbtscan if r["kind"] == "asset")
+
+
 def test_pack_drop_docs_and_matrix() -> None:
     docs = (ROOT / "docs" / "COVEY_PACK_DROP.md").read_text(encoding="utf-8")
     assert "assets.jsonl" in docs
@@ -1052,6 +1179,7 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "fping" in docs.lower()
     assert "naabu" in docs.lower()
     assert "nping" in docs.lower()
+    assert "nbtscan" in docs.lower()
     assert "evergreen.pack_drop.v1" in docs
     assert "fixtures/pack_drop/rustscan" in docs or "pack_drop/rustscan" in docs
     assert "fixtures/pack_drop/httpx" in docs or "pack_drop/httpx" in docs
@@ -1064,6 +1192,7 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "fixtures/pack_drop/fping" in docs or "pack_drop/fping" in docs
     assert "fixtures/pack_drop/naabu" in docs or "pack_drop/naabu" in docs
     assert "fixtures/pack_drop/nping" in docs or "pack_drop/nping" in docs
+    assert "fixtures/pack_drop/nbtscan" in docs or "pack_drop/nbtscan" in docs
     prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
     assert "out/ciso-assistant" in prove
     assert "SAMPLE" in prove

@@ -187,6 +187,8 @@ def _lift_record(
         "community",
         "sysDescr",
         "sysdescr",
+        "netbios_name",
+        "nb_name",
     ):
         if row.get(key) not in (None, "") and key not in extra_out:
             extra_out[key] = str(row.get(key)) if key == "port" else row.get(key)

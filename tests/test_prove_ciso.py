@@ -80,6 +80,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "10.9.8.31" in assets
     assert "10.9.8.32" in assets
     assert "10.9.8.33" in assets
+    assert "10.9.8.34" in assets
+    assert "10.9.8.35" in assets
     assert "SMB" in findings
     assert (
         "open_port_observed" in findings.lower()
@@ -102,6 +104,20 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "fping" in evid.lower() or "10.9.8.10" in evid or "host_up" in findings.lower()
     assert "naabu" in evid.lower() or "10.9.8.30" in evid or "open_port" in findings.lower()
     assert "nping" in evid.lower() or "10.9.8.32" in evid or "open_port" in findings.lower()
+    assert (
+        "nbtscan" in evid.lower()
+        or "10.9.8.34" in evid
+        or "netbios_name" in findings.lower()
+    )
+    assert "SERVER" in findings or "netbios" in findings.lower()
+    assert "WORKSTATION" in findings or "10.9.8.35" in findings
+    for line in findings.splitlines():
+        if "10.9.8.34" in line or "10.9.8.35" in line:
+            low = line.lower()
+            assert "open_port_observed" not in low
+            assert "tcp/80" not in low
+            assert "tcp/443" not in low
+            assert "tcp/22" not in low
     assert "demo" in findings.lower() or "SAMPLE" in findings
     assert "deception-sensor" in findings.lower()
     assert "beelzebub" in findings.lower() or "beelzebub" in assets.lower()
@@ -129,6 +145,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "naabu" / "meta.json").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nping" / "assets.jsonl").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nping" / "meta.json").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "assets.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "meta.json").is_file()
     rust_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
     ).read_text(encoding="utf-8")
@@ -199,6 +217,24 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "evergreen.pack_drop.v1" in nping_meta
     assert "nping" in nping_meta
     assert "SAMPLE/DEMO — not a client estate" in nping_meta
+    nbtscan_meta = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "meta.json"
+    ).read_text(encoding="utf-8")
+    assert "evergreen.pack_drop.v1" in nbtscan_meta
+    assert "nbtscan" in nbtscan_meta
+    assert "SAMPLE/DEMO — not a client estate" in nbtscan_meta
+    assert "host_only" in nbtscan_meta or "host-only" in nbtscan_meta
+    assert "open_ports_invented" in nbtscan_meta
+    assert "netbios" in nbtscan_meta.lower()
+    nbtscan_findings = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "findings.jsonl"
+    ).read_text(encoding="utf-8")
+    assert "netbios_name_observed" in nbtscan_findings
+    assert '"claim":"open_port_observed"' not in nbtscan_findings
+    assert '"claim": "open_port_observed"' not in nbtscan_findings
+    assert '"port"' not in nbtscan_findings
+    assert "SERVER" in nbtscan_findings
+    assert "WORKSTATION" in nbtscan_findings
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
@@ -406,6 +442,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     nping_sample = (ROOT / "fixtures" / "pack_drop" / "nping" / "SAMPLE.txt").read_text(
         encoding="utf-8"
     )
+    nbtscan_meta = (ROOT / "fixtures" / "pack_drop" / "nbtscan" / "meta.json").read_text(
+        encoding="utf-8"
+    )
+    nbtscan_note = (
+        ROOT / "fixtures" / "pack_drop" / "nbtscan" / "evidence" / "note.md"
+    ).read_text(encoding="utf-8")
+    nbtscan_sample = (ROOT / "fixtures" / "pack_drop" / "nbtscan" / "SAMPLE.txt").read_text(
+        encoding="utf-8"
+    )
     hp = (ROOT / "fixtures" / "demo" / "honeypot" / "SAMPLE.txt").read_text(encoding="utf-8")
     hp_meta = (ROOT / "fixtures" / "demo" / "honeypot" / "meta.json").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO — not a client estate" in meta
@@ -472,6 +517,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "not a client" in nping_sample.lower() and "SAMPLE" in nping_sample
     assert "evergreen.pack_drop.v1" in nping_meta
     assert '"adapter": "nping"' in nping_meta or '"adapter":"nping"' in nping_meta
+    assert "SAMPLE/DEMO — not a client estate" in nbtscan_meta
+    assert "SAMPLE/DEMO — not a client estate" in nbtscan_note
+    assert "not a client" in nbtscan_sample.lower() and "SAMPLE" in nbtscan_sample
+    assert "evergreen.pack_drop.v1" in nbtscan_meta
+    assert '"adapter": "nbtscan"' in nbtscan_meta or '"adapter":"nbtscan"' in nbtscan_meta
+    assert '"host_only": true' in nbtscan_meta or '"host_only":true' in nbtscan_meta
+    assert "open_ports_invented" in nbtscan_meta
+    assert "netbios" in nbtscan_meta.lower()
+    assert '"services": 0' in nbtscan_meta or '"services":0' in nbtscan_meta
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
 
