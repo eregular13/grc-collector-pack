@@ -1,9 +1,12 @@
-# CRITIC — cycle 132 (CoS #29 honesty sync; pack HEAD e342823b)
+# CRITIC — cycle 133 (CoS #29 item 2 naabu pack_drop → CISO prove)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #29 honesty sync: Pack HEAD `e342823b`
-(PR #47 fping host-only pack_drop→CISO already on master). Item
-**COS28-PACK-DROP-FPING** = DONE. Next brick named = naabu.
+CoS #29 item 2: pack-side naabu port/service pack_drop lifts into
+CISO prove (`fixtures/pack_drop/naabu/`, `evergreen.pack_drop.v1`,
+hosts `10.9.8.30`/`10.9.8.31` + open TCP 80/443/22;
+`open_port_observed` only). CoS #29 honesty sync stands: Pack HEAD
+`e342823b` (PR #47 fping host-only pack_drop→CISO already on master).
+Item **COS28-PACK-DROP-FPING** = DONE. Next brick named = naabu.
 Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -16,7 +19,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #29 / pack HEAD `e342823b` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 131
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 132
+CoS #29 honesty stands as history. Cycle 131
 fping pack_drop→CISO prove stands as history. Cycle 130
 CoS #28 honesty stands as history. Cycle 129
 onesixtyone pack_drop→CISO prove stands as history. Cycle 128
@@ -47,5 +51,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 443, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 447, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
