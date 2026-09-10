@@ -30,9 +30,9 @@ COVEY_E2E_PROVEN = (
 )
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "cccfa800"
-STALE_PACK_HEAD = "5bd77cde"
-STALE_PACK_HONESTY = "eedca686"
+COVEY_PACK_HEAD = "437b77dd"
+STALE_PACK_HEAD = "cccfa800"
+STALE_PACK_HONESTY = "5bd77cde"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -87,9 +87,9 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #24" in low
+    assert "cos #25" in low
     assert "honesty sync" in low
-    assert "cos23-pack-drop-sslscan" in low
+    assert "cos24-pack-drop-tlsx" in low
     assert status.get("item") == "COS24-PACK-DROP-TLSX"
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
@@ -113,6 +113,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #21" not in low
     assert "cos #22" not in low
     assert "cos #23" not in low
+    assert "cos #24" not in low
     assert "covey" in low
     assert "e2e_proven" in low
     assert "closed" in low
@@ -130,8 +131,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD cccfa800 (PR #37). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #23 / pack 5bd77cde / eedca686.
+    # Pack HEAD 437b77dd (PR #39). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #24 / pack cccfa800 / 5bd77cde.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -177,11 +178,11 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-121 notes."""
+    """Current-cycle window / newest delta — not historical cycle-123 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 124):",
         "**Delta (cycle 123):",
-        "**Delta (cycle 122):",
     ):
         if needle in text:
             idx = text.index(needle)
@@ -206,7 +207,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #24" in low, f"{where} missing CoS #24 stamp"
+        assert "cos #25" in low, f"{where} missing CoS #25 stamp"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -219,8 +220,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos24_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #24 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos25_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #25 pack HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
@@ -242,6 +243,7 @@ def test_status_and_live_docs_match_cos24_covey_e2e_proven() -> None:
     assert "cos #21" not in low
     assert "cos #22" not in low
     assert "cos #23" not in low
+    assert "cos #24" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
@@ -262,11 +264,11 @@ def test_status_and_live_docs_match_cos24_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #24")
+                idx = text.find("CoS #25")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #24 this-window copy"
+        assert window, f"{path} missing CoS #25 this-window copy"
         win_low = window.lower()
-        assert "cos #24" in win_low, f"{path} this-window is not CoS #24"
+        assert "cos #25" in win_low, f"{path} this-window is not CoS #25"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
         assert "pack_drop" in win_low, f"{path} this-window missing pack_drop export"

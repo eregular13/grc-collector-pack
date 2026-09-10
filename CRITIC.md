@@ -1,23 +1,22 @@
-# CRITIC — cycle 123 (CoS #24 tlsx pack_drop → CISO prove)
+# CRITIC — cycle 124 (CoS #25 honesty sync; pack HEAD 437b77dd)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #24 item 2: pack-side tlsx stdout-class pack_drop lifts into
-CISO prove (`fixtures/pack_drop/tlsx/`, `evergreen.pack_drop.v1`).
-CoS #24 honesty sync stands: Pack HEAD `cccfa800`
-(PR #37 sslscan pack_drop→CISO already on master). Item
-**COS23-PACK-DROP-SSLSCAN** = DONE. Covey HEAD still `30d2197f`
+CoS #25 honesty sync: Pack HEAD `437b77dd`
+(PR #39 tlsx pack_drop→CISO already on master). Item
+**COS24-PACK-DROP-TLSX** = DONE. Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
 truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #25.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #26.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #24 / pack HEAD `cccfa800` / Covey HEAD `30d2197f`,
+cannot lag CoS #25 / pack HEAD `437b77dd` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 122
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 123
+tlsx pack_drop→CISO prove stands as history. Cycle 122
 CoS #24 honesty stands as history. Cycle 121
 sslscan pack_drop→CISO prove stands as history. Cycle 120
 CoS #23 honesty stands as history. Cycle 119

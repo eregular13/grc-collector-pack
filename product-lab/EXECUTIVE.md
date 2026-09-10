@@ -2,26 +2,24 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 123):** CoS #24 item 2 — pack-side
-tlsx stdout-class pack_drop → CISO prove
-(`fixtures/pack_drop/tlsx/`, evergreen.pack_drop.v1). CoS
-#24 honesty sync stands. Pack HEAD
-`cccfa800` (PR #37 sslscan pack_drop→CISO already on
+**This window (cycle 124):** CoS #25 honesty sync. Pack HEAD
+`437b77dd` (PR #39 tlsx pack_drop→CISO already on
 master). Covey HEAD still `30d2197f` multi-adapter pack_drop
 export for all 16 `E2E_PROVEN`. Item
-**COS23-PACK-DROP-SSLSCAN** = DONE. 20-adapter lane
+**COS24-PACK-DROP-TLSX** = DONE. 20-adapter lane
 **CLOSED** stands. STATUS `next_action` is current truth —
 Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb +
 hping3 + onesixtyone + nbtscan + braa + ike-scan + svmap +
 unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #25. Reid-only
+start Covey adapter work. Stop for CoS #26. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 122 CoS #24 honesty stands as
+invoke / 81 file_drop). Cycle 123 tlsx pack_drop→CISO
+prove stands as history. Cycle 122 CoS #24 honesty stands as
 history. Cycle 121 sslscan pack_drop→CISO
 prove stands as history. Cycle 120 CoS #23 honesty stands as
 history. Cycle 119 unicornscan pack_drop→CISO
