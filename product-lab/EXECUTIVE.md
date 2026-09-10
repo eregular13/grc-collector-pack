@@ -2,10 +2,13 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 126):** CoS #26 honesty sync. Pack HEAD
-`8c4a7afd` (PR #41 whatweb pack_drop→CISO already on
-master). Covey HEAD still `30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item
+**This window (cycle 127):** CoS #26 item 2 — pack-side
+hping3 stdout-class pack_drop → CISO prove
+(`fixtures/pack_drop/hping3/`, evergreen.pack_drop.v1,
+host-only ICMP; no invented ports). CoS #26 honesty sync
+stands. Pack HEAD `8c4a7afd` (PR #41 whatweb pack_drop→CISO
+already on master). Covey HEAD still `30d2197f` multi-adapter
+pack_drop export for all 16 `E2E_PROVEN`. Item
 **COS25-PACK-DROP-WHATWEB** = DONE. 20-adapter lane
 **CLOSED** stands. STATUS `next_action` is current truth —
 Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
@@ -18,7 +21,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 125 whatweb pack_drop→CISO
+invoke / 81 file_drop). Cycle 126 CoS #26 honesty stands as
+history. Cycle 125 whatweb pack_drop→CISO
 prove stands as history. Cycle 124 CoS #25 honesty stands as
 history. Cycle 123 tlsx pack_drop→CISO
 prove stands as history. Cycle 122 CoS #24 honesty stands as

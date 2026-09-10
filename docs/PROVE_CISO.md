@@ -34,12 +34,15 @@ What that does (isolated under `prove/work/`, never pack `in/`):
    (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
 7. Copy `fixtures/pack_drop/whatweb/` → `prove/work/in/nmap/pack_drop/whatweb/`
    (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
-8. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-9. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+8. Copy `fixtures/pack_drop/hping3/` → `prove/work/in/nmap/pack_drop/hping3/`
+   (host-only ICMP stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
+   no invented open ports)
+9. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+10. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-10. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-11. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-12. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+11. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+12. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+13. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -68,7 +71,9 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #26 honesty sync. Pack HEAD `8c4a7afd`
+CoS #26 item 2 — pack-side hping3 stdout-class pack_drop → CISO
+prove (`fixtures/pack_drop/hping3/`, host-only ICMP; no invented
+ports). CoS #26 honesty sync stands. Pack HEAD `8c4a7afd`
 (PR #41 whatweb pack_drop→CISO already on master). Covey HEAD
 still `30d2197f` multi-adapter pack_drop export for all 16
 `E2E_PROVEN`. Item **COS25-PACK-DROP-WHATWEB** = DONE.
