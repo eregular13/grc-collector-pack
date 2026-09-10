@@ -49,12 +49,15 @@ What that does (isolated under `prove/work/`, never pack `in/`):
 12. Copy `fixtures/pack_drop/nping/` → `prove/work/in/nmap/pack_drop/nping/`
    (port/service stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
    ICMP echo + TCP handshake completed; open TCP ports + `open_port_observed` only)
-13. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-14. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+13. Copy `fixtures/pack_drop/nbtscan/` → `prove/work/in/nmap/pack_drop/nbtscan/`
+   (host-only NetBIOS name-table stdout-class Covey `export_pack`;
+   `evergreen.pack_drop.v1`; no invented open TCP ports)
+14. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+15. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-15. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-16. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-17. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+16. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+17. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+18. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -83,7 +86,8 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #31 honesty stamp. Pack HEAD
+CoS #31 item 2 nbtscan host-only pack_drop → CISO prove.
+CoS #31 honesty stamp stands. Pack HEAD
 `7c7ef17c` (PR #51 nping pack_drop→CISO already on
 master). Covey HEAD still `30d2197f` multi-adapter pack_drop export
 for all 16 `E2E_PROVEN`. Item **COS30-PACK-DROP-NPING** = DONE.

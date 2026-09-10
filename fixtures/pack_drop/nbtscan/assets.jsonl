@@ -1,0 +1,2 @@
+{"kind":"host","address":"10.9.8.34","state":"up","source":"parse_live_hosts","adapter":"nbtscan","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. NetBIOS name-table host discover; no invented open TCP ports."}
+{"kind":"host","address":"10.9.8.35","state":"up","source":"parse_live_hosts","adapter":"nbtscan","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. NetBIOS name-table host discover; no invented open TCP ports."}
