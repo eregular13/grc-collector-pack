@@ -568,16 +568,18 @@ def test_pack_drop_hping3_hosts_only() -> None:
 def test_pack_drop_hping3_observations_lift() -> None:
     recs = inventory_nmap.parse_file(HPING3 / "findings.jsonl")
     findings = [r for r in recs if r["kind"] == "finding"]
-    assert findings
+    assert len(findings) >= 2
     assert all(r["source"] == "inventory-nmap" for r in findings)
     assert all(r["ref_id"].startswith("NMAP-") for r in findings)
     titles = [r["name"] for r in findings]
-    assert any("ICMP" in t or "host up" in t.lower() for t in titles)
+    assert any("10.9.8.80" in t and ("ICMP" in t or "host up" in t.lower()) for t in titles)
+    assert any("10.9.8.81" in t and ("ICMP" in t or "host up" in t.lower()) for t in titles)
     claims = {(r.get("extra") or {}).get("claim") for r in findings}
     assert "host_up_observed" in claims
     assert "open_port_observed" not in claims
     assert all(not (r.get("extra") or {}).get("port") for r in findings)
     assert any("10.9.8.80" in (r.get("assets") or []) for r in findings)
+    assert any("10.9.8.81" in (r.get("assets") or []) for r in findings)
     assert any("hping3" in (r.get("labels") or []) for r in findings)
     not_claimed = (findings[0].get("extra") or {}).get("not_claimed") or []
     assert "open_port_observed" in not_claimed
