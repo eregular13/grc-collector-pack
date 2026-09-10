@@ -1,0 +1,5 @@
+{"kind":"host","address":"10.9.8.32","state":"up","source":"parse_live_hosts","adapter":"nping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"host","address":"10.9.8.33","state":"up","source":"parse_live_hosts","adapter":"nping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","address":"10.9.8.32","port":80,"protocol":"tcp","state":"open","source":"pass2","adapter":"nping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","address":"10.9.8.32","port":443,"protocol":"tcp","state":"open","source":"pass2","adapter":"nping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","address":"10.9.8.33","port":22,"protocol":"tcp","state":"open","source":"pass2","adapter":"nping","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}

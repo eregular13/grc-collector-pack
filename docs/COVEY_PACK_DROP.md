@@ -9,13 +9,14 @@ Covey HEAD `30d2197f` `export_pack` writes the same layout for all 16
 `E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and
 stdout/XML-class fixtures (**rustscan**, **httpx**, **unicornscan**,
 **sslscan**, **tlsx**, **whatweb**, **hping3**, **onesixtyone**,
-**fping**, **naabu**). Other
-stdout-class adapters (nping, nbtscan, …) use the same files when dropped here —
-no 17th live adapter, no pack Covey adapter work. hping3 and fping are
-**host-only** (ICMP / reachability discover); onesixtyone is **SNMP
-community/sysDescr** discover. naabu is **port/service discovery**
-(open TCP ports + `open_port_observed` only). Host-only fixtures invent
-no open TCP ports.
+**fping**, **naabu**, **nping**). Other
+stdout-class adapters (nbtscan, braa, ike-scan, svmap, …) use the same
+files when dropped here — no 17th live adapter, no pack Covey adapter
+work. hping3 and fping are **host-only** (ICMP / reachability discover);
+onesixtyone is **SNMP community/sysDescr** discover. naabu and nping are
+**port/service discovery** (open TCP ports + `open_port_observed` only;
+nping from ICMP echo replies + TCP handshake completed, not RST/refused).
+Host-only fixtures invent no open TCP ports.
 
 ## Drop shape
 
@@ -63,8 +64,9 @@ stdout/XML-class `fixtures/pack_drop/sslscan/`, stdout-class
 `fixtures/pack_drop/whatweb/`, host-only stdout-class
 `fixtures/pack_drop/hping3/`, SNMP community/sysDescr stdout-class
 `fixtures/pack_drop/onesixtyone/`, host-only ICMP/reachability
-stdout-class `fixtures/pack_drop/fping/`, and port/service
-stdout-class `fixtures/pack_drop/naabu/`
+stdout-class `fixtures/pack_drop/fping/`, port/service
+stdout-class `fixtures/pack_drop/naabu/`, and port/service
+stdout-class `fixtures/pack_drop/nping/`
 (Covey `export_pack` shape).
 **SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)
