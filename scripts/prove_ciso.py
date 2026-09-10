@@ -29,7 +29,7 @@ CISO_CSVS = (
 )
 SAMPLE_BANNER = (
     "SAMPLE/DEMO — not a client estate.\n"
-    "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan) + honeypot file_drop. Not a client export.\n"
+    "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx) + honeypot file_drop. Not a client export.\n"
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 
@@ -68,6 +68,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     httpx_drop = dest_in / "nmap" / "pack_drop" / "httpx"
     unicornscan_drop = dest_in / "nmap" / "pack_drop" / "unicornscan"
     sslscan_drop = dest_in / "nmap" / "pack_drop" / "sslscan"
+    tlsx_drop = dest_in / "nmap" / "pack_drop" / "tlsx"
     honeypot = dest_in / "honeypot"
     beelzebub = dest_in / "honeypot" / "pack_drop"
     _copy_tree(root / "fixtures" / "pack_drop" / "nmap", nmap_drop)
@@ -75,6 +76,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     _copy_tree(root / "fixtures" / "pack_drop" / "httpx", httpx_drop)
     _copy_tree(root / "fixtures" / "pack_drop" / "unicornscan", unicornscan_drop)
     _copy_tree(root / "fixtures" / "pack_drop" / "sslscan", sslscan_drop)
+    _copy_tree(root / "fixtures" / "pack_drop" / "tlsx", tlsx_drop)
     _copy_tree(root / "fixtures" / "demo" / "honeypot", honeypot)
     _copy_tree(root / "fixtures" / "demo" / "honeypot_beelzebub", beelzebub)
     (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
@@ -83,6 +85,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     (httpx_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (unicornscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (sslscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    (tlsx_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     return {
@@ -92,6 +95,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
         "httpx": str(httpx_drop),
         "unicornscan": str(unicornscan_drop),
         "sslscan": str(sslscan_drop),
+        "tlsx": str(tlsx_drop),
         "honeypot": str(honeypot),
         "beelzebub": str(beelzebub),
         "sample": True,
@@ -155,6 +159,7 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         and "10.9.8.20" in assets_text
         and "10.9.8.40" in assets_text
         and "10.9.8.50" in assets_text
+        and "10.9.8.60" in assets_text
         and "SMB" in findings_text
         and (
             "open_port_observed" in findings_text.lower()
@@ -202,7 +207,7 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
         "note": (
-            "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan stdout/XML-class) + honeypot → "
+            "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx stdout-class) + honeypot → "
             "existing collectors → grc_loader → out/ciso-assistant. SAMPLE ≠ client. "
             "This prove is not a paying-day PASS."
         ),

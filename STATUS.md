@@ -1,6 +1,6 @@
-cycle: 122
+cycle: 123
 phase: DONE
-item: COS23-PACK-DROP-SSLSCAN
+item: COS24-PACK-DROP-TLSX
 critic_score: 8/10
 open_p0:
 open_p1:
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 423
+pytest: 427
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
