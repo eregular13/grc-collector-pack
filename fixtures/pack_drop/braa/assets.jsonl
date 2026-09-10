@@ -1,0 +1,2 @@
+{"kind":"host","address":"10.9.8.92","state":"up","source":"parse_live_hosts","adapter":"braa","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. SNMP GET sweeper (OID/sysDescr/sysName); no invented open TCP ports."}
+{"kind":"host","address":"10.9.8.93","state":"up","source":"parse_live_hosts","adapter":"braa","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. SNMP GET sweeper (OID/sysDescr/sysName); no invented open TCP ports."}

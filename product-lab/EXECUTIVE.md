@@ -2,8 +2,10 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 138):** CoS #32 honesty sync.
-Pack HEAD `1b365957` (PR #53 nbtscan host-only pack_drop→CISO already
+**This window (cycle 139):** CoS #32 item 2 — pack-side braa
+host-only SNMP pack_drop → CISO prove. CoS #32 honesty sync
+stands. Pack HEAD `1b365957` (PR #53 nbtscan host-only
+pack_drop→CISO already
 on master). Covey HEAD still `30d2197f` multi-adapter pack_drop
 export for all 16 `E2E_PROVEN`. Item
 **COS31-PACK-DROP-NBTSCAN** = DONE. Next brick named =
@@ -18,7 +20,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 137 nbtscan pack_drop→CISO
+invoke / 81 file_drop). Cycle 138 CoS #32 honesty stands as
+history. Cycle 137 nbtscan pack_drop→CISO
 prove stands as history. Cycle 136 COS31 honesty stands as
 history. Cycle 135 nping pack_drop→CISO
 prove stands as history. Cycle 134 COS30 honesty stands as

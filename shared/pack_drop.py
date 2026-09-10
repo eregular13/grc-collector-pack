@@ -187,6 +187,9 @@ def _lift_record(
         "community",
         "sysDescr",
         "sysdescr",
+        "sysName",
+        "sysname",
+        "oid",
         "netbios_name",
         "nb_name",
     ):

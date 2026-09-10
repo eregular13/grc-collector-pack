@@ -14,7 +14,7 @@ Machine-readable twin: [`evidence_matrix.yaml`](evidence_matrix.yaml)
 | cloud | `in/cloud/` | Prowler / ScoutSuite / Steampipe / Custodian / ASFF file_drop | exists |
 | DNS/email | `in/dns_email/` | SPF/DKIM/DMARC/MX + PEM/crt.sh Seen (Covey `email_dns`) | exists |
 | DNS/email EASM | `in/easm/` | Amass / Subfinder / httpx / WhatWeb / ffuf file_drop | exists |
-| Covey | `in/nmap/` | pack_drop `assets.jsonl` + `findings.jsonl` + `meta.json` + `evidence/` (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping + nbtscan stdout/XML-class; hping3/fping host-only ICMP; onesixtyone SNMP community/sysDescr; nbtscan NetBIOS name-table host-only; naabu/nping port/service open_port_observed; also gnmap/XML/…) | exists — see [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md) |
+| Covey | `in/nmap/` | pack_drop `assets.jsonl` + `findings.jsonl` + `meta.json` + `evidence/` (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping + nbtscan + braa stdout/XML-class; hping3/fping host-only ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName host-only; nbtscan NetBIOS name-table host-only; naabu/nping port/service open_port_observed; also gnmap/XML/…) | exists — see [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md) |
 | VM | `in/vuln/` | OpenVAS/Greenbone / Nuclei / Trivy / Nessus / Nikto / testssl / SARIF **file_drop only** | exists |
 | honeypot | `in/honeypot/` | fleet-sensor (Palisade stage 1\|2) **or** Beelzebub pack_drop `events.jsonl` / `sessions.jsonl` / `meta.json` (`honeypot_event.v1`; Beelzebub `stage` is null) | stubbed + fixture — [HONEYPOT_BEELZEBUB.md](HONEYPOT_BEELZEBUB.md) |
 
