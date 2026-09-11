@@ -97,7 +97,10 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #44 honesty sync. Pack HEAD
+CoS #44 honesty sync + item 2 — global pack_drop
+observation/finding port→service (or nested asset ports)
+referential lock (`tests/test_pack_drop_observation_service_ports.py`).
+Pack HEAD
 `8c442a33` (PR #77 service→host refs
 already on master). Item **COS44-HONESTY**. Item
 **COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK** = DONE.

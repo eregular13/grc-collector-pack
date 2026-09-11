@@ -37,7 +37,14 @@ and global service→host address referential lock
 (`tests/test_pack_drop_service_host_refs.py`; every `kind:service`
 address/ip matches a same-file `kind:host` address or `kind:asset`
 ip/hostname/name; host-only adapters invent zero service rows;
-nmap asset+ports-only is OK with zero `kind:service` rows).
+nmap asset+ports-only is OK with zero `kind:service` rows),
+and global observation/finding port→service (or nested asset ports)
+referential lock
+(`tests/test_pack_drop_observation_service_ports.py`; every
+`findings.jsonl` row that carries a `port` field matches a same-file
+`kind:service` on address+port+protocol or a same-file `kind:asset`
+nested `ports[]` entry; host-only adapters have zero ported
+findings/observations).
 hping3 and fping are
 **host-only** (ICMP / reachability discover); onesixtyone is **SNMP
 community/sysDescr** discover; braa is an **SNMP GET sweeper** (OID /
