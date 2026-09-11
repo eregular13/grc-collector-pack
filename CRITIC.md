@@ -1,18 +1,12 @@
-# CRITIC — cycle 159 (CoS #42 honesty sync + item 2 kind-partition lock)
+# CRITIC — cycle 160 (CoS #43 honesty sync)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #42 honesty sync + item 2: global pack_drop kind-partition
-lock (`tests/test_pack_drop_kind_partition.py` parametrized over all
-sixteen `fixtures/pack_drop/` adapters; assets kinds `{asset, host, service}`
-exact; findings kinds `{finding, observation}` exact; no cross-file
-leakage; SAMPLE/DEMO ≠ client;
-UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
-Pack HEAD `2b895c17`
-(PR #73 JSONL row schema identity lock already on master).
-Item **COS42-HONESTY**. Item
-**COS41-PACK-DROP-ROW-SCHEMA-LOCK** = DONE.
+CoS #43 honesty sync. Pack HEAD `f04218b2`
+(PR #75 kind-partition lock already on master).
+Item **COS43-HONESTY**. Item
+**COS42-PACK-DROP-KIND-PARTITION-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop
-kind-partition lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
+service→host address referential lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
 unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -20,12 +14,13 @@ truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #43.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #44.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #42 / pack HEAD `2b895c17` / Covey HEAD `30d2197f`,
+cannot lag CoS #43 / pack HEAD `f04218b2` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 158
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 159
+kind-partition lock stands as history. Cycle 158
 honesty stands as history. Cycle 157
 JSONL row schema identity lock stands as history. Cycle 156
 honesty stands as history. Cycle 155
