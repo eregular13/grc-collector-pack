@@ -2,7 +2,10 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 142):** CoS #34 honesty sync. Pack HEAD
+**This window (cycle 143):** CoS #34 item 2 — pack-side svmap
+SIP Device/UA pack_drop → CISO prove (DEMO hosts
+`10.9.8.96`/`10.9.8.97`, real UA, UDP/5060 sip, unique ids).
+CoS #34 honesty sync stands. Pack HEAD
 `d6e766be` (PR #57 ike-scan host-only
 pack_drop→CISO already on master).
 Covey HEAD still

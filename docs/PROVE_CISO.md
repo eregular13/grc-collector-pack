@@ -59,12 +59,16 @@ What that does (isolated under `prove/work/`, never pack `in/`):
    (host-only IKE Main Mode / Aggressive Mode sweeper stdout-class Covey
    `export_pack`; `evergreen.pack_drop.v1`; handshake / VPN responder;
    IKE/VPN discover ≠ open TCP port; no invented open TCP ports)
-16. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
-17. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
+16. Copy `fixtures/pack_drop/svmap/` → `prove/work/in/nmap/pack_drop/svmap/`
+   (SIP Device/UA stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
+   real User-Agent only; UDP SIP from the svmap table only, default 5060;
+   unique observation ids; no invented TCP)
+17. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
+18. Copy `fixtures/demo/honeypot_beelzebub/` → `prove/work/in/honeypot/pack_drop/`
    (Beelzebub login/cmd/session; `stage` null)
-18. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
-19. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
-20. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
+19. Stamp `SAMPLE.txt` (`SAMPLE/DEMO — not a client estate`)
+20. Run the existing SoR path: `run_ciso_path` (same as `python3 -m dropbox ciso`)
+21. Write `prove/work/out/ciso-assistant/*.csv` and `prove/work/prove-ciso.json`
 
 Operator-shaped equivalent after the seed (same SoR, still dry):
 
@@ -95,7 +99,9 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 
 CoS #34 honesty stamp. Pack HEAD
 `d6e766be` (PR #57 ike-scan host-only pack_drop→CISO already on
-master). Covey HEAD still
+master). Cycle 143 CoS #34 item 2 lands pack-side svmap SIP
+Device/UA pack_drop→CISO (DEMO hosts `10.9.8.96`/`10.9.8.97`,
+real UA, UDP/5060 sip, unique ids). Covey HEAD still
 `30d2197f` multi-adapter pack_drop export
 for all 16 `E2E_PROVEN`. Item **COS33-PACK-DROP-IKE-SCAN** = DONE.
 Next brick named = svmap. After svmap the 16 E2E_PROVEN pack_drop

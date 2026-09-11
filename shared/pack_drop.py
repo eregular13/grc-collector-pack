@@ -192,6 +192,10 @@ def _lift_record(
         "oid",
         "netbios_name",
         "nb_name",
+        "user_agent",
+        "user-agent",
+        "ua",
+        "id",
     ):
         if row.get(key) not in (None, "") and key not in extra_out:
             extra_out[key] = str(row.get(key)) if key == "port" else row.get(key)
@@ -352,7 +356,11 @@ def parse_pack_drop(
             and name != "findings.jsonl"
         ):
             hname, addr, hostname = _host_fields(row)
-            extra = {k: row.get(k) for k in ("mac", "vendor") if row.get(k)}
+            extra = {
+                k: row.get(k)
+                for k in ("mac", "vendor", "user_agent", "user-agent", "ua")
+                if row.get(k)
+            }
             extra["pack_drop"] = "covey"
             if row.get("adapter"):
                 extra["adapter"] = row.get("adapter")
