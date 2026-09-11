@@ -30,9 +30,9 @@ COVEY_E2E_PROVEN = (
 )
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "d6e766be"
-STALE_PACK_HEAD = "ae9ec27c"
-STALE_PACK_HONESTY = "7634d1f9"
+COVEY_PACK_HEAD = "fe3aadfb"
+STALE_PACK_HEAD = "d6e766be"
+STALE_PACK_HONESTY = "3ab59568"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -87,11 +87,14 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #34" in low
+    assert "cos #35" in low
     assert "honesty sync" in low
-    assert "cos33-pack-drop-ike-scan" in low
-    assert status.get("item") == "COS34-PACK-DROP-SVMAP"
-    assert "next brick" in low and "svmap" in low
+    assert "cos34-pack-drop-svmap" in low
+    assert status.get("item") == "COS35-PACK-DROP-INVENTORY-LOCK"
+    assert "next brick" in low
+    assert "all-16" in low or "all 16" in low
+    assert "inventory lock" in low or "fixture inventory" in low
+    assert "16 e2e_proven pack_drop void closed" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
     assert "cos #4" not in low
@@ -124,6 +127,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #31" not in low
     assert "cos #32" not in low
     assert "cos #33" not in low
+    assert "cos #34" not in low
     assert "covey" in low
     assert "e2e_proven" in low
     assert "closed" in low
@@ -141,8 +145,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD d6e766be (PR #57). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #33 / pack ae9ec27c / 7634d1f9.
+    # Pack HEAD fe3aadfb (PR #59). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #34 / pack d6e766be / 3ab59568.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -188,9 +192,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-141 notes."""
+    """Current-cycle window / newest delta — not historical cycle-143 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 144):",
         "**Delta (cycle 143):",
         "**Delta (cycle 142):",
         "**Delta (cycle 141):",
@@ -222,11 +227,14 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #34" in low, f"{where} missing CoS #34 stamp"
-        assert "next brick" in low, f"{where} missing next brick = svmap"
-        assert "svmap" in low, f"{where} missing next brick = svmap"
-        assert "cos33-pack-drop-ike-scan" in low, f"{where} missing COS33-PACK-DROP-IKE-SCAN DONE"
-        assert "stop for cos #35" in low, f"{where} missing Stop for CoS #35"
+        assert "cos #35" in low, f"{where} missing CoS #35 stamp"
+        assert "cos #34" not in low, f"{where} still stamps CoS #34 as the current cycle"
+        assert "next brick" in low, f"{where} missing next brick = all-16 fixture inventory lock"
+        assert "all-16" in low or "all 16" in low, f"{where} missing all-16 next brick"
+        assert "inventory lock" in low or "fixture inventory" in low, f"{where} missing inventory lock"
+        assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
+        assert "cos34-pack-drop-svmap" in low, f"{where} missing COS34-PACK-DROP-SVMAP DONE"
+        assert "stop for cos #36" in low, f"{where} missing Stop for CoS #36"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -239,8 +247,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos34_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #34 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos35_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #35 pack HEAD E2E_PROVEN."""
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
@@ -272,6 +280,7 @@ def test_status_and_live_docs_match_cos34_covey_e2e_proven() -> None:
     assert "cos #31" not in low
     assert "cos #32" not in low
     assert "cos #33" not in low
+    assert "cos #34" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
@@ -292,13 +301,15 @@ def test_status_and_live_docs_match_cos34_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #34")
+                idx = text.find("CoS #35")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #34 this-window copy"
+        assert window, f"{path} missing CoS #35 this-window copy"
         win_low = window.lower()
-        assert "cos #34" in win_low, f"{path} this-window is not CoS #34"
-        assert "next brick" in win_low, f"{path} this-window missing next brick = svmap"
-        assert "svmap" in win_low, f"{path} this-window missing next brick = svmap"
+        assert "cos #35" in win_low, f"{path} this-window is not CoS #35"
+        assert "next brick" in win_low, f"{path} this-window missing next brick = all-16 fixture inventory lock"
+        assert "all-16" in win_low or "all 16" in win_low, f"{path} this-window missing all-16 next brick"
+        assert "inventory lock" in win_low or "fixture inventory" in win_low, f"{path} this-window missing inventory lock"
+        assert "void" in win_low, f"{path} this-window missing void CLOSED"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
         assert "pack_drop" in win_low, f"{path} this-window missing pack_drop export"
