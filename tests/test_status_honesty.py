@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "2b895c17"
-STALE_PACK_HEAD = "d0954346"
-STALE_PACK_HONESTY = "1b26a1a4"
+COVEY_PACK_HEAD = "f04218b2"
+STALE_PACK_HEAD = "2b895c17"
+STALE_PACK_HONESTY = "58ec5a3f"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -63,7 +63,7 @@ def _has_bare_cos(text: str, n: int) -> bool:
 
 
 def _next_brick(text: str) -> str:
-    """Clause after 'next brick' — DONE JSONL row schema lock must not live here.
+    """Clause after 'next brick' — DONE kind-partition lock must not live here.
 
     Split on a sentence boundary ('.' + whitespace), not the '.' in meta.json.
     """
@@ -90,23 +90,24 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #42" in low
+    assert "cos #43" in low
     assert "honesty sync" in low
-    assert "cos41-pack-drop-row-schema-lock" in low
+    assert "cos42-pack-drop-kind-partition-lock" in low
     assert "done" in low
-    assert status.get("item") == "COS42-HONESTY"
+    assert status.get("item") == "COS43-HONESTY"
+    assert "cos #42" not in low, "bare CoS #42 is not the current cycle stamp"
     assert "cos #41" not in low, "bare CoS #41 is not the current cycle stamp"
     assert "next brick" in low
     brick = _next_brick(action)
-    assert "kind-partition" in brick, "next brick must name global pack_drop kind-partition lock"
-    assert "jsonl" not in brick, "JSONL row schema identity lock is DONE, not the next brick"
-    assert "row schema" not in brick, "JSONL row schema is DONE, not the next brick"
+    assert "service" in brick and "host" in brick, "next brick must name service→host address referential lock"
+    assert "address" in brick and "referential" in brick, "next brick must name service→host address referential lock"
+    assert "kind-partition" not in brick, "kind-partition lock is DONE, not the next brick"
     assert "16 e2e_proven pack_drop void closed" in low
     assert "sample_banner" in low
     assert "unicornscan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
-    for n in range(4, 42):
+    for n in range(4, 43):
         assert not _has_bare_cos(low, n), f"STATUS next_action still stamps CoS #{n}"
     assert "covey" in low
     assert "e2e_proven" in low
@@ -125,8 +126,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD 2b895c17 (PR #73). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #41 / pack d0954346 / 1b26a1a4.
+    # Pack HEAD f04218b2 (PR #75). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #42 / pack 2b895c17 / 58ec5a3f.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -175,6 +176,7 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 160):",
         "**Delta (cycle 159):",
         "**Delta (cycle 158):",
         "**Delta (cycle 157):",
@@ -222,7 +224,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #42" in low, f"{where} missing CoS #42 stamp"
+        assert "cos #43" in low, f"{where} missing CoS #43 stamp"
+        assert "cos #42" not in low, f"{where} still stamps CoS #42 as the current cycle"
         assert "cos #41" not in low, f"{where} still stamps CoS #41 as the current cycle"
         assert "cos #40" not in low, f"{where} still stamps CoS #40 as the current cycle"
         assert "cos #39" not in low, f"{where} still stamps CoS #39 as the current cycle"
@@ -231,14 +234,14 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "cos #36" not in low, f"{where} still stamps CoS #36 as the current cycle"
         assert "cos #35" not in low, f"{where} still stamps CoS #35 as the current cycle"
         assert "cos #34" not in low, f"{where} still stamps CoS #34 as the current cycle"
-        assert "next brick" in low, f"{where} missing next brick = global pack_drop kind-partition lock"
+        assert "next brick" in low, f"{where} missing next brick = global pack_drop service→host address referential lock"
         brick = _next_brick(text)
-        assert "kind-partition" in brick, f"{where} next brick missing kind-partition"
-        assert "jsonl" not in brick, f"{where} still names JSONL row schema as next brick"
-        assert "row schema" not in brick, f"{where} still names JSONL row schema as next brick"
+        assert "service" in brick and "host" in brick, f"{where} next brick missing service→host"
+        assert "address" in brick and "referential" in brick, f"{where} next brick missing address referential"
+        assert "kind-partition" not in brick, f"{where} still names kind-partition as next brick"
         assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
-        assert "cos41-pack-drop-row-schema-lock" in low, f"{where} missing COS41-PACK-DROP-ROW-SCHEMA-LOCK DONE"
-        assert "stop for cos #43" in low, f"{where} missing Stop for CoS #43"
+        assert "cos42-pack-drop-kind-partition-lock" in low, f"{where} missing COS42-PACK-DROP-KIND-PARTITION-LOCK DONE"
+        assert "stop for cos #44" in low, f"{where} missing Stop for CoS #44"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -251,8 +254,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos42_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #42 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos43_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #43 pack HEAD E2E_PROVEN."""
     from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_NAMED, SAMPLE_BANNER
 
     status = _status()
@@ -294,6 +297,7 @@ def test_status_and_live_docs_match_cos42_covey_e2e_proven() -> None:
     assert "cos #39" not in low
     assert "cos #40" not in low
     assert "cos #41" not in low
+    assert "cos #42" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
@@ -323,23 +327,24 @@ def test_status_and_live_docs_match_cos42_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #42")
+                idx = text.find("CoS #43")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #42 this-window copy"
+        assert window, f"{path} missing CoS #43 this-window copy"
         win_low = window.lower()
-        assert "cos #42" in win_low, f"{path} this-window is not CoS #42"
+        assert "cos #43" in win_low, f"{path} this-window is not CoS #43"
+        assert "cos #42" not in win_low, f"{path} this-window still stamps CoS #42 as the current cycle"
         assert "cos #41" not in win_low, f"{path} this-window still stamps CoS #41 as the current cycle"
         assert "cos #40" not in win_low, f"{path} this-window still stamps CoS #40 as the current cycle"
         assert "cos #39" not in win_low, f"{path} this-window still stamps CoS #39 as the current cycle"
         assert "cos #38" not in win_low, f"{path} this-window still stamps CoS #38 as the current cycle"
         assert "cos #37" not in win_low, f"{path} this-window still stamps CoS #37 as the current cycle"
         assert "cos #36" not in win_low, f"{path} this-window still stamps CoS #36 as the current cycle"
-        assert "cos41-pack-drop-row-schema-lock" in win_low, f"{path} this-window missing COS41-PACK-DROP-ROW-SCHEMA-LOCK DONE"
-        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop kind-partition lock"
+        assert "cos42-pack-drop-kind-partition-lock" in win_low, f"{path} this-window missing COS42-PACK-DROP-KIND-PARTITION-LOCK DONE"
+        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop service→host address referential lock"
         brick = _next_brick(window)
-        assert "kind-partition" in brick, f"{path} this-window next brick missing kind-partition"
-        assert "jsonl" not in brick, f"{path} this-window still names JSONL row schema as next brick"
-        assert "row schema" not in brick, f"{path} this-window still names JSONL row schema as next brick"
+        assert "service" in brick and "host" in brick, f"{path} this-window next brick missing service→host"
+        assert "address" in brick and "referential" in brick, f"{path} this-window next brick missing address referential"
+        assert "kind-partition" not in brick, f"{path} this-window still names kind-partition as next brick"
         assert "void" in win_low, f"{path} this-window missing void CLOSED"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
