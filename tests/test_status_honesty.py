@@ -63,12 +63,15 @@ def _has_bare_cos(text: str, n: int) -> bool:
 
 
 def _next_brick(text: str) -> str:
-    """Clause after 'next brick' — DONE referential-lock copy must not live here."""
+    """Clause after 'next brick' — DONE referential-lock copy must not live here.
+
+    Split on a sentence boundary ('.' + whitespace), not the '.' in meta.json.
+    """
     low = text.lower()
     idx = low.find("next brick")
     if idx < 0:
         return ""
-    return low[idx:].split(".", 1)[0]
+    return re.split(r"\.\s", low[idx:], maxsplit=1)[0]
 
 
 def _live_reid_only_blockers(text: str) -> str:
