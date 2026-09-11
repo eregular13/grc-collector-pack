@@ -127,7 +127,7 @@ def test_pack_drop_rustscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "rustscan"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -191,7 +191,7 @@ def test_pack_drop_httpx_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "httpx"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -260,7 +260,7 @@ def test_pack_drop_unicornscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "unicornscan"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -333,7 +333,7 @@ def test_pack_drop_sslscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "sslscan"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -425,7 +425,7 @@ def test_pack_drop_tlsx_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "tlsx"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -509,7 +509,7 @@ def test_pack_drop_whatweb_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "whatweb"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -601,7 +601,7 @@ def test_pack_drop_hping3_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "hping3"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -710,7 +710,7 @@ def test_pack_drop_onesixtyone_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "onesixtyone"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -812,7 +812,7 @@ def test_pack_drop_fping_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "fping"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -917,7 +917,7 @@ def test_pack_drop_naabu_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "naabu"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("honeypot_validated") is False
@@ -998,7 +998,7 @@ def test_pack_drop_nping_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "nping"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("honeypot_validated") is False
@@ -1091,7 +1091,7 @@ def test_pack_drop_nbtscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "nbtscan"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -1229,7 +1229,7 @@ def test_pack_drop_braa_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "braa"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -1362,7 +1362,7 @@ def test_pack_drop_ike_scan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "ike-scan"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -1532,7 +1532,7 @@ def test_pack_drop_svmap_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "svmap"
-    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    assert extra.get("schema") == "covey.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("open_ports_invented") is False
@@ -1646,6 +1646,7 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "braa" in docs.lower()
     assert "ike-scan" in docs.lower()
     assert "svmap" in docs.lower()
+    assert "covey.pack_drop.v1" in docs
     assert "evergreen.pack_drop.v1" in docs
     assert "fixtures/pack_drop/rustscan" in docs or "pack_drop/rustscan" in docs
     assert "fixtures/pack_drop/httpx" in docs or "pack_drop/httpx" in docs

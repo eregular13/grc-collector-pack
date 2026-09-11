@@ -1,7 +1,13 @@
-# CRITIC — cycle 154 (CoS #40 honesty sync)
+# CRITIC — cycle 155 (CoS #40 item 2 meta.json schema + adapter identity lock)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #40 honesty sync. Pack HEAD `a84dc78f`
+CoS #40 honesty sync + item 2: global pack_drop meta.json schema +
+adapter identity lock (`tests/test_pack_drop_meta.py` parametrized over all
+sixteen `fixtures/pack_drop/` adapters; `schema` `covey.pack_drop.v1` exact;
+`adapter` == directory; `source` `evergreen-covey`; `demo` true;
+SAMPLE/DEMO ≠ client;
+UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
+Pack HEAD `a84dc78f`
 (PR #69 observation→asset/service referential lock already on master).
 Item **COS40-HONESTY**. Item
 **COS39-PACK-DROP-OBS-ASSET-REFS-LOCK** = DONE.
@@ -19,7 +25,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #40 / pack HEAD `a84dc78f` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 153
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 154
+honesty stands as history. Cycle 153
 observation→asset refs lock stands as history. Cycle 152
 honesty stands as history. Cycle 151
 asset-id lock stands as history. Cycle 150
@@ -72,5 +79,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 547, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 565, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
