@@ -97,15 +97,13 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #43 honesty sync + item 2 — global pack_drop
-service→host address referential lock
-(`tests/test_pack_drop_service_host_refs.py`).
-Pack HEAD
-`f04218b2` (PR #75 kind-partition lock
-already on master). Item **COS43-HONESTY**. Item
-**COS42-PACK-DROP-KIND-PARTITION-LOCK** = DONE.
+CoS #44 honesty sync. Pack HEAD
+`8c442a33` (PR #77 service→host refs
+already on master). Item **COS44-HONESTY**. Item
+**COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named =
-global pack_drop service→host address referential lock. SAMPLE_BANNER /
+global pack_drop observation/finding port→service (or nested asset
+ports) referential lock. SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
 `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still
 `30d2197f` multi-adapter pack_drop export
@@ -115,7 +113,7 @@ remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #44. Reid-only
+Covey adapter work. Stop for CoS #45. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
 Docker host — this VM `compose_lab` absent ≠ PASS).
 
