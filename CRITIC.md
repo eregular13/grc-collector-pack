@@ -1,7 +1,15 @@
-# CRITIC — cycle 162 (CoS #44 honesty sync)
+# CRITIC — cycle 163 (CoS #44 honesty sync + item 2 observation/finding port→service)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #44 honesty sync. Pack HEAD `8c442a33`
+CoS #44 honesty sync + item 2: global pack_drop observation/finding
+port→service (or nested asset ports) referential lock
+(`tests/test_pack_drop_observation_service_ports.py`
+parametrized over all sixteen `fixtures/pack_drop/` adapters;
+any ported finding matches same-file service on address+port+protocol
+or kind:asset nested ports[]; host-only zero ported findings;
+SAMPLE/DEMO ≠ client;
+UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
+Pack HEAD `8c442a33`
 (PR #77 service→host address referential lock already on master).
 Item **COS44-HONESTY**. Item
 **COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK** = DONE.
@@ -20,7 +28,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #44 / pack HEAD `8c442a33` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 161
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 162
+honesty stands as history. Cycle 161
 service→host lock stands as history. Cycle 160
 honesty stands as history. Cycle 159
 kind-partition lock stands as history. Cycle 158
@@ -81,5 +90,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 620, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 639, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```

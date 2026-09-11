@@ -2,7 +2,10 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 162):** CoS #44 honesty sync. Pack HEAD
+**This window (cycle 163):** CoS #44 honesty sync + item 2 —
+global pack_drop observation/finding port→service (or nested
+asset ports) referential lock
+(`tests/test_pack_drop_observation_service_ports.py`). Pack HEAD
 `8c442a33` (PR #77 service→host refs
 already on master).
 Covey HEAD still
@@ -24,7 +27,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 161 service→host lock stands as
+invoke / 81 file_drop). Cycle 162 honesty stands as
+history. Cycle 161 service→host lock stands as
 history. Cycle 160 honesty stands as
 history. Cycle 159 kind-partition lock stands as
 history. Cycle 158 honesty stands as
