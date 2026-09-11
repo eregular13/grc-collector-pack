@@ -2,7 +2,8 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 144):** CoS #35 honesty sync. Pack HEAD
+**This window (cycle 145):** CoS #35 item 2 — all-16 pack_drop
+fixture inventory lock. CoS #35 honesty sync stands. Pack HEAD
 `fe3aadfb` (PR #59 svmap SIP
 pack_drop→CISO already on master).
 Covey HEAD still
@@ -21,7 +22,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 143 svmap pack_drop→CISO
+invoke / 81 file_drop). Cycle 144 honesty stands as
+history. Cycle 143 svmap pack_drop→CISO
 prove stands as history. Cycle 142 honesty stands as
 history. Cycle 141 ike-scan pack_drop→CISO
 prove stands as history. Cycle 140 honesty stands as

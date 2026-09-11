@@ -5,29 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from dropbox.scanner_free import compose_lab, docker_available
+from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_ADAPTERS
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Covey HEAD E2E_PROVEN set. STATUS next_action + PLAN this-window must
-# name every tool so the pack cannot lag a later Covey brick again.
-COVEY_E2E_PROVEN = (
-    "nmap",
-    "rustscan",
-    "fping",
-    "naabu",
-    "nping",
-    "httpx",
-    "sslscan",
-    "tlsx",
-    "whatweb",
-    "hping3",
-    "onesixtyone",
-    "nbtscan",
-    "braa",
-    "ike-scan",
-    "svmap",
-    "unicornscan",
-)
+# Shared all-16 set (prove_ciso seed + fixtures/pack_drop/). STATUS
+# next_action + PLAN this-window must name every tool so the pack
+# cannot lag a later Covey brick again.
+COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
 COVEY_PACK_HEAD = "fe3aadfb"
@@ -195,6 +180,7 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-143 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 145):",
         "**Delta (cycle 144):",
         "**Delta (cycle 143):",
         "**Delta (cycle 142):",
