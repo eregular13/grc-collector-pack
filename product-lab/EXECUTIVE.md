@@ -2,7 +2,10 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 156):** CoS #41 honesty sync. Pack HEAD
+**This window (cycle 157):** CoS #41 honesty sync + item 2 —
+global pack_drop JSONL row schema identity lock
+(`tests/test_pack_drop_row_schema.py` parametrized over all
+sixteen fixtures). Pack HEAD
 `d0954346` (PR #71 meta.json schema + adapter identity lock
 already on master).
 Covey HEAD still
@@ -23,7 +26,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 155 meta.json schema + adapter
+invoke / 81 file_drop). Cycle 156 honesty stands as
+history. Cycle 155 meta.json schema + adapter
 identity lock stands as history. Cycle 154 honesty stands as
 history. Cycle 153 observation→asset refs
 lock stands as history. Cycle 152 honesty stands as

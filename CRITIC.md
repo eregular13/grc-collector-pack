@@ -1,7 +1,12 @@
-# CRITIC — cycle 156 (CoS #41 honesty sync)
+# CRITIC — cycle 157 (CoS #41 honesty sync + item 2 JSONL row schema identity lock)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #41 honesty sync. Pack HEAD `d0954346`
+CoS #41 honesty sync + item 2: global pack_drop JSONL row schema +
+adapter identity lock (`tests/test_pack_drop_row_schema.py` parametrized over all
+sixteen `fixtures/pack_drop/` adapters; `schema` `covey.pack_drop.v1` exact;
+`adapter` == directory; SAMPLE/DEMO ≠ client;
+UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
+Pack HEAD `d0954346`
 (PR #71 meta.json schema + adapter identity lock already on master).
 Item **COS41-HONESTY**. Item
 **COS40-PACK-DROP-META-SCHEMA-LOCK** = DONE.
@@ -19,7 +24,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #41 / pack HEAD `d0954346` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 155
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 156
+honesty stands as history. Cycle 155
 meta.json schema + adapter identity lock stands as history. Cycle 154
 honesty stands as history. Cycle 153
 observation→asset refs lock stands as history. Cycle 152
