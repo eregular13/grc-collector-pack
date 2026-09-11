@@ -25,10 +25,14 @@ on every `assets.jsonl` `asset` / `host` / `service` row; unique within
 each file and across all sixteen; disjoint from finding/observation ids),
 global `meta.json` schema + adapter identity
 (`tests/test_pack_drop_meta.py`; `schema` `covey.pack_drop.v1` exact),
-and global JSONL row schema + adapter identity
+global JSONL row schema + adapter identity
 (`tests/test_pack_drop_row_schema.py`; every `assets.jsonl` /
 `findings.jsonl` object `schema` `covey.pack_drop.v1` exact and
-`adapter` == directory name).
+`adapter` == directory name),
+and global assets/findings kind-partition
+(`tests/test_pack_drop_kind_partition.py`; `assets.jsonl` `kind`
+∈ `{asset, host, service}` exact; `findings.jsonl` `kind` ∈
+`{finding, observation}` exact; no cross-file leakage).
 hping3 and fping are
 **host-only** (ICMP / reachability discover); onesixtyone is **SNMP
 community/sysDescr** discover; braa is an **SNMP GET sweeper** (OID /

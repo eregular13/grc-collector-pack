@@ -97,7 +97,9 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #42 honesty sync. Pack HEAD
+CoS #42 honesty sync + item 2 — global pack_drop
+kind-partition lock (`tests/test_pack_drop_kind_partition.py`).
+Pack HEAD
 `2b895c17` (PR #73 JSONL row schema identity lock
 already on master). Item **COS42-HONESTY**. Item
 **COS41-PACK-DROP-ROW-SCHEMA-LOCK** = DONE.
