@@ -23,44 +23,44 @@ What that does (isolated under `prove/work/`, never pack `in/`):
 
 1. Copy `fixtures/pack_drop/nmap/` → `prove/work/in/nmap/pack_drop/`
 2. Copy `fixtures/pack_drop/rustscan/` → `prove/work/in/nmap/pack_drop/rustscan/`
-   (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
 3. Copy `fixtures/pack_drop/httpx/` → `prove/work/in/nmap/pack_drop/httpx/`
-   (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
 4. Copy `fixtures/pack_drop/unicornscan/` → `prove/work/in/nmap/pack_drop/unicornscan/`
-   (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
 5. Copy `fixtures/pack_drop/sslscan/` → `prove/work/in/nmap/pack_drop/sslscan/`
-   (stdout/XML-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+   (stdout/XML-class Covey `export_pack`; `covey.pack_drop.v1`)
 6. Copy `fixtures/pack_drop/tlsx/` → `prove/work/in/nmap/pack_drop/tlsx/`
-   (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
 7. Copy `fixtures/pack_drop/whatweb/` → `prove/work/in/nmap/pack_drop/whatweb/`
-   (stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`)
+   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
 8. Copy `fixtures/pack_drop/hping3/` → `prove/work/in/nmap/pack_drop/hping3/`
-   (host-only ICMP stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
+   (host-only ICMP stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
    no invented open ports)
 9. Copy `fixtures/pack_drop/onesixtyone/` → `prove/work/in/nmap/pack_drop/onesixtyone/`
    (SNMP community/sysDescr stdout-class Covey `export_pack`;
-   `evergreen.pack_drop.v1`; no invented open TCP ports)
+   `covey.pack_drop.v1`; no invented open TCP ports)
 10. Copy `fixtures/pack_drop/fping/` → `prove/work/in/nmap/pack_drop/fping/`
    (host-only ICMP/reachability stdout-class Covey `export_pack`;
-   `evergreen.pack_drop.v1`; no invented open ports)
+   `covey.pack_drop.v1`; no invented open ports)
 11. Copy `fixtures/pack_drop/naabu/` → `prove/work/in/nmap/pack_drop/naabu/`
-   (port/service stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
+   (port/service stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
    open TCP ports + `open_port_observed` only)
 12. Copy `fixtures/pack_drop/nping/` → `prove/work/in/nmap/pack_drop/nping/`
-   (port/service stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
+   (port/service stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
    ICMP echo + TCP handshake completed; open TCP ports + `open_port_observed` only)
 13. Copy `fixtures/pack_drop/nbtscan/` → `prove/work/in/nmap/pack_drop/nbtscan/`
    (host-only NetBIOS name-table stdout-class Covey `export_pack`;
-   `evergreen.pack_drop.v1`; no invented open TCP ports)
+   `covey.pack_drop.v1`; no invented open TCP ports)
 14. Copy `fixtures/pack_drop/braa/` → `prove/work/in/nmap/pack_drop/braa/`
    (host-only SNMP GET sweeper stdout-class Covey `export_pack`;
-   `evergreen.pack_drop.v1`; community/OID/sysDescr; no invented open TCP ports)
+   `covey.pack_drop.v1`; community/OID/sysDescr; no invented open TCP ports)
 15. Copy `fixtures/pack_drop/ike-scan/` → `prove/work/in/nmap/pack_drop/ike-scan/`
    (host-only IKE Main Mode / Aggressive Mode sweeper stdout-class Covey
-   `export_pack`; `evergreen.pack_drop.v1`; handshake / VPN responder;
+   `export_pack`; `covey.pack_drop.v1`; handshake / VPN responder;
    IKE/VPN discover ≠ open TCP port; no invented open TCP ports)
 16. Copy `fixtures/pack_drop/svmap/` → `prove/work/in/nmap/pack_drop/svmap/`
-   (SIP Device/UA stdout-class Covey `export_pack`; `evergreen.pack_drop.v1`;
+   (SIP Device/UA stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
    real User-Agent only; UDP SIP from the svmap table only, default 5060;
    unique observation ids; no invented TCP)
 17. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
@@ -97,7 +97,10 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #40 honesty sync. Pack HEAD
+CoS #40 honesty sync + item 2 — global pack_drop meta.json schema +
+adapter identity lock (`tests/test_pack_drop_meta.py` parametrized over
+all sixteen `fixtures/pack_drop/` adapters; `schema` `covey.pack_drop.v1`
+exact). Pack HEAD
 `a84dc78f` (PR #69 observation→asset/service referential lock
 already on master). Item **COS40-HONESTY**. Item
 **COS39-PACK-DROP-OBS-ASSET-REFS-LOCK** = DONE.

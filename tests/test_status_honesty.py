@@ -176,6 +176,7 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 155):",
         "**Delta (cycle 154):",
         "**Delta (cycle 153):",
         "**Delta (cycle 152):",

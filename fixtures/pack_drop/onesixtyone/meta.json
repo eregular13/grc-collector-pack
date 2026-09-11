@@ -1,5 +1,5 @@
 {
-  "schema": "evergreen.pack_drop.v1",
+  "schema": "covey.pack_drop.v1",
   "run_id": "onesixtyone-fixture",
   "adapter": "onesixtyone",
   "source": "evergreen-covey",

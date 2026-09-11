@@ -18,7 +18,7 @@ from tests.test_status_honesty import COVEY_E2E_PROVEN, COVEY_E2E_UNPROVEN
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DROP = ROOT / "fixtures" / "pack_drop"
 
-ALLOWED_SCHEMAS = frozenset({"evergreen.pack_drop.v1", "covey.pack_drop.v1"})
+ALLOWED_SCHEMAS = frozenset({"covey.pack_drop.v1"})
 
 PORT_SERVICE = frozenset(
     {

@@ -2,7 +2,11 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 154):** CoS #40 honesty sync. Pack HEAD
+**This window (cycle 155):** CoS #40 honesty sync + item 2 —
+global pack_drop meta.json schema + adapter identity lock
+(`tests/test_pack_drop_meta.py` parametrized over all sixteen
+`fixtures/pack_drop/` adapters; `schema` `covey.pack_drop.v1` exact).
+Pack HEAD
 `a84dc78f` (PR #69 observation→asset/service referential lock
 already on master).
 Covey HEAD still
@@ -23,7 +27,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 153 observation→asset refs
+invoke / 81 file_drop). Cycle 154 honesty stands as
+history. Cycle 153 observation→asset refs
 lock stands as history. Cycle 152 honesty stands as
 history. Cycle 151 asset-id lock stands as
 history. Cycle 150 honesty stands as
