@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from dropbox.scanner_free import compose_lab, docker_available
@@ -56,6 +57,11 @@ def test_status_paying_day_fail_and_compose_absent_until_proven() -> None:
         assert status.get("compose_lab") in {"absent", "pass", "skip"}
 
 
+def _has_bare_cos(text: str, n: int) -> bool:
+    """True when `CoS #N` is a cycle stamp, not a prefix of CoS #N0."""
+    return re.search(rf"cos #{n}(?!\d)", text.lower()) is not None
+
+
 def _next_brick(text: str) -> str:
     """Clause after 'next brick' — DONE asset-identity copy must not live here."""
     low = text.lower()
@@ -98,41 +104,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "unicornscan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
-    assert "cos #4" not in low
-    assert "cos #5" not in low
-    assert "cos #6" not in low
-    assert "cos #7" not in low
-    assert "cos #8" not in low
-    assert "cos #9" not in low
-    assert "cos #10" not in low
-    assert "cos #11" not in low
-    assert "cos #12" not in low
-    assert "cos #13" not in low
-    assert "cos #14" not in low
-    assert "cos #15" not in low
-    assert "cos #16" not in low
-    assert "cos #17" not in low
-    assert "cos #18" not in low
-    assert "cos #19" not in low
-    assert "cos #20" not in low
-    assert "cos #21" not in low
-    assert "cos #22" not in low
-    assert "cos #23" not in low
-    assert "cos #24" not in low
-    assert "cos #25" not in low
-    assert "cos #26" not in low
-    assert "cos #27" not in low
-    assert "cos #28" not in low
-    assert "cos #29" not in low
-    assert "cos #30" not in low
-    assert "cos #31" not in low
-    assert "cos #32" not in low
-    assert "cos #33" not in low
-    assert "cos #34" not in low
-    assert "cos #35" not in low
-    assert "cos #36" not in low
-    assert "cos #37" not in low
-    assert "cos #38" not in low
+    for n in range(4, 39):
+        assert not _has_bare_cos(low, n), f"STATUS next_action still stamps CoS #{n}"
     assert "covey" in low
     assert "e2e_proven" in low
     assert "closed" in low
