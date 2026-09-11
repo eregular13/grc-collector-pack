@@ -1,16 +1,11 @@
-# CRITIC — cycle 151 (CoS #38 item 2 asset/host/service identity lock)
+# CRITIC — cycle 152 (CoS #39 honesty sync)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #38 honesty sync + item 2: global pack_drop asset/host/service
-identity lock (`tests/test_pack_drop_asset_ids.py` parametrized over all
-sixteen `fixtures/pack_drop/` adapters; namespaced DEMO `id` unique
-within each `assets.jsonl` and globally; disjoint from observation ids;
-UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
-Pack HEAD `6ab62843`
-(PR #65 global pack_drop observation id uniqueness already on master).
-Item **COS38-HONESTY**. Item **COS37-PACK-DROP-OBSERVATION-ID-LOCK** = DONE.
+CoS #39 honesty sync: pack HEAD `f41eb4ad`
+(PR #67 global pack_drop asset/host/service identity already on master).
+Item **COS39-HONESTY**. Item **COS38-PACK-DROP-ASSET-ID-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop
-asset/host/service identity lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
+observation→asset/service referential lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
 unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -18,12 +13,13 @@ truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #39.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #40.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #38 / pack HEAD `6ab62843` / Covey HEAD `30d2197f`,
+cannot lag CoS #39 / pack HEAD `f41eb4ad` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 150
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 151
+asset-id lock stands as history. Cycle 150
 honesty stands as history. Cycle 149
 observation-id uniqueness lock stands as history. Cycle 148
 honesty stands as history. Cycle 147
