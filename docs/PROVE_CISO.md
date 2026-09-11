@@ -97,14 +97,12 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #41 honesty sync + item 2 — global pack_drop JSONL row
-schema identity lock (`tests/test_pack_drop_row_schema.py`).
-Pack HEAD
-`d0954346` (PR #71 meta.json schema + adapter identity lock
-already on master). Item **COS41-HONESTY**. Item
-**COS40-PACK-DROP-META-SCHEMA-LOCK** = DONE.
+CoS #42 honesty sync. Pack HEAD
+`2b895c17` (PR #73 JSONL row schema identity lock
+already on master). Item **COS42-HONESTY**. Item
+**COS41-PACK-DROP-ROW-SCHEMA-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named =
-global pack_drop JSONL row schema identity lock. SAMPLE_BANNER /
+global pack_drop kind-partition lock. SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
 `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still
 `30d2197f` multi-adapter pack_drop export
@@ -114,7 +112,7 @@ remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #42. Reid-only
+Covey adapter work. Stop for CoS #43. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
 Docker host — this VM `compose_lab` absent ≠ PASS).
 

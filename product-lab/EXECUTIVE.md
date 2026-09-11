@@ -2,18 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 157):** CoS #41 honesty sync + item 2 —
-global pack_drop JSONL row schema identity lock
-(`tests/test_pack_drop_row_schema.py` parametrized over all
-sixteen fixtures). Pack HEAD
-`d0954346` (PR #71 meta.json schema + adapter identity lock
+**This window (cycle 158):** CoS #42 honesty sync. Pack HEAD
+`2b895c17` (PR #73 JSONL row schema identity lock
 already on master).
 Covey HEAD still
 `30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item **COS41-HONESTY**.
-Item **COS40-PACK-DROP-META-SCHEMA-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+export for all 16 `E2E_PROVEN`. Item **COS42-HONESTY**.
+Item **COS41-PACK-DROP-ROW-SCHEMA-LOCK** = DONE. 16 E2E_PROVEN pack_drop
 void CLOSED. Next brick named = global pack_drop
-JSONL row schema identity lock. SAMPLE_BANNER / prove_ciso
+kind-partition lock. SAMPLE_BANNER / prove_ciso
 sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
 is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
@@ -21,12 +18,13 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #42. Reid-only
+start Covey adapter work. Stop for CoS #43. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 156 honesty stands as
+invoke / 81 file_drop). Cycle 157 JSONL row schema identity lock stands as
+history. Cycle 156 honesty stands as
 history. Cycle 155 meta.json schema + adapter
 identity lock stands as history. Cycle 154 honesty stands as
 history. Cycle 153 observation→asset refs
