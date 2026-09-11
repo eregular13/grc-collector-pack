@@ -2,7 +2,10 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 146):** CoS #36 honesty sync. Pack HEAD
+**This window (cycle 147):** CoS #36 item 2 — per-adapter pack_drop
+claim-class + DEMO-label lock (`tests/test_pack_drop_claim_class.py`
+parametrized over all sixteen `fixtures/pack_drop/` adapters). CoS #36
+honesty sync stands. Pack HEAD
 `027cef2b` (PR #61 all-16 pack_drop fixture inventory lock
 already on master).
 Covey HEAD still
@@ -22,7 +25,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 145 all-16 fixture inventory
+invoke / 81 file_drop). Cycle 146 honesty stands as
+history. Cycle 145 all-16 fixture inventory
 lock stands as history. Cycle 144 honesty stands as
 history. Cycle 143 svmap pack_drop→CISO
 prove stands as history. Cycle 142 honesty stands as

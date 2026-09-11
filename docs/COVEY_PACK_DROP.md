@@ -14,7 +14,9 @@ stdout/XML-class fixtures (**rustscan**, **httpx**, **unicornscan**,
 no 17th live adapter, no pack Covey adapter work. Pytest locks
 `fixtures/pack_drop/` to exactly those sixteen dirs (each with
 non-empty `meta.json` / `assets.jsonl` / `findings.jsonl`) and
-`seed_prove_in` 1:1 via `E2E_PROVEN_PACK_DROP_ADAPTERS`. hping3 and fping are
+`seed_prove_in` 1:1 via `E2E_PROVEN_PACK_DROP_ADAPTERS`. Pytest also
+locks per-adapter claim-class + DEMO labels
+(`tests/test_pack_drop_claim_class.py`). hping3 and fping are
 **host-only** (ICMP / reachability discover); onesixtyone is **SNMP
 community/sysDescr** discover; braa is an **SNMP GET sweeper** (OID /
 sysDescr / sysName); nbtscan is **NetBIOS name-table** host discover
