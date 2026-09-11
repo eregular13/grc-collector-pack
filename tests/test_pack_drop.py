@@ -25,6 +25,7 @@ NPING = ROOT / "fixtures" / "pack_drop" / "nping"
 NBTSCAN = ROOT / "fixtures" / "pack_drop" / "nbtscan"
 BRAA = ROOT / "fixtures" / "pack_drop" / "braa"
 IKE_SCAN = ROOT / "fixtures" / "pack_drop" / "ike-scan"
+SVMAP = ROOT / "fixtures" / "pack_drop" / "svmap"
 DEMO_NMAP = ROOT / "fixtures" / "demo" / "nmap"
 
 
@@ -1444,6 +1445,186 @@ def test_pack_drop_ike_scan_does_not_break_prior_adapters() -> None:
     assert any(r["name"] == "10.9.8.95" for r in ike_scan if r["kind"] == "asset")
 
 
+def test_pack_drop_svmap_hosts_and_udp_sip_services() -> None:
+    recs = inventory_nmap.parse_file(SVMAP / "assets.jsonl")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = {r["name"] for r in assets}
+    assert "10.9.8.96" in names
+    assert "10.9.8.97" in names
+    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("svmap" in (r.get("labels") or []) for r in assets)
+    assert all(r["source"] == "inventory-nmap" for r in recs)
+    assert all(r["ref_id"].startswith("NMAP-") for r in recs)
+    host_uas = {
+        str((r.get("extra") or {}).get("user_agent") or "")
+        for r in assets
+        if (r.get("extra") or {}).get("user_agent")
+    }
+    assert any("Asterisk PBX SAMPLE" in ua for ua in host_uas)
+    assert any("covey-sip-lab SAMPLE/DEMO" in ua for ua in host_uas)
+    assert all(ua.strip().lower() not in {"unknown", "", "user agent", "disabled"} for ua in host_uas)
+    assert findings
+    extras = [r.get("extra") or {} for r in findings]
+    assert any(str(e.get("port")) == "5060" and str(e.get("protocol") or "").lower() == "udp" for e in extras)
+    assert any(str(e.get("service") or "").lower() == "sip" for e in extras)
+    assert all(str(e.get("protocol") or "").lower() != "tcp" for e in extras if e.get("port"))
+    assert all("tcp" not in (r.get("name") or "").lower() for r in findings)
+    uas = {str(e.get("user_agent") or "") for e in extras if e.get("user_agent")}
+    assert any("Asterisk PBX SAMPLE" in ua for ua in uas)
+    assert any("covey-sip-lab SAMPLE/DEMO" in ua for ua in uas)
+    raw = (SVMAP / "assets.jsonl").read_text(encoding="utf-8")
+    assert "unknown" not in raw.lower() or "reject" in raw.lower()
+    assert '"protocol":"tcp"' not in raw
+    assert '"protocol": "tcp"' not in raw
+
+
+def test_pack_drop_svmap_observations_lift_unique_ids() -> None:
+    recs = inventory_nmap.parse_file(SVMAP / "findings.jsonl")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) >= 4
+    assert all(r["source"] == "inventory-nmap" for r in findings)
+    assert all(r["ref_id"].startswith("NMAP-") for r in findings)
+    refs = [r["ref_id"] for r in findings]
+    assert len(refs) == len(set(refs))
+    extra_ids = [(r.get("extra") or {}).get("id") for r in findings]
+    assert "svmap-96-sip-ua" in extra_ids
+    assert "svmap-96-sip-udp" in extra_ids
+    assert "svmap-97-sip-ua" in extra_ids
+    assert "svmap-97-sip-udp" in extra_ids
+    assert len({i for i in extra_ids if i}) == 4
+    titles = [r["name"] for r in findings]
+    assert any("10.9.8.96" in t and "user-agent" in t.lower() for t in titles)
+    assert any("10.9.8.96" in t and "udp" in t.lower() for t in titles)
+    assert any("10.9.8.97" in t and "user-agent" in t.lower() for t in titles)
+    assert any("10.9.8.97" in t and "udp" in t.lower() for t in titles)
+    extras = [r.get("extra") or {} for r in findings]
+    claims = {e.get("claim") for e in extras}
+    assert "sip_user_agent_observed" in claims
+    assert "sip_udp_port_observed" in claims
+    assert all(str(e.get("protocol") or "").lower() == "udp" for e in extras if e.get("port"))
+    assert all(str(e.get("port") or "") == "5060" for e in extras if e.get("port"))
+    assert all(str(e.get("service") or "").lower() == "sip" for e in extras if e.get("service"))
+    assert all(str(e.get("protocol") or "").lower() != "tcp" for e in extras)
+    uas = {str(e.get("user_agent") or "") for e in extras if e.get("user_agent")}
+    assert any("Asterisk PBX SAMPLE" in ua for ua in uas)
+    assert any("covey-sip-lab SAMPLE/DEMO" in ua for ua in uas)
+    assert all(ua.strip().lower() not in {"unknown", "", "user agent", "disabled"} for ua in uas)
+    assert any("10.9.8.96" in (r.get("assets") or []) for r in findings)
+    assert any("10.9.8.97" in (r.get("assets") or []) for r in findings)
+    assert any("svmap" in (r.get("labels") or []) for r in findings)
+    not_claimed = extras[0].get("not_claimed") or []
+    assert "control_failure" in not_claimed
+    assert "control_operating_effectiveness" in not_claimed
+    assert "honeypot_validated" in not_claimed
+    assert "vulnerability" in not_claimed
+    assert "riskready_post" in not_claimed
+    ua_rows = [e for e in extras if e.get("claim") == "sip_user_agent_observed"]
+    assert ua_rows
+    for row in ua_rows:
+        claimed_not = row.get("not_claimed") or []
+        assert "open_tcp_port_observed" in claimed_not or "open_port_observed" in claimed_not
+
+
+def test_pack_drop_svmap_meta_and_evidence() -> None:
+    meta = inventory_nmap.parse_file(SVMAP / "meta.json")
+    evid = [r for r in meta if r["kind"] == "evidence"]
+    assert evid
+    extra = evid[0].get("extra") or {}
+    assert extra.get("adapter") == "svmap"
+    assert extra.get("schema") == "evergreen.pack_drop.v1"
+    honesty = extra.get("honesty") or {}
+    assert honesty.get("surface_map") is True
+    assert honesty.get("open_ports_invented") is False
+    assert honesty.get("honeypot_validated") is False
+    assert honesty.get("control_operating_effectiveness") is False
+    assert honesty.get("reject_ua_unknown") is True
+    note = str(honesty.get("note") or "")
+    assert "sip" in note.lower() or "ua" in note.lower() or "user-agent" in note.lower()
+    ingest = extra.get("ingest") or {}
+    assert ingest.get("riskready_post") is False
+    counts = (SVMAP / "meta.json").read_text(encoding="utf-8")
+    assert '"hosts": 2' in counts or '"hosts":2' in counts
+    assert '"services": 2' in counts or '"services":2' in counts
+    assert '"adapter": "svmap"' in counts or '"adapter":"svmap"' in counts
+    note_recs = inventory_nmap.parse_file(SVMAP / "evidence" / "note.md")
+    assert note_recs
+    assert all(r["kind"] == "evidence" for r in note_recs)
+    assert looks_like_pack_drop(SVMAP / "evidence" / "note.md")
+    sample = (SVMAP / "SAMPLE.txt").read_text(encoding="utf-8")
+    assert "SAMPLE/DEMO — not a client estate" in sample
+    assert "not a client" in sample.lower()
+    assert "svmap" in sample.lower() or "sip" in sample.lower()
+    assert "no invented" in sample.lower() or "tcp" in sample.lower()
+
+
+def test_pack_drop_svmap_does_not_break_prior_adapters() -> None:
+    nmap = inventory_nmap.parse_file(DROP / "assets.jsonl")
+    rust = inventory_nmap.parse_file(RUST / "assets.jsonl")
+    httpx = inventory_nmap.parse_file(HTTPX / "assets.jsonl")
+    uni = inventory_nmap.parse_file(UNI / "assets.jsonl")
+    ssl = inventory_nmap.parse_file(SSL / "assets.jsonl")
+    tlsx = inventory_nmap.parse_file(TLSX / "assets.jsonl")
+    whatweb = inventory_nmap.parse_file(WHATWEB / "assets.jsonl")
+    hping3 = inventory_nmap.parse_file(HPING3 / "assets.jsonl")
+    onesixtyone = inventory_nmap.parse_file(ONESIXTYONE / "assets.jsonl")
+    fping = inventory_nmap.parse_file(FPING / "assets.jsonl")
+    naabu = inventory_nmap.parse_file(NAABU / "assets.jsonl")
+    nping = inventory_nmap.parse_file(NPING / "assets.jsonl")
+    nbtscan = inventory_nmap.parse_file(NBTSCAN / "assets.jsonl")
+    braa = inventory_nmap.parse_file(BRAA / "assets.jsonl")
+    ike_scan = inventory_nmap.parse_file(IKE_SCAN / "assets.jsonl")
+    svmap = inventory_nmap.parse_file(SVMAP / "assets.jsonl")
+    assert any(r["name"] == "filesrv.corp.local" for r in nmap if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "445" for r in nmap if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.7" for r in rust if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "22" for r in rust if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.20" for r in httpx if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8080" for r in httpx if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.40" for r in uni if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "21" for r in uni if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.50" for r in ssl if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8443" for r in ssl if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.60" for r in tlsx if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "853" for r in tlsx if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.70" for r in whatweb if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "8000" for r in whatweb if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.80" for r in hping3 if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in hping3)
+    assert any(r["name"] == "10.9.8.90" for r in onesixtyone if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in onesixtyone)
+    assert any(r["name"] == "10.9.8.10" for r in fping if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in fping)
+    assert any(r["name"] == "10.9.8.30" for r in naabu if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "80" for r in naabu if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.32" for r in nping if r["kind"] == "asset")
+    assert any((r.get("extra") or {}).get("port") == "80" for r in nping if r["kind"] == "finding")
+    assert any(r["name"] == "10.9.8.34" for r in nbtscan if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in nbtscan)
+    assert any(r["name"] == "10.9.8.92" for r in braa if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in braa)
+    assert any(r["name"] == "10.9.8.94" for r in ike_scan if r["kind"] == "asset")
+    assert all(r["kind"] != "finding" for r in ike_scan)
+    assert all(r["name"] != "filesrv.corp.local" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.7" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.10" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.20" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.30" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.32" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.34" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.80" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.90" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.92" for r in svmap if r["kind"] == "asset")
+    assert all(r["name"] != "10.9.8.94" for r in svmap if r["kind"] == "asset")
+    assert any(r["name"] == "10.9.8.96" for r in svmap if r["kind"] == "asset")
+    assert any(r["name"] == "10.9.8.97" for r in svmap if r["kind"] == "asset")
+    assert all(
+        str((r.get("extra") or {}).get("protocol") or "").lower() != "tcp"
+        for r in svmap
+        if (r.get("extra") or {}).get("port")
+    )
+
+
 def test_pack_drop_docs_and_matrix() -> None:
     docs = (ROOT / "docs" / "COVEY_PACK_DROP.md").read_text(encoding="utf-8")
     assert "assets.jsonl" in docs
@@ -1464,6 +1645,7 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "nbtscan" in docs.lower()
     assert "braa" in docs.lower()
     assert "ike-scan" in docs.lower()
+    assert "svmap" in docs.lower()
     assert "evergreen.pack_drop.v1" in docs
     assert "fixtures/pack_drop/rustscan" in docs or "pack_drop/rustscan" in docs
     assert "fixtures/pack_drop/httpx" in docs or "pack_drop/httpx" in docs
@@ -1479,6 +1661,7 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "fixtures/pack_drop/nbtscan" in docs or "pack_drop/nbtscan" in docs
     assert "fixtures/pack_drop/braa" in docs or "pack_drop/braa" in docs
     assert "fixtures/pack_drop/ike-scan" in docs or "pack_drop/ike-scan" in docs
+    assert "fixtures/pack_drop/svmap" in docs or "pack_drop/svmap" in docs
     prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
     assert "out/ciso-assistant" in prove
     assert "SAMPLE" in prove

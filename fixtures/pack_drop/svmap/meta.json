@@ -1,0 +1,35 @@
+{
+  "schema": "evergreen.pack_drop.v1",
+  "run_id": "svmap-fixture",
+  "adapter": "svmap",
+  "source": "evergreen-covey",
+  "lane": "nmap",
+  "demo": true,
+  "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. SIP Device/UA discover (svmap ASCII table). UDP SIP ports from the table only (default 5060). No invented TCP. Reject UA unknown/empty/user agent/disabled.",
+  "scope": {
+    "signer": "prove-lab",
+    "purpose": "evergreen-covey svmap export fixture"
+  },
+  "honesty": {
+    "surface_map": true,
+    "sip_device_ua": true,
+    "open_ports_invented": false,
+    "honeypot_validated": false,
+    "control_operating_effectiveness": false,
+    "reject_ua_unknown": true,
+    "note": "SIP Device/UA discover; open_ports_invented false for TCP; reject UA unknown/empty/user agent/disabled"
+  },
+  "ingest": {
+    "mode": "file_drop",
+    "riskready_post": false,
+    "ciso_assistant": "leave-behind file_drop only"
+  },
+  "created_at": "2026-09-08T00:00:00Z",
+  "generated_at": "2026-09-08T00:00:00Z",
+  "counts": {
+    "assets": 4,
+    "findings": 4,
+    "hosts": 2,
+    "services": 2
+  }
+}

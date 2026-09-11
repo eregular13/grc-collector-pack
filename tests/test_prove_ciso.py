@@ -86,6 +86,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert "10.9.8.93" in assets
     assert "10.9.8.94" in assets
     assert "10.9.8.95" in assets
+    assert "10.9.8.96" in assets
+    assert "10.9.8.97" in assets
     assert "SMB" in findings
     assert (
         "open_port_observed" in findings.lower()
@@ -128,6 +130,13 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
         or "ike_handshake" in findings.lower()
         or "ike_responder" in findings.lower()
     )
+    assert (
+        "svmap" in evid.lower()
+        or "10.9.8.96" in evid
+        or "sip_user_agent" in findings.lower()
+        or "sip_udp" in findings.lower()
+        or "udp/5060" in findings.lower()
+    )
     for line in findings.splitlines():
         if "10.9.8.34" in line or "10.9.8.35" in line:
             low = line.lower()
@@ -147,6 +156,13 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
             assert "tcp/80" not in low
             assert "tcp/443" not in low
             assert "tcp/22" not in low
+        if "10.9.8.96" in line or "10.9.8.97" in line:
+            low = line.lower()
+            assert "tcp/80" not in low
+            assert "tcp/443" not in low
+            assert "tcp/22" not in low
+            assert "tcp/5060" not in low
+            assert '"protocol":"tcp"' not in low
     assert "demo" in findings.lower() or "SAMPLE" in findings
     assert "deception-sensor" in findings.lower()
     assert "beelzebub" in findings.lower() or "beelzebub" in assets.lower()
@@ -180,6 +196,8 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "braa" / "meta.json").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "assets.jsonl").is_file()
     assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "meta.json").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "svmap" / "assets.jsonl").is_file()
+    assert (Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "svmap" / "meta.json").is_file()
     rust_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
     ).read_text(encoding="utf-8")
@@ -305,6 +323,39 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert '"port"' not in ike_scan_findings
     assert "10.9.8.94" in ike_scan_findings
     assert "10.9.8.95" in ike_scan_findings
+    svmap_meta = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "svmap" / "meta.json"
+    ).read_text(encoding="utf-8")
+    assert "evergreen.pack_drop.v1" in svmap_meta
+    assert "svmap" in svmap_meta
+    assert "SAMPLE/DEMO — not a client estate" in svmap_meta
+    assert "open_ports_invented" in svmap_meta
+    assert "reject_ua_unknown" in svmap_meta
+    assert "sip" in svmap_meta.lower() or "user-agent" in svmap_meta.lower() or "ua" in svmap_meta.lower()
+    svmap_findings = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "svmap" / "findings.jsonl"
+    ).read_text(encoding="utf-8")
+    assert "sip_user_agent_observed" in svmap_findings
+    assert "sip_udp_port_observed" in svmap_findings or (
+        "open_port_observed" in svmap_findings and "udp" in svmap_findings.lower()
+    )
+    assert "svmap-96-sip-ua" in svmap_findings
+    assert "svmap-96-sip-udp" in svmap_findings
+    assert "svmap-97-sip-ua" in svmap_findings
+    assert "svmap-97-sip-udp" in svmap_findings
+    assert "10.9.8.96" in svmap_findings
+    assert "10.9.8.97" in svmap_findings
+    assert '"protocol":"tcp"' not in svmap_findings
+    assert '"protocol": "tcp"' not in svmap_findings
+    svmap_assets = (
+        Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "svmap" / "assets.jsonl"
+    ).read_text(encoding="utf-8")
+    assert "10.9.8.96" in svmap_assets
+    assert "10.9.8.97" in svmap_assets
+    assert '"protocol":"udp"' in svmap_assets or '"protocol": "udp"' in svmap_assets
+    assert '"protocol":"tcp"' not in svmap_assets
+    assert '"protocol": "tcp"' not in svmap_assets
+    assert "unknown" not in svmap_assets.lower()
     assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
@@ -539,6 +590,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     ike_scan_sample = (ROOT / "fixtures" / "pack_drop" / "ike-scan" / "SAMPLE.txt").read_text(
         encoding="utf-8"
     )
+    svmap_meta = (ROOT / "fixtures" / "pack_drop" / "svmap" / "meta.json").read_text(
+        encoding="utf-8"
+    )
+    svmap_note = (
+        ROOT / "fixtures" / "pack_drop" / "svmap" / "evidence" / "note.md"
+    ).read_text(encoding="utf-8")
+    svmap_sample = (ROOT / "fixtures" / "pack_drop" / "svmap" / "SAMPLE.txt").read_text(
+        encoding="utf-8"
+    )
     hp = (ROOT / "fixtures" / "demo" / "honeypot" / "SAMPLE.txt").read_text(encoding="utf-8")
     hp_meta = (ROOT / "fixtures" / "demo" / "honeypot" / "meta.json").read_text(encoding="utf-8")
     assert "SAMPLE/DEMO — not a client estate" in meta
@@ -632,6 +692,15 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "open_ports_invented" in ike_scan_meta
     assert "ike" in ike_scan_meta.lower() or "vpn" in ike_scan_meta.lower()
     assert '"services": 0' in ike_scan_meta or '"services":0' in ike_scan_meta
+    assert "SAMPLE/DEMO — not a client estate" in svmap_meta
+    assert "SAMPLE/DEMO — not a client estate" in svmap_note
+    assert "not a client" in svmap_sample.lower() and "SAMPLE" in svmap_sample
+    assert "evergreen.pack_drop.v1" in svmap_meta
+    assert '"adapter": "svmap"' in svmap_meta or '"adapter":"svmap"' in svmap_meta
+    assert "open_ports_invented" in svmap_meta
+    assert "reject_ua_unknown" in svmap_meta
+    assert "sip" in svmap_meta.lower() or "ua" in svmap_meta.lower()
+    assert '"services": 2' in svmap_meta or '"services":2' in svmap_meta
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
 
