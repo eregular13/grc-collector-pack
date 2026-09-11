@@ -16,7 +16,10 @@ no 17th live adapter, no pack Covey adapter work. Pytest locks
 non-empty `meta.json` / `assets.jsonl` / `findings.jsonl`) and
 `seed_prove_in` 1:1 via `E2E_PROVEN_PACK_DROP_ADAPTERS`. Pytest also
 locks per-adapter claim-class + DEMO labels
-(`tests/test_pack_drop_claim_class.py`). hping3 and fping are
+(`tests/test_pack_drop_claim_class.py`) and global observation id
+uniqueness (`tests/test_pack_drop_observation_ids.py`; namespaced
+`<adapter>-…` DEMO ids; unique within each file and across all sixteen).
+hping3 and fping are
 **host-only** (ICMP / reachability discover); onesixtyone is **SNMP
 community/sysDescr** discover; braa is an **SNMP GET sweeper** (OID /
 sysDescr / sysName); nbtscan is **NetBIOS name-table** host discover
@@ -54,7 +57,7 @@ in/nmap/pack_drop/evidence/<artifact>
 | File | Accepted as |
 |---|---|
 | `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Host-only adapters (hping3/fping ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName; nbtscan NetBIOS name-table; ike-scan IKE/VPN handshake) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. svmap emits hosts plus **UDP/5060 sip** service rows from the SIP Device/UA table (protocol=`udp`; not invented TCP). |
-| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP/reachability), `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone), `claim:snmp_community_observed` / `claim:sysdescr_observed` / `claim:oid_observed` (braa), `claim:netbios_name_observed` (nbtscan), or `claim:ike_handshake_observed` / `claim:ike_responder_observed` (ike-scan) with no `port`. svmap rows use unique ids (`svmap-96-sip-ua`, `svmap-96-sip-udp`, …) with `claim:sip_user_agent_observed` / `claim:sip_udp_port_observed` (UDP/5060 sip from the table; not invented TCP). |
+| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP/reachability), `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone), `claim:snmp_community_observed` / `claim:sysdescr_observed` / `claim:oid_observed` (braa), `claim:netbios_name_observed` (nbtscan), or `claim:ike_handshake_observed` / `claim:ike_responder_observed` (ike-scan) with no `port`. Every claim / finding / observation row carries a stable namespaced `id` (`fping-10-host-up`, `nmap-50-smb-445`, `svmap-96-sip-ua`, …) unique within the adapter file and globally across the sixteen-set so sibling ids cannot collapse CISO rows. svmap rows use `claim:sip_user_agent_observed` / `claim:sip_udp_port_observed` (UDP/5060 sip from the table; not invented TCP). |
 | `meta.json` | One evidence attestation (`covey.pack_drop.v1` or `evergreen.pack_drop.v1`). Empty invents nothing. |
 | `evidence/` | Artifact rows (or `kind:evidence` JSON). Not parsed as Nmap XML. |
 
