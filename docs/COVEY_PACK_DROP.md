@@ -29,10 +29,15 @@ global JSONL row schema + adapter identity
 (`tests/test_pack_drop_row_schema.py`; every `assets.jsonl` /
 `findings.jsonl` object `schema` `covey.pack_drop.v1` exact and
 `adapter` == directory name),
-and global assets/findings kind-partition
+global assets/findings kind-partition
 (`tests/test_pack_drop_kind_partition.py`; `assets.jsonl` `kind`
 ∈ `{asset, host, service}` exact; `findings.jsonl` `kind` ∈
-`{finding, observation}` exact; no cross-file leakage).
+`{finding, observation}` exact; no cross-file leakage),
+and global service→host address referential lock
+(`tests/test_pack_drop_service_host_refs.py`; every `kind:service`
+address/ip matches a same-file `kind:host` address or `kind:asset`
+ip/hostname/name; host-only adapters invent zero service rows;
+nmap asset+ports-only is OK with zero `kind:service` rows).
 hping3 and fping are
 **host-only** (ICMP / reachability discover); onesixtyone is **SNMP
 community/sysDescr** discover; braa is an **SNMP GET sweeper** (OID /
