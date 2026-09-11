@@ -2,7 +2,11 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 150):** CoS #38 honesty sync —
+**This window (cycle 151):** CoS #38 honesty sync + item 2 —
+global pack_drop asset/host/service identity lock
+(`tests/test_pack_drop_asset_ids.py` parametrized over all sixteen
+fixtures/pack_drop/ adapters; namespaced DEMO id unique within each
+assets.jsonl and globally; disjoint from observation ids).
 Pack HEAD
 `6ab62843` (PR #65 global pack_drop observation id uniqueness
 already on master).
@@ -24,7 +28,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 149 observation-id uniqueness
+invoke / 81 file_drop). Cycle 150 honesty stands as
+history. Cycle 149 observation-id uniqueness
 lock stands as history. Cycle 148 honesty stands as
 history. Cycle 147 claim-class + DEMO-label
 lock stands as history. Cycle 146 honesty stands as

@@ -1,5 +1,5 @@
-{"kind":"host","address":"10.9.8.30","state":"up","source":"parse_live_hosts","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"host","address":"10.9.8.31","state":"up","source":"parse_live_hosts","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"service","address":"10.9.8.30","port":80,"protocol":"tcp","state":"open","source":"pass2","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"service","address":"10.9.8.30","port":443,"protocol":"tcp","state":"open","source":"pass2","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"service","address":"10.9.8.31","port":22,"protocol":"tcp","state":"open","source":"pass2","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"host","id":"naabu-30-host","address":"10.9.8.30","state":"up","source":"parse_live_hosts","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"host","id":"naabu-31-host","address":"10.9.8.31","state":"up","source":"parse_live_hosts","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","id":"naabu-30-svc-80","address":"10.9.8.30","port":80,"protocol":"tcp","state":"open","source":"pass2","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","id":"naabu-30-svc-443","address":"10.9.8.30","port":443,"protocol":"tcp","state":"open","source":"pass2","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","id":"naabu-31-svc-22","address":"10.9.8.31","port":22,"protocol":"tcp","state":"open","source":"pass2","adapter":"naabu","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}

@@ -1,5 +1,5 @@
-{"kind":"host","address":"10.9.8.60","state":"up","source":"parse_live_hosts","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"host","address":"10.9.8.61","state":"up","source":"parse_live_hosts","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"service","address":"10.9.8.60","port":443,"protocol":"tcp","state":"open","service":"https","source":"pass2","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"service","address":"10.9.8.60","port":853,"protocol":"tcp","state":"open","service":"domain-s","source":"pass2","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
-{"kind":"service","address":"10.9.8.61","port":636,"protocol":"tcp","state":"open","service":"ldaps","source":"pass2","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"host","id":"tlsx-60-host","address":"10.9.8.60","state":"up","source":"parse_live_hosts","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"host","id":"tlsx-61-host","address":"10.9.8.61","state":"up","source":"parse_live_hosts","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","id":"tlsx-60-svc-443","address":"10.9.8.60","port":443,"protocol":"tcp","state":"open","service":"https","source":"pass2","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","id":"tlsx-60-svc-853","address":"10.9.8.60","port":853,"protocol":"tcp","state":"open","service":"domain-s","source":"pass2","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
+{"kind":"service","id":"tlsx-61-svc-636","address":"10.9.8.61","port":636,"protocol":"tcp","state":"open","service":"ldaps","source":"pass2","adapter":"tlsx","note":"SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export."}
