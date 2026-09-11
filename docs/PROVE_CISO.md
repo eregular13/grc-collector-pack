@@ -97,7 +97,10 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #35 honesty stamp. Pack HEAD
+CoS #35 item 2: all-16 pack_drop fixture inventory lock
+(`fixtures/pack_drop/` + `seed_prove_in` 1:1 on shared
+`E2E_PROVEN_PACK_DROP_ADAPTERS`; no 17th). CoS #35 honesty
+stamp stands. Pack HEAD
 `fe3aadfb` (PR #59 svmap SIP pack_drop→CISO already on
 master). Item **COS34-PACK-DROP-SVMAP** = DONE. 16 E2E_PROVEN
 pack_drop void CLOSED. Next brick named = all-16 fixture

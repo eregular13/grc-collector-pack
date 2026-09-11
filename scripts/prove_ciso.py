@@ -33,6 +33,27 @@ SAMPLE_BANNER = (
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 
+# Shared all-16 pack_drop inventory. Fixtures, seed_prove_in, and honesty
+# tests must stay 1:1 with this set — no missing adapter, no 17th.
+E2E_PROVEN_PACK_DROP_ADAPTERS = (
+    "nmap",
+    "rustscan",
+    "fping",
+    "naabu",
+    "nping",
+    "httpx",
+    "sslscan",
+    "tlsx",
+    "whatweb",
+    "hping3",
+    "onesixtyone",
+    "nbtscan",
+    "braa",
+    "ike-scan",
+    "svmap",
+    "unicornscan",
+)
+
 ENV_KEYS = (
     "IN_DIR",
     "OUT_DIR",
@@ -56,6 +77,12 @@ def _copy_tree(src: Path, dest: Path) -> None:
         shutil.copy2(path, target)
 
 
+def pack_drop_seed_dest(dest_in: Path, name: str) -> Path:
+    """nmap lands at dest_in/nmap/pack_drop/; siblings nest under that dir."""
+    nmap_drop = Path(dest_in) / "nmap" / "pack_drop"
+    return nmap_drop if name == "nmap" else nmap_drop / name
+
+
 def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     """Copy labeled fixtures into dest_in. Never touches pack in/."""
     root = Path(root or ROOT)
@@ -63,83 +90,29 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     if dest_in.exists():
         shutil.rmtree(dest_in)
     dest_in.mkdir(parents=True)
-    nmap_drop = dest_in / "nmap" / "pack_drop"
-    rustscan_drop = dest_in / "nmap" / "pack_drop" / "rustscan"
-    httpx_drop = dest_in / "nmap" / "pack_drop" / "httpx"
-    unicornscan_drop = dest_in / "nmap" / "pack_drop" / "unicornscan"
-    sslscan_drop = dest_in / "nmap" / "pack_drop" / "sslscan"
-    tlsx_drop = dest_in / "nmap" / "pack_drop" / "tlsx"
-    whatweb_drop = dest_in / "nmap" / "pack_drop" / "whatweb"
-    hping3_drop = dest_in / "nmap" / "pack_drop" / "hping3"
-    onesixtyone_drop = dest_in / "nmap" / "pack_drop" / "onesixtyone"
-    fping_drop = dest_in / "nmap" / "pack_drop" / "fping"
-    naabu_drop = dest_in / "nmap" / "pack_drop" / "naabu"
-    nping_drop = dest_in / "nmap" / "pack_drop" / "nping"
-    nbtscan_drop = dest_in / "nmap" / "pack_drop" / "nbtscan"
-    braa_drop = dest_in / "nmap" / "pack_drop" / "braa"
-    ike_scan_drop = dest_in / "nmap" / "pack_drop" / "ike-scan"
-    svmap_drop = dest_in / "nmap" / "pack_drop" / "svmap"
+    adapters: dict[str, str] = {}
+    for name in E2E_PROVEN_PACK_DROP_ADAPTERS:
+        dest = pack_drop_seed_dest(dest_in, name)
+        _copy_tree(root / "fixtures" / "pack_drop" / name, dest)
+        (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+        adapters[name] = str(dest)
     honeypot = dest_in / "honeypot"
     beelzebub = dest_in / "honeypot" / "pack_drop"
-    _copy_tree(root / "fixtures" / "pack_drop" / "nmap", nmap_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "rustscan", rustscan_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "httpx", httpx_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "unicornscan", unicornscan_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "sslscan", sslscan_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "tlsx", tlsx_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "whatweb", whatweb_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "hping3", hping3_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "onesixtyone", onesixtyone_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "fping", fping_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "naabu", naabu_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "nping", nping_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "nbtscan", nbtscan_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "braa", braa_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "ike-scan", ike_scan_drop)
-    _copy_tree(root / "fixtures" / "pack_drop" / "svmap", svmap_drop)
     _copy_tree(root / "fixtures" / "demo" / "honeypot", honeypot)
     _copy_tree(root / "fixtures" / "demo" / "honeypot_beelzebub", beelzebub)
     (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (nmap_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (rustscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (httpx_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (unicornscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (sslscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (tlsx_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (whatweb_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (hping3_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (onesixtyone_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (fping_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (naabu_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (nping_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (nbtscan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (braa_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (ike_scan_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (svmap_drop / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
     (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    seeded = {name: adapters[name] for name in E2E_PROVEN_PACK_DROP_ADAPTERS if name != "nmap"}
     return {
         "dest_in": str(dest_in),
-        "covey": str(nmap_drop),
-        "rustscan": str(rustscan_drop),
-        "httpx": str(httpx_drop),
-        "unicornscan": str(unicornscan_drop),
-        "sslscan": str(sslscan_drop),
-        "tlsx": str(tlsx_drop),
-        "whatweb": str(whatweb_drop),
-        "hping3": str(hping3_drop),
-        "onesixtyone": str(onesixtyone_drop),
-        "fping": str(fping_drop),
-        "naabu": str(naabu_drop),
-        "nping": str(nping_drop),
-        "nbtscan": str(nbtscan_drop),
-        "braa": str(braa_drop),
-        "ike-scan": str(ike_scan_drop),
-        "svmap": str(svmap_drop),
+        "covey": adapters["nmap"],
+        **seeded,
         "honeypot": str(honeypot),
         "beelzebub": str(beelzebub),
         "sample": True,
         "client": False,
+        "adapters": adapters,
     }
 
 
