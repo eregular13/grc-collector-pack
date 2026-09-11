@@ -1,27 +1,25 @@
-# CRITIC — cycle 147 (CoS #36 item 2 claim-class + DEMO-label lock)
+# CRITIC — cycle 148 (CoS #37 honesty sync)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #36 item 2: per-adapter pack_drop claim-class + DEMO-label lock
-(`tests/test_pack_drop_claim_class.py` parametrized over all sixteen
-`fixtures/pack_drop/` adapters; meta.json `demo` + SAMPLE/DEMO ≠ client;
-claim-class honesty by adapter class; UNPROVEN masscan / arp-scan /
-netdiscover / zmap still absent). CoS #36 honesty stamp stands: Pack HEAD `027cef2b`
-(PR #61 all-16 pack_drop fixture inventory lock already on master).
-Item **COS35-PACK-DROP-INVENTORY-LOCK** = DONE. 16 E2E_PROVEN pack_drop
-void CLOSED. Next brick named = per-adapter pack_drop claim-class +
-DEMO-label lock. Covey HEAD still `30d2197f`
+CoS #37 honesty sync: Pack HEAD `8be80157`
+(PR #63 per-adapter pack_drop claim-class + DEMO-label lock already on master).
+Item **COS36-PACK-DROP-CLAIM-CLASS-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+void CLOSED. Next brick named = global pack_drop observation id
+uniqueness lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
+unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
 truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #37.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #38.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #36 / pack HEAD `027cef2b` / Covey HEAD `30d2197f`,
+cannot lag CoS #37 / pack HEAD `8be80157` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 146
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 147
+claim-class + DEMO-label lock stands as history. Cycle 146
 honesty stands as history. Cycle 145
 all-16 fixture inventory lock stands as history. Cycle 144
 honesty stands as history. Cycle 143
