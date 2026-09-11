@@ -2,18 +2,16 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 161):** CoS #43 honesty sync + item 2 —
-global pack_drop service→host address referential lock
-(`tests/test_pack_drop_service_host_refs.py` parametrized over all
-sixteen fixtures). Pack HEAD
-`f04218b2` (PR #75 kind-partition lock
+**This window (cycle 162):** CoS #44 honesty sync. Pack HEAD
+`8c442a33` (PR #77 service→host refs
 already on master).
 Covey HEAD still
 `30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item **COS43-HONESTY**.
-Item **COS42-PACK-DROP-KIND-PARTITION-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+export for all 16 `E2E_PROVEN`. Item **COS44-HONESTY**.
+Item **COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK** = DONE. 16 E2E_PROVEN pack_drop
 void CLOSED. Next brick named = global pack_drop
-service→host address referential lock. SAMPLE_BANNER / prove_ciso
+observation/finding port→service (or nested asset ports)
+referential lock. SAMPLE_BANNER / prove_ciso
 sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
 is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
@@ -21,12 +19,13 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #44. Reid-only
+start Covey adapter work. Stop for CoS #45. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 160 honesty stands as
+invoke / 81 file_drop). Cycle 161 service→host lock stands as
+history. Cycle 160 honesty stands as
 history. Cycle 159 kind-partition lock stands as
 history. Cycle 158 honesty stands as
 history. Cycle 157 JSONL row schema identity lock stands as

@@ -1,19 +1,13 @@
-# CRITIC — cycle 161 (CoS #43 honesty sync + item 2 service→host address refs)
+# CRITIC — cycle 162 (CoS #44 honesty sync)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #43 honesty sync + item 2: global pack_drop service→host
-address referential lock (`tests/test_pack_drop_service_host_refs.py`
-parametrized over all sixteen `fixtures/pack_drop/` adapters;
-service address/ip matches same-file host address or asset
-ip/hostname/name; host-only zero services; nmap asset+ports-only
-OK; SAMPLE/DEMO ≠ client;
-UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
-Pack HEAD `f04218b2`
-(PR #75 kind-partition lock already on master).
-Item **COS43-HONESTY**. Item
-**COS42-PACK-DROP-KIND-PARTITION-LOCK** = DONE.
+CoS #44 honesty sync. Pack HEAD `8c442a33`
+(PR #77 service→host address referential lock already on master).
+Item **COS44-HONESTY**. Item
+**COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop
-service→host address referential lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
+observation/finding port→service (or nested asset ports) referential lock.
+SAMPLE_BANNER / prove_ciso sixteen-set includes
 unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -21,12 +15,13 @@ truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #44.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #45.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #43 / pack HEAD `f04218b2` / Covey HEAD `30d2197f`,
+cannot lag CoS #44 / pack HEAD `8c442a33` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 160
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 161
+service→host lock stands as history. Cycle 160
 honesty stands as history. Cycle 159
 kind-partition lock stands as history. Cycle 158
 honesty stands as history. Cycle 157
