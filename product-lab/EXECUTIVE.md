@@ -2,20 +2,15 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 153):** CoS #39 honesty sync + item 2 — global
-pack_drop observation→asset/service referential lock
-(`tests/test_pack_drop_observation_asset_refs.py` parametrized over all
-sixteen fixtures/pack_drop/ adapters; findings resolve to same-adapter
-host|asset; port findings match service rows; host-only invent no
-services). Pack HEAD
-`f41eb4ad` (PR #67 global pack_drop asset/host/service identity
+**This window (cycle 154):** CoS #40 honesty sync. Pack HEAD
+`a84dc78f` (PR #69 observation→asset/service referential lock
 already on master).
 Covey HEAD still
 `30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item **COS39-HONESTY**.
-Item **COS38-PACK-DROP-ASSET-ID-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+export for all 16 `E2E_PROVEN`. Item **COS40-HONESTY**.
+Item **COS39-PACK-DROP-OBS-ASSET-REFS-LOCK** = DONE. 16 E2E_PROVEN pack_drop
 void CLOSED. Next brick named = global pack_drop
-observation→asset/service referential lock. SAMPLE_BANNER / prove_ciso
+meta.json schema + adapter identity lock. SAMPLE_BANNER / prove_ciso
 sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
 is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
@@ -23,12 +18,13 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #40. Reid-only
+start Covey adapter work. Stop for CoS #41. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 152 honesty stands as
+invoke / 81 file_drop). Cycle 153 observation→asset refs
+lock stands as history. Cycle 152 honesty stands as
 history. Cycle 151 asset-id lock stands as
 history. Cycle 150 honesty stands as
 history. Cycle 149 observation-id uniqueness
