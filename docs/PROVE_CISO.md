@@ -93,19 +93,19 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #33 item 2 — pack-side ike-scan host-only IKE/VPN pack_drop → CISO
-prove. CoS #33 honesty stamp stands. Pack HEAD
-`ae9ec27c` (PR #55 braa SNMP host-only pack_drop→CISO already on
-master; DEMO hosts `10.9.8.92`/`10.9.8.93`). Covey HEAD still
+CoS #34 honesty stamp. Pack HEAD
+`d6e766be` (PR #57 ike-scan host-only pack_drop→CISO already on
+master). Covey HEAD still
 `30d2197f` multi-adapter pack_drop export
-for all 16 `E2E_PROVEN`. Item **COS32-PACK-DROP-BRAA** = DONE.
-Next brick named = ike-scan.
+for all 16 `E2E_PROVEN`. Item **COS33-PACK-DROP-IKE-SCAN** = DONE.
+Next brick named = svmap. After svmap the 16 E2E_PROVEN pack_drop
+void closes.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #34. Reid-only
+Covey adapter work. Stop for CoS #35. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
 Docker host — this VM `compose_lab` absent ≠ PASS).
 
