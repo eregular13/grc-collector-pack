@@ -1,16 +1,12 @@
-# CRITIC — cycle 153 (CoS #39 item 2 observation→asset/service referential lock)
+# CRITIC — cycle 154 (CoS #40 honesty sync)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #39 honesty sync + item 2: global pack_drop observation→asset/service
-referential lock (`tests/test_pack_drop_observation_asset_refs.py` parametrized over all
-sixteen `fixtures/pack_drop/` adapters; findings resolve to same-adapter host|asset;
-port findings match service rows; host-only invent no services;
-UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
-Pack HEAD `f41eb4ad`
-(PR #67 global pack_drop asset/host/service identity already on master).
-Item **COS39-HONESTY**. Item **COS38-PACK-DROP-ASSET-ID-LOCK** = DONE.
+CoS #40 honesty sync. Pack HEAD `a84dc78f`
+(PR #69 observation→asset/service referential lock already on master).
+Item **COS40-HONESTY**. Item
+**COS39-PACK-DROP-OBS-ASSET-REFS-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop
-observation→asset/service referential lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
+meta.json schema + adapter identity lock. SAMPLE_BANNER / prove_ciso sixteen-set includes
 unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
@@ -18,12 +14,13 @@ truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #40.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #41.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #39 / pack HEAD `f41eb4ad` / Covey HEAD `30d2197f`,
+cannot lag CoS #40 / pack HEAD `a84dc78f` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 152
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 153
+observation→asset refs lock stands as history. Cycle 152
 honesty stands as history. Cycle 151
 asset-id lock stands as history. Cycle 150
 honesty stands as history. Cycle 149

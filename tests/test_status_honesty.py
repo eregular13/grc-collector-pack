@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "f41eb4ad"
-STALE_PACK_HEAD = "6ab62843"
-STALE_PACK_HONESTY = "6dbefe33"
+COVEY_PACK_HEAD = "a84dc78f"
+STALE_PACK_HEAD = "f41eb4ad"
+STALE_PACK_HONESTY = "110016c6"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -63,7 +63,7 @@ def _has_bare_cos(text: str, n: int) -> bool:
 
 
 def _next_brick(text: str) -> str:
-    """Clause after 'next brick' — DONE asset-identity copy must not live here."""
+    """Clause after 'next brick' — DONE referential-lock copy must not live here."""
     low = text.lower()
     idx = low.find("next brick")
     if idx < 0:
@@ -87,24 +87,24 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #39" in low
+    assert "cos #40" in low
     assert "honesty sync" in low
-    assert "cos38-pack-drop-asset-id-lock" in low
+    assert "cos39-pack-drop-obs-asset-refs-lock" in low
     assert "done" in low
-    assert status.get("item") == "COS39-HONESTY"
-    assert "cos #38" not in low, "bare CoS #38 is not the current cycle stamp"
+    assert status.get("item") == "COS40-HONESTY"
+    assert "cos #39" not in low, "bare CoS #39 is not the current cycle stamp"
     assert "next brick" in low
     brick = _next_brick(action)
-    assert "referential" in brick, "next brick must name observation→asset/service referential lock"
-    assert "observation" in brick and "asset" in brick, "next brick must include observation→asset phrasing"
-    assert "service" in brick, "next brick must name asset/service referential lock"
-    assert "identity" not in brick, "asset/host/service identity is DONE, not the next brick"
+    assert "meta.json" in brick, "next brick must name meta.json schema lock"
+    assert "schema" in brick, "next brick must include schema phrasing"
+    assert "adapter" in brick and "identity" in brick, "next brick must name adapter identity lock"
+    assert "referential" not in brick, "observation→asset/service referential lock is DONE, not the next brick"
     assert "16 e2e_proven pack_drop void closed" in low
     assert "sample_banner" in low
     assert "unicornscan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
-    for n in range(4, 39):
+    for n in range(4, 40):
         assert not _has_bare_cos(low, n), f"STATUS next_action still stamps CoS #{n}"
     assert "covey" in low
     assert "e2e_proven" in low
@@ -123,8 +123,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD f41eb4ad (PR #67). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #38 / pack 6ab62843 / 6dbefe33.
+    # Pack HEAD a84dc78f (PR #69). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #39 / pack f41eb4ad / 110016c6.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -170,9 +170,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-152 notes."""
+    """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 154):",
         "**Delta (cycle 153):",
         "**Delta (cycle 152):",
         "**Delta (cycle 151):",
@@ -214,21 +215,22 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #39" in low, f"{where} missing CoS #39 stamp"
+        assert "cos #40" in low, f"{where} missing CoS #40 stamp"
+        assert "cos #39" not in low, f"{where} still stamps CoS #39 as the current cycle"
         assert "cos #38" not in low, f"{where} still stamps CoS #38 as the current cycle"
         assert "cos #37" not in low, f"{where} still stamps CoS #37 as the current cycle"
         assert "cos #36" not in low, f"{where} still stamps CoS #36 as the current cycle"
         assert "cos #35" not in low, f"{where} still stamps CoS #35 as the current cycle"
         assert "cos #34" not in low, f"{where} still stamps CoS #34 as the current cycle"
-        assert "next brick" in low, f"{where} missing next brick = global pack_drop observation→asset/service referential lock"
+        assert "next brick" in low, f"{where} missing next brick = global pack_drop meta.json schema + adapter identity lock"
         brick = _next_brick(text)
-        assert "referential" in brick, f"{where} next brick missing referential lock"
-        assert "observation" in brick and "asset" in brick, f"{where} next brick missing observation→asset phrasing"
-        assert "service" in brick, f"{where} next brick missing asset/service referential lock"
-        assert "identity" not in brick, f"{where} still names asset/host/service identity as next brick"
+        assert "meta.json" in brick, f"{where} next brick missing meta.json"
+        assert "schema" in brick, f"{where} next brick missing schema phrasing"
+        assert "adapter" in brick and "identity" in brick, f"{where} next brick missing adapter identity lock"
+        assert "referential" not in brick, f"{where} still names observation→asset/service referential lock as next brick"
         assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
-        assert "cos38-pack-drop-asset-id-lock" in low, f"{where} missing COS38-PACK-DROP-ASSET-ID-LOCK DONE"
-        assert "stop for cos #40" in low, f"{where} missing Stop for CoS #40"
+        assert "cos39-pack-drop-obs-asset-refs-lock" in low, f"{where} missing COS39-PACK-DROP-OBS-ASSET-REFS-LOCK DONE"
+        assert "stop for cos #41" in low, f"{where} missing Stop for CoS #41"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -241,8 +243,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos39_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #39 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos40_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #40 pack HEAD E2E_PROVEN."""
     from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_NAMED, SAMPLE_BANNER
 
     status = _status()
@@ -281,6 +283,7 @@ def test_status_and_live_docs_match_cos39_covey_e2e_proven() -> None:
     assert "cos #36" not in low
     assert "cos #37" not in low
     assert "cos #38" not in low
+    assert "cos #39" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
@@ -310,21 +313,22 @@ def test_status_and_live_docs_match_cos39_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #39")
+                idx = text.find("CoS #40")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #39 this-window copy"
+        assert window, f"{path} missing CoS #40 this-window copy"
         win_low = window.lower()
-        assert "cos #39" in win_low, f"{path} this-window is not CoS #39"
+        assert "cos #40" in win_low, f"{path} this-window is not CoS #40"
+        assert "cos #39" not in win_low, f"{path} this-window still stamps CoS #39 as the current cycle"
         assert "cos #38" not in win_low, f"{path} this-window still stamps CoS #38 as the current cycle"
         assert "cos #37" not in win_low, f"{path} this-window still stamps CoS #37 as the current cycle"
         assert "cos #36" not in win_low, f"{path} this-window still stamps CoS #36 as the current cycle"
-        assert "cos38-pack-drop-asset-id-lock" in win_low, f"{path} this-window missing COS38-PACK-DROP-ASSET-ID-LOCK DONE"
-        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop observation→asset/service referential lock"
+        assert "cos39-pack-drop-obs-asset-refs-lock" in win_low, f"{path} this-window missing COS39-PACK-DROP-OBS-ASSET-REFS-LOCK DONE"
+        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop meta.json schema + adapter identity lock"
         brick = _next_brick(window)
-        assert "referential" in brick, f"{path} this-window next brick missing referential lock"
-        assert "observation" in brick and "asset" in brick, f"{path} this-window next brick missing observation→asset phrasing"
-        assert "service" in brick, f"{path} this-window next brick missing asset/service referential lock"
-        assert "identity" not in brick, f"{path} this-window still names asset/host/service identity as next brick"
+        assert "meta.json" in brick, f"{path} this-window next brick missing meta.json"
+        assert "schema" in brick, f"{path} this-window next brick missing schema phrasing"
+        assert "adapter" in brick and "identity" in brick, f"{path} this-window next brick missing adapter identity lock"
+        assert "referential" not in brick, f"{path} this-window still names observation→asset/service referential lock as next brick"
         assert "void" in win_low, f"{path} this-window missing void CLOSED"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
