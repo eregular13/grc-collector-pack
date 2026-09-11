@@ -2,27 +2,28 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 145):** CoS #35 item 2 — all-16 pack_drop
-fixture inventory lock. CoS #35 honesty sync stands. Pack HEAD
-`fe3aadfb` (PR #59 svmap SIP
-pack_drop→CISO already on master).
+**This window (cycle 146):** CoS #36 honesty sync. Pack HEAD
+`027cef2b` (PR #61 all-16 pack_drop fixture inventory lock
+already on master).
 Covey HEAD still
 `30d2197f` multi-adapter pack_drop
 export for all 16 `E2E_PROVEN`. Item
-**COS34-PACK-DROP-SVMAP** = DONE. 16 E2E_PROVEN pack_drop
-void CLOSED. Next brick named = all-16 fixture inventory lock.
+**COS35-PACK-DROP-INVENTORY-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+void CLOSED. Next brick named = per-adapter pack_drop
+claim-class + DEMO-label lock.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
 is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 + rustscan + fping + naabu + nping + httpx + sslscan + tlsx +
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #36. Reid-only
+start Covey adapter work. Stop for CoS #37. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 144 honesty stands as
+invoke / 81 file_drop). Cycle 145 all-16 fixture inventory
+lock stands as history. Cycle 144 honesty stands as
 history. Cycle 143 svmap pack_drop→CISO
 prove stands as history. Cycle 142 honesty stands as
 history. Cycle 141 ike-scan pack_drop→CISO
