@@ -27,12 +27,6 @@ CISO_CSVS = (
     "vulnerabilities.csv",
     "risk_scenarios.csv",
 )
-SAMPLE_BANNER = (
-    "SAMPLE/DEMO — not a client estate.\n"
-    "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping + nbtscan + braa + ike-scan + svmap) + honeypot file_drop. Not a client export.\n"
-    "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
-)
-
 # Shared all-16 pack_drop inventory. Fixtures, seed_prove_in, and honesty
 # tests must stay 1:1 with this set — no missing adapter, no 17th.
 E2E_PROVEN_PACK_DROP_ADAPTERS = (
@@ -52,6 +46,12 @@ E2E_PROVEN_PACK_DROP_ADAPTERS = (
     "ike-scan",
     "svmap",
     "unicornscan",
+)
+E2E_PROVEN_PACK_DROP_NAMED = " + ".join(E2E_PROVEN_PACK_DROP_ADAPTERS)
+SAMPLE_BANNER = (
+    "SAMPLE/DEMO — not a client estate.\n"
+    f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED}) + honeypot file_drop. Not a client export.\n"
+    "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 
 ENV_KEYS = (
@@ -239,7 +239,7 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
         "note": (
-            "Fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping + nbtscan + braa + ike-scan + svmap stdout-class) + honeypot → "
+            f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot → "
             "existing collectors → grc_loader → out/ciso-assistant. SAMPLE ≠ client. "
             "This prove is not a paying-day PASS."
         ),

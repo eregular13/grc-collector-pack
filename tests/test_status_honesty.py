@@ -15,9 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "027cef2b"
-STALE_PACK_HEAD = "fe3aadfb"
-STALE_PACK_HONESTY = "8c1f3acd"
+COVEY_PACK_HEAD = "8be80157"
+STALE_PACK_HEAD = "027cef2b"
+STALE_PACK_HONESTY = "a9182a02"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -72,14 +72,16 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #36" in low
+    assert "cos #37" in low
     assert "honesty sync" in low
-    assert "cos35-pack-drop-inventory-lock" in low
-    assert status.get("item") == "COS36-PACK-DROP-CLAIM-CLASS-LOCK"
+    assert "cos36-pack-drop-claim-class-lock" in low
+    assert status.get("item") == "COS37-HONESTY"
     assert "next brick" in low
-    assert "claim-class" in low
-    assert "demo-label" in low
+    assert "observation id" in low
+    assert "uniqueness" in low
     assert "16 e2e_proven pack_drop void closed" in low
+    assert "sample_banner" in low
+    assert "unicornscan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
     assert "cos #4" not in low
@@ -114,6 +116,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "cos #33" not in low
     assert "cos #34" not in low
     assert "cos #35" not in low
+    assert "cos #36" not in low
     assert "covey" in low
     assert "e2e_proven" in low
     assert "closed" in low
@@ -131,8 +134,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD 027cef2b (PR #61). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #35 / pack fe3aadfb / 8c1f3acd.
+    # Pack HEAD 8be80157 (PR #63). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #36 / pack 027cef2b / a9182a02.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -178,9 +181,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
 
 
 def _live_this_window(text: str) -> str:
-    """Current-cycle window / newest delta — not historical cycle-145 notes."""
+    """Current-cycle window / newest delta — not historical cycle-147 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 148):",
         "**Delta (cycle 147):",
         "**Delta (cycle 146):",
         "**Delta (cycle 145):",
@@ -216,15 +220,16 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #36" in low, f"{where} missing CoS #36 stamp"
+        assert "cos #37" in low, f"{where} missing CoS #37 stamp"
+        assert "cos #36" not in low, f"{where} still stamps CoS #36 as the current cycle"
         assert "cos #35" not in low, f"{where} still stamps CoS #35 as the current cycle"
         assert "cos #34" not in low, f"{where} still stamps CoS #34 as the current cycle"
-        assert "next brick" in low, f"{where} missing next brick = per-adapter claim-class + DEMO-label lock"
-        assert "claim-class" in low, f"{where} missing claim-class next brick"
-        assert "demo-label" in low, f"{where} missing DEMO-label next brick"
+        assert "next brick" in low, f"{where} missing next brick = global pack_drop observation id uniqueness lock"
+        assert "observation id" in low, f"{where} missing observation id next brick"
+        assert "uniqueness" in low, f"{where} missing uniqueness next brick"
         assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
-        assert "cos35-pack-drop-inventory-lock" in low, f"{where} missing COS35-PACK-DROP-INVENTORY-LOCK DONE"
-        assert "stop for cos #37" in low, f"{where} missing Stop for CoS #37"
+        assert "cos36-pack-drop-claim-class-lock" in low, f"{where} missing COS36-PACK-DROP-CLAIM-CLASS-LOCK DONE"
+        assert "stop for cos #38" in low, f"{where} missing Stop for CoS #38"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -237,8 +242,10 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos36_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #36 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos37_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #37 pack HEAD E2E_PROVEN."""
+    from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_NAMED, SAMPLE_BANNER
+
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
@@ -272,10 +279,20 @@ def test_status_and_live_docs_match_cos36_covey_e2e_proven() -> None:
     assert "cos #33" not in low
     assert "cos #34" not in low
     assert "cos #35" not in low
+    assert "cos #36" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
+    joined = " + ".join(COVEY_E2E_PROVEN)
+    assert joined == E2E_PROVEN_PACK_DROP_NAMED
+    assert joined.endswith("unicornscan")
+    assert "unicornscan" in SAMPLE_BANNER
+    assert E2E_PROVEN_PACK_DROP_NAMED in SAMPLE_BANNER
+    prove_src = (ROOT / "scripts" / "prove_ciso.py").read_text(encoding="utf-8")
+    assert "join(E2E_PROVEN_PACK_DROP_ADAPTERS)" in prove_src
+    assert "unicornscan" in prove_src
+    assert "E2E_PROVEN_PACK_DROP_NAMED" in prove_src
     live = (
         ROOT / "CRITIC.md",
         ROOT / "DONE.md",
@@ -292,14 +309,15 @@ def test_status_and_live_docs_match_cos36_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #36")
+                idx = text.find("CoS #37")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #36 this-window copy"
+        assert window, f"{path} missing CoS #37 this-window copy"
         win_low = window.lower()
-        assert "cos #36" in win_low, f"{path} this-window is not CoS #36"
-        assert "next brick" in win_low, f"{path} this-window missing next brick = per-adapter claim-class + DEMO-label lock"
-        assert "claim-class" in win_low, f"{path} this-window missing claim-class next brick"
-        assert "demo-label" in win_low, f"{path} this-window missing DEMO-label next brick"
+        assert "cos #37" in win_low, f"{path} this-window is not CoS #37"
+        assert "cos #36" not in win_low, f"{path} this-window still stamps CoS #36 as the current cycle"
+        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop observation id uniqueness lock"
+        assert "observation id" in win_low, f"{path} this-window missing observation id next brick"
+        assert "uniqueness" in win_low, f"{path} this-window missing uniqueness next brick"
         assert "void" in win_low, f"{path} this-window missing void CLOSED"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"

@@ -2,30 +2,29 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 147):** CoS #36 item 2 — per-adapter pack_drop
-claim-class + DEMO-label lock (`tests/test_pack_drop_claim_class.py`
-parametrized over all sixteen `fixtures/pack_drop/` adapters). CoS #36
-honesty sync stands. Pack HEAD
-`027cef2b` (PR #61 all-16 pack_drop fixture inventory lock
-already on master).
+**This window (cycle 148):** CoS #37 honesty sync. Pack HEAD
+`8be80157` (PR #63 per-adapter pack_drop claim-class +
+DEMO-label lock already on master).
 Covey HEAD still
 `30d2197f` multi-adapter pack_drop
 export for all 16 `E2E_PROVEN`. Item
-**COS35-PACK-DROP-INVENTORY-LOCK** = DONE. 16 E2E_PROVEN pack_drop
-void CLOSED. Next brick named = per-adapter pack_drop
-claim-class + DEMO-label lock.
+**COS36-PACK-DROP-CLAIM-CLASS-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+void CLOSED. Next brick named = global pack_drop
+observation id uniqueness lock. SAMPLE_BANNER / prove_ciso
+sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
 is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 + rustscan + fping + naabu + nping + httpx + sslscan + tlsx +
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #37. Reid-only
+start Covey adapter work. Stop for CoS #38. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 146 honesty stands as
+invoke / 81 file_drop). Cycle 147 claim-class + DEMO-label
+lock stands as history. Cycle 146 honesty stands as
 history. Cycle 145 all-16 fixture inventory
 lock stands as history. Cycle 144 honesty stands as
 history. Cycle 143 svmap pack_drop→CISO
