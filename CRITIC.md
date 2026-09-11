@@ -1,28 +1,24 @@
-# CRITIC — cycle 145 (CoS #35 item 2 all-16 fixture inventory lock)
+# CRITIC — cycle 146 (CoS #36 honesty sync; pack HEAD 027cef2b)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #35 item 2: all-16 pack_drop fixture inventory lock
-(`fixtures/pack_drop/` child dirs == exactly the sixteen
-`E2E_PROVEN_PACK_DROP_ADAPTERS`; each dir has non-empty
-`meta.json` / `assets.jsonl` / `findings.jsonl`; `seed_prove_in`
-copies that set 1:1 — no missing adapter, no 17th). CoS #35
-honesty stamp stands: Pack HEAD `fe3aadfb`
-(PR #59 svmap SIP pack_drop→CISO already on master).
-Item **COS34-PACK-DROP-SVMAP** = DONE. 16 E2E_PROVEN pack_drop
-void CLOSED. Next brick named = all-16 fixture inventory lock.
-Covey HEAD still `30d2197f`
+CoS #36 honesty stamp: Pack HEAD `027cef2b`
+(PR #61 all-16 pack_drop fixture inventory lock already on master).
+Item **COS35-PACK-DROP-INVENTORY-LOCK** = DONE. 16 E2E_PROVEN pack_drop
+void CLOSED. Next brick named = per-adapter pack_drop claim-class +
+DEMO-label lock. Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
 truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #36.
+claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #37.
 Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #35 / pack HEAD `fe3aadfb` / Covey HEAD `30d2197f`,
+cannot lag CoS #36 / pack HEAD `027cef2b` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 144
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 145
+all-16 fixture inventory lock stands as history. Cycle 144
 honesty stands as history. Cycle 143
 svmap pack_drop→CISO prove stands as history. Cycle 142
 honesty stands as history. Cycle 141
