@@ -97,15 +97,14 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #45 honesty sync + item 2 — global pack_drop
-meta.json source identity lock (`tests/test_pack_drop_source.py`;
-`source == evergreen-covey` exact; `schema == covey.pack_drop.v1`;
-META-ONLY — no JSONL row source rewrite). Pack HEAD
-`62b52d41` (PR #79 obs port→service
-already on master). Item **COS45-HONESTY**. Item
-**COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE.
+CoS #46 honesty sync. Pack HEAD
+`7f6fd90d` (PR #81 meta source lock
+already on master). Item **COS46-HONESTY**. Item
+**COS45-PACK-DROP-META-SOURCE-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named =
-global pack_drop meta-only source identity lock (`source == evergreen-covey`).
+global pack_drop JSONL provenance source allowlist lock.
+Do not rewrite row source to force evergreen-covey; absent/null OK;
+closed set {parse_live_hosts, pass2, svmap-table, evergreen-covey}.
 SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
 `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still
@@ -116,7 +115,7 @@ remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #46. Reid-only
+Covey adapter work. Stop for CoS #47. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
 Docker host — this VM `compose_lab` absent ≠ PASS).
 
