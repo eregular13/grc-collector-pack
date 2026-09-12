@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 175
+
+G03 from-gh: stamp `REFINE_READY.md` + `STATUS.md` — Grok24hRefine **cancelled**, refine window closed 2026-09-08. No “armed until R24.” Pack STATUS pack_mapped 10 / VERSION 0.5.0-rc.2. Lab-host Grok24hFromGh is a later hourly and is not cancelled here. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: targeted product scorecard plus host sequential.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 174
 
 G02 from-gh: quarantine `docker-compose.eval-24h.yml` (`HISTORICAL. DO NOT UP.`). Product entrypoints (QUICKSTART, README, product_demo, CI, run_lab, Makefile, ESTATE.md) do not reference it. Isolation test still requires 172.28.120.0/24 loopback-only. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

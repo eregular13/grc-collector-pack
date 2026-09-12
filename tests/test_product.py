@@ -546,7 +546,7 @@ def test_client_docs_match_pack_mapped_live() -> None:
 
 
 def test_refine_ready_scorecard() -> None:
-    """R23: REFINE_READY.md records folds, extras down, GitHub sha; facing stays false."""
+    """R23/G03: REFINE_READY.md records folds; refine scheduler cancelled; facing false."""
     text = (ROOT / "REFINE_READY.md").read_text(encoding="utf-8")
     assert "pack_mapped: 10" in text
     assert "extras_down: yes" in text
@@ -560,6 +560,14 @@ def test_refine_ready_scorecard() -> None:
     assert "grc-estate" in text
     assert "R09" in text
     assert "client_facing_ready: true" not in text
+    assert "armed until R24" not in text
+    assert "scheduler: cancelled" in text
+    assert "window closed 2026-09-08" in text
+    status = (ROOT / "STATUS.md").read_text(encoding="utf-8")
+    assert "scheduler: cancelled" in status
+    assert "pack_mapped: 10" in status
+    assert "0.5.0-rc.2" in status
+    assert "armed until R24" not in status
     for name in ESTATE_MAPPED_CLASSES:
         assert name in text
 

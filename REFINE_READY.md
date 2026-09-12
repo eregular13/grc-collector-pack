@@ -1,7 +1,7 @@
 # REFINE_READY (24h refine scorecard)
 
 written_at: 2026-09-08T18:30:23-07:00
-window: 24h-refine (R01–R23; R24 is hard-stop only)
+window: 24h-refine CLOSED (R01–R24)
 hard_stop: 2026-09-08T21:18:00-07:00
 version: 0.5.0-rc.2
 github_repo: eregular13/grc-collector-pack
@@ -19,7 +19,7 @@ sink: 127.0.0.1:18080 received 0; GET+POST /api/risks 403
 posted: []
 facing: false
 blocked_by: lab_sim_not_client_estate
-scheduler: armed until R24 hard stop (do not cancel here)
+scheduler: cancelled (Grok24hRefine; window closed 2026-09-08T21:27:12-07:00; DONE_24H_REFINE.md GREEN)
 
 Software bar only. Docker-sim is not a paying client. HITL remains lab-sim.
 
@@ -100,4 +100,4 @@ DRY_RUN=1 CISO_PUSH=0 RISKREADY_PUSH=0 GRC_LIVE_SCAN=0. EVERGREEN_ORCH_LIVE unse
 
 ## Gaps (not paying-day)
 
-No signed live drop box. HITL is lab-sim. Mock sink is not CISO Assistant Community. Office LAN never in SCOPE. Quote hours blank. R24 still owns scheduler cancel + `DONE_24H_REFINE.md`.
+No signed live drop box. HITL is lab-sim. Mock sink is not CISO Assistant Community. Office LAN never in SCOPE. Quote hours blank. Refine scheduler cancelled at R24. `DONE_24H_REFINE.md` GREEN. This scorecard is the closed refine window, not a later lab-host hourly.
