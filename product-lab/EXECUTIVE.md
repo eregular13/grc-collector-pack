@@ -2,7 +2,11 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 164):** CoS #45 honesty sync.
+**This window (cycle 165):** CoS #45 honesty sync + item 2 —
+global pack_drop meta.json source identity lock
+(`tests/test_pack_drop_source.py`; `source == evergreen-covey`
+exact; `schema == covey.pack_drop.v1`; META-ONLY — no JSONL
+row source rewrite).
 Pack HEAD
 `62b52d41` (PR #79 obs port→service
 already on master).
@@ -11,7 +15,7 @@ Covey HEAD still
 export for all 16 `E2E_PROVEN`. Item **COS45-HONESTY**.
 Item **COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE. 16 E2E_PROVEN pack_drop
 void CLOSED. Next brick named = global pack_drop
-source identity lock (`source == evergreen-covey`).
+meta-only source identity lock (`source == evergreen-covey`).
 SAMPLE_BANNER / prove_ciso
 sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
@@ -25,7 +29,8 @@ blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 163 observation/finding
+invoke / 81 file_drop). Cycle 164 honesty stands as
+history. Cycle 163 observation/finding
 port→service lock stands as history. Cycle 162 honesty stands as
 history. Cycle 161 service→host lock stands as
 history. Cycle 160 honesty stands as

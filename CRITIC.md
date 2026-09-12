@@ -1,13 +1,21 @@
-# CRITIC — cycle 164 (CoS #45 honesty sync)
+# CRITIC — cycle 165 (CoS #45 honesty sync + item 2 meta-only source)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-CoS #45 honesty sync. Pack HEAD `62b52d41`
+CoS #45 honesty sync + item 2: global pack_drop meta.json
+source identity lock
+(`tests/test_pack_drop_source.py`
+parametrized over all sixteen `fixtures/pack_drop/` adapters;
+meta.json exists; `source == evergreen-covey` exact;
+`schema == covey.pack_drop.v1`; META-ONLY — no JSONL row
+source rewrite; SAMPLE/DEMO ≠ client;
+UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
+Pack HEAD `62b52d41`
 (PR #79 observation/finding port→service referential lock
 already on master).
 Item **COS45-HONESTY**. Item
 **COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop
-source identity lock (`source == evergreen-covey`).
+meta-only source identity lock (`source == evergreen-covey`).
 SAMPLE_BANNER / prove_ciso sixteen-set includes
 unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
 multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
@@ -21,7 +29,8 @@ Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #45 / pack HEAD `62b52d41` / Covey HEAD `30d2197f`,
 and so `compose_lab` absent cannot flip to pass. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 163
+evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 164
+honesty stands as history. Cycle 163
 observation/finding port→service lock stands as history. Cycle 162
 honesty stands as history. Cycle 161
 service→host lock stands as history. Cycle 160
@@ -84,5 +93,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 639, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 657, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
