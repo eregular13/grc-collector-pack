@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
+
+from tests.scope_clock import open_stamps
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def _estate_scope_text() -> str:
-    return (ROOT / "dropbox" / "SCOPE.docker-estate.yaml").read_text(encoding="utf-8")
+    text = (ROOT / "dropbox" / "SCOPE.docker-estate.yaml").read_text(encoding="utf-8")
+    start, end = open_stamps()
+    text = re.sub(r'window_start:\s*"[^"]+"', f'window_start: "{start}"', text, count=1)
+    text = re.sub(r'window_end:\s*"[^"]+"', f'window_end: "{end}"', text, count=1)
+    return text
 
 
 def test_estate_cidr_is_not_lan_10() -> None:

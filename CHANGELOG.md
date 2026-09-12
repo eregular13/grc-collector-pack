@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 177
+
+REAL_GRC: `python -m dropbox.import_grc --target ciso|opengrc|probo|all --dry-run` (default, no HTTP). `--live` dual-gate (env URL/token **and** gitignored `push/GATE_*`; missing → exit 2). OpenGRC writes `out/opengrc/{assets.csv,risks.csv,MAPPING.md}` and skips live POST (schema unconfirmed). Probo writes `out/probo/findings_plan.json` (`addFinding` batches of 25, no createRisk; never default `192.168.10.130`). CISO live still assets+evidences only to `/api/importer/`. `--target riskready` WRAP_DEAD exit 2. VERSION `0.5.0-rc.3`. `client_facing_ready` false. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: host sequential 320; run_lab LAB_GREEN.
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 176
 
 G04–G23 from-gh compressed: estate+sink up; `run_lab` LAB_GREEN; `product_demo` pack_mapped 10 facing false posted []; eval-24h stays quarantined; WRAP_DEAD + `/api/risks` 403; clone `_fromgh/clone` pytest green; PRODUCT.md github_sha line; `FROM_GH_READY.md`. VERSION 0.5.0-rc.2. G24 still hard-stop only. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

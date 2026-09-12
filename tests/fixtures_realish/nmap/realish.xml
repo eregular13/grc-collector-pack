@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<nmaprun scanner="nmap" args="fixture-realish-not-a-live-scan" start="1700000000" version="7.94">
+  <host>
+    <status state="up"/>
+    <address addr="10.0.77.77" addrtype="ipv4"/>
+    <hostnames>
+      <hostname name="realish-only.lab" type="user"/>
+    </hostnames>
+    <ports>
+      <port protocol="tcp" portid="445"><state state="open"/><service name="microsoft-ds"/></port>
+    </ports>
+  </host>
+</nmaprun>

@@ -24,6 +24,9 @@ def _seed_pack_out_if_missing() -> None:
             "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets\n",
             encoding="utf-8",
         )
+    if not (ciso / "evidences.csv").is_file():
+        ciso.mkdir(parents=True, exist_ok=True)
+        (ciso / "evidences.csv").write_text("name,description\n", encoding="utf-8")
     poam = root / "out" / "poam"
     if not (poam / "poam.csv").is_file():
         poam.mkdir(parents=True, exist_ok=True)

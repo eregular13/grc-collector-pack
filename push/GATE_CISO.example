@@ -1,0 +1,3 @@
+Copy this file to GATE_CISO (no extension) to allow:
+  python -m dropbox.import_grc --target ciso --live
+Requires CISO_URL + CISO_TOKEN as well. Dual gate. Gitignored. Never commit GATE_CISO.

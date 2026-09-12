@@ -4,7 +4,7 @@ Authorized assessment (signed SCOPE) → evidence in CISO Assistant Community �
 
 **Lab-sim ≠ customer pack.** `client_facing_ready` stays false until a real signed drop box + HITL.
 
-Version `0.5.0-rc.2` (client-assess **software** bar — not a paying-day PASS). One page: [docs/QUICKSTART.md](docs/QUICKSTART.md). Also [docs/CLIENT_ASSESS.md](docs/CLIENT_ASSESS.md).
+Version `0.5.0-rc.3` (client-assess **software** bar — not a paying-day PASS). One page: [docs/QUICKSTART.md](docs/QUICKSTART.md). Also [docs/CLIENT_ASSESS.md](docs/CLIENT_ASSESS.md). Real scanner drop: [docs/REAL_SCAN_DROP.md](docs/REAL_SCAN_DROP.md).
 
 ```powershell
 python -m venv .venv
@@ -15,11 +15,12 @@ $env:PYTHONPATH = (Get-Location)
 docker compose -f docker-compose.estate.yml up -d
 & $py -m dropbox.product_demo --help
 & $py -m dropbox.product_demo
+& $py -m dropbox.import_grc --target all --dry-run
 ```
 
 `--help` prints usage and exits. It does not hit the mock sink. If estate-web is down, `product_demo` exits 2 `estate_down` — it does not silently use Litware CSVs.
 
-Docs: [SECURITY.md](SECURITY.md) · [NOTICE](NOTICE) (nmap use-don’t-ship, RiskReady stay-out) · [docs/HITL.md](docs/HITL.md) · [docs/ESTATE.md](docs/ESTATE.md) · [docs/LAB_WINDOW.md](docs/LAB_WINDOW.md) · [docs/IMPORT_CISO.md](docs/IMPORT_CISO.md) · [docs/IMPORT_RR.md](docs/IMPORT_RR.md) · [docs/IMPORT_PROBO.md](docs/IMPORT_PROBO.md) · [docs/OUT_DIR.md](docs/OUT_DIR.md) · [docs/PUBLISH.md](docs/PUBLISH.md)
+Docs: [SECURITY.md](SECURITY.md) · [NOTICE](NOTICE) (nmap use-don’t-ship, RiskReady stay-out) · [docs/HITL.md](docs/HITL.md) · [docs/ESTATE.md](docs/ESTATE.md) · [docs/LAB_WINDOW.md](docs/LAB_WINDOW.md) · [docs/IMPORT_CISO.md](docs/IMPORT_CISO.md) · [docs/IMPORT_OPENGRC.md](docs/IMPORT_OPENGRC.md) · [docs/IMPORT_RR.md](docs/IMPORT_RR.md) · [docs/IMPORT_PROBO.md](docs/IMPORT_PROBO.md) · [docs/REAL_SCAN_DROP.md](docs/REAL_SCAN_DROP.md) · [docs/OUT_DIR.md](docs/OUT_DIR.md) · [docs/PUBLISH.md](docs/PUBLISH.md)
 
 Three layers, kept separate:
 
@@ -75,6 +76,8 @@ Each collector parses files already on disk. Empty `in/<sensor>/` falls back to 
 - `out/ocsf/compliance_findings.json` — OCSF class_uid `2003`
 - `out/summary.json` — counts
 - `out/poam/poam.csv` + `MANIFEST.json` — POA&M/control-map (fixture-labeled; also `product-lab/drop/poam/`)
+- `out/opengrc/` — Data Manager `assets.csv` / `risks.csv` from `python -m dropbox.import_grc --target opengrc --dry-run` (no live POST)
+- `out/probo/findings_plan.json` — `addFinding` batches of 25, no createRisk, no HTTP unless dual-gated (this lab still skips POST)
 
 Asset `type` is `PR` or `SP`. Finding severity is `info|low|medium|high|critical` (CSV findings omit `info`). Finding CSV `status` is `open|closed|in_progress` (sensor aliases such as `NEW`/`RESOLVED`/`MANUAL` are normalized). Vulnerability severity uses `Information|Low|Medium|High|Critical`.
 

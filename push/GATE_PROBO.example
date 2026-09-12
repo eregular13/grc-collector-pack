@@ -1,0 +1,2 @@
+Copy to GATE_PROBO (no extension) for --target probo --live.
+Requires PROBO_URL + PROBO_TOKEN. Never default 192.168.10.130. No createRisk. Gitignored.

@@ -38,8 +38,13 @@ def test_import_probo_doc_exists() -> None:
     assert (DOCS / "IMPORT_PROBO.md").is_file()
 
 
+def test_import_opengrc_and_real_scan_docs() -> None:
+    assert (DOCS / "IMPORT_OPENGRC.md").is_file()
+    assert (DOCS / "REAL_SCAN_DROP.md").is_file()
+
+
 def test_import_docs_do_not_instruct_api_risks_post() -> None:
-    for name in ("IMPORT_CISO.md", "IMPORT_RR.md", "IMPORT_PROBO.md"):
+    for name in ("IMPORT_CISO.md", "IMPORT_RR.md", "IMPORT_PROBO.md", "IMPORT_OPENGRC.md", "REAL_SCAN_DROP.md"):
         text = (DOCS / name).read_text(encoding="utf-8")
         for line in text.splitlines():
             if "POST /api/risks" not in line and "/api/risks" not in line:

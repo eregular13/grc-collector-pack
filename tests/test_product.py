@@ -517,13 +517,13 @@ def test_client_assess_doc_is_checklist_only() -> None:
     assert "dropbox.product_demo --help" in qs
     assert "CLIENT_ASSESS.md" in qs
     assert "not Litware" in prod
-    assert (ROOT / "VERSION").read_text(encoding="utf-8").strip() == "0.5.0-rc.2"
+    assert (ROOT / "VERSION").read_text(encoding="utf-8").strip() == "0.5.0-rc.3"
     ready = (ROOT / "CLIENT_READY.md").read_text(encoding="utf-8")
-    assert "version: 0.5.0-rc.2" in ready
+    assert "version: 0.5.0-rc.3" in ready
     assert "client_facing_ready: false" in ready
     assert "paying_day: NO" in ready
-    assert "0.5.0-rc.2" in (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "version: 0.5.0-rc.2" in prod
+    assert "0.5.0-rc.3" in (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "version: 0.5.0-rc.3" in prod
 
 
 def test_product_md_has_github_sha_line() -> None:
@@ -590,7 +590,7 @@ def test_refine_ready_scorecard() -> None:
     status = (ROOT / "STATUS.md").read_text(encoding="utf-8")
     assert "scheduler: cancelled" in status
     assert "pack_mapped: 10" in status
-    assert "0.5.0-rc.2" in status
+    assert "0.5.0-rc.3" in status
     assert "armed until R24" not in status
     for name in ESTATE_MAPPED_CLASSES:
         assert name in text

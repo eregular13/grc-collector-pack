@@ -1,0 +1,2 @@
+Copy to GATE_OPENGRC (no extension) for --target opengrc --live.
+Requires OPENGRC_URL + OPENGRC_TOKEN. Dual gate. Live POST still skipped until schema is confirmed. Gitignored.

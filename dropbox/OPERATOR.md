@@ -50,8 +50,8 @@ powershell -ExecutionPolicy Bypass -File .\run_lab.ps1
 ```
 
 CISO import (HITL):
-- Dry-run: `$env:CISO_PUSH=0`; `.\push_ciso.ps1` lists files, no HTTP.
-- Auto-push when you mean it: `$env:CISO_PUSH=1` + `CISO_TOKEN` uploads **assets.csv** and **evidences.csv** only to `/api/importer/`.
+- Dry-run: `$env:CISO_PUSH=0`; `.\push_ciso.ps1` lists files, no HTTP. Preferred: `python -m dropbox.import_grc --target all --dry-run` (CISO plan + OpenGRC CSVs + Probo findings plan; RiskReady WRAP_DEAD; no HTTP).
+- Auto-push when you mean it: `$env:CISO_PUSH=1` + `CISO_TOKEN` uploads **assets.csv** and **evidences.csv** only to `/api/importer/`. `python -m dropbox.import_grc --target ciso --live` is the same upload, dual-gated (`CISO_URL` + `CISO_TOKEN` + `push/GATE_CISO`). Missing gate → exit 2, no socket.
 - Findings, vulnerabilities, risk_scenarios, applied_controls, and `out\poam\poam.csv` stay **HITL**: CISO Assistant UI Extra → Import, or `clica` if you have it. Do not auto-push findings.
 
 SimpleRisk Core: leave-behind CSV `out\simplerisk\risks_import.csv` (also `product-lab\drop\simplerisk\`). Import by hand in SimpleRisk extras. No API wrap.

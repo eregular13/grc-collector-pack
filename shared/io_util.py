@@ -103,7 +103,7 @@ class exclusive_file_lock:
 
 def ensure_out_tree() -> Path:
     out = get_out()
-    for sub in ("raw", "canonical", "ciso-assistant", "riskready", "ocsf", "evidence"):
+    for sub in ("raw", "canonical", "ciso-assistant", "riskready", "ocsf", "evidence", "opengrc", "probo"):
         (out / sub).mkdir(parents=True, exist_ok=True)
     return out
 

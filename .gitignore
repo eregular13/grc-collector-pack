@@ -25,5 +25,8 @@ dropbox/SCOPE.docker-estate-c*.yaml
 *.pem
 *.p12
 *token*
+push/GATE_CISO
+push/GATE_OPENGRC
+push/GATE_PROBO
 .DS_Store
 Thumbs.db

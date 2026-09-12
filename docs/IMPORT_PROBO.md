@@ -1,13 +1,17 @@
-# Probo — not on this Windows lab
+# Probo import
 
-There is **no Probo** on `C:\GRC Collector`. This sprint does not start pve2, VM 118, or any Probo container.
+There is **no Probo** on `C:\GRC Collector`. This pack does not start pve2, VM 118, or any Probo container. Do **not** default `192.168.10.130:8080`.
 
-If a later drop exists, the handoff bundle is still this pack’s CISO CSVs + POA&M:
+## Dry-run
 
-- `out\ciso-assistant\` (see `docs\IMPORT_CISO.md`)
-- `out\poam\poam.csv`
-- `engagements\<slug>\` after `new_engagement` (fixture Litware is **not** a customer)
+```powershell
+python -m dropbox.import_grc --target probo --dry-run
+```
 
-Do **not** live-create risks from this tree. Dual-gate: pack parse/orchestrator stays here; a live Probo tenant is a Reid power-on problem on **`192.168.10.130:8080`**, not something this pack boots.
+Writes `out/probo/findings_plan.json`: `addFinding` items in batches of **25**. **No createRisk.** No HTTP.
 
-`client_facing_ready: false`. No tree merge with `C:\Users\R\grc-collector-pack`.
+## Live
+
+`--live` requires `PROBO_URL` + `PROBO_TOKEN` **and** `push/GATE_PROBO` (gitignored). Missing gate or env → exit 2, no socket. `PROBO_URL` must never be `192.168.10.130`. This lab still does not POST (no Probo tenant here). Dual-gate is the product; a live tenant is a Reid power-on problem. **No createRisk.**
+
+Never POST RiskReady `/api/risks`. `client_facing_ready: false`.

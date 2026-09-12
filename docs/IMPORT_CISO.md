@@ -54,18 +54,28 @@ powershell -ExecutionPolicy Bypass -File .\push_ciso.ps1
 # expect: DRY_RUN, lists assets.csv evidences.csv, lists HITL files, exit 0, no HTTP
 ```
 
+Preferred operator command (dry-run, no HTTP):
+
+```powershell
+python -m dropbox.import_grc --target ciso --dry-run
+```
+
+`--live` is dual-gate: `CISO_URL` + `CISO_TOKEN` **and** file `push/GATE_CISO` (copy from `push/GATE_CISO.example`; gitignored). Missing gate or env → exit 2, no socket. Live still uploads **assets.csv + evidences.csv** only to `/api/importer/`. Do not invent FindingsAssessment UUIDs. Never POST `/api/risks`.
+
 When Reid really has a CISO Community token and a **non-fixture** tenant:
 
 ```powershell
 $env:CISO_PUSH = "1"
 $env:CISO_URL = "http://127.0.0.1:8000"   # or Reid's URL
 $env:CISO_TOKEN = "<token>"               # never commit
-powershell -ExecutionPolicy Bypass -File .\push_ciso.ps1
+Copy-Item push\GATE_CISO.example push\GATE_CISO
+python -m dropbox.import_grc --target ciso --live
+# or: powershell -ExecutionPolicy Bypass -File .\push_ciso.ps1
 # uploads assets.csv + evidences.csv only
 # then Extra → Import (or clica) for findings / vulns / risk_scenarios / applied_controls / poam.csv
 ```
 
-Do not invent FindingsAssessment UUIDs. Do not POST findings.
+clica (if installed): Extra Import the HITL CSVs after review. Do not invent FindingsAssessment UUIDs. Do not POST findings.
 
 ## Success
 

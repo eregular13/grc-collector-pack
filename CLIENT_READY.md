@@ -1,7 +1,7 @@
 # CLIENT_READY (software bar)
 
-written_at: 2026-09-08T15:26:41-07:00
-version: 0.5.0-rc.2
+written_at: 2026-09-12T10:45:00-07:00
+version: 0.5.0-rc.3
 client_facing_ready: false
 paying_day: NO
 pack_mapped: 10
@@ -25,5 +25,6 @@ This is the **software** a first client assessment would run. Docker-sim is not 
 | Worker `.alive` destroy on skip | PASS |
 | SimpleRisk estate CSV | PASS (not SMBv1-only) |
 | Console GET-only 127.0.0.1:18765 | PASS (POST 405) |
+| `python -m dropbox.import_grc --dry-run` | PASS (CISO Extra Import plan; OpenGRC CSVs; Probo addFinding plan; RiskReady WRAP_DEAD; `--live` without gate exit 2) |
 
-Gaps (not paying-day): no signed live drop box; HITL is lab-sim; mock sink not CISO Assistant Community; office LAN never in SCOPE; 24h scheduler cancelled at hard stop.
+Gaps (not paying-day): no signed live drop box; HITL is lab-sim; mock sink not CISO Assistant Community; office LAN never in SCOPE; 24h scheduler cancelled at hard stop; OpenGRC live POST skipped (schema unconfirmed).
