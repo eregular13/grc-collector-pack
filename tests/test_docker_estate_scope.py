@@ -23,6 +23,9 @@ def test_estate_cidr_is_not_lan_10() -> None:
 
 def test_eval_24h_compose_is_isolated() -> None:
     text = (ROOT / "docker-compose.eval-24h.yml").read_text(encoding="utf-8")
+    head = "\n".join(text.splitlines()[:8]).upper()
+    assert "HISTORICAL" in head
+    assert "DO NOT UP" in head
     nets = [ln.strip() for ln in text.splitlines() if "subnet:" in ln and not ln.lstrip().startswith("#")]
     ips = [ln.strip() for ln in text.splitlines() if "ipv4_address:" in ln and not ln.lstrip().startswith("#")]
     assert any("172.28.120.0/24" in n for n in nets)
@@ -33,6 +36,23 @@ def test_eval_24h_compose_is_isolated() -> None:
     assert "127.0.0.1:18181:80" in text
     assert "0.0.0.0:18181" not in text
     assert 'GRC_LIVE_SCAN: "0"' in text
+
+
+def test_eval_24h_not_in_product_entrypoints() -> None:
+    """G02: product_demo / QUICKSTART / README / CI / run_lab must not boot eval-24h."""
+    banned = ("docker-compose.eval-24h.yml", "grc-eval-24h")
+    for rel in (
+        "docs/QUICKSTART.md",
+        "README.md",
+        "dropbox/product_demo.py",
+        ".github/workflows/lab.yml",
+        "run_lab.ps1",
+        "Makefile",
+        "docs/ESTATE.md",
+    ):
+        blob = (ROOT / rel).read_text(encoding="utf-8")
+        for token in banned:
+            assert token not in blob, rel
 
 
 def test_estate_tls_sidecar_loopback_only() -> None:

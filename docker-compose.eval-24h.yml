@@ -1,3 +1,6 @@
+# HISTORICAL. DO NOT UP.
+# Closed 24h eval farm (grc-eval-24h / 172.28.120.0/24). Not the product estate.
+# Product uses docker-compose.estate.yml only. Never `docker compose -f docker-compose.eval-24h.yml up`.
 # Isolated 24h evaluation estate. Not the T06 cold project. Not c11. Not office LAN.
 # Loopback publishes only.
 name: grc-eval-24h
