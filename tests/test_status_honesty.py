@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
 COVEY_E2E_HEAD = "30d2197f"
 STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "8c442a33"
-STALE_PACK_HEAD = "f04218b2"
-STALE_PACK_HONESTY = "47fc9066"
+COVEY_PACK_HEAD = "62b52d41"
+STALE_PACK_HEAD = "8c442a33"
+STALE_PACK_HONESTY = "2b05ca82"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -63,7 +63,7 @@ def _has_bare_cos(text: str, n: int) -> bool:
 
 
 def _next_brick(text: str) -> str:
-    """Clause after 'next brick' — DONE service→host lock must not live here.
+    """Clause after 'next brick' — DONE port→service lock must not live here.
 
     Split on a sentence boundary ('.' + whitespace), not the '.' in meta.json.
     """
@@ -90,20 +90,23 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #44" in low
+    assert "cos #45" in low
     assert "honesty sync" in low
-    assert "cos43-pack-drop-service-host-refs-lock" in low
+    assert "cos44-pack-drop-obs-port-service-lock" in low
     assert "done" in low
-    assert status.get("item") == "COS44-HONESTY"
+    assert status.get("item") == "COS45-HONESTY"
+    assert "cos #44" not in low, "bare CoS #44 is not the current cycle stamp"
     assert "cos #43" not in low, "bare CoS #43 is not the current cycle stamp"
     assert "cos #42" not in low, "bare CoS #42 is not the current cycle stamp"
     assert "cos #41" not in low, "bare CoS #41 is not the current cycle stamp"
     assert "next brick" in low
     brick = _next_brick(action)
-    assert "observation" in brick or "finding" in brick, "next brick must name observation/finding port→service"
-    assert "port" in brick and "service" in brick, "next brick must name port→service referential lock"
-    assert "nested" in brick and "asset" in brick and "ports" in brick, "next brick must name nested asset ports"
-    assert "referential" in brick, "next brick must name referential lock"
+    assert "source" in brick, "next brick must name source identity lock"
+    assert "identity" in brick, "next brick must name source identity lock"
+    assert "evergreen-covey" in brick, "next brick must name source == evergreen-covey"
+    assert "port→service" not in brick and "port->service" not in brick, "port→service is DONE, not the next brick"
+    assert not ("port" in brick and "service" in brick), "port→service is DONE, not the next brick"
+    assert "observation" not in brick or "finding" not in brick, "observation/finding port→service is DONE, not the next brick"
     assert "service→host" not in brick and "service->host" not in brick, "service→host is DONE, not the next brick"
     assert "kind-partition" not in brick, "kind-partition lock is DONE, not the next brick"
     assert "16 e2e_proven pack_drop void closed" in low
@@ -111,7 +114,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "unicornscan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
-    for n in range(4, 44):
+    for n in range(4, 45):
         assert not _has_bare_cos(low, n), f"STATUS next_action still stamps CoS #{n}"
     assert "covey" in low
     assert "e2e_proven" in low
@@ -130,8 +133,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD 8c442a33 (PR #77). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #43 / pack f04218b2 / 47fc9066.
+    # Pack HEAD 62b52d41 (PR #79). Covey HEAD still 30d2197f pack_drop
+    # export. Pack STATUS must not restamp CoS #44 / pack 8c442a33 / 2b05ca82.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -180,6 +183,7 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 164):",
         "**Delta (cycle 163):",
         "**Delta (cycle 162):",
         "**Delta (cycle 161):",
@@ -231,7 +235,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         missing = [name for name in COVEY_E2E_PROVEN if name not in low]
         assert not missing, f"{where} lags Covey E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #44" in low, f"{where} missing CoS #44 stamp"
+        assert "cos #45" in low, f"{where} missing CoS #45 stamp"
+        assert "cos #44" not in low, f"{where} still stamps CoS #44 as the current cycle"
         assert "cos #43" not in low, f"{where} still stamps CoS #43 as the current cycle"
         assert "cos #42" not in low, f"{where} still stamps CoS #42 as the current cycle"
         assert "cos #41" not in low, f"{where} still stamps CoS #41 as the current cycle"
@@ -242,17 +247,18 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "cos #36" not in low, f"{where} still stamps CoS #36 as the current cycle"
         assert "cos #35" not in low, f"{where} still stamps CoS #35 as the current cycle"
         assert "cos #34" not in low, f"{where} still stamps CoS #34 as the current cycle"
-        assert "next brick" in low, f"{where} missing next brick = global pack_drop observation/finding port→service"
+        assert "next brick" in low, f"{where} missing next brick = global pack_drop source identity lock"
         brick = _next_brick(text)
-        assert "observation" in brick or "finding" in brick, f"{where} next brick missing observation/finding"
-        assert "port" in brick and "service" in brick, f"{where} next brick missing port→service"
-        assert "nested" in brick and "asset" in brick and "ports" in brick, f"{where} next brick missing nested asset ports"
-        assert "referential" in brick, f"{where} next brick missing referential lock"
+        assert "source" in brick, f"{where} next brick missing source identity"
+        assert "identity" in brick, f"{where} next brick missing source identity"
+        assert "evergreen-covey" in brick, f"{where} next brick missing evergreen-covey"
+        assert "port→service" not in brick and "port->service" not in brick, f"{where} still names port→service as next brick"
+        assert not ("port" in brick and "service" in brick), f"{where} still names port→service as next brick"
         assert "service→host" not in brick and "service->host" not in brick, f"{where} still names service→host as next brick"
         assert "kind-partition" not in brick, f"{where} still names kind-partition as next brick"
         assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
-        assert "cos43-pack-drop-service-host-refs-lock" in low, f"{where} missing COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK DONE"
-        assert "stop for cos #45" in low, f"{where} missing Stop for CoS #45"
+        assert "cos44-pack-drop-obs-port-service-lock" in low, f"{where} missing COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK DONE"
+        assert "stop for cos #46" in low, f"{where} missing Stop for CoS #46"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
@@ -265,8 +271,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos44_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #44 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_cos45_covey_e2e_proven() -> None:
+    """Pack next_action / this-window docs follow CoS #45 pack HEAD E2E_PROVEN."""
     from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_NAMED, SAMPLE_BANNER
 
     status = _status()
@@ -310,6 +316,7 @@ def test_status_and_live_docs_match_cos44_covey_e2e_proven() -> None:
     assert "cos #41" not in low
     assert "cos #42" not in low
     assert "cos #43" not in low
+    assert "cos #44" not in low
     assert "closed" in low
     assert "held" not in low
     assert "missing" not in low
@@ -339,11 +346,12 @@ def test_status_and_live_docs_match_cos44_covey_e2e_proven() -> None:
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #44")
+                idx = text.find("CoS #45")
                 window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #44 this-window copy"
+        assert window, f"{path} missing CoS #45 this-window copy"
         win_low = window.lower()
-        assert "cos #44" in win_low, f"{path} this-window is not CoS #44"
+        assert "cos #45" in win_low, f"{path} this-window is not CoS #45"
+        assert "cos #44" not in win_low, f"{path} this-window still stamps CoS #44 as the current cycle"
         assert "cos #43" not in win_low, f"{path} this-window still stamps CoS #43 as the current cycle"
         assert "cos #42" not in win_low, f"{path} this-window still stamps CoS #42 as the current cycle"
         assert "cos #41" not in win_low, f"{path} this-window still stamps CoS #41 as the current cycle"
@@ -352,13 +360,14 @@ def test_status_and_live_docs_match_cos44_covey_e2e_proven() -> None:
         assert "cos #38" not in win_low, f"{path} this-window still stamps CoS #38 as the current cycle"
         assert "cos #37" not in win_low, f"{path} this-window still stamps CoS #37 as the current cycle"
         assert "cos #36" not in win_low, f"{path} this-window still stamps CoS #36 as the current cycle"
-        assert "cos43-pack-drop-service-host-refs-lock" in win_low, f"{path} this-window missing COS43-PACK-DROP-SERVICE-HOST-REFS-LOCK DONE"
-        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop observation/finding port→service"
+        assert "cos44-pack-drop-obs-port-service-lock" in win_low, f"{path} this-window missing COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK DONE"
+        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop source identity lock"
         brick = _next_brick(window)
-        assert "observation" in brick or "finding" in brick, f"{path} this-window next brick missing observation/finding"
-        assert "port" in brick and "service" in brick, f"{path} this-window next brick missing port→service"
-        assert "nested" in brick and "asset" in brick and "ports" in brick, f"{path} this-window next brick missing nested asset ports"
-        assert "referential" in brick, f"{path} this-window next brick missing referential lock"
+        assert "source" in brick, f"{path} this-window next brick missing source identity"
+        assert "identity" in brick, f"{path} this-window next brick missing source identity"
+        assert "evergreen-covey" in brick, f"{path} this-window next brick missing evergreen-covey"
+        assert "port→service" not in brick and "port->service" not in brick, f"{path} this-window still names port→service as next brick"
+        assert not ("port" in brick and "service" in brick), f"{path} this-window still names port→service as next brick"
         assert "service→host" not in brick and "service->host" not in brick, f"{path} this-window still names service→host as next brick"
         assert "kind-partition" not in brick, f"{path} this-window still names kind-partition as next brick"
         assert "void" in win_low, f"{path} this-window missing void CLOSED"
