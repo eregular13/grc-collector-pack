@@ -1,5 +1,11 @@
 # Changelog
 
+## cycle 176
+
+G04–G23 from-gh compressed: estate+sink up; `run_lab` LAB_GREEN; `product_demo` pack_mapped 10 facing false posted []; eval-24h stays quarantined; WRAP_DEAD + `/api/risks` 403; clone `_fromgh/clone` pytest green; PRODUCT.md github_sha line; `FROM_GH_READY.md`. VERSION 0.5.0-rc.2. G24 still hard-stop only. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.
+pytest: host run_lab LAB_GREEN (302).
+summary: assets 132, findings 155, evidence 9, incidents 110, vulnerabilities 29, risks_proposed 108, applied_controls 38, canonical_rows 341, sensors_canonical 9.
+
 ## cycle 175
 
 G03 from-gh: stamp `REFINE_READY.md` + `STATUS.md` — Grok24hRefine **cancelled**, refine window closed 2026-09-08. No “armed until R24.” Pack STATUS pack_mapped 10 / VERSION 0.5.0-rc.2. Lab-host Grok24hFromGh is a later hourly and is not cancelled here. No POST `/api/risks`. No cycle 11. No 192.168.10.0/24. SCOPE.example untouched. WRAP_DEAD unchanged. No I-069.

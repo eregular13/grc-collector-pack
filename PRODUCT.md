@@ -1,5 +1,7 @@
 # PRODUCT
 version: 0.5.0-rc.2
+github_branch: ship-0.4.0
+github_sha: 12f27b30b81a6b219aa6ff8fbe00ca240d2d8222
 demo_command: python -m dropbox.product_demo
 live_finding_classes: Cleartext HTTP; Missing HSTS; Missing X-Frame-Options/CSP (mapped as Missing web security headers); Server banner disclosure; Git metadata exposed; Directory listing enabled; Insecure session cookie; Permissive CORS policy; Environment file exposed; Untrusted TLS certificate
 pack_mapped: 10

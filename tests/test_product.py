@@ -526,6 +526,16 @@ def test_client_assess_doc_is_checklist_only() -> None:
     assert "version: 0.5.0-rc.2" in prod
 
 
+def test_product_md_has_github_sha_line() -> None:
+    """G15: PRODUCT.md stamps pack_mapped 10 and a ship-0.4.0 sha."""
+    import re
+
+    prod = (ROOT / "PRODUCT.md").read_text(encoding="utf-8")
+    assert "pack_mapped: 10" in prod
+    assert "github_branch: ship-0.4.0" in prod
+    assert re.search(r"github_sha: [0-9a-f]{40}", prod)
+
+
 def test_client_docs_match_pack_mapped_live() -> None:
     """R14: CLIENT_ASSESS + CLIENT_READY + PRODUCT.md match live pack_mapped 10."""
     prod = (ROOT / "PRODUCT.md").read_text(encoding="utf-8")
@@ -543,6 +553,20 @@ def test_client_docs_match_pack_mapped_live() -> None:
         assert name in prod or (
             name == "Missing web security headers" and "Missing X-Frame-Options/CSP" in prod
         )
+
+
+def test_from_gh_ready_scorecard() -> None:
+    """G23: FROM_GH_READY.md records origin sha, docker, pytest, pack_mapped, eval-24h quarantined."""
+    text = (ROOT / "FROM_GH_READY.md").read_text(encoding="utf-8")
+    assert "pack_mapped: 10" in text
+    assert "eval24h: quarantined" in text
+    assert "client_facing_ready: false" in text
+    assert "ship-0.4.0" in text
+    assert "0.5.0-rc.2" in text
+    assert "DO NOT UP" in text or "quarantined" in text
+    assert "/api/risks" in text
+    assert "G24" in text
+    assert "client_facing_ready: true" not in text
 
 
 def test_refine_ready_scorecard() -> None:
