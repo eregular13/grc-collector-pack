@@ -22,4 +22,4 @@ host_lab: LAB_GREEN
 wrap_dead_exit: 2
 pushed: ship-0.4.0
 eval24h: HISTORICAL DO NOT UP
-next_action: drop real scanner files into in/<sensor>/ (nmap/cloud/vuln) or honeypot JSONL into in/honeypot/; then import_grc --dry-run. Extra Import CISO HITL CSVs. No scheduler. No 192.168.10.0/24. Do not stop covey honeypot lab.
+next_action: wait Reid. Labs full-stopped 2026-09-13T10:52 PT (covey + estate + ciso down; no compose; no scheduler). Drop in/<sensor>/ or in/honeypot/ when work resumes. No 192.168.10.0/24.
