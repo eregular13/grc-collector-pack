@@ -17,6 +17,7 @@ Put vendor output under `in/<sensor>/`:
 | `in/k8s/` | Kubescape / kube-bench |
 | `in/code/` | Gitleaks / Trivy / Semgrep |
 | `in/saas/` | M365 / Okta JSON |
+| `in/honeypot/` | `honeypot_event.v1` / `session_summary.v1` JSONL, or Thales dd-honeypot JSONL. Empty → skip (no silent demo). See [HONEYPOT_DROP.md](HONEYPOT_DROP.md). |
 
 If `in/<sensor>/` has files, collectors use **those** (not silent `fixtures/demo/`). Empty `in/` falls back to demo fixtures.
 

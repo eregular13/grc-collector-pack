@@ -1,0 +1,1 @@
+{"schema":"session_summary.v1","session_id":"sess-lab-1","sensor_id":"php_my_admin","started_at":"2026-09-12T23:57:21Z","ended_at":"2026-09-12T23:57:22Z","src_ip":"172.26.0.3","dst_port":8081,"protocol":"tcp","event_count":2,"first_action":"connect","last_action":"auth_attempt","outcome":"closed"}

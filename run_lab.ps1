@@ -24,6 +24,7 @@ $collectors = @(
     "k8s_kubescape.py",
     "code_secrets.py",
     "saas_idp.py",
+    "honeypot_decoy.py",
     "grc_loader.py"
 )
 

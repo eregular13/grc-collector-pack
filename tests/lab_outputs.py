@@ -281,6 +281,7 @@ SENSOR_PREFIXES = (
     "K8S-",
     "CODE-",
     "SAAS-",
+    "HPOT-",
 )
 
 

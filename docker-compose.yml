@@ -45,6 +45,9 @@ services:
   saas_idp:
     <<: *pack
     command: python collectors/saas_idp.py
+  honeypot_decoy:
+    <<: *pack
+    command: python collectors/honeypot_decoy.py
   grc_loader:
     <<: *pack
     command: python collectors/grc_loader.py
@@ -66,6 +69,8 @@ services:
       code_secrets:
         condition: service_completed_successfully
       saas_idp:
+        condition: service_completed_successfully
+      honeypot_decoy:
         condition: service_completed_successfully
   lab:
     <<: *pack

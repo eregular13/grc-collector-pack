@@ -1,0 +1,2 @@
+{"schema":"honeypot_event.v1","event_id":"evt-lab-1","observed_at":"2026-09-12T23:57:21Z","sensor_id":"php_my_admin","src_ip":"172.26.0.3","src_port":43111,"dst_ip":"127.0.0.1","dst_port":8081,"protocol":"tcp","action":"connect","session_id":"sess-lab-1","service":"http"}
+{"schema":"honeypot_event.v1","event_id":"evt-lab-2","observed_at":"2026-09-12T23:57:22Z","sensor_id":"php_my_admin","src_ip":"172.26.0.3","src_port":43111,"dst_ip":"127.0.0.1","dst_port":8081,"protocol":"tcp","action":"auth_attempt","session_id":"sess-lab-1","service":"http"}

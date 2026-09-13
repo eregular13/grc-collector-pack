@@ -2,7 +2,7 @@
 #
 # Windows real lab entry (required):
 #   powershell -ExecutionPolicy Bypass -File .\run_lab.ps1
-# run_lab.ps1 is the real lab gate: pytest, nine collectors, loader
+# run_lab.ps1 is the real lab gate: pytest, nine collectors + optional honeypot, loader
 # (double-run / idempotent counts), tests\lab_outputs.py, and a
 # non-fatal Docker daemon probe.
 # `make lab` approximates the Python portions only and does not replace
@@ -34,6 +34,7 @@ collectors:
 	$(PYTHON) collectors/k8s_kubescape.py
 	$(PYTHON) collectors/code_secrets.py
 	$(PYTHON) collectors/saas_idp.py
+	$(PYTHON) collectors/honeypot_decoy.py
 
 loader:
 	$(PYTHON) collectors/grc_loader.py

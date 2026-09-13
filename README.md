@@ -66,6 +66,7 @@ Each collector parses files already on disk. Empty `in/<sensor>/` falls back to 
 | `in/k8s/` | `k8s_kubescape.py` | Kubescape `resources` / `results` / `summaryDetails` / `failedControls` (controlID, no resources array); kube-bench `Controls` (`FAIL`/`Fail`/`Failed` case-insensitive; hyphenated `test-number` / `test-result`; top-level `tests` with no wrapping Controls, PASS skipped) | `K8S-` |
 | `in/code/` | `code_secrets.py` | Gitleaks JSON (`RuleID`; empty RuleID uses `Fingerprint` `file:rule:line` or `DetectorName`; empty `File` uses `Source`) and SARIF (`runs[].results` `ruleId`, snippets redacted); Trivy `Results` (Vulnerabilities + Secrets, values `[REDACTED]`; `Misconfigurations` FAIL only, PASS skipped; `package-lock.json` paths are SP only); Semgrep `results` / SARIF `runs[].results` (`ruleId` + `level`); YAML/JSONL `aws_secret_access_key` redacted in `out/raw` | `CODE-` |
 | `in/saas/` | `saas_idp.py` | Combined JSON with `m365` and/or `okta` objects; Okta `/api/v1/users` list (`credentials.provider` MFA gap, no live API); Microsoft Graph `userRegistrationDetails` (`isMfaRegistered`, no live API) | `SAAS-` |
+| `in/honeypot/` | `honeypot_decoy.py` | `honeypot_event.v1` / `session_summary.v1` JSONL; Thales dd-honeypot JSONL (`client_ip` only). Empty in+demo → skip (keeps fixture 132/155/9). Findings are info decoy observations, not control OE. | `HPOT-` |
 
 ## Outputs
 

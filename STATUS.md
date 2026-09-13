@@ -1,5 +1,5 @@
 cycle: REAL_GRC CLOSED
-pytest: 320 sequential
+pytest: 326 sequential
 assets: 132
 findings: 155
 evidence: 9
@@ -22,4 +22,4 @@ host_lab: LAB_GREEN
 wrap_dead_exit: 2
 pushed: ship-0.4.0
 eval24h: HISTORICAL DO NOT UP
-next_action: drop real scanner files into in/<sensor>/ then import_grc --dry-run. Extra Import CISO HITL CSVs. No scheduler. No 192.168.10.0/24.
+next_action: drop real scanner files into in/<sensor>/ (nmap/cloud/vuln) or honeypot JSONL into in/honeypot/; then import_grc --dry-run. Extra Import CISO HITL CSVs. No scheduler. No 192.168.10.0/24. Do not stop covey honeypot lab.
