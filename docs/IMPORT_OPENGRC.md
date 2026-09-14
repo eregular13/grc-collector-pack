@@ -46,6 +46,14 @@ python3 -m exporters --sink opengrc
 python3 scripts/export_opengrc.py
 ```
 
+From SAMPLE keep-lab (preferred for this brick — do not wait for denser KEEP):
+
+```bash
+python3 -m keep lab
+python3 -m exporters --sink opengrc --out-dir keep/work/out
+# keep-lab already writes keep/work/out/opengrc/ (`demo: true`)
+```
+
 From the SAMPLE prove tree:
 
 ```bash

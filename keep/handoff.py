@@ -78,6 +78,7 @@ def build_eval_handoff(
     sample: bool,
     client_keep: bool,
     sources: list[dict[str, Any]] | None = None,
+    sinks: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     records = _canonical(out)
     findings = select_max_findings(records)
@@ -114,6 +115,16 @@ def build_eval_handoff(
             "files": ciso_files,
         },
         "poam": str(poam) if poam.is_file() else "",
+        "sinks": sinks
+        or {
+            "opengrc": str(out / "opengrc") if (out / "opengrc" / "risks.csv").is_file() else "",
+            "probo": str(out / "import_preview" / "probo.json")
+            if (out / "import_preview" / "probo.json").is_file()
+            else "",
+            "posted": False,
+            "demo": bool(sample or not client_keep),
+            "riskready": "stay-out",
+        },
         "sources": [
             {
                 "family": row.get("family"),

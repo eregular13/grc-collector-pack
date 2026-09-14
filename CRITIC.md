@@ -1,12 +1,13 @@
-# CRITIC — cycle 166 (SAMPLE keep-lab → CISO + OpenGRC/Probo sinks)
+# CRITIC — cycle 167 (SAMPLE keep-lab → CISO + OpenGRC/Probo sinks)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
 SAMPLE `python3 -m keep lab` writes
 `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json`
 (`demo: true`, SAMPLE ≠ client, `paying_day: FAIL`).
 OpenGRC Data Manager CSVs + Probo addRisk/addFinding drafts from the
-same CISO intermediate (`python3 -m exporters`). posted=false.
-RiskReady stay-out. `fixtures/demo/` KEEP-shaped files fail-closed.
+same CISO intermediate (`keep/export.py`; `python3 -m exporters`).
+posted=false. Do not wait for denser KEEP. RiskReady stay-out.
+`fixtures/demo/` KEEP-shaped files fail-closed.
 No denser estate. No pack_drop fixture locks.
 CoS #45 honesty sync + item 2: global pack_drop meta.json
 source identity lock

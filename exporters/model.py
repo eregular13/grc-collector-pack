@@ -8,6 +8,7 @@ OpenGRC and Probo sinks cannot drift from the CISO contract.
 from __future__ import annotations
 
 import csv
+import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -173,9 +174,11 @@ class PackEstate:
     scenarios: list[PackScenario] = field(default_factory=list)
     evidences: list[tuple[str, str]] = field(default_factory=list)
     sample: bool = True
+    demo: bool = True
     client: bool = False
     posted: bool = False
     source: str = "ciso-assistant"
+    origin: str = "ciso-assistant"
 
     @property
     def all_findings(self) -> list[PackFinding]:
@@ -183,14 +186,17 @@ class PackEstate:
 
     def honesty(self) -> dict[str, Any]:
         return {
-            "sample": self.sample,
+            "sample": True if self.sample else False,
+            "demo": True if self.demo or self.sample else False,
             "client": False,
+            "client_keep": False,
             "posted": False,
             "http": False,
             "paying_day": "FAIL",
             "estate": HONESTY_BANNER,
             "riskready": "stay-out — review-only; never a build target here",
             "source": self.source,
+            "origin": self.origin,
         }
 
 
@@ -319,8 +325,18 @@ def load_pack_estate(out: Path | None = None) -> PackEstate:
         if name:
             evidences.append((name, (row.get("description") or "").strip()))
 
-    if not sample:
-        sample = True  # file-drop default: never claim a client estate from this pack
+    summary: dict[str, Any] = {}
+    summary_path = dest / "summary.json"
+    if summary_path.is_file():
+        try:
+            loaded = json.loads(summary_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                summary = loaded
+        except json.JSONDecodeError:
+            summary = {}
+    demo = bool(summary.get("demo")) or sample
+    # File-drop default: never claim a client estate from this pack.
+    # SAMPLE/DEMO KEEP is enough — do not wait for denser KEEP.
     return PackEstate(
         assets=assets,
         findings=findings,
@@ -329,7 +345,9 @@ def load_pack_estate(out: Path | None = None) -> PackEstate:
         scenarios=scenarios,
         evidences=evidences,
         sample=True,
+        demo=True if demo or sample else True,
         client=False,
         posted=False,
         source="ciso-assistant",
+        origin="keep-lab" if "keep" in str(dest).replace("\\", "/") else "ciso-assistant",
     )

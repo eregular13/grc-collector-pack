@@ -65,6 +65,7 @@ def test_opengrc_writes_wizard_csvs(tmp_path: Path) -> None:
     assert stamp["posted"] is False
     assert stamp["http"] is False
     assert stamp["client"] is False
+    assert stamp["demo"] is True
     assert stamp["paying_day"] == "FAIL"
     dest = Path(stamp["dir"])
     with (dest / "risks.csv").open(encoding="utf-8", newline="") as fh:
@@ -122,6 +123,30 @@ def test_exporters_consume_product_lab_ciso_drop(tmp_path: Path) -> None:
     assert preview["posted"] is False
 
 
+def test_keep_lab_sample_ciso_feeds_sinks(tmp_path: Path) -> None:
+    """SAMPLE keep-lab CISO intermediate is enough — do not wait for denser KEEP."""
+    from keep.lab import keep_lab
+
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    stamp = keep_lab(ROOT, pack_in=empty, work=tmp_path / "work")
+    assert stamp["status"] == "pass"
+    assert stamp["sample"] is True
+    assert stamp["demo"] is True
+    assert stamp["client_keep"] is False
+    out = Path(stamp["out_dir"])
+    estate = load_pack_estate(out)
+    assert estate.demo is True
+    assert estate.sample is True
+    preview = build_probo_preview(out, estate=estate)
+    assert preview["demo"] is True
+    assert preview["posted"] is False
+    og = write_opengrc(out, estate=estate)
+    assert og["demo"] is True
+    assert og["counts"]["risks"] >= 1
+    assert og["counts"]["assets"] >= 1
+
+
 def test_exporter_modules_have_no_sockets_or_risks_post() -> None:
     banned = ("socket.socket", "urllib.request", "http.client", "requests.get", "httpx.")
     for rel in (
@@ -129,6 +154,7 @@ def test_exporter_modules_have_no_sockets_or_risks_post() -> None:
         "exporters/opengrc.py",
         "exporters/probo.py",
         "exporters/__main__.py",
+        "keep/export.py",
         "scripts/export_opengrc.py",
         "scripts/preview_probo.py",
     ):

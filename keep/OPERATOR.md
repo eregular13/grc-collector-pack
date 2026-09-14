@@ -70,8 +70,13 @@ Outputs (isolated; not pack `out/`):
 - `keep/work/out/ciso-assistant/IMPORT.json` — honesty + file list
 - `keep/work/out/eval/handoff.json` — Origin Eval file (max 5 findings + assets)
 - `keep/work/out/eval/MANIFEST.json` — `posted: false`, `http: false`
+- `keep/work/out/opengrc/{risks,assets,implementations}.csv` — OpenGRC Data Manager (file-only)
+- `keep/work/out/import_preview/probo.json` — Probo addRisk/addFinding drafts (not a live create)
 - `keep/work/out/poam/poam.csv` — owner/due blank
 - `keep/work/keep-lab.json` — lab stamp
+
+SAMPLE/DEMO KEEP is enough for those sinks (`demo: true`). Do not wait for
+a denser client KEEP drop. RiskReady stay-out. `posted: false`.
 
 ## Eval consume (no live HTTP from this pack)
 

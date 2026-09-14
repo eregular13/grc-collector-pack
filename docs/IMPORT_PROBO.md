@@ -55,9 +55,11 @@ and docs still parse. Prefer `addRisk` + `addFinding` for import.
 
 ## Operator path
 
-1. Run the host lab, `python3 -m dropbox ciso`, or `python3 scripts/prove_ciso.py`.
-2. Confirm `out/ciso-assistant/findings.csv` (and assets / risk_scenarios).
-3. `python3 -m exporters --sink probo` (or `python3 scripts/preview_probo.py`).
+1. Run SAMPLE keep-lab (`python3 -m keep lab`) — enough; do not wait for denser KEEP.
+2. Or run the host lab, `python3 -m dropbox ciso`, or `python3 scripts/prove_ciso.py`.
+3. Confirm `ciso-assistant/findings.csv` (keep-lab: `keep/work/out/ciso-assistant/`).
+4. keep-lab already writes `keep/work/out/import_preview/probo.json` (`demo: true`).
+   Re-run: `python3 -m exporters --sink probo --out-dir keep/work/out`.
 4. Read `out/import_preview/probo.json`. Fill `organization_id`. Import in
    Probo MCP (`tools/call` `addRisk` / `addFinding`) or GraphQL **by hand**.
 
