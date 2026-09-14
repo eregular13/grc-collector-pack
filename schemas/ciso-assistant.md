@@ -96,3 +96,8 @@ weakness,asset,severity,framework_refs,recommended_fix,owner,due,status
 ## OCSF
 
 `out/ocsf/compliance_findings.json` — array of Compliance Finding objects, `class_uid` 2003.
+
+## Other sinks (same CSVs)
+
+`python3 -m exporters` reads these files and writes OpenGRC / Probo drops.
+CISO headers stay the contract. See [opengrc.md](opengrc.md) and [probo.md](probo.md).

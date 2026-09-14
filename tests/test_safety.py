@@ -26,6 +26,9 @@ def test_no_post_api_risks() -> None:
         ROOT / "product" / "server.py",
         ROOT / "scripts" / "preview_probo.py",
         ROOT / "scripts" / "preview_rr.py",
+        ROOT / "scripts" / "export_opengrc.py",
+        ROOT / "exporters" / "opengrc.py",
+        ROOT / "exporters" / "probo.py",
     ]
     for path in paths:
         text = path.read_text(encoding="utf-8")

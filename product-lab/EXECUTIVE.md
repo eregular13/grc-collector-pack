@@ -2,7 +2,9 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 165):** CoS #45 honesty sync + item 2 —
+**This window (cycle 166):** OpenGRC + Probo file sinks from the CISO
+intermediate (`python3 -m exporters`; posted=false; RiskReady stay-out).
+CoS #45 honesty sync + item 2 —
 global pack_drop meta.json source identity lock
 (`tests/test_pack_drop_source.py`; `source == evergreen-covey`
 exact; `schema == covey.pack_drop.v1`; META-ONLY — no JSONL

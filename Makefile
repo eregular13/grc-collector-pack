@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab prove-ciso
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab prove-ciso export-opengrc export-probo
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -83,3 +83,10 @@ keep-lab:
 # SAMPLE/DEMO: fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
 prove-ciso:
 	$(PYTHON) scripts/prove_ciso.py
+
+# File-only sinks from existing out/ciso-assistant. No POST. SAMPLE/DEMO ≠ client.
+export-opengrc:
+	$(PYTHON) -m exporters --sink opengrc
+
+export-probo:
+	$(PYTHON) -m exporters --sink probo

@@ -36,7 +36,11 @@ def test_previews_write_pending_shapes(tmp_path: Path) -> None:
     )
     probo = build_probo_preview(tmp_path)
     assert probo["posted"] is False
+    assert probo["http"] is False
     assert probo["createRisk"][0]["shape"] == "createRisk"
+    assert probo["addFinding"][0]["shape"] == "addFinding"
+    assert probo["addRisk"][0]["shape"] == "addRisk"
+    assert probo["organization_id"] is None
     rr_prev = build_rr_preview(tmp_path)
     assert rr_prev["posts_api_risks"] is False
     assert rr_prev["status"] == "PENDING"
@@ -51,7 +55,7 @@ def test_previews_write_pending_shapes(tmp_path: Path) -> None:
 
 def test_preview_scripts_have_no_sockets_or_risks_post() -> None:
     banned = ("socket.socket", "urllib.request", "http.client", "requests.get")
-    for name in ("preview_probo.py", "preview_rr.py"):
+    for name in ("preview_probo.py", "preview_rr.py", "export_opengrc.py"):
         text = (ROOT / "scripts" / name).read_text(encoding="utf-8")
         for token in banned:
             assert token not in text, name

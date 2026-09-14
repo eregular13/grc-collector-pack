@@ -128,3 +128,17 @@ Docker host — this VM `compose_lab` absent ≠ PASS).
 
 Lane map: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).
+
+## Other sinks (same intermediate, not a second prove)
+
+After `prove/work/out/ciso-assistant/*.csv` exists, file-only exporters
+read those CSVs. They do not change CISO headers. `posted=false`.
+
+```bash
+python3 -m exporters --sink all --out-dir prove/work/out
+```
+
+- OpenGRC Data Manager CSVs → `prove/work/out/opengrc/` — [IMPORT_OPENGRC.md](IMPORT_OPENGRC.md)
+- Probo `addRisk` / `addFinding` drafts → `prove/work/out/import_preview/probo.json` — [IMPORT_PROBO.md](IMPORT_PROBO.md)
+
+RiskReady stay-out. SAMPLE/DEMO ≠ client. Paying-day stays FAIL.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- OpenGRC Data Manager CSV exporter and Probo `addRisk` / `addFinding` drafts from the CISO intermediate (`python3 -m exporters`). File-only. `posted=false`. RiskReady stay-out.
+
 ## 0.3.0 — 2026-09-03
 
 Public-repo hardening.

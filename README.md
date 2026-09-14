@@ -106,6 +106,21 @@ CSV headers (exact):
 
 CISO Assistant is Reid-side SoR. Prefer [clica](https://github.com/intuitem/ciso-assistant-community) or the UI CSV import. Do not invent FindingsAssessment UUIDs. `push_ciso.sh` defaults to dry-run; if `CISO_PUSH=1` and `DRY_RUN!=1` it may POST `/api/assets/` and `/api/evidences/` only.
 
+## OpenGRC / Probo (second sinks)
+
+Same CISO CSVs → file-only exporters. No REST. `posted=false`. SAMPLE/DEMO ≠ client.
+
+```bash
+python3 -m exporters --sink all          # out/opengrc/*.csv + out/import_preview/probo.json
+python3 scripts/export_opengrc.py
+python3 scripts/preview_probo.py
+```
+
+- OpenGRC Data Manager CSVs: [docs/IMPORT_OPENGRC.md](docs/IMPORT_OPENGRC.md) / [schemas/opengrc.md](schemas/opengrc.md)
+- Probo `addRisk` / `addFinding` drafts: [docs/IMPORT_PROBO.md](docs/IMPORT_PROBO.md) / [schemas/probo.md](schemas/probo.md)
+
+RiskReady is **not** a build target here (LICENSE-LOCK stay-out).
+
 ## RiskReady — LICENSE-LOCK stay-out
 
 This pack **never wraps or runs RiskReady**. `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`: no login, no HTTP client, no POST. Humans review:
