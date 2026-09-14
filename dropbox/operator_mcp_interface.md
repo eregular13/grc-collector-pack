@@ -14,8 +14,8 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Optional `{ "category": "discover" }`. Plan-only |
 | `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Per-slot `live_ready` plus `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or file_drop-only names even if a binary is under `FARM_TOOL_BIN`. DEMO stubs may `will_run` in e2e. Does not invoke |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/` | SCOPE-gated paths. `posted` false unless `CISO_PUSH=1`. Conductor `http` always false. Does not invent owner/due |
-| `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | SCOPE-gated KEEP four-set inventory (HardeningKitty / Maester / testssl / Prowler\|ScoutSuite). `keep_real` N/4. Prefer pack `in/` when present. `fixtures/keep-samples` are lab-only. **SAMPLE≠client. DEMO≠client.** Detect only — no new parsers, no write, no POST, no scan |
-| `keep_ciso` | `keep.lab.keep_lab` (same as `python -m keep lab`) | SCOPE-gated dry run: `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Writes `keep/work/out/ciso-assistant/*.csv` + `eval/handoff.json`. Never writes pack `in/`. Never POST `/api/risks`. Never spawns scanners. Stamps SAMPLE/DEMO vs denser self-lab. **SAMPLE≠client. DEMO≠client.** |
+| `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | Empty pack `in/` is `keep_real` **0/4**. Lab path is `fixtures/keep-samples` (SAMPLE≠client). HardeningKitty / Maester / testssl / Prowler\|ScoutSuite detect only. **Does not densify pack `in/`.** Does not invent non-sample files. Does not require signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
+| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `eval/handoff.json`. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -90,12 +90,13 @@ server) fails closed.
 filter with `params.arguments.category`. `farm_toolbin_status` adds
 per-slot `live_ready` plus `live_ready_count` / `slots[]`. DEMO stubs
 and file_drop-only names are never live-ready, even if a binary is
-under `FARM_TOOL_BIN`. `keep_status` inventories the KEEP four-set on
-pack `in/` (`keep_real` N/4; fixtures are lab-only). `keep_ciso` is the
-operator entrypoint for `python -m keep lab` (dry CISO CSVs +
-`handoff.json` under `keep/work/out/`; never writes pack `in/`).
-**SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only (ignores
-`arguments.live`). `orchestrator_plan` returns `will_run`
+under `FARM_TOOL_BIN`. `keep_status` reports pack `in/` KEEP four-set honesty (`keep_real`
+**0/4** when empty). `keep_ciso` is the operator SAMPLE entrypoint for
+`python -m keep lab`: `fixtures/keep-samples` →
+`keep/work/out/ciso-assistant/*.csv` + `handoff.json`. This week's
+slice does **not** densify pack `in/` and does **not** require signed
+self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
+(ignores `arguments.live`). `orchestrator_plan` returns `will_run`
 (`discover` / `deepen` / `external` → slot → bool). External entries stay
 `false`.
 

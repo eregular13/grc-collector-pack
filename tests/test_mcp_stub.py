@@ -693,7 +693,11 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
     assert names.index("keep_ciso") == names.index("keep_status") + 1
     entries = {row["name"]: row for row in tools_list_entries()}
     assert "SAMPLE≠client" in entries["keep_status"]["description"]
+    assert "0/4" in entries["keep_status"]["description"]
+    assert "fixtures/keep-samples" in entries["keep_status"]["description"]
     assert "python -m keep lab" in entries["keep_ciso"]["description"]
+    assert "fixtures/keep-samples" in entries["keep_ciso"]["description"]
+    assert "densify" in entries["keep_ciso"]["description"]
 
 
 def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -707,22 +711,49 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert data["scope_gated"] is True
     assert data["keep_real"] == "0/4"
     assert data["keep_real_count"] == 0
+    assert data["pack_in_empty"] is True
     assert data["client_keep"] is False
+    assert data["sample"] is True
+    assert data["demo"] is True
+    assert data["lab_source"] == "fixtures/keep-samples"
+    assert data["sample_path"] is True
+    assert data["densify"] is False
+    assert data.get("prefer_pack_in") is not True
     assert data["posted"] is False
     assert data["http"] is False
     assert data["paying_day"] == "FAIL"
     assert "SAMPLE≠client" in data["banners"]
     assert "DEMO≠client" in data["banners"]
+    assert "denser" not in data["note"].lower()
+    assert "fixtures/keep-samples" in data["note"]
     for name in ("hardeningkitty", "maester", "testssl", "cloud"):
         assert data["families"][name]["present"] is False
         assert data["families"][name]["real"] is False
     assert data["fixtures_keep_samples"]["present"] is True
     assert data["fixtures_keep_samples"]["lab_only"] is True
+    assert data["fixtures_keep_samples"]["keep_real"] == "0/4"
     iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
     assert "`keep_status`" in iface
     assert "`keep_ciso`" in iface
     assert "SAMPLE≠client" in iface
     assert "DEMO≠client" in iface
+    assert "0/4" in iface
+    assert "fixtures/keep-samples" in iface
+    assert "denser" not in iface.lower()
+    assert "prefer pack" not in iface.lower()
+    assert "self-SCOPE" in iface or "self-scope" in iface.lower()
+
+
+def test_keep_status_repo_pack_in_is_sample_zero_of_four(monkeypatch: pytest.MonkeyPatch) -> None:
+    """This week's slice: pack in/ stays empty. SAMPLE lab path is fixtures."""
+    monkeypatch.delenv("IN_DIR", raising=False)
+    data = dispatch("keep_status", scope_path=SCOPE)
+    assert data["keep_real"] == "0/4"
+    assert data["pack_in_empty"] is True
+    assert data["lab_source"] == "fixtures/keep-samples"
+    assert data["client_keep"] is False
+    assert data["densify"] is False
+    assert data["paying_day"] == "FAIL"
 
 
 def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -764,11 +795,20 @@ def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pyte
     assert data["grc_live_scan"] == "0"
     assert data["dry_run"] is True
     assert data["sample"] is True
+    assert data["demo"] is True
     assert data["client_keep"] is False
+    assert data["origin"] == "keep-samples"
+    assert data["lab_source"] == "fixtures/keep-samples"
+    assert data["sample_path"] is True
+    assert data["densify"] is False
     assert data["paying_day"] == "FAIL"
     assert "SAMPLE≠client" in data["banners"]
     assert "DEMO≠client" in data["banners"]
     assert data["estate"].startswith("SAMPLE/DEMO")
+    assert "denser" not in data["note"].lower()
+    assert "fixtures/keep-samples" in data["note"]
+    assert data["stamp"].get("origin") == "keep-samples"
+    assert data["stamp"].get("sample") is True
     assert data["ciso_files"]
     assert all(p.endswith(".csv") and "ciso-assistant" in p for p in data["ciso_files"])
     assert data["handoff"].endswith("handoff.json")

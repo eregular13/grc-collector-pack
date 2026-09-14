@@ -62,12 +62,12 @@ TOOL_DESC = {
         "posted false unless CISO_PUSH=1. Conductor http is always false."
     ),
     "keep_status": (
-        "SCOPE-gated KEEP four-set inventory on pack in/{identity,saas,vuln,cloud}/. "
-        "keep_real N/4. SAMPLE≠client. DEMO≠client. Fixtures are lab-only."
+        "SCOPE-gated KEEP four-set inventory. Empty pack in/ is keep_real 0/4. "
+        "Lab uses fixtures/keep-samples. SAMPLE≠client. DEMO≠client. No densify."
     ),
     "keep_ciso": (
-        "SCOPE-gated dry keep-lab → keep/work/out/ciso-assistant/*.csv + handoff.json. "
-        "Same rails as python -m keep lab. Never writes pack in/. Never POST. Never scans."
+        "SAMPLE keep-lab only: fixtures/keep-samples → keep/work/out/ciso-assistant/*.csv. "
+        "Same rails as python -m keep lab. Never densify pack in/. Never POST. paying_day FAIL."
     ),
 }
 
@@ -506,6 +506,19 @@ def _keep_work_dir(extra: dict[str, Any] | None = None) -> Path:
     )
 
 
+def _pack_fingerprint(folder: Path) -> dict[str, bytes]:
+    """Relative path → bytes for non-skip files. Detect THIS-run pack in/ writes."""
+    out: dict[str, bytes] = {}
+    if not folder.is_dir():
+        return out
+    for path in sorted(folder.rglob("*")):
+        if not path.is_file() or path.name in {".gitkeep", ".DS_Store"}:
+            continue
+        rel = str(path.relative_to(folder)).replace("\\", "/")
+        out[rel] = path.read_bytes()
+    return out
+
+
 def _keep_family_inventory(folder: Path) -> dict[str, Any]:
     """Four-set inventory via keep.adapters (same detect helpers keepmin uses)."""
     from keep.adapters import KEEP_FAMILIES, client_keep_ready, scan_keep_dir
@@ -549,9 +562,8 @@ def keep_status(
     pack_in = _keep_pack_in(extra)
     inventory = _keep_family_inventory(pack_in)
     samples_dir = root / "fixtures" / "keep-samples"
-    sample_inventory = _keep_family_inventory(samples_dir) if samples_dir.is_dir() else {}
-    demo_scope = "DEMO" in scope.client_name.upper()
     keep_real = str(inventory["keep_real"])
+    empty_pack = inventory["keep_real_count"] == 0
     return {
         "tool": "keep_status",
         "ok": True,
@@ -559,21 +571,28 @@ def keep_status(
         "plan_only": True,
         "scope_gated": True,
         "client": scope.client_name,
-        "demo": demo_scope,
+        "demo": True,
+        "sample": True,
         "pack_in": str(pack_in),
+        "pack_in_empty": empty_pack,
         "sensors": list(KEEP_SENSOR_DIRS),
         "families": inventory["families"],
         "keep_real": keep_real,
         "keep_real_count": inventory["keep_real_count"],
         "keep_real_of": 4,
-        "client_keep": bool(inventory["client_keep"]),
-        "prefer_pack_in": True,
+        "client_keep": False,
+        "lab_source": "fixtures/keep-samples",
+        "sample_path": True,
+        "densify": False,
         "fixtures_keep_samples": {
             "present": samples_dir.is_dir(),
             "path": str(samples_dir),
             "lab_only": True,
-            "keep_real": sample_inventory.get("keep_real", "0/4"),
-            "note": "fixtures/keep-samples exist for lab-only. SAMPLE≠client KEEP.",
+            "keep_real": "0/4",
+            "note": (
+                "keep_ciso / python -m keep lab uses fixtures/keep-samples. "
+                "SAMPLE≠client KEEP. Not a densify path."
+            ),
         },
         "banners": list(KEEP_HONESTY_BANNERS),
         "paying_day": "FAIL",
@@ -581,11 +600,12 @@ def keep_status(
         "http": False,
         "wrap": "review-only",
         "note": (
-            "KEEP four-set is HardeningKitty / Maester / testssl / Prowler|ScoutSuite "
-            "on pack in/{identity,saas,vuln,cloud}/. Detect via keep.adapters "
-            "(same helpers dropbox.orchestrator.keepmin uses). keep_real "
-            f"{keep_real}. SAMPLE≠client. DEMO≠client. Fixtures are lab-only. "
-            "Does not write pack in/. Does not POST /api/risks. Does not scan."
+            f"Pack in/ keep_real {keep_real}. Empty pack in/ is 0/4. "
+            "Operator lab path is fixtures/keep-samples → keep/work/out "
+            "(SAMPLE≠client). Detect via keep.adapters (same helpers "
+            "dropbox.orchestrator.keepmin uses). Does not densify pack in/. "
+            "Does not invent non-sample files. Does not require signed "
+            "self-SCOPE. DEMO≠client. paying_day FAIL. No POST /api/risks. No scan."
         ),
     }
 
@@ -594,46 +614,50 @@ def keep_ciso(
     scope_path: Path | None = None,
     arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """SCOPE-gated dry keep-lab. Same rails as `python -m keep lab`.
+    """SCOPE-gated SAMPLE keep-lab. Same rails as `python -m keep lab`.
 
-    DRY_RUN=1, GRC_LIVE_SCAN=0, CISO_PUSH=0, RISKREADY_PUSH=0. Never writes
-    pack in/. Never POST. Never spawns scanners.
+    Always fixtures/keep-samples → keep/work/out/ciso-assistant. DRY_RUN=1,
+    GRC_LIVE_SCAN=0, CISO_PUSH=0, RISKREADY_PUSH=0. Never densifies pack in/.
+    Never invents non-sample files. Never POST. Never spawns scanners.
     """
     from keep.lab import keep_lab
 
     scope = load_scope(scope_path)
     extra = arguments if isinstance(arguments, dict) else {}
     root = _repo_root()
-    pack_in = _keep_pack_in(extra)
+    operator_pack_in = _keep_pack_in(extra)
     work = _keep_work_dir(extra)
-    stamp = keep_lab(root, pack_in=pack_in, work=work)
+    before = _pack_fingerprint(operator_pack_in)
+    # Isolated empty pack_in so keep_lab lands fixtures/keep-samples only.
+    # Do not pass operator pack in/ — this week's slice does not densify.
+    isolated = work / "sample-pack-in"
+    isolated.mkdir(parents=True, exist_ok=True)
+    stamp = keep_lab(root, pack_in=isolated, work=work)
+    after = _pack_fingerprint(operator_pack_in)
+    wrote_pack = before != after
     ciso_dir = work / "out" / "ciso-assistant"
     ciso_files = (
         [str(path) for path in sorted(ciso_dir.glob("*.csv"))] if ciso_dir.is_dir() else []
     )
     handoff = work / "out" / "eval" / "handoff.json"
-    sample = bool(stamp.get("sample"))
-    client_keep = bool(stamp.get("client_keep"))
-    estate = (
-        "SAMPLE/DEMO — not a client estate"
-        if sample or not client_keep
-        else "self-lab KEEP (denser; still not paying-day)"
-    )
-    demo_scope = "DEMO" in scope.client_name.upper() or bool(stamp.get("demo"))
+    estate = "SAMPLE/DEMO — not a client estate"
     return {
         "tool": "keep_ciso",
-        "ok": stamp.get("status") == "pass",
+        "ok": stamp.get("status") == "pass" and not wrote_pack,
         "live": False,
         "dry_run": True,
         "scope_gated": True,
         "client": scope.client_name,
-        "demo": demo_scope,
-        "sample": sample,
-        "client_keep": client_keep,
-        "origin": stamp.get("origin"),
+        "demo": True,
+        "sample": True,
+        "client_keep": False,
+        "origin": "keep-samples",
+        "lab_source": "fixtures/keep-samples",
+        "sample_path": True,
+        "densify": False,
         "estate": estate,
-        "pack_in": str(pack_in),
-        "pack_in_written": bool(stamp.get("pack_in_written")),
+        "pack_in": str(operator_pack_in),
+        "pack_in_written": wrote_pack,
         "work": str(work),
         "ciso_dir": str(ciso_dir),
         "ciso_files": ciso_files,
@@ -650,10 +674,12 @@ def keep_ciso(
         "paying_day": "FAIL",
         "stamp": stamp,
         "note": (
-            "Same path as python -m keep lab. DRY_RUN=1 GRC_LIVE_SCAN=0 "
-            "CISO_PUSH=0 RISKREADY_PUSH=0. Writes keep/work/out only. "
-            "Never writes pack in/. Never POST /api/risks. Never spawns scanners. "
-            f"{estate}. SAMPLE≠client. DEMO≠client."
+            "SAMPLE keep-lab path: fixtures/keep-samples → "
+            "keep/work/out/ciso-assistant/*.csv + eval/handoff.json. "
+            "Same rails as python -m keep lab (DRY_RUN=1 GRC_LIVE_SCAN=0 "
+            "CISO_PUSH=0 RISKREADY_PUSH=0). Does not densify pack in/. "
+            "Does not invent non-sample files. Does not require signed "
+            "self-SCOPE. SAMPLE≠client. DEMO≠client. paying_day FAIL."
         ),
     }
 
