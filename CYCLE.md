@@ -5,7 +5,7 @@
 `python -m keep lab` writes OpenGRC Data Manager CSVs and Probo addRisk/addFinding drafts from `keep/work/out/ciso-assistant` (`keep/export.py`). `demo: true`. SAMPLE/DEMO KEEP is enough — do not wait for denser KEEP. posted=false. RiskReady stay-out. No pack_drop fixture churn. CoS #45 honesty / pack HEAD `62b52d41` / Covey HEAD `30d2197f` stand. Catalog **unchanged**. Paying-day stays FAIL.
 
 ```json
-{"pytest": "pending", "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 668, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
 
 ## cycle 166 — SAMPLE keep-lab → CISO + OpenGRC/Probo file sinks (2026-09-14)
