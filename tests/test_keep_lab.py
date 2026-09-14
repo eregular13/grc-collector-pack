@@ -12,6 +12,7 @@ from keep.adapters import (
     land_keep_files,
     scan_keep_dir,
 )
+from keep.ciso_import import CISO_REQUIRED, read_paying_day
 from keep.handoff import MAX_FINDINGS, build_eval_handoff, select_max_findings
 from keep.lab import keep_lab
 
@@ -82,6 +83,24 @@ def test_keep_lab_uses_samples_when_pack_in_empty(tmp_path: Path) -> None:
     assert handoff["findings"]
     assert handoff["ciso"]["shape"] == "ciso-assistant"
     assert "findings.csv" in handoff["ciso"]["files"]
+    assert stamp["paying_day"] == "FAIL"
+    assert stamp["paying_day"] == read_paying_day(ROOT)
+    assert stamp["ciso_files"]
+    for name in CISO_REQUIRED:
+        assert name in stamp["ciso_files"]
+        assert (Path(stamp["ciso_dir"]) / name).is_file()
+    import_doc = json.loads((Path(stamp["ciso_dir"]) / "IMPORT.json").read_text(encoding="utf-8"))
+    assert import_doc["demo"] is True
+    assert import_doc["sample"] is True
+    assert import_doc["client_keep"] is False
+    assert import_doc["paying_day"] == "FAIL"
+    assert import_doc["posted"] is False
+    assert import_doc["http"] is False
+    assert "SAMPLE" in import_doc["estate"] and "not a client" in import_doc["estate"].lower()
+    guide = (Path(stamp["ciso_dir"]) / "IMPORT.md").read_text(encoding="utf-8")
+    assert "SAMPLE" in guide and "not a client" in guide.lower()
+    findings = (Path(stamp["ciso_dir"]) / "findings.csv").read_text(encoding="utf-8")
+    assert "demo" in findings.lower() or "sample" in findings.lower()
     assert stamp["pack_in_written"] is False
     pack_in_files = [p for p in (ROOT / "in").rglob("*") if p.is_file() and p.name != ".gitkeep"]
     assert pack_in_files == [] or stamp["pack_in_preexisting"] == len(pack_in_files)
@@ -223,9 +242,39 @@ def test_eval_handoff_caps_at_five() -> None:
     assert all(row["severity"] != "info" for row in selected)
 
 
+def test_demo_keep_files_do_not_stamp_client_keep(tmp_path: Path) -> None:
+    """fixtures/demo KEEP-shaped files must not look like a client KEEP drop."""
+    pack_in = tmp_path / "demo-as-client"
+    mapping = (
+        ("identity", "hardeningkitty.csv"),
+        ("saas", "maester.json"),
+        ("vuln", "testssl.json"),
+        ("cloud", "prowler.json"),
+    )
+    for sensor, name in mapping:
+        dest = pack_in / sensor
+        dest.mkdir(parents=True)
+        src = ROOT / "fixtures" / "demo" / sensor / name
+        dest.joinpath(name).write_bytes(src.read_bytes())
+    rows = scan_keep_dir(pack_in)
+    groups = {row["group"] for row in rows}
+    assert set(KEEP_FAMILIES) <= groups
+    assert any(row["sample"] for row in rows)
+    assert client_keep_ready(rows) is False
+    stamp = keep_lab(ROOT, pack_in=pack_in, work=tmp_path / "work")
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["sample"] is True
+    assert stamp["client_keep"] is False
+    assert stamp["paying_day"] == "FAIL"
+    assert stamp["origin"] == "keep-samples"
+    import_doc = json.loads((Path(stamp["ciso_dir"]) / "IMPORT.json").read_text(encoding="utf-8"))
+    assert import_doc["client_keep"] is False
+    assert import_doc["demo"] is True
+
+
 def test_handoff_docs_and_no_eval_http() -> None:
     banned = ("socket.socket", "urllib.request", "http.client", "requests.get", "urllib3")
-    for rel in ("keep/adapters.py", "keep/handoff.py", "keep/lab.py"):
+    for rel in ("keep/adapters.py", "keep/handoff.py", "keep/lab.py", "keep/ciso_import.py"):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for token in banned:
             assert token not in text, rel
@@ -238,12 +287,21 @@ def test_handoff_docs_and_no_eval_http() -> None:
     assert "npm start" in op or "Origin Eval" in op
     assert "handoff.json" in op
     assert "python -m keep lab" in op or "python3 -m keep lab" in op
+    assert "ciso-assistant" in op
+    assert "IMPORT.md" in op or "IMPORT.json" in op
+    assert "paying_day" in op or "paying_day" in op.lower() or "FAIL" in op
     assert "keep-lab never" in op.lower() or "never touching pack" in op.lower() or "never writes pack" in op.lower()
     doc = (ROOT / "docs" / "KEEP_EVAL_HANDOFF.md").read_text(encoding="utf-8")
     assert "max-5" in doc or "max 5" in doc or "max_findings" in doc
     assert "No live Eval HTTP" in doc or "no live Eval HTTP" in doc.lower()
+    assert "ciso-assistant" in doc
     samples = (SAMPLES / "README.md").read_text(encoding="utf-8")
     assert "SAMPLE ≠ client KEEP" in samples or "not" in samples.lower()
+    prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
+    assert "python3 -m keep lab" in prove
+    assert "keep-samples" in prove
+    main = (ROOT / "keep" / "__main__.py").read_text(encoding="utf-8")
+    assert '"ciso"' in main or "ciso" in main
 
 
 def test_eval_handoff_builder_stays_file_drop(tmp_path: Path) -> None:

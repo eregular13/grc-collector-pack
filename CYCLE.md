@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 166 — SAMPLE keep-lab → CISO Assistant CSVs (2026-09-14)
+
+Operator-clear SAMPLE path: `fixtures/keep-samples/` → `python3 -m keep lab` (alias `python3 -m keep ciso`) → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` / `IMPORT.md`. Honesty: `demo: true`, SAMPLE ≠ client, `paying_day: FAIL`, `posted: false`. Required CISO CSVs (assets/findings/vulnerabilities/applied_controls) + header lock. `fixtures/demo/` KEEP-shaped files cannot flip `client_keep`. No denser estate. No pack_drop fixture locks. prove_ciso still PASS. Paying-day stays FAIL. Catalog **unchanged**.
+
+```json
+{"pytest": 658, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 165 — CoS #45 item 2 global pack_drop meta.json source identity lock (2026-09-12)
 
 Pytest locks every `fixtures/pack_drop/<adapter>/meta.json` (`E2E_PROVEN_PACK_DROP_ADAPTERS` / honesty `COVEY_E2E_PROVEN`) to `source` `evergreen-covey` exact and `schema` `covey.pack_drop.v1` (`tests/test_pack_drop_source.py`). META-ONLY — no `assets.jsonl` / `findings.jsonl` row `source` assert or rewrite (`parse_live_hosts`, `pass2`, `svmap-table`, None stay provenance). Existing DEMO fixtures already complied — no fixture rewrites. UNPROVEN masscan / arp-scan / netdiscover / zmap still absent. No 17th. CoS #45 honesty sync stands — Pack HEAD `62b52d41` (PR #79 obs port→service already on master). Covey HEAD still `30d2197f` multi-adapter pack_drop export for all 16 `E2E_PROVEN`. Item **COS45-HONESTY**. Item **COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE. 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop meta-only source identity lock (`source == evergreen-covey`). 20-adapter lane **CLOSED** stands. Stop for CoS #46. No pack Covey adapter work. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE/DEMO ≠ client.

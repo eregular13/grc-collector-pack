@@ -62,7 +62,7 @@ After a lab or Refresh:
 - POA&M draft: `out/poam/poam.csv` — **Pentera finds it; Evergreen maps it.** High/critical (and key medium such as SMB/RDP exposure) get CISA CPG + NIST CSF stamps and a recommended fix. Owner and due stay blank for a human. Do not invent dates or CVEs.
 - RiskReady JSON: `out/riskready/` — **LICENSE-LOCK stay-out**. Review on disk. `push_riskready.sh` never logs in or POSTs, even if `RISKREADY_PUSH=1`.
 - Packaged copy: `product-lab/drop/` plus `/export.zip` from the console. See `product-lab/drop/MANIFEST`.
-- KEEP → Origin Eval file: `python -m keep lab` writes `keep/work/out/eval/handoff.json` (max-5 findings + assets). Samples in `fixtures/keep-samples/` are **not** a client KEEP drop. keep-lab never writes pack `in/` (pre-existing estate is ignored). Pack does not call Eval HTTP. See `docs/KEEP_EVAL_HANDOFF.md`. Desktop: no `make` / `gh` required.
+- KEEP → CISO Assistant CSVs: `python -m keep lab` writes `keep/work/out/ciso-assistant/*.csv` (`IMPORT.md`; SAMPLE ≠ client, `paying_day` FAIL). Optional Eval max-5: `keep/work/out/eval/handoff.json`. Samples in `fixtures/keep-samples/` are **not** a client KEEP drop. keep-lab never writes pack `in/` (pre-existing estate is ignored). Pack does not call Eval HTTP. See `keep/OPERATOR.md`. Desktop: no `make` / `gh` required.
 
 ## Safety env (already in lab scripts and compose)
 

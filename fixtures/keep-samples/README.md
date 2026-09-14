@@ -19,5 +19,6 @@ exports into pack `in/<sensor>/`. keep-lab prefers those when all four
 families are present **and** the files do not carry the sample banner.
 Until then the lab stays `sample: true` / `demo: true`.
 
-Eval consumes `keep/work/out/eval/handoff.json` as a file. This pack does
-not call Origin Eval over HTTP and does not POST `/api/risks`.
+Primary import is `keep/work/out/ciso-assistant/*.csv` (`IMPORT.md`).
+Eval may also consume `keep/work/out/eval/handoff.json` as a file. This pack
+does not call Origin Eval over HTTP and does not POST `/api/risks`.

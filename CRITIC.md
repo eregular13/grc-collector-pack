@@ -1,8 +1,13 @@
-# CRITIC — cycle 165 (CoS #45 honesty sync + item 2 meta-only source)
+# CRITIC — cycle 166 (SAMPLE keep-lab → CISO CSVs)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
+Cycle 166: SAMPLE `python3 -m keep lab` writes
+`keep/work/out/ciso-assistant/*.csv` + `IMPORT.json`
+(`demo: true`, SAMPLE ≠ client, `paying_day: FAIL`).
+`fixtures/demo/` KEEP-shaped files fail-closed.
+No denser estate. No pack_drop fixture locks.
 CoS #45 honesty sync + item 2: global pack_drop meta.json
-source identity lock
+source identity lock stands as history.
 (`tests/test_pack_drop_source.py`
 parametrized over all sixteen `fixtures/pack_drop/` adapters;
 meta.json exists; `source == evergreen-covey` exact;
@@ -93,5 +98,5 @@ CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 s
 −1 0/4 real KEEP still open.
 
 ```json
-{"pytest": 657, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 658, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```

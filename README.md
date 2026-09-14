@@ -68,7 +68,7 @@ Or `make lab` (`PYTHON=python` on Windows, `python3` on Linux) or `scripts/lab.s
 
 Consented drop-box (internal + external → `in/`): `dropbox/OPERATOR.md`. `make dropbox-lab` is fixtures + demo overlays, not a client estate.
 
-KEEP-chain → Origin Eval file-drop: `make keep-lab` (HardeningKitty / Maester / testssl / Prowler|ScoutSuite). Uses redacted `fixtures/keep-samples/` until pack `in/` has those four exports. **SAMPLE ≠ client KEEP.** Artifact: `keep/work/out/eval/handoff.json` (max-5 findings). No Eval HTTP from this pack. See `docs/KEEP_EVAL_HANDOFF.md`.
+KEEP-chain → CISO Assistant CSVs: `python3 -m keep lab` (HardeningKitty / Maester / testssl / Prowler|ScoutSuite). Uses redacted `fixtures/keep-samples/` until pack `in/` has those four exports. **SAMPLE ≠ client KEEP.** Artifact: `keep/work/out/ciso-assistant/*.csv` (`IMPORT.md`; `demo: true` / `paying_day: FAIL`). Optional Eval max-5: `keep/work/out/eval/handoff.json`. No Eval HTTP from this pack. See `keep/OPERATOR.md` and `docs/KEEP_EVAL_HANDOFF.md`.
 
 ## Private drop-box farm
 

@@ -1,6 +1,12 @@
 # CISO Assistant export prove (SAMPLE/DEMO)
 
-One honest file-drop prove: fixture **Covey pack_drop** + **Palisade/Beelzebub
+**Primary KEEP path this week** (not pack_drop): redacted
+`fixtures/keep-samples/` → `python3 -m keep lab` →
+`keep/work/out/ciso-assistant/*.csv` + `IMPORT.md`. Honesty:
+`demo: true` / SAMPLE ≠ client / `paying_day: FAIL`. See
+`keep/OPERATOR.md`. `python3 -m keep ciso` is the same command.
+
+Separate fixture prove below: **Covey pack_drop** + **Palisade/Beelzebub
 honeypot** → existing collectors → `grc_loader` → **`out/ciso-assistant/*.csv`**.
 
 This is not a client estate. It is not a paying-day PASS. HITL stays required

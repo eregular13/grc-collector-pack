@@ -22,6 +22,17 @@ SAMPLE_MARKERS = (
     "sample-scout-public",
 )
 
+# fixtures/demo KEEP-shaped files are a different estate. They must not
+# flip client_keep just because they lack the keep-samples banner.
+DEMO_MARKERS = (
+    "DEMO — not a client",
+    "demo-public-assets",
+    "iam-admin-breakglass",
+    "dev-api.example.com",
+    "arn:aws:s3:::demo-public-assets",
+    ",win-dc01",
+)
+
 # Four KEEP families. Prowler | ScoutSuite share the cloud sensor.
 KEEP_FAMILIES = (
     "hardeningkitty",
@@ -49,7 +60,21 @@ _KEEP_COLLECTORS = (
 
 def is_sample_text(text: str) -> bool:
     blob = text or ""
-    return any(marker in blob for marker in SAMPLE_MARKERS)
+    return any(marker in blob for marker in SAMPLE_MARKERS + DEMO_MARKERS)
+
+
+def sample_as_client_reason(
+    rows: list[dict[str, Any]],
+    *,
+    sample: bool,
+    client_keep: bool,
+) -> str | None:
+    """Fail-closed when SAMPLE/DEMO would stamp as a client KEEP drop."""
+    if client_keep and sample:
+        return "SAMPLE/DEMO cannot stamp client_keep"
+    if client_keep and any(row.get("sample") for row in rows):
+        return "sample-marked KEEP file cannot stamp client_keep"
+    return None
 
 
 def _load_json(path: Path) -> Any:

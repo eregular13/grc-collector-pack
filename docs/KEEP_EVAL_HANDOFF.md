@@ -1,7 +1,21 @@
-# KEEP → Origin Eval handoff
+# KEEP → CISO Assistant CSVs (+ Origin Eval handoff)
 
-Thin file-drop from pack KEEP-chain parsers to Origin Eval / CISO JSON.
+Thin file-drop from pack KEEP-chain parsers to **CISO Assistant CSVs**
+(primary) and an optional Origin Eval max-5 JSON.
 **No live Eval HTTP from this pack.** No RiskReady wrap. No `/api/risks`.
+
+Primary operator path (SAMPLE ≠ client KEEP):
+
+```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0
+python3 -m keep lab
+# import keep/work/out/ciso-assistant/*.csv  (see IMPORT.md)
+```
+
+`IMPORT.json` stamps `demo: true`, `sample: true`, `client_keep: false`,
+`paying_day: FAIL` on this checkout. Fixture pack_drop prove is a different
+path (`python3 scripts/prove_ciso.py`).
 
 ## When to use
 
@@ -18,9 +32,10 @@ KEEP.** See `keep/OPERATOR.md`. Desktop has no `make` / `gh` — use
 `python -m keep lab` (or `python3 -m keep lab`). keep-lab never writes
 pack `in/`; pre-existing estate there is ignored on the sample path.
 
-## Artifact
+## Artifacts
 
-`keep/work/out/eval/handoff.json` after `python -m keep lab`.
+Primary: `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` after
+`python -m keep lab`. Optional Eval: `keep/work/out/eval/handoff.json`.
 
 | Field | Meaning |
 |---|---|

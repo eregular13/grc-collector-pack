@@ -1,14 +1,43 @@
-# KEEP-chain → Origin Eval handoff
+# KEEP-chain → CISO Assistant (SAMPLE)
 
 **SAMPLE ≠ client KEEP.** This path parses HardeningKitty / Maester / testssl /
-Prowler|ScoutSuite file-drops and writes a max-5 findings + assets JSON that
-Origin Eval can import. The pack does **not** call Eval over HTTP and does
-**not** POST `/api/risks`. RiskReady wrap stays review-only.
+Prowler|ScoutSuite file-drops and writes CISO Assistant CSVs under
+`keep/work/out/ciso-assistant/`. The pack does **not** call CISO Assistant or
+Eval over HTTP and does **not** POST `/api/risks`. RiskReady wrap stays
+review-only. `paying_day` stays **FAIL**.
+
+## Primary path this week (Desktop — no make / no gh)
+
+Self-lab uses redacted `fixtures/keep-samples/` until a real client KEEP lands
+in pack `in/`. Do not treat this as a client estate.
+
+```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+python3 -m keep lab
+# alias: python3 -m keep ciso
+```
+
+Import (clica or CISO Assistant UI) — see `keep/work/out/ciso-assistant/IMPORT.md`:
+
+- `keep/work/out/ciso-assistant/assets.csv`
+- `keep/work/out/ciso-assistant/findings.csv`
+- `keep/work/out/ciso-assistant/vulnerabilities.csv`
+- `keep/work/out/ciso-assistant/applied_controls.csv`
+- `keep/work/out/ciso-assistant/evidences.csv`
+- `keep/work/out/ciso-assistant/risk_scenarios.csv`
+
+Honesty on that bundle (`IMPORT.json`): `demo: true`, `sample: true`,
+`client_keep: false`, `paying_day: FAIL`, `posted: false`. **SAMPLE ≠ client.**
+
+Optional Eval max-5 file (same run): `keep/work/out/eval/handoff.json`.
+A human starts Origin Eval (`npm start`) on Reid’s Eval tree. This pack
+only writes files.
 
 ## What this is
 
 Layer C already parses those four KEEP families. keep-lab is a thin lab +
-file-drop adapters + Eval handoff — not a new collector suite.
+file-drop adapters + CISO/Eval handoff — not a new collector suite.
 
 | Family | Adapter | Lands in | Existing collector |
 |---|---|---|---|
@@ -25,29 +54,22 @@ Four real client files are **absent** from pack `in/` on this checkout.
 
 `fixtures/keep-samples/` ships redacted fixtures so keep-lab stays
 green. Hosts use `.invalid`. JSON files set `"sample": true`. See
-`fixtures/keep-samples/README.md`.
+`fixtures/keep-samples/README.md`. `fixtures/demo/` KEEP-shaped files are a
+different estate — they do **not** flip `client_keep`.
 
 keep-lab prefers pack `in/` **only** when all four families are present and
-none carry the sample banner. Otherwise it lands the samples under
+none carry the sample/demo banner. Otherwise it lands the samples under
 `keep/work/in/` and stamps `sample: true` / `demo: true`.
 
 **keep-lab never writes pack `in/`.** Pre-existing estate files there are
 ignored for the sample path. The fail guard is this-run mutation only.
 
-Desktop has no `make` / `gh`. Use:
-
-```bash
-export PYTHONPATH="$PWD"
-export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0
-python -m keep lab
-# or: python3 -m keep lab
-```
-
 Outputs (isolated; not pack `out/`):
 
+- `keep/work/out/ciso-assistant/*.csv` — CISO Assistant import (primary)
+- `keep/work/out/ciso-assistant/IMPORT.json` — honesty + file list
 - `keep/work/out/eval/handoff.json` — Origin Eval file (max 5 findings + assets)
 - `keep/work/out/eval/MANIFEST.json` — `posted: false`, `http: false`
-- `keep/work/out/ciso-assistant/*.csv` — CISO Assistant CSVs
 - `keep/work/out/poam/poam.csv` — owner/due blank
 - `keep/work/keep-lab.json` — lab stamp
 
@@ -78,11 +100,11 @@ live Eval URL.
    `in/wazuh/` (host-wazuh extra path). Those are file-drop assessment
    collectors, not additional KEEP families.
 2. Re-run `python -m keep lab`. Stamp flips to `client_keep: true` only if all
-   four families parse and are not samples.
-3. Human reviews `handoff.json` before Eval import.
+   four families parse and are not samples or `fixtures/demo/` KEEP.
+3. Human reviews `IMPORT.md` / `handoff.json` before CISO or Eval import.
 
 DEMO fixtures in `fixtures/demo/` are a different estate (full nine-sensor
-lab). keep-lab does **not** ingest those.
+lab). keep-lab does **not** ingest those as client KEEP.
 
 ## Estate already in pack `in/` (DESKTOP)
 
@@ -102,5 +124,6 @@ If pack `in/` already has client/estate files:
 
 - Treat keep-lab greens as a client KEEP drop
 - POST `/api/risks` or restore RiskReady wrap
-- Call Origin Eval HTTP from this repo
+- Call Origin Eval or CISO Assistant HTTP from this repo
 - Apt-install HardeningKitty / Maester / testssl / Prowler / ScoutSuite
+- Stamp `paying_day` PASS from SAMPLE/DEMO KEEP

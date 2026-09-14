@@ -16,6 +16,8 @@ Files land in `out/ciso-assistant/`.
 ```bash
 export PYTHONPATH="$PWD"
 export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
+python3 -m keep lab                  # SAMPLE keep-samples → keep/work/out/ciso-assistant/*.csv (primary)
+# then: clica   or   CISO UI import of those CSVs (see IMPORT.md)
 python3 -m dropbox ciso              # landed KEEP-minimum or sensor-dir files → out/ciso-assistant/*.csv
 # then: clica   or   bash push_ciso.sh
 python3 -m dropbox mcp export_ciso_poam
