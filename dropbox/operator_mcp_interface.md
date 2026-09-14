@@ -14,6 +14,8 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Optional `{ "category": "discover" }`. Plan-only |
 | `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Per-slot `live_ready` plus `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or file_drop-only names even if a binary is under `FARM_TOOL_BIN`. DEMO stubs may `will_run` in e2e. Does not invoke |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/` | SCOPE-gated paths. `posted` false unless `CISO_PUSH=1`. Conductor `http` always false. Does not invent owner/due |
+| `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | SCOPE-gated KEEP four-set inventory (HardeningKitty / Maester / testssl / Prowler\|ScoutSuite). `keep_real` N/4. Prefer pack `in/` when present. `fixtures/keep-samples` are lab-only. **SAMPLE≠client. DEMO≠client.** Detect only — no new parsers, no write, no POST, no scan |
+| `keep_ciso` | `keep.lab.keep_lab` (same as `python -m keep lab`) | SCOPE-gated dry run: `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Writes `keep/work/out/ciso-assistant/*.csv` + `eval/handoff.json`. Never writes pack `in/`. Never POST `/api/risks`. Never spawns scanners. Stamps SAMPLE/DEMO vs denser self-lab. **SAMPLE≠client. DEMO≠client.** |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -25,6 +27,8 @@ python3 -m dropbox mcp serve                 # same catalog (not FastMCP / not U
 python3 -m dropbox mcp serve --stdio         # same JSON-RPC loop
 python3 -m dropbox mcp serve --once          # same one-line JSON-RPC
 python3 -m dropbox mcp farm_toolbin_status
+python3 -m dropbox mcp keep_status
+python3 -m dropbox mcp keep_ciso
 python3 -c "from dropbox.mcp_stub import dispatch; print(dispatch('scope_status'))"
 ```
 
@@ -86,8 +90,12 @@ server) fails closed.
 filter with `params.arguments.category`. `farm_toolbin_status` adds
 per-slot `live_ready` plus `live_ready_count` / `slots[]`. DEMO stubs
 and file_drop-only names are never live-ready, even if a binary is
-under `FARM_TOOL_BIN`. `tools/call` is plan-only (ignores `arguments.live`).
-`orchestrator_plan` returns `will_run`
+under `FARM_TOOL_BIN`. `keep_status` inventories the KEEP four-set on
+pack `in/` (`keep_real` N/4; fixtures are lab-only). `keep_ciso` is the
+operator entrypoint for `python -m keep lab` (dry CISO CSVs +
+`handoff.json` under `keep/work/out/`; never writes pack `in/`).
+**SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only (ignores
+`arguments.live`). `orchestrator_plan` returns `will_run`
 (`discover` / `deepen` / `external` → slot → bool). External entries stay
 `false`.
 
@@ -117,6 +125,14 @@ under `FARM_TOOL_BIN`. `tools/call` is plan-only (ignores `arguments.live`).
 
 ```json
 {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"orchestrator_plan"}}
+```
+
+```json
+{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"keep_status"}}
+```
+
+```json
+{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"keep_ciso"}}
 ```
 
 ```json

@@ -152,6 +152,8 @@ def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
         ["mcp", "farm_toolbin_status"],
         ["mcp", "farm_slots"],
         ["mcp", "export_ciso_poam"],
+        ["mcp", "keep_status"],
+        ["mcp", "keep_ciso"],
         ["mcp", "scope_status"],
         ["schedule"],
         ["ciso"],

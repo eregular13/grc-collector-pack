@@ -40,6 +40,8 @@ OPERATOR_TOOLS = (
     "farm_slot_status",
     "farm_toolbin_status",
     "export_ciso_poam",
+    "keep_status",
+    "keep_ciso",
 )
 
 TOOL_DESC = {
@@ -58,6 +60,14 @@ TOOL_DESC = {
     "export_ciso_poam": (
         "Reads out/ciso-assistant/ + out/poam/ + out/simplerisk/. "
         "posted false unless CISO_PUSH=1. Conductor http is always false."
+    ),
+    "keep_status": (
+        "SCOPE-gated KEEP four-set inventory on pack in/{identity,saas,vuln,cloud}/. "
+        "keep_real N/4. SAMPLE≠client. DEMO≠client. Fixtures are lab-only."
+    ),
+    "keep_ciso": (
+        "SCOPE-gated dry keep-lab → keep/work/out/ciso-assistant/*.csv + handoff.json. "
+        "Same rails as python -m keep lab. Never writes pack in/. Never POST. Never scans."
     ),
 }
 
@@ -363,7 +373,13 @@ def dispatch(
         return farm_slot_status_tool(scope_path=path, category=str(cat) if cat else None)
     if tool == "farm_toolbin_status":
         return farm_toolbin_status_tool(scope_path=path)
-    return export_ciso_poam(scope_path=path)
+    if tool == "keep_status":
+        return keep_status(scope_path=path, arguments=extra)
+    if tool == "keep_ciso":
+        return keep_ciso(scope_path=path, arguments=extra)
+    if tool == "export_ciso_poam":
+        return export_ciso_poam(scope_path=path)
+    raise GateError(f"unknown operator tool {name!r}")
 
 
 def scope_status(scope_path: Path | None = None) -> dict[str, Any]:
@@ -458,6 +474,188 @@ def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
         or "Layer B feeds Layer C via in/. Collectors stay parse-only."
     )
     return _annotate_stage(marker, "stage_ingest", live=False)
+
+
+KEEP_SENSOR_DIRS = ("identity", "saas", "vuln", "cloud")
+KEEP_HONESTY_BANNERS = ("SAMPLE≠client", "DEMO≠client")
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _path_arg(extra: dict[str, Any], *keys: str) -> Path | None:
+    for key in keys:
+        raw = extra.get(key)
+        if raw:
+            return Path(str(raw))
+    return None
+
+
+def _keep_pack_in(extra: dict[str, Any] | None = None) -> Path:
+    extra = extra if isinstance(extra, dict) else {}
+    return _path_arg(extra, "pack_in", "in_dir") or Path(
+        os.environ.get("IN_DIR") or (_repo_root() / "in")
+    )
+
+
+def _keep_work_dir(extra: dict[str, Any] | None = None) -> Path:
+    extra = extra if isinstance(extra, dict) else {}
+    return _path_arg(extra, "work") or Path(
+        os.environ.get("KEEP_WORK") or (_repo_root() / "keep" / "work")
+    )
+
+
+def _keep_family_inventory(folder: Path) -> dict[str, Any]:
+    """Four-set inventory via keep.adapters (same detect helpers keepmin uses)."""
+    from keep.adapters import KEEP_FAMILIES, client_keep_ready, scan_keep_dir
+
+    rows: list[dict[str, Any]] = []
+    if folder.is_dir():
+        for sensor in KEEP_SENSOR_DIRS:
+            rows.extend(scan_keep_dir(folder / sensor))
+    families: dict[str, Any] = {}
+    for name in KEEP_FAMILIES:
+        hits = [row for row in rows if str(row.get("group") or "") == name]
+        present = bool(hits)
+        sample = any(bool(row.get("sample")) for row in hits)
+        real = present and not sample
+        families[name] = {
+            "present": present,
+            "sample": sample,
+            "real": real,
+            "paths": [str(row.get("path") or "") for row in hits],
+            "files": [str(row.get("name") or "") for row in hits],
+        }
+    real_count = sum(1 for row in families.values() if row["real"])
+    return {
+        "families": families,
+        "keep_real": f"{real_count}/4",
+        "keep_real_count": real_count,
+        "keep_real_of": 4,
+        "rows": rows,
+        "client_keep": client_keep_ready(rows),
+    }
+
+
+def keep_status(
+    scope_path: Path | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """SCOPE-gated KEEP four-set inventory. Detect + report only. Never scans."""
+    scope = load_scope(scope_path)
+    extra = arguments if isinstance(arguments, dict) else {}
+    root = _repo_root()
+    pack_in = _keep_pack_in(extra)
+    inventory = _keep_family_inventory(pack_in)
+    samples_dir = root / "fixtures" / "keep-samples"
+    sample_inventory = _keep_family_inventory(samples_dir) if samples_dir.is_dir() else {}
+    demo_scope = "DEMO" in scope.client_name.upper()
+    keep_real = str(inventory["keep_real"])
+    return {
+        "tool": "keep_status",
+        "ok": True,
+        "live": False,
+        "plan_only": True,
+        "scope_gated": True,
+        "client": scope.client_name,
+        "demo": demo_scope,
+        "pack_in": str(pack_in),
+        "sensors": list(KEEP_SENSOR_DIRS),
+        "families": inventory["families"],
+        "keep_real": keep_real,
+        "keep_real_count": inventory["keep_real_count"],
+        "keep_real_of": 4,
+        "client_keep": bool(inventory["client_keep"]),
+        "prefer_pack_in": True,
+        "fixtures_keep_samples": {
+            "present": samples_dir.is_dir(),
+            "path": str(samples_dir),
+            "lab_only": True,
+            "keep_real": sample_inventory.get("keep_real", "0/4"),
+            "note": "fixtures/keep-samples exist for lab-only. SAMPLE≠client KEEP.",
+        },
+        "banners": list(KEEP_HONESTY_BANNERS),
+        "paying_day": "FAIL",
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "note": (
+            "KEEP four-set is HardeningKitty / Maester / testssl / Prowler|ScoutSuite "
+            "on pack in/{identity,saas,vuln,cloud}/. Detect via keep.adapters "
+            "(same helpers dropbox.orchestrator.keepmin uses). keep_real "
+            f"{keep_real}. SAMPLE≠client. DEMO≠client. Fixtures are lab-only. "
+            "Does not write pack in/. Does not POST /api/risks. Does not scan."
+        ),
+    }
+
+
+def keep_ciso(
+    scope_path: Path | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """SCOPE-gated dry keep-lab. Same rails as `python -m keep lab`.
+
+    DRY_RUN=1, GRC_LIVE_SCAN=0, CISO_PUSH=0, RISKREADY_PUSH=0. Never writes
+    pack in/. Never POST. Never spawns scanners.
+    """
+    from keep.lab import keep_lab
+
+    scope = load_scope(scope_path)
+    extra = arguments if isinstance(arguments, dict) else {}
+    root = _repo_root()
+    pack_in = _keep_pack_in(extra)
+    work = _keep_work_dir(extra)
+    stamp = keep_lab(root, pack_in=pack_in, work=work)
+    ciso_dir = work / "out" / "ciso-assistant"
+    ciso_files = (
+        [str(path) for path in sorted(ciso_dir.glob("*.csv"))] if ciso_dir.is_dir() else []
+    )
+    handoff = work / "out" / "eval" / "handoff.json"
+    sample = bool(stamp.get("sample"))
+    client_keep = bool(stamp.get("client_keep"))
+    estate = (
+        "SAMPLE/DEMO — not a client estate"
+        if sample or not client_keep
+        else "self-lab KEEP (denser; still not paying-day)"
+    )
+    demo_scope = "DEMO" in scope.client_name.upper() or bool(stamp.get("demo"))
+    return {
+        "tool": "keep_ciso",
+        "ok": stamp.get("status") == "pass",
+        "live": False,
+        "dry_run": True,
+        "scope_gated": True,
+        "client": scope.client_name,
+        "demo": demo_scope,
+        "sample": sample,
+        "client_keep": client_keep,
+        "origin": stamp.get("origin"),
+        "estate": estate,
+        "pack_in": str(pack_in),
+        "pack_in_written": bool(stamp.get("pack_in_written")),
+        "work": str(work),
+        "ciso_dir": str(ciso_dir),
+        "ciso_files": ciso_files,
+        "handoff": str(handoff) if handoff.is_file() else str(stamp.get("handoff") or ""),
+        "keep_lab": str(work / "keep-lab.json"),
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "ciso_push": "0",
+        "riskready_push": "0",
+        "grc_live_scan": "0",
+        "dry_run_env": "1",
+        "banners": list(KEEP_HONESTY_BANNERS),
+        "paying_day": "FAIL",
+        "stamp": stamp,
+        "note": (
+            "Same path as python -m keep lab. DRY_RUN=1 GRC_LIVE_SCAN=0 "
+            "CISO_PUSH=0 RISKREADY_PUSH=0. Writes keep/work/out only. "
+            "Never writes pack in/. Never POST /api/risks. Never spawns scanners. "
+            f"{estate}. SAMPLE≠client. DEMO≠client."
+        ),
+    }
 
 
 def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:

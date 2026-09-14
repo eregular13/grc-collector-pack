@@ -661,7 +661,14 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
 def test_farm_slots_and_export_refuse_without_scope(tmp_path: Path) -> None:
     empty = tmp_path / "SCOPE.yaml"
     empty.write_text("", encoding="utf-8")
-    for name in ("farm_slots", "export_ciso_poam", "orchestrator_status", "stage_discover"):
+    for name in (
+        "farm_slots",
+        "export_ciso_poam",
+        "orchestrator_status",
+        "stage_discover",
+        "keep_status",
+        "keep_ciso",
+    ):
         with pytest.raises(GateError, match="SCOPE"):
             dispatch(name, scope_path=empty)
     slots = dispatch("farm_slots", scope_path=SCOPE)
@@ -670,3 +677,103 @@ def test_farm_slots_and_export_refuse_without_scope(tmp_path: Path) -> None:
     assert slots["brakes"]["wrap"].startswith("push_riskready")
     assert "evergreen_assessment_mcp" in slots["brakes"]["pack_truth"]
     assert "nmap/nessus not default" in slots["brakes"]["free_day_scope"]
+
+
+def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
+    from dropbox.mcp_stub import handle_jsonrpc, tools_list_entries
+
+    assert "keep_status" in OPERATOR_TOOLS
+    assert "keep_ciso" in OPERATOR_TOOLS
+    listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    names = [t["name"] for t in listed["result"]["tools"]]
+    assert "keep_status" in names
+    assert "keep_ciso" in names
+    assert names == list(OPERATOR_TOOLS)
+    assert names.index("keep_status") == names.index("export_ciso_poam") + 1
+    assert names.index("keep_ciso") == names.index("keep_status") + 1
+    entries = {row["name"]: row for row in tools_list_entries()}
+    assert "SAMPLE≠client" in entries["keep_status"]["description"]
+    assert "python -m keep lab" in entries["keep_ciso"]["description"]
+
+
+def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    empty = tmp_path / "in"
+    for sensor in ("identity", "saas", "vuln", "cloud"):
+        (empty / sensor).mkdir(parents=True)
+        (empty / sensor / ".gitkeep").write_text("", encoding="utf-8")
+    monkeypatch.setenv("IN_DIR", str(empty))
+    data = dispatch("keep_status", scope_path=SCOPE)
+    assert data["tool"] == "keep_status"
+    assert data["scope_gated"] is True
+    assert data["keep_real"] == "0/4"
+    assert data["keep_real_count"] == 0
+    assert data["client_keep"] is False
+    assert data["posted"] is False
+    assert data["http"] is False
+    assert data["paying_day"] == "FAIL"
+    assert "SAMPLE≠client" in data["banners"]
+    assert "DEMO≠client" in data["banners"]
+    for name in ("hardeningkitty", "maester", "testssl", "cloud"):
+        assert data["families"][name]["present"] is False
+        assert data["families"][name]["real"] is False
+    assert data["fixtures_keep_samples"]["present"] is True
+    assert data["fixtures_keep_samples"]["lab_only"] is True
+    iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
+    assert "`keep_status`" in iface
+    assert "`keep_ciso`" in iface
+    assert "SAMPLE≠client" in iface
+    assert "DEMO≠client" in iface
+
+
+def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pack_in = tmp_path / "in"
+    for sensor in ("identity", "saas", "vuln", "cloud"):
+        (pack_in / sensor).mkdir(parents=True)
+        (pack_in / sensor / ".gitkeep").write_text("", encoding="utf-8")
+    marker = pack_in / "identity" / "estate-marker.txt"
+    marker.write_text("preexisting estate — do not touch\n", encoding="utf-8")
+    before = {
+        str(path.relative_to(pack_in)): path.read_bytes()
+        for path in pack_in.rglob("*")
+        if path.is_file()
+    }
+    work = tmp_path / "work"
+    monkeypatch.setenv("IN_DIR", str(pack_in))
+    monkeypatch.setenv("CISO_PUSH", "1")
+    monkeypatch.setenv("RISKREADY_PUSH", "1")
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    data = dispatch(
+        "keep_ciso",
+        scope_path=SCOPE,
+        arguments={"pack_in": str(pack_in), "work": str(work)},
+    )
+    after = {
+        str(path.relative_to(pack_in)): path.read_bytes()
+        for path in pack_in.rglob("*")
+        if path.is_file()
+    }
+    assert before == after
+    assert not (pack_in / "identity" / "hardeningkitty.csv").exists()
+    assert data["tool"] == "keep_ciso"
+    assert data["ok"] is True
+    assert data["posted"] is False
+    assert data["http"] is False
+    assert data["pack_in_written"] is False
+    assert data["ciso_push"] == "0"
+    assert data["riskready_push"] == "0"
+    assert data["grc_live_scan"] == "0"
+    assert data["dry_run"] is True
+    assert data["sample"] is True
+    assert data["client_keep"] is False
+    assert data["paying_day"] == "FAIL"
+    assert "SAMPLE≠client" in data["banners"]
+    assert "DEMO≠client" in data["banners"]
+    assert data["estate"].startswith("SAMPLE/DEMO")
+    assert data["ciso_files"]
+    assert all(p.endswith(".csv") and "ciso-assistant" in p for p in data["ciso_files"])
+    assert data["handoff"].endswith("handoff.json")
+    assert Path(data["handoff"]).is_file()
+    assert all(Path(p).is_file() for p in data["ciso_files"])
+    handoff = Path(data["handoff"]).read_text(encoding="utf-8")
+    assert '"posted": false' in handoff or '"posted":false' in handoff
+    assert "sample" in handoff.lower()
