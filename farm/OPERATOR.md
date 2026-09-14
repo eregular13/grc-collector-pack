@@ -426,10 +426,11 @@ builds ignore `cwd`; point `command` at the wrapper:
 }
 ```
 
-`tools/list` returns the ten operator tools in **fixed** `OPERATOR_TOOLS`
+`tools/list` returns the twelve operator tools in **fixed** `OPERATOR_TOOLS`
 order (`scope_status`, `orchestrator_plan`, `orchestrator_status`,
 `stage_discover`, `stage_deepen`, `stage_ingest`, `farm_slots`,
-`farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`).
+`farm_slot_status`, `farm_toolbin_status`, `export_ciso_poam`,
+`keep_status`, `keep_ciso`).
 `farm_slot_status` accepts an optional `{ "category": "discover" }`
 argument. `farm_toolbin_status` lists per-slot `live_ready` plus
 `live_ready_count` / `slots[]`. DEMO stubs may `will_run` in
