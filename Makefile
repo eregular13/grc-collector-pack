@@ -76,7 +76,7 @@ farm-toolbin-lab:
 farm-toolbin-e2e:
 	$(PYTHON) scripts/farm_toolbin_e2e.py
 
-# SAMPLE KEEP-chain → Eval handoff under keep/work/. Not pack in/. Not a client KEEP drop.
+# SAMPLE KEEP-chain → CISO Assistant CSVs under keep/work/. Not pack in/. Not a client KEEP drop.
 keep-lab:
 	$(PYTHON) -m keep lab
 

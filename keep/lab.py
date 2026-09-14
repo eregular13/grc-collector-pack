@@ -20,7 +20,15 @@ from keep.adapters import (
     client_keep_ready,
     keep_collectors,
     land_keep_files,
+    sample_as_client_reason,
     scan_keep_dir,
+)
+from keep.ciso_import import (
+    header_mismatch,
+    listed_ciso_files,
+    missing_required_ciso,
+    read_paying_day,
+    write_ciso_import_manifest,
 )
 from keep.handoff import write_eval_handoff
 
@@ -135,10 +143,11 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     missing = [name for name in KEEP_FAMILIES if name not in groups]
     sample = (not client_keep) or any(row.get("sample") for row in landed)
 
-    for sensor in ("identity", "saas", "vuln", "cloud"):
-        dest = work_in / sensor
-        dest.mkdir(parents=True, exist_ok=True)
-        (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    if sample:
+        for sensor in ("identity", "saas", "vuln", "cloud"):
+            dest = work_in / sensor
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
 
     os.environ["IN_DIR"] = str(work_in)
     os.environ["OUT_DIR"] = str(work_out)
@@ -190,17 +199,27 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         sources=landed,
     )
     handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
+    paying = read_paying_day(root)
+    import_path = write_ciso_import_manifest(
+        work_out,
+        sample=sample,
+        client_keep=client_keep,
+        paying_day=paying,
+        origin=origin,
+    )
     summary_path = work_out / "summary.json"
     counts = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.is_file() else {}
     after = {str(path): _pack_tree_fingerprint(path) for path in _watched_pack_dirs(root, pack_in)}
     wrote_pack = before != after
     preexisting = sum(len(fp) for fp in before.values())
-
+    ciso_files = listed_ciso_files(work_out)
+    honest_client = bool(client_keep) and not sample
     stamp = {
         "status": "pass",
         "demo": True if sample else bool(counts.get("demo")),
         "sample": sample,
-        "client_keep": bool(client_keep) and not sample,
+        "client_keep": honest_client,
+        "paying_day": paying,
         "label": handoff.get("label"),
         "origin": origin,
         "pack_in_used": origin == "pack-in",
@@ -209,6 +228,9 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         "in_dir": str(work_in),
         "out_dir": str(work_out),
         "handoff": str(handoff_path),
+        "ciso_dir": str(work_out / "ciso-assistant"),
+        "ciso_files": ciso_files,
+        "ciso_import": str(import_path),
         "families": sorted(groups),
         "missing_families": missing,
         "landed": [row.get("name") for row in landed],
@@ -226,14 +248,32 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
             "handoff_assets": handoff.get("counts", {}).get("assets_selected"),
             "demo": counts.get("demo"),
         },
-        "note": "SAMPLE ≠ client KEEP unless pack in/ has all four non-sample families.",
+        "note": (
+            "SAMPLE keep-lab → keep/work/out/ciso-assistant/*.csv. "
+            "SAMPLE ≠ client KEEP unless pack in/ has all four non-sample families."
+        ),
     }
+    as_client = sample_as_client_reason(landed, sample=sample, client_keep=honest_client)
+    missing_ciso = missing_required_ciso(work_out)
+    bad_headers = header_mismatch(work_out)
     if missing:
         stamp["status"] = "fail"
         stamp["reason"] = f"KEEP families missing: {missing}"
     elif not landed:
         stamp["status"] = "fail"
         stamp["reason"] = "no KEEP files landed"
+    elif missing_ciso:
+        stamp["status"] = "fail"
+        stamp["reason"] = f"CISO Assistant CSVs missing: {missing_ciso}"
+    elif bad_headers:
+        stamp["status"] = "fail"
+        stamp["reason"] = f"CISO Assistant CSV headers mismatch: {bad_headers}"
+    elif as_client:
+        stamp["status"] = "fail"
+        stamp["reason"] = as_client
+    elif sample and paying != "FAIL":
+        stamp["status"] = "fail"
+        stamp["reason"] = "SAMPLE KEEP cannot stamp paying_day PASS"
     elif not handoff.get("findings"):
         stamp["status"] = "fail"
         stamp["reason"] = "Eval handoff has no findings"
@@ -258,12 +298,16 @@ def main() -> int:
     print(json.dumps(stamp, indent=2))
     print(
         f"KEEP_LAB={stamp['status']} sample={stamp['sample']} "
-        f"client_keep={stamp['client_keep']} "
+        f"client_keep={stamp['client_keep']} paying_day={stamp['paying_day']} "
+        f"ciso_files={len(stamp.get('ciso_files') or [])} "
         f"handoff_findings={stamp['counts'].get('handoff_findings')} "
         f"origin={stamp['origin']}"
     )
     if stamp.get("status") != "pass":
         return 1
     if stamp.get("sample"):
-        print("Estate is SAMPLE KEEP-chain fixtures. Not a client KEEP drop.")
+        print(
+            "Estate is SAMPLE KEEP-chain fixtures. Not a client KEEP drop. "
+            "Import keep/work/out/ciso-assistant/*.csv (see IMPORT.md)."
+        )
     return 0

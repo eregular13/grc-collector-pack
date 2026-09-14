@@ -32,7 +32,7 @@ python3 -m dropbox mcp farm_toolbin_status
 python3 -m dropbox schedule          # dry-run KEEP-minimum; not --live
 python3 -m dropbox ciso              # landed → out/ciso-assistant/*.csv (operator SoR)
 # Desktop: clica  or  bash push_ciso.sh   (posted:false unless CISO_PUSH=1)
-python -m keep lab                   # keep/work; never writes pack in/
+python -m keep lab                   # SAMPLE keep-samples → keep/work/out/ciso-assistant; never writes pack in/
 ```
 
 schedule / ingest / ciso default is **file-drop read-only** against pack `in/`.
