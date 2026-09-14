@@ -30,6 +30,7 @@ from keep.ciso_import import (
     read_paying_day,
     write_ciso_import_manifest,
 )
+from keep.export import export_keep_sinks
 from keep.handoff import write_eval_handoff
 
 ENV_KEYS = (
@@ -192,11 +193,20 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         raise RuntimeError(f"grc_loader exit {loader.returncode}: {(loader.stderr or loader.stdout)[-400:]}")
     ran.append("grc_loader.py")
 
+    sinks = export_keep_sinks(work_out, sample=sample)
     handoff_path = write_eval_handoff(
         work_out,
         sample=sample,
         client_keep=client_keep,
         sources=landed,
+        sinks={
+            "opengrc": sinks.get("opengrc", {}).get("dir") if isinstance(sinks.get("opengrc"), dict) else "",
+            "probo": sinks.get("probo"),
+            "posted": False,
+            "demo": True,
+            "sample": True,
+            "riskready": "stay-out",
+        },
     )
     handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
     paying = read_paying_day(root)
@@ -231,6 +241,9 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         "ciso_dir": str(work_out / "ciso-assistant"),
         "ciso_files": ciso_files,
         "ciso_import": str(import_path),
+        "opengrc": sinks.get("opengrc", {}).get("dir") if isinstance(sinks.get("opengrc"), dict) else "",
+        "probo": sinks.get("probo"),
+        "sinks_posted": False,
         "families": sorted(groups),
         "missing_families": missing,
         "landed": [row.get("name") for row in landed],

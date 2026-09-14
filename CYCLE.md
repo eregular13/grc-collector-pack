@@ -1,11 +1,19 @@
 # CYCLE log
 
-## cycle 166 — SAMPLE keep-lab → CISO Assistant CSVs (2026-09-14)
+## cycle 167 — SAMPLE keep-lab CISO → OpenGRC + Probo (2026-09-14)
 
-Operator-clear SAMPLE path: `fixtures/keep-samples/` → `python3 -m keep lab` (alias `python3 -m keep ciso`) → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` / `IMPORT.md`. Honesty: `demo: true`, SAMPLE ≠ client, `paying_day: FAIL`, `posted: false`. Required CISO CSVs (assets/findings/vulnerabilities/applied_controls) + header lock. `fixtures/demo/` KEEP-shaped files cannot flip `client_keep`. No denser estate. No pack_drop fixture locks. prove_ciso still PASS. Paying-day stays FAIL. Catalog **unchanged**.
+`python -m keep lab` writes OpenGRC Data Manager CSVs and Probo addRisk/addFinding drafts from `keep/work/out/ciso-assistant` (`keep/export.py`). `demo: true`. SAMPLE/DEMO KEEP is enough — do not wait for denser KEEP. posted=false. RiskReady stay-out. No pack_drop fixture churn. CoS #45 honesty / pack HEAD `62b52d41` / Covey HEAD `30d2197f` stand. Catalog **unchanged**. Paying-day stays FAIL.
 
 ```json
-{"pytest": 658, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 668, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
+## cycle 166 — SAMPLE keep-lab → CISO + OpenGRC/Probo file sinks (2026-09-14)
+
+Operator-clear SAMPLE path: `fixtures/keep-samples/` → `python3 -m keep lab` (alias `python3 -m keep ciso`) → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` / `IMPORT.md`. Shared pack estate (`exporters/model.py`) reads those CSVs. OpenGRC Data Manager CSVs + Probo `addRisk` / `addFinding` drafts. Honesty: `demo: true`, SAMPLE ≠ client, `paying_day: FAIL`, `posted: false`. RiskReady stay-out. Required CISO CSVs + header lock. `fixtures/demo/` KEEP-shaped files cannot flip `client_keep`. No denser estate. No pack_drop fixture locks. prove_ciso still PASS. Catalog **unchanged**.
+
+```json
+{"pytest": 662, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
 
 ## cycle 165 — CoS #45 item 2 global pack_drop meta.json source identity lock (2026-09-12)

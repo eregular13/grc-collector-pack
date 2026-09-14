@@ -102,6 +102,24 @@ def test_keep_lab_uses_samples_when_pack_in_empty(tmp_path: Path) -> None:
     findings = (Path(stamp["ciso_dir"]) / "findings.csv").read_text(encoding="utf-8")
     assert "demo" in findings.lower() or "sample" in findings.lower()
     assert stamp["pack_in_written"] is False
+    assert stamp["sinks_posted"] is False
+    opengrc = Path(stamp["opengrc"])
+    assert (opengrc / "risks.csv").is_file()
+    assert (opengrc / "assets.csv").is_file()
+    assert (opengrc / "MANIFEST.json").is_file()
+    og = json.loads((opengrc / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert og["demo"] is True
+    assert og["sample"] is True
+    assert og["posted"] is False
+    assert og["client"] is False
+    probo_path = Path(stamp["probo"])
+    assert probo_path.is_file()
+    probo = json.loads(probo_path.read_text(encoding="utf-8"))
+    assert probo["demo"] is True
+    assert probo["posted"] is False
+    assert probo["addFinding"]
+    assert handoff["sinks"]["demo"] is True
+    assert handoff["sinks"]["riskready"] == "stay-out"
     pack_in_files = [p for p in (ROOT / "in").rglob("*") if p.is_file() and p.name != ".gitkeep"]
     assert pack_in_files == [] or stamp["pack_in_preexisting"] == len(pack_in_files)
 
@@ -274,7 +292,13 @@ def test_demo_keep_files_do_not_stamp_client_keep(tmp_path: Path) -> None:
 
 def test_handoff_docs_and_no_eval_http() -> None:
     banned = ("socket.socket", "urllib.request", "http.client", "requests.get", "urllib3")
-    for rel in ("keep/adapters.py", "keep/handoff.py", "keep/lab.py", "keep/ciso_import.py"):
+    for rel in (
+        "keep/adapters.py",
+        "keep/handoff.py",
+        "keep/lab.py",
+        "keep/ciso_import.py",
+        "keep/export.py",
+    ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for token in banned:
             assert token not in text, rel

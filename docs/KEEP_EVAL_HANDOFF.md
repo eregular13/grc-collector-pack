@@ -48,7 +48,12 @@ Primary: `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` after
 | `findings` | severity-ranked slice (critical → high → medium) |
 | `assets` | assets named by those findings |
 | `ciso` | paths to CISO Assistant CSVs already on disk |
+| `sinks` | OpenGRC dir + Probo preview path (`posted: false`, `demo: true`, RiskReady stay-out) |
 | `poam` | `poam.csv` path; owner/due blank |
+
+OpenGRC / Probo exporters consume the same SAMPLE keep-lab CISO CSVs.
+`python -m keep lab` writes them. `python3 -m exporters --sink all --out-dir keep/work/out`
+re-runs the file sinks. Do not wait for denser KEEP. RiskReady stay-out.
 
 Eval imports the JSON (or the CISO CSVs). A human starts Eval (`npm start`)
 on the Eval tree. This pack only writes files.
