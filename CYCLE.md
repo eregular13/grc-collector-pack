@@ -25,8 +25,13 @@ collectors. No invented KEEP. Catalog **unchanged**. This-VM
 pytest lab JSON below stays `compose_lab` absent.
 
 ```json
-{"pytest": 690, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+{"pytest": 692, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
 ```
+
+This-VM operator elapsed (honesty-only; not a paying_day PASS):
+`sample_to_sor` **0.229s**; `farm_drop_to_sor` **0.227s**. DESKTOP cold
+stays ~0.67s / ~0.67s as stamped. Pytest **692** passed, 1 skipped
+(master #94/#95 added farm_drop tests after the cycle-174 690 stamp).
 
 ## cycle 175 — farm_drop cp1252 verify-only hotfix (2026-09-19)
 
