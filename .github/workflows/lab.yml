@@ -27,6 +27,8 @@ jobs:
         run: python -m pytest tests -q
       - name: SAMPLE keep-lab dry-run
         run: bash scripts/sample_to_sor.sh --pack-in "${{ github.workspace }}/in" --work "${{ runner.temp }}/keep-work"
+      - name: Farm pack_drop → CISO dry-run
+        run: bash scripts/farm_drop_to_sor.sh --work "${{ runner.temp }}/prove-work"
       - name: Collectors and loader
         run: |
           python collectors/cloud_prowler.py

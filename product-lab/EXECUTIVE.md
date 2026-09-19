@@ -2,11 +2,16 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 173):** CoS #47 honesty restamp — live pack HEAD
-`9a872ef5` (PR #91 SAMPLE→CISO one-command `sample_to_sor` already on master).
-Operator path `./scripts/sample_to_sor.sh` / `make sample-to-sor` /
-`.\scripts\sample_to_sor.ps1`. DESKTOP cold run measured ~0.697s
-(agent-VM ~0.231s) — honesty-only elapsed; not a paying_day PASS.
+**This window (cycle 174):** CoS #48 honesty sync — farm leave-behind
+`farm_drop_to_sor` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
+`.\scripts\farm_drop_to_sor.ps1`; `python3 scripts/prove_ciso.py` under
+`prove/work/`; never pack `in/`). Pack HEAD this PR `a3a3651b`
+(after #91 `sample_to_sor`, #93 keep_ciso SoR paths, #92 honesty).
+SAMPLE keep remains the primary KEEP path (`./scripts/sample_to_sor.sh` /
+`make sample-to-sor` / `.\scripts\sample_to_sor.ps1`). DESKTOP cold run
+measured ~0.697s (agent-VM ~0.231s) — honesty-only elapsed; not a
+paying_day PASS.
+Cycle 173 honesty restamp + SAMPLE → CISO one command stands as history.
 Cycle 172 SAMPLE → CISO one command stands as history. Cycle 171:
 DESKTOP-222GHQV `compose_lab: pass_desktop` at pack `2680a5b2` (agent/CI VM still **ABSENT** ≠ that DESKTOP stamp).
 SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
@@ -15,7 +20,7 @@ SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 `python -m keep lab`; demo:true; posted=false; paying_day
 cannot PASS from SAMPLE; Eval day-of ≠ pack paying_day PASS;
 SAMPLE keep cannot stamp client-ready; RiskReady stay-out).
-Item **COS47-HONESTY**. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
+Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
 Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on
 main; client-day path already on main). Eval HEAD `ebaa9f50`
 (PR #4 one-command DESKTOP SAMPLE loopback prove already on
@@ -35,7 +40,7 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #48. Reid-only
+start Covey adapter work. Stop for CoS #49. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on this agent/CI VM still **ABSENT** — ABSENT on
 agent/CI VM ≠ DESKTOP-222GHQV compose_lab pass_desktop at pack

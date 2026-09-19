@@ -1,5 +1,11 @@
 # Covey pack_drop → `in/nmap/`
 
+**Operator entrypoint:** `./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` (DESKTOP: `.\scripts\farm_drop_to_sor.ps1`) —
+farm leave-behind twin of `sample_to_sor`. SAMPLE keep remains the
+primary KEEP path. `fixtures/pack_drop` → `prove/work/out/ciso-assistant/`.
+SAMPLE/DEMO ≠ client.
+
 [evergreen-covey](https://github.com/eregular13/evergreen-covey) is BYO orchestration.
 A sibling export lands a **pack_drop** (not a scanner binary) that this pack accepts
 on the existing **inventory-nmap** lane. CISO Assistant remains the system of record.
@@ -116,7 +122,8 @@ stdout-class `fixtures/pack_drop/svmap/`
 (Covey `export_pack` shape).
 **SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)
-(`python3 scripts/prove_ciso.py` → `prove/work/out/ciso-assistant`). Not a
+(`./scripts/farm_drop_to_sor.sh` / `python3 scripts/prove_ciso.py` →
+`prove/work/out/ciso-assistant`). Not a
 paying-day PASS. Not a client KEEP.
 
 Lane map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).

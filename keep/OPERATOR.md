@@ -2,7 +2,13 @@
 
 **One command:** `./scripts/sample_to_sor.sh` or `make sample-to-sor`
 (DESKTOP: `.\scripts\sample_to_sor.ps1`). That is the cold-start path from
-a clean checkout to `keep/work/out/ciso-assistant/*.csv`.
+a clean checkout to `keep/work/out/ciso-assistant/*.csv`. **SAMPLE keep
+remains the primary KEEP path.**
+
+**Farm leave-behind twin:** `./scripts/farm_drop_to_sor.sh` or
+`make farm-drop-to-sor` (DESKTOP: `.\scripts\farm_drop_to_sor.ps1`).
+Covey `fixtures/pack_drop` → `prove/work/out/ciso-assistant/` (never pack
+`in/`). SAMPLE/DEMO ≠ client.
 
 **SAMPLE ≠ client KEEP.** This path parses HardeningKitty / Maester / testssl /
 Prowler|ScoutSuite file-drops and writes CISO Assistant CSVs under

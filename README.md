@@ -2,7 +2,7 @@
 
 [![lab](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml/badge.svg)](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml)
 
-**Cold start (SAMPLE → CISO):** from a clean checkout run `./scripts/sample_to_sor.sh` or `make sample-to-sor` (DESKTOP: `.\scripts\sample_to_sor.ps1`). Writes `keep/work/out/ciso-assistant/*.csv` and checks `IMPORT.json` honesty (`demo`/`sample` true, `paying_day` FAIL, `client_keep` false). MCP one session: `python3 -m dropbox mcp keep_status` then `python3 -m dropbox mcp keep_ciso`. **SAMPLE ≠ client KEEP.** See `keep/OPERATOR.md`.
+**Cold start (SAMPLE → CISO):** from a clean checkout run `./scripts/sample_to_sor.sh` or `make sample-to-sor` (DESKTOP: `.\scripts\sample_to_sor.ps1`). Writes `keep/work/out/ciso-assistant/*.csv` and checks `IMPORT.json` honesty (`demo`/`sample` true, `paying_day` FAIL, `client_keep` false). MCP one session: `python3 -m dropbox mcp keep_status` then `python3 -m dropbox mcp keep_ciso`. **SAMPLE keep is the primary KEEP path.** **Farm leave-behind twin (Covey pack_drop → CISO):** `./scripts/farm_drop_to_sor.sh` or `make farm-drop-to-sor` (DESKTOP: `.\scripts\farm_drop_to_sor.ps1`) — `fixtures/pack_drop` → `prove/work/out/ciso-assistant/` (never pack `in/`). **SAMPLE ≠ client KEEP.** SAMPLE/DEMO ≠ client. See `keep/OPERATOR.md`.
 
 The product is a **local operator console** plus parse-only collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest. This is not CISO Assistant and not RiskReady.
 
