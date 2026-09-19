@@ -2,7 +2,7 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 171):** DESKTOP-222GHQV `compose_lab: pass_desktop` at pack `2680a5b2` (agent/CI VM still **ABSENT** ≠ that DESKTOP stamp). CoS #47 honesty restamp — live pack HEAD
+**This window (cycle 172):** SAMPLE → CISO one command `scripts/sample_to_sor.sh` / `make sample-to-sor` (DESKTOP `scripts/sample_to_sor.ps1`; MCP `keep_status` + `keep_ciso`). Cycle 171: DESKTOP-222GHQV `compose_lab: pass_desktop` at pack `2680a5b2` (agent/CI VM still **ABSENT** ≠ that DESKTOP stamp). CoS #47 honesty restamp — live pack HEAD
 `b77cfc0e` (PR #88 Covey restamp already on master).
 SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 (`DRY_RUN=1` `CISO_PUSH=0`; `docs/DESKTOP_DRY_RUN.md`;

@@ -1,5 +1,25 @@
 # CYCLE log
 
+## cycle 172 — SAMPLE → CISO one command (2026-09-19)
+
+Cold-start operator entrypoint: `scripts/sample_to_sor.sh` /
+`make sample-to-sor` (DESKTOP `scripts/sample_to_sor.ps1`). Sets
+`PYTHONPATH` `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0`
+`RISKREADY_PUSH=0` `DROPBOX_LIVE=0`, runs `python3 -m keep lab`,
+verifies `keep/work/out/ciso-assistant/IMPORT.json` honesty
+(sample/demo true, paying_day FAIL, client_keep false), prints
+elapsed seconds + output paths. Optional `--exporters`. MCP one
+session: `keep_status` then `keep_ciso`. README / `keep/OPERATOR.md`
+first lines point here. SAMPLE ≠ client KEEP. No new adapters.
+No pack_drop vanity. No RiskReady wrap. CoS #47 / pack HEAD
+`b77cfc0e` / farm `c012dd24` / eval `5f40f9ff` stand. Catalog
+**unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**. Agent VM
+cold-run wall **0.231s** (clean `--work`; VM ≠ DESKTOP).
+
+```json
+{"pytest": 683, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 171 — DESKTOP compose_lab pass_desktop honesty (2026-09-19)
 
 STATUS `compose_lab` restamped `pass_desktop` after operator host

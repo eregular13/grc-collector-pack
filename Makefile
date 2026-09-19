@@ -8,7 +8,7 @@ export RISKREADY_PUSH := 0
 
 export IN_DIR ?= $(CURDIR)/in
 
-.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab prove-ciso export-opengrc export-probo
+.PHONY: lab test collectors loader compose safety product dropbox-gate dropbox-lab dropbox-internal dropbox-external dropbox-orchestrate dropbox-compose farm-lab farm-compose farm-toolbin-lab farm-toolbin-e2e keep-lab sample-to-sor prove-ciso export-opengrc export-probo
 
 test:
 	$(PYTHON) -m pytest tests -q
@@ -79,6 +79,10 @@ farm-toolbin-e2e:
 # SAMPLE KEEP-chain → CISO Assistant CSVs + OpenGRC/Probo files under keep/work/. DESKTOP dry-run: DRY_RUN=1 CISO_PUSH=0. Not pack in/. Not a client KEEP drop.
 keep-lab:
 	$(PYTHON) -m keep lab
+
+# One command: SAMPLE fixtures → CISO SoR (+ honesty verify). Same rails as keep-lab. DESKTOP: scripts/sample_to_sor.ps1
+sample-to-sor:
+	bash scripts/sample_to_sor.sh
 
 # SAMPLE/DEMO: fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
 prove-ciso:

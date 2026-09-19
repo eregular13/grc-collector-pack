@@ -1,5 +1,9 @@
 # KEEP-chain → CISO Assistant (SAMPLE)
 
+**One command:** `./scripts/sample_to_sor.sh` or `make sample-to-sor`
+(DESKTOP: `.\scripts\sample_to_sor.ps1`). That is the cold-start path from
+a clean checkout to `keep/work/out/ciso-assistant/*.csv`.
+
 **SAMPLE ≠ client KEEP.** This path parses HardeningKitty / Maester / testssl /
 Prowler|ScoutSuite file-drops and writes CISO Assistant CSVs under
 `keep/work/out/ciso-assistant/`. The pack does **not** call CISO Assistant or
@@ -17,11 +21,26 @@ Do not treat this as a client estate. **SAMPLE ≠ client KEEP.**
 `paying_day` cannot PASS from SAMPLE. RiskReady stay-out.
 
 ```bash
+./scripts/sample_to_sor.sh
+# DESKTOP: .\scripts\sample_to_sor.ps1
+# make sample-to-sor
+```
+
+Same rails without the wrapper (`DRY_RUN=1` is forced either way):
+
+```bash
 export PYTHONPATH="$PWD"
 export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
 python3 -m keep lab
 # alias: python3 -m keep ciso
 # optional: python3 -m keep lab --pack-in ./in --work ./keep/work
+```
+
+MCP one session (same SAMPLE path, no hunting other OPERATOR.md files):
+
+```bash
+python3 -m dropbox mcp keep_status
+python3 -m dropbox mcp keep_ciso
 ```
 
 Import (clica or CISO Assistant UI) — see `keep/work/out/ciso-assistant/IMPORT.md`:

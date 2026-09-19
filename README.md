@@ -2,6 +2,8 @@
 
 [![lab](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml/badge.svg)](https://github.com/eregular13/grc-collector-pack/actions/workflows/lab.yml)
 
+**Cold start (SAMPLE → CISO):** from a clean checkout run `./scripts/sample_to_sor.sh` or `make sample-to-sor` (DESKTOP: `.\scripts\sample_to_sor.ps1`). Writes `keep/work/out/ciso-assistant/*.csv` and checks `IMPORT.json` honesty (`demo`/`sample` true, `paying_day` FAIL, `client_keep` false). MCP one session: `python3 -m dropbox mcp keep_status` then `python3 -m dropbox mcp keep_ciso`. **SAMPLE ≠ client KEEP.** See `keep/OPERATOR.md`.
+
 The product is a **local operator console** plus parse-only collectors that emit files **CISO Assistant Community** and **RiskReady Community Edition** already ingest. This is not CISO Assistant and not RiskReady.
 
 Double-click `Start-GRC-Pack.cmd` or, from the clone root:
@@ -68,7 +70,7 @@ Or `make lab` (`PYTHON=python` on Windows, `python3` on Linux) or `scripts/lab.s
 
 Consented drop-box (internal + external → `in/`): `dropbox/OPERATOR.md`. `make dropbox-lab` is fixtures + demo overlays, not a client estate.
 
-KEEP-chain → CISO Assistant CSVs: `python3 -m keep lab` (HardeningKitty / Maester / testssl / Prowler|ScoutSuite). Uses redacted `fixtures/keep-samples/` until pack `in/` has those four exports. **SAMPLE ≠ client KEEP.** Artifact: `keep/work/out/ciso-assistant/*.csv` (`IMPORT.md`; `demo: true` / `paying_day: FAIL`). Optional Eval max-5: `keep/work/out/eval/handoff.json`. No Eval HTTP from this pack. DESKTOP/client-host dry-run (`DRY_RUN=1` `CISO_PUSH=0`): [docs/DESKTOP_DRY_RUN.md](docs/DESKTOP_DRY_RUN.md). Eval day-of ≠ pack paying_day PASS: [docs/EVAL_PACK_HANDOFF.md](docs/EVAL_PACK_HANDOFF.md). See `keep/OPERATOR.md` and `docs/KEEP_EVAL_HANDOFF.md`.
+KEEP-chain → CISO Assistant CSVs — **one command:** `./scripts/sample_to_sor.sh` / `make sample-to-sor` (same as `python3 -m keep lab`). HardeningKitty / Maester / testssl / Prowler|ScoutSuite. Uses redacted `fixtures/keep-samples/` until pack `in/` has those four exports. **SAMPLE ≠ client KEEP.** Artifact: `keep/work/out/ciso-assistant/*.csv` (`IMPORT.md`; `demo: true` / `paying_day: FAIL`). Optional Eval max-5: `keep/work/out/eval/handoff.json`. No Eval HTTP from this pack. DESKTOP/client-host dry-run (`DRY_RUN=1` `CISO_PUSH=0`): [docs/DESKTOP_DRY_RUN.md](docs/DESKTOP_DRY_RUN.md). Eval day-of ≠ pack paying_day PASS: [docs/EVAL_PACK_HANDOFF.md](docs/EVAL_PACK_HANDOFF.md). See `keep/OPERATOR.md` and `docs/KEEP_EVAL_HANDOFF.md`.
 
 ## Private drop-box farm
 
