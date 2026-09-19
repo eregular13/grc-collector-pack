@@ -45,3 +45,13 @@ Compose v5 printed `Aborting on container exit` while waiting on collectors, the
 ## Ship meaning
 
 The same ten-job batch a customer would run on Windows + Docker Desktop completes in ~8 seconds after cache, overwrites `out/` with CISO CSVs + RiskReady JSON + OCSF, and exits 0 twice in a row. Counts match the host lab. This compose instance is the shippable unit. It is still a **demo estate** (`in/` is `.gitkeep` only).
+
+## DESKTOP-222GHQV — pack HEAD 2680a5b2 (2026-09-18)
+
+Operator host **DESKTOP-222GHQV** ran `docker compose up --build --exit-code-from grc-loader` from a clone at pack HEAD `2680a5b2`. Exit **0**. Loader summary (operator-reported; not copied into this repo): `demo: true`, assets 81, findings 98, vulnerabilities 124, evidences 31, poam 113, `generated_at` 2026-09-19T05:53:07Z (~2026-09-18 10:53 PM PT).
+
+Evidence snapshot stays on the operator box — do not copy USB or invent logs here:
+
+`C:\\Users\\R\\Desktop\\EvergreenOps\\snapshots\\compose-20260918-225257\\` (`compose.log`, `exitcode.txt`, `summary.json`)
+
+STATUS stamps `compose_lab: pass_desktop` / `compose_lab_host: DESKTOP-222GHQV` / `compose_lab_head: 2680a5b2`. Cloud/CI agent VMs may still lack Docker: their runtime `compose_lab()` **ABSENT** ≠ this DESKTOP pass. Paying-day stays **FAIL**. SAMPLE/DEMO ≠ client.

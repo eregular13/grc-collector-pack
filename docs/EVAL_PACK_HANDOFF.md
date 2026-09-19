@@ -31,7 +31,7 @@ No new collectors. No invented KEEP files.
 | `client_keep` | `false` |
 | `posted` / `http` | `false` |
 | `wrap` | `review-only` |
-| `compose_lab` | `absent` on this VM ≠ PASS |
+| `compose_lab` | `pass_desktop` on DESKTOP-222GHQV only; `absent` on this agent/CI VM ≠ that DESKTOP stamp and ≠ PASS |
 
 Eval `payingDayPass` is always `false` in that app. Pack STATUS
 `paying_day: FAIL` is independent. Crossing the two desks does not
@@ -65,5 +65,5 @@ Confirm `keep/work/out/ciso-assistant/IMPORT.json` before any import:
 - Not a pack paying-day PASS
 - Not a client KEEP drop
 - Not an Eval HTTP client
-- Not a Docker compose PASS (this VM `compose_lab` ABSENT ≠ pass)
+- Not a Docker compose PASS (DESKTOP-222GHQV `pass_desktop` ≠ this VM; this VM `compose_lab` ABSENT ≠ pass)
 - Not LinkedIn / CTA, not a real KEEP invent, not a RiskReady wrap

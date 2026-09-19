@@ -131,6 +131,9 @@ Do not treat ABSENT as paying-day evidence.
 ### Compose runtime proof (operator host with Docker)
 
 This checkout stamps **ABSENT**. Do not rewrite that to PASS on a box without Docker.
+DESKTOP-222GHQV proved pack HEAD `2680a5b2` (STATUS `pass_desktop`; snapshot
+`C:\\Users\\R\\Desktop\\EvergreenOps\\snapshots\\compose-20260918-225257\\`).
+Agent/CI ABSENT ≠ that DESKTOP pass. See `product-lab/03-compose-lab.md`.
 
 On a host where `docker compose version` works, under written SCOPE, with
 `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0` `DROPBOX_LIVE=0`:

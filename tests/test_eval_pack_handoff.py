@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.test_status_honesty import _status
+from tests.test_status_honesty import _assert_status_compose_lab_desktop, _status
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +41,7 @@ def test_eval_pack_handoff_fail_closed_flags() -> None:
     assert status.get("argus_keep_real") == "0/4"
     assert status.get("demo") == "true"
     assert status.get("wrap") == "review-only"
-    assert status.get("compose_lab") == "absent"
+    _assert_status_compose_lab_desktop(status)
     doc = (ROOT / "docs" / "EVAL_PACK_HANDOFF.md").read_text(encoding="utf-8")
     for needle in (
         "`paying_day`",

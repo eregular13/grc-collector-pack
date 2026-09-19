@@ -78,7 +78,12 @@ CISO prints the clica path and dry-run. RiskReady prints LICENSE-LOCK review fil
 ## Compose (optional)
 
 This VM stamps compose **ABSENT** when Docker CLI is missing — that is a hole,
-not a PASS, and never a paying-day stamp.
+not a PASS, and never a paying-day stamp. Operator host DESKTOP-222GHQV
+proved `docker compose up --build --exit-code-from grc-loader` at pack
+`2680a5b2` (2026-09-18 10:53 PM PT; snapshot
+`C:\\Users\\R\\Desktop\\EvergreenOps\\snapshots\\compose-20260918-225257\\`).
+STATUS `compose_lab: pass_desktop` is that DESKTOP stamp only.
+Agent/CI ABSENT ≠ that DESKTOP pass. See `product-lab/03-compose-lab.md`.
 
 If Docker is available on an operator host:
 
