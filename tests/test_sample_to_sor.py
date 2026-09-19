@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -15,6 +16,31 @@ from keep.ciso_import import (
     SampleHonestyError,
     verify_sample_sor,
 )
+
+
+def _tree_fingerprint(folder: Path) -> dict[str, str]:
+    """Relative path → sha256. Missing folder is empty (pack keep/work may be absent)."""
+    out: dict[str, str] = {}
+    if not folder.is_dir():
+        return out
+    for path in sorted(folder.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = str(path.relative_to(folder)).replace("\\", "/")
+        out[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return out
+
+
+def _assert_import_honesty(ciso: Path) -> dict:
+    import_doc = json.loads((ciso / "IMPORT.json").read_text(encoding="utf-8"))
+    assert import_doc["demo"] is True
+    assert import_doc["sample"] is True
+    assert import_doc["client_keep"] is False
+    assert import_doc["paying_day"] == "FAIL"
+    assert import_doc["posted"] is False
+    csvs = list(ciso.glob("*.csv"))
+    assert len(csvs) >= 1
+    return import_doc
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sample_to_sor.sh"
@@ -87,6 +113,26 @@ def test_readme_and_operator_first_lines_point_at_one_command() -> None:
     assert "keep_status" in op and "keep_ciso" in op
     dry = (ROOT / "docs" / "DESKTOP_DRY_RUN.md").read_text(encoding="utf-8")
     assert "sample_to_sor.sh" in dry
+    assert "keep/__main__.py" in dry
+    assert "full git clone" in dry
+    assert "cold-path-gate" in dry
+    op = (ROOT / "keep" / "OPERATOR.md").read_text(encoding="utf-8")
+    assert "keep/__main__.py" in op
+    assert "full git clone" in op
+    assert "cold-path-gate" in op
+
+
+def test_lab_yml_has_cold_sample_to_sor_job() -> None:
+    yml = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
+    assert "sample-to-sor-cold:" in yml
+    assert "scripts/sample_to_sor.sh" in yml
+    assert "--exporters" in yml
+    assert "IMPORT.json" in yml
+    assert "client_keep" in yml
+    assert "paying_day" in yml
+    assert "ubuntu-latest" in yml
+    assert "No Docker" in yml
+    assert "keep/__main__.py" in yml
 
 
 def test_verify_sample_sor_fail_closed_on_dishonest_import(tmp_path: Path) -> None:
@@ -151,10 +197,16 @@ def test_sample_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
     assert "SAMPLE_HONESTY_FAIL" in (bad.stderr or "") or "paying_day" in (bad.stderr or "")
 
 
-def test_sample_to_sor_sh_isolated_keep_lab(tmp_path: Path) -> None:
+def _run_sample_to_sor_isolated(
+    tmp_path: Path, *, exporters: bool = False
+) -> subprocess.CompletedProcess[str]:
     empty = tmp_path / "empty-in"
-    empty.mkdir()
-    work = tmp_path / "work"
+    empty.mkdir(exist_ok=True)
+    work = tmp_path / ("work-exporters" if exporters else "work")
+    pack_in = ROOT / "in"
+    pack_work = ROOT / "keep" / "work"
+    before_in = _tree_fingerprint(pack_in)
+    before_work = _tree_fingerprint(pack_work)
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
     env["DRY_RUN"] = "0"
@@ -162,22 +214,29 @@ def test_sample_to_sor_sh_isolated_keep_lab(tmp_path: Path) -> None:
     env["RISKREADY_PUSH"] = "1"
     env["GRC_LIVE_SCAN"] = "1"
     env["DROPBOX_LIVE"] = "1"
+    cmd = [
+        "bash",
+        str(SCRIPT),
+        "--pack-in",
+        str(empty),
+        "--work",
+        str(work),
+    ]
+    if exporters:
+        cmd.append("--exporters")
     proc = subprocess.run(
-        [
-            "bash",
-            str(SCRIPT),
-            "--pack-in",
-            str(empty),
-            "--work",
-            str(work),
-        ],
-        cwd=str(ROOT),
+        cmd,
+        cwd=str(tmp_path),
         env=env,
         capture_output=True,
         text=True,
         check=False,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert work.resolve() != pack_work.resolve()
+    assert work.is_relative_to(tmp_path)
+    assert _tree_fingerprint(pack_in) == before_in
+    assert _tree_fingerprint(pack_work) == before_work
     assert "elapsed=" in proc.stdout
     assert "ciso=" in proc.stdout
     stamp = json.loads((work / "keep-lab.json").read_text(encoding="utf-8"))
@@ -186,16 +245,22 @@ def test_sample_to_sor_sh_isolated_keep_lab(tmp_path: Path) -> None:
     assert stamp["client_keep"] is False
     assert stamp["paying_day"] == "FAIL"
     assert stamp["posted"] is False
-    import_doc = json.loads((work / "out" / "ciso-assistant" / "IMPORT.json").read_text(encoding="utf-8"))
-    assert import_doc["demo"] is True
-    assert import_doc["sample"] is True
-    assert import_doc["client_keep"] is False
-    assert import_doc["paying_day"] == "FAIL"
-    assert import_doc["posted"] is False
+    ciso = work / "out" / "ciso-assistant"
+    _assert_import_honesty(ciso)
     for name in CISO_REQUIRED:
-        assert (work / "out" / "ciso-assistant" / name).is_file()
+        assert (ciso / name).is_file()
     assert (work / "out" / "opengrc" / "risks.csv").is_file()
     assert (work / "out" / "import_preview" / "probo.json").is_file()
+    return proc
+
+
+def test_sample_to_sor_sh_isolated_keep_lab(tmp_path: Path) -> None:
+    _run_sample_to_sor_isolated(tmp_path, exporters=False)
+
+
+def test_sample_to_sor_sh_isolated_keep_lab_exporters(tmp_path: Path) -> None:
+    proc = _run_sample_to_sor_isolated(tmp_path, exporters=True)
+    assert "exporters" in proc.stdout.lower() or "opengrc" in proc.stdout
 
 
 def test_keep_verify_cli_and_main_usage() -> None:

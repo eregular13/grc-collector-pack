@@ -8,6 +8,7 @@ corrupt cold-path-gate tree cannot surface as ModuleNotFoundError.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 KEEP_PACKAGE_FILES = (
@@ -118,3 +119,21 @@ def require_keep_package(
     if not report["ok"]:
         raise KeepPackageIncomplete(str(report["message"]))
     return Path(root)
+
+
+def abort_keep_package(
+    root: Path,
+    *,
+    pythonpath: str | None = None,
+    require_pythonpath: bool = False,
+) -> Path:
+    """Fail closed with the #98 preflight message (not ModuleNotFoundError)."""
+    try:
+        return require_keep_package(
+            root,
+            pythonpath=pythonpath,
+            require_pythonpath=require_pythonpath,
+        )
+    except KeepPackageIncomplete as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from None

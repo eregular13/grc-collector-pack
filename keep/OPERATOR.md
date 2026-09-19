@@ -32,8 +32,9 @@ Do not treat this as a client estate. **SAMPLE ≠ client KEEP.**
 # make sample-to-sor
 ```
 
-Cold-path-gate / DESKTOP clone must be a **full git clone** of
-`eregular13/grc-collector-pack`. Verify `keep/__main__.py` exists
+Cold-path-gate / CI / DESKTOP clones must be a **full git clone** of
+`eregular13/grc-collector-pack` and must include `keep/__main__.py`
+(also `keep/lab.py` and `keep/adapters.py`). Verify those files exist
 before SAMPLE→SoR. A partial copy or corrupt `cold-path-gate` tree
 fails closed (not `No module named keep.__main__`).
 

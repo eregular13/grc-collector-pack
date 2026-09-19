@@ -13,7 +13,9 @@ No Docker. No `make`. No `gh`. No CISO / OpenGRC / Probo credentials.
 
 From the clone root (must be a **full git clone** of
 `eregular13/grc-collector-pack` — verify `keep/__main__.py` exists;
-a partial copy or corrupt `cold-path-gate` tree fails closed):
+a partial copy or corrupt `cold-path-gate` tree fails closed).
+**Cold-path-gate / CI clones must include `keep/__main__.py`** (full
+`git clone`, not sparse or a copy that omitted the keep package):
 
 ```bash
 export PYTHONPATH="$PWD"
