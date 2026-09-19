@@ -19,6 +19,34 @@ WORK="$ROOT/keep/work"
 EXPORTERS=0
 VERIFY_ONLY=0
 
+# Fail closed before python -m keep so a partial / corrupt cold-path-gate
+# clone cannot surface as ModuleNotFoundError: keep.__main__.
+require_keep_package() {
+  local rel missing=""
+  for rel in keep/__main__.py keep/lab.py keep/adapters.py; do
+    if [[ ! -f "$ROOT/$rel" ]]; then
+      if [[ -n "$missing" ]]; then
+        missing="$missing $ROOT/$rel"
+      else
+        missing="$ROOT/$rel"
+      fi
+    fi
+  done
+  if [[ -n "$missing" ]]; then
+    echo "sample_to_sor: keep package incomplete: missing ${missing%% *}." >&2
+    echo "sample_to_sor: checkout must be a full git clone of eregular13/grc-collector-pack (not a partial copy / corrupt cold-path-gate tree)." >&2
+    exit 1
+  fi
+  case ":${PYTHONPATH:-}:" in
+    *":$ROOT:"*) ;;
+    *)
+      echo "sample_to_sor: PYTHONPATH does not include $ROOT (keep is not importable)." >&2
+      echo "sample_to_sor: checkout must be a full git clone of eregular13/grc-collector-pack (not a partial copy / corrupt cold-path-gate tree)." >&2
+      exit 1
+      ;;
+  esac
+}
+
 usage() {
   cat <<'EOF'
 usage: scripts/sample_to_sor.sh [--work DIR] [--pack-in DIR] [--exporters] [--verify-only]
@@ -69,6 +97,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+require_keep_package
 
 START="$("$PYTHON" -c 'import time; print(time.perf_counter())')"
 CISO="$WORK/out/ciso-assistant"

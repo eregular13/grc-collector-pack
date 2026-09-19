@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from dropbox.keep_preflight import KeepPackageIncomplete, require_keep_package
 from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import (
@@ -507,6 +508,15 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _require_keep_package(root: Path | None = None) -> Path:
+    """Fail closed before importing keep. GateError, not ModuleNotFoundError."""
+    root = Path(root or _repo_root())
+    try:
+        return require_keep_package(root)
+    except KeepPackageIncomplete as exc:
+        raise GateError(str(exc)) from exc
+
+
 def _path_arg(extra: dict[str, Any], *keys: str) -> Path | None:
     for key in keys:
         raw = extra.get(key)
@@ -704,9 +714,9 @@ def keep_status(
     arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """SCOPE-gated KEEP four-set inventory. Detect + report only. Never scans."""
+    root = _require_keep_package(_repo_root())
     scope = load_scope(scope_path)
     extra = arguments if isinstance(arguments, dict) else {}
-    root = _repo_root()
     pack_in = _keep_pack_in(extra)
     inventory = _keep_family_inventory(pack_in)
     samples_dir = root / "fixtures" / "keep-samples"
@@ -779,11 +789,11 @@ def keep_ciso(
     always come from keep.lab — no second export path. Also advertises the
     farm pack_drop operator twin (farm_drop_to_sor) as a hint only.
     """
+    root = _require_keep_package(_repo_root())
     from keep.lab import keep_lab
 
     scope = load_scope(scope_path)
     extra = arguments if isinstance(arguments, dict) else {}
-    root = _repo_root()
     operator_pack_in = _keep_pack_in(extra)
     work = _keep_work_dir(extra)
     before = _pack_fingerprint(operator_pack_in)

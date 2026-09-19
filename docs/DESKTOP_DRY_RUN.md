@@ -11,7 +11,9 @@ No Docker. No `make`. No `gh`. No CISO / OpenGRC / Probo credentials.
 
 ## 1. Safety env (required)
 
-From the clone root:
+From the clone root (must be a **full git clone** of
+`eregular13/grc-collector-pack` — verify `keep/__main__.py` exists;
+a partial copy or corrupt `cold-path-gate` tree fails closed):
 
 ```bash
 export PYTHONPATH="$PWD"

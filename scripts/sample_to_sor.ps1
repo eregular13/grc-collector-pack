@@ -33,6 +33,43 @@ if (-not [string]::IsNullOrWhiteSpace($PackIn)) {
     $PackIn = Resolve-RepoPath $PackIn
 }
 
+function Require-KeepPackage {
+    $required = @(
+        (Join-Path $Root "keep\__main__.py"),
+        (Join-Path $Root "keep\lab.py"),
+        (Join-Path $Root "keep\adapters.py")
+    )
+    $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if ($missing.Count -gt 0) {
+        Write-Host "sample_to_sor: keep package incomplete: missing $($missing[0])." -ForegroundColor Red
+        Write-Host "sample_to_sor: checkout must be a full git clone of eregular13/grc-collector-pack (not a partial copy / corrupt cold-path-gate tree)." -ForegroundColor Red
+        exit 1
+    }
+    $parts = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:PYTHONPATH)) {
+        $parts = $env:PYTHONPATH.Split([IO.Path]::PathSeparator)
+    }
+    $rootMatch = $false
+    foreach ($part in $parts) {
+        if ([string]::IsNullOrWhiteSpace($part)) { continue }
+        try {
+            if ([IO.Path]::GetFullPath($part).TrimEnd('\') -eq [IO.Path]::GetFullPath($Root).TrimEnd('\')) {
+                $rootMatch = $true
+                break
+            }
+        } catch {
+            if ($part -eq $Root) { $rootMatch = $true; break }
+        }
+    }
+    if (-not $rootMatch) {
+        Write-Host "sample_to_sor: PYTHONPATH does not include $Root (keep is not importable)." -ForegroundColor Red
+        Write-Host "sample_to_sor: checkout must be a full git clone of eregular13/grc-collector-pack (not a partial copy / corrupt cold-path-gate tree)." -ForegroundColor Red
+        exit 1
+    }
+}
+
+Require-KeepPackage
+
 $Python = if ($env:PYTHON) { $env:PYTHON } else { "python" }
 $Ciso = Join-Path $Work "out\ciso-assistant"
 $Start = Get-Date

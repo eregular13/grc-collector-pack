@@ -32,6 +32,11 @@ Do not treat this as a client estate. **SAMPLE ≠ client KEEP.**
 # make sample-to-sor
 ```
 
+Cold-path-gate / DESKTOP clone must be a **full git clone** of
+`eregular13/grc-collector-pack`. Verify `keep/__main__.py` exists
+before SAMPLE→SoR. A partial copy or corrupt `cold-path-gate` tree
+fails closed (not `No module named keep.__main__`).
+
 Same rails without the wrapper (`DRY_RUN=1` is forced either way):
 
 ```bash
