@@ -4,7 +4,8 @@ Thin file-drop from pack KEEP-chain parsers to **CISO Assistant CSVs**
 (primary) and an optional Origin Eval max-5 JSON.
 **No live Eval HTTP from this pack.** No RiskReady wrap. No `/api/risks`.
 
-Primary operator path (SAMPLE ≠ client KEEP):
+Primary operator path (SAMPLE ≠ client KEEP). DESKTOP dry-run:
+[DESKTOP_DRY_RUN.md](DESKTOP_DRY_RUN.md).
 
 ```bash
 export PYTHONPATH="$PWD"

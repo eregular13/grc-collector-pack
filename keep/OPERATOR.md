@@ -8,14 +8,18 @@ review-only. `paying_day` stays **FAIL**.
 
 ## Primary path this week (Desktop — no make / no gh)
 
-Self-lab uses redacted `fixtures/keep-samples/` until a real client KEEP lands
-in pack `in/`. Do not treat this as a client estate.
+**Human dry-run:** [docs/DESKTOP_DRY_RUN.md](../docs/DESKTOP_DRY_RUN.md)
+(`DRY_RUN=1`, `CISO_PUSH=0`). Self-lab uses redacted
+`fixtures/keep-samples/` until a real client KEEP lands in pack `in/`.
+Do not treat this as a client estate. **SAMPLE ≠ client KEEP.**
+`paying_day` cannot PASS from SAMPLE. RiskReady stay-out.
 
 ```bash
 export PYTHONPATH="$PWD"
 export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
 python3 -m keep lab
 # alias: python3 -m keep ciso
+# optional: python3 -m keep lab --pack-in ./in --work ./keep/work
 ```
 
 Import (clica or CISO Assistant UI) — see `keep/work/out/ciso-assistant/IMPORT.md`:
@@ -132,3 +136,4 @@ If pack `in/` already has client/estate files:
 - Call Origin Eval or CISO Assistant HTTP from this repo
 - Apt-install HardeningKitty / Maester / testssl / Prowler / ScoutSuite
 - Stamp `paying_day` PASS from SAMPLE/DEMO KEEP
+- Skip [docs/DESKTOP_DRY_RUN.md](../docs/DESKTOP_DRY_RUN.md) on a client host

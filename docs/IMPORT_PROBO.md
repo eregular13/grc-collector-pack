@@ -55,6 +55,9 @@ and docs still parse. Prefer `addRisk` + `addFinding` for import.
 
 ## Operator path
 
+DESKTOP/client-host dry-run: [DESKTOP_DRY_RUN.md](DESKTOP_DRY_RUN.md)
+(`DRY_RUN=1` `CISO_PUSH=0`). RiskReady stay-out.
+
 1. Run SAMPLE keep-lab (`python3 -m keep lab`) — enough; do not wait for denser KEEP.
 2. Or run the host lab, `python3 -m dropbox ciso`, or `python3 scripts/prove_ciso.py`.
 3. Confirm `ciso-assistant/findings.csv` (keep-lab: `keep/work/out/ciso-assistant/`).

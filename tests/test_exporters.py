@@ -143,8 +143,57 @@ def test_keep_lab_sample_ciso_feeds_sinks(tmp_path: Path) -> None:
     assert preview["posted"] is False
     og = write_opengrc(out, estate=estate)
     assert og["demo"] is True
+    assert og["paying_day"] == "FAIL"
+    assert og["posted"] is False
     assert og["counts"]["risks"] >= 1
     assert og["counts"]["assets"] >= 1
+    assert stamp["paying_day"] == "FAIL"
+    assert stamp["wrap"] == "review-only"
+    assert preview["paying_day"] == "FAIL"
+    assert preview.get("riskready", "").lower().startswith("stay-out") or "stay-out" in json.dumps(
+        estate.honesty()
+    )
+
+
+def test_exporter_cli_reads_keep_lab_ciso(tmp_path: Path) -> None:
+    """python3 -m exporters --sink all --out-dir keep/work/out (operator re-run)."""
+    import os
+    import subprocess
+    import sys
+
+    from keep.lab import keep_lab
+
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    work = tmp_path / "work"
+    stamp = keep_lab(ROOT, pack_in=empty, work=work)
+    assert stamp["status"] == "pass"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["DRY_RUN"] = "1"
+    env["CISO_PUSH"] = "0"
+    env["RISKREADY_PUSH"] = "0"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "exporters",
+            "--sink",
+            "all",
+            "--out-dir",
+            stamp["out_dir"],
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    payload = json.loads(proc.stdout)
+    assert payload["posted"] is False
+    assert payload["paying_day"] == "FAIL"
+    assert payload["client"] is False
 
 
 def test_exporter_modules_have_no_sockets_or_risks_post() -> None:

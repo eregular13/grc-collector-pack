@@ -46,9 +46,13 @@ python3 -m exporters --sink opengrc
 python3 scripts/export_opengrc.py
 ```
 
-From SAMPLE keep-lab (preferred for this brick — do not wait for denser KEEP):
+From SAMPLE keep-lab (preferred for this brick — do not wait for denser KEEP).
+DESKTOP/client-host dry-run: [DESKTOP_DRY_RUN.md](DESKTOP_DRY_RUN.md)
+(`DRY_RUN=1` `CISO_PUSH=0`).
 
 ```bash
+export PYTHONPATH="$PWD"
+export DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
 python3 -m keep lab
 python3 -m exporters --sink opengrc --out-dir keep/work/out
 # keep-lab already writes keep/work/out/opengrc/ (`demo: true`)

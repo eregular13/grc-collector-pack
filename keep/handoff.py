@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from keep.ciso_import import honest_paying_day
 from shared.io_util import read_jsonl, write_json
 
 MAX_FINDINGS = 5
@@ -100,6 +101,7 @@ def build_eval_handoff(
         "demo": bool(sample or not client_keep),
         "sample": bool(sample or not client_keep),
         "client_keep": bool(client_keep) and not sample,
+        "paying_day": honest_paying_day(sample=bool(sample or not client_keep)),
         "label": label,
         "max_findings": MAX_FINDINGS,
         "findings": findings,
@@ -156,6 +158,8 @@ def write_eval_handoff(out: Path, payload: dict[str, Any] | None = None, **kwarg
         "max_findings": MAX_FINDINGS,
         "sample": data.get("sample"),
         "client_keep": data.get("client_keep"),
+        "paying_day": data.get("paying_day") or "FAIL",
+        "wrap": "review-only",
     }
     write_json(out / "eval" / "MANIFEST.json", manifest)
     return dest

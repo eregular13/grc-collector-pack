@@ -14,6 +14,8 @@ jobs:
       OUT_DIR: ${{ github.workspace }}/out
       DRY_RUN: "1"
       GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,6 +25,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Pytest
         run: python -m pytest tests -q
+      - name: SAMPLE keep-lab dry-run
+        run: python -m keep lab --pack-in "${{ github.workspace }}/in" --work "${{ runner.temp }}/keep-work"
       - name: Collectors and loader
         run: |
           python collectors/cloud_prowler.py
