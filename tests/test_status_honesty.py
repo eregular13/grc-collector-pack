@@ -20,6 +20,10 @@ COVEY_PACK_HEAD = "b77cfc0e"
 STALE_PACK_HEAD = "7c9c56a5"
 STALE_PACK_HONESTY = "a89145f4"
 EVAL_HEAD = "5f40f9ff"
+# DESKTOP-222GHQV compose proof (operator snapshot; not this agent/CI VM).
+LIVE_PACK_HEAD = "2680a5b2"
+COMPOSE_LAB_DESKTOP = "pass_desktop"
+COMPOSE_LAB_HOST = "DESKTOP-222GHQV"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -38,6 +42,39 @@ def _status() -> dict[str, str]:
     return out
 
 
+def _compose_lab_yaml_value(text: str) -> str | None:
+    """Exact STATUS/docs `compose_lab:` field — not compose_lab_host/head/reason."""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("compose_lab:") and not stripped.lower().startswith(
+            "compose_lab_"
+        ):
+            return stripped.split(":", 1)[1].strip().lower()
+    return None
+
+
+def _has_bare_compose_pass(text: str) -> bool:
+    """True only for exact compose_lab pass — pass_desktop is DESKTOP-only, not a VM pass."""
+    if re.search(r'"compose_lab":\s*"pass"', text):
+        return True
+    value = _compose_lab_yaml_value(text)
+    return value == "pass"
+
+
+def _assert_status_compose_lab_desktop(status: dict[str, str]) -> None:
+    """STATUS compose_lab is DESKTOP proof, never a bare pass on this agent/CI VM."""
+    assert status.get("compose_lab") == COMPOSE_LAB_DESKTOP
+    assert status.get("compose_lab") != "pass"
+    assert status.get("compose_lab_host") == COMPOSE_LAB_HOST
+    assert status.get("compose_lab_head") == LIVE_PACK_HEAD
+    assert "2026-09-18" in status.get("compose_lab_at", "")
+    reason = status.get("compose_lab_reason", "")
+    assert reason
+    assert "docker" in reason.lower() or "PATH" in reason
+    assert "ABSENT" in reason or "absent" in reason.lower()
+    assert "DESKTOP" in reason
+
+
 def test_status_paying_day_fail_and_compose_absent_until_proven() -> None:
     status = _status()
     assert status.get("paying_day") == "FAIL"
@@ -48,14 +85,11 @@ def test_status_paying_day_fail_and_compose_absent_until_proven() -> None:
     assert status.get("license_lock_will_run") == "never"
     ok, reason = docker_available()
     if not ok:
-        assert status.get("compose_lab") == "absent"
-        assert status.get("compose_lab") != "pass"
-        assert status.get("compose_lab_reason")
-        assert "docker" in status["compose_lab_reason"].lower() or "PATH" in status["compose_lab_reason"]
+        _assert_status_compose_lab_desktop(status)
         assert "docker" in reason.lower() or "PATH" in reason
     else:
         assert status.get("paying_day") == "FAIL"
-        assert status.get("compose_lab") in {"absent", "pass", "skip"}
+        assert status.get("compose_lab") in {"absent", "pass", "skip", "pass_desktop"}
 
 
 def _has_bare_cos(text: str, n: int) -> bool:
@@ -153,6 +187,10 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "compose" in low and "docker" in low
     assert "no fake greens" in low
     assert "absent" in low and "not a pass" in low
+    assert LIVE_PACK_HEAD in action
+    assert COVEY_E2E_HEAD in action
+    assert EVAL_HEAD in action
+    assert COMPOSE_LAB_HOST in action or COMPOSE_LAB_DESKTOP in low
     assert "demo" in low and "client" in low
     assert "sample" in low
     assert "fail" in low
@@ -164,7 +202,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     if "pr #" in low:
         assert any(tok in low for tok in ("merged", "already", "on master"))
     assert status.get("paying_day") == "FAIL"
-    assert status.get("compose_lab") == "absent"
+    _assert_status_compose_lab_desktop(status)
     assert status.get("scope_gap") == "none"
     assert status.get("farm_tool_bin_refuse") == "LICENSE_LOCK_SPAWN"
     for rel in ("product-lab/EXECUTIVE.md", "dropbox/EXECUTIVE.md"):
@@ -305,7 +343,7 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
     action = status.get("next_action", "")
     low = action.lower()
     assert status.get("paying_day") == "FAIL"
-    assert status.get("compose_lab") == "absent"
+    _assert_status_compose_lab_desktop(status)
     assert status.get("demo") == "true"
     assert status.get("argus_keep_real") == "0/4"
     assert status.get("argus_pack_truth") == "evergreen_assessment_mcp only"
@@ -443,7 +481,7 @@ def test_argus_fail_closed_bar_is_stamped() -> None:
     assert "stay-out" in status.get("argus_wrap", "")
     assert status.get("argus_hexstrike") == "pattern-only"
     assert status.get("paying_day") == "FAIL"
-    assert status.get("compose_lab") == "absent"
+    _assert_status_compose_lab_desktop(status)
     for rel in ("farm/OPERATOR.md", "dropbox/OPERATOR.md", "farm/INTEGRITY.md"):
         text = (ROOT / rel).read_text(encoding="utf-8")
         assert "Argus" in text or "argus" in text.lower()
@@ -466,16 +504,15 @@ def test_status_scope_inventory_no_remaining_entrypoint_gap() -> None:
     assert "cli" in inv and "conductor" in inv
     assert status.get("farm_tool_bin_refuse") == "LICENSE_LOCK_SPAWN"
     assert status.get("paying_day") == "FAIL"
-    assert status.get("compose_lab") == "absent"
+    _assert_status_compose_lab_desktop(status)
     assert status.get("catalog_total") == "111"
 
 
 def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
-    """STATUS stays absent on this pack; runtime stamp is its own probe (no TOCTOU)."""
+    """Runtime stamp on this VM stays absent; STATUS pass_desktop is DESKTOP-only."""
     stamp = compose_lab()
     status = _status()
-    assert status.get("compose_lab") == "absent"
-    assert status.get("compose_lab") != "pass"
+    _assert_status_compose_lab_desktop(status)
     if stamp.get("status") == "absent":
         assert stamp.get("status") != "pass"
         assert stamp.get("profiles_run") == []
@@ -486,20 +523,21 @@ def test_compose_lab_absent_is_not_a_pass_on_this_vm() -> None:
 
 
 def test_docs_and_status_cannot_flip_compose_lab_absent_to_pass() -> None:
-    """STATUS/docs cannot stamp compose_lab pass while Docker is missing."""
+    """Bare compose_lab pass is forbidden; pass_desktop is DESKTOP-only, not this VM."""
     ok, reason = docker_available()
     status = _status()
+    status_text = (ROOT / "STATUS.md").read_text(encoding="utf-8")
+    assert not _has_bare_compose_pass(status_text)
     if not ok:
-        assert status.get("compose_lab") == "absent"
-        assert status.get("compose_lab") != "pass"
-        lab_reason = status.get("compose_lab_reason", "")
-        assert lab_reason
-        assert "docker" in lab_reason.lower() or "PATH" in lab_reason
+        _assert_status_compose_lab_desktop(status)
         assert "docker" in reason.lower() or "PATH" in reason
         action = status.get("next_action", "")
         assert "absent" in action.lower()
         assert "not a pass" in action.lower() or "≠" in action
-        assert "compose_lab: pass" not in (ROOT / "STATUS.md").read_text(encoding="utf-8").lower()
+        assert "DESKTOP" in action or COMPOSE_LAB_DESKTOP in action.lower()
+        yaml_value = _compose_lab_yaml_value(status_text)
+        assert yaml_value == COMPOSE_LAB_DESKTOP
+        assert yaml_value != "pass"
     live = (
         ROOT / "STATUS.md",
         ROOT / "CRITIC.md",
@@ -510,15 +548,17 @@ def test_docs_and_status_cannot_flip_compose_lab_absent_to_pass() -> None:
     )
     for path in live:
         text = path.read_text(encoding="utf-8")
-        if not ok:
-            assert "compose_lab: pass" not in text.lower(), f"{path} flipped compose_lab absent → pass"
-            assert '"compose_lab": "pass"' not in text, f"{path} JSON flipped compose_lab to pass"
-            for line in text.splitlines():
-                stripped = line.strip()
-                if stripped.lower().startswith("compose_lab:"):
-                    value = stripped.split(":", 1)[1].strip().lower()
-                    assert value == "absent", f"{path} compose_lab={value} while Docker is absent"
-                    assert value != "pass"
+        assert not _has_bare_compose_pass(text), f"{path} flipped compose_lab to bare pass"
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.lower().startswith("compose_lab:") and not stripped.lower().startswith(
+                "compose_lab_"
+            ):
+                value = stripped.split(":", 1)[1].strip().lower()
+                assert value in {"absent", "pass_desktop"}, (
+                    f"{path} compose_lab={value} (bare pass forbidden; this VM stays absent)"
+                )
+                assert value != "pass"
 
 
 def test_executive_does_not_stamp_paying_day_or_assessment_ready() -> None:

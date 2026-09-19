@@ -1,5 +1,27 @@
 # CYCLE log
 
+## cycle 171 — DESKTOP compose_lab pass_desktop honesty (2026-09-19)
+
+STATUS `compose_lab` restamped `pass_desktop` after operator host
+`DESKTOP-222GHQV` ran `docker compose up --build --exit-code-from grc-loader`
+from pack clone `2680a5b2` (exit 0; loader summary demo:true, assets 81,
+findings 98, vulnerabilities 124, evidences 31, poam 113,
+`generated_at` 2026-09-19T05:53:07Z). Evidence stays on the operator box:
+`C:\\Users\\R\\Desktop\\EvergreenOps\\snapshots\\compose-20260918-225257\\`
+(compose.log, exitcode.txt, summary.json) — not copied into this repo.
+`compose_lab_host` DESKTOP-222GHQV; `compose_lab_head` 2680a5b2;
+`compose_lab_at` 2026-09-18 10:53 PM PT. This agent/CI VM still has no
+Docker — runtime `compose_lab()` stays **absent**; ABSENT on agent/CI VM
+≠ this DESKTOP pass. CoS #47 / `docs/EVAL_PACK_HANDOFF.md` / pack HEAD
+`b77cfc0e` / farm `c012dd24` / eval `5f40f9ff` stand. paying_day **FAIL**.
+SAMPLE/DEMO ≠ client. keep_real **0/4**. RiskReady stay-out. No new
+collectors. Integrity vanity PARKED. Catalog **unchanged**. This-VM pytest
+lab JSON below stays `compose_lab` absent.
+
+```json
+{"pytest": 677, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 170 — restamp farm HEAD c012dd24 + Eval↔pack handoff (2026-09-19)
 
 CoS #47 honesty restamp — live pack HEAD `b77cfc0e` (PR #88 Covey restamp already on master). Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on main; client-day path already on main). Eval HEAD `5f40f9ff` (PR #3 unit CI Node 20 already on main; SCOPE brakes + DESKTOP-DAY-OF already on main). Eval↔pack handoff (`docs/EVAL_PACK_HANDOFF.md`): evergreen-eval `docs/DESKTOP-DAY-OF.md` (loopback HITL) → pack `docs/DESKTOP_DRY_RUN.md` (SAMPLE keep-lab dry-run). Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready. pack_drop schema seam **CLOSED**. Integrity **PARKED**. SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run stands. `honest_paying_day` fail-closed: SAMPLE cannot emit PASS. RiskReady stay-out. Item **COS47-HONESTY**. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE. Next brick named = Reid-only real KEEP `in/` drop (0/4) — no pack_drop vanity. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**.

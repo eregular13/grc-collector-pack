@@ -2,7 +2,7 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 170):** CoS #47 honesty restamp — live pack HEAD
+**This window (cycle 171):** DESKTOP-222GHQV `compose_lab: pass_desktop` at pack `2680a5b2` (agent/CI VM still **ABSENT** ≠ that DESKTOP stamp). CoS #47 honesty restamp — live pack HEAD
 `b77cfc0e` (PR #88 Covey restamp already on master).
 SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 (`DRY_RUN=1` `CISO_PUSH=0`; `docs/DESKTOP_DRY_RUN.md`;
@@ -29,8 +29,9 @@ svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
 start Covey adapter work. Stop for CoS #48. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
-Docker compose on a real host — this VM `compose_lab`
-**ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
+Docker compose on this agent/CI VM still **ABSENT** — ABSENT on
+agent/CI VM ≠ DESKTOP-222GHQV compose_lab pass_desktop at pack
+2680a5b2, not a pass on this VM). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
 invoke / 81 file_drop). Cycle 169 farm HEAD restamp stands as
 history. Cycle 168 DESKTOP dry-run stands as
@@ -587,8 +588,9 @@ stages.deepen/discover enabled AND binary on PATH/FARM_TOOL_BIN.
 
 **Still open (Reid-only blockers — no fake greens):** LinkedIn CTA;
 Origin Eval `npm start`; real KEEP-chain files dropped into pack `in/`
-(fixtures are not a client estate); compose runtime on a Docker host
-(this VM stamps **ABSENT**, not a PASS). Gate/hash already on master
+(fixtures are not a client estate); compose runtime on this agent/CI VM
+still **ABSENT** (ABSENT ≠ DESKTOP-222GHQV `pass_desktop`, not a PASS).
+Gate/hash already on master
 (`python -m dropbox gate`). Live BYO on this
 box is DEMO stubs. Catalog ≠ 100 running binaries. Overnight loop ended
 2026-09-02 — do not re-arm. Paying-day stays **FAIL**.

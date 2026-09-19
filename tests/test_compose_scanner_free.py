@@ -169,7 +169,7 @@ def test_dropbox_scope_env_overrides_default(
 
 
 def test_compose_lab_stamps_absent_without_docker() -> None:
-    """One compose_lab() stamp is the source of truth — do not TOCTOU docker_available()."""
+    """Runtime compose_lab() on this VM is absent — STATUS pass_desktop is DESKTOP-only."""
     stamp = compose_lab()
     assert stamp["scanner_free"] is True
     assert stamp["farm_skeleton"] is True

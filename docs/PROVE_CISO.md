@@ -126,8 +126,9 @@ tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
 Covey adapter work. Stop for CoS #48. Reid-only
-blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
-Docker host — this VM `compose_lab` absent ≠ PASS).
+blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on this
+agent/CI VM still ABSENT — ABSENT ≠ DESKTOP-222GHQV compose_lab
+pass_desktop at pack 2680a5b2, not a pass on this VM).
 
 Lane map: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).

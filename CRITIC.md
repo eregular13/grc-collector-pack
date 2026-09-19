@@ -1,6 +1,10 @@
-# CRITIC — cycle 170 (farm HEAD c012dd24 + Eval↔pack handoff)
+# CRITIC — cycle 171 (DESKTOP compose_lab pass_desktop + Eval↔pack handoff)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
+STATUS `compose_lab: pass_desktop` after `DESKTOP-222GHQV` proved
+`docker compose up --build --exit-code-from grc-loader` on pack
+`2680a5b2` (exit 0; demo:true). Agent/CI VM runtime `compose_lab()`
+is still **absent** — ABSENT on this VM ≠ that DESKTOP stamp.
 CoS #47 honesty restamp — live pack HEAD `b77cfc0e`
 (PR #88 Covey restamp already on master).
 SAMPLE `python3 -m keep lab` DESKTOP dry-run
@@ -30,7 +34,8 @@ UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
 claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #48.
 Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #47 / pack HEAD `b77cfc0e` / Covey HEAD `c012dd24`,
-and so `compose_lab` absent cannot flip to pass or name a stale
+and so `compose_lab` cannot flip to bare pass (pass_desktop is
+DESKTOP-only; this VM stays absent) or name a stale
 Covey HEAD as current. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
 evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 169
@@ -39,7 +44,7 @@ DESKTOP dry-run stands as history. Cycle 167
 OpenGRC/Probo sinks stand as history. Cycle 165 pack_drop source
 lock stands as history. No invented greens.
 
-−1 compose runtime still absent on this agent VM (DESKTOP `config` is 11 services; optional `up` is estate-only).  
+−1 compose runtime still absent on this agent VM (DESKTOP-222GHQV `pass_desktop` at pack `2680a5b2` ≠ this VM; optional `up` is estate-only).  
 −1 0/4 real KEEP still open.
 
 ```json
