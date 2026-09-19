@@ -15,7 +15,7 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Per-slot `live_ready` plus `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or file_drop-only names even if a binary is under `FARM_TOOL_BIN`. DEMO stubs may `will_run` in e2e. Does not invoke |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/` | SCOPE-gated paths. `posted` false unless `CISO_PUSH=1`. Conductor `http` always false. Does not invent owner/due |
 | `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | Empty pack `in/` is `keep_real` **0/4**. Lab path is `fixtures/keep-samples` (SAMPLE≠client). HardeningKitty / Maester / testssl / Prowler\|ScoutSuite detect only. **Does not densify pack `in/`.** Does not invent non-sample files. Does not require signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
-| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `eval/handoff.json`. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
+| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` + OpenGRC CSVs + Probo preview + `eval/handoff.json`. Return lists every SoR path (`ciso_dir` / `ciso_files` / `ciso_import` / `opengrc` / `probo`) plus `cli_twin` (`./scripts/sample_to_sor.sh` or `make sample-to-sor`). `arguments.exporters` is optional (script `--exporters` re-write); sinks always come from keep-lab — no second export path. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -91,11 +91,17 @@ filter with `params.arguments.category`. `farm_toolbin_status` adds
 per-slot `live_ready` plus `live_ready_count` / `slots[]`. DEMO stubs
 and file_drop-only names are never live-ready, even if a binary is
 under `FARM_TOOL_BIN`. `keep_status` reports pack `in/` KEEP four-set honesty (`keep_real`
-**0/4** when empty). `keep_ciso` is the operator SAMPLE entrypoint for
-`python -m keep lab`: `fixtures/keep-samples` →
-`keep/work/out/ciso-assistant/*.csv` + `handoff.json`. This week's
-slice does **not** densify pack `in/` and does **not** require signed
-self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
+**0/4** when empty). One session: `keep_status` then `keep_ciso`.
+`keep_ciso` is the operator SAMPLE entrypoint for
+`python -m keep lab` / `./scripts/sample_to_sor.sh` (or `make sample-to-sor`):
+`fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` +
+`IMPORT.json` + OpenGRC (`risks.csv` / `assets.csv` / `implementations.csv`)
++ Probo (`import_preview/probo.json`) + `handoff.json`. The JSON result
+returns those SoR paths so the operator does not memorize keep-lab layout.
+`tools/list` `keep_ciso` may take `arguments.exporters` (same meaning as
+the script `--exporters` re-write); sinks always come from keep-lab.
+This week's slice does **not** densify pack `in/` and does **not** require
+signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
 (ignores `arguments.live`). `orchestrator_plan` returns `will_run`
 (`discover` / `deepen` / `external` → slot → bool). External entries stay
 `false`.
@@ -135,6 +141,10 @@ self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
 ```json
 {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"keep_ciso"}}
 ```
+
+Optional `arguments.exporters` is accepted and documented only — sinks
+already come from `keep.lab` (`export_keep_sinks`). It does not invent a
+second export path. Same optional flag as `./scripts/sample_to_sor.sh --exporters`.
 
 ```json
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"AIExploitGenerator"}}

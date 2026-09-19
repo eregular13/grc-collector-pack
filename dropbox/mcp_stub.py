@@ -66,8 +66,10 @@ TOOL_DESC = {
         "Lab uses fixtures/keep-samples. SAMPLE≠client. DEMO≠client. No densify."
     ),
     "keep_ciso": (
-        "SAMPLE keep-lab only: fixtures/keep-samples → keep/work/out/ciso-assistant/*.csv. "
-        "Same rails as python -m keep lab. Never densify pack in/. Never POST. paying_day FAIL."
+        "SAMPLE keep-lab only: fixtures/keep-samples → keep/work/out/ciso-assistant/*.csv "
+        "+ IMPORT.json + OpenGRC CSVs + Probo preview. Same rails as python -m keep lab "
+        "and ./scripts/sample_to_sor.sh (or make sample-to-sor). Never densify pack in/. "
+        "Never POST. paying_day FAIL. Sinks always from keep-lab."
     ),
 }
 
@@ -312,6 +314,16 @@ def tools_list_entries() -> list[dict[str, Any]]:
                 "type": "string",
                 "description": "Optional slot category filter (discover, inventory, identity, …).",
             }
+        if name == "keep_ciso":
+            props["exporters"] = {
+                "type": "boolean",
+                "description": (
+                    "Optional. Same meaning as scripts/sample_to_sor.sh --exporters: "
+                    "a re-write of keep-lab OpenGRC/Probo sinks. keep_ciso always "
+                    "returns CISO+OpenGRC+Probo from keep.lab; it does not invent "
+                    "a second export path."
+                ),
+            }
         tools.append(
             {
                 "name": name,
@@ -478,6 +490,9 @@ def stage_ingest(scope_path: Path | None = None) -> dict[str, Any]:
 
 KEEP_SENSOR_DIRS = ("identity", "saas", "vuln", "cloud")
 KEEP_HONESTY_BANNERS = ("SAMPLE≠client", "DEMO≠client")
+OPENGRC_KEY_CSVS = ("risks.csv", "assets.csv", "implementations.csv")
+SAMPLE_TO_SOR_SCRIPT = "scripts/sample_to_sor.sh"
+SAMPLE_TO_SOR_MAKE = "make sample-to-sor"
 
 
 def _repo_root() -> Path:
@@ -504,6 +519,83 @@ def _keep_work_dir(extra: dict[str, Any] | None = None) -> Path:
     return _path_arg(extra, "work") or Path(
         os.environ.get("KEEP_WORK") or (_repo_root() / "keep" / "work")
     )
+
+
+def _want_exporters(extra: dict[str, Any] | None = None) -> bool:
+    """Accept arguments.exporters (script --exporters). Does not start a second path."""
+    extra = extra if isinstance(extra, dict) else {}
+    raw = extra.get("exporters")
+    if raw is True or raw == 1:
+        return True
+    if isinstance(raw, str) and raw.strip().lower() in {"1", "true", "yes", "on", "all"}:
+        return True
+    return False
+
+
+def sample_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
+    """Shell twin of keep_status → keep_ciso. Tolerate missing script on older master."""
+    root = Path(root or _repo_root())
+    script = root / SAMPLE_TO_SOR_SCRIPT
+    present = script.is_file()
+    script_cmd = f"./{SAMPLE_TO_SOR_SCRIPT}"
+    return {
+        "script": script_cmd if present else "",
+        "make": SAMPLE_TO_SOR_MAKE,
+        "present": present,
+        "command": script_cmd if present else SAMPLE_TO_SOR_MAKE,
+        "note": (
+            "Shell equivalent of MCP keep_status → keep_ciso. Same keep-lab cold path. "
+            "Prefer ./scripts/sample_to_sor.sh when present; otherwise "
+            "make sample-to-sor / python -m keep lab."
+        ),
+    }
+
+
+def keep_ciso_sor_paths(work: Path, stamp: dict[str, Any] | None = None) -> dict[str, Any]:
+    """CISO + OpenGRC + Probo paths from keep-lab stamp, else filesystem. No second export."""
+    stamp = stamp if isinstance(stamp, dict) else {}
+    work_out = Path(work) / "out"
+    ciso_dir = Path(stamp.get("ciso_dir") or (work_out / "ciso-assistant"))
+    ciso_files = (
+        [str(path) for path in sorted(ciso_dir.glob("*.csv"))] if ciso_dir.is_dir() else []
+    )
+    stamp_import = str(stamp.get("ciso_import") or "").strip()
+    import_file = ciso_dir / "IMPORT.json"
+    if stamp_import and Path(stamp_import).is_file():
+        ciso_import = str(Path(stamp_import))
+    elif import_file.is_file():
+        ciso_import = str(import_file)
+    else:
+        ciso_import = stamp_import
+
+    opengrc_dir = Path(stamp.get("opengrc") or (work_out / "opengrc"))
+    opengrc_files: list[str] = []
+    if opengrc_dir.is_dir():
+        for name in OPENGRC_KEY_CSVS:
+            path = opengrc_dir / name
+            if path.is_file():
+                opengrc_files.append(str(path))
+    opengrc = {
+        "dir": str(opengrc_dir) if opengrc_dir.is_dir() else "",
+        "files": opengrc_files,
+    }
+
+    stamp_probo = str(stamp.get("probo") or "").strip()
+    preview = work_out / "import_preview" / "probo.json"
+    if stamp_probo and Path(stamp_probo).is_file():
+        probo = str(Path(stamp_probo))
+    elif preview.is_file():
+        probo = str(preview)
+    else:
+        probo = stamp_probo
+
+    return {
+        "ciso_dir": str(ciso_dir),
+        "ciso_files": ciso_files,
+        "ciso_import": ciso_import,
+        "opengrc": opengrc,
+        "probo": probo,
+    }
 
 
 def _pack_fingerprint(folder: Path) -> dict[str, bytes]:
@@ -616,9 +708,12 @@ def keep_ciso(
 ) -> dict[str, Any]:
     """SCOPE-gated SAMPLE keep-lab. Same rails as `python -m keep lab`.
 
-    Always fixtures/keep-samples → keep/work/out/ciso-assistant. DRY_RUN=1,
-    GRC_LIVE_SCAN=0, CISO_PUSH=0, RISKREADY_PUSH=0. Never densifies pack in/.
-    Never invents non-sample files. Never POST. Never spawns scanners.
+    Always fixtures/keep-samples → keep/work/out (CISO + OpenGRC + Probo).
+    DRY_RUN=1, GRC_LIVE_SCAN=0, CISO_PUSH=0, RISKREADY_PUSH=0. Never densifies
+    pack in/. Never invents non-sample files. Never POST. Never spawns scanners.
+    Return lists every SoR path so the operator does not memorize keep-lab layout.
+    arguments.exporters is accepted (script --exporters re-write) but sinks
+    always come from keep.lab — no second export path.
     """
     from keep.lab import keep_lab
 
@@ -635,12 +730,10 @@ def keep_ciso(
     stamp = keep_lab(root, pack_in=isolated, work=work)
     after = _pack_fingerprint(operator_pack_in)
     wrote_pack = before != after
-    ciso_dir = work / "out" / "ciso-assistant"
-    ciso_files = (
-        [str(path) for path in sorted(ciso_dir.glob("*.csv"))] if ciso_dir.is_dir() else []
-    )
+    sor = keep_ciso_sor_paths(work, stamp)
     handoff = work / "out" / "eval" / "handoff.json"
     estate = "SAMPLE/DEMO — not a client estate"
+    exporters = _want_exporters(extra)
     return {
         "tool": "keep_ciso",
         "ok": stamp.get("status") == "pass" and not wrote_pack,
@@ -659,8 +752,14 @@ def keep_ciso(
         "pack_in": str(operator_pack_in),
         "pack_in_written": wrote_pack,
         "work": str(work),
-        "ciso_dir": str(ciso_dir),
-        "ciso_files": ciso_files,
+        "ciso_dir": sor["ciso_dir"],
+        "ciso_files": sor["ciso_files"],
+        "ciso_import": sor["ciso_import"],
+        "opengrc": sor["opengrc"],
+        "probo": sor["probo"],
+        "cli_twin": sample_to_sor_cli_twin(root),
+        "exporters": exporters,
+        "exporters_from": "keep-lab",
         "handoff": str(handoff) if handoff.is_file() else str(stamp.get("handoff") or ""),
         "keep_lab": str(work / "keep-lab.json"),
         "posted": False,
@@ -675,11 +774,16 @@ def keep_ciso(
         "stamp": stamp,
         "note": (
             "SAMPLE keep-lab path: fixtures/keep-samples → "
-            "keep/work/out/ciso-assistant/*.csv + eval/handoff.json. "
-            "Same rails as python -m keep lab (DRY_RUN=1 GRC_LIVE_SCAN=0 "
-            "CISO_PUSH=0 RISKREADY_PUSH=0). Does not densify pack in/. "
-            "Does not invent non-sample files. Does not require signed "
-            "self-SCOPE. SAMPLE≠client. DEMO≠client. paying_day FAIL."
+            "keep/work/out/ciso-assistant/*.csv + IMPORT.json + "
+            "opengrc/{risks,assets,implementations}.csv + "
+            "import_preview/probo.json + eval/handoff.json. "
+            "Same rails as python -m keep lab and ./scripts/sample_to_sor.sh "
+            "(or make sample-to-sor). Sinks always from keep-lab "
+            "(arguments.exporters is optional re-write, not a second path). "
+            "DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0. "
+            "Does not densify pack in/. Does not invent non-sample files. "
+            "Does not require signed self-SCOPE. SAMPLE≠client. DEMO≠client. "
+            "paying_day FAIL."
         ),
     }
 

@@ -698,6 +698,12 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
     assert "python -m keep lab" in entries["keep_ciso"]["description"]
     assert "fixtures/keep-samples" in entries["keep_ciso"]["description"]
     assert "densify" in entries["keep_ciso"]["description"]
+    assert "OpenGRC" in entries["keep_ciso"]["description"]
+    assert "Probo" in entries["keep_ciso"]["description"]
+    assert "sample_to_sor" in entries["keep_ciso"]["description"]
+    exporters = entries["keep_ciso"]["inputSchema"]["properties"].get("exporters") or {}
+    assert exporters.get("type") == "boolean"
+    assert "keep-lab" in (exporters.get("description") or "")
 
 
 def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -739,6 +745,10 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert "DEMO≠client" in iface
     assert "0/4" in iface
     assert "fixtures/keep-samples" in iface
+    assert "OpenGRC" in iface
+    assert "Probo" in iface
+    assert "sample_to_sor.sh" in iface
+    assert "keep_status then keep_ciso" in iface
     assert "denser" not in iface.lower()
     assert "prefer pack" not in iface.lower()
     assert "self-SCOPE" in iface or "self-scope" in iface.lower()
@@ -811,9 +821,113 @@ def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pyte
     assert data["stamp"].get("sample") is True
     assert data["ciso_files"]
     assert all(p.endswith(".csv") and "ciso-assistant" in p for p in data["ciso_files"])
+    assert data["ciso_import"].endswith("IMPORT.json")
+    assert Path(data["ciso_import"]).is_file()
+    assert data["opengrc"]["dir"]
+    assert Path(data["opengrc"]["dir"]).is_dir()
+    assert data["opengrc"]["files"]
+    assert any(p.endswith("risks.csv") for p in data["opengrc"]["files"])
+    assert any(p.endswith("assets.csv") for p in data["opengrc"]["files"])
+    assert any(p.endswith("implementations.csv") for p in data["opengrc"]["files"])
+    assert all(Path(p).is_file() for p in data["opengrc"]["files"])
+    assert data["probo"].endswith("probo.json")
+    assert Path(data["probo"]).is_file()
+    assert data["stamp"].get("opengrc")
+    assert data["stamp"].get("probo")
+    assert data["stamp"].get("ciso_import")
+    twin = data["cli_twin"]
+    assert twin["present"] is True
+    assert twin["command"] == "./scripts/sample_to_sor.sh"
+    assert twin["make"] == "make sample-to-sor"
+    assert data["exporters"] is False
+    assert data["exporters_from"] == "keep-lab"
     assert data["handoff"].endswith("handoff.json")
     assert Path(data["handoff"]).is_file()
     assert all(Path(p).is_file() for p in data["ciso_files"])
     handoff = Path(data["handoff"]).read_text(encoding="utf-8")
     assert '"posted": false' in handoff or '"posted":false' in handoff
     assert "sample" in handoff.lower()
+
+
+def test_keep_ciso_sor_helpers_tolerate_missing_script(tmp_path: Path) -> None:
+    from dropbox.mcp_stub import keep_ciso_sor_paths, sample_to_sor_cli_twin
+
+    twin = sample_to_sor_cli_twin(tmp_path)
+    assert twin["present"] is False
+    assert twin["script"] == ""
+    assert twin["command"] == "make sample-to-sor"
+    assert twin["make"] == "make sample-to-sor"
+
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "sample_to_sor.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+    present = sample_to_sor_cli_twin(tmp_path)
+    assert present["present"] is True
+    assert present["command"] == "./scripts/sample_to_sor.sh"
+
+    work = tmp_path / "work"
+    ciso = work / "out" / "ciso-assistant"
+    opengrc = work / "out" / "opengrc"
+    preview = work / "out" / "import_preview"
+    ciso.mkdir(parents=True)
+    opengrc.mkdir()
+    preview.mkdir()
+    (ciso / "IMPORT.json").write_text("{}\n", encoding="utf-8")
+    (ciso / "assets.csv").write_text("ref_id\n", encoding="utf-8")
+    (opengrc / "risks.csv").write_text("code\n", encoding="utf-8")
+    (opengrc / "assets.csv").write_text("asset_tag\n", encoding="utf-8")
+    (opengrc / "implementations.csv").write_text("title\n", encoding="utf-8")
+    probo = preview / "probo.json"
+    probo.write_text("{}\n", encoding="utf-8")
+    sor = keep_ciso_sor_paths(
+        work,
+        {
+            "ciso_dir": str(ciso),
+            "ciso_import": str(ciso / "IMPORT.json"),
+            "opengrc": str(opengrc),
+            "probo": str(probo),
+        },
+    )
+    assert sor["ciso_import"].endswith("IMPORT.json")
+    assert Path(sor["ciso_import"]).is_file()
+    assert sor["opengrc"]["dir"] == str(opengrc)
+    assert [Path(p).name for p in sor["opengrc"]["files"]] == [
+        "risks.csv",
+        "assets.csv",
+        "implementations.csv",
+    ]
+    assert sor["probo"] == str(probo)
+
+
+def test_keep_status_then_keep_ciso_one_session_returns_sor_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Operator one session: keep_status then keep_ciso lists every SAMPLE SoR path."""
+    pack_in = tmp_path / "in"
+    for sensor in ("identity", "saas", "vuln", "cloud"):
+        (pack_in / sensor).mkdir(parents=True)
+        (pack_in / sensor / ".gitkeep").write_text("", encoding="utf-8")
+    work = tmp_path / "work"
+    monkeypatch.setenv("IN_DIR", str(pack_in))
+    status = dispatch("keep_status", scope_path=SCOPE, arguments={"pack_in": str(pack_in)})
+    assert status["tool"] == "keep_status"
+    assert status["keep_real"] == "0/4"
+    assert status["lab_source"] == "fixtures/keep-samples"
+    data = dispatch(
+        "keep_ciso",
+        scope_path=SCOPE,
+        arguments={"pack_in": str(pack_in), "work": str(work), "exporters": True},
+    )
+    assert data["ok"] is True
+    assert data["sample"] is True
+    assert data["paying_day"] == "FAIL"
+    assert data["exporters"] is True
+    assert data["exporters_from"] == "keep-lab"
+    assert data["ciso_dir"]
+    assert data["ciso_files"]
+    assert Path(data["ciso_import"]).is_file()
+    assert Path(data["opengrc"]["dir"]).is_dir()
+    assert any("opengrc" in p and p.endswith("risks.csv") for p in data["opengrc"]["files"])
+    assert Path(data["probo"]).is_file()
+    assert "probo" in data["probo"]
+    assert data["cli_twin"]["command"] in {"./scripts/sample_to_sor.sh", "make sample-to-sor"}
+    assert "OpenGRC" in (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
