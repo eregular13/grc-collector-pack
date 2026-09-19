@@ -14,8 +14,9 @@ primary KEEP path. Pack HEAD this PR (`a3a3651b`). Covey HEAD
 `c012dd24`. Eval HEAD `ebaa9f50`. `compose_lab: pass_desktop` /
 `2680a5b2` / DESKTOP-222GHQV stand. paying_day **FAIL**. SAMPLE KEEP
 **0/4**. RiskReady stay-out. No new collectors. No invented KEEP.
-Catalog **unchanged**. This-VM pytest lab JSON below stays
-`compose_lab` absent.
+Catalog **unchanged**. Agent-VM `farm_drop_to_sor` wall **0.232s**
+(isolated `--work`; honesty-only; not a paying_day PASS). This-VM
+pytest lab JSON below stays `compose_lab` absent.
 
 ```json
 {"pytest": 690, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
