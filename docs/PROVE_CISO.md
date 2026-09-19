@@ -119,31 +119,34 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #48 honesty sync — farm leave-behind `farm_drop_to_sor`
-(`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
-`.\scripts\farm_drop_to_sor.ps1`). Pack HEAD this PR (`a3a3651b`
-after #91 `sample_to_sor`, #93 keep_ciso SoR paths, #92 honesty).
-SAMPLE keep remains the primary KEEP path (`./scripts/sample_to_sor.sh`).
-DESKTOP cold run measured ~0.697s (agent-VM ~0.231s) — honesty-only
-elapsed; not a paying_day PASS.
+CoS #49 honesty restamp — live pack HEAD `37386693` (PR #95
+farm_drop cp1252 + PR #94 `farm_drop_to_sor` already on master).
+Operator paths (honesty-only, not paying_day PASS):
+`./scripts/sample_to_sor.sh` / `make sample-to-sor` /
+`.\scripts\sample_to_sor.ps1`; `./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`;
+Covey `./scripts/client_day_dry.sh`; MCP `keep_status` → `keep_ciso`.
+DESKTOP cold `sample_to_sor` ~0.67s; `farm_drop_to_sor` ~0.67s —
+honesty-only elapsed; not a paying_day PASS.
 SAMPLE keep-lab DESKTOP dry-run (`DRY_RUN=1` `CISO_PUSH=0`;
 `docs/DESKTOP_DRY_RUN.md`; `docs/EVAL_PACK_HANDOFF.md`).
-Eval HEAD `ebaa9f50` (PR #4 one-command DESKTOP SAMPLE loopback
-prove already on main; unit CI green on merge). Eval
-DESKTOP-222GHQV day-of SAMPLE PASS at `ebaa9f50` (Hermes Node
+Eval HEAD `e04c2d88` (PR #5 Node 20/22 LTS + `sample_to_sor`
+pointer already on main; unit CI green on merge). Eval
+DESKTOP-222GHQV day-of SAMPLE PASS (Hermes Node
 v22.23.2; default PATH Node v24 breaks better-sqlite3 ABI;
 Node 22 required on DESKTOP). Eval day-of ≠ pack paying_day PASS.
 SAMPLE keep cannot stamp client-ready.
-Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item
+Item **COS49-HONESTY**. Item **COS48-FARM-DROP-TO-SOR** = DONE. Item
+**COS47-HONESTY** = DONE. Item
 **COS46-HONESTY** = DONE. Item
 **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named =
 Reid-only real KEEP `in/` drop (0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
-`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `c012dd24`
-(farm PR #23 unit-only GHA CI already on main; client-day path
-already on main).
+`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `20e4f8c0`
+(PR #24 `client_day_dry` already on main; farm PR #23 unit-only
+GHA CI already on main).
 pack_drop schema seam **CLOSED**.
 Integrity **PARKED**.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
@@ -151,7 +154,7 @@ remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #49. Reid-only
+Covey adapter work. Stop for CoS #50. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on this
 agent/CI VM still ABSENT — ABSENT ≠ DESKTOP-222GHQV compose_lab
 pass_desktop at pack 2680a5b2, not a pass on this VM).

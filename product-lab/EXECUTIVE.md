@@ -2,15 +2,19 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 174):** CoS #48 honesty sync — farm leave-behind
-`farm_drop_to_sor` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
-`.\scripts\farm_drop_to_sor.ps1`; `python3 scripts/prove_ciso.py` under
-`prove/work/`; never pack `in/`). Pack HEAD this PR `a3a3651b`
-(after #91 `sample_to_sor`, #93 keep_ciso SoR paths, #92 honesty).
-SAMPLE keep remains the primary KEEP path (`./scripts/sample_to_sor.sh` /
-`make sample-to-sor` / `.\scripts\sample_to_sor.ps1`). DESKTOP cold run
-measured ~0.697s (agent-VM ~0.231s) — honesty-only elapsed; not a
+**This window (cycle 176):** CoS #49 honesty restamp — live pack
+HEAD `37386693` (PR #95 farm_drop cp1252 + PR #94 `farm_drop_to_sor`
+already on master). Operator paths (honesty-only, not paying_day
+PASS): `./scripts/sample_to_sor.sh` / `make sample-to-sor` /
+`.\scripts\sample_to_sor.ps1`; `./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`
+(`python3 scripts/prove_ciso.py` under `prove/work/`; never pack
+`in/`); Covey `./scripts/client_day_dry.sh`; MCP `keep_status` →
+`keep_ciso`. DESKTOP cold `sample_to_sor` ~0.67s;
+`farm_drop_to_sor` ~0.67s — honesty-only elapsed; not a
 paying_day PASS.
+Cycle 175 farm_drop cp1252 verify-only hotfix stands as history.
+Cycle 174 farm leave-behind `farm_drop_to_sor` stands as history.
 Cycle 173 honesty restamp + SAMPLE → CISO one command stands as history.
 Cycle 172 SAMPLE → CISO one command stands as history. Cycle 171:
 DESKTOP-222GHQV `compose_lab: pass_desktop` at pack `2680a5b2` (agent/CI VM still **ABSENT** ≠ that DESKTOP stamp).
@@ -20,12 +24,12 @@ SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 `python -m keep lab`; demo:true; posted=false; paying_day
 cannot PASS from SAMPLE; Eval day-of ≠ pack paying_day PASS;
 SAMPLE keep cannot stamp client-ready; RiskReady stay-out).
-Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
-Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on
-main; client-day path already on main). Eval HEAD `ebaa9f50`
-(PR #4 one-command DESKTOP SAMPLE loopback prove already on
-main; unit CI green on merge). Eval DESKTOP-222GHQV day-of
-SAMPLE PASS at `ebaa9f50` (Hermes Node v22.23.2; default PATH
+Item **COS49-HONESTY**. Item **COS48-FARM-DROP-TO-SOR** = DONE. Item **COS47-HONESTY** = DONE. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
+Covey HEAD `20e4f8c0` (PR #24 `client_day_dry` already on
+main; farm PR #23 unit-only GHA CI already on main). Eval HEAD
+`e04c2d88` (PR #5 Node 20/22 LTS + `sample_to_sor` pointer
+already on main; unit CI green on merge). Eval DESKTOP-222GHQV
+day-of SAMPLE PASS (Hermes Node v22.23.2; default PATH
 Node v24 breaks better-sqlite3 ABI; Node 22 required on DESKTOP).
 Eval day-of SAMPLE PASS ≠ pack paying_day PASS.
 pack_drop schema seam **CLOSED**. Integrity **PARKED**.
@@ -40,7 +44,7 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #49. Reid-only
+start Covey adapter work. Stop for CoS #50. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on this agent/CI VM still **ABSENT** — ABSENT on
 agent/CI VM ≠ DESKTOP-222GHQV compose_lab pass_desktop at pack

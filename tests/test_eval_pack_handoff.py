@@ -68,7 +68,10 @@ def test_desktop_dry_run_points_at_eval_handoff() -> None:
     assert "client-ready" in dry.lower()
     action = _status().get("next_action", "")
     assert "EVAL_PACK_HANDOFF" in action or "eval_pack_handoff" in action.lower()
-    assert "c012dd24" in action
-    assert "ebaa9f50" in action
+    assert "20e4f8c0" in action
+    assert "e04c2d88" in action
+    assert "37386693" in action
+    assert "pr #24" in action.lower()
+    assert "client_day_dry" in action.lower()
     assert "pr #23" in action.lower()
     assert "unit" in action.lower()

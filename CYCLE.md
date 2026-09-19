@@ -1,5 +1,33 @@
 # CYCLE log
 
+## cycle 176 — restamp pack 37386693 + Covey 20e4f8c0 + Eval e04c2d88 (2026-09-19)
+
+CoS #49 honesty restamp — live pack HEAD `37386693` (PR #95
+farm_drop cp1252 + PR #94 `farm_drop_to_sor` already on master).
+Operator paths (honesty-only, not paying_day PASS):
+`./scripts/sample_to_sor.sh` / `make sample-to-sor` /
+`.\scripts\sample_to_sor.ps1`; `./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`;
+Covey `./scripts/client_day_dry.sh`; MCP `keep_status` →
+`keep_ciso`. DESKTOP cold `sample_to_sor` ~0.67s;
+`farm_drop_to_sor` ~0.67s — honesty-only elapsed; not a
+paying_day PASS. Covey HEAD `20e4f8c0` (PR #24 `client_day_dry`
+already on main; farm PR #23 unit-only GHA CI already on main).
+Eval HEAD `e04c2d88` (PR #5 Node 20/22 LTS + `sample_to_sor`
+pointer already on main; unit CI green on merge). Eval
+DESKTOP-222GHQV day-of SAMPLE PASS (Hermes Node v22.23.2;
+default PATH Node v24 breaks better-sqlite3 ABI; Node 22
+required on DESKTOP). Eval day-of SAMPLE PASS ≠ pack paying_day
+PASS. `compose_lab: pass_desktop` / `compose_lab_head: 2680a5b2`
+/ host DESKTOP-222GHQV stand. paying_day **FAIL**. SAMPLE KEEP
+**0/4**. RiskReady stay-out. Integrity **PARKED**. No new
+collectors. No invented KEEP. Catalog **unchanged**. This-VM
+pytest lab JSON below stays `compose_lab` absent.
+
+```json
+{"pytest": 690, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 175 — farm_drop cp1252 verify-only hotfix (2026-09-19)
 
 DESKTOP-222GHQV Windows cp1252 crashed `prove_ciso.py --verify-only`
