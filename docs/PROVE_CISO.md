@@ -103,8 +103,8 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #46 honesty sync — live pack HEAD
-`34a32a84` (PR #84 OpenGRC/Probo already on master).
+CoS #46 honesty restamp — live pack HEAD
+`7c9c56a5` (PR #86 SAMPLE keep-lab dry-run already on master).
 SAMPLE keep-lab DESKTOP dry-run (`DRY_RUN=1` `CISO_PUSH=0`;
 `docs/DESKTOP_DRY_RUN.md`). Item **COS46-HONESTY**. Item
 **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
@@ -112,9 +112,11 @@ SAMPLE keep-lab DESKTOP dry-run (`DRY_RUN=1` `CISO_PUSH=0`;
 Reid-only real KEEP `in/` drop (0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
-`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still
-`30d2197f` multi-adapter pack_drop export
-for all 16 `E2E_PROVEN`.
+`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `3cf8bb86`
+(PR #22 pack_drop export aligned to `covey.pack_drop.v1` +
+source evergreen-covey + row schema; preceded by CLIENT_DAY #21
+`a89145f4`; already on Covey main). pack_drop schema seam **CLOSED**.
+Integrity **PARKED**.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +

@@ -14,11 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 # next_action + PLAN this-window must name every tool so the pack
 # cannot lag a later Covey brick again.
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
-COVEY_E2E_HEAD = "30d2197f"
-STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "34a32a84"
-STALE_PACK_HEAD = "62b52d41"
-STALE_PACK_HONESTY = "8c442a33"
+COVEY_E2E_HEAD = "3cf8bb86"
+STALE_E2E_HEAD = "30d2197f"
+COVEY_PACK_HEAD = "7c9c56a5"
+STALE_PACK_HEAD = "34a32a84"
+STALE_PACK_HONESTY = "62b52d41"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -113,6 +113,9 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "service→host" not in brick and "service->host" not in brick, "service→host is DONE, not the next brick"
     assert "kind-partition" not in brick, "kind-partition lock is DONE, not the next brick"
     assert "16 e2e_proven pack_drop void closed" in low
+    assert "schema seam" in low, "pack_drop schema seam must be named CLOSED"
+    assert "parked" in low, "integrity PARKED must be current truth"
+    assert "covey head still" not in low, "Covey HEAD is live 3cf8bb86, not stuck"
     assert "sample_banner" in low
     assert "unicornscan" in low
     assert "after cos #1" not in low
@@ -136,8 +139,8 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD 34a32a84 (PR #84). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #45 / pack 62b52d41.
+    # Pack HEAD 7c9c56a5 (PR #86). Covey HEAD 3cf8bb86 (PR #22
+    # pack_drop schema align). Docs must not name 30d2197f as current.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -186,6 +189,7 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 169):",
         "**Delta (cycle 168):",
         "**Delta (cycle 167):",
         "**Delta (cycle 166):",
@@ -267,6 +271,9 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "service→host" not in brick and "service->host" not in brick, f"{where} still names service→host as next brick"
         assert "kind-partition" not in brick, f"{where} still names kind-partition as next brick"
         assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
+        assert "schema seam" in low, f"{where} missing pack_drop schema seam CLOSED"
+        assert "parked" in low, f"{where} missing integrity PARKED"
+        assert "covey head still" not in low, f"{where} still implies Covey is stuck"
         assert "cos45-pack-drop-source-lock" in low, f"{where} missing COS45-PACK-DROP-SOURCE-LOCK DONE"
         assert "stop for cos #47" in low, f"{where} missing Stop for CoS #47"
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
@@ -385,6 +392,9 @@ def test_status_and_live_docs_match_cos46_covey_e2e_proven() -> None:
         assert "service→host" not in brick and "service->host" not in brick, f"{path} this-window still names service→host as next brick"
         assert "kind-partition" not in brick, f"{path} this-window still names kind-partition as next brick"
         assert "void" in win_low, f"{path} this-window missing void CLOSED"
+        assert "schema seam" in win_low, f"{path} this-window missing pack_drop schema seam CLOSED"
+        assert "parked" in win_low, f"{path} this-window missing integrity PARKED"
+        assert "covey head still" not in win_low, f"{path} this-window still implies Covey is stuck"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
         assert "pack_drop" in win_low, f"{path} this-window missing pack_drop export"
