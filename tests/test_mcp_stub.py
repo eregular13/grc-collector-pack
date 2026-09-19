@@ -748,7 +748,7 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert "OpenGRC" in iface
     assert "Probo" in iface
     assert "sample_to_sor.sh" in iface
-    assert "keep_status then keep_ciso" in iface
+    assert "`keep_status` then `keep_ciso`" in iface
     assert "denser" not in iface.lower()
     assert "prefer pack" not in iface.lower()
     assert "self-SCOPE" in iface or "self-scope" in iface.lower()
