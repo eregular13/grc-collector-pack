@@ -105,10 +105,19 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
 CoS #47 honesty restamp — live pack HEAD
-`b77cfc0e` (PR #88 Covey restamp already on master).
+`9a872ef5` (PR #91 SAMPLE→CISO one-command `sample_to_sor`
+already on master). Operator path `./scripts/sample_to_sor.sh` /
+`make sample-to-sor` / `.\scripts\sample_to_sor.ps1`. DESKTOP
+cold run measured ~0.697s (agent-VM ~0.231s) — honesty-only
+elapsed; not a paying_day PASS.
 SAMPLE keep-lab DESKTOP dry-run (`DRY_RUN=1` `CISO_PUSH=0`;
 `docs/DESKTOP_DRY_RUN.md`; `docs/EVAL_PACK_HANDOFF.md`).
-Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready.
+Eval HEAD `ebaa9f50` (PR #4 one-command DESKTOP SAMPLE loopback
+prove already on main; unit CI green on merge). Eval
+DESKTOP-222GHQV day-of SAMPLE PASS at `ebaa9f50` (Hermes Node
+v22.23.2; default PATH Node v24 breaks better-sqlite3 ABI;
+Node 22 required on DESKTOP). Eval day-of ≠ pack paying_day PASS.
+SAMPLE keep cannot stamp client-ready.
 Item **COS47-HONESTY**. Item **COS46-HONESTY** = DONE. Item
 **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named =
@@ -117,8 +126,7 @@ SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
 `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `c012dd24`
 (farm PR #23 unit-only GHA CI already on main; client-day path
-already on main). Eval HEAD `5f40f9ff` (PR #3 unit CI Node 20
-already on main; SCOPE brakes + DESKTOP-DAY-OF already on main).
+already on main).
 pack_drop schema seam **CLOSED**.
 Integrity **PARKED**.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
