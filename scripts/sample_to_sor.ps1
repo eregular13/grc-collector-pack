@@ -57,7 +57,7 @@ if ($Exporters) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-$Elapsed = [int]((Get-Date) - $Start).TotalSeconds
+$Elapsed = [math]::Round(((Get-Date) - $Start).TotalSeconds, 3)
 Write-Host "sample_to_sor: elapsed=${Elapsed}s"
 Write-Host "sample_to_sor: ciso=$Ciso"
 Write-Host "sample_to_sor: import=$(Join-Path $Ciso 'IMPORT.json')"

@@ -70,7 +70,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-START="$(date +%s)"
+START="$("$PYTHON" -c 'import time; print(time.perf_counter())')"
 CISO="$WORK/out/ciso-assistant"
 
 if [[ "$VERIFY_ONLY" -eq 0 ]]; then
@@ -90,8 +90,7 @@ if [[ "$EXPORTERS" -eq 1 ]]; then
   "$PYTHON" -m exporters --sink all --out-dir "$WORK/out"
 fi
 
-END="$(date +%s)"
-ELAPSED="$((END - START))"
+ELAPSED="$("$PYTHON" -c "import time; print(f'{time.perf_counter() - float('$START'):.3f}')")"
 
 echo "sample_to_sor: elapsed=${ELAPSED}s"
 echo "sample_to_sor: ciso=$CISO"
