@@ -44,3 +44,73 @@ jobs:
           python collectors/grc_loader.py
       - name: Lab outputs
         run: python tests/lab_outputs.py
+
+  # Clean-checkout cold SAMPLE→SoR. Full git clone (keep/__main__.py present).
+  # No Docker — keep-lab is file-drop only. Honesty-only; not a paying_day PASS.
+  sample-to-sor-cold:
+    name: cold SAMPLE→SoR
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      DRY_RUN: "1"
+      GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      DROPBOX_LIVE: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Preflight keep package (full clone)
+        run: |
+          test -f keep/__main__.py
+          test -f keep/lab.py
+          test -f keep/adapters.py
+      - name: Cold SAMPLE→SoR
+        run: |
+          set -euo pipefail
+          work="${RUNNER_TEMP}/sample-to-sor-cold"
+          ./scripts/sample_to_sor.sh --work "$work"
+          python - "$work" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          work = Path(sys.argv[1])
+          ciso = work / "out" / "ciso-assistant"
+          doc = json.loads((ciso / "IMPORT.json").read_text(encoding="utf-8"))
+          assert doc.get("demo") is True, doc
+          assert doc.get("sample") is True, doc
+          assert doc.get("client_keep") is False, doc
+          assert doc.get("paying_day") == "FAIL", doc
+          assert doc.get("posted") is False, doc
+          csvs = list(ciso.glob("*.csv"))
+          assert len(csvs) >= 1, csvs
+          print(f"IMPORT.json honesty ok; ciso_csv_count={len(csvs)}")
+          PY
+      - name: Cold SAMPLE→SoR with exporters
+        run: |
+          set -euo pipefail
+          work="${RUNNER_TEMP}/sample-to-sor-cold-exporters"
+          ./scripts/sample_to_sor.sh --work "$work" --exporters
+          python - "$work" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          work = Path(sys.argv[1])
+          ciso = work / "out" / "ciso-assistant"
+          doc = json.loads((ciso / "IMPORT.json").read_text(encoding="utf-8"))
+          assert doc.get("demo") is True and doc.get("sample") is True, doc
+          assert doc.get("client_keep") is False, doc
+          assert doc.get("paying_day") == "FAIL", doc
+          assert doc.get("posted") is False, doc
+          csvs = list(ciso.glob("*.csv"))
+          assert len(csvs) >= 1, csvs
+          assert (work / "out" / "opengrc" / "risks.csv").is_file()
+          assert (work / "out" / "import_preview" / "probo.json").is_file()
+          print(f"exporters honesty ok; ciso_csv_count={len(csvs)}")
+          PY
