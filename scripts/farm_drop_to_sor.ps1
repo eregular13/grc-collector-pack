@@ -11,6 +11,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
 $env:PYTHONPATH = $Root
+$env:PYTHONIOENCODING = "utf-8"
 $env:DRY_RUN = "1"
 $env:GRC_LIVE_SCAN = "0"
 $env:CISO_PUSH = "0"
@@ -35,7 +36,7 @@ $ProvePy = Join-Path $Root "scripts\prove_ciso.py"
 $Start = Get-Date
 
 if (-not $VerifyOnly) {
-    Write-Host "farm_drop_to_sor: python scripts/prove_ciso.py (pack_drop → CISO)"
+    Write-Host "farm_drop_to_sor: python scripts/prove_ciso.py (pack_drop -> CISO)"
     & $Python $ProvePy --work $Work
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
@@ -48,5 +49,5 @@ $Elapsed = [math]::Round(((Get-Date) - $Start).TotalSeconds, 3)
 Write-Host "farm_drop_to_sor: elapsed=${Elapsed}s"
 Write-Host "farm_drop_to_sor: ciso=$Ciso"
 Write-Host "farm_drop_to_sor: prove=$(Join-Path $Work 'prove-ciso.json')"
-Write-Host "farm_drop_to_sor: SAMPLE/DEMO ≠ client. paying_day FAIL. posted=false."
+Write-Host "farm_drop_to_sor: SAMPLE/DEMO != client. paying_day FAIL. posted=false."
 Write-Host "farm_drop_to_sor: SAMPLE keep remains the primary KEEP path (sample_to_sor)."

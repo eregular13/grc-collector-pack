@@ -75,6 +75,10 @@ class FarmDropHonestyError(RuntimeError):
     """prove JSON / CISO outputs claimed a client estate or paying_day PASS."""
 
 
+# ASCII-only: Windows cp1252 consoles cannot print U+2260.
+HONESTY_OK_LINE = "FARM_DROP_HONESTY=ok SAMPLE/DEMO != client paying_day=FAIL"
+
+
 def _copy_tree(src: Path, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for path in src.rglob("*"):
@@ -361,7 +365,7 @@ def main(argv: list[str] | None = None) -> int:
         except FarmDropHonestyError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print("FARM_DROP_HONESTY=ok SAMPLE/DEMO ≠ client paying_day=FAIL")
+        print(HONESTY_OK_LINE)
         return 0
 
     stamp = prove_ciso(dest=dest)

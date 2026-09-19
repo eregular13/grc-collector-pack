@@ -8,6 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 export PYTHONPATH="$ROOT"
+export PYTHONIOENCODING=utf-8
 export DRY_RUN=1
 export GRC_LIVE_SCAN=0
 export CISO_PUSH=0
@@ -22,11 +23,11 @@ usage() {
   cat <<'EOF'
 usage: scripts/farm_drop_to_sor.sh [--work DIR] [--verify-only]
 
-Farm leave-behind twin of sample_to_sor: fixtures/pack_drop → prove/work/out/ciso-assistant/
+Farm leave-behind twin of sample_to_sor: fixtures/pack_drop -> prove/work/out/ciso-assistant/
 Forces PYTHONPATH + DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
 Runs python3 scripts/prove_ciso.py (isolated under prove/work/; never writes pack in/).
 Then fail-closes if prove JSON / CISO outputs claim client estate or paying_day PASS.
-SAMPLE keep remains the primary KEEP path. SAMPLE/DEMO ≠ client. This pack does not POST /api/risks.
+SAMPLE keep remains the primary KEEP path. SAMPLE/DEMO != client. This pack does not POST /api/risks.
 EOF
 }
 
@@ -65,7 +66,7 @@ START="$("$PYTHON" -c 'import time; print(time.perf_counter())')"
 CISO="$WORK/out/ciso-assistant"
 
 if [[ "$VERIFY_ONLY" -eq 0 ]]; then
-  echo "farm_drop_to_sor: python3 scripts/prove_ciso.py (pack_drop → CISO)"
+  echo "farm_drop_to_sor: python3 scripts/prove_ciso.py (pack_drop -> CISO)"
   "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK"
 fi
 
@@ -77,5 +78,5 @@ ELAPSED="$("$PYTHON" -c "import time; print(f'{time.perf_counter() - float('$STA
 echo "farm_drop_to_sor: elapsed=${ELAPSED}s"
 echo "farm_drop_to_sor: ciso=$CISO"
 echo "farm_drop_to_sor: prove=$WORK/prove-ciso.json"
-echo "farm_drop_to_sor: SAMPLE/DEMO ≠ client. paying_day FAIL. posted=false."
+echo "farm_drop_to_sor: SAMPLE/DEMO != client. paying_day FAIL. posted=false."
 echo "farm_drop_to_sor: SAMPLE keep remains the primary KEEP path (sample_to_sor)."
