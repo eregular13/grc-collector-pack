@@ -63,12 +63,16 @@ TOOL_DESC = {
     ),
     "keep_status": (
         "SCOPE-gated KEEP four-set inventory. Empty pack in/ is keep_real 0/4. "
-        "Lab uses fixtures/keep-samples. SAMPLE≠client. DEMO≠client. No densify."
+        "Lab uses fixtures/keep-samples. Operator twins (hints only): "
+        "./scripts/sample_to_sor.sh (SAMPLE keep) and ./scripts/farm_drop_to_sor.sh "
+        "(farm pack_drop). SAMPLE≠client. DEMO≠client. No densify."
     ),
     "keep_ciso": (
         "SAMPLE keep-lab only: fixtures/keep-samples → keep/work/out/ciso-assistant/*.csv "
         "+ IMPORT.json + OpenGRC CSVs + Probo preview. Same rails as python -m keep lab "
-        "and ./scripts/sample_to_sor.sh (or make sample-to-sor). Never densify pack in/. "
+        "and ./scripts/sample_to_sor.sh (or make sample-to-sor). Farm pack_drop twin: "
+        "./scripts/farm_drop_to_sor.sh / make farm-drop-to-sor / "
+        ".\\scripts\\farm_drop_to_sor.ps1. Never densify pack in/. "
         "Never POST. paying_day FAIL. Sinks always from keep-lab."
     ),
 }
@@ -493,6 +497,10 @@ KEEP_HONESTY_BANNERS = ("SAMPLE≠client", "DEMO≠client")
 OPENGRC_KEY_CSVS = ("risks.csv", "assets.csv", "implementations.csv")
 SAMPLE_TO_SOR_SCRIPT = "scripts/sample_to_sor.sh"
 SAMPLE_TO_SOR_MAKE = "make sample-to-sor"
+SAMPLE_TO_SOR_PS1 = ".\\scripts\\sample_to_sor.ps1"
+FARM_DROP_TO_SOR_SCRIPT = "scripts/farm_drop_to_sor.sh"
+FARM_DROP_TO_SOR_MAKE = "make farm-drop-to-sor"
+FARM_DROP_TO_SOR_PS1 = ".\\scripts\\farm_drop_to_sor.ps1"
 
 
 def _repo_root() -> Path:
@@ -532,23 +540,71 @@ def _want_exporters(extra: dict[str, Any] | None = None) -> bool:
     return False
 
 
+def _cli_twin_payload(
+    root: Path | None,
+    *,
+    name: str,
+    kind: str,
+    script_rel: str,
+    make: str,
+    ps1: str,
+    note: str,
+) -> dict[str, Any]:
+    """Advertise one operator CLI twin. Tolerate missing script on older master."""
+    root = Path(root or _repo_root())
+    script = root / script_rel
+    present = script.is_file()
+    script_cmd = f"./{script_rel}"
+    ps1_rel = ps1.replace("\\", "/").lstrip("./")
+    return {
+        "name": name,
+        "kind": kind,
+        "script": script_cmd if present else "",
+        "make": make,
+        "ps1": ps1,
+        "ps1_present": (root / ps1_rel).is_file(),
+        "present": present,
+        "command": script_cmd if present else make,
+        "note": note,
+    }
+
+
 def sample_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
     """Shell twin of keep_status → keep_ciso. Tolerate missing script on older master."""
-    root = Path(root or _repo_root())
-    script = root / SAMPLE_TO_SOR_SCRIPT
-    present = script.is_file()
-    script_cmd = f"./{SAMPLE_TO_SOR_SCRIPT}"
-    return {
-        "script": script_cmd if present else "",
-        "make": SAMPLE_TO_SOR_MAKE,
-        "present": present,
-        "command": script_cmd if present else SAMPLE_TO_SOR_MAKE,
-        "note": (
+    return _cli_twin_payload(
+        root,
+        name="sample_to_sor",
+        kind="sample_keep",
+        script_rel=SAMPLE_TO_SOR_SCRIPT,
+        make=SAMPLE_TO_SOR_MAKE,
+        ps1=SAMPLE_TO_SOR_PS1,
+        note=(
             "Shell equivalent of MCP keep_status → keep_ciso. Same keep-lab cold path. "
             "Prefer ./scripts/sample_to_sor.sh when present; otherwise "
-            "make sample-to-sor / python -m keep lab."
+            "make sample-to-sor / .\\scripts\\sample_to_sor.ps1 / python -m keep lab. "
+            "SAMPLE keep remains the primary KEEP path. SAMPLE≠client. paying_day FAIL."
         ),
-    }
+    )
+
+
+def farm_drop_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
+    """Farm pack_drop leave-behind twin. Advertise only — keep_ciso does not run it."""
+    return _cli_twin_payload(
+        root,
+        name="farm_drop_to_sor",
+        kind="farm_pack_drop",
+        script_rel=FARM_DROP_TO_SOR_SCRIPT,
+        make=FARM_DROP_TO_SOR_MAKE,
+        ps1=FARM_DROP_TO_SOR_PS1,
+        note=(
+            "Farm leave-behind twin of sample_to_sor: fixtures/pack_drop → "
+            "prove/work/out/ciso-assistant via python3 scripts/prove_ciso.py. "
+            "./scripts/farm_drop_to_sor.sh / make farm-drop-to-sor / "
+            ".\\scripts\\farm_drop_to_sor.ps1. Never writes pack in/. "
+            "SAMPLE keep remains the primary KEEP path. SAMPLE/DEMO ≠ client. "
+            "paying_day FAIL. This hint does not invent KEEP or run prove_ciso."
+        ),
+    )
 
 
 def keep_ciso_sor_paths(work: Path, stamp: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -686,6 +742,8 @@ def keep_status(
                 "SAMPLE≠client KEEP. Not a densify path."
             ),
         },
+        "cli_twin": sample_to_sor_cli_twin(root),
+        "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(root),
         "banners": list(KEEP_HONESTY_BANNERS),
         "paying_day": "FAIL",
         "posted": False,
@@ -694,7 +752,12 @@ def keep_status(
         "note": (
             f"Pack in/ keep_real {keep_real}. Empty pack in/ is 0/4. "
             "Operator lab path is fixtures/keep-samples → keep/work/out "
-            "(SAMPLE≠client). Detect via keep.adapters (same helpers "
+            "(SAMPLE≠client). Operator twins (hints only): "
+            "./scripts/sample_to_sor.sh / make sample-to-sor / "
+            ".\\scripts\\sample_to_sor.ps1 (SAMPLE keep) and "
+            "./scripts/farm_drop_to_sor.sh / make farm-drop-to-sor / "
+            ".\\scripts\\farm_drop_to_sor.ps1 (farm pack_drop; never pack in/). "
+            "Detect via keep.adapters (same helpers "
             "dropbox.orchestrator.keepmin uses). Does not densify pack in/. "
             "Does not invent non-sample files. Does not require signed "
             "self-SCOPE. DEMO≠client. paying_day FAIL. No POST /api/risks. No scan."
@@ -713,7 +776,8 @@ def keep_ciso(
     pack in/. Never invents non-sample files. Never POST. Never spawns scanners.
     Return lists every SoR path so the operator does not memorize keep-lab layout.
     arguments.exporters is accepted (script --exporters re-write) but sinks
-    always come from keep.lab — no second export path.
+    always come from keep.lab — no second export path. Also advertises the
+    farm pack_drop operator twin (farm_drop_to_sor) as a hint only.
     """
     from keep.lab import keep_lab
 
@@ -758,6 +822,7 @@ def keep_ciso(
         "opengrc": sor["opengrc"],
         "probo": sor["probo"],
         "cli_twin": sample_to_sor_cli_twin(root),
+        "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(root),
         "exporters": exporters,
         "exporters_from": "keep-lab",
         "handoff": str(handoff) if handoff.is_file() else str(stamp.get("handoff") or ""),
@@ -778,7 +843,10 @@ def keep_ciso(
             "opengrc/{risks,assets,implementations}.csv + "
             "import_preview/probo.json + eval/handoff.json. "
             "Same rails as python -m keep lab and ./scripts/sample_to_sor.sh "
-            "(or make sample-to-sor). Sinks always from keep-lab "
+            "(or make sample-to-sor). Farm pack_drop twin (hint only; this "
+            "tool does not run it): ./scripts/farm_drop_to_sor.sh / "
+            "make farm-drop-to-sor / .\\scripts\\farm_drop_to_sor.ps1. "
+            "Sinks always from keep-lab "
             "(arguments.exporters is optional re-write, not a second path). "
             "DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0. "
             "Does not densify pack in/. Does not invent non-sample files. "
