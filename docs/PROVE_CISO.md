@@ -103,26 +103,29 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #46 honesty restamp — live pack HEAD
-`7c9c56a5` (PR #86 SAMPLE keep-lab dry-run already on master).
+CoS #47 honesty restamp — live pack HEAD
+`b77cfc0e` (PR #88 Covey restamp already on master).
 SAMPLE keep-lab DESKTOP dry-run (`DRY_RUN=1` `CISO_PUSH=0`;
-`docs/DESKTOP_DRY_RUN.md`). Item **COS46-HONESTY**. Item
+`docs/DESKTOP_DRY_RUN.md`; `docs/EVAL_PACK_HANDOFF.md`).
+Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready.
+Item **COS47-HONESTY**. Item **COS46-HONESTY** = DONE. Item
 **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named =
 Reid-only real KEEP `in/` drop (0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
-`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `3cf8bb86`
-(PR #22 pack_drop export aligned to `covey.pack_drop.v1` +
-source evergreen-covey + row schema; preceded by CLIENT_DAY #21
-`a89145f4`; already on Covey main). pack_drop schema seam **CLOSED**.
+`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `c012dd24`
+(farm PR #23 unit-only GHA CI already on main; client-day path
+already on main). Eval HEAD `5f40f9ff` (PR #3 unit CI Node 20
+already on main; SCOPE brakes + DESKTOP-DAY-OF already on main).
+pack_drop schema seam **CLOSED**.
 Integrity **PARKED**.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #47. Reid-only
+Covey adapter work. Stop for CoS #48. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on a
 Docker host — this VM `compose_lab` absent ≠ PASS).
 

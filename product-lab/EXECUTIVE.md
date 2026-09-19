@@ -2,16 +2,19 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 169):** CoS #46 honesty restamp — live pack HEAD
-`7c9c56a5` (PR #86 SAMPLE keep-lab dry-run already on master).
+**This window (cycle 170):** CoS #47 honesty restamp — live pack HEAD
+`b77cfc0e` (PR #88 Covey restamp already on master).
 SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 (`DRY_RUN=1` `CISO_PUSH=0`; `docs/DESKTOP_DRY_RUN.md`;
+`docs/EVAL_PACK_HANDOFF.md`;
 `python -m keep lab`; demo:true; posted=false; paying_day
-cannot PASS from SAMPLE; RiskReady stay-out).
-Item **COS46-HONESTY**. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
-Covey HEAD `3cf8bb86` (PR #22 pack_drop export aligned to
-`covey.pack_drop.v1` + source evergreen-covey + row schema;
-preceded by CLIENT_DAY #21 `a89145f4`; already on Covey main).
+cannot PASS from SAMPLE; Eval day-of ≠ pack paying_day PASS;
+SAMPLE keep cannot stamp client-ready; RiskReady stay-out).
+Item **COS47-HONESTY**. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
+Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on
+main; client-day path already on main). Eval HEAD `5f40f9ff`
+(PR #3 unit CI Node 20 already on main; SCOPE brakes +
+DESKTOP-DAY-OF already on main).
 pack_drop schema seam **CLOSED**. Integrity **PARKED**.
 16 E2E_PROVEN pack_drop
 void CLOSED. Next brick named = Reid-only real KEEP `in/` drop
@@ -24,12 +27,13 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #47. Reid-only
+start Covey adapter work. Stop for CoS #48. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 168 DESKTOP dry-run stands as
+invoke / 81 file_drop). Cycle 169 farm HEAD restamp stands as
+history. Cycle 168 DESKTOP dry-run stands as
 history. Cycle 167 OpenGRC/Probo sinks stand as
 history. Cycle 165 pack_drop source lock stands as history.
 Cycle 164 honesty stands as

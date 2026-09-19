@@ -1,7 +1,10 @@
 # DESKTOP / client-host dry-run
 
 **SAMPLE ≠ client KEEP.** This is a file-only rehearsal on a DESKTOP or
-client host. It does **not** stamp `paying_day` PASS. RiskReady wrap
+client host. It does **not** stamp `paying_day` PASS. **SAMPLE keep
+cannot stamp client-ready.** Eval day-of (evergreen-eval
+`docs/DESKTOP-DAY-OF.md`, loopback HITL) ≠ pack paying_day PASS.
+Operator order: [EVAL_PACK_HANDOFF.md](EVAL_PACK_HANDOFF.md). RiskReady wrap
 stays review-only. Never POST `/api/risks`. Never live-scan.
 
 No Docker. No `make`. No `gh`. No CISO / OpenGRC / Probo credentials.

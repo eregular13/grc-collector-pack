@@ -5,7 +5,9 @@ Thin file-drop from pack KEEP-chain parsers to **CISO Assistant CSVs**
 **No live Eval HTTP from this pack.** No RiskReady wrap. No `/api/risks`.
 
 Primary operator path (SAMPLE ≠ client KEEP). DESKTOP dry-run:
-[DESKTOP_DRY_RUN.md](DESKTOP_DRY_RUN.md).
+[DESKTOP_DRY_RUN.md](DESKTOP_DRY_RUN.md). Eval day-of (loopback HITL)
+then this pack dry-run: [EVAL_PACK_HANDOFF.md](EVAL_PACK_HANDOFF.md).
+Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready.
 
 ```bash
 export PYTHONPATH="$PWD"
