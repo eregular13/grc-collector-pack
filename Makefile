@@ -76,7 +76,7 @@ farm-toolbin-lab:
 farm-toolbin-e2e:
 	$(PYTHON) scripts/farm_toolbin_e2e.py
 
-# SAMPLE KEEP-chain → CISO Assistant CSVs + OpenGRC/Probo files under keep/work/. Not pack in/. Not a client KEEP drop.
+# SAMPLE KEEP-chain → CISO Assistant CSVs + OpenGRC/Probo files under keep/work/. DESKTOP dry-run: DRY_RUN=1 CISO_PUSH=0. Not pack in/. Not a client KEEP drop.
 keep-lab:
 	$(PYTHON) -m keep lab
 

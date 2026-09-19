@@ -12,6 +12,7 @@ from typing import Any
 from exporters.model import load_pack_estate
 from exporters.opengrc import write_opengrc
 from exporters.probo import write_probo
+from keep.ciso_import import honest_paying_day
 
 
 def export_keep_sinks(out: Path, *, sample: bool = True) -> dict[str, Any]:
@@ -32,7 +33,7 @@ def export_keep_sinks(out: Path, *, sample: bool = True) -> dict[str, Any]:
         "sample": True,
         "client": False,
         "client_keep": False,
-        "paying_day": "FAIL",
+        "paying_day": honest_paying_day(sample=True),
         "riskready": "stay-out",
         "origin": "keep-lab",
         "opengrc": opengrc,

@@ -2,23 +2,18 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 167):** SAMPLE keep-lab CISO intermediate feeds
-OpenGRC + Probo (`python -m keep lab`; demo:true; posted=false; no
-denser KEEP; RiskReady stay-out).
-CoS #45 honesty sync + item 2 —
-global pack_drop meta.json source identity lock
-(`tests/test_pack_drop_source.py`; `source == evergreen-covey`
-exact; `schema == covey.pack_drop.v1`; META-ONLY — no JSONL
-row source rewrite).
-Pack HEAD
-`62b52d41` (PR #79 obs port→service
-already on master).
+**This window (cycle 168):** CoS #46 honesty sync — live pack HEAD
+`34a32a84` (PR #84 OpenGRC/Probo already on master).
+SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
+(`DRY_RUN=1` `CISO_PUSH=0`; `docs/DESKTOP_DRY_RUN.md`;
+`python -m keep lab`; demo:true; posted=false; paying_day
+cannot PASS from SAMPLE; RiskReady stay-out).
+Item **COS46-HONESTY**. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
 Covey HEAD still
 `30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item **COS45-HONESTY**.
-Item **COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE. 16 E2E_PROVEN pack_drop
-void CLOSED. Next brick named = global pack_drop
-meta-only source identity lock (`source == evergreen-covey`).
+export for all 16 `E2E_PROVEN`. 16 E2E_PROVEN pack_drop
+void CLOSED. Next brick named = Reid-only real KEEP `in/` drop
+(0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER / prove_ciso
 sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
@@ -27,12 +22,14 @@ is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #46. Reid-only
+start Covey adapter work. Stop for CoS #47. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on a real host — this VM `compose_lab`
 **ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
 SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 164 honesty stands as
+invoke / 81 file_drop). Cycle 167 OpenGRC/Probo sinks stand as
+history. Cycle 165 pack_drop source lock stands as history.
+Cycle 164 honesty stands as
 history. Cycle 163 observation/finding
 port→service lock stands as history. Cycle 162 honesty stands as
 history. Cycle 161 service→host lock stands as

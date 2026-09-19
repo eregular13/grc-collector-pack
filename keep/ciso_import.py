@@ -38,6 +38,14 @@ def read_paying_day(root: Path) -> str:
     return paying
 
 
+def honest_paying_day(paying_day: str | None = None, *, sample: bool = True) -> str:
+    """SAMPLE/DEMO cannot emit paying_day PASS. This pack never invents PASS."""
+    raw = str(paying_day or "FAIL").strip() or "FAIL"
+    if sample or raw.upper() == "PASS":
+        return "FAIL"
+    return raw
+
+
 def ciso_dir(out: Path) -> Path:
     return Path(out) / "ciso-assistant"
 
@@ -81,6 +89,7 @@ def build_ciso_import_manifest(
     folder = ciso_dir(out)
     files = listed_ciso_files(out)
     honest_sample = bool(sample or not client_keep)
+    paying = honest_paying_day(paying_day, sample=honest_sample)
     return {
         "shape": "ciso-assistant",
         "consumer": "ciso-assistant",
@@ -90,7 +99,7 @@ def build_ciso_import_manifest(
         "demo": True if honest_sample else False,
         "sample": honest_sample,
         "client_keep": bool(client_keep) and not honest_sample,
-        "paying_day": paying_day,
+        "paying_day": paying,
         "estate": (
             "SAMPLE — redacted KEEP-chain fixtures. Not a client KEEP drop."
             if honest_sample

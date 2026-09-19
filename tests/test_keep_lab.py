@@ -12,7 +12,7 @@ from keep.adapters import (
     land_keep_files,
     scan_keep_dir,
 )
-from keep.ciso_import import CISO_REQUIRED, read_paying_day
+from keep.ciso_import import CISO_REQUIRED, honest_paying_day, read_paying_day
 from keep.handoff import MAX_FINDINGS, build_eval_handoff, select_max_findings
 from keep.lab import keep_lab
 
@@ -79,12 +79,15 @@ def test_keep_lab_uses_samples_when_pack_in_empty(tmp_path: Path) -> None:
     assert handoff["http"] is False
     assert handoff["sample"] is True
     assert handoff["client_keep"] is False
+    assert handoff["paying_day"] == "FAIL"
+    assert handoff["wrap"] == "review-only"
     assert len(handoff["findings"]) <= MAX_FINDINGS
     assert handoff["findings"]
     assert handoff["ciso"]["shape"] == "ciso-assistant"
     assert "findings.csv" in handoff["ciso"]["files"]
     assert stamp["paying_day"] == "FAIL"
-    assert stamp["paying_day"] == read_paying_day(ROOT)
+    assert stamp["paying_day"] == honest_paying_day(read_paying_day(ROOT), sample=True)
+    assert stamp["wrap"] == "review-only"
     assert stamp["ciso_files"]
     for name in CISO_REQUIRED:
         assert name in stamp["ciso_files"]
@@ -315,6 +318,8 @@ def test_handoff_docs_and_no_eval_http() -> None:
     assert "IMPORT.md" in op or "IMPORT.json" in op
     assert "paying_day" in op or "paying_day" in op.lower() or "FAIL" in op
     assert "keep-lab never" in op.lower() or "never touching pack" in op.lower() or "never writes pack" in op.lower()
+    assert "DESKTOP_DRY_RUN.md" in op
+    assert "DRY_RUN=1" in op and "CISO_PUSH=0" in op
     doc = (ROOT / "docs" / "KEEP_EVAL_HANDOFF.md").read_text(encoding="utf-8")
     assert "max-5" in doc or "max 5" in doc or "max_findings" in doc
     assert "No live Eval HTTP" in doc or "no live Eval HTTP" in doc.lower()
@@ -359,5 +364,134 @@ def test_eval_handoff_builder_stays_file_drop(tmp_path: Path) -> None:
     assert payload["http"] is False
     assert payload["posted"] is False
     assert payload["sample"] is True
+    assert payload["paying_day"] == "FAIL"
+    assert payload["wrap"] == "review-only"
     assert payload["findings"][0]["name"] == "Public bucket"
     assert payload["assets"][0]["name"] == "bucket-a"
+
+
+def test_honest_paying_day_cannot_pass_from_sample() -> None:
+    assert honest_paying_day("PASS", sample=True) == "FAIL"
+    assert honest_paying_day("FAIL", sample=True) == "FAIL"
+    assert honest_paying_day("PASS", sample=False) == "FAIL"
+    assert honest_paying_day("FAIL", sample=False) == "FAIL"
+    from keep.ciso_import import build_ciso_import_manifest
+
+    payload = build_ciso_import_manifest(
+        ROOT / "keep" / "work" / "out",
+        sample=True,
+        client_keep=False,
+        paying_day="PASS",
+        origin="keep-samples",
+    )
+    assert payload["paying_day"] == "FAIL"
+    assert payload["sample"] is True
+    assert payload["client_keep"] is False
+    assert payload["wrap"] == "review-only"
+
+
+def test_sample_keep_lab_cannot_inherit_paying_day_pass(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("keep.lab.read_paying_day", lambda root: "PASS")
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    stamp = keep_lab(ROOT, pack_in=empty, work=tmp_path / "work")
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["sample"] is True
+    assert stamp["paying_day"] == "FAIL"
+    import_doc = json.loads((Path(stamp["ciso_dir"]) / "IMPORT.json").read_text(encoding="utf-8"))
+    assert import_doc["paying_day"] == "FAIL"
+    handoff = json.loads(Path(stamp["handoff"]).read_text(encoding="utf-8"))
+    assert handoff["paying_day"] == "FAIL"
+
+
+def test_keep_lab_forces_dry_run_and_refuses_wrap(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("CISO_PUSH", "1")
+    monkeypatch.setenv("DRY_RUN", "0")
+    monkeypatch.setenv("RISKREADY_PUSH", "1")
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    stamp = keep_lab(ROOT, pack_in=empty, work=tmp_path / "work")
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["posted"] is False
+    assert stamp["http"] is False
+    assert stamp["sinks_posted"] is False
+    assert stamp["wrap"] == "review-only"
+    assert stamp["paying_day"] == "FAIL"
+    og = json.loads((Path(stamp["opengrc"]) / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert og["posted"] is False
+    assert og.get("riskready", "").startswith("stay-out") or "stay-out" in json.dumps(og)
+    probo = json.loads(Path(stamp["probo"]).read_text(encoding="utf-8"))
+    assert probo["posted"] is False
+    assert probo["paying_day"] == "FAIL"
+
+
+def test_keep_lab_cli_desktop_dry_run(tmp_path: Path) -> None:
+    """Operator CLI: python3 -m keep lab --pack-in/--work with DRY_RUN=1 CISO_PUSH=0."""
+    import os
+    import subprocess
+    import sys
+
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    work = tmp_path / "cli-work"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["DRY_RUN"] = "1"
+    env["CISO_PUSH"] = "0"
+    env["RISKREADY_PUSH"] = "0"
+    env["GRC_LIVE_SCAN"] = "0"
+    env["DROPBOX_LIVE"] = "0"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "keep",
+            "lab",
+            "--pack-in",
+            str(empty),
+            "--work",
+            str(work),
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    stamp = json.loads((work / "keep-lab.json").read_text(encoding="utf-8"))
+    assert stamp["status"] == "pass"
+    assert stamp["sample"] is True
+    assert stamp["client_keep"] is False
+    assert stamp["paying_day"] == "FAIL"
+    assert stamp["posted"] is False
+    assert stamp["wrap"] == "review-only"
+    assert (work / "out" / "ciso-assistant" / "IMPORT.json").is_file()
+    assert (work / "out" / "opengrc" / "risks.csv").is_file()
+    assert (work / "out" / "import_preview" / "probo.json").is_file()
+    assert "SAMPLE" in proc.stdout
+
+
+def test_desktop_dry_run_doc_is_operator_followable() -> None:
+    doc = (ROOT / "docs" / "DESKTOP_DRY_RUN.md").read_text(encoding="utf-8")
+    low = doc.lower()
+    assert "DRY_RUN=1" in doc
+    assert "CISO_PUSH=0" in doc
+    assert "RISKREADY_PUSH=0" in doc
+    assert "GRC_LIVE_SCAN=0" in doc
+    assert "python3 -m keep lab" in doc
+    assert "SAMPLE ≠ client" in doc or "SAMPLE ≠ client KEEP" in doc
+    assert "paying_day" in doc and "FAIL" in doc
+    assert "/api/risks" in doc
+    assert "stay-out" in low or "review-only" in low
+    assert "opengrc" in low
+    assert "probo" in low
+    assert "0/4" in doc
+    assert "keep/work/out/ciso-assistant" in doc
+    assert "--pack-in" in doc and "--work" in doc
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "DESKTOP_DRY_RUN.md" in readme
+    og = (ROOT / "docs" / "IMPORT_OPENGRC.md").read_text(encoding="utf-8")
+    assert "DESKTOP_DRY_RUN.md" in og
+    assert "DRY_RUN=1" in og and "CISO_PUSH=0" in og

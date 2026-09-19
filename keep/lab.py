@@ -25,6 +25,7 @@ from keep.adapters import (
 )
 from keep.ciso_import import (
     header_mismatch,
+    honest_paying_day,
     listed_ciso_files,
     missing_required_ciso,
     read_paying_day,
@@ -209,7 +210,7 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         },
     )
     handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
-    paying = read_paying_day(root)
+    paying = honest_paying_day(read_paying_day(root), sample=sample)
     import_path = write_ciso_import_manifest(
         work_out,
         sample=sample,
@@ -306,8 +307,31 @@ def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     return stamp
 
 
-def main() -> int:
-    stamp = keep_lab()
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="keep lab",
+        description=(
+            "SAMPLE KEEP-chain → CISO Assistant CSVs + OpenGRC/Probo files. "
+            "Forces DRY_RUN=1 CISO_PUSH=0. SAMPLE ≠ client. paying_day cannot PASS."
+        ),
+    )
+    parser.add_argument(
+        "--pack-in",
+        dest="pack_in",
+        help="KEEP file-drop dir (default: pack in/). Never written by keep-lab.",
+    )
+    parser.add_argument(
+        "--work",
+        dest="work",
+        help="Isolated work dir (default: keep/work/). Not pack out/.",
+    )
+    args = parser.parse_args(argv)
+    stamp = keep_lab(
+        pack_in=Path(args.pack_in) if args.pack_in else None,
+        work=Path(args.work) if args.work else None,
+    )
     print(json.dumps(stamp, indent=2))
     print(
         f"KEEP_LAB={stamp['status']} sample={stamp['sample']} "
