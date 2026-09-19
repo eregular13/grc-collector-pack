@@ -28,6 +28,16 @@ export DROPBOX_LIVE=0
 
 ## 2. Run the SAMPLE path
 
+One command (sets the safety env, runs keep-lab, verifies `IMPORT.json`):
+
+```bash
+cd /path/to/grc-collector-pack
+./scripts/sample_to_sor.sh
+# DESKTOP: .\scripts\sample_to_sor.ps1
+```
+
+Equivalent without the wrapper:
+
 ```bash
 cd /path/to/grc-collector-pack
 export PYTHONPATH="$PWD"

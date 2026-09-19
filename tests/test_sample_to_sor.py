@@ -1,0 +1,213 @@
+"""Cold-start SAMPLE → CISO operator entrypoint. SAMPLE ≠ client KEEP."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from keep.ciso_import import (
+    CISO_REQUIRED,
+    SampleHonestyError,
+    verify_sample_sor,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts" / "sample_to_sor.sh"
+PS1 = ROOT / "scripts" / "sample_to_sor.ps1"
+
+
+def _honest_bundle(folder: Path) -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "IMPORT.json").write_text(
+        json.dumps(
+            {
+                "demo": True,
+                "sample": True,
+                "client_keep": False,
+                "paying_day": "FAIL",
+                "posted": False,
+                "http": False,
+                "wrap": "review-only",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    for name in CISO_REQUIRED:
+        (folder / name).write_text("ref_id,name\nDEMO-1,sample\n", encoding="utf-8")
+
+
+def test_sample_to_sor_scripts_force_safety_env() -> None:
+    sh = SCRIPT.read_text(encoding="utf-8")
+    ps1 = PS1.read_text(encoding="utf-8")
+    assert SCRIPT.is_file()
+    assert PS1.is_file()
+    assert os.access(SCRIPT, os.X_OK)
+    for blob in (sh, ps1):
+        assert "DRY_RUN" in blob and "1" in blob
+        assert "GRC_LIVE_SCAN" in blob
+        assert "CISO_PUSH" in blob
+        assert "RISKREADY_PUSH" in blob
+        assert "DROPBOX_LIVE" in blob
+        assert "keep lab" in blob or "-m keep" in blob
+        assert "keep verify" in blob
+        assert "elapsed" in blob
+        assert "ciso-assistant" in blob
+        assert "/api/risks" in sh or "SAMPLE" in blob
+    assert "export DRY_RUN=1" in sh
+    assert "export GRC_LIVE_SCAN=0" in sh
+    assert "export CISO_PUSH=0" in sh
+    assert "export RISKREADY_PUSH=0" in sh
+    assert "export DROPBOX_LIVE=0" in sh
+    assert "python3 -m keep lab" in sh or '-m keep lab' in sh
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "sample-to-sor:" in makefile
+    assert "scripts/sample_to_sor.sh" in makefile
+
+
+def test_readme_and_operator_first_lines_point_at_one_command() -> None:
+    readme_head = "".join((ROOT / "README.md").read_text(encoding="utf-8").splitlines()[:12])
+    op_head = "".join((ROOT / "keep" / "OPERATOR.md").read_text(encoding="utf-8").splitlines()[:12])
+    assert "sample_to_sor.sh" in readme_head
+    assert "sample-to-sor" in readme_head or "sample_to_sor" in readme_head
+    assert "sample_to_sor.ps1" in readme_head
+    assert "SAMPLE ≠ client" in readme_head or "SAMPLE ≠ client KEEP" in readme_head
+    assert "keep_status" in readme_head
+    assert "keep_ciso" in readme_head
+    assert "sample_to_sor.sh" in op_head
+    assert "sample_to_sor.ps1" in op_head
+    assert "SAMPLE ≠ client KEEP" in op_head or "SAMPLE ≠ client" in op_head
+    op = (ROOT / "keep" / "OPERATOR.md").read_text(encoding="utf-8")
+    assert "python3 -m keep lab" in op
+    assert "keep_status" in op and "keep_ciso" in op
+    dry = (ROOT / "docs" / "DESKTOP_DRY_RUN.md").read_text(encoding="utf-8")
+    assert "sample_to_sor.sh" in dry
+
+
+def test_verify_sample_sor_fail_closed_on_dishonest_import(tmp_path: Path) -> None:
+    folder = tmp_path / "ciso-assistant"
+    _honest_bundle(folder)
+    assert verify_sample_sor(folder)["ok"] is True
+
+    dishonest = {
+        "paying_day": "PASS",
+        "sample": False,
+        "demo": False,
+        "client_keep": True,
+        "posted": True,
+    }
+    for key, value in dishonest.items():
+        doc = json.loads((folder / "IMPORT.json").read_text(encoding="utf-8"))
+        doc[key] = value
+        (folder / "IMPORT.json").write_text(json.dumps(doc) + "\n", encoding="utf-8")
+        with pytest.raises(SampleHonestyError):
+            verify_sample_sor(folder)
+        _honest_bundle(folder)
+
+    (folder / "findings.csv").unlink()
+    with pytest.raises(SampleHonestyError, match="missing"):
+        verify_sample_sor(folder)
+
+
+def test_sample_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    ciso = work / "out" / "ciso-assistant"
+    _honest_bundle(ciso)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["DRY_RUN"] = "1"
+    env["CISO_PUSH"] = "0"
+    honest = subprocess.run(
+        ["bash", str(SCRIPT), "--verify-only", "--work", str(work)],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert honest.returncode == 0, honest.stderr or honest.stdout
+    assert "elapsed=" in honest.stdout
+    assert str(ciso) in honest.stdout
+
+    doc = json.loads((ciso / "IMPORT.json").read_text(encoding="utf-8"))
+    doc["paying_day"] = "PASS"
+    doc["client_keep"] = True
+    doc["sample"] = False
+    (ciso / "IMPORT.json").write_text(json.dumps(doc) + "\n", encoding="utf-8")
+    bad = subprocess.run(
+        ["bash", str(SCRIPT), "--verify-only", "--work", str(work)],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert bad.returncode != 0
+    assert "SAMPLE_HONESTY_FAIL" in (bad.stderr or "") or "paying_day" in (bad.stderr or "")
+
+
+def test_sample_to_sor_sh_isolated_keep_lab(tmp_path: Path) -> None:
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    work = tmp_path / "work"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["DRY_RUN"] = "0"
+    env["CISO_PUSH"] = "1"
+    env["RISKREADY_PUSH"] = "1"
+    env["GRC_LIVE_SCAN"] = "1"
+    env["DROPBOX_LIVE"] = "1"
+    proc = subprocess.run(
+        [
+            "bash",
+            str(SCRIPT),
+            "--pack-in",
+            str(empty),
+            "--work",
+            str(work),
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert "elapsed=" in proc.stdout
+    assert "ciso=" in proc.stdout
+    stamp = json.loads((work / "keep-lab.json").read_text(encoding="utf-8"))
+    assert stamp["status"] == "pass"
+    assert stamp["sample"] is True
+    assert stamp["client_keep"] is False
+    assert stamp["paying_day"] == "FAIL"
+    assert stamp["posted"] is False
+    import_doc = json.loads((work / "out" / "ciso-assistant" / "IMPORT.json").read_text(encoding="utf-8"))
+    assert import_doc["demo"] is True
+    assert import_doc["sample"] is True
+    assert import_doc["client_keep"] is False
+    assert import_doc["paying_day"] == "FAIL"
+    assert import_doc["posted"] is False
+    for name in CISO_REQUIRED:
+        assert (work / "out" / "ciso-assistant" / name).is_file()
+    assert (work / "out" / "opengrc" / "risks.csv").is_file()
+    assert (work / "out" / "import_preview" / "probo.json").is_file()
+
+
+def test_keep_verify_cli_and_main_usage() -> None:
+    main = (ROOT / "keep" / "__main__.py").read_text(encoding="utf-8")
+    assert "verify" in main
+    assert "sample_to_sor" in main
+    proc = subprocess.run(
+        [sys.executable, "-m", "keep", "verify"],
+        cwd=str(ROOT),
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode != 0

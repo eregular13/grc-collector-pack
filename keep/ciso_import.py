@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -167,3 +168,92 @@ def write_ciso_import_manifest(
     )
     guide.write_text("\n".join(lines), encoding="utf-8")
     return dest
+
+
+class SampleHonestyError(ValueError):
+    """SAMPLE SoR bundle is missing files or honesty stamps."""
+
+
+def verify_sample_sor(ciso: Path) -> dict[str, Any]:
+    """Fail-closed SAMPLE honesty for the operator entrypoint.
+
+    Requires demo/sample true, paying_day FAIL, client_keep false,
+    posted/http false, and the required CISO CSVs. SAMPLE ≠ client KEEP.
+    This pack never invents paying_day PASS.
+    """
+    folder = Path(ciso)
+    errors: list[str] = []
+    import_path = folder / "IMPORT.json"
+    if not import_path.is_file():
+        raise SampleHonestyError(f"missing {import_path}")
+    try:
+        doc = json.loads(import_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SampleHonestyError(f"IMPORT.json is not JSON: {exc}") from exc
+    if not isinstance(doc, dict):
+        raise SampleHonestyError("IMPORT.json must be an object")
+
+    if doc.get("demo") is not True:
+        errors.append("demo must be true")
+    if doc.get("sample") is not True:
+        errors.append("sample must be true")
+    if doc.get("client_keep") is not False:
+        errors.append("client_keep must be false")
+    paying = str(doc.get("paying_day") or "").strip()
+    if paying != "FAIL":
+        errors.append("paying_day must be FAIL (SAMPLE cannot PASS)")
+    if doc.get("posted") is not False:
+        errors.append("posted must be false")
+    if "http" in doc and doc.get("http") is not False:
+        errors.append("http must be false")
+    wrap = str(doc.get("wrap") or "")
+    if wrap and wrap != "review-only":
+        errors.append("wrap must stay review-only")
+
+    missing = [name for name in CISO_REQUIRED if not (folder / name).is_file()]
+    if missing:
+        errors.append(f"CISO CSVs missing: {missing}")
+    empty = [
+        name
+        for name in CISO_REQUIRED
+        if (folder / name).is_file() and not (folder / name).read_text(encoding="utf-8").strip()
+    ]
+    if empty:
+        errors.append(f"CISO CSVs empty: {empty}")
+
+    if errors:
+        raise SampleHonestyError("; ".join(errors))
+    return {
+        "ok": True,
+        "ciso": str(folder),
+        "import": str(import_path),
+        "demo": True,
+        "sample": True,
+        "client_keep": False,
+        "paying_day": "FAIL",
+        "posted": False,
+        "files": [name for name in list(CISO_REQUIRED) + list(CISO_OPTIONAL) if (folder / name).is_file()],
+    }
+
+
+def verify_main(argv: list[str] | None = None) -> int:
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        prog="keep verify",
+        description="Fail-closed SAMPLE honesty on keep/work/out/ciso-assistant/IMPORT.json",
+    )
+    parser.add_argument(
+        "--ciso",
+        required=True,
+        help="ciso-assistant directory with IMPORT.json + CSVs",
+    )
+    args = parser.parse_args(argv)
+    try:
+        result = verify_sample_sor(Path(args.ciso))
+    except SampleHonestyError as exc:
+        print(f"SAMPLE_HONESTY_FAIL: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2))
+    return 0

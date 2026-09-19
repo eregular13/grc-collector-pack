@@ -1,7 +1,8 @@
 # CISO Assistant export prove (SAMPLE/DEMO)
 
 **Primary KEEP path this week** (not pack_drop): redacted
-`fixtures/keep-samples/` → `python3 -m keep lab` →
+`fixtures/keep-samples/` → `./scripts/sample_to_sor.sh` (or
+`python3 -m keep lab`) →
 `keep/work/out/ciso-assistant/*.csv` + `IMPORT.md`. Honesty:
 `demo: true` / SAMPLE ≠ client / `paying_day: FAIL`. See
 `keep/OPERATOR.md`. `python3 -m keep ciso` is the same command.

@@ -1,7 +1,11 @@
-# CRITIC — cycle 171 (DESKTOP compose_lab pass_desktop + Eval↔pack handoff)
+# CRITIC — cycle 172 (SAMPLE → CISO one command)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-STATUS `compose_lab: pass_desktop` after `DESKTOP-222GHQV` proved
+Cold-start operator entrypoint: `scripts/sample_to_sor.sh` /
+`make sample-to-sor` (DESKTOP `scripts/sample_to_sor.ps1`; MCP
+`keep_status` + `keep_ciso`). SAMPLE keep-lab →
+`keep/work/out/ciso-assistant` with `IMPORT.json` honesty
+fail-closed. STATUS `compose_lab: pass_desktop` after `DESKTOP-222GHQV` proved
 `docker compose up --build --exit-code-from grc-loader` on pack
 `2680a5b2` (exit 0; demo:true). Agent/CI VM runtime `compose_lab()`
 is still **absent** — ABSENT on this VM ≠ that DESKTOP stamp.
