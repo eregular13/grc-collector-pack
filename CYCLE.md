@@ -1,5 +1,12 @@
 # CYCLE log
 
+## cycle 175 — farm_drop cp1252 verify-only hotfix (2026-09-19)
+
+DESKTOP-222GHQV Windows cp1252 crashed `prove_ciso.py --verify-only`
+on U+2260 in `FARM_DROP_HONESTY=ok`. Console prints now ASCII
+(`!=`). Wrappers set `PYTHONIOENCODING=utf-8`. Honesty rails
+unchanged. No adapters. No invented KEEP. Catalog **unchanged**.
+
 ## cycle 174 — farm_drop_to_sor operator entrypoint (2026-09-19)
 
 CoS #48 farm leave-behind twin of `sample_to_sor`:

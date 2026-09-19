@@ -11,6 +11,7 @@ import pytest
 
 from scripts.prove_ciso import (
     CISO_CSVS,
+    HONESTY_OK_LINE,
     FarmDropHonestyError,
     verify_farm_drop_sor,
 )
@@ -58,6 +59,7 @@ def test_farm_drop_to_sor_scripts_force_safety_env() -> None:
         assert "CISO_PUSH" in blob
         assert "RISKREADY_PUSH" in blob
         assert "DROPBOX_LIVE" in blob
+        assert "PYTHONIOENCODING" in blob
         assert "prove_ciso" in blob
         assert "elapsed" in blob
         assert "ciso-assistant" in blob
@@ -68,6 +70,8 @@ def test_farm_drop_to_sor_scripts_force_safety_env() -> None:
     assert "export CISO_PUSH=0" in sh
     assert "export RISKREADY_PUSH=0" in sh
     assert "export DROPBOX_LIVE=0" in sh
+    assert "export PYTHONIOENCODING=utf-8" in sh
+    assert 'PYTHONIOENCODING = "utf-8"' in ps1 or "$env:PYTHONIOENCODING" in ps1
     assert "scripts/prove_ciso.py" in sh
     assert "--verify-only" in sh
     assert "/api/risks" in sh
@@ -97,6 +101,55 @@ def test_readme_and_operator_first_lines_point_at_farm_drop_twin() -> None:
     assert "farm_drop_to_sor.sh" in covey_head
     assert "sample_to_sor" in covey_head
     assert "SAMPLE" in covey_head or "DEMO" in covey_head
+
+
+def test_farm_drop_honesty_ok_line_is_ascii_cp1252() -> None:
+    """DESKTOP-222GHQV Windows cp1252 cannot print U+2260; success line must be ASCII."""
+    assert HONESTY_OK_LINE.isascii()
+    HONESTY_OK_LINE.encode("cp1252")
+    assert "\u2260" not in HONESTY_OK_LINE
+    assert "!=" in HONESTY_OK_LINE
+    assert "FARM_DROP_HONESTY=ok" in HONESTY_OK_LINE
+    src = (ROOT / "scripts" / "prove_ciso.py").read_text(encoding="utf-8")
+    for literal in (
+        'print("FARM_DROP_HONESTY=ok',
+        "print('FARM_DROP_HONESTY=ok",
+        "print(HONESTY_OK_LINE)",
+    ):
+        if literal.startswith("print(HONESTY"):
+            assert literal in src
+    assert "HONESTY_OK_LINE" in src
+    for path in (SCRIPT, PS1):
+        text = path.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith(("echo ", "Write-Host ")):
+                stripped.encode("cp1252")
+                assert "\u2260" not in stripped
+                assert "\u2192" not in stripped
+
+
+def test_verify_only_stdout_encodes_under_cp1252(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    _honest_prove(work)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["DRY_RUN"] = "1"
+    env["CISO_PUSH"] = "0"
+    env["PYTHONIOENCODING"] = "utf-8"
+    proc = subprocess.run(
+        ["bash", str(SCRIPT), "--verify-only", "--work", str(work)],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    blob = (proc.stdout or "") + (proc.stderr or "")
+    assert HONESTY_OK_LINE in blob or "FARM_DROP_HONESTY=ok" in blob
+    blob.encode("cp1252")
+    assert "\u2260" not in blob
 
 
 def test_verify_farm_drop_sor_fail_closed_on_paying_day_pass(tmp_path: Path) -> None:
