@@ -2,10 +2,11 @@
 
 ## Unreleased
 
+- Eval↔pack handoff: `docs/EVAL_PACK_HANDOFF.md` — Eval `DESKTOP-DAY-OF.md` (loopback HITL) → pack `DESKTOP_DRY_RUN.md`. Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready.
+- Honesty restamp: pack HEAD `b77cfc0e` / farm HEAD `c012dd24` (PR #23 unit-only GHA CI already on main). Eval HEAD `5f40f9ff` (PR #3). Schema seam CLOSED. Integrity PARKED.
 - DESKTOP/client-host dry-run: `docs/DESKTOP_DRY_RUN.md` (`DRY_RUN=1` `CISO_PUSH=0`). `python3 -m keep lab --pack-in/--work`.
 - Fail-closed: SAMPLE cannot emit `paying_day` PASS (`honest_paying_day`). RiskReady stay-out.
-- Honesty restamp: pack HEAD `7c9c56a5` / Covey HEAD `3cf8bb86` (PR #22 pack_drop schema align). Schema seam CLOSED. Integrity PARKED.
-- CI runs SAMPLE keep-lab as a subprocess. Honesty lock follows live pack HEAD `7c9c56a5`.
+- CI runs SAMPLE keep-lab as a subprocess. Honesty lock follows live pack HEAD `b77cfc0e`.
 - OpenGRC Data Manager CSV exporter and Probo `addRisk` / `addFinding` drafts from the CISO intermediate (`python3 -m exporters`). File-only. `posted=false`. RiskReady stay-out.
 - SAMPLE keep-lab writes those sinks from `keep/work/out/ciso-assistant` (`demo: true`). Do not wait for denser KEEP.
 

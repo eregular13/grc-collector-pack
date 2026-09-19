@@ -9,7 +9,9 @@ review-only. `paying_day` stays **FAIL**.
 ## Primary path this week (Desktop — no make / no gh)
 
 **Human dry-run:** [docs/DESKTOP_DRY_RUN.md](../docs/DESKTOP_DRY_RUN.md)
-(`DRY_RUN=1`, `CISO_PUSH=0`). Self-lab uses redacted
+(`DRY_RUN=1`, `CISO_PUSH=0`). Eval↔pack order:
+[docs/EVAL_PACK_HANDOFF.md](../docs/EVAL_PACK_HANDOFF.md) — Eval day-of
+≠ pack paying_day PASS; SAMPLE keep cannot stamp client-ready. Self-lab uses redacted
 `fixtures/keep-samples/` until a real client KEEP lands in pack `in/`.
 Do not treat this as a client estate. **SAMPLE ≠ client KEEP.**
 `paying_day` cannot PASS from SAMPLE. RiskReady stay-out.

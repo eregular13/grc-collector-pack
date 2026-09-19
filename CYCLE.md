@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 170 — restamp farm HEAD c012dd24 + Eval↔pack handoff (2026-09-19)
+
+CoS #47 honesty restamp — live pack HEAD `b77cfc0e` (PR #88 Covey restamp already on master). Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on main; client-day path already on main). Eval HEAD `5f40f9ff` (PR #3 unit CI Node 20 already on main; SCOPE brakes + DESKTOP-DAY-OF already on main). Eval↔pack handoff (`docs/EVAL_PACK_HANDOFF.md`): evergreen-eval `docs/DESKTOP-DAY-OF.md` (loopback HITL) → pack `docs/DESKTOP_DRY_RUN.md` (SAMPLE keep-lab dry-run). Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready. pack_drop schema seam **CLOSED**. Integrity **PARKED**. SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run stands. `honest_paying_day` fail-closed: SAMPLE cannot emit PASS. RiskReady stay-out. Item **COS47-HONESTY**. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE. Next brick named = Reid-only real KEEP `in/` drop (0/4) — no pack_drop vanity. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**.
+
+```json
+{"pytest": 674, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 169 — restamp Covey HEAD 3cf8bb86 (pack_drop schema align) (2026-09-19)
 
 CoS #46 honesty restamp — live pack HEAD `7c9c56a5` (PR #86 SAMPLE keep-lab dry-run already on master). Covey HEAD `3cf8bb86` (PR #22 pack_drop export aligned to `covey.pack_drop.v1` + source evergreen-covey + row schema; preceded by CLIENT_DAY #21 `a89145f4`; already on Covey main). pack_drop schema seam **CLOSED**. Integrity **PARKED**. SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run stands. `honest_paying_day` fail-closed: SAMPLE cannot emit PASS. RiskReady stay-out. Item **COS46-HONESTY**. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE. Next brick named = Reid-only real KEEP `in/` drop (0/4) — no pack_drop vanity. Catalog **unchanged**. Paying-day stays FAIL. SAMPLE KEEP **0/4**.
