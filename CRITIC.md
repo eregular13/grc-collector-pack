@@ -1,6 +1,6 @@
 # CRITIC — cycle 174 (farm_drop_to_sor + pack a3a3651b)
 
-**8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
+**This window (cycle 174):** **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
 STATUS `compose_lab: pass_desktop` after `DESKTOP-222GHQV` proved
 `docker compose up --build --exit-code-from grc-loader` on pack
 `2680a5b2` (exit 0; demo:true). Agent/CI VM runtime `compose_lab()`

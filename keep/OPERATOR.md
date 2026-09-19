@@ -8,7 +8,7 @@ remains the primary KEEP path.**
 **Farm leave-behind twin:** `./scripts/farm_drop_to_sor.sh` or
 `make farm-drop-to-sor` (DESKTOP: `.\scripts\farm_drop_to_sor.ps1`).
 Covey `fixtures/pack_drop` → `prove/work/out/ciso-assistant/` (never pack
-`in/`). SAMPLE/DEMO ≠ client.
+`in/`). **SAMPLE ≠ client KEEP.** SAMPLE/DEMO ≠ client.
 
 **SAMPLE ≠ client KEEP.** This path parses HardeningKitty / Maester / testssl /
 Prowler|ScoutSuite file-drops and writes CISO Assistant CSVs under
