@@ -7,8 +7,10 @@ Not a client estate. Never writes pack in/. Never POSTs. Paying-day stays FAIL.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -66,6 +68,12 @@ ENV_KEYS = (
     "PYTHONPATH",
 )
 
+PAYING_PASS_RE = re.compile(r"paying[_ ]day[\"'\s:=]+pass", re.IGNORECASE)
+
+
+class FarmDropHonestyError(RuntimeError):
+    """prove JSON / CISO outputs claimed a client estate or paying_day PASS."""
+
 
 def _copy_tree(src: Path, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
@@ -114,6 +122,68 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
         "client": False,
         "adapters": adapters,
     }
+
+
+def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
+    """Fail-closed if prove JSON / CISO outputs claim client estate or paying_day PASS."""
+    dest = Path(dest)
+    stamp_path = dest / "prove-ciso.json"
+    if not stamp_path.is_file():
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL missing prove-ciso.json")
+    raw = stamp_path.read_text(encoding="utf-8")
+    try:
+        stamp = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise FarmDropHonestyError(f"FARM_DROP_HONESTY_FAIL prove-ciso.json: {exc}") from exc
+    if not isinstance(stamp, dict):
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL prove-ciso.json not an object")
+
+    paying = str(stamp.get("paying_day") or "").strip()
+    if paying.upper() == "PASS":
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL paying_day PASS")
+    if paying != "FAIL":
+        raise FarmDropHonestyError(f"FARM_DROP_HONESTY_FAIL paying_day {paying or 'missing'}")
+    if stamp.get("client") is True or stamp.get("client_keep") is True:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL client estate claim")
+    if stamp.get("sample") is not True:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL sample must be true")
+    if stamp.get("demo") is not True:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL demo must be true")
+    estate = str(stamp.get("estate") or "")
+    estate_low = estate.lower()
+    if "client" in estate_low and "not a client" not in estate_low:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL estate claims client")
+    if "sample" not in estate_low and "demo" not in estate_low:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL estate missing SAMPLE/DEMO")
+    if stamp.get("posted") is True:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL posted true")
+    if PAYING_PASS_RE.search(raw):
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL prove JSON paying_day PASS")
+
+    ciso = dest / "out" / "ciso-assistant"
+    if not ciso.is_dir():
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL missing out/ciso-assistant/")
+    present = [name for name in CISO_CSVS if (ciso / name).is_file()]
+    if not present:
+        raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL missing CISO CSVs")
+
+    for folder in (dest, dest / "out", ciso):
+        if not folder.is_dir():
+            continue
+        for path in folder.iterdir():
+            if not path.is_file() or path.suffix.lower() not in {".json", ".csv", ".md", ".txt"}:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            low = text.lower()
+            if PAYING_PASS_RE.search(text):
+                raise FarmDropHonestyError(
+                    f"FARM_DROP_HONESTY_FAIL {path.name} claims paying_day PASS"
+                )
+            if "client estate" in low and "not a client" not in low and "sample" not in low:
+                raise FarmDropHonestyError(
+                    f"FARM_DROP_HONESTY_FAIL {path.name} claims client estate"
+                )
+    return {"ok": True, "stamp": stamp, "ciso_dir": str(ciso), "ciso_files": present}
 
 
 def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, Any]:
@@ -259,8 +329,42 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
     return stamp
 
 
-def main() -> int:
-    stamp = prove_ciso()
+def _resolve_work(raw: str | None) -> Path:
+    if not raw:
+        return ROOT / "prove" / "work"
+    path = Path(raw)
+    return path if path.is_absolute() else ROOT / path
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "SAMPLE/DEMO Covey pack_drop + honeypot → prove/work/out/ciso-assistant. "
+            "Never writes pack in/. Not a client estate. Paying-day stays FAIL."
+        )
+    )
+    parser.add_argument(
+        "--work",
+        default="",
+        help="Isolation dir (default: prove/work). Never pack in/.",
+    )
+    parser.add_argument(
+        "--verify-only",
+        action="store_true",
+        help="Check existing prove-ciso.json + CISO outputs; do not re-seed.",
+    )
+    args = parser.parse_args(argv)
+    dest = _resolve_work(args.work)
+    if args.verify_only:
+        try:
+            verify_farm_drop_sor(dest)
+        except FarmDropHonestyError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print("FARM_DROP_HONESTY=ok SAMPLE/DEMO ≠ client paying_day=FAIL")
+        return 0
+
+    stamp = prove_ciso(dest=dest)
     print(json.dumps(stamp, indent=2, default=str))
     print(
         f"PROVE_CISO={stamp['status']} sample={stamp['sample']} client={stamp['client']} "
@@ -268,6 +372,11 @@ def main() -> int:
         f"assets={stamp['counts'].get('assets')} findings={stamp['counts'].get('findings')}"
     )
     if stamp.get("status") != "pass":
+        return 1
+    try:
+        verify_farm_drop_sor(dest)
+    except FarmDropHonestyError as exc:
+        print(str(exc), file=sys.stderr)
         return 1
     print("Estate is SAMPLE/DEMO fixtures. Not a client. Paying-day stays FAIL.")
     return 0

@@ -1,5 +1,27 @@
 # CYCLE log
 
+## cycle 174 — farm_drop_to_sor operator entrypoint (2026-09-19)
+
+CoS #48 farm leave-behind twin of `sample_to_sor`:
+`scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
+`scripts/farm_drop_to_sor.ps1`. Sets `PYTHONPATH` `DRY_RUN=1`
+`GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0` `DROPBOX_LIVE=0`,
+runs `python3 scripts/prove_ciso.py` under `prove/work/` (never pack
+`in/`), fail-closes if prove JSON / CISO outputs claim client estate
+or `paying_day` PASS, prints elapsed seconds +
+`prove/work/out/ciso-assistant/` paths. SAMPLE keep remains the
+primary KEEP path. Pack HEAD this PR (`a3a3651b`). Covey HEAD
+`c012dd24`. Eval HEAD `ebaa9f50`. `compose_lab: pass_desktop` /
+`2680a5b2` / DESKTOP-222GHQV stand. paying_day **FAIL**. SAMPLE KEEP
+**0/4**. RiskReady stay-out. No new collectors. No invented KEEP.
+Catalog **unchanged**. Agent-VM `farm_drop_to_sor` wall **0.232s**
+(isolated `--work`; honesty-only; not a paying_day PASS). This-VM
+pytest lab JSON below stays `compose_lab` absent.
+
+```json
+{"pytest": 690, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 173 — restamp pack 9a872ef5 + Eval ebaa9f50 (2026-09-19)
 
 CoS #47 honesty restamp — live pack HEAD `9a872ef5` (PR #91
