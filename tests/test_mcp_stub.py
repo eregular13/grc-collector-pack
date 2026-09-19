@@ -701,6 +701,11 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
     assert "OpenGRC" in entries["keep_ciso"]["description"]
     assert "Probo" in entries["keep_ciso"]["description"]
     assert "sample_to_sor" in entries["keep_ciso"]["description"]
+    assert "farm_drop_to_sor" in entries["keep_ciso"]["description"]
+    assert "farm-drop-to-sor" in entries["keep_ciso"]["description"]
+    assert "farm_drop_to_sor.ps1" in entries["keep_ciso"]["description"]
+    assert "sample_to_sor" in entries["keep_status"]["description"]
+    assert "farm_drop_to_sor" in entries["keep_status"]["description"]
     exporters = entries["keep_ciso"]["inputSchema"]["properties"].get("exporters") or {}
     assert exporters.get("type") == "boolean"
     assert "keep-lab" in (exporters.get("description") or "")
@@ -738,6 +743,12 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert data["fixtures_keep_samples"]["present"] is True
     assert data["fixtures_keep_samples"]["lab_only"] is True
     assert data["fixtures_keep_samples"]["keep_real"] == "0/4"
+    assert data["cli_twin"]["command"] in {"./scripts/sample_to_sor.sh", "make sample-to-sor"}
+    assert data["farm_drop_cli_twin"]["command"] in {
+        "./scripts/farm_drop_to_sor.sh",
+        "make farm-drop-to-sor",
+    }
+    assert data["farm_drop_cli_twin"]["ps1"] == ".\\scripts\\farm_drop_to_sor.ps1"
     iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
     assert "`keep_status`" in iface
     assert "`keep_ciso`" in iface
@@ -748,6 +759,10 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert "OpenGRC" in iface
     assert "Probo" in iface
     assert "sample_to_sor.sh" in iface
+    assert "farm_drop_to_sor.sh" in iface
+    assert "farm-drop-to-sor" in iface
+    assert "farm_drop_to_sor.ps1" in iface
+    assert "farm_drop_cli_twin" in iface
     assert "`keep_status` then `keep_ciso`" in iface
     assert "denser" not in iface.lower()
     assert "prefer pack" not in iface.lower()
@@ -839,6 +854,17 @@ def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pyte
     assert twin["present"] is True
     assert twin["command"] == "./scripts/sample_to_sor.sh"
     assert twin["make"] == "make sample-to-sor"
+    assert twin["ps1"] == ".\\scripts\\sample_to_sor.ps1"
+    farm = data["farm_drop_cli_twin"]
+    assert farm["present"] is True
+    assert farm["name"] == "farm_drop_to_sor"
+    assert farm["kind"] == "farm_pack_drop"
+    assert farm["command"] == "./scripts/farm_drop_to_sor.sh"
+    assert farm["make"] == "make farm-drop-to-sor"
+    assert farm["ps1"] == ".\\scripts\\farm_drop_to_sor.ps1"
+    assert farm["ps1_present"] is True
+    assert "prove_ciso" in farm["note"]
+    assert "pack in" in farm["note"].lower() or "pack in/" in farm["note"]
     assert data["exporters"] is False
     assert data["exporters_from"] == "keep-lab"
     assert data["handoff"].endswith("handoff.json")
@@ -850,19 +876,41 @@ def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pyte
 
 
 def test_keep_ciso_sor_helpers_tolerate_missing_script(tmp_path: Path) -> None:
-    from dropbox.mcp_stub import keep_ciso_sor_paths, sample_to_sor_cli_twin
+    from dropbox.mcp_stub import (
+        farm_drop_to_sor_cli_twin,
+        keep_ciso_sor_paths,
+        sample_to_sor_cli_twin,
+    )
 
     twin = sample_to_sor_cli_twin(tmp_path)
     assert twin["present"] is False
     assert twin["script"] == ""
     assert twin["command"] == "make sample-to-sor"
     assert twin["make"] == "make sample-to-sor"
+    assert twin["ps1"] == ".\\scripts\\sample_to_sor.ps1"
+    assert twin["ps1_present"] is False
+
+    farm = farm_drop_to_sor_cli_twin(tmp_path)
+    assert farm["present"] is False
+    assert farm["script"] == ""
+    assert farm["command"] == "make farm-drop-to-sor"
+    assert farm["make"] == "make farm-drop-to-sor"
+    assert farm["ps1"] == ".\\scripts\\farm_drop_to_sor.ps1"
+    assert farm["ps1_present"] is False
+    assert farm["name"] == "farm_drop_to_sor"
+    assert farm["kind"] == "farm_pack_drop"
 
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "sample_to_sor.sh").write_text("#!/bin/sh\n", encoding="utf-8")
     present = sample_to_sor_cli_twin(tmp_path)
     assert present["present"] is True
     assert present["command"] == "./scripts/sample_to_sor.sh"
+    (tmp_path / "scripts" / "farm_drop_to_sor.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+    (tmp_path / "scripts" / "farm_drop_to_sor.ps1").write_text("# ps1\n", encoding="utf-8")
+    farm_present = farm_drop_to_sor_cli_twin(tmp_path)
+    assert farm_present["present"] is True
+    assert farm_present["command"] == "./scripts/farm_drop_to_sor.sh"
+    assert farm_present["ps1_present"] is True
 
     work = tmp_path / "work"
     ciso = work / "out" / "ciso-assistant"
@@ -930,4 +978,69 @@ def test_keep_status_then_keep_ciso_one_session_returns_sor_paths(
     assert Path(data["probo"]).is_file()
     assert "probo" in data["probo"]
     assert data["cli_twin"]["command"] in {"./scripts/sample_to_sor.sh", "make sample-to-sor"}
+    assert data["farm_drop_cli_twin"]["command"] in {
+        "./scripts/farm_drop_to_sor.sh",
+        "make farm-drop-to-sor",
+    }
+    assert data["farm_drop_cli_twin"]["ps1"] == ".\\scripts\\farm_drop_to_sor.ps1"
+    assert status["cli_twin"]["command"] in {"./scripts/sample_to_sor.sh", "make sample-to-sor"}
+    assert status["farm_drop_cli_twin"]["command"] in {
+        "./scripts/farm_drop_to_sor.sh",
+        "make farm-drop-to-sor",
+    }
     assert "OpenGRC" in (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
+
+
+def test_keep_status_and_keep_ciso_advertise_both_operator_twins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SAMPLE keep + farm pack_drop twins; honesty fail-closed unchanged."""
+    from dropbox.mcp_stub import farm_drop_to_sor_cli_twin, sample_to_sor_cli_twin
+
+    pack_in = tmp_path / "in"
+    for sensor in ("identity", "saas", "vuln", "cloud"):
+        (pack_in / sensor).mkdir(parents=True)
+        (pack_in / sensor / ".gitkeep").write_text("", encoding="utf-8")
+    work = tmp_path / "work"
+    monkeypatch.setenv("IN_DIR", str(pack_in))
+    status = dispatch("keep_status", scope_path=SCOPE, arguments={"pack_in": str(pack_in)})
+    data = dispatch(
+        "keep_ciso",
+        scope_path=SCOPE,
+        arguments={"pack_in": str(pack_in), "work": str(work)},
+    )
+    sample = sample_to_sor_cli_twin(ROOT)
+    farm = farm_drop_to_sor_cli_twin(ROOT)
+    assert sample["name"] == "sample_to_sor"
+    assert sample["kind"] == "sample_keep"
+    assert farm["name"] == "farm_drop_to_sor"
+    assert farm["kind"] == "farm_pack_drop"
+    for payload in (status, data):
+        assert payload["cli_twin"]["command"] == "./scripts/sample_to_sor.sh"
+        assert payload["cli_twin"]["make"] == "make sample-to-sor"
+        assert payload["cli_twin"]["ps1"] == ".\\scripts\\sample_to_sor.ps1"
+        assert payload["farm_drop_cli_twin"]["command"] == "./scripts/farm_drop_to_sor.sh"
+        assert payload["farm_drop_cli_twin"]["make"] == "make farm-drop-to-sor"
+        assert payload["farm_drop_cli_twin"]["ps1"] == ".\\scripts\\farm_drop_to_sor.ps1"
+        assert payload["sample"] is True
+        assert payload["demo"] is True
+        assert payload["client_keep"] is False
+        assert payload["paying_day"] == "FAIL"
+        assert "SAMPLE≠client" in payload["banners"]
+        assert "DEMO≠client" in payload["banners"]
+    assert status["keep_real"] == "0/4"
+    assert status["densify"] is False
+    assert data["ciso_import"].endswith("IMPORT.json")
+    assert Path(data["ciso_import"]).is_file()
+    assert data["opengrc"]["files"]
+    assert Path(data["probo"]).is_file()
+    assert data["pack_in_written"] is False
+    assert data["posted"] is False
+    iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
+    assert "cli_twin" in iface and "farm_drop_cli_twin" in iface
+    assert "./scripts/sample_to_sor.sh" in iface
+    assert "./scripts/farm_drop_to_sor.sh" in iface
+    assert "make farm-drop-to-sor" in iface
+    assert ".\\scripts\\farm_drop_to_sor.ps1" in iface
+    assert "SAMPLE≠client" in iface
+    assert "paying_day FAIL" in iface
