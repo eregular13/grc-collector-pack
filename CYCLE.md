@@ -1,5 +1,26 @@
 # CYCLE log
 
+## cycle 168 — CLIENT-READY-HONESTY pack HEAD 34a32a84 (2026-09-19)
+
+Honesty-only restamp. Live docs + `tests/test_status_honesty.py` now
+lock pack HEAD `34a32a84` / Covey HEAD `f1432918`. Product path LIVE
+on master: SAMPLE keep-lab → CISO Assistant CSVs → OpenGRC/Probo file
+sinks; conductor MCP `keep_status` + `keep_ciso`. Product items DONE:
+SAMPLE keep→CISO (PR #85), MCP keep tools (PR #83), OpenGRC+Probo
+exporters (PR #84). Covey leave-behinds are file-true on Covey main —
+pack does not own Covey adapters. Meta source lock (PR #81 / `7f6fd90d`)
+already on master as history — do not reopen. Integrity city PARKED.
+STATUS `next_action` is the CLIENT-READY operator path under SAMPLE
+honesty until real KEEP. Reid-only blockers remain CTA + real KEEP
+`in/` 0/4 + Eval `npm start` + DESKTOP Docker compose. Pytest fails if
+live copy restamps the stale integrity-city HEAD or names pack_drop
+integrity as current work. No collectors. No densify. No invented
+client KEEP. Catalog **unchanged**. Paying-day stays FAIL.
+
+```json
+{"pytest": 668, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 167 — SAMPLE keep-lab CISO → OpenGRC + Probo (2026-09-14)
 
 `python -m keep lab` writes OpenGRC Data Manager CSVs and Probo addRisk/addFinding drafts from `keep/work/out/ciso-assistant` (`keep/export.py`). `demo: true`. SAMPLE/DEMO KEEP is enough — do not wait for denser KEEP. posted=false. RiskReady stay-out. No pack_drop fixture churn. CoS #45 honesty / pack HEAD `62b52d41` / Covey HEAD `30d2197f` stand. Catalog **unchanged**. Paying-day stays FAIL.

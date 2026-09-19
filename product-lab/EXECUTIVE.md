@@ -2,37 +2,27 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 167):** SAMPLE keep-lab CISO intermediate feeds
+**This window (cycle 168):** CLIENT-READY-HONESTY — live docs
+match pack HEAD `34a32a84` / Covey HEAD `f1432918`. Product
+path LIVE on master: SAMPLE keep-lab → CISO Assistant CSVs →
+OpenGRC/Probo file sinks; conductor MCP `keep_status` +
+`keep_ciso`. Product items DONE: SAMPLE keep→CISO (PR #85),
+MCP keep tools (PR #83), OpenGRC+Probo exporters (PR #84).
+Covey leave-behinds are file-true on Covey main — pack does
+not own Covey adapters. Meta source lock (PR #81 / `7f6fd90d`)
+already on master as history — do not reopen. Integrity city
+PARKED. STATUS `next_action` is the CLIENT-READY operator
+path under SAMPLE honesty until real KEEP. Reid-only
+blockers remain (CTA; real KEEP `in/` drop 0/4; Eval
+`npm start`; DESKTOP Docker compose on a real host — this VM
+`compose_lab` **ABSENT ≠ pass**). Paying-day stays **FAIL**.
+DEMO ≠ client. SAMPLE KEEP **0/4**. RiskReady stay-out.
+Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
+
+**Cycle 167 (stands):** SAMPLE keep-lab CISO intermediate feeds
 OpenGRC + Probo (`python -m keep lab`; demo:true; posted=false; no
-denser KEEP; RiskReady stay-out).
-CoS #45 honesty sync + item 2 —
-global pack_drop meta.json source identity lock
-(`tests/test_pack_drop_source.py`; `source == evergreen-covey`
-exact; `schema == covey.pack_drop.v1`; META-ONLY — no JSONL
-row source rewrite).
-Pack HEAD
-`62b52d41` (PR #79 obs port→service
-already on master).
-Covey HEAD still
-`30d2197f` multi-adapter pack_drop
-export for all 16 `E2E_PROVEN`. Item **COS45-HONESTY**.
-Item **COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE. 16 E2E_PROVEN pack_drop
-void CLOSED. Next brick named = global pack_drop
-meta-only source identity lock (`source == evergreen-covey`).
-SAMPLE_BANNER / prove_ciso
-sixteen-set includes unicornscan.
-20-adapter lane **CLOSED** stands. STATUS `next_action`
-is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
-+ rustscan + fping + naabu + nping + httpx + sslscan + tlsx +
-whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
-svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
-netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #46. Reid-only
-blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
-Docker compose on a real host — this VM `compose_lab`
-**ABSENT ≠ pass**). Paying-day stays **FAIL**. DEMO ≠ client.
-SAMPLE KEEP **0/4**. Catalog unchanged (111 / 32 wired / 30
-invoke / 81 file_drop). Cycle 164 honesty stands as
+denser KEEP; RiskReady stay-out). Historical integrity-city
+stamp. Cycle 164 honesty stands as
 history. Cycle 163 observation/finding
 port→service lock stands as history. Cycle 162 honesty stands as
 history. Cycle 161 service→host lock stands as

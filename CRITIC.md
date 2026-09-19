@@ -1,101 +1,26 @@
-# CRITIC — cycle 167 (SAMPLE keep-lab → CISO + OpenGRC/Probo sinks)
+# CRITIC — cycle 168 (CLIENT-READY-HONESTY product slice)
 
 **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.
-SAMPLE `python3 -m keep lab` writes
-`keep/work/out/ciso-assistant/*.csv` + `IMPORT.json`
-(`demo: true`, SAMPLE ≠ client, `paying_day: FAIL`).
-OpenGRC Data Manager CSVs + Probo addRisk/addFinding drafts from the
-same CISO intermediate (`keep/export.py`; `python3 -m exporters`).
-posted=false. Do not wait for denser KEEP. RiskReady stay-out.
-`fixtures/demo/` KEEP-shaped files fail-closed.
-No denser estate. No pack_drop fixture locks.
-CoS #45 honesty sync + item 2: global pack_drop meta.json
-source identity lock
-(`tests/test_pack_drop_source.py`
-parametrized over all sixteen `fixtures/pack_drop/` adapters;
-meta.json exists; `source == evergreen-covey` exact;
-`schema == covey.pack_drop.v1`; META-ONLY — no JSONL row
-source rewrite; SAMPLE/DEMO ≠ client;
-UNPROVEN masscan / arp-scan / netdiscover / zmap still absent).
-Pack HEAD `62b52d41`
-(PR #79 observation/finding port→service referential lock
-already on master).
-Item **COS45-HONESTY**. Item
-**COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK** = DONE.
-16 E2E_PROVEN pack_drop void CLOSED. Next brick named = global pack_drop
-meta-only source identity lock (`source == evergreen-covey`).
-SAMPLE_BANNER / prove_ciso sixteen-set includes
-unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD still `30d2197f`
-multi-adapter pack_drop export for all 16 E2E_PROVEN. 20-adapter
-lane **CLOSED** stands. STATUS `next_action` is current
-truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
-fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
-onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
-UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #46.
-Pytest locks STATUS `next_action` and PLAN this-window so they
-cannot lag CoS #45 / pack HEAD `62b52d41` / Covey HEAD `30d2197f`,
-and so `compose_lab` absent cannot flip to pass. Paying-day stays
-**FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
-evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 164
-honesty stands as history. Cycle 163
-observation/finding port→service lock stands as history. Cycle 162
-honesty stands as history. Cycle 161
-service→host lock stands as history. Cycle 160
-honesty stands as history. Cycle 159
-kind-partition lock stands as history. Cycle 158
-honesty stands as history. Cycle 157
-JSONL row schema identity lock stands as history. Cycle 156
-honesty stands as history. Cycle 155
-meta.json schema + adapter identity lock stands as history. Cycle 154
-honesty stands as history. Cycle 153
-observation→asset refs lock stands as history. Cycle 152
-honesty stands as history. Cycle 151
-asset-id lock stands as history. Cycle 150
-honesty stands as history. Cycle 149
-observation-id uniqueness lock stands as history. Cycle 148
-honesty stands as history. Cycle 147
-claim-class + DEMO-label lock stands as history. Cycle 146
-honesty stands as history. Cycle 145
-all-16 fixture inventory lock stands as history. Cycle 144
-honesty stands as history. Cycle 143
-svmap pack_drop→CISO prove stands as history. Cycle 142
-honesty stands as history. Cycle 141
-ike-scan pack_drop→CISO prove stands as history. Cycle 140
-honesty stands as history. Cycle 139
-braa pack_drop→CISO prove stands as history. Cycle 138
-COS32 honesty stands as history. Cycle 137
-nbtscan pack_drop→CISO prove stands as history. Cycle 136
-COS31 honesty stands as history. Cycle 135
-nping pack_drop→CISO prove stands as history. Cycle 134
-COS30 honesty stands as history. Cycle 133
-naabu pack_drop→CISO prove stands as history. Cycle 132
-COS29 honesty stands as history. Cycle 131
-fping pack_drop→CISO prove stands as history. Cycle 130
-CoS #28 honesty stands as history. Cycle 129
-onesixtyone pack_drop→CISO prove stands as history. Cycle 128
-CoS #27 honesty stands as history. Cycle 127
-hping3 pack_drop→CISO prove stands as history. Cycle 126
-CoS #26 honesty stands as history. Cycle 125
-whatweb pack_drop→CISO prove stands as history. Cycle 124
-CoS #25 honesty stands as history. Cycle 123
-tlsx pack_drop→CISO prove stands as history. Cycle 122
-CoS #24 honesty stands as history. Cycle 121
-sslscan pack_drop→CISO prove stands as history. Cycle 120
-CoS #23 honesty stands as history. Cycle 119
-unicornscan pack_drop→CISO prove stands as history. Cycle 118
-CoS #22 honesty stands as history. Cycle 117
-httpx pack_drop→CISO prove stands as history. Cycle 116
-CoS #21 honesty stands as history. Cycle 115
-rustscan pack_drop→CISO prove stands as history. Cycle 114
-CoS #20 honesty stands as history. Cycle 113
-CoS #19 stands as history. Cycle 112 CoS #18 stands as history.
-Cycle 111 CoS #17 stands as history. Cycle 110 CoS #16 stands as history.
-Cycle 109 CoS #15 stands as history. Cycle 108 CoS #14 stands as history.
-Cycle 107 CoS #13 stands as history. Cycle 106 CoS #12 stands as history.
-Cycle 105 CoS #11 stands. Cycle 104 CoS #10 stands. Cycle 103 CoS #9
-stands. Cycle 102 CoS #8 stands. Cycle 101 CoS #7 stands. Cycle 100
-CoS #6 stands. Cycle 99 CoS #5 stands. Cycle 98 CoS #4 stands. Cycle 97 CoS #3 stands. Cycle 96 CISO prove stands. No invented greens.
+CLIENT-READY-HONESTY stamps live docs to pack HEAD `34a32a84`
+/ Covey HEAD `f1432918`. Product path LIVE on master:
+SAMPLE keep-lab → CISO Assistant CSVs → OpenGRC/Probo
+file sinks; conductor MCP `keep_status` + `keep_ciso`.
+Product items DONE: SAMPLE keep→CISO (PR #85), MCP keep
+tools (PR #83), OpenGRC+Probo exporters (PR #84).
+Covey `f1432918` is file-true CISO/OpenGRC/Probo
+leave-behinds on Covey main — pack does not own Covey
+adapters. Meta source lock (PR #81 / `7f6fd90d`) already
+on master as history — do not reopen. Integrity city
+PARKED forever unless Reid unlocks. STATUS `next_action`
+is the CLIENT-READY operator path under SAMPLE honesty
+until real KEEP. Reid-only blockers remain CTA, real KEEP
+`in/` 0/4, Eval `npm start`, DESKTOP Docker compose on a
+real host (this VM `compose_lab` absent ≠ PASS). Paying-day
+stays **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**.
+RiskReady stay-out. DEMO ≠ client. SAMPLE ≠ client.
+`argus_pack_truth` evergreen_assessment_mcp only.
+`mcp_stub` conductor only. Cycle 167 SAMPLE keep-lab sinks
+stand as history. No invented greens.
 
 −1 compose runtime still absent on this agent VM (DESKTOP `config` is 11 services; optional `up` is estate-only).  
 −1 0/4 real KEEP still open.

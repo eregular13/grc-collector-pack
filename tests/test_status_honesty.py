@@ -10,15 +10,17 @@ from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_ADAPTERS
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Shared all-16 set (prove_ciso seed + fixtures/pack_drop/). STATUS
-# next_action + PLAN this-window must name every tool so the pack
-# cannot lag a later Covey brick again.
+# Shared all-16 set (prove_ciso seed + fixtures/pack_drop/). Inventory
+# locks still use this tuple; live STATUS next_action is the
+# CLIENT-READY product path, not an integrity-city brick list.
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
-COVEY_E2E_HEAD = "30d2197f"
-STALE_E2E_HEAD = "40583459"
-COVEY_PACK_HEAD = "62b52d41"
-STALE_PACK_HEAD = "8c442a33"
-STALE_PACK_HONESTY = "2b05ca82"
+COVEY_E2E_HEAD = "f1432918"
+STALE_E2E_HEAD = "30d2197f"
+COVEY_PACK_HEAD = "34a32a84"
+STALE_PACK_HEAD = "62b52d41"
+STALE_PACK_HONESTY = "8c442a33"
+STALE_META_LOCK_HEAD = "7f6fd90d"
+CLIENT_READY_ITEM = "CLIENT-READY-HONESTY"
 COVEY_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
@@ -62,16 +64,58 @@ def _has_bare_cos(text: str, n: int) -> bool:
     return re.search(rf"cos #{n}(?!\d)", text.lower()) is not None
 
 
-def _next_brick(text: str) -> str:
-    """Clause after 'next brick' — DONE port→service lock must not live here.
+def _fold(text: str) -> str:
+    """Collapse wrapped markdown so 'does\\nnot own' still matches."""
+    return re.sub(r"\s+", " ", text.lower())
 
-    Split on a sentence boundary ('.' + whitespace), not the '.' in meta.json.
-    """
-    low = text.lower()
-    idx = low.find("next brick")
-    if idx < 0:
-        return ""
-    return re.split(r"\.\s", low[idx:], maxsplit=1)[0]
+
+def _assert_not_integrity_city(where: str, text: str) -> None:
+    """Live copy must not restamp pack_drop integrity as current work."""
+    low = _fold(text)
+    assert STALE_PACK_HEAD not in low, (
+        f"{where} still claims stale pack HEAD {STALE_PACK_HEAD}"
+    )
+    assert STALE_E2E_HEAD not in low, (
+        f"{where} still claims stale Covey HEAD {STALE_E2E_HEAD}"
+    )
+    assert "next brick" not in low, f"{where} still names an integrity next brick"
+    assert "stop for cos #46" not in low, f"{where} still stops for CoS #46"
+    assert "stop for cos #47" not in low, f"{where} still stops for CoS #47"
+    assert not _has_bare_cos(low, 46), f"{where} still names CoS #46 integrity"
+    assert not _has_bare_cos(low, 47), f"{where} still names CoS #47 integrity"
+    assert "source identity lock" not in low, (
+        f"{where} still names meta source identity as current work"
+    )
+    assert "cos45-honesty" not in low, (
+        f"{where} still stamps COS45-HONESTY as the current item"
+    )
+
+
+def _assert_client_ready_live(where: str, text: str) -> None:
+    """Current-truth product slice: SAMPLE keep → CISO → OpenGRC/Probo + MCP."""
+    low = _fold(text)
+    _assert_not_integrity_city(where, text)
+    assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
+    assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
+    assert "client-ready" in low, f"{where} missing CLIENT-READY path"
+    assert "sample" in low and "keep" in low, f"{where} missing SAMPLE keep path"
+    assert "ciso" in low, f"{where} missing CISO"
+    assert "opengrc" in low, f"{where} missing OpenGRC"
+    assert "probo" in low, f"{where} missing Probo"
+    assert "keep_status" in low, f"{where} missing keep_status"
+    assert "keep_ciso" in low, f"{where} missing keep_ciso"
+    assert "pr #85" in low, f"{where} missing PR #85 SAMPLE keep→CISO DONE"
+    assert "pr #83" in low, f"{where} missing PR #83 MCP keep tools DONE"
+    assert "pr #84" in low, f"{where} missing PR #84 OpenGRC+Probo DONE"
+    assert "done" in low, f"{where} missing DONE stamp for product items"
+    assert "parked" in low and "integrity" in low, f"{where} missing integrity PARKED"
+    assert STALE_META_LOCK_HEAD in low or "#81" in text, (
+        f"{where} missing meta source lock history (#81 / {STALE_META_LOCK_HEAD})"
+    )
+    assert "do not own" in low or "does not own" in low or "no pack" in low, (
+        f"{where} must not claim pack owns Covey adapters"
+    )
+    assert "adapter" in low, f"{where} missing Covey adapter stay-out"
 
 
 def _live_reid_only_blockers(text: str) -> str:
@@ -90,51 +134,18 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     status = _status()
     action = status.get("next_action", "")
     low = action.lower()
-    assert "cos #45" in low
-    assert "honesty sync" in low
-    assert "cos44-pack-drop-obs-port-service-lock" in low
-    assert "done" in low
-    assert status.get("item") == "COS45-HONESTY"
-    assert "cos #44" not in low, "bare CoS #44 is not the current cycle stamp"
-    assert "cos #43" not in low, "bare CoS #43 is not the current cycle stamp"
-    assert "cos #42" not in low, "bare CoS #42 is not the current cycle stamp"
-    assert "cos #41" not in low, "bare CoS #41 is not the current cycle stamp"
-    assert "next brick" in low
-    brick = _next_brick(action)
-    assert "source" in brick, "next brick must name source identity lock"
-    assert "identity" in brick, "next brick must name source identity lock"
-    assert "evergreen-covey" in brick, "next brick must name source == evergreen-covey"
-    assert "port→service" not in brick and "port->service" not in brick, "port→service is DONE, not the next brick"
-    assert not ("port" in brick and "service" in brick), "port→service is DONE, not the next brick"
-    assert "observation" not in brick or "finding" not in brick, "observation/finding port→service is DONE, not the next brick"
-    assert "service→host" not in brick and "service->host" not in brick, "service→host is DONE, not the next brick"
-    assert "kind-partition" not in brick, "kind-partition lock is DONE, not the next brick"
-    assert "16 e2e_proven pack_drop void closed" in low
-    assert "sample_banner" in low
-    assert "unicornscan" in low
+    assert status.get("item") == CLIENT_READY_ITEM
+    _assert_client_ready_live("STATUS next_action", action)
+    assert "operator path" in low
+    assert "live" in low
+    assert "0/4" in action
+    assert "desktop" in low
+    assert "riskready" in low and "stay-out" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
-    for n in range(4, 45):
+    for n in range(4, 48):
         assert not _has_bare_cos(low, n), f"STATUS next_action still stamps CoS #{n}"
-    assert "covey" in low
-    assert "e2e_proven" in low
-    assert "closed" in low
-    assert "20-adapter" in low
-    assert "pack_drop" in low
-    assert len(COVEY_E2E_PROVEN) == 16
-    for name in COVEY_E2E_PROVEN:
-        assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
-    for name in COVEY_E2E_UNPROVEN:
-        assert name in low, f"STATUS next_action dropped UNPROVEN fail-closed {name}"
-    assert "17th" in low
-    assert COVEY_E2E_HEAD in low
-    assert COVEY_PACK_HEAD in low
-    assert STALE_E2E_HEAD not in low
-    assert STALE_PACK_HEAD not in low
     assert STALE_PACK_HONESTY not in low
-    assert "no pack" in low and "adapter" in low
-    # Pack HEAD 62b52d41 (PR #79). Covey HEAD still 30d2197f pack_drop
-    # export. Pack STATUS must not restamp CoS #44 / pack 8c442a33 / 2b05ca82.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -154,7 +165,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "gate" in low or "hash" in low
     assert "already" in low or "on master" in low
     if "pr #" in low:
-        assert any(tok in low for tok in ("merged", "already", "on master"))
+        assert any(tok in low for tok in ("merged", "already", "on master", "done"))
     assert status.get("paying_day") == "FAIL"
     assert status.get("compose_lab") == "absent"
     assert status.get("scope_gap") == "none"
@@ -183,6 +194,9 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 168):",
+        "**Delta (cycle 167):",
+        "**Delta (cycle 166):",
         "**Delta (cycle 165):",
         "**Delta (cycle 164):",
         "**Delta (cycle 163):",
@@ -225,104 +239,41 @@ def _plan_this_window() -> str:
     return text[idx:].split("## STOP", 1)[0] if idx >= 0 else ""
 
 
-def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
-    """STATUS next_action and PLAN this-window must name every Covey E2E tool."""
+def test_status_and_plan_cannot_lag_client_ready_slice() -> None:
+    """STATUS next_action and PLAN this-window lock the product-slice HEADs."""
     action = _status().get("next_action", "")
     window = _plan_this_window()
     assert action and window
+    assert _status().get("item") == CLIENT_READY_ITEM
     for where, text in (("STATUS next_action", action), ("PLAN this-window", window)):
+        _assert_client_ready_live(where, text)
         low = text.lower()
-        assert len(COVEY_E2E_PROVEN) == 16, f"{where} honesty lock is not the sixteen-name set"
-        missing = [name for name in COVEY_E2E_PROVEN if name not in low]
-        assert not missing, f"{where} lags Covey E2E set; missing {missing}"
-        assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
-        assert "cos #45" in low, f"{where} missing CoS #45 stamp"
-        assert "cos #44" not in low, f"{where} still stamps CoS #44 as the current cycle"
-        assert "cos #43" not in low, f"{where} still stamps CoS #43 as the current cycle"
-        assert "cos #42" not in low, f"{where} still stamps CoS #42 as the current cycle"
-        assert "cos #41" not in low, f"{where} still stamps CoS #41 as the current cycle"
-        assert "cos #40" not in low, f"{where} still stamps CoS #40 as the current cycle"
-        assert "cos #39" not in low, f"{where} still stamps CoS #39 as the current cycle"
-        assert "cos #38" not in low, f"{where} still stamps CoS #38 as the current cycle"
-        assert "cos #37" not in low, f"{where} still stamps CoS #37 as the current cycle"
-        assert "cos #36" not in low, f"{where} still stamps CoS #36 as the current cycle"
-        assert "cos #35" not in low, f"{where} still stamps CoS #35 as the current cycle"
-        assert "cos #34" not in low, f"{where} still stamps CoS #34 as the current cycle"
-        assert "next brick" in low, f"{where} missing next brick = global pack_drop source identity lock"
-        brick = _next_brick(text)
-        assert "source" in brick, f"{where} next brick missing source identity"
-        assert "identity" in brick, f"{where} next brick missing source identity"
-        assert "evergreen-covey" in brick, f"{where} next brick missing evergreen-covey"
-        assert "port→service" not in brick and "port->service" not in brick, f"{where} still names port→service as next brick"
-        assert not ("port" in brick and "service" in brick), f"{where} still names port→service as next brick"
-        assert "service→host" not in brick and "service->host" not in brick, f"{where} still names service→host as next brick"
-        assert "kind-partition" not in brick, f"{where} still names kind-partition as next brick"
-        assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
-        assert "cos44-pack-drop-obs-port-service-lock" in low, f"{where} missing COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK DONE"
-        assert "stop for cos #46" in low, f"{where} missing Stop for CoS #46"
-        assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
-        assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
-        assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
-        assert STALE_PACK_HEAD not in low, f"{where} still stamps stale pack HEAD {STALE_PACK_HEAD}"
-        assert STALE_PACK_HONESTY not in low, f"{where} still stamps stale honesty lock {STALE_PACK_HONESTY}"
-        assert "pack_drop" in low, f"{where} missing pack_drop export stamp"
-        assert "closed" in low, f"{where} missing CLOSED lane"
-        unproven = [name for name in COVEY_E2E_UNPROVEN if name not in low]
-        assert not unproven, f"{where} dropped UNPROVEN fail-closed {unproven}"
-        assert "17th" in low, f"{where} dropped no-17th-live lock"
+        assert STALE_PACK_HONESTY not in low, f"{where} still stamps stale honesty lock"
+        assert "reid-only" in low or "cta" in low, f"{where} missing Reid-only blockers"
+        assert "npm start" in low, f"{where} missing Eval npm start"
+        assert "0/4" in text, f"{where} missing real KEEP 0/4"
+        assert "desktop" in low, f"{where} missing DESKTOP Docker compose"
+        assert "paying" in low and "fail" in low, f"{where} missing paying-day FAIL"
 
 
-def test_status_and_live_docs_match_cos45_covey_e2e_proven() -> None:
-    """Pack next_action / this-window docs follow CoS #45 pack HEAD E2E_PROVEN."""
+def test_status_and_live_docs_match_client_ready_honesty() -> None:
+    """Pack next_action / this-window docs follow CLIENT-READY product slice."""
     from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_NAMED, SAMPLE_BANNER
 
     status = _status()
     action = status.get("next_action", "")
-    low = action.lower()
+    assert status.get("item") == CLIENT_READY_ITEM
     assert status.get("paying_day") == "FAIL"
     assert status.get("compose_lab") == "absent"
     assert status.get("demo") == "true"
     assert status.get("argus_keep_real") == "0/4"
     assert status.get("argus_pack_truth") == "evergreen_assessment_mcp only"
-    assert "e2e_proven" in low
-    assert "pack_drop" in low
-    for name in COVEY_E2E_PROVEN:
-        assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
-    assert COVEY_E2E_HEAD in low
-    assert COVEY_PACK_HEAD in low
-    assert STALE_E2E_HEAD not in low
-    assert STALE_PACK_HEAD not in low
-    assert STALE_PACK_HONESTY not in low
-    assert "cos #20" not in low
-    assert "cos #21" not in low
-    assert "cos #22" not in low
-    assert "cos #23" not in low
-    assert "cos #24" not in low
-    assert "cos #25" not in low
-    assert "cos #26" not in low
-    assert "cos #27" not in low
-    assert "cos #28" not in low
-    assert "cos #29" not in low
-    assert "cos #30" not in low
-    assert "cos #31" not in low
-    assert "cos #32" not in low
-    assert "cos #33" not in low
-    assert "cos #34" not in low
-    assert "cos #35" not in low
-    assert "cos #36" not in low
-    assert "cos #37" not in low
-    assert "cos #38" not in low
-    assert "cos #39" not in low
-    assert "cos #40" not in low
-    assert "cos #41" not in low
-    assert "cos #42" not in low
-    assert "cos #43" not in low
-    assert "cos #44" not in low
-    assert "closed" in low
-    assert "held" not in low
-    assert "missing" not in low
-    assert "not in flight" not in low
+    _assert_client_ready_live("STATUS next_action", action)
+    assert "held" not in action.lower()
+    assert "missing" not in action.lower()
+    assert "not in flight" not in action.lower()
     joined = " + ".join(COVEY_E2E_PROVEN)
+    assert len(COVEY_E2E_PROVEN) == 16
     assert joined == E2E_PROVEN_PACK_DROP_NAMED
     assert joined.endswith("unicornscan")
     assert "unicornscan" in SAMPLE_BANNER
@@ -343,44 +294,16 @@ def test_status_and_live_docs_match_cos45_covey_e2e_proven() -> None:
         text = path.read_text(encoding="utf-8")
         window = _live_this_window(text)
         if not window:
-            # CRITIC / PLAN / DONE / PROVE_CISO current-truth is the lead copy.
             if path.name == "PLAN.md":
                 window = _plan_this_window() or text
             else:
-                idx = text.find("CoS #45")
-                window = text[idx : idx + 1600] if idx >= 0 else ""
-        assert window, f"{path} missing CoS #45 this-window copy"
+                idx = text.lower().find("client-ready")
+                if idx < 0:
+                    idx = text.find(COVEY_PACK_HEAD)
+                window = text[idx : idx + 1800] if idx >= 0 else ""
+        assert window, f"{path} missing CLIENT-READY this-window copy"
+        _assert_client_ready_live(f"{path} this-window", window)
         win_low = window.lower()
-        assert "cos #45" in win_low, f"{path} this-window is not CoS #45"
-        assert "cos #44" not in win_low, f"{path} this-window still stamps CoS #44 as the current cycle"
-        assert "cos #43" not in win_low, f"{path} this-window still stamps CoS #43 as the current cycle"
-        assert "cos #42" not in win_low, f"{path} this-window still stamps CoS #42 as the current cycle"
-        assert "cos #41" not in win_low, f"{path} this-window still stamps CoS #41 as the current cycle"
-        assert "cos #40" not in win_low, f"{path} this-window still stamps CoS #40 as the current cycle"
-        assert "cos #39" not in win_low, f"{path} this-window still stamps CoS #39 as the current cycle"
-        assert "cos #38" not in win_low, f"{path} this-window still stamps CoS #38 as the current cycle"
-        assert "cos #37" not in win_low, f"{path} this-window still stamps CoS #37 as the current cycle"
-        assert "cos #36" not in win_low, f"{path} this-window still stamps CoS #36 as the current cycle"
-        assert "cos44-pack-drop-obs-port-service-lock" in win_low, f"{path} this-window missing COS44-PACK-DROP-OBS-PORT-SERVICE-LOCK DONE"
-        assert "next brick" in win_low, f"{path} this-window missing next brick = global pack_drop source identity lock"
-        brick = _next_brick(window)
-        assert "source" in brick, f"{path} this-window next brick missing source identity"
-        assert "identity" in brick, f"{path} this-window next brick missing source identity"
-        assert "evergreen-covey" in brick, f"{path} this-window next brick missing evergreen-covey"
-        assert "port→service" not in brick and "port->service" not in brick, f"{path} this-window still names port→service as next brick"
-        assert not ("port" in brick and "service" in brick), f"{path} this-window still names port→service as next brick"
-        assert "service→host" not in brick and "service->host" not in brick, f"{path} this-window still names service→host as next brick"
-        assert "kind-partition" not in brick, f"{path} this-window still names kind-partition as next brick"
-        assert "void" in win_low, f"{path} this-window missing void CLOSED"
-        assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
-        assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
-        assert "pack_drop" in win_low, f"{path} this-window missing pack_drop export"
-        missing = [name for name in COVEY_E2E_PROVEN if name not in win_low]
-        assert not missing, f"{path} this-window lags Covey E2E set; missing {missing}"
-        assert COVEY_E2E_HEAD in win_low, f"{path} this-window missing HEAD {COVEY_E2E_HEAD}"
-        assert COVEY_PACK_HEAD in win_low, f"{path} this-window missing pack HEAD {COVEY_PACK_HEAD}"
-        assert STALE_E2E_HEAD not in win_low, f"{path} this-window still stamps stale HEAD"
-        assert STALE_PACK_HEAD not in win_low, f"{path} this-window still stamps stale pack HEAD"
         assert STALE_PACK_HONESTY not in win_low, f"{path} this-window still stamps stale honesty lock"
         assert "held" not in win_low, f"{path} this-window still claims brick held"
         assert "not in flight" not in win_low, f"{path} this-window still claims not in flight"
