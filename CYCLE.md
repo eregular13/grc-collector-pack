@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 176 — prove --use-existing-in lab dest_in (2026-09-20)
+
+`scripts/prove_ciso.py --work DIR --use-existing-in` (`--no-seed`) keeps
+operator `DIR/in` (DESKTOP compose lab pack_drop). Default still reseeds
+`fixtures/pack_drop`. Thin `scripts/lab_drop_to_sor.sh|.ps1` documents
+LAB/DEMO != SAMPLE != client and calls prove with the flag. Register +
+POA&M shape via `shared/ciso_shape` (#102). No STATUS/CTA vanity. No
+Makefile first-line entrypoint. Catalog **unchanged**.
+
 ## cycle 175 — farm_drop cp1252 verify-only hotfix (2026-09-19)
 
 DESKTOP-222GHQV Windows cp1252 crashed `prove_ciso.py --verify-only`

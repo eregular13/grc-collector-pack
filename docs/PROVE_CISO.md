@@ -105,6 +105,27 @@ python3 -m dropbox mcp export_ciso_poam
 
 Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 
+## Lab / live dest_in (no fixture reseed)
+
+Default `prove_ciso` still copies `fixtures/pack_drop` (16 adapters) into
+`DIR/in` and wipes whatever was there. DESKTOP compose lab pack_drop is
+discarded by that seed. To keep an operator-populated `DIR/in`:
+
+```bash
+python3 scripts/prove_ciso.py --work DIR --use-existing-in
+# alias: --no-seed
+# thin wrapper: ./scripts/lab_drop_to_sor.sh --work DIR
+# DESKTOP: .\scripts\lab_drop_to_sor.ps1 -Work DIR
+```
+
+`--use-existing-in` does **not** rmtree/reseed `DIR/in`. `DIR/in` must
+already hold pack_drop (compose lab or operator copy). Collectors +
+`grc_loader` run; risk-register + POA&M shape (`shared/ciso_shape`, #102)
+is fail-closed: findings>0 implies `risk_scenarios` rows and `poam` rows.
+LAB/DEMO != SAMPLE != client. `paying_day` stays FAIL. Never pack `in/`.
+`farm_drop_to_sor` remains the fixture seed path. `sample_to_sor` remains
+the primary KEEP path. This is not a new CTA.
+
 ## Honesty limits
 
 | Claim | Truth |

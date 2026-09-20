@@ -7,10 +7,18 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from dropbox.orchestrator.ciso_path import run_ciso_path
 from dropbox.orchestrator.estate import fingerprint, pack_in_dir
 from dropbox.orchestrator.keepmin import KEEP_MINIMUM
-from scripts.prove_ciso import prove_ciso, seed_prove_in
+from scripts.prove_ciso import (
+    ExistingInError,
+    dest_in_is_populated,
+    prove_ciso,
+    seed_prove_in,
+)
+from shared.ciso_shape import assert_risk_register_and_poam
 
 ROOT = Path(__file__).resolve().parents[1]
 SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
@@ -703,6 +711,170 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert '"services": 2' in svmap_meta or '"services":2' in svmap_meta
     assert "not a client" in hp.lower() and "SAMPLE" in hp
     assert "SAMPLE/DEMO — not a client estate" in hp_meta
+
+
+def _stage_tiny_nmap_pack_drop(dest_in: Path) -> Path:
+    """Copy one nmap pack_drop adapter + a marker that seed_prove_in would wipe."""
+    src = ROOT / "fixtures" / "pack_drop" / "nmap"
+    dest = dest_in / "nmap" / "pack_drop"
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in ("meta.json", "assets.jsonl", "findings.jsonl"):
+        (dest / name).write_text((src / name).read_text(encoding="utf-8"), encoding="utf-8")
+    marker = dest_in / "OPERATOR_LAB_MARKER.txt"
+    marker.write_text("do-not-reseed\n", encoding="utf-8")
+    return marker
+
+
+def test_prove_ciso_seeds_by_default(tmp_path: Path) -> None:
+    dest = tmp_path / "prove"
+    dest_in = dest / "in"
+    dest_in.mkdir(parents=True)
+    marker = dest_in / "OPERATOR_LAB_MARKER.txt"
+    marker.write_text("default-seed-must-wipe-this\n", encoding="utf-8")
+    stamp = prove_ciso(root=ROOT, dest=dest)
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["sample"] is True
+    assert stamp.get("lab") is False
+    assert stamp.get("seeded") is True
+    assert stamp.get("use_existing_in") is False
+    assert stamp["estate"] == "SAMPLE/DEMO — not a client estate"
+    assert not marker.is_file()
+    assert (dest_in / "nmap" / "pack_drop" / "rustscan" / "meta.json").is_file()
+    assert (dest_in / "SAMPLE.txt").is_file()
+
+
+def test_use_existing_in_does_not_call_seed_prove_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dest = tmp_path / "prove"
+    dest_in = dest / "in"
+    marker = _stage_tiny_nmap_pack_drop(dest_in)
+    calls: list[str] = []
+
+    def _boom(*_args: object, **_kwargs: object) -> dict:
+        calls.append("seed_prove_in")
+        raise AssertionError("seed_prove_in must not run when use_existing_in")
+
+    monkeypatch.setattr("scripts.prove_ciso.seed_prove_in", _boom)
+    stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
+    assert calls == []
+    assert stamp.get("seeded") is False
+    assert stamp.get("use_existing_in") is True
+    assert stamp.get("lab") is True
+    assert marker.is_file()
+    assert marker.read_text(encoding="utf-8") == "do-not-reseed\n"
+    assert not (dest_in / "nmap" / "pack_drop" / "rustscan").exists()
+
+
+def test_use_existing_in_tiny_pack_drop_register_shape(tmp_path: Path) -> None:
+    dest = tmp_path / "prove"
+    dest_in = dest / "in"
+    marker = _stage_tiny_nmap_pack_drop(dest_in)
+    before = {p.relative_to(dest_in) for p in dest_in.rglob("*") if p.is_file()}
+    stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
+    after = {p.relative_to(dest_in) for p in dest_in.rglob("*") if p.is_file()}
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["sample"] is False
+    assert stamp["lab"] is True
+    assert stamp["seeded"] is False
+    assert stamp["use_existing_in"] is True
+    assert stamp["client"] is False
+    assert stamp["demo"] is True
+    assert stamp["paying_day"] == "FAIL"
+    assert stamp["posted"] is False
+    assert "LAB" in stamp["estate"] and "not a client" in stamp["estate"].lower()
+    assert "SAMPLE" not in stamp["estate"]
+    assert after == before
+    assert marker.is_file()
+    shape = assert_risk_register_and_poam(Path(stamp["out_dir"]))
+    assert shape["findings"] >= 1
+    assert shape["risk_scenarios"] >= 1
+    assert shape["poam_rows"] >= 1
+    assert stamp["counts"]["findings"] == shape["findings"]
+    assert stamp["counts"]["poam"] == shape["poam_rows"]
+    assert stamp["counts"]["risk_scenarios"] == shape["risk_scenarios"]
+    assert (Path(stamp["out_dir"]) / "ciso-assistant" / "findings.csv").is_file()
+    assert (Path(stamp["out_dir"]) / "poam" / "poam.csv").is_file()
+    assert not (dest_in / "nmap" / "pack_drop" / "rustscan").exists()
+
+
+def test_use_existing_in_requires_populated_dest_in(tmp_path: Path) -> None:
+    dest = tmp_path / "empty"
+    dest_in = dest / "in"
+    dest_in.mkdir(parents=True)
+    (dest_in / "SAMPLE.txt").write_text("banner only\n", encoding="utf-8")
+    assert dest_in_is_populated(dest_in) is False
+    with pytest.raises(ExistingInError, match="EXISTING_IN_FAIL"):
+        prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
+    assert list(dest_in.iterdir()) == [dest_in / "SAMPLE.txt"]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["CISO_PUSH"] = "0"
+    env["DRY_RUN"] = "1"
+    proc = subprocess.run(
+        [
+            sys_executable(),
+            str(ROOT / "scripts" / "prove_ciso.py"),
+            "--work",
+            str(dest),
+            "--no-seed",
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode != 0
+    blob = (proc.stdout or "") + (proc.stderr or "")
+    assert "EXISTING_IN_FAIL" in blob
+    assert "use-existing-in" in blob or "no-seed" in blob
+
+
+def test_use_existing_in_cli_alias_and_docs(tmp_path: Path) -> None:
+    dest = tmp_path / "prove"
+    _stage_tiny_nmap_pack_drop(dest / "in")
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    env["CISO_PUSH"] = "0"
+    env["DRY_RUN"] = "1"
+    env["RISKREADY_PUSH"] = "1"
+    env["GRC_LIVE_SCAN"] = "0"
+    proc = subprocess.run(
+        [
+            sys_executable(),
+            str(ROOT / "scripts" / "prove_ciso.py"),
+            "--work",
+            str(dest),
+            "--use-existing-in",
+        ],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + "\n" + proc.stderr
+    blob = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    assert "LAB/DEMO" in blob
+    assert "SAMPLE fixture" in blob or "Not SAMPLE" in blob
+    assert "paying_day=FAIL" in blob or "Paying-day stays FAIL" in blob
+    blob.encode("cp1252")
+    assert "\u2260" not in blob
+    stamp = json.loads((dest / "prove-ciso.json").read_text(encoding="utf-8"))
+    assert stamp["status"] == "pass", stamp.get("reason")
+    assert stamp["lab"] is True
+    assert stamp["seeded"] is False
+    assert stamp["use_existing_in"] is True
+    src = (ROOT / "scripts" / "prove_ciso.py").read_text(encoding="utf-8")
+    assert "--use-existing-in" in src
+    assert "--no-seed" in src
+    docs = DOCS.read_text(encoding="utf-8")
+    assert "--use-existing-in" in docs
+    assert "--no-seed" in docs
+    assert "lab_drop_to_sor" in docs
+    assert "LAB/DEMO" in docs
+    assert "not a client" in docs.lower()
 
 
 def sys_executable() -> str:
