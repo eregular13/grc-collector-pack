@@ -104,7 +104,7 @@ START="$("$PYTHON" -c 'import time; print(time.perf_counter())')"
 CISO="$WORK/out/ciso-assistant"
 
 if [[ "$VERIFY_ONLY" -eq 0 ]]; then
-  echo "sample_to_sor: python -m keep lab (SAMPLE → CISO)"
+  echo "sample_to_sor: python -m keep lab (SAMPLE -> CISO)"
   lab_args=(--work "$WORK")
   if [[ -n "$PACK_IN" ]]; then
     lab_args+=(--pack-in "$PACK_IN")
@@ -127,4 +127,4 @@ echo "sample_to_sor: ciso=$CISO"
 echo "sample_to_sor: import=$CISO/IMPORT.json"
 echo "sample_to_sor: opengrc=$WORK/out/opengrc"
 echo "sample_to_sor: probo=$WORK/out/import_preview/probo.json"
-echo "sample_to_sor: SAMPLE ≠ client KEEP. paying_day FAIL. posted=false."
+echo "sample_to_sor: SAMPLE != client KEEP. paying_day FAIL. posted=false."

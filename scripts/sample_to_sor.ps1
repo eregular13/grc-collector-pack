@@ -75,7 +75,7 @@ $Ciso = Join-Path $Work "out\ciso-assistant"
 $Start = Get-Date
 
 if (-not $VerifyOnly) {
-    Write-Host "sample_to_sor: python -m keep lab (SAMPLE → CISO)"
+    Write-Host "sample_to_sor: python -m keep lab (SAMPLE -> CISO)"
     $lab = @("-m", "keep", "lab", "--work", $Work)
     if (-not [string]::IsNullOrWhiteSpace($PackIn)) {
         $lab += @("--pack-in", $PackIn)
@@ -100,4 +100,4 @@ Write-Host "sample_to_sor: ciso=$Ciso"
 Write-Host "sample_to_sor: import=$(Join-Path $Ciso 'IMPORT.json')"
 Write-Host "sample_to_sor: opengrc=$(Join-Path $Work 'out\opengrc')"
 Write-Host "sample_to_sor: probo=$(Join-Path $Work 'out\import_preview\probo.json')"
-Write-Host "sample_to_sor: SAMPLE ≠ client KEEP. paying_day FAIL. posted=false."
+Write-Host "sample_to_sor: SAMPLE != client KEEP. paying_day FAIL. posted=false."

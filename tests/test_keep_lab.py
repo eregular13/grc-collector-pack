@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
+
+import pytest
 
 from keep.adapters import (
     KEEP_FAMILIES,
@@ -13,6 +16,7 @@ from keep.adapters import (
     scan_keep_dir,
 )
 from keep.ciso_import import CISO_REQUIRED, honest_paying_day, read_paying_day
+from shared.ciso_shape import assert_risk_register_and_poam
 from keep.handoff import MAX_FINDINGS, build_eval_handoff, select_max_findings
 from keep.lab import keep_lab
 
@@ -104,6 +108,9 @@ def test_keep_lab_uses_samples_when_pack_in_empty(tmp_path: Path) -> None:
     assert "SAMPLE" in guide and "not a client" in guide.lower()
     findings = (Path(stamp["ciso_dir"]) / "findings.csv").read_text(encoding="utf-8")
     assert "demo" in findings.lower() or "sample" in findings.lower()
+    shape = assert_risk_register_and_poam(Path(stamp["out_dir"]))
+    assert shape["findings"] >= 1
+    assert shape["poam_rows"] >= 1
     assert stamp["pack_in_written"] is False
     assert stamp["sinks_posted"] is False
     opengrc = Path(stamp["opengrc"])
@@ -496,3 +503,48 @@ def test_desktop_dry_run_doc_is_operator_followable() -> None:
     og = (ROOT / "docs" / "IMPORT_OPENGRC.md").read_text(encoding="utf-8")
     assert "DESKTOP_DRY_RUN.md" in og
     assert "DRY_RUN=1" in og and "CISO_PUSH=0" in og
+
+
+def test_keep_lab_fails_closed_on_incomplete_keep_samples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dropbox.keep_preflight import KeepFixtureIncomplete, require_keep_samples
+
+    monkeypatch.setattr(
+        "keep.lab.require_keep_samples",
+        lambda root: require_keep_samples(tmp_path),
+    )
+    monkeypatch.setattr(
+        "keep.lab._choose_sources",
+        lambda root, pack_in: ([], False, "keep-samples"),
+    )
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    stamp = keep_lab(ROOT, pack_in=empty, work=tmp_path / "work")
+    assert stamp["status"] == "fail"
+    reason = str(stamp.get("reason") or "")
+    assert "keep fixture incomplete" in reason
+    assert "four families" in reason
+    with pytest.raises(KeepFixtureIncomplete):
+        require_keep_samples(tmp_path)
+
+
+def test_keep_lab_fails_closed_on_malformed_keep_samples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    samples = tmp_path / "broken-samples"
+    shutil.copytree(SAMPLES, samples)
+    (samples / "cloud" / "prowler.json").write_text("{", encoding="utf-8")
+    (samples / "cloud" / "scoutsuite.json").write_text("{", encoding="utf-8")
+
+    def _broken_sources(root: Path, pack_in: Path):
+        return scan_keep_dir(samples), False, "keep-samples"
+
+    monkeypatch.setattr("keep.lab._choose_sources", _broken_sources)
+    empty = tmp_path / "empty-in"
+    empty.mkdir()
+    stamp = keep_lab(ROOT, pack_in=empty, work=tmp_path / "work")
+    assert stamp["status"] == "fail"
+    reason = str(stamp.get("reason") or "")
+    assert "keep fixture malformed" in reason
+    assert "cloud" in reason

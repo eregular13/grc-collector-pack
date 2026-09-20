@@ -69,3 +69,12 @@ def test_csv_header_strings() -> None:
         "current_proba;current_risk;additional_controls;residual_impact;residual_proba;"
         "residual_risk;treatment"
     )
+
+
+def test_pack_drop_exposure_is_not_cve_class_vuln() -> None:
+    from collectors.grc_loader import _is_vuln
+
+    assert _is_vuln({"category": "exposure", "ref_id": "NMAP-smb", "name": "SMB"}) is False
+    assert _is_vuln({"category": "host", "ref_id": "NMAP-up", "name": "host_up"}) is False
+    assert _is_vuln({"category": "vulnerability", "ref_id": "CVE-2014-0160"}) is True
+    assert _is_vuln({"category": "exposure", "extra": {"cve": "CVE-2014-0160"}}) is True

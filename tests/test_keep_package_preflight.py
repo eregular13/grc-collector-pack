@@ -17,11 +17,17 @@ from dropbox.keep_preflight import (
     KEEP_PACKAGE_CLONE,
     KEEP_PACKAGE_FILES,
     KEEP_PACKAGE_HINT,
+    KEEP_SAMPLE_FILES,
+    KeepFixtureIncomplete,
     KeepPackageIncomplete,
     abort_keep_package,
+    abort_keep_samples,
     check_keep_package,
+    check_keep_samples,
     keep_package_incomplete_message,
+    keep_samples_incomplete_message,
     require_keep_package,
+    require_keep_samples,
 )
 from dropbox.mcp_stub import dispatch
 from dropbox.scope import GateError
@@ -201,3 +207,47 @@ def test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing(
         dispatch("keep_ciso", scope_path=SCOPE)
     assert named in str(ciso_exc.value).replace("\\", "/")
     assert KEEP_PACKAGE_CLONE in str(ciso_exc.value)
+
+
+@pytest.mark.parametrize("skip", KEEP_SAMPLE_FILES)
+def test_require_keep_samples_fails_closed_when_fixture_missing(
+    tmp_path: Path, skip: str
+) -> None:
+    for rel in KEEP_SAMPLE_FILES:
+        if rel == skip:
+            continue
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("stub\n", encoding="utf-8")
+    named = Path(skip).as_posix()
+    report = check_keep_samples(tmp_path)
+    assert report["ok"] is False
+    assert any(named in item.replace("\\", "/") for item in report["missing"])
+    with pytest.raises(KeepFixtureIncomplete, match="keep fixture incomplete") as excinfo:
+        require_keep_samples(tmp_path)
+    msg = str(excinfo.value)
+    assert named in msg.replace("\\", "/")
+    assert "four families" in msg
+    assert KEEP_PACKAGE_CLONE in msg
+    helper = keep_samples_incomplete_message(tmp_path)
+    assert named in helper.replace("\\", "/")
+    with pytest.raises(SystemExit) as abort_exc:
+        abort_keep_samples(tmp_path)
+    assert abort_exc.value.code == 1
+
+
+def test_require_keep_samples_ok_on_full_clone() -> None:
+    assert require_keep_samples(ROOT) == ROOT
+    report = check_keep_samples(ROOT)
+    assert report["ok"] is True
+    assert report["missing"] == []
+    assert report["message"] == ""
+
+
+def test_require_keep_samples_fails_closed_on_empty_fixture(tmp_path: Path) -> None:
+    for rel in KEEP_SAMPLE_FILES:
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("", encoding="utf-8")
+    with pytest.raises(KeepFixtureIncomplete, match="keep fixture incomplete"):
+        require_keep_samples(tmp_path)

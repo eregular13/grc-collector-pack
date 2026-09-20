@@ -32,6 +32,8 @@ if ([string]::IsNullOrWhiteSpace($Work)) {
 
 $Python = if ($env:PYTHON) { $env:PYTHON } else { "python" }
 $Ciso = Join-Path $Work "out\ciso-assistant"
+$Poam = Join-Path $Work "out\poam\poam.csv"
+$PoamMd = Join-Path $Work "out\poam\poam.md"
 $ProvePy = Join-Path $Root "scripts\prove_ciso.py"
 $Start = Get-Date
 
@@ -48,6 +50,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $Elapsed = [math]::Round(((Get-Date) - $Start).TotalSeconds, 3)
 Write-Host "farm_drop_to_sor: elapsed=${Elapsed}s"
 Write-Host "farm_drop_to_sor: ciso=$Ciso"
+Write-Host "farm_drop_to_sor: poam=$Poam"
+Write-Host "farm_drop_to_sor: poam_md=$PoamMd"
 Write-Host "farm_drop_to_sor: prove=$(Join-Path $Work 'prove-ciso.json')"
 Write-Host "farm_drop_to_sor: SAMPLE/DEMO != client. paying_day FAIL. posted=false."
 Write-Host "farm_drop_to_sor: SAMPLE keep remains the primary KEEP path (sample_to_sor)."

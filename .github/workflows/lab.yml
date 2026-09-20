@@ -28,7 +28,48 @@ jobs:
       - name: SAMPLE keep-lab dry-run
         run: bash scripts/sample_to_sor.sh --pack-in "${{ github.workspace }}/in" --work "${{ runner.temp }}/keep-work"
       - name: Farm pack_drop → CISO dry-run
-        run: bash scripts/farm_drop_to_sor.sh --work "${{ runner.temp }}/prove-work"
+        run: |
+          set -euo pipefail
+          work="${{ runner.temp }}/prove-work"
+          bash scripts/farm_drop_to_sor.sh --work "$work"
+          python - "$work" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, assert_risk_register_and_poam
+
+          work = Path(sys.argv[1])
+          stamp = json.loads((work / "prove-ciso.json").read_text(encoding="utf-8"))
+          assert stamp.get("sample") is True, stamp
+          assert stamp.get("client") is False, stamp
+          assert stamp.get("paying_day") == "FAIL", stamp
+          assert stamp.get("posted") is False, stamp
+          shape = assert_risk_register_and_poam(work / "out")
+          assert shape["findings"] >= 1, shape
+          assert shape["risk_scenarios"] >= shape["findings"], shape
+          assert shape["poam_rows"] >= 1, shape
+          assert stamp["counts"]["poam"] == shape["poam_rows"], (stamp["counts"], shape)
+          assert shape["vulnerabilities"] == 0, "farm_drop pack_drop is exposure, not CVE-class"
+          ciso = work / "out" / "ciso-assistant"
+          for name in (
+              "assets.csv",
+              "findings.csv",
+              "vulnerabilities.csv",
+              "applied_controls.csv",
+              "risk_scenarios.csv",
+          ):
+              first = (ciso / name).read_text(encoding="utf-8").splitlines()[0].strip()
+              assert first == CISO_HEADERS[name], (name, first)
+          poam = (work / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
+          assert poam.splitlines()[0].strip() == POAM_HEADER
+          assert (work / "out" / "poam" / "poam.md").is_file()
+          print(
+              f"farm_drop register ok; findings={shape['findings']} "
+              f"risk_scenarios={shape['risk_scenarios']} poam_rows={shape['poam_rows']} "
+              f"vulns={shape['vulnerabilities']}"
+          )
+          PY
       - name: Collectors and loader
         run: |
           python collectors/cloud_prowler.py
@@ -79,6 +120,8 @@ jobs:
           import sys
           from pathlib import Path
 
+          from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, assert_risk_register_and_poam
+
           work = Path(sys.argv[1])
           ciso = work / "out" / "ciso-assistant"
           doc = json.loads((ciso / "IMPORT.json").read_text(encoding="utf-8"))
@@ -87,9 +130,24 @@ jobs:
           assert doc.get("client_keep") is False, doc
           assert doc.get("paying_day") == "FAIL", doc
           assert doc.get("posted") is False, doc
-          csvs = list(ciso.glob("*.csv"))
-          assert len(csvs) >= 1, csvs
-          print(f"IMPORT.json honesty ok; ciso_csv_count={len(csvs)}")
+          shape = assert_risk_register_and_poam(work / "out")
+          assert shape["findings"] >= 1, shape
+          assert shape["risk_scenarios"] >= shape["findings"], shape
+          assert shape["poam_rows"] >= 1, shape
+          assert shape["vulnerabilities"] >= 1, shape
+          for name, header in CISO_HEADERS.items():
+              path = ciso / name
+              if not path.is_file():
+                  continue
+              first = path.read_text(encoding="utf-8").splitlines()[0].strip()
+              assert first == header, (name, first)
+          poam = (work / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
+          assert poam.splitlines()[0].strip() == POAM_HEADER
+          print(
+              f"IMPORT.json honesty ok; findings={shape['findings']} "
+              f"risk_scenarios={shape['risk_scenarios']} "
+              f"poam_rows={shape['poam_rows']} vulns={shape['vulnerabilities']}"
+          )
           PY
       - name: Cold SAMPLE→SoR with exporters
         run: |
@@ -101,6 +159,8 @@ jobs:
           import sys
           from pathlib import Path
 
+          from shared.ciso_shape import assert_risk_register_and_poam
+
           work = Path(sys.argv[1])
           ciso = work / "out" / "ciso-assistant"
           doc = json.loads((ciso / "IMPORT.json").read_text(encoding="utf-8"))
@@ -108,9 +168,9 @@ jobs:
           assert doc.get("client_keep") is False, doc
           assert doc.get("paying_day") == "FAIL", doc
           assert doc.get("posted") is False, doc
-          csvs = list(ciso.glob("*.csv"))
-          assert len(csvs) >= 1, csvs
+          shape = assert_risk_register_and_poam(work / "out")
+          assert shape["findings"] >= 1 and shape["poam_rows"] >= 1, shape
           assert (work / "out" / "opengrc" / "risks.csv").is_file()
           assert (work / "out" / "import_preview" / "probo.json").is_file()
-          print(f"exporters honesty ok; ciso_csv_count={len(csvs)}")
+          print(f"exporters honesty ok; findings={shape['findings']} poam_rows={shape['poam_rows']}")
           PY

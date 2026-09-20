@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from shared.ciso_shape import RegisterShapeError, assert_risk_register_and_poam
+
 SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
 CISO_CSVS = (
     "assets.csv",
@@ -167,6 +169,10 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
     ciso = dest / "out" / "ciso-assistant"
     if not ciso.is_dir():
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL missing out/ciso-assistant/")
+    try:
+        shape = assert_risk_register_and_poam(dest / "out")
+    except RegisterShapeError as exc:
+        raise FarmDropHonestyError(f"FARM_DROP_HONESTY_FAIL {exc}") from exc
     present = [name for name in CISO_CSVS if (ciso / name).is_file()]
     if not present:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL missing CISO CSVs")
@@ -187,7 +193,22 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
                 raise FarmDropHonestyError(
                     f"FARM_DROP_HONESTY_FAIL {path.name} claims client estate"
                 )
-    return {"ok": True, "stamp": stamp, "ciso_dir": str(ciso), "ciso_files": present}
+    stamp_poam = (stamp.get("counts") or {}).get("poam")
+    if stamp_poam is not None and int(stamp_poam) != int(shape.get("poam_rows") or 0):
+        raise FarmDropHonestyError(
+            f"FARM_DROP_HONESTY_FAIL counts.poam={stamp_poam} != poam_rows={shape.get('poam_rows')}"
+        )
+    return {
+        "ok": True,
+        "stamp": stamp,
+        "ciso_dir": str(ciso),
+        "ciso_files": present,
+        "findings": shape.get("findings"),
+        "risk_scenarios": shape.get("risk_scenarios"),
+        "poam_rows": shape.get("poam_rows"),
+        "poam": shape.get("poam"),
+        "poam_md": shape.get("poam_md"),
+    }
 
 
 def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, Any]:
@@ -239,8 +260,15 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         if line.startswith("paying_day:"):
             paying = line.split(":", 1)[1].strip()
             break
+    try:
+        register_shape = assert_risk_register_and_poam(dest_out)
+        shape_ok = True
+    except RegisterShapeError:
+        register_shape = {}
+        shape_ok = False
     ok = (
         bool(ciso_files)
+        and shape_ok
         and "filesrv.corp.local" in assets_text
         and "10.9.8.7" in assets_text
         and "10.9.8.20" in assets_text
@@ -303,18 +331,27 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "collectors": result.get("collectors"),
         "ciso_dir": str(ciso_dir),
         "ciso_files": [str(ciso_dir / name) for name in ciso_files],
-        "counts": result.get("counts") or {
-            "assets": summary.get("assets", 0),
-            "findings": summary.get("findings", 0),
-            "poam": summary.get("poam", 0),
-            "demo": summary.get("demo"),
+        "poam": str(dest_out / "poam" / "poam.csv"),
+        "poam_md": str(dest_out / "poam" / "poam.md"),
+        "counts": {
+            **(
+                result.get("counts")
+                or {
+                    "assets": summary.get("assets", 0),
+                    "findings": summary.get("findings", 0),
+                    "poam": summary.get("poam", register_shape.get("poam_rows", 0)),
+                    "demo": summary.get("demo"),
+                }
+            ),
+            "risk_scenarios": register_shape.get("risk_scenarios"),
+            "vulnerabilities": register_shape.get("vulnerabilities"),
         },
         "seed": seed,
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
         "note": (
-            f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot → "
-            "existing collectors → grc_loader → out/ciso-assistant. SAMPLE ≠ client. "
+            f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot -> "
+            "existing collectors -> grc_loader -> out/ciso-assistant. SAMPLE != client. "
             "This prove is not a paying-day PASS."
         ),
     }
@@ -327,6 +364,7 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
             "paying_day": paying,
             "sample": result.get("sample"),
             "client_keep": result.get("client_keep"),
+            "register_shape": shape_ok,
         }
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "prove-ciso.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
@@ -373,8 +411,10 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"PROVE_CISO={stamp['status']} sample={stamp['sample']} client={stamp['client']} "
         f"paying_day={stamp['paying_day']} posted={stamp['posted']} "
-        f"assets={stamp['counts'].get('assets')} findings={stamp['counts'].get('findings')}"
+        f"assets={stamp['counts'].get('assets')} findings={stamp['counts'].get('findings')} "
+        f"poam={stamp['counts'].get('poam')}"
     )
+    print(f"POAM={stamp.get('poam') or (dest / 'out' / 'poam' / 'poam.csv')}")
     if stamp.get("status") != "pass":
         return 1
     try:

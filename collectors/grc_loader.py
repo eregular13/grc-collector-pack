@@ -127,6 +127,7 @@ def _labels(rec: dict) -> str:
 
 
 def _is_vuln(rec: dict) -> bool:
+    """CVE/secrets/sast only. pack_drop exposure stays on findings + risk_scenarios."""
     cat = str(rec.get("category") or "").lower()
     ref = str(rec.get("ref_id") or "")
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
