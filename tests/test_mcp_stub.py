@@ -709,6 +709,9 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
     exporters = entries["keep_ciso"]["inputSchema"]["properties"].get("exporters") or {}
     assert exporters.get("type") == "boolean"
     assert "keep-lab" in (exporters.get("description") or "")
+    isolate = entries["keep_ciso"]["inputSchema"]["properties"].get("isolate_work") or {}
+    assert isolate.get("type") == "boolean"
+    assert "unique" in (isolate.get("description") or "").lower()
 
 
 def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -763,6 +766,7 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert "farm-drop-to-sor" in iface
     assert "farm_drop_to_sor.ps1" in iface
     assert "farm_drop_cli_twin" in iface
+    assert "isolate_work" in iface
     assert "`keep_status` then `keep_ciso`" in iface
     assert "denser" not in iface.lower()
     assert "prefer pack" not in iface.lower()

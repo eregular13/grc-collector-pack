@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -329,6 +330,15 @@ def tools_list_entries() -> list[dict[str, Any]]:
                     "a second export path."
                 ),
             }
+            props["isolate_work"] = {
+                "type": "boolean",
+                "description": (
+                    "Optional. Unique work subdirectory under keep/work (or the "
+                    "supplied work) so overlapping keep_ciso calls do not share "
+                    "out/. Default on when work is the shared keep/work. Not a "
+                    "new operator entrypoint."
+                ),
+            }
         tools.append(
             {
                 "name": name,
@@ -525,18 +535,175 @@ def _path_arg(extra: dict[str, Any], *keys: str) -> Path | None:
     return None
 
 
+def _resolve_keep_path(path: Path | str) -> Path:
+    """Resolve relative keep paths against the clone root, not process cwd."""
+    target = Path(path)
+    if target.is_absolute():
+        return target
+    return _repo_root() / target
+
+
+def _keep_scope_path(scope_path: Path | str | None = None) -> Path | None:
+    """Prefer an explicit SCOPE, else DROPBOX_SCOPE, resolved to the clone root."""
+    if scope_path:
+        return _resolve_keep_path(scope_path)
+    raw = (os.environ.get("DROPBOX_SCOPE") or "").strip()
+    if raw:
+        return _resolve_keep_path(raw)
+    return None
+
+
 def _keep_pack_in(extra: dict[str, Any] | None = None) -> Path:
     extra = extra if isinstance(extra, dict) else {}
-    return _path_arg(extra, "pack_in", "in_dir") or Path(
-        os.environ.get("IN_DIR") or (_repo_root() / "in")
-    )
+    explicit = _path_arg(extra, "pack_in", "in_dir")
+    if explicit:
+        return _resolve_keep_path(explicit)
+    raw = (os.environ.get("IN_DIR") or "").strip()
+    if raw:
+        return _resolve_keep_path(raw)
+    return _repo_root() / "in"
 
 
 def _keep_work_dir(extra: dict[str, Any] | None = None) -> Path:
     extra = extra if isinstance(extra, dict) else {}
-    return _path_arg(extra, "work") or Path(
-        os.environ.get("KEEP_WORK") or (_repo_root() / "keep" / "work")
+    return _keep_work_choice(extra)[0]
+
+
+def _tri_bool(raw: Any) -> bool | None:
+    if raw is True or raw == 1:
+        return True
+    if raw is False or raw == 0:
+        return False
+    if isinstance(raw, str):
+        low = raw.strip().lower()
+        if low in {"1", "true", "yes", "on"}:
+            return True
+        if low in {"0", "false", "no", "off"}:
+            return False
+    return None
+
+
+def _want_isolate_work(
+    extra: dict[str, Any] | None = None,
+    *,
+    work_explicit: bool,
+) -> bool:
+    """Unique work dir: argument / KEEP_CISO_ISOLATE, else default-on for shared keep/work."""
+    extra = extra if isinstance(extra, dict) else {}
+    arg = _tri_bool(extra.get("isolate_work"))
+    if arg is not None:
+        return arg
+    env = _tri_bool(os.environ.get("KEEP_CISO_ISOLATE"))
+    if env is not None:
+        return env
+    return not work_explicit
+
+
+def _keep_work_choice(extra: dict[str, Any] | None = None) -> tuple[Path, bool]:
+    """Return (base work dir, whether the operator/env picked it)."""
+    extra = extra if isinstance(extra, dict) else {}
+    explicit = _path_arg(extra, "work")
+    if explicit:
+        return _resolve_keep_path(explicit), True
+    raw = (os.environ.get("KEEP_WORK") or "").strip()
+    if raw:
+        return _resolve_keep_path(raw), True
+    return _repo_root() / "keep" / "work", False
+
+
+def atomic_keep_work(parent: Path | str | None = None) -> Path:
+    """Unique keep_ciso work subdirectory. Not an operator entrypoint."""
+    base = Path(parent) if parent else (_repo_root() / "keep" / "work")
+    dest = base / f"run-{os.getpid()}-{uuid.uuid4().hex[:10]}"
+    dest.mkdir(parents=True, exist_ok=True)
+    return dest
+
+
+def keep_error_text(exc: BaseException, *, stderr: str = "") -> str:
+    """Last error / stderr for MCP/conductor. ASCII-safe. Not a success stamp."""
+    chunks: list[str] = []
+    extra = str(stderr or "").strip()
+    if extra:
+        chunks.append(extra)
+    text = str(exc).strip()
+    if text and text not in chunks:
+        chunks.append(text)
+    winerror = getattr(exc, "winerror", None)
+    if winerror is not None and f"WinError {winerror}" not in " ".join(chunks):
+        chunks.append(f"WinError {winerror}")
+    if not chunks:
+        chunks.append(type(exc).__name__)
+    return " | ".join(chunks)[-800:]
+
+
+def retryable_keep_error(exc: BaseException) -> bool:
+    """True only for transient wipe / Windows directory races. Never a schema miss."""
+    from keep.wipe import retryable_wipe_error
+
+    if retryable_wipe_error(exc):
+        return True
+    text = str(exc)
+    markers = (
+        "WinError 145",
+        "[WinError 145]",
+        "The directory is not empty",
+        "Directory not empty",
+        "ENOTEMPTY",
+        "sharing violation",
+        "WinError 32",
+        "WinError 5",
     )
+    return any(marker in text for marker in markers)
+
+
+def keep_fail_payload(
+    tool: str,
+    exc: BaseException,
+    *,
+    retried: bool = False,
+    work: Path | None = None,
+    pack_in: Path | None = None,
+    isolate_work: bool = False,
+    stderr: str = "",
+) -> dict[str, Any]:
+    """Structured keep_status / keep_ciso fail. ok stays false."""
+    err = keep_error_text(exc, stderr=stderr)
+    return {
+        "tool": tool,
+        "ok": False,
+        "live": False,
+        "demo": True,
+        "sample": True,
+        "client_keep": False,
+        "paying_day": "FAIL",
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "error": err,
+        "stderr": err,
+        "retried": bool(retried),
+        "isolate_work": bool(isolate_work),
+        "work": str(work) if work else "",
+        "pack_in": str(pack_in) if pack_in else "",
+        "cwd": os.getcwd(),
+        "root": str(_repo_root()),
+        "banners": list(KEEP_HONESTY_BANNERS),
+        "note": (
+            f"{tool} failed. Last error: {err}. "
+            "SAMPLE != client. DEMO != client. paying_day FAIL."
+        ),
+    }
+
+
+def keep_tool_fail_text(result: Any) -> str:
+    """Non-empty last-error text when a keep MCP tool returned ok=false."""
+    if not isinstance(result, dict):
+        return ""
+    if result.get("tool") not in {"keep_status", "keep_ciso"}:
+        return ""
+    if result.get("ok") is not False:
+        return ""
+    return str(result.get("stderr") or result.get("error") or f"{result.get('tool')} failed")
 
 
 def _want_exporters(extra: dict[str, Any] | None = None) -> bool:
@@ -715,9 +882,47 @@ def keep_status(
 ) -> dict[str, Any]:
     """SCOPE-gated KEEP four-set inventory. Detect + report only. Never scans."""
     root = _require_keep_package(_repo_root())
-    scope = load_scope(scope_path)
     extra = arguments if isinstance(arguments, dict) else {}
     pack_in = _keep_pack_in(extra)
+    last: BaseException | None = None
+    retried = False
+    for attempt in range(2):
+        try:
+            payload = _keep_status_once(
+                scope_path=scope_path,
+                extra=extra,
+                root=root,
+                pack_in=pack_in,
+            )
+            payload["retried"] = retried
+            payload["ok"] = True
+            payload["error"] = ""
+            payload["stderr"] = ""
+            return payload
+        except GateError:
+            raise
+        except Exception as exc:
+            last = exc
+            if attempt == 0 and retryable_keep_error(exc):
+                retried = True
+                continue
+            return keep_fail_payload("keep_status", exc, retried=retried, pack_in=pack_in)
+    return keep_fail_payload(
+        "keep_status",
+        last or RuntimeError("keep_status failed"),
+        retried=True,
+        pack_in=pack_in,
+    )
+
+
+def _keep_status_once(
+    *,
+    scope_path: Path | None,
+    extra: dict[str, Any],
+    root: Path,
+    pack_in: Path,
+) -> dict[str, Any]:
+    scope = load_scope(_keep_scope_path(scope_path))
     inventory = _keep_family_inventory(pack_in)
     samples_dir = root / "fixtures" / "keep-samples"
     keep_real = str(inventory["keep_real"])
@@ -788,18 +993,71 @@ def keep_ciso(
     arguments.exporters is accepted (script --exporters re-write) but sinks
     always come from keep.lab — no second export path. Also advertises the
     farm pack_drop operator twin (farm_drop_to_sor) as a hint only.
+    arguments.isolate_work is optional: unique subdirectory so overlapping
+    calls do not share out/. Default on when work is the shared keep/work.
+    One retry on transient wipe / Windows directory errors only.
     """
     root = _require_keep_package(_repo_root())
+    extra = arguments if isinstance(arguments, dict) else {}
+    operator_pack_in = _keep_pack_in(extra)
+    base_work, work_explicit = _keep_work_choice(extra)
+    isolate = _want_isolate_work(extra, work_explicit=work_explicit)
+    work = atomic_keep_work(base_work) if isolate else base_work
+    last: BaseException | None = None
+    retried = False
+    for attempt in range(2):
+        try:
+            return _keep_ciso_once(
+                scope_path=scope_path,
+                extra=extra,
+                root=root,
+                operator_pack_in=operator_pack_in,
+                work=work,
+                isolate_work=isolate,
+                retried=retried,
+            )
+        except GateError:
+            raise
+        except Exception as exc:
+            last = exc
+            if attempt == 0 and retryable_keep_error(exc):
+                retried = True
+                continue
+            return keep_fail_payload(
+                "keep_ciso",
+                exc,
+                retried=retried,
+                work=work,
+                pack_in=operator_pack_in,
+                isolate_work=isolate,
+            )
+    return keep_fail_payload(
+        "keep_ciso",
+        last or RuntimeError("keep_ciso failed"),
+        retried=True,
+        work=work,
+        pack_in=operator_pack_in,
+        isolate_work=isolate,
+    )
+
+
+def _keep_ciso_once(
+    *,
+    scope_path: Path | None,
+    extra: dict[str, Any],
+    root: Path,
+    operator_pack_in: Path,
+    work: Path,
+    isolate_work: bool,
+    retried: bool,
+) -> dict[str, Any]:
     from keep.lab import keep_lab
     from keep.wipe import reset_dir
 
-    scope = load_scope(scope_path)
-    extra = arguments if isinstance(arguments, dict) else {}
-    operator_pack_in = _keep_pack_in(extra)
-    work = _keep_work_dir(extra)
+    scope = load_scope(_keep_scope_path(scope_path))
     before = _pack_fingerprint(operator_pack_in)
-    # Twin wipe of the same keep/work/{in,out} trees keep_lab resets.
-    # Bare rmtree raises WinError 145 on DESKTOP leftovers.
+    # Twin wipe of this call's keep/work/{in,out} trees. Isolated calls
+    # wipe only their unique subdirectory, not the shared keep/work/out.
     reset_dir(work / "in")
     reset_dir(work / "out")
     # Isolated empty pack_in so keep_lab lands fixtures/keep-samples only.
@@ -813,9 +1071,21 @@ def keep_ciso(
     handoff = work / "out" / "eval" / "handoff.json"
     estate = "SAMPLE/DEMO — not a client estate"
     exporters = _want_exporters(extra)
+    ok = stamp.get("status") == "pass" and not wrote_pack
+    reason = ""
+    if not ok:
+        reason = str(stamp.get("reason") or "").strip()
+        if wrote_pack and not reason:
+            reason = "keep_ciso wrote pack in/"
+        if not reason:
+            reason = "keep_lab status is not pass"
     return {
         "tool": "keep_ciso",
-        "ok": stamp.get("status") == "pass" and not wrote_pack,
+        "ok": ok,
+        "error": reason,
+        "stderr": reason,
+        "retried": bool(retried),
+        "isolate_work": bool(isolate_work),
         "live": False,
         "dry_run": True,
         "scope_gated": True,
@@ -863,7 +1133,9 @@ def keep_ciso(
             "make farm-drop-to-sor / .\\scripts\\farm_drop_to_sor.ps1. "
             "Sinks always from keep-lab "
             "(arguments.exporters is optional re-write, not a second path). "
-            "DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0. "
+            "arguments.isolate_work is optional unique work (default on for "
+            "shared keep/work). DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 "
+            "RISKREADY_PUSH=0. "
             "Does not densify pack in/. Does not invent non-sample files. "
             "Does not require signed self-SCOPE. SAMPLE≠client. DEMO≠client. "
             "paying_day FAIL."
@@ -964,6 +1236,13 @@ def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None)
         try:
             refuse_attack_name(name)
             result = dispatch(name, live=False, scope_path=scope_path, arguments=arguments)
+            fail = keep_tool_fail_text(result)
+            if fail:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": rid,
+                    "error": {"code": 2, "message": fail, "data": result},
+                }
             return {"jsonrpc": "2.0", "id": rid, "result": result}
         except GateError as exc:
             return {"jsonrpc": "2.0", "id": rid, "error": {"code": 2, "message": str(exc)}}
