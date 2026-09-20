@@ -1,3 +1,8 @@
 SAMPLE/DEMO — not a client estate.
 Covey pack_drop fixture for the CISO Assistant export prove.
-Not a client export. Not a paying-day stamp.
+Dual-net SAMPLE nmap-ish -sV leaf: 10.0.0.0/24 corp + 172.16.10.0/24 lab.
+Host classes: directory, file, web, jump, mail, workstation, printer,
+legacy-admin, lab-gateway/web/db/windows/vpn/iot/ci.
+Exposure observations only (open ports / products). Farm path is not CVE-class;
+vulnerabilities.csv stays header-only (0 rows). Not a client export.
+Not a paying-day stamp. SAMPLE/DEMO != client KEEP.

@@ -66,6 +66,9 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     findings = (ciso / "findings.csv").read_text(encoding="utf-8")
     evid = (ciso / "evidences.csv").read_text(encoding="utf-8")
     assert "filesrv.corp.local" in assets
+    assert "dc.corp.local" in assets
+    assert "lab-db.lab.local" in assets
+    assert "172.16.10." in assets
     assert "10.9.8.7" in assets
     assert "10.9.8.8" in assets
     assert "10.9.8.20" in assets
