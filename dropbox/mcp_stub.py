@@ -799,7 +799,7 @@ def keep_ciso(
     work = _keep_work_dir(extra)
     before = _pack_fingerprint(operator_pack_in)
     # Twin wipe of the same keep/work/{in,out} trees keep_lab resets.
-    # Bare shutil.rmtree raises WinError 145 on DESKTOP leftovers.
+    # Bare rmtree raises WinError 145 on DESKTOP leftovers.
     reset_dir(work / "in")
     reset_dir(work / "out")
     # Isolated empty pack_in so keep_lab lands fixtures/keep-samples only.
