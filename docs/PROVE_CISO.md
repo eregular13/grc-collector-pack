@@ -126,6 +126,17 @@ LAB/DEMO != SAMPLE != client. `paying_day` stays FAIL. Never pack `in/`.
 `farm_drop_to_sor` remains the fixture seed path. `sample_to_sor` remains
 the primary KEEP path. This is not a new CTA.
 
+## Brick 4 — cold farm wipe/clone ship-gate (CI/lab)
+
+When pack HEAD of the farm assertion surface changes, CI job
+`farm-drop-to-sor-cold` wipes a dest, extracts this SHA
+(`git archive HEAD`), runs `farm_drop_to_sor`, and
+`assert_risk_register_and_poam`. See `docs/FARM_SHIP_GATE.md`.
+`FARM_SHIP=yes` only on that surface change — identical re-PASS is
+not a ship event. Scripts under `scripts/ci/` are CI/lab only, not a
+new public operator entrypoint. SAMPLE/DEMO != client. paying_day
+FAIL. Not client KEEP.
+
 ## Honesty limits
 
 | Claim | Truth |
