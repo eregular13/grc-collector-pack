@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -33,6 +32,7 @@ from keep.ciso_import import (
 )
 from keep.export import export_keep_sinks
 from keep.handoff import write_eval_handoff
+from keep.wipe import reset_dir
 
 ENV_KEYS = (
     "IN_DIR",
@@ -130,14 +130,32 @@ def keep_lab(
                 os.environ[key] = value
 
 
+def _reset_keep_work_trees(work: Path) -> tuple[Path, Path]:
+    """Wipe keep/work/{in,out} with the shared Windows-safe helper. Twin of keep_ciso."""
+    work = Path(work)
+    work_in = reset_dir(work / "in")
+    work_out = reset_dir(work / "out")
+    return work_in, work_out
+
+
 def _run(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
-    work_in = work / "in"
-    work_out = work / "out"
+    last: dict[str, Any] | None = None
+    for attempt in range(2):
+        last = _run_once(root, pack_in, work)
+        if last.get("status") == "pass":
+            return last
+        reason = str(last.get("reason") or "")
+        if "CISO Assistant CSVs missing" not in reason:
+            return last
+        # Windows pending-delete after a stranger wipe of keep/work can eat a
+        # just-written out/ tree. One retry on a fresh reset.
+        _reset_keep_work_trees(work)
+    return last or {}
+
+
+def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
+    work_in, work_out = _reset_keep_work_trees(work)
     before = {str(path): _pack_tree_fingerprint(path) for path in _watched_pack_dirs(root, pack_in)}
-    for folder in (work_in, work_out):
-        if folder.exists():
-            shutil.rmtree(folder)
-        folder.mkdir(parents=True)
 
     sources, client_keep, origin = _choose_sources(root, pack_in)
     landed = land_keep_files(sources, work_in)

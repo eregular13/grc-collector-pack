@@ -263,6 +263,25 @@ def test_sample_to_sor_sh_isolated_keep_lab_exporters(tmp_path: Path) -> None:
     assert "exporters" in proc.stdout.lower() or "opengrc" in proc.stdout
 
 
+def test_sample_to_sor_wipe_work_then_sample_to_sor_emits_ciso_csvs(tmp_path: Path) -> None:
+    """DESKTOP stranger path: sample_to_sor → wipe keep/work → sample_to_sor still emits CSVs."""
+    from keep.wipe import wipe_tree
+
+    _run_sample_to_sor_isolated(tmp_path, exporters=True)
+    work = tmp_path / "work-exporters"
+    ciso = work / "out" / "ciso-assistant"
+    for name in CISO_REQUIRED:
+        assert (ciso / name).is_file()
+    wipe_tree(work)
+    assert not work.exists() or not any(work.rglob("*.csv"))
+    _run_sample_to_sor_isolated(tmp_path, exporters=True)
+    for name in CISO_REQUIRED:
+        path = ciso / name
+        assert path.is_file(), name
+        assert path.stat().st_size > 0
+    _assert_import_honesty(ciso)
+
+
 def test_keep_verify_cli_and_main_usage() -> None:
     main = (ROOT / "keep" / "__main__.py").read_text(encoding="utf-8")
     assert "verify" in main
