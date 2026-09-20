@@ -1,0 +1,30 @@
+{
+  "sample": true,
+  "_comment": "SAMPLE — redacted KEEP-chain fixture. Not a client KEEP drop.",
+  "findings": [
+    {
+      "CheckID": "s3_bucket_public_access",
+      "CheckTitle": "S3 bucket prohibits public access",
+      "Status": "FAIL",
+      "Severity": "critical",
+      "ResourceId": "sample-public-assets",
+      "ResourceArn": "arn:aws:s3:::sample-public-assets",
+      "Description": "Bucket ACL and policy allow public List/Get.",
+      "ServiceName": "s3",
+      "Region": "us-east-1",
+      "AccountId": "000000000000"
+    },
+    {
+      "CheckID": "iam_root_mfa_enabled",
+      "CheckTitle": "Root account MFA enabled",
+      "Status": "FAIL",
+      "Severity": "high",
+      "ResourceId": "root",
+      "ResourceArn": "arn:aws:iam::000000000000:root",
+      "Description": "Root user has no MFA device.",
+      "ServiceName": "iam",
+      "Region": "us-east-1",
+      "AccountId": "000000000000"
+    }
+  ]
+}
