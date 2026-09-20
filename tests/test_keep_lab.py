@@ -299,6 +299,7 @@ def test_handoff_docs_and_no_eval_http() -> None:
         "keep/adapters.py",
         "keep/handoff.py",
         "keep/lab.py",
+        "keep/wipe.py",
         "keep/ciso_import.py",
         "keep/export.py",
     ):

@@ -875,6 +875,32 @@ def test_keep_ciso_dry_does_not_mutate_pack_in(tmp_path: Path, monkeypatch: pyte
     assert "sample" in handoff.lower()
 
 
+def test_keep_ciso_wipes_leftover_out_without_winerror_145(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """sample_to_sor leftovers in keep/work/out must not crash keep_ciso on wipe."""
+    from keep.ciso_import import CISO_REQUIRED
+
+    pack_in = tmp_path / "in"
+    pack_in.mkdir()
+    work = tmp_path / "work"
+    leftover = work / "out" / "ciso-assistant" / "nested"
+    leftover.mkdir(parents=True)
+    (leftover / "stale.csv").write_text("stale\n", encoding="utf-8")
+    (work / "out" / "summary.json").write_text("{}\n", encoding="utf-8")
+    monkeypatch.setenv("IN_DIR", str(pack_in))
+    data = dispatch(
+        "keep_ciso",
+        scope_path=SCOPE,
+        arguments={"pack_in": str(pack_in), "work": str(work)},
+    )
+    assert data["ok"] is True, data.get("stamp", {}).get("reason")
+    ciso = Path(data["ciso_dir"])
+    for name in CISO_REQUIRED:
+        assert (ciso / name).is_file(), name
+    assert not (ciso / "nested" / "stale.csv").exists()
+
+
 def test_keep_ciso_sor_helpers_tolerate_missing_script(tmp_path: Path) -> None:
     from dropbox.mcp_stub import (
         farm_drop_to_sor_cli_twin,

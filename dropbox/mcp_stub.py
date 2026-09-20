@@ -791,12 +791,17 @@ def keep_ciso(
     """
     root = _require_keep_package(_repo_root())
     from keep.lab import keep_lab
+    from keep.wipe import reset_dir
 
     scope = load_scope(scope_path)
     extra = arguments if isinstance(arguments, dict) else {}
     operator_pack_in = _keep_pack_in(extra)
     work = _keep_work_dir(extra)
     before = _pack_fingerprint(operator_pack_in)
+    # Twin wipe of the same keep/work/{in,out} trees keep_lab resets.
+    # Bare rmtree raises WinError 145 on DESKTOP leftovers.
+    reset_dir(work / "in")
+    reset_dir(work / "out")
     # Isolated empty pack_in so keep_lab lands fixtures/keep-samples only.
     # Do not pass operator pack in/ — this week's slice does not densify.
     isolated = work / "sample-pack-in"
