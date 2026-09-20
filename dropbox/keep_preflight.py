@@ -16,6 +16,14 @@ KEEP_PACKAGE_FILES = (
     "keep/lab.py",
     "keep/adapters.py",
 )
+# Four SAMPLE keep-samples family files. Incomplete tree must fail closed
+# (#98/#99 style) instead of emitting a hollow risk register.
+KEEP_SAMPLE_FILES = (
+    "fixtures/keep-samples/identity/hardeningkitty.csv",
+    "fixtures/keep-samples/saas/maester.json",
+    "fixtures/keep-samples/vuln/testssl.json",
+    "fixtures/keep-samples/cloud/prowler.json",
+)
 
 KEEP_PACKAGE_CLONE = "eregular13/grc-collector-pack"
 KEEP_PACKAGE_HINT = (
@@ -26,6 +34,10 @@ KEEP_PACKAGE_HINT = (
 
 class KeepPackageIncomplete(Exception):
     """keep package files missing or PYTHONPATH does not include the clone root."""
+
+
+class KeepFixtureIncomplete(Exception):
+    """SAMPLE keep-samples fixture missing, empty, or unparseable."""
 
 
 def missing_keep_package_files(root: Path) -> list[str]:
@@ -119,6 +131,61 @@ def require_keep_package(
     if not report["ok"]:
         raise KeepPackageIncomplete(str(report["message"]))
     return Path(root)
+
+
+def missing_keep_sample_files(root: Path) -> list[str]:
+    """Return required keep-samples paths that are missing or empty."""
+    root = Path(root)
+    missing: list[str] = []
+    for rel in KEEP_SAMPLE_FILES:
+        path = root / rel
+        if not path.is_file() or path.stat().st_size == 0:
+            missing.append(str(path))
+    return missing
+
+
+def keep_samples_incomplete_message(root: Path, missing: list[str] | None = None) -> str:
+    """Short operator message. Names the missing fixture. Full-clone hint."""
+    root = Path(root)
+    missing = list(missing) if missing is not None else missing_keep_sample_files(root)
+    if missing:
+        named = Path(missing[0]).as_posix()
+        extra = f" (and {len(missing) - 1} more)" if len(missing) > 1 else ""
+        return (
+            f"keep fixture incomplete: missing {named}{extra}. "
+            f"SAMPLE keep-samples must include all four families. {KEEP_PACKAGE_HINT}"
+        )
+    return f"keep fixture incomplete under {root}. {KEEP_PACKAGE_HINT}"
+
+
+def check_keep_samples(root: Path) -> dict[str, object]:
+    """Inspect SAMPLE keep-samples files. Does not import keep."""
+    root = Path(root)
+    missing = missing_keep_sample_files(root)
+    ok = not missing
+    return {
+        "ok": ok,
+        "root": str(root),
+        "missing": missing,
+        "message": "" if ok else keep_samples_incomplete_message(root, missing),
+    }
+
+
+def require_keep_samples(root: Path) -> Path:
+    """Raise KeepFixtureIncomplete when SAMPLE keep-samples cannot build a register."""
+    report = check_keep_samples(root)
+    if not report["ok"]:
+        raise KeepFixtureIncomplete(str(report["message"]))
+    return Path(root)
+
+
+def abort_keep_samples(root: Path) -> Path:
+    """Fail closed with a named missing fixture (not a hollow SoR)."""
+    try:
+        return require_keep_samples(root)
+    except KeepFixtureIncomplete as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from None
 
 
 def abort_keep_package(

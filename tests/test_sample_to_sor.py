@@ -16,6 +16,13 @@ from keep.ciso_import import (
     SampleHonestyError,
     verify_sample_sor,
 )
+from shared.ciso_shape import (
+    FINDING_SEV,
+    REGISTER_OK_LINE,
+    assert_risk_register_and_poam,
+    csv_rows,
+    write_minimal_register,
+)
 
 
 def _tree_fingerprint(folder: Path) -> dict[str, str]:
@@ -38,8 +45,22 @@ def _assert_import_honesty(ciso: Path) -> dict:
     assert import_doc["client_keep"] is False
     assert import_doc["paying_day"] == "FAIL"
     assert import_doc["posted"] is False
-    csvs = list(ciso.glob("*.csv"))
-    assert len(csvs) >= 1
+    shape = assert_risk_register_and_poam(ciso)
+    assert shape["findings"] >= 1
+    assert shape["poam_rows"] >= 1
+    for row in csv_rows(ciso / "findings.csv"):
+        assert row["severity"] in FINDING_SEV, row
+        assert row["ref_id"]
+        assert row["name"]
+    poam = csv_rows(ciso.parent / "poam" / "poam.csv")
+    assert poam
+    for row in poam:
+        assert row["weakness"]
+        assert row["severity"] in FINDING_SEV, row
+        assert row["status"] == "open"
+        assert (row.get("owner") or "") == ""
+        assert (row.get("due") or "") == ""
+        assert row.get("recommended_fix")
     return import_doc
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,8 +85,7 @@ def _honest_bundle(folder: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
-    for name in CISO_REQUIRED:
-        (folder / name).write_text("ref_id,name\nDEMO-1,sample\n", encoding="utf-8")
+    write_minimal_register(folder, with_poam=True)
 
 
 def test_sample_to_sor_scripts_force_safety_env() -> None:
@@ -122,6 +142,20 @@ def test_readme_and_operator_first_lines_point_at_one_command() -> None:
     assert "cold-path-gate" in op
 
 
+def test_sample_to_sor_console_prints_are_ascii_cp1252() -> None:
+    """DESKTOP-222GHQV Windows cp1252 cannot print U+2260 / U+2192."""
+    assert REGISTER_OK_LINE.isascii()
+    REGISTER_OK_LINE.encode("cp1252")
+    for path in (SCRIPT, PS1):
+        text = path.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith(("echo ", "Write-Host ")):
+                stripped.encode("cp1252")
+                assert "\u2260" not in stripped
+                assert "\u2192" not in stripped
+
+
 def test_lab_yml_has_cold_sample_to_sor_job() -> None:
     yml = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
     assert "sample-to-sor-cold:" in yml
@@ -130,6 +164,9 @@ def test_lab_yml_has_cold_sample_to_sor_job() -> None:
     assert "IMPORT.json" in yml
     assert "client_keep" in yml
     assert "paying_day" in yml
+    assert "assert_risk_register_and_poam" in yml
+    assert "poam_rows" in yml
+    assert "POAM_HEADER" in yml
     assert "ubuntu-latest" in yml
     assert "No Docker" in yml
     assert "keep/__main__.py" in yml
@@ -157,6 +194,36 @@ def test_verify_sample_sor_fail_closed_on_dishonest_import(tmp_path: Path) -> No
 
     (folder / "findings.csv").unlink()
     with pytest.raises(SampleHonestyError, match="missing"):
+        verify_sample_sor(folder)
+
+
+def test_verify_sample_sor_fail_closed_on_wrong_headers(tmp_path: Path) -> None:
+    folder = tmp_path / "ciso-assistant"
+    _honest_bundle(folder)
+    (folder / "findings.csv").write_text("ref_id,name\nDEMO-1,sample\n", encoding="utf-8")
+    with pytest.raises(SampleHonestyError, match="header mismatch"):
+        verify_sample_sor(folder)
+
+
+def test_verify_sample_sor_fail_closed_when_findings_without_poam(tmp_path: Path) -> None:
+    folder = tmp_path / "ciso-assistant"
+    write_minimal_register(folder, with_poam=False)
+    (folder / "IMPORT.json").write_text(
+        json.dumps(
+            {
+                "demo": True,
+                "sample": True,
+                "client_keep": False,
+                "paying_day": "FAIL",
+                "posted": False,
+                "http": False,
+                "wrap": "review-only",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SampleHonestyError, match="POA&M"):
         verify_sample_sor(folder)
 
 
@@ -233,6 +300,10 @@ def _run_sample_to_sor_isolated(
         check=False,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
+    out_blob = (proc.stdout or "") + (proc.stderr or "")
+    out_blob.encode("cp1252")
+    assert "\u2260" not in out_blob
+    assert "\u2192" not in out_blob
     assert work.resolve() != pack_work.resolve()
     assert work.is_relative_to(tmp_path)
     assert _tree_fingerprint(pack_in) == before_in

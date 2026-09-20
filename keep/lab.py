@@ -30,9 +30,11 @@ from keep.ciso_import import (
     read_paying_day,
     write_ciso_import_manifest,
 )
+from shared.ciso_shape import RegisterShapeError, assert_risk_register_and_poam
 from keep.export import export_keep_sinks
 from keep.handoff import write_eval_handoff
 from keep.wipe import reset_dir
+from dropbox.keep_preflight import KeepFixtureIncomplete, require_keep_samples
 
 ENV_KEYS = (
     "IN_DIR",
@@ -158,6 +160,46 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     before = {str(path): _pack_tree_fingerprint(path) for path in _watched_pack_dirs(root, pack_in)}
 
     sources, client_keep, origin = _choose_sources(root, pack_in)
+    if origin == "keep-samples":
+        try:
+            require_keep_samples(root)
+        except KeepFixtureIncomplete as exc:
+            stamp = {
+                "status": "fail",
+                "demo": True,
+                "sample": True,
+                "client_keep": False,
+                "paying_day": "FAIL",
+                "origin": origin,
+                "posted": False,
+                "http": False,
+                "wrap": "review-only",
+                "reason": str(exc),
+            }
+            work.mkdir(parents=True, exist_ok=True)
+            (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+            return stamp
+        sample_groups = {str(row.get("group") or "") for row in sources}
+        unparseable = [name for name in KEEP_FAMILIES if name not in sample_groups]
+        if unparseable:
+            stamp = {
+                "status": "fail",
+                "demo": True,
+                "sample": True,
+                "client_keep": False,
+                "paying_day": "FAIL",
+                "origin": origin,
+                "posted": False,
+                "http": False,
+                "wrap": "review-only",
+                "reason": (
+                    f"keep fixture malformed: families not parseable: {unparseable}. "
+                    "SAMPLE keep-samples must include all four families."
+                ),
+            }
+            work.mkdir(parents=True, exist_ok=True)
+            (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+            return stamp
     landed = land_keep_files(sources, work_in)
     groups = {str(row.get("group") or "") for row in landed}
     missing = [name for name in KEEP_FAMILIES if name not in groups]
@@ -281,13 +323,18 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
             "demo": counts.get("demo"),
         },
         "note": (
-            "SAMPLE keep-lab → keep/work/out/ciso-assistant/*.csv. "
-            "SAMPLE ≠ client KEEP unless pack in/ has all four non-sample families."
+            "SAMPLE keep-lab -> keep/work/out/ciso-assistant/*.csv. "
+            "SAMPLE != client KEEP unless pack in/ has all four non-sample families."
         ),
     }
     as_client = sample_as_client_reason(landed, sample=sample, client_keep=honest_client)
     missing_ciso = missing_required_ciso(work_out)
     bad_headers = header_mismatch(work_out)
+    shape_error = ""
+    try:
+        assert_risk_register_and_poam(work_out)
+    except RegisterShapeError as exc:
+        shape_error = str(exc)
     if missing:
         stamp["status"] = "fail"
         stamp["reason"] = f"KEEP families missing: {missing}"
@@ -300,6 +347,9 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     elif bad_headers:
         stamp["status"] = "fail"
         stamp["reason"] = f"CISO Assistant CSV headers mismatch: {bad_headers}"
+    elif shape_error:
+        stamp["status"] = "fail"
+        stamp["reason"] = shape_error
     elif as_client:
         stamp["status"] = "fail"
         stamp["reason"] = as_client

@@ -6,26 +6,19 @@ import json
 from pathlib import Path
 from typing import Any
 
+from shared.ciso_shape import (
+    CISO_HEADERS,
+    REGISTER_CSVS,
+    RegisterShapeError,
+    assert_risk_register_and_poam,
+)
 from shared.io_util import write_json
 
-CISO_REQUIRED = (
-    "assets.csv",
-    "findings.csv",
-    "vulnerabilities.csv",
-    "applied_controls.csv",
-)
+CISO_REQUIRED = REGISTER_CSVS
 CISO_OPTIONAL = (
     "evidences.csv",
     "risk_scenarios.csv",
 )
-CISO_HEADERS = {
-    "assets.csv": "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets",
-    "applied_controls.csv": "ref_id,name,description,domain,status,category,priority,csf_function",
-    "evidences.csv": "name,description",
-    "findings.csv": "ref_id,name,description,severity,status,filtering_labels",
-    "vulnerabilities.csv": "ref_id,name,description,status,severity,assets,applied_controls",
-    "risk_scenarios.csv": "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment",
-}
 
 
 def read_paying_day(root: Path) -> str:
@@ -178,7 +171,8 @@ def verify_sample_sor(ciso: Path) -> dict[str, Any]:
     """Fail-closed SAMPLE honesty for the operator entrypoint.
 
     Requires demo/sample true, paying_day FAIL, client_keep false,
-    posted/http false, and the required CISO CSVs. SAMPLE ≠ client KEEP.
+    posted/http false, required CISO CSVs with schema columns, and
+    POA&M rows when findings exist. SAMPLE != client KEEP.
     This pack never invents paying_day PASS.
     """
     folder = Path(ciso)
@@ -210,16 +204,11 @@ def verify_sample_sor(ciso: Path) -> dict[str, Any]:
     if wrap and wrap != "review-only":
         errors.append("wrap must stay review-only")
 
-    missing = [name for name in CISO_REQUIRED if not (folder / name).is_file()]
-    if missing:
-        errors.append(f"CISO CSVs missing: {missing}")
-    empty = [
-        name
-        for name in CISO_REQUIRED
-        if (folder / name).is_file() and not (folder / name).read_text(encoding="utf-8").strip()
-    ]
-    if empty:
-        errors.append(f"CISO CSVs empty: {empty}")
+    shape: dict[str, Any] = {}
+    try:
+        shape = assert_risk_register_and_poam(folder)
+    except RegisterShapeError as exc:
+        errors.append(str(exc))
 
     if errors:
         raise SampleHonestyError("; ".join(errors))
@@ -233,6 +222,8 @@ def verify_sample_sor(ciso: Path) -> dict[str, Any]:
         "paying_day": "FAIL",
         "posted": False,
         "files": [name for name in list(CISO_REQUIRED) + list(CISO_OPTIONAL) if (folder / name).is_file()],
+        "findings": shape.get("findings"),
+        "poam_rows": shape.get("poam_rows"),
     }
 
 

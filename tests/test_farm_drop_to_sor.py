@@ -15,6 +15,14 @@ from scripts.prove_ciso import (
     FarmDropHonestyError,
     verify_farm_drop_sor,
 )
+from shared.ciso_shape import (
+    CISO_HEADERS,
+    FINDING_SEV,
+    POAM_HEADER,
+    assert_risk_register_and_poam,
+    csv_rows,
+    write_minimal_register,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "farm_drop_to_sor.sh"
@@ -43,8 +51,7 @@ def _honest_prove(folder: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
-    for name in CISO_CSVS:
-        (ciso / name).write_text("ref_id,name\nDEMO-1,sample\n", encoding="utf-8")
+    write_minimal_register(ciso, with_poam=True)
 
 
 def test_farm_drop_to_sor_scripts_force_safety_env() -> None:
@@ -78,6 +85,10 @@ def test_farm_drop_to_sor_scripts_force_safety_env() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "farm-drop-to-sor:" in makefile
     assert "scripts/farm_drop_to_sor.sh" in makefile
+    yml = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
+    assert "farm_drop_to_sor.sh" in yml
+    assert "assert_risk_register_and_poam" in yml
+    assert "poam_rows" in yml
 
 
 def test_readme_and_operator_first_lines_point_at_farm_drop_twin() -> None:
@@ -184,6 +195,24 @@ def test_verify_farm_drop_sor_fail_closed_on_paying_day_pass(tmp_path: Path) -> 
         verify_farm_drop_sor(dest)
 
 
+def test_verify_farm_drop_sor_fail_closed_on_wrong_headers(tmp_path: Path) -> None:
+    dest = tmp_path / "prove"
+    _honest_prove(dest)
+    findings = dest / "out" / "ciso-assistant" / "findings.csv"
+    findings.write_text("ref_id,name\nDEMO-1,sample\n", encoding="utf-8")
+    with pytest.raises(FarmDropHonestyError, match="header mismatch"):
+        verify_farm_drop_sor(dest)
+
+
+def test_verify_farm_drop_sor_fail_closed_when_findings_without_poam(tmp_path: Path) -> None:
+    dest = tmp_path / "prove"
+    _honest_prove(dest)
+    poam = dest / "out" / "poam" / "poam.csv"
+    poam.write_text(POAM_HEADER + "\n", encoding="utf-8")
+    with pytest.raises(FarmDropHonestyError, match="POA&M"):
+        verify_farm_drop_sor(dest)
+
+
 def test_farm_drop_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
     work = tmp_path / "work"
     _honest_prove(work)
@@ -251,5 +280,30 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     assert stamp["paying_day"] == "FAIL"
     assert stamp["posted"] is False
     assert stamp["pack_in_written"] is False
-    for name in ("assets.csv", "findings.csv"):
-        assert (work / "out" / "ciso-assistant" / name).is_file()
+    ciso = work / "out" / "ciso-assistant"
+    shape = assert_risk_register_and_poam(work / "out")
+    assert shape["findings"] >= 1
+    assert shape["poam_rows"] >= 1
+    for name in ("assets.csv", "findings.csv", "vulnerabilities.csv", "applied_controls.csv"):
+        path = ciso / name
+        assert path.is_file()
+        header = path.read_text(encoding="utf-8").splitlines()[0].strip()
+        assert header == CISO_HEADERS[name], name
+    poam = work / "out" / "poam" / "poam.csv"
+    assert poam.is_file()
+    assert poam.read_text(encoding="utf-8").splitlines()[0].strip() == POAM_HEADER
+    for row in csv_rows(ciso / "findings.csv"):
+        assert row["severity"] in FINDING_SEV, row
+        assert row["ref_id"]
+        assert row["name"]
+    for row in csv_rows(poam):
+        assert row["weakness"]
+        assert row["severity"] in FINDING_SEV, row
+        assert row["status"] == "open"
+        assert (row.get("owner") or "") == ""
+        assert (row.get("due") or "") == ""
+        assert row.get("recommended_fix")
+    blob = (proc.stdout or "") + (proc.stderr or "")
+    blob.encode("cp1252")
+    assert "\u2260" not in blob
+    assert "\u2192" not in blob
