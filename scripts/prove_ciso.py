@@ -57,6 +57,15 @@ SAMPLE_BANNER = (
     f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED}) + honeypot file_drop. Not a client export.\n"
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
+# Lab/live dest_in is operator-populated. Not SAMPLE fixture reseed. Not a client.
+LAB_BANNER = (
+    "LAB/DEMO -- not a client estate.\n"
+    "Operator-populated dest_in (no fixture reseed). Not SAMPLE fixtures. Not a client export.\n"
+    "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
+)
+SKIP_EXISTING_IN_NAMES = frozenset(
+    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md"}
+)
 
 ENV_KEYS = (
     "IN_DIR",
@@ -77,8 +86,13 @@ class FarmDropHonestyError(RuntimeError):
     """prove JSON / CISO outputs claimed a client estate or paying_day PASS."""
 
 
+class ExistingInError(RuntimeError):
+    """--use-existing-in requires dest_in already populated; will not reseed."""
+
+
 # ASCII-only: Windows cp1252 consoles cannot print U+2260.
 HONESTY_OK_LINE = "FARM_DROP_HONESTY=ok SAMPLE/DEMO != client paying_day=FAIL"
+LAB_HONESTY_OK_LINE = "LAB_DROP_HONESTY=ok LAB/DEMO != client SAMPLE != LAB paying_day=FAIL"
 
 
 def _copy_tree(src: Path, dest: Path) -> None:
@@ -95,6 +109,53 @@ def pack_drop_seed_dest(dest_in: Path, name: str) -> Path:
     """nmap lands at dest_in/nmap/pack_drop/; siblings nest under that dir."""
     nmap_drop = Path(dest_in) / "nmap" / "pack_drop"
     return nmap_drop if name == "nmap" else nmap_drop / name
+
+
+def dest_in_is_populated(dest_in: Path) -> bool:
+    """True when dest_in already holds sensor/pack_drop files (not banners)."""
+    dest_in = Path(dest_in)
+    if not dest_in.is_dir():
+        return False
+    for path in dest_in.rglob("*"):
+        if path.is_file() and path.name not in SKIP_EXISTING_IN_NAMES:
+            return True
+    return False
+
+
+def require_existing_in(dest_in: Path) -> Path:
+    """Fail closed unless dest_in is already populated. Never rmtree/reseed."""
+    dest_in = Path(dest_in)
+    if dest_in_is_populated(dest_in):
+        return dest_in
+    raise ExistingInError(
+        "EXISTING_IN_FAIL dest_in is empty or missing; "
+        "--use-existing-in / --no-seed will not seed fixtures/pack_drop. "
+        f"Populate {dest_in} first (LAB compose pack_drop or operator copy)."
+    )
+
+
+def inspect_existing_in(dest_in: Path) -> dict[str, Any]:
+    """Describe operator dest_in without copying or wiping it."""
+    dest_in = Path(dest_in)
+    adapters: dict[str, str] = {}
+    nmap_drop = dest_in / "nmap" / "pack_drop"
+    if nmap_drop.is_dir():
+        adapters["nmap"] = str(nmap_drop)
+        for child in sorted(nmap_drop.iterdir()):
+            if child.is_dir() and (child / "meta.json").is_file():
+                adapters[child.name] = str(child)
+    honeypot = dest_in / "honeypot"
+    return {
+        "dest_in": str(dest_in),
+        "seeded": False,
+        "use_existing_in": True,
+        "lab": True,
+        "sample": False,
+        "client": False,
+        "adapters": adapters,
+        "honeypot": str(honeypot) if honeypot.is_dir() else "",
+        "note": "operator dest_in; no fixture reseed",
+    }
 
 
 def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
@@ -151,7 +212,13 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
         raise FarmDropHonestyError(f"FARM_DROP_HONESTY_FAIL paying_day {paying or 'missing'}")
     if stamp.get("client") is True or stamp.get("client_keep") is True:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL client estate claim")
-    if stamp.get("sample") is not True:
+    lab = stamp.get("lab") is True or stamp.get("use_existing_in") is True
+    if lab:
+        if stamp.get("lab") is not True:
+            raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL lab must be true")
+        if stamp.get("seeded") is True:
+            raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL lab dest_in was reseeded")
+    elif stamp.get("sample") is not True:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL sample must be true")
     if stamp.get("demo") is not True:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL demo must be true")
@@ -159,7 +226,12 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
     estate_low = estate.lower()
     if "client" in estate_low and "not a client" not in estate_low:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL estate claims client")
-    if "sample" not in estate_low and "demo" not in estate_low:
+    if lab:
+        if "lab" not in estate_low and "demo" not in estate_low:
+            raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL estate missing LAB/DEMO")
+        if "sample" in estate_low and "lab" not in estate_low:
+            raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL lab estate stamped SAMPLE")
+    elif "sample" not in estate_low and "demo" not in estate_low:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL estate missing SAMPLE/DEMO")
     if stamp.get("posted") is True:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL posted true")
@@ -211,8 +283,17 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
     }
 
 
-def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, Any]:
-    """Seed fixtures → run_ciso_path → out/ciso-assistant. SAMPLE ≠ client."""
+def prove_ciso(
+    root: Path | None = None,
+    dest: Path | None = None,
+    *,
+    use_existing_in: bool = False,
+) -> dict[str, Any]:
+    """Fixture seed (default) or operator dest_in → run_ciso_path → out/ciso-assistant.
+
+    Default reseeds fixtures/pack_drop into dest/in (SAMPLE != client).
+    --use-existing-in / --no-seed keeps dest/in as-is (LAB/DEMO != SAMPLE != client).
+    """
     from dropbox.orchestrator.ciso_path import run_ciso_path
     from dropbox.orchestrator.estate import fingerprint, pack_in_dir
 
@@ -231,7 +312,12 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         os.environ["DROPBOX_LIVE"] = "0"
         os.environ["DROPBOX_DEMO"] = "1"
         os.environ.setdefault("PYTHONPATH", str(root))
-        seed = seed_prove_in(dest_in, root)
+        if use_existing_in:
+            require_existing_in(dest_in)
+            seed = inspect_existing_in(dest_in)
+        else:
+            seed = seed_prove_in(dest_in, root)
+            seed = {**seed, "seeded": True, "use_existing_in": False, "lab": False}
         if dest_out.exists():
             shutil.rmtree(dest_out)
         dest_out.mkdir(parents=True)
@@ -266,10 +352,8 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
     except RegisterShapeError:
         register_shape = {}
         shape_ok = False
-    ok = (
-        bool(ciso_files)
-        and shape_ok
-        and "filesrv.corp.local" in assets_text
+    fixture_ok = (
+        "filesrv.corp.local" in assets_text
         and "10.9.8.7" in assets_text
         and "10.9.8.20" in assets_text
         and "10.9.8.40" in assets_text
@@ -302,21 +386,38 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         )
         and "deception-sensor" in findings_text.lower()
         and ("beelzebub" in findings_text.lower() or "beelzebub" in assets_text.lower())
+        and result.get("sample") is True
+    )
+    findings_n = int(register_shape.get("findings") or 0)
+    scenarios_n = int(register_shape.get("risk_scenarios") or 0)
+    poam_n = int(register_shape.get("poam_rows") or 0)
+    lab_ok = findings_n >= 1 and scenarios_n >= 1 and poam_n >= 1
+    common_ok = (
+        bool(ciso_files)
+        and shape_ok
         and result.get("posted") is False
         and result.get("http") is False
         and after == before
         and paying == "FAIL"
-        and result.get("sample") is True
         and result.get("client_keep") is False
         and result.get("pack_in_written") is False
+    )
+    ok = common_ok and (lab_ok if use_existing_in else fixture_ok)
+    estate = (
+        "LAB/DEMO — not a client estate"
+        if use_existing_in
+        else "SAMPLE/DEMO — not a client estate"
     )
     stamp = {
         "status": "pass" if ok else "fail",
         "demo": True,
-        "sample": True,
+        "sample": False if use_existing_in else True,
+        "lab": bool(use_existing_in),
+        "seeded": not use_existing_in,
+        "use_existing_in": bool(use_existing_in),
         "client": False,
         "client_keep": False,
-        "estate": "SAMPLE/DEMO — not a client estate",
+        "estate": estate,
         "paying_day": paying,
         "posted": result.get("posted"),
         "http": result.get("http"),
@@ -350,9 +451,17 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
         "note": (
-            f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot -> "
-            "existing collectors -> grc_loader -> out/ciso-assistant. SAMPLE != client. "
-            "This prove is not a paying-day PASS."
+            (
+                "Operator dest_in (no fixture reseed) -> existing collectors -> "
+                "grc_loader -> out/ciso-assistant. LAB/DEMO != SAMPLE != client. "
+                "This prove is not a paying-day PASS."
+            )
+            if use_existing_in
+            else (
+                f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot -> "
+                "existing collectors -> grc_loader -> out/ciso-assistant. SAMPLE != client. "
+                "This prove is not a paying-day PASS."
+            )
         ),
     }
     if not ok:
@@ -365,6 +474,10 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
             "sample": result.get("sample"),
             "client_keep": result.get("client_keep"),
             "register_shape": shape_ok,
+            "use_existing_in": use_existing_in,
+            "findings": findings_n,
+            "risk_scenarios": scenarios_n,
+            "poam": poam_n,
         }
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "prove-ciso.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
@@ -381,7 +494,8 @@ def _resolve_work(raw: str | None) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "SAMPLE/DEMO Covey pack_drop + honeypot → prove/work/out/ciso-assistant. "
+            "SAMPLE/DEMO Covey pack_drop + honeypot -> prove/work/out/ciso-assistant "
+            "(default seeds fixtures). --use-existing-in keeps dest/in (LAB/DEMO). "
             "Never writes pack in/. Not a client estate. Paying-day stays FAIL."
         )
     )
@@ -395,22 +509,40 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Check existing prove-ciso.json + CISO outputs; do not re-seed.",
     )
+    parser.add_argument(
+        "--use-existing-in",
+        "--no-seed",
+        dest="use_existing_in",
+        action="store_true",
+        help=(
+            "Do not rmtree/reseed dest/in. Require dest/in already populated "
+            "(LAB compose pack_drop or operator copy). LAB/DEMO != SAMPLE != client."
+        ),
+    )
     args = parser.parse_args(argv)
     dest = _resolve_work(args.work)
     if args.verify_only:
         try:
-            verify_farm_drop_sor(dest)
+            verified = verify_farm_drop_sor(dest)
         except FarmDropHonestyError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(HONESTY_OK_LINE)
+        stamp = verified.get("stamp") or {}
+        if stamp.get("lab") is True or stamp.get("use_existing_in") is True:
+            print(LAB_HONESTY_OK_LINE)
+        else:
+            print(HONESTY_OK_LINE)
         return 0
 
-    stamp = prove_ciso(dest=dest)
+    try:
+        stamp = prove_ciso(dest=dest, use_existing_in=args.use_existing_in)
+    except ExistingInError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     print(json.dumps(stamp, indent=2, default=str))
     print(
-        f"PROVE_CISO={stamp['status']} sample={stamp['sample']} client={stamp['client']} "
-        f"paying_day={stamp['paying_day']} posted={stamp['posted']} "
+        f"PROVE_CISO={stamp['status']} sample={stamp['sample']} lab={stamp.get('lab')} "
+        f"client={stamp['client']} paying_day={stamp['paying_day']} posted={stamp['posted']} "
         f"assets={stamp['counts'].get('assets')} findings={stamp['counts'].get('findings')} "
         f"poam={stamp['counts'].get('poam')}"
     )
@@ -422,7 +554,10 @@ def main(argv: list[str] | None = None) -> int:
     except FarmDropHonestyError as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    print("Estate is SAMPLE/DEMO fixtures. Not a client. Paying-day stays FAIL.")
+    if args.use_existing_in:
+        print("Estate is LAB/DEMO dest_in. Not SAMPLE fixture reseed. Not a client. Paying-day stays FAIL.")
+    else:
+        print("Estate is SAMPLE/DEMO fixtures. Not a client. Paying-day stays FAIL.")
     return 0
 
 
