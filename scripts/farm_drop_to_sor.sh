@@ -64,6 +64,8 @@ done
 
 START="$("$PYTHON" -c 'import time; print(time.perf_counter())')"
 CISO="$WORK/out/ciso-assistant"
+POAM="$WORK/out/poam/poam.csv"
+POAM_MD="$WORK/out/poam/poam.md"
 
 if [[ "$VERIFY_ONLY" -eq 0 ]]; then
   echo "farm_drop_to_sor: python3 scripts/prove_ciso.py (pack_drop -> CISO)"
@@ -77,6 +79,8 @@ ELAPSED="$("$PYTHON" -c "import time; print(f'{time.perf_counter() - float('$STA
 
 echo "farm_drop_to_sor: elapsed=${ELAPSED}s"
 echo "farm_drop_to_sor: ciso=$CISO"
+echo "farm_drop_to_sor: poam=$POAM"
+echo "farm_drop_to_sor: poam_md=$POAM_MD"
 echo "farm_drop_to_sor: prove=$WORK/prove-ciso.json"
 echo "farm_drop_to_sor: SAMPLE/DEMO != client. paying_day FAIL. posted=false."
 echo "farm_drop_to_sor: SAMPLE keep remains the primary KEEP path (sample_to_sor)."

@@ -68,6 +68,7 @@ ref_id,name,description,status,severity,assets,applied_controls
 severity: `Information|Low|Medium|High|Critical`
 status default: `Exploitable`
 Mapped when category is `vulnerability|secrets|sast` or `ref_id` starts with `CVE`.
+Farm leave-behind pack_drop is observation/exposure — `vulnerabilities.csv` may be header-only. The risk register is `findings.csv` + `risk_scenarios.csv`. Do not invent CVE-class rows from open-port observations.
 
 ## risk_scenarios.csv
 
@@ -79,6 +80,7 @@ ref_id;assets;threats;name;description;existing_controls;current_impact;current_
 
 treatment: `mitigate`
 Severity → `Low|Moderate|High|Very High`
+One row per canonical finding. `findings.csv` rows > 0 requires `risk_scenarios.csv` rows > 0.
 
 ## POA&M (operator draft — not a CISO import)
 

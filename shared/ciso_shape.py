@@ -10,14 +10,22 @@ import csv
 from pathlib import Path
 from typing import Any
 
+# Risk register = findings + risk_scenarios (one scenario per canonical finding).
+# vulnerabilities.csv is CVE/secrets/sast only — header-only is allowed when
+# the estate has no CVE-class rows (farm_drop pack_drop is exposure, not CVE).
 REGISTER_CSVS = (
     "assets.csv",
     "findings.csv",
-    "vulnerabilities.csv",
     "applied_controls.csv",
+    "risk_scenarios.csv",
 )
-OPTIONAL_CSVS = (
-    "evidences.csv",
+CVE_CLASS_CSV = "vulnerabilities.csv"
+MUST_EXIST_CSVS = REGISTER_CSVS + (CVE_CLASS_CSV,)
+OPTIONAL_CSVS = ("evidences.csv",)
+ROW_REQUIRED_WHEN_FINDINGS = (
+    "assets.csv",
+    "findings.csv",
+    "applied_controls.csv",
     "risk_scenarios.csv",
 )
 CISO_HEADERS = {
@@ -41,8 +49,10 @@ CISO_HEADERS = {
 }
 POAM_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status"
 POAM_REL = Path("poam") / "poam.csv"
+POAM_MD_REL = Path("poam") / "poam.md"
 FINDING_SEV = frozenset({"low", "medium", "high", "critical"})
 VULN_SEV = frozenset({"Information", "Low", "Medium", "High", "Critical"})
+SCENARIO_LEVELS = frozenset({"Low", "Moderate", "High", "Very High"})
 
 # ASCII-only: Windows cp1252 consoles cannot print U+2260 / U+2192.
 REGISTER_OK_LINE = "REGISTER_SHAPE=ok findings_to_poam != empty paying_day=FAIL"
@@ -88,28 +98,31 @@ def poam_path_of(ciso_or_out: Path) -> Path:
     return resolve_out_dir(ciso_or_out) / POAM_REL
 
 
+def poam_md_path_of(ciso_or_out: Path) -> Path:
+    return resolve_out_dir(ciso_or_out) / POAM_MD_REL
+
+
 def _delimiter_for(name: str) -> str:
     return ";" if name == "risk_scenarios.csv" else ","
 
 
 def assert_ciso_register(ciso: Path) -> dict[str, Any]:
-    """Required risk-register CSVs exist, are non-empty, and match schema headers."""
+    """Risk register = findings + risk_scenarios. Vulns may be header-only (CVE-class)."""
     folder = Path(ciso)
     if folder.name != "ciso-assistant" and (folder / "ciso-assistant").is_dir():
         folder = folder / "ciso-assistant"
-    missing = [name for name in REGISTER_CSVS if not (folder / name).is_file()]
+    missing = [name for name in MUST_EXIST_CSVS if not (folder / name).is_file()]
     if missing:
         raise RegisterShapeError(f"REGISTER_SHAPE_FAIL missing CISO CSVs: {missing}")
     empty: list[str] = []
     bad_headers: dict[str, str] = {}
     counts: dict[str, int] = {}
-    check_names = [name for name in list(REGISTER_CSVS) + list(OPTIONAL_CSVS) if (folder / name).is_file()]
+    check_names = [name for name in list(MUST_EXIST_CSVS) + list(OPTIONAL_CSVS) if (folder / name).is_file()]
     for name in check_names:
         path = folder / name
         text = path.read_text(encoding="utf-8")
         if not text.strip():
-            if name in REGISTER_CSVS:
-                empty.append(name)
+            empty.append(name)
             continue
         expected = CISO_HEADERS[name]
         first = first_nonempty_line(path)
@@ -122,7 +135,31 @@ def assert_ciso_register(ciso: Path) -> dict[str, Any]:
         raise RegisterShapeError(f"REGISTER_SHAPE_FAIL empty CISO CSVs: {empty}")
     if bad_headers:
         raise RegisterShapeError(f"REGISTER_SHAPE_FAIL header mismatch: {bad_headers}")
-    return {"ok": True, "counts": counts, "ciso": str(folder)}
+    findings_n = int(counts.get("findings.csv") or 0)
+    scenarios_n = int(counts.get("risk_scenarios.csv") or 0)
+    if findings_n > 0 and scenarios_n <= 0:
+        raise RegisterShapeError(
+            f"REGISTER_SHAPE_FAIL findings={findings_n} but risk_scenarios has 0 rows "
+            "(risk register is findings.csv + risk_scenarios.csv, not vulnerabilities.csv)"
+        )
+    hollow = [
+        name
+        for name in ROW_REQUIRED_WHEN_FINDINGS
+        if findings_n > 0 and int(counts.get(name) or 0) <= 0
+    ]
+    if hollow:
+        raise RegisterShapeError(
+            f"REGISTER_SHAPE_FAIL findings={findings_n} but hollow register files: {hollow}"
+        )
+    return {
+        "ok": True,
+        "counts": counts,
+        "ciso": str(folder),
+        "findings": findings_n,
+        "risk_scenarios": scenarios_n,
+        "vulnerabilities": int(counts.get(CVE_CLASS_CSV) or 0),
+        "vulns_cve_class_only": True,
+    }
 
 
 def assert_poam_for_findings(
@@ -160,11 +197,15 @@ def assert_poam_for_findings(
         raise RegisterShapeError(
             f"REGISTER_SHAPE_FAIL findings={findings_count} but POA&M has 0 rows"
         )
+    md = poam_md_path_of(out)
+    if rows and (not md.is_file() or not md.read_text(encoding="utf-8").strip()):
+        raise RegisterShapeError(f"REGISTER_SHAPE_FAIL POA&M md missing ({md})")
     return {
         "ok": True,
         "poam_rows": len(rows),
         "findings": findings_count,
         "poam": str(poam),
+        "poam_md": str(md) if md.is_file() else "",
         "rows": rows,
     }
 
@@ -182,7 +223,11 @@ def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
         "counts": register["counts"],
         "poam_rows": poam["poam_rows"],
         "findings": poam["findings"],
+        "risk_scenarios": register.get("risk_scenarios"),
+        "vulnerabilities": register.get("vulnerabilities"),
+        "vulns_cve_class_only": True,
         "poam": poam["poam"],
+        "poam_md": poam.get("poam_md"),
     }
 
 
@@ -221,5 +266,9 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         poam.write_text(
             POAM_HEADER
             + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open\n",
+            encoding="utf-8",
+        )
+        (folder.parent / "poam" / "poam.md").write_text(
+            "# POA&M (operator draft)\nSAMPLE stub. Not a client.\n",
             encoding="utf-8",
         )

@@ -19,6 +19,7 @@ from keep.ciso_import import (
 from shared.ciso_shape import (
     FINDING_SEV,
     REGISTER_OK_LINE,
+    SCENARIO_LEVELS,
     assert_risk_register_and_poam,
     csv_rows,
     write_minimal_register,
@@ -47,11 +48,19 @@ def _assert_import_honesty(ciso: Path) -> dict:
     assert import_doc["posted"] is False
     shape = assert_risk_register_and_poam(ciso)
     assert shape["findings"] >= 1
+    assert shape["risk_scenarios"] >= shape["findings"]
     assert shape["poam_rows"] >= 1
+    assert shape["vulnerabilities"] >= 1, "SAMPLE keep-samples include testssl/prowler CVE-class rows"
     for row in csv_rows(ciso / "findings.csv"):
         assert row["severity"] in FINDING_SEV, row
         assert row["ref_id"]
         assert row["name"]
+    scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
+    assert len(scenarios) >= shape["findings"]
+    for row in scenarios:
+        assert row["ref_id"]
+        assert row["name"]
+        assert row.get("current_risk") in SCENARIO_LEVELS, row
     poam = csv_rows(ciso.parent / "poam" / "poam.csv")
     assert poam
     for row in poam:
@@ -167,6 +176,7 @@ def test_lab_yml_has_cold_sample_to_sor_job() -> None:
     assert "assert_risk_register_and_poam" in yml
     assert "poam_rows" in yml
     assert "POAM_HEADER" in yml
+    assert "risk_scenarios" in yml
     assert "ubuntu-latest" in yml
     assert "No Docker" in yml
     assert "keep/__main__.py" in yml

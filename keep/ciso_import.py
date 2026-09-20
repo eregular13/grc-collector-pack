@@ -8,17 +8,14 @@ from typing import Any
 
 from shared.ciso_shape import (
     CISO_HEADERS,
-    REGISTER_CSVS,
+    MUST_EXIST_CSVS,
     RegisterShapeError,
     assert_risk_register_and_poam,
 )
 from shared.io_util import write_json
 
-CISO_REQUIRED = REGISTER_CSVS
-CISO_OPTIONAL = (
-    "evidences.csv",
-    "risk_scenarios.csv",
-)
+CISO_REQUIRED = MUST_EXIST_CSVS
+CISO_OPTIONAL = ("evidences.csv",)
 
 
 def read_paying_day(root: Path) -> str:

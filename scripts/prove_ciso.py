@@ -193,13 +193,21 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
                 raise FarmDropHonestyError(
                     f"FARM_DROP_HONESTY_FAIL {path.name} claims client estate"
                 )
+    stamp_poam = (stamp.get("counts") or {}).get("poam")
+    if stamp_poam is not None and int(stamp_poam) != int(shape.get("poam_rows") or 0):
+        raise FarmDropHonestyError(
+            f"FARM_DROP_HONESTY_FAIL counts.poam={stamp_poam} != poam_rows={shape.get('poam_rows')}"
+        )
     return {
         "ok": True,
         "stamp": stamp,
         "ciso_dir": str(ciso),
         "ciso_files": present,
         "findings": shape.get("findings"),
+        "risk_scenarios": shape.get("risk_scenarios"),
         "poam_rows": shape.get("poam_rows"),
+        "poam": shape.get("poam"),
+        "poam_md": shape.get("poam_md"),
     }
 
 
@@ -323,11 +331,20 @@ def prove_ciso(root: Path | None = None, dest: Path | None = None) -> dict[str, 
         "collectors": result.get("collectors"),
         "ciso_dir": str(ciso_dir),
         "ciso_files": [str(ciso_dir / name) for name in ciso_files],
-        "counts": result.get("counts") or {
-            "assets": summary.get("assets", 0),
-            "findings": summary.get("findings", 0),
-            "poam": summary.get("poam", register_shape.get("poam_rows", 0)),
-            "demo": summary.get("demo"),
+        "poam": str(dest_out / "poam" / "poam.csv"),
+        "poam_md": str(dest_out / "poam" / "poam.md"),
+        "counts": {
+            **(
+                result.get("counts")
+                or {
+                    "assets": summary.get("assets", 0),
+                    "findings": summary.get("findings", 0),
+                    "poam": summary.get("poam", register_shape.get("poam_rows", 0)),
+                    "demo": summary.get("demo"),
+                }
+            ),
+            "risk_scenarios": register_shape.get("risk_scenarios"),
+            "vulnerabilities": register_shape.get("vulnerabilities"),
         },
         "seed": seed,
         "in_dir": str(dest_in),
@@ -394,8 +411,10 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"PROVE_CISO={stamp['status']} sample={stamp['sample']} client={stamp['client']} "
         f"paying_day={stamp['paying_day']} posted={stamp['posted']} "
-        f"assets={stamp['counts'].get('assets')} findings={stamp['counts'].get('findings')}"
+        f"assets={stamp['counts'].get('assets')} findings={stamp['counts'].get('findings')} "
+        f"poam={stamp['counts'].get('poam')}"
     )
+    print(f"POAM={stamp.get('poam') or (dest / 'out' / 'poam' / 'poam.csv')}")
     if stamp.get("status") != "pass":
         return 1
     try:

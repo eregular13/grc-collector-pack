@@ -47,14 +47,28 @@ jobs:
           assert stamp.get("posted") is False, stamp
           shape = assert_risk_register_and_poam(work / "out")
           assert shape["findings"] >= 1, shape
+          assert shape["risk_scenarios"] >= shape["findings"], shape
           assert shape["poam_rows"] >= 1, shape
+          assert stamp["counts"]["poam"] == shape["poam_rows"], (stamp["counts"], shape)
+          assert shape["vulnerabilities"] == 0, "farm_drop pack_drop is exposure, not CVE-class"
           ciso = work / "out" / "ciso-assistant"
-          for name in ("assets.csv", "findings.csv", "vulnerabilities.csv", "applied_controls.csv"):
+          for name in (
+              "assets.csv",
+              "findings.csv",
+              "vulnerabilities.csv",
+              "applied_controls.csv",
+              "risk_scenarios.csv",
+          ):
               first = (ciso / name).read_text(encoding="utf-8").splitlines()[0].strip()
               assert first == CISO_HEADERS[name], (name, first)
           poam = (work / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
           assert poam.splitlines()[0].strip() == POAM_HEADER
-          print(f"farm_drop register ok; findings={shape['findings']} poam_rows={shape['poam_rows']}")
+          assert (work / "out" / "poam" / "poam.md").is_file()
+          print(
+              f"farm_drop register ok; findings={shape['findings']} "
+              f"risk_scenarios={shape['risk_scenarios']} poam_rows={shape['poam_rows']} "
+              f"vulns={shape['vulnerabilities']}"
+          )
           PY
       - name: Collectors and loader
         run: |
@@ -118,7 +132,9 @@ jobs:
           assert doc.get("posted") is False, doc
           shape = assert_risk_register_and_poam(work / "out")
           assert shape["findings"] >= 1, shape
+          assert shape["risk_scenarios"] >= shape["findings"], shape
           assert shape["poam_rows"] >= 1, shape
+          assert shape["vulnerabilities"] >= 1, shape
           for name, header in CISO_HEADERS.items():
               path = ciso / name
               if not path.is_file():
@@ -129,7 +145,8 @@ jobs:
           assert poam.splitlines()[0].strip() == POAM_HEADER
           print(
               f"IMPORT.json honesty ok; findings={shape['findings']} "
-              f"poam_rows={shape['poam_rows']}"
+              f"risk_scenarios={shape['risk_scenarios']} "
+              f"poam_rows={shape['poam_rows']} vulns={shape['vulnerabilities']}"
           )
           PY
       - name: Cold SAMPLE→SoR with exporters
