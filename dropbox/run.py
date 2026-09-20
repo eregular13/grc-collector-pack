@@ -170,10 +170,14 @@ def cmd_mcp(args: argparse.Namespace) -> int:
         if args.scope:
             extra.extend(["--scope", args.scope])
         return serve(extra)
-    from dropbox.mcp_stub import dispatch
+    from dropbox.mcp_stub import dispatch, keep_tool_fail_text
 
     result = dispatch(args.tool, live=False, scope_path=Path(args.scope) if args.scope else None)
     print(json.dumps(result, indent=2, default=str))
+    fail = keep_tool_fail_text(result)
+    if fail:
+        print(fail, file=sys.stderr)
+        return 2
     return 0
 
 

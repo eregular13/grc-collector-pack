@@ -15,7 +15,7 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Per-slot `live_ready` plus `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or file_drop-only names even if a binary is under `FARM_TOOL_BIN`. DEMO stubs may `will_run` in e2e. Does not invoke |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/` | SCOPE-gated paths. `posted` false unless `CISO_PUSH=1`. Conductor `http` always false. Does not invent owner/due |
 | `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | Empty pack `in/` is `keep_real` **0/4**. Lab path is `fixtures/keep-samples` (SAMPLE≠client). HardeningKitty / Maester / testssl / Prowler\|ScoutSuite detect only. Advertises both operator twins as hints only: `cli_twin` (`./scripts/sample_to_sor.sh` / `make sample-to-sor` / `.\scripts\sample_to_sor.ps1`) and `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`). **Does not densify pack `in/`.** Does not invent non-sample files. Does not require signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
-| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` + OpenGRC CSVs + Probo preview + `eval/handoff.json`. Return lists every SoR path (`ciso_dir` / `ciso_files` / `ciso_import` / `opengrc` / `probo`) plus `cli_twin` (`./scripts/sample_to_sor.sh` or `make sample-to-sor` or `.\scripts\sample_to_sor.ps1`) and `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1` — hint only; this tool does not run prove_ciso). `arguments.exporters` is optional (script `--exporters` re-write); sinks always come from keep-lab — no second export path. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
+| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` + OpenGRC CSVs + Probo preview + `eval/handoff.json`. Return lists every SoR path (`ciso_dir` / `ciso_files` / `ciso_import` / `opengrc` / `probo`) plus `cli_twin` (`./scripts/sample_to_sor.sh` or `make sample-to-sor` or `.\scripts\sample_to_sor.ps1`) and `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1` — hint only; this tool does not run prove_ciso). `arguments.exporters` is optional (script `--exporters` re-write); sinks always come from keep-lab — no second export path. `arguments.isolate_work` is optional unique work subdirectory (default on for shared `keep/work` so overlapping ticks do not share `out/`). Fail path returns `stderr` / last error; one retry on WinError 145 / ENOTEMPTY only — never `ok` true if still failing. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -107,6 +107,13 @@ That hint does not run prove_ciso and does not invent KEEP. SAMPLE keep
 remains the primary KEEP path. `tools/list` `keep_ciso` may take
 `arguments.exporters` (same meaning as
 the script `--exporters` re-write); sinks always come from keep-lab.
+`arguments.isolate_work` (or `KEEP_CISO_ISOLATE`) is an optional unique
+work subdirectory under `keep/work` or the supplied `work` so overlapping
+`keep_ciso` calls do not share `out/`. Default on when work is the shared
+`keep/work`. Not a new CLI script. When `keep_status` / `keep_ciso` fail,
+MCP/conductor return `stderr` (or last error text). One retry on
+transient wipe / Windows directory errors only; still-nonzero stays `ok`
+false and CLI/`tools/call` exit/error code 2.
 This week's slice does **not** densify pack `in/` and does **not** require
 signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
 (ignores `arguments.live`). `orchestrator_plan` returns `will_run`
