@@ -34,7 +34,11 @@ from shared.ciso_shape import RegisterShapeError, assert_risk_register_and_poam
 from keep.export import export_keep_sinks
 from keep.handoff import write_eval_handoff
 from keep.wipe import reset_dir
-from dropbox.keep_preflight import KeepFixtureIncomplete, require_keep_samples
+from dropbox.keep_preflight import (
+    KEEP_FAIL_WRONG_SCHEMA,
+    KeepFixtureError,
+    require_keep_samples,
+)
 
 ENV_KEYS = (
     "IN_DIR",
@@ -163,7 +167,7 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     if origin == "keep-samples":
         try:
             require_keep_samples(root)
-        except KeepFixtureIncomplete as exc:
+        except KeepFixtureError as exc:
             stamp = {
                 "status": "fail",
                 "demo": True,
@@ -175,6 +179,9 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
                 "http": False,
                 "wrap": "review-only",
                 "reason": str(exc),
+                "fail_code": getattr(exc, "code", "") or KEEP_FAIL_WRONG_SCHEMA,
+                "counts": {},
+                "ciso_files": [],
             }
             work.mkdir(parents=True, exist_ok=True)
             (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
@@ -192,8 +199,12 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
                 "posted": False,
                 "http": False,
                 "wrap": "review-only",
+                "fail_code": KEEP_FAIL_WRONG_SCHEMA,
+                "counts": {},
+                "ciso_files": [],
                 "reason": (
-                    f"keep fixture malformed: families not parseable: {unparseable}. "
+                    f"{KEEP_FAIL_WRONG_SCHEMA}: keep fixture malformed: "
+                    f"families not parseable: {unparseable}. "
                     "SAMPLE keep-samples must include all four families."
                 ),
             }
@@ -401,11 +412,12 @@ def main(argv: list[str] | None = None) -> int:
         work=Path(args.work) if args.work else None,
     )
     print(json.dumps(stamp, indent=2))
+    counts = stamp.get("counts") if isinstance(stamp.get("counts"), dict) else {}
     print(
         f"KEEP_LAB={stamp['status']} sample={stamp['sample']} "
         f"client_keep={stamp['client_keep']} paying_day={stamp['paying_day']} "
         f"ciso_files={len(stamp.get('ciso_files') or [])} "
-        f"handoff_findings={stamp['counts'].get('handoff_findings')} "
+        f"handoff_findings={counts.get('handoff_findings')} "
         f"origin={stamp['origin']}"
     )
     if stamp.get("status") != "pass":

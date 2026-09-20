@@ -1,0 +1,69 @@
+{
+  "schema": "keep.stress.v1",
+  "note": "Fail-closed KEEP stress shapes for Brick 3. Not SAMPLE success. Not a client KEEP drop. SAMPLE/DEMO labels stay honest.",
+  "shapes": [
+    {
+      "id": "truncated-json",
+      "code": "KEEP_FIXTURE_TRUNCATED_JSON",
+      "leaf": "cloud/prowler.json",
+      "substr": [
+        "truncated or corrupt JSON",
+        "prowler.json"
+      ]
+    },
+    {
+      "id": "garbage-binary",
+      "code": "KEEP_FIXTURE_GARBAGE_BINARY",
+      "leaf": "saas/maester.json",
+      "substr": [
+        "garbage binary",
+        "maester.json"
+      ]
+    },
+    {
+      "id": "wrong-schema",
+      "code": "KEEP_FIXTURE_WRONG_SCHEMA",
+      "leaf": "vuln/testssl.json",
+      "substr": [
+        "wrong schema",
+        "testssl.json"
+      ]
+    },
+    {
+      "id": "missing-leaf",
+      "code": "KEEP_FIXTURE_MISSING_LEAF",
+      "leaf": "identity/hardeningkitty.csv",
+      "substr": [
+        "keep fixture incomplete",
+        "hardeningkitty.csv"
+      ]
+    },
+    {
+      "id": "empty-required",
+      "code": "KEEP_FIXTURE_EMPTY",
+      "leaf": "identity/hardeningkitty.csv",
+      "substr": [
+        "keep fixture incomplete",
+        "hardeningkitty.csv"
+      ]
+    },
+    {
+      "id": "claim-mismatch",
+      "code": "KEEP_FIXTURE_CLAIM_MISMATCH",
+      "leaf": "CLAIM.json",
+      "substr": [
+        "claim",
+        "SAMPLE"
+      ]
+    },
+    {
+      "id": "corrupt-zip",
+      "code": "KEEP_FIXTURE_CORRUPT_ZIP",
+      "leaf": "keep-package.zip",
+      "substr": [
+        "corrupt zip",
+        "keep-package.zip"
+      ]
+    }
+  ]
+}

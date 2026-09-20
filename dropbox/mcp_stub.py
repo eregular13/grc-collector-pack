@@ -14,7 +14,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from dropbox.keep_preflight import KeepPackageIncomplete, require_keep_package
+from dropbox.keep_preflight import (
+    KeepFixtureError,
+    KeepPackageIncomplete,
+    require_keep_package,
+    require_keep_samples,
+)
 from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import (
@@ -668,6 +673,7 @@ def keep_fail_payload(
 ) -> dict[str, Any]:
     """Structured keep_status / keep_ciso fail. ok stays false."""
     err = keep_error_text(exc, stderr=stderr)
+    fail_code = str(getattr(exc, "code", "") or "")
     return {
         "tool": tool,
         "ok": False,
@@ -679,6 +685,7 @@ def keep_fail_payload(
         "posted": False,
         "http": False,
         "wrap": "review-only",
+        "fail_code": fail_code,
         "error": err,
         "stderr": err,
         "retried": bool(retried),
@@ -901,6 +908,8 @@ def keep_status(
             return payload
         except GateError:
             raise
+        except KeepFixtureError as exc:
+            return keep_fail_payload("keep_status", exc, retried=retried, pack_in=pack_in)
         except Exception as exc:
             last = exc
             if attempt == 0 and retryable_keep_error(exc):
@@ -923,6 +932,7 @@ def _keep_status_once(
     pack_in: Path,
 ) -> dict[str, Any]:
     scope = load_scope(_keep_scope_path(scope_path))
+    require_keep_samples(root)
     inventory = _keep_family_inventory(pack_in)
     samples_dir = root / "fixtures" / "keep-samples"
     keep_real = str(inventory["keep_real"])
@@ -1018,6 +1028,15 @@ def keep_ciso(
             )
         except GateError:
             raise
+        except KeepFixtureError as exc:
+            return keep_fail_payload(
+                "keep_ciso",
+                exc,
+                retried=retried,
+                work=work,
+                pack_in=operator_pack_in,
+                isolate_work=isolate,
+            )
         except Exception as exc:
             last = exc
             if attempt == 0 and retryable_keep_error(exc):
@@ -1073,15 +1092,21 @@ def _keep_ciso_once(
     exporters = _want_exporters(extra)
     ok = stamp.get("status") == "pass" and not wrote_pack
     reason = ""
+    fail_code = str(stamp.get("fail_code") or "")
     if not ok:
         reason = str(stamp.get("reason") or "").strip()
         if wrote_pack and not reason:
             reason = "keep_ciso wrote pack in/"
         if not reason:
             reason = "keep_lab status is not pass"
+        if not fail_code and reason:
+            fail_code = reason.split(":", 1)[0].strip()
+            if " " in fail_code or not fail_code.startswith("KEEP_"):
+                fail_code = ""
     return {
         "tool": "keep_ciso",
         "ok": ok,
+        "fail_code": fail_code,
         "error": reason,
         "stderr": reason,
         "retried": bool(retried),

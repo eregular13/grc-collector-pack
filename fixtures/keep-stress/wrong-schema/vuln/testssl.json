@@ -1,0 +1,9 @@
+{
+  "sample": true,
+  "schema": "keep.package.v99",
+  "version": 99,
+  "scanResult": "not-a-scan-list",
+  "findings": {
+    "id": "not-testssl"
+  }
+}

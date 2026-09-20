@@ -1,0 +1,18 @@
+{
+  "schema": "keep.package.v1",
+  "families": [
+    "hardeningkitty",
+    "maester",
+    "testssl",
+    "cloud"
+  ],
+  "sample": false,
+  "client_keep": true,
+  "files": [
+    "identity/hardeningkitty.csv",
+    "saas/maester.json",
+    "vuln/testssl.json",
+    "cloud/prowler.json",
+    "identity/not-present.client.json"
+  ]
+}
