@@ -119,20 +119,22 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
-CoS #48 honesty sync — farm leave-behind `farm_drop_to_sor`
-(`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
-`.\scripts\farm_drop_to_sor.ps1`). Pack HEAD this PR (`a3a3651b`
-after #91 `sample_to_sor`, #93 keep_ciso SoR paths, #92 honesty).
-SAMPLE keep remains the primary KEEP path (`./scripts/sample_to_sor.sh`).
+CoS #48 honesty sync — live HEAD restamp; farm leave-behind
+`farm_drop_to_sor` (`./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`).
+Pack HEAD `ed8b381` (PR #99 harden cold SAMPLE→SoR fail-closed
+for incomplete keep tree already on master; after #94
+`farm_drop_to_sor`, #91 `sample_to_sor`). SAMPLE keep remains
+the primary KEEP path (`./scripts/sample_to_sor.sh`).
 DESKTOP cold run measured ~0.697s (agent-VM ~0.231s) — honesty-only
 elapsed; not a paying_day PASS.
 SAMPLE keep-lab DESKTOP dry-run (`DRY_RUN=1` `CISO_PUSH=0`;
 `docs/DESKTOP_DRY_RUN.md`; `docs/EVAL_PACK_HANDOFF.md`).
-Eval HEAD `ebaa9f50` (PR #4 one-command DESKTOP SAMPLE loopback
-prove already on main; unit CI green on merge). Eval
-DESKTOP-222GHQV day-of SAMPLE PASS at `ebaa9f50` (Hermes Node
-v22.23.2; default PATH Node v24 breaks better-sqlite3 ABI;
-Node 22 required on DESKTOP). Eval day-of ≠ pack paying_day PASS.
+Eval HEAD `e04c2d88` (PR #5 require Node 20/22 LTS and point Eval
+to pack sample_to_sor already on main). Eval DESKTOP-222GHQV
+day-of SAMPLE PASS (Hermes Node v22.23.2; default PATH Node v24
+breaks better-sqlite3 ABI; Node 20/22 LTS required on DESKTOP).
+Eval day-of ≠ pack paying_day PASS.
 SAMPLE keep cannot stamp client-ready.
 Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item
 **COS46-HONESTY** = DONE. Item
@@ -141,9 +143,9 @@ Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item
 Reid-only real KEEP `in/` drop (0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
-`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `c012dd24`
-(farm PR #23 unit-only GHA CI already on main; client-day path
-already on main).
+`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `20e4f8c0`
+(PR #24 one-command SAMPLE client-day dry already on main;
+PR #23 unit-only GHA CI already on main).
 pack_drop schema seam **CLOSED**.
 Integrity **PARKED**.
 20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set

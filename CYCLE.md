@@ -1,5 +1,32 @@
 # CYCLE log
 
+## cycle 176 — restamp pack ed8b381 + Covey 20e4f8c0 + Eval e04c2d88 (2026-09-20)
+
+CoS #48 honesty restamp — live pack HEAD `ed8b381` (PR #99 harden
+cold SAMPLE→SoR fail-closed for incomplete keep tree already on
+master). Operator paths `./scripts/sample_to_sor.sh` /
+`make sample-to-sor` and `./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` stand. DESKTOP cold run measured
+~0.697s (agent-VM ~0.231s) — honesty-only elapsed; not a
+paying_day PASS. Covey HEAD `20e4f8c0` (PR #24 one-command
+SAMPLE client-day dry already on main; PR #23 unit-only GHA
+CI already on main). Eval HEAD `e04c2d88` (PR #5 require Node
+20/22 LTS and point Eval to pack sample_to_sor already on main).
+Eval DESKTOP-222GHQV day-of SAMPLE PASS (Hermes Node v22.23.2;
+default PATH Node v24 breaks better-sqlite3 ABI; Node 20/22
+LTS required on DESKTOP). Snapshot
+`EvergreenOps\\snapshots\\eval-dayof-20260918-230618\\`
+(payingDayPass=false; sample=true; shownOnly=true). Eval day-of
+SAMPLE PASS ≠ pack paying_day PASS. `compose_lab: pass_desktop`
+/ `compose_lab_head: 2680a5b2` / host DESKTOP-222GHQV stand.
+paying_day **FAIL**. SAMPLE KEEP **0/4**. RiskReady stay-out.
+No new collectors. No invented KEEP. Catalog **unchanged**.
+This-VM pytest lab JSON below stays `compose_lab` absent.
+
+```json
+{"pytest": 690, "pytest_skipped": 1, "farm_slots": 111, "wired": 32, "invoke": 30, "file_drop": 81, "keep_lab": "pass", "farm_toolbin_e2e": "pass", "farm_lab": "pass", "host_lab": "pass", "dropbox_lab": "pass", "prove_ciso": "pass", "compose_lab": "absent", "scanner_free": true, "wrap": "review-only", "paying_day": "FAIL", "argus_bar": "fail-closed", "client_keep_real": "0/4"}
+```
+
 ## cycle 175 — farm_drop cp1252 verify-only hotfix (2026-09-19)
 
 DESKTOP-222GHQV Windows cp1252 crashed `prove_ciso.py --verify-only`

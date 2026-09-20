@@ -2,15 +2,16 @@
 
 **Product:** Layer A farm + Layer B orchestrator. Public Layer C parse-only.
 
-**This window (cycle 174):** CoS #48 honesty sync — farm leave-behind
-`farm_drop_to_sor` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
-`.\scripts\farm_drop_to_sor.ps1`; `python3 scripts/prove_ciso.py` under
-`prove/work/`; never pack `in/`). Pack HEAD this PR `a3a3651b`
-(after #91 `sample_to_sor`, #93 keep_ciso SoR paths, #92 honesty).
-SAMPLE keep remains the primary KEEP path (`./scripts/sample_to_sor.sh` /
-`make sample-to-sor` / `.\scripts\sample_to_sor.ps1`). DESKTOP cold run
-measured ~0.697s (agent-VM ~0.231s) — honesty-only elapsed; not a
-paying_day PASS.
+**This window (cycle 176):** CoS #48 honesty sync — live HEAD restamp;
+farm leave-behind `farm_drop_to_sor` (`./scripts/farm_drop_to_sor.sh` /
+`make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`;
+`python3 scripts/prove_ciso.py` under `prove/work/`; never pack `in/`).
+Pack HEAD `ed8b381` (PR #99 harden cold SAMPLE→SoR fail-closed for
+incomplete keep tree already on master; after #94 `farm_drop_to_sor`,
+#91 `sample_to_sor`). SAMPLE keep remains the primary KEEP path
+(`./scripts/sample_to_sor.sh` / `make sample-to-sor` /
+`.\scripts\sample_to_sor.ps1`). DESKTOP cold run measured ~0.697s
+(agent-VM ~0.231s) — honesty-only elapsed; not a paying_day PASS.
 Cycle 173 honesty restamp + SAMPLE → CISO one command stands as history.
 Cycle 172 SAMPLE → CISO one command stands as history. Cycle 171:
 DESKTOP-222GHQV `compose_lab: pass_desktop` at pack `2680a5b2` (agent/CI VM still **ABSENT** ≠ that DESKTOP stamp).
@@ -21,12 +22,12 @@ SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 cannot PASS from SAMPLE; Eval day-of ≠ pack paying_day PASS;
 SAMPLE keep cannot stamp client-ready; RiskReady stay-out).
 Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
-Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on
-main; client-day path already on main). Eval HEAD `ebaa9f50`
-(PR #4 one-command DESKTOP SAMPLE loopback prove already on
-main; unit CI green on merge). Eval DESKTOP-222GHQV day-of
-SAMPLE PASS at `ebaa9f50` (Hermes Node v22.23.2; default PATH
-Node v24 breaks better-sqlite3 ABI; Node 22 required on DESKTOP).
+Covey HEAD `20e4f8c0` (PR #24 one-command SAMPLE client-day dry
+already on main; PR #23 unit-only GHA CI already on main). Eval
+HEAD `e04c2d88` (PR #5 require Node 20/22 LTS and point Eval to
+pack sample_to_sor already on main). Eval DESKTOP-222GHQV day-of
+SAMPLE PASS (Hermes Node v22.23.2; default PATH Node v24
+breaks better-sqlite3 ABI; Node 20/22 LTS required on DESKTOP).
 Eval day-of SAMPLE PASS ≠ pack paying_day PASS.
 pack_drop schema seam **CLOSED**. Integrity **PARKED**.
 16 E2E_PROVEN pack_drop

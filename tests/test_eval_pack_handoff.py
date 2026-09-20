@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.test_status_honesty import _assert_status_compose_lab_desktop, _status
+from tests.test_status_honesty import (
+    COVEY_E2E_HEAD,
+    EVAL_HEAD,
+    STALE_E2E_HEAD,
+    STALE_EVAL_HEAD,
+    _assert_status_compose_lab_desktop,
+    _status,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -68,7 +75,10 @@ def test_desktop_dry_run_points_at_eval_handoff() -> None:
     assert "client-ready" in dry.lower()
     action = _status().get("next_action", "")
     assert "EVAL_PACK_HANDOFF" in action or "eval_pack_handoff" in action.lower()
-    assert "c012dd24" in action
-    assert "ebaa9f50" in action
+    assert COVEY_E2E_HEAD in action
+    assert EVAL_HEAD in action
+    assert STALE_E2E_HEAD not in action
+    assert STALE_EVAL_HEAD not in action
     assert "pr #23" in action.lower()
+    assert "pr #24" in action.lower()
     assert "unit" in action.lower()

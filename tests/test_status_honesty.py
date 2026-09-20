@@ -14,15 +14,18 @@ ROOT = Path(__file__).resolve().parents[1]
 # next_action + PLAN this-window must name every tool so the pack
 # cannot lag a later Covey brick again.
 COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
-COVEY_E2E_HEAD = "c012dd24"
-STALE_E2E_HEAD = "3cf8bb86"
-COVEY_PACK_HEAD = "a3a3651b"
-STALE_PACK_HEAD = "9a872ef5"
-STALE_PACK_PRIOR = "899e44c8"
-STALE_PACK_OLDER = "b77cfc0e"
-STALE_PACK_HONESTY = "a89145f4"
-EVAL_HEAD = "ebaa9f50"
-STALE_EVAL_HEAD = "5f40f9ff"
+COVEY_E2E_HEAD = "20e4f8c0"
+STALE_E2E_HEAD = "c012dd24"
+STALE_E2E_PRIOR = "3cf8bb86"
+COVEY_PACK_HEAD = "ed8b381"
+STALE_PACK_HEAD = "a3a3651b"
+STALE_PACK_PRIOR = "9a872ef5"
+STALE_PACK_OLDER = "899e44c8"
+STALE_PACK_HONESTY = "b77cfc0e"
+STALE_PACK_CLIENT_DAY = "a89145f4"
+EVAL_HEAD = "e04c2d88"
+STALE_EVAL_HEAD = "ebaa9f50"
+STALE_EVAL_PRIOR = "5f40f9ff"
 # DESKTOP-222GHQV compose proof (operator snapshot; not this agent/CI VM).
 LIVE_PACK_HEAD = "2680a5b2"
 COMPOSE_LAB_DESKTOP = "pass_desktop"
@@ -158,7 +161,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "16 e2e_proven pack_drop void closed" in low
     assert "schema seam" in low, "pack_drop schema seam must be named CLOSED"
     assert "parked" in low, "integrity PARKED must be current truth"
-    assert "covey head still" not in low, "Covey HEAD is live c012dd24, not stuck"
+    assert "covey head still" not in low, "Covey HEAD is live 20e4f8c0, not stuck"
     assert "sample_banner" in low
     assert "unicornscan" in low
     assert "after cos #1" not in low
@@ -179,16 +182,20 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert COVEY_E2E_HEAD in low
     assert COVEY_PACK_HEAD in low
     assert STALE_E2E_HEAD not in low
+    assert STALE_E2E_PRIOR not in low
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_PRIOR not in low
     assert STALE_PACK_OLDER not in low
     assert STALE_PACK_HONESTY not in low
+    assert STALE_PACK_CLIENT_DAY not in low
     assert STALE_EVAL_HEAD not in low
+    assert STALE_EVAL_PRIOR not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD a3a3651b (this PR farm_drop_to_sor). Covey HEAD c012dd24
-    # (farm PR #23 unit CI). Eval HEAD ebaa9f50 (PR #4). Docs must
-    # not name 9a872ef5 / 899e44c8 / b77cfc0e / 5f40f9ff / 3cf8bb86
-    # as current.
+    # Pack HEAD ed8b381 (PR #99 cold SAMPLE→SoR fail-closed). Covey
+    # HEAD 20e4f8c0 (PR #24 client-day dry). Eval HEAD e04c2d88
+    # (PR #5 Node 20/22 LTS + pack sample_to_sor). Docs must not
+    # name a3a3651b / c012dd24 / ebaa9f50 / 9a872ef5 / 899e44c8 /
+    # b77cfc0e / 5f40f9ff / 3cf8bb86 as current.
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
@@ -203,6 +210,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert COVEY_E2E_HEAD in action
     assert EVAL_HEAD in action
     assert STALE_EVAL_HEAD not in action
+    assert STALE_EVAL_PRIOR not in action
     assert "sample_to_sor" in low
     assert "sample-to-sor" in low
     assert "0.697" in action
@@ -248,6 +256,8 @@ def _live_this_window(text: str) -> str:
     """Current-cycle window / newest delta — not historical cycle-153 notes."""
     for needle in (
         "**This window",
+        "**Delta (cycle 176):",
+        "**Delta (cycle 175):",
         "**Delta (cycle 174):",
         "**Delta (cycle 173):",
         "**Delta (cycle 172):",
@@ -352,11 +362,14 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
+        assert STALE_E2E_PRIOR not in low, f"{where} still stamps prior Covey HEAD {STALE_E2E_PRIOR}"
         assert STALE_PACK_HEAD not in low, f"{where} still stamps stale pack HEAD {STALE_PACK_HEAD}"
         assert STALE_PACK_PRIOR not in low, f"{where} still stamps prior pack HEAD {STALE_PACK_PRIOR}"
         assert STALE_PACK_OLDER not in low, f"{where} still stamps older pack HEAD {STALE_PACK_OLDER}"
         assert STALE_PACK_HONESTY not in low, f"{where} still stamps stale honesty lock {STALE_PACK_HONESTY}"
+        assert STALE_PACK_CLIENT_DAY not in low, f"{where} still stamps stale client-day lock {STALE_PACK_CLIENT_DAY}"
         assert STALE_EVAL_HEAD not in low, f"{where} still stamps stale Eval HEAD {STALE_EVAL_HEAD}"
+        assert STALE_EVAL_PRIOR not in low, f"{where} still stamps prior Eval HEAD {STALE_EVAL_PRIOR}"
         assert "pack_drop" in low, f"{where} missing pack_drop export stamp"
         assert "closed" in low, f"{where} missing CLOSED lane"
         unproven = [name for name in COVEY_E2E_UNPROVEN if name not in low]
@@ -383,11 +396,14 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
     assert COVEY_E2E_HEAD in low
     assert COVEY_PACK_HEAD in low
     assert STALE_E2E_HEAD not in low
+    assert STALE_E2E_PRIOR not in low
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_PRIOR not in low
     assert STALE_PACK_OLDER not in low
     assert STALE_PACK_HONESTY not in low
+    assert STALE_PACK_CLIENT_DAY not in low
     assert STALE_EVAL_HEAD not in low
+    assert STALE_EVAL_PRIOR not in low
     assert "cos #20" not in low
     assert "cos #21" not in low
     assert "cos #22" not in low
@@ -467,7 +483,7 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
         assert "cos46-honesty" in win_low, f"{path} this-window missing COS46-HONESTY DONE"
         assert "cos47-honesty" in win_low, f"{path} this-window missing COS47-HONESTY DONE"
         assert "eval_pack_handoff" in win_low, f"{path} this-window missing EVAL_PACK_HANDOFF"
-        assert "c012dd24" in win_low, f"{path} this-window missing farm HEAD c012dd24"
+        assert COVEY_E2E_HEAD in win_low, f"{path} this-window missing farm HEAD {COVEY_E2E_HEAD}"
         assert "pr #23" in win_low, f"{path} this-window missing farm PR #23"
         assert EVAL_HEAD in win_low, f"{path} this-window missing Eval HEAD {EVAL_HEAD}"
         assert "next brick" in win_low, f"{path} this-window missing next brick = Reid-only real KEEP in/ (0/4)"
@@ -493,11 +509,14 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
         assert COVEY_E2E_HEAD in win_low, f"{path} this-window missing HEAD {COVEY_E2E_HEAD}"
         assert COVEY_PACK_HEAD in win_low, f"{path} this-window missing pack HEAD {COVEY_PACK_HEAD}"
         assert STALE_E2E_HEAD not in win_low, f"{path} this-window still stamps stale HEAD"
+        assert STALE_E2E_PRIOR not in win_low, f"{path} this-window still stamps prior Covey HEAD"
         assert STALE_PACK_HEAD not in win_low, f"{path} this-window still stamps stale pack HEAD"
         assert STALE_PACK_PRIOR not in win_low, f"{path} this-window still stamps prior pack HEAD"
         assert STALE_PACK_OLDER not in win_low, f"{path} this-window still stamps older pack HEAD"
         assert STALE_PACK_HONESTY not in win_low, f"{path} this-window still stamps stale honesty lock"
+        assert STALE_PACK_CLIENT_DAY not in win_low, f"{path} this-window still stamps stale client-day lock"
         assert STALE_EVAL_HEAD not in win_low, f"{path} this-window still stamps stale Eval HEAD"
+        assert STALE_EVAL_PRIOR not in win_low, f"{path} this-window still stamps prior Eval HEAD"
         assert "held" not in win_low, f"{path} this-window still claims brick held"
         assert "not in flight" not in win_low, f"{path} this-window still claims not in flight"
 
