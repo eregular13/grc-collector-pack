@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Brick 4: cold farm_drop→SoR wipe/clone ship-gate (`farm-drop-to-sor-cold`). Isolated clean checkout + `farm_drop_to_sor` + risk-register/POA&M shape. `FARM_SHIP=yes` only when pack HEAD of that assertion surface changes — identical re-PASS is not a ship event. CI/lab scripts under `scripts/ci/` are not a public operator entrypoint. SAMPLE/DEMO != client. paying_day FAIL.
 - Hotfix: `prove_ciso.py --verify-only` and `farm_drop_to_sor` console lines are ASCII (`!=`, not U+2260) so Windows cp1252 (DESKTOP-222GHQV) exits 0. Wrappers set `PYTHONIOENCODING=utf-8`.
 - Farm leave-behind operator twin: `scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `scripts/farm_drop_to_sor.ps1` — Covey `fixtures/pack_drop` → `prove/work/out/ciso-assistant/` via `prove_ciso.py`. Fail-closed if prove JSON claims client estate or `paying_day` PASS. SAMPLE keep remains the primary KEEP path (`sample_to_sor`). SAMPLE/DEMO ≠ client.
 - Eval↔pack handoff: `docs/EVAL_PACK_HANDOFF.md` — Eval `DESKTOP-DAY-OF.md` (loopback HITL) → pack `DESKTOP_DRY_RUN.md`. Eval day-of ≠ pack paying_day PASS. SAMPLE keep cannot stamp client-ready.

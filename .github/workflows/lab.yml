@@ -174,3 +174,50 @@ jobs:
           assert (work / "out" / "import_preview" / "probo.json").is_file()
           print(f"exporters honesty ok; findings={shape['findings']} poam_rows={shape['poam_rows']}")
           PY
+
+  # Brick 4: wipe/clone farm_drop→SoR ship-gate.
+  # Ship event only when pack HEAD or the assertion surface changes.
+  # Identical re-PASS of the same surface is not a ship event.
+  # SAMPLE/DEMO != client. paying_day FAIL. Not client KEEP.
+  # CI/lab only — not a new public operator entrypoint.
+  farm-drop-to-sor-cold:
+    name: cold farm_drop→SoR ship-gate
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      DRY_RUN: "1"
+      GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+      DROPBOX_LIVE: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Farm ship-surface (HEAD or assertions)
+        id: surface
+        run: |
+          set -euo pipefail
+          compare="${{ github.event.pull_request.base.sha || github.event.before }}"
+          python scripts/ci/farm_ship_surface.py \
+            --compare-ref "$compare" \
+            --write-env "$GITHUB_OUTPUT"
+      - name: Wipe/clone farm_drop→SoR
+        if: steps.surface.outputs.ship == 'yes'
+        run: |
+          set -euo pipefail
+          bash scripts/ci/farm_drop_wipe_clone_ship.sh \
+            --from "${{ github.workspace }}" \
+            --clone "${{ runner.temp }}/farm-ship-clone" \
+            --work "${{ runner.temp }}/farm-ship-work"
+      - name: Not a ship event (surface unchanged)
+        if: steps.surface.outputs.ship != 'yes'
+        run: |
+          echo "FARM_SHIP=skip — assertion surface unchanged vs compare-ref"
+          echo "Identical re-PASS is not a ship event. Not client KEEP."
+          echo "SAMPLE/DEMO != client. paying_day FAIL."

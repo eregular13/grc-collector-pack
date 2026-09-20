@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 177 — farm wipe/clone ship-gate (2026-09-20)
+
+Brick 4: CI job `farm-drop-to-sor-cold` wipe/clone of pack HEAD,
+`farm_drop_to_sor`, `assert_risk_register_and_poam`. Ship event only
+when the farm assertion surface changes (`shared/farm_ship.py` /
+`scripts/ci/`). Identical re-PASS is not a ship event. CI/lab only —
+no new public operator entrypoint. No STATUS vanity. SAMPLE/DEMO !=
+client. paying_day **FAIL**. Catalog **unchanged**.
+
 ## cycle 176 — prove --use-existing-in lab dest_in (2026-09-20)
 
 `scripts/prove_ciso.py --work DIR --use-existing-in` (`--no-seed`) keeps
