@@ -9,9 +9,27 @@ clean checkout of pack HEAD, run `farm_drop_to_sor` (DEMO/SAMPLE labeled),
 Operator twins stay unchanged:
 
 - SAMPLE keep (primary KEEP path): `./scripts/sample_to_sor.sh`
-- Farm leave-behind: `./scripts/farm_drop_to_sor.sh`
+- Farm leave-behind (SAMPLE/DEMO fixture seed): `./scripts/farm_drop_to_sor.sh`
+- LAB dest_in (no fixture reseed): `./scripts/lab_drop_to_sor.sh`
 
 This file documents the **ship event**, not a new console command.
+
+## Farm vs lab SoR (operator align)
+
+Both paths write a risk register + POA&M via `prove_ciso` / `grc_loader`.
+They are not the same estate and not a client KEEP. LAB != SAMPLE != client.
+
+| Path | Seed | dest_in | Stamp | Leaf |
+|---|---|---|---|---|
+| `farm_drop_to_sor` | yes — copies `fixtures/pack_drop` (16 adapters + honeypot) | wiped then seeded | SAMPLE/DEMO | dual-net SAMPLE nmap-ish (`10.0.0.0/24` corp + `172.16.10.0/24` SAMPLE "lab" segment) |
+| `lab_drop_to_sor` | no — `--use-existing-in` | operator/compose dest_in kept | LAB/DEMO | live compose-lab nmap leaf, or CI `fixtures/lab-drop` (`192.168.64.0/24`) |
+
+The SAMPLE farm leaf's `172.16.10.0/24` "lab" prefix is an estate segment
+inside `fixtures/pack_drop/nmap/`. It is **not** the LAB dest_in tree
+(`fixtures/lab-drop/`, `192.168.64.0/24`). Brick 5 denser dual-net SAMPLE
+leaf **is** the farm ship surface. LAB dest_in is a sibling prove path
+(#104 / #108–#110), not a farm ship event. See `docs/PROVE_CISO.md`
+(Lab / live dest_in). No Makefile / README first-line for `lab_drop_to_sor`.
 
 ## When it fires (HEAD or assertion surface)
 
@@ -74,5 +92,6 @@ Partial / corrupt wipe-clone trees fail closed (missing `prove_ciso` / pack_drop
 
 ## Honesty
 
-SAMPLE/DEMO != client. paying_day FAIL. posted=false. RiskReady stay-out.
-Brick 5 (denser SAMPLE pack_drop) is out of scope here.
+SAMPLE/DEMO != client. LAB != SAMPLE != client. paying_day FAIL.
+posted=false. RiskReady stay-out. Farm ship-gate proves the SAMPLE
+fixture seed (`farm_drop_to_sor`), not live dest_in (`lab_drop_to_sor`).

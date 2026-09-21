@@ -6,6 +6,16 @@ farm leave-behind twin of `sample_to_sor`. SAMPLE keep remains the
 primary KEEP path. `fixtures/pack_drop` → `prove/work/out/ciso-assistant/`.
 SAMPLE/DEMO ≠ client.
 
+`farm_drop_to_sor` **seeds** the SAMPLE/DEMO sixteen-adapter fixture
+(including the Brick 5 dual-net nmap leaf: `10.0.0.0/24` corp +
+`172.16.10.0/24` SAMPLE "lab" segment). `lab_drop_to_sor` is the sibling
+that keeps an operator dest_in (`--use-existing-in`; no reseed). CI/lab
+stand-in for that dest_in is `fixtures/lab-drop` (`192.168.64.0/24`).
+Both write a risk register + POA&M. LAB ≠ SAMPLE ≠ client.
+paying_day FAIL. See [PROVE_CISO.md](PROVE_CISO.md) (Lab / live dest_in)
+and [FARM_SHIP_GATE.md](FARM_SHIP_GATE.md). Not a new Makefile / README
+first-line.
+
 [evergreen-covey](https://github.com/eregular13/evergreen-covey) is BYO orchestration.
 A sibling export lands a **pack_drop** (not a scanner binary) that this pack accepts
 on the existing **inventory-nmap** lane. CISO Assistant remains the system of record.
@@ -123,7 +133,8 @@ stdout-class `fixtures/pack_drop/svmap/`
 **SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)
 (`./scripts/farm_drop_to_sor.sh` / `python3 scripts/prove_ciso.py` →
-`prove/work/out/ciso-assistant`). Not a
+`prove/work/out/ciso-assistant`). Live dest_in (no reseed):
+`./scripts/lab_drop_to_sor.sh` / `--use-existing-in`. Not a
 paying-day PASS. Not a client KEEP.
 
 Lane map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).

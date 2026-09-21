@@ -138,10 +138,16 @@ def test_farm_ship_gate_doc_states_when_and_what() -> None:
     assert "paying_day" in doc and "FAIL" in doc
     assert "fixtures/pack_drop" in doc
     assert "shared/ciso_shape.py" in doc
+    assert "lab_drop_to_sor" in doc
+    assert "LAB != SAMPLE != client" in doc or "lab != sample != client" in doc.lower()
+    assert "192.168.64.0/24" in doc
+    assert "172.16.10.0/24" in doc
+    assert "out of scope here" not in doc
     prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
     assert "FARM_SHIP_GATE.md" in prove
     assert "farm-drop-to-sor-cold" in prove
     assert "scripts/ci/" in prove
+    assert "lab_drop_to_sor" in prove
 
 
 def test_ship_surface_lists_head_and_assertion_paths() -> None:

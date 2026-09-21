@@ -107,6 +107,13 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 
 ## Lab / live dest_in (no fixture reseed)
 
+`farm_drop_to_sor` = SAMPLE/DEMO **fixture seed** (`fixtures/pack_drop` →
+wipe `DIR/in`). `lab_drop_to_sor` = operator **dest_in, no reseed**
+(`prove_ciso --use-existing-in`). Both emit a risk register + POA&M.
+LAB != SAMPLE != client. SAMPLE farm nmap `172.16.10.0/24` is a SAMPLE
+estate segment, not LAB dest_in `192.168.64.0/24` (`fixtures/lab-drop`).
+Ship-gate for the farm seed: [FARM_SHIP_GATE.md](FARM_SHIP_GATE.md).
+
 Default `prove_ciso` still copies `fixtures/pack_drop` (16 adapters) into
 `DIR/in` and **wipes** whatever was there (DEMO wipe). DESKTOP compose lab
 pack_drop is discarded by that seed. Do **not** run default `prove_ciso` on
