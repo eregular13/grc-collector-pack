@@ -1,3 +1,12 @@
+# CRITIC — cycle 180 (MCP_LAB_TWIN)
+
+Lab this brick: pytest **848** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS. Zero P0/P1. MCP `lab_drop`
+advertises `lab_drop_to_sor` / `--use-existing-in` with honest
+LAB≠SAMPLE≠client labels. Empty `in/` and `LAB_SHAPE_FAIL` fail-closed.
+No DEMO reseed. CoS #48 rails below are unchanged. Catalog
+**111 / 32 / 30 / 81**. paying_day **FAIL**.
+
 # CRITIC — cycle 179 (LAB_SHAPE_ASSERT)
 
 Lab this brick: pytest **840** passed, 1 skipped. Ten collectors +
