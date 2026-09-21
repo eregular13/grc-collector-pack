@@ -12,6 +12,9 @@ FARM_SHIP_GATE / PROVE_CISO / COVEY_PACK_DROP. No new public
 entrypoint. No STATUS vanity. paying_day **FAIL**. Catalog
 **unchanged**. #108–#110 prove/MCP path stands; this brick is the
 align note + honesty lock, not a re-PASS grind.
+pytest **851** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=105` `poam=106`
+`demo=true`).
 
 ## cycle 180 — MCP_LAB_TWIN lab_drop (2026-09-21)
 
