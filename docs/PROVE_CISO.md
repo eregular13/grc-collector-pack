@@ -125,9 +125,13 @@ python3 scripts/prove_ciso.py --work DIR --use-existing-in
 
 `--use-existing-in` does **not** rmtree/reseed `DIR/in`. `DIR/in` must
 already hold pack_drop (compose lab or operator copy). Empty `DIR/in`
-(or banners only) fail-closed (`EXISTING_IN_FAIL`). Collectors +
-`grc_loader` run; risk-register + POA&M shape (`shared/ciso_shape`, #102)
-is fail-closed: findings>0 implies `risk_scenarios` rows and `poam` rows.
+(or banners only) fail-closed (`EXISTING_IN_FAIL`). If `LAB.txt` (or
+nmap pack_drop `lab:true`) is present, dest_in fail-closed
+(`LAB_SHAPE_FAIL`) when `seeded=true` or unexpected DEMO adapter trees
+appear (honeypot / fixtures pack_drop siblings beyond the operator nmap
+leaf — a silent reseed). Collectors + `grc_loader` run; risk-register +
+POA&M shape (`shared/ciso_shape`, #102) is fail-closed: findings>0
+implies `risk_scenarios` rows and `poam` rows.
 
 CI/lab fixture: `fixtures/lab-drop/` is a scan-shaped LAB dest_in
 (192.168.64.0/24 nmap pack_drop leaf). LAB != SAMPLE keep != client.

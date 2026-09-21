@@ -1,4 +1,5 @@
 # LAB dest_in -> CISO Assistant CSVs. Does NOT reseed fixtures/pack_drop.
+# LAB.txt + DEMO seed trees fail-closed (LAB_SHAPE_FAIL).
 # LAB/DEMO != SAMPLE != client. paying_day FAIL.
 # DESKTOP (no make / no gh): .\scripts\lab_drop_to_sor.ps1 -Work DIR
 param(

@@ -28,6 +28,7 @@ LAB dest_in -> prove/work/out/ciso-assistant/ (no fixture reseed).
 Requires DIR/in already populated (DESKTOP compose lab pack_drop or operator copy).
 Calls python3 scripts/prove_ciso.py --use-existing-in (alias --no-seed).
 Never rmtree/reseed dest_in. Never writes pack in/.
+LAB.txt + DEMO seed trees fail-closed (LAB_SHAPE_FAIL).
 LAB/DEMO != SAMPLE != client. This pack does not POST /api/risks.
 SAMPLE keep remains the primary KEEP path (sample_to_sor).
 farm_drop_to_sor remains the fixture seed path.

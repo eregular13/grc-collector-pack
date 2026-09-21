@@ -23,6 +23,7 @@ from scripts.prove_ciso import (
     dest_in_is_populated,
     prove_ciso,
     seed_prove_in,
+    unexpected_demo_adapter_trees,
 )
 from shared.ciso_shape import assert_risk_register_and_poam
 
@@ -214,6 +215,7 @@ def test_prove_use_existing_in_on_lab_drop_fixture(
     assert not (dest_in / "nmap" / "pack_drop" / "rustscan").exists()
     assert not (dest_in / "SAMPLE.txt").exists()
     assert (dest_in / "LAB.txt").is_file()
+    assert unexpected_demo_adapter_trees(dest_in) == []
     shape = assert_risk_register_and_poam(Path(stamp["out_dir"]))
     assert shape["findings"] >= MIN_LAB_FINDINGS
     assert shape["risk_scenarios"] >= 1
@@ -363,6 +365,7 @@ def test_docs_lab_section_points_desktop_at_use_existing_in() -> None:
     assert "fixtures/lab-drop" in docs
     assert "no fixture reseed" in docs.lower() or "does **not** rmtree/reseed" in docs
     assert "DEMO wipe" in docs or "wipes" in docs
+    assert "LAB_SHAPE_FAIL" in docs
     assert "LAB/DEMO" in docs
     assert "not a client" in docs.lower()
     assert "farm_drop_to_sor" in docs
