@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 178 — LAB_PROVE_LOCK dest_in (2026-09-21)
+
+Brick: lock the lab prove path. `fixtures/lab-drop/` is a scan-shaped
+LAB dest_in (192.168.64.0/24 nmap pack_drop leaf) — not SAMPLE keep,
+not client. Pytest copies it into a temp `work/in` and runs
+`lab_drop_to_sor` / `prove_ciso --use-existing-in`: `seeded=false`,
+`use_existing_in`/`lab` true, `sample=false`, `client=false`,
+`assert_risk_register_and_poam`. Empty `in/` fail-closed. Default
+prove seed remains a different code path (`fixtures/pack_drop`,
+SAMPLE). Docs point DESKTOP at `lab_drop_to_sor` + `--use-existing-in`
+(no DEMO wipe). No new public operator entrypoint. No STATUS vanity.
+paying_day **FAIL**. Catalog **unchanged**.
+
 ## cycle 177 — farm wipe/clone ship-gate (2026-09-20)
 
 Brick 4: CI job `farm-drop-to-sor-cold` wipe/clone of pack HEAD,
