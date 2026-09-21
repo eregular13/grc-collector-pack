@@ -49,6 +49,7 @@ OPERATOR_TOOLS = (
     "export_ciso_poam",
     "keep_status",
     "keep_ciso",
+    "lab_drop",
 )
 
 TOOL_DESC = {
@@ -71,16 +72,29 @@ TOOL_DESC = {
     "keep_status": (
         "SCOPE-gated KEEP four-set inventory. Empty pack in/ is keep_real 0/4. "
         "Lab uses fixtures/keep-samples. Operator twins (hints only): "
-        "./scripts/sample_to_sor.sh (SAMPLE keep) and ./scripts/farm_drop_to_sor.sh "
-        "(farm pack_drop). SAMPLE≠client. DEMO≠client. No densify."
+        "./scripts/sample_to_sor.sh (SAMPLE keep), ./scripts/farm_drop_to_sor.sh "
+        "(farm pack_drop), and ./scripts/lab_drop_to_sor.sh / MCP lab_drop "
+        "(LAB dest_in, prove --use-existing-in, no DEMO reseed). "
+        "LAB≠SAMPLE≠client. DEMO≠client. No densify."
     ),
     "keep_ciso": (
         "SAMPLE keep-lab only: fixtures/keep-samples → keep/work/out/ciso-assistant/*.csv "
         "+ IMPORT.json + OpenGRC CSVs + Probo preview. Same rails as python -m keep lab "
         "and ./scripts/sample_to_sor.sh (or make sample-to-sor). Farm pack_drop twin: "
         "./scripts/farm_drop_to_sor.sh / make farm-drop-to-sor / "
-        ".\\scripts\\farm_drop_to_sor.ps1. Never densify pack in/. "
-        "Never POST. paying_day FAIL. Sinks always from keep-lab."
+        ".\\scripts\\farm_drop_to_sor.ps1. LAB dest_in twin: "
+        "./scripts/lab_drop_to_sor.sh / MCP lab_drop (prove --use-existing-in; "
+        "never reseeds fixtures/pack_drop). Never densify pack in/. "
+        "Never POST. paying_day FAIL. Sinks always from keep-lab. "
+        "LAB≠SAMPLE≠client."
+    ),
+    "lab_drop": (
+        "LAB dest_in prove twin: python3 scripts/prove_ciso.py --use-existing-in "
+        "(same rails as ./scripts/lab_drop_to_sor.sh). Requires populated "
+        "arguments.work/in or arguments.dest_in. Never reseeds fixtures/pack_drop. "
+        "Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL. "
+        "Returns honesty stamps + CISO/POA&M paths. LAB≠SAMPLE≠client. "
+        "paying_day FAIL. Not SAMPLE keep. Not client KEEP."
     ),
 }
 
@@ -344,6 +358,23 @@ def tools_list_entries() -> list[dict[str, Any]]:
                     "new operator entrypoint."
                 ),
             }
+        if name == "lab_drop":
+            props["work"] = {
+                "type": "string",
+                "description": (
+                    "Isolation dir whose in/ is already populated (LAB compose "
+                    "pack_drop or operator copy). Same as scripts/lab_drop_to_sor.sh "
+                    "--work. Required unless dest_in is set. Never reseeds."
+                ),
+            }
+            props["dest_in"] = {
+                "type": "string",
+                "description": (
+                    "Explicit dest_in (must be work/in). Must already hold "
+                    "pack_drop. Empty or banners-only is EXISTING_IN_FAIL. "
+                    "LAB.txt + DEMO adapter trees is LAB_SHAPE_FAIL."
+                ),
+            }
         tools.append(
             {
                 "name": name,
@@ -409,6 +440,8 @@ def dispatch(
         return keep_status(scope_path=path, arguments=extra)
     if tool == "keep_ciso":
         return keep_ciso(scope_path=path, arguments=extra)
+    if tool == "lab_drop":
+        return lab_drop(scope_path=path, arguments=extra)
     if tool == "export_ciso_poam":
         return export_ciso_poam(scope_path=path)
     raise GateError(f"unknown operator tool {name!r}")
@@ -517,6 +550,10 @@ SAMPLE_TO_SOR_PS1 = ".\\scripts\\sample_to_sor.ps1"
 FARM_DROP_TO_SOR_SCRIPT = "scripts/farm_drop_to_sor.sh"
 FARM_DROP_TO_SOR_MAKE = "make farm-drop-to-sor"
 FARM_DROP_TO_SOR_PS1 = ".\\scripts\\farm_drop_to_sor.ps1"
+LAB_DROP_TO_SOR_SCRIPT = "scripts/lab_drop_to_sor.sh"
+LAB_DROP_TO_SOR_MAKE = ""
+LAB_DROP_TO_SOR_PS1 = ".\\scripts\\lab_drop_to_sor.ps1"
+LAB_HONESTY_BANNERS = ("LAB≠SAMPLE", "LAB≠client", "SAMPLE≠client", "DEMO≠client")
 
 
 def _repo_root() -> Path:
@@ -706,7 +743,7 @@ def keep_tool_fail_text(result: Any) -> str:
     """Non-empty last-error text when a keep MCP tool returned ok=false."""
     if not isinstance(result, dict):
         return ""
-    if result.get("tool") not in {"keep_status", "keep_ciso"}:
+    if result.get("tool") not in {"keep_status", "keep_ciso", "lab_drop"}:
         return ""
     if result.get("ok") is not False:
         return ""
@@ -787,6 +824,26 @@ def farm_drop_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
             ".\\scripts\\farm_drop_to_sor.ps1. Never writes pack in/. "
             "SAMPLE keep remains the primary KEEP path. SAMPLE/DEMO ≠ client. "
             "paying_day FAIL. This hint does not invent KEEP or run prove_ciso."
+        ),
+    )
+
+
+def lab_drop_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
+    """LAB dest_in twin. Advertise the existing script; MCP lab_drop runs it."""
+    return _cli_twin_payload(
+        root,
+        name="lab_drop_to_sor",
+        kind="lab_dest_in",
+        script_rel=LAB_DROP_TO_SOR_SCRIPT,
+        make=LAB_DROP_TO_SOR_MAKE,
+        ps1=LAB_DROP_TO_SOR_PS1,
+        note=(
+            "LAB dest_in twin of farm_drop_to_sor: already-populated work/in → "
+            "CISO via python3 scripts/prove_ciso.py --use-existing-in. "
+            "./scripts/lab_drop_to_sor.sh / .\\scripts\\lab_drop_to_sor.ps1 "
+            "(no Makefile first-line). Never reseeds fixtures/pack_drop. "
+            "Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO trees is LAB_SHAPE_FAIL. "
+            "LAB≠SAMPLE≠client. paying_day FAIL. MCP lab_drop is this same path."
         ),
     )
 
@@ -969,6 +1026,7 @@ def _keep_status_once(
         },
         "cli_twin": sample_to_sor_cli_twin(root),
         "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(root),
+        "lab_drop_cli_twin": lab_drop_to_sor_cli_twin(root),
         "banners": list(KEEP_HONESTY_BANNERS),
         "paying_day": "FAIL",
         "posted": False,
@@ -981,7 +1039,9 @@ def _keep_status_once(
             "./scripts/sample_to_sor.sh / make sample-to-sor / "
             ".\\scripts\\sample_to_sor.ps1 (SAMPLE keep) and "
             "./scripts/farm_drop_to_sor.sh / make farm-drop-to-sor / "
-            ".\\scripts\\farm_drop_to_sor.ps1 (farm pack_drop; never pack in/). "
+            ".\\scripts\\farm_drop_to_sor.ps1 (farm pack_drop; never pack in/) "
+            "and ./scripts/lab_drop_to_sor.sh / MCP lab_drop "
+            "(LAB dest_in; prove --use-existing-in; no DEMO reseed). "
             "Detect via keep.adapters (same helpers "
             "dropbox.orchestrator.keepmin uses). Does not densify pack in/. "
             "Does not invent non-sample files. Does not require signed "
@@ -1133,6 +1193,7 @@ def _keep_ciso_once(
         "probo": sor["probo"],
         "cli_twin": sample_to_sor_cli_twin(root),
         "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(root),
+        "lab_drop_cli_twin": lab_drop_to_sor_cli_twin(root),
         "exporters": exporters,
         "exporters_from": "keep-lab",
         "handoff": str(handoff) if handoff.is_file() else str(stamp.get("handoff") or ""),
@@ -1156,6 +1217,9 @@ def _keep_ciso_once(
             "(or make sample-to-sor). Farm pack_drop twin (hint only; this "
             "tool does not run it): ./scripts/farm_drop_to_sor.sh / "
             "make farm-drop-to-sor / .\\scripts\\farm_drop_to_sor.ps1. "
+            "LAB dest_in twin (hint; this tool does not run it): "
+            "./scripts/lab_drop_to_sor.sh / MCP lab_drop "
+            "(prove --use-existing-in; no DEMO reseed). "
             "Sinks always from keep-lab "
             "(arguments.exporters is optional re-write, not a second path). "
             "arguments.isolate_work is optional unique work (default on for "
@@ -1164,6 +1228,231 @@ def _keep_ciso_once(
             "Does not densify pack in/. Does not invent non-sample files. "
             "Does not require signed self-SCOPE. SAMPLE≠client. DEMO≠client. "
             "paying_day FAIL."
+        ),
+    }
+
+
+def _lab_drop_work_and_dest_in(extra: dict[str, Any]) -> tuple[Path, Path]:
+    """Resolve work + dest_in. dest_in must be work/in. Never invents a seed."""
+    extra = extra if isinstance(extra, dict) else {}
+    dest_in = _path_arg(extra, "dest_in", "in_dir")
+    work = _path_arg(extra, "work")
+    if dest_in:
+        dest_in = _resolve_keep_path(dest_in)
+        if dest_in.name != "in":
+            raise RuntimeError(
+                "EXISTING_IN_FAIL lab_drop dest_in must be named in/ (work/in); "
+                "will not seed fixtures/pack_drop."
+            )
+        if work:
+            work = _resolve_keep_path(work)
+            expected = work / "in"
+            if dest_in.resolve() != expected.resolve():
+                raise RuntimeError(
+                    "EXISTING_IN_FAIL lab_drop dest_in must be work/in; "
+                    "will not seed fixtures/pack_drop."
+                )
+        else:
+            work = dest_in.parent
+        return work, dest_in
+    if work:
+        work = _resolve_keep_path(work)
+        return work, work / "in"
+    raise RuntimeError(
+        "EXISTING_IN_FAIL lab_drop requires arguments.work or arguments.dest_in "
+        "already populated; will not seed fixtures/pack_drop."
+    )
+
+
+def lab_drop_fail_payload(
+    exc: BaseException,
+    *,
+    work: Path | None = None,
+    dest_in: Path | None = None,
+    pack_in: Path | None = None,
+    seeded: bool = False,
+) -> dict[str, Any]:
+    """Structured lab_drop fail. ok stays false. LAB≠SAMPLE≠client."""
+    err = keep_error_text(exc)
+    fail_code = str(getattr(exc, "code", "") or "")
+    if not fail_code:
+        if "LAB_SHAPE_FAIL" in err:
+            fail_code = "LAB_SHAPE_FAIL"
+        elif "EXISTING_IN_FAIL" in err:
+            fail_code = "EXISTING_IN_FAIL"
+    return {
+        "tool": "lab_drop",
+        "ok": False,
+        "live": False,
+        "demo": True,
+        "sample": False,
+        "lab": True,
+        "seeded": bool(seeded),
+        "use_existing_in": True,
+        "client": False,
+        "client_keep": False,
+        "paying_day": "FAIL",
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "fail_code": fail_code,
+        "error": err,
+        "stderr": err,
+        "work": str(work) if work else "",
+        "dest_in": str(dest_in) if dest_in else "",
+        "pack_in": str(pack_in) if pack_in else "",
+        "cwd": os.getcwd(),
+        "root": str(_repo_root()),
+        "cli_twin": lab_drop_to_sor_cli_twin(_repo_root()),
+        "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(_repo_root()),
+        "banners": list(LAB_HONESTY_BANNERS),
+        "note": (
+            f"lab_drop failed. Last error: {err}. "
+            "LAB != SAMPLE != client. DEMO != client. paying_day FAIL. "
+            "Did not reseed fixtures/pack_drop."
+        ),
+    }
+
+
+def lab_drop(
+    scope_path: Path | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """SCOPE-gated LAB dest_in prove. Same rails as lab_drop_to_sor / --use-existing-in.
+
+    Requires populated work/in (or dest_in). Never reseeds fixtures/pack_drop.
+    Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL.
+    LAB≠SAMPLE≠client. paying_day FAIL. Never writes pack in/. Never POST.
+    """
+    extra = arguments if isinstance(arguments, dict) else {}
+    load_scope(_keep_scope_path(scope_path))
+    pack_in = _keep_pack_in(extra)
+    work: Path | None = None
+    dest_in: Path | None = None
+    try:
+        work, dest_in = _lab_drop_work_and_dest_in(extra)
+        return _lab_drop_once(
+            scope_path=scope_path,
+            work=work,
+            dest_in=dest_in,
+            pack_in=pack_in,
+        )
+    except Exception as exc:
+        return lab_drop_fail_payload(exc, work=work, dest_in=dest_in, pack_in=pack_in)
+
+
+def _lab_drop_once(
+    *,
+    scope_path: Path | None,
+    work: Path,
+    dest_in: Path,
+    pack_in: Path,
+) -> dict[str, Any]:
+    from scripts.prove_ciso import (
+        ExistingInError,
+        LabShapeError,
+        dest_in_has_lab_stamp,
+        prove_ciso,
+        unexpected_demo_adapter_trees,
+        verify_farm_drop_sor,
+    )
+
+    scope = load_scope(_keep_scope_path(scope_path))
+    before_dest = _pack_fingerprint(dest_in)
+    before_pack = _pack_fingerprint(pack_in)
+    try:
+        stamp = prove_ciso(root=_repo_root(), dest=work, use_existing_in=True)
+        verify_farm_drop_sor(work)
+    except (ExistingInError, LabShapeError):
+        raise
+    after_dest = _pack_fingerprint(dest_in)
+    after_pack = _pack_fingerprint(pack_in)
+    wrote_dest = before_dest != after_dest
+    wrote_pack = before_pack != after_pack
+    ok = (
+        stamp.get("status") == "pass"
+        and stamp.get("seeded") is False
+        and stamp.get("use_existing_in") is True
+        and stamp.get("lab") is True
+        and stamp.get("sample") is False
+        and stamp.get("client") is False
+        and not wrote_dest
+        and not wrote_pack
+    )
+    reason = ""
+    fail_code = ""
+    if not ok:
+        if wrote_dest:
+            reason = "LAB_SHAPE_FAIL lab_drop rewrote dest_in (silent reseed)"
+            fail_code = "LAB_SHAPE_FAIL"
+        elif wrote_pack:
+            reason = "lab_drop wrote pack in/"
+        else:
+            reason = str(stamp.get("reason") or "lab prove status is not pass")
+            if stamp.get("seeded") is True:
+                fail_code = "LAB_SHAPE_FAIL"
+                reason = f"LAB_SHAPE_FAIL {reason}"
+    ciso_dir = Path(stamp.get("ciso_dir") or (work / "out" / "ciso-assistant"))
+    ciso_files = (
+        [str(path) for path in sorted(ciso_dir.glob("*.csv"))] if ciso_dir.is_dir() else []
+    )
+    poam = str(stamp.get("poam") or (work / "out" / "poam" / "poam.csv"))
+    poam_md = str(stamp.get("poam_md") or (work / "out" / "poam" / "poam.md"))
+    prove = work / "prove-ciso.json"
+    unexpected = unexpected_demo_adapter_trees(dest_in)
+    estate = str(stamp.get("estate") or "LAB/DEMO — not a client estate")
+    return {
+        "tool": "lab_drop",
+        "ok": ok,
+        "fail_code": fail_code,
+        "error": reason,
+        "stderr": reason,
+        "live": False,
+        "dry_run": True,
+        "scope_gated": True,
+        "client": scope.client_name,
+        "demo": True,
+        "sample": False,
+        "lab": True,
+        "seeded": False,
+        "use_existing_in": True,
+        "client_keep": False,
+        "estate": estate,
+        "dest_in": str(dest_in),
+        "dest_in_written": wrote_dest,
+        "pack_in": str(pack_in),
+        "pack_in_written": wrote_pack,
+        "work": str(work),
+        "ciso_dir": str(ciso_dir),
+        "ciso_files": ciso_files,
+        "poam": poam,
+        "poam_md": poam_md,
+        "prove": str(prove) if prove.is_file() else "",
+        "lab_stamp": dest_in_has_lab_stamp(dest_in),
+        "unexpected_demo_adapters": unexpected,
+        "cli_twin": lab_drop_to_sor_cli_twin(_repo_root()),
+        "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(_repo_root()),
+        "sample_cli_twin": sample_to_sor_cli_twin(_repo_root()),
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "ciso_push": "0",
+        "riskready_push": "0",
+        "grc_live_scan": "0",
+        "dry_run_env": "1",
+        "banners": list(LAB_HONESTY_BANNERS),
+        "paying_day": "FAIL",
+        "stamp": stamp,
+        "note": (
+            "LAB dest_in path: populated work/in → out/ciso-assistant/*.csv "
+            "+ out/poam/poam.csv via python3 scripts/prove_ciso.py --use-existing-in. "
+            "Same rails as ./scripts/lab_drop_to_sor.sh / "
+            ".\\scripts\\lab_drop_to_sor.ps1 (no Makefile first-line). "
+            "Never reseeds fixtures/pack_drop. Empty in/ is EXISTING_IN_FAIL. "
+            "LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL. "
+            "Does not densify pack in/. LAB≠SAMPLE≠client. DEMO≠client. "
+            "paying_day FAIL. SAMPLE keep remains the primary KEEP path. "
+            "farm_drop_to_sor remains the fixture seed path."
         ),
     }
 

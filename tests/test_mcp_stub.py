@@ -668,6 +668,7 @@ def test_farm_slots_and_export_refuse_without_scope(tmp_path: Path) -> None:
         "stage_discover",
         "keep_status",
         "keep_ciso",
+        "lab_drop",
     ):
         with pytest.raises(GateError, match="SCOPE"):
             dispatch(name, scope_path=empty)
@@ -684,13 +685,16 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
 
     assert "keep_status" in OPERATOR_TOOLS
     assert "keep_ciso" in OPERATOR_TOOLS
+    assert "lab_drop" in OPERATOR_TOOLS
     listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = [t["name"] for t in listed["result"]["tools"]]
     assert "keep_status" in names
     assert "keep_ciso" in names
+    assert "lab_drop" in names
     assert names == list(OPERATOR_TOOLS)
     assert names.index("keep_status") == names.index("export_ciso_poam") + 1
     assert names.index("keep_ciso") == names.index("keep_status") + 1
+    assert names.index("lab_drop") == names.index("keep_ciso") + 1
     entries = {row["name"]: row for row in tools_list_entries()}
     assert "SAMPLE≠client" in entries["keep_status"]["description"]
     assert "0/4" in entries["keep_status"]["description"]
@@ -704,8 +708,16 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
     assert "farm_drop_to_sor" in entries["keep_ciso"]["description"]
     assert "farm-drop-to-sor" in entries["keep_ciso"]["description"]
     assert "farm_drop_to_sor.ps1" in entries["keep_ciso"]["description"]
+    assert "lab_drop_to_sor" in entries["keep_ciso"]["description"]
+    assert "use-existing-in" in entries["keep_ciso"]["description"]
     assert "sample_to_sor" in entries["keep_status"]["description"]
     assert "farm_drop_to_sor" in entries["keep_status"]["description"]
+    assert "lab_drop" in entries["keep_status"]["description"]
+    assert "LAB≠SAMPLE" in entries["lab_drop"]["description"] or "LAB" in entries["lab_drop"]["description"]
+    assert "use-existing-in" in entries["lab_drop"]["description"]
+    assert "EXISTING_IN_FAIL" in entries["lab_drop"]["description"]
+    assert "LAB_SHAPE_FAIL" in entries["lab_drop"]["description"]
+    assert "reseed" in entries["lab_drop"]["description"].lower()
     exporters = entries["keep_ciso"]["inputSchema"]["properties"].get("exporters") or {}
     assert exporters.get("type") == "boolean"
     assert "keep-lab" in (exporters.get("description") or "")
@@ -766,6 +778,8 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert "farm-drop-to-sor" in iface
     assert "farm_drop_to_sor.ps1" in iface
     assert "farm_drop_cli_twin" in iface
+    assert "lab_drop_cli_twin" in iface
+    assert "`lab_drop`" in iface
     assert "isolate_work" in iface
     assert "`keep_status` then `keep_ciso`" in iface
     assert "denser" not in iface.lower()
@@ -909,6 +923,7 @@ def test_keep_ciso_sor_helpers_tolerate_missing_script(tmp_path: Path) -> None:
     from dropbox.mcp_stub import (
         farm_drop_to_sor_cli_twin,
         keep_ciso_sor_paths,
+        lab_drop_to_sor_cli_twin,
         sample_to_sor_cli_twin,
     )
 
@@ -930,6 +945,15 @@ def test_keep_ciso_sor_helpers_tolerate_missing_script(tmp_path: Path) -> None:
     assert farm["name"] == "farm_drop_to_sor"
     assert farm["kind"] == "farm_pack_drop"
 
+    lab = lab_drop_to_sor_cli_twin(tmp_path)
+    assert lab["present"] is False
+    assert lab["script"] == ""
+    assert lab["make"] == ""
+    assert lab["ps1"] == ".\\scripts\\lab_drop_to_sor.ps1"
+    assert lab["ps1_present"] is False
+    assert lab["name"] == "lab_drop_to_sor"
+    assert lab["kind"] == "lab_dest_in"
+
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "sample_to_sor.sh").write_text("#!/bin/sh\n", encoding="utf-8")
     present = sample_to_sor_cli_twin(tmp_path)
@@ -941,6 +965,13 @@ def test_keep_ciso_sor_helpers_tolerate_missing_script(tmp_path: Path) -> None:
     assert farm_present["present"] is True
     assert farm_present["command"] == "./scripts/farm_drop_to_sor.sh"
     assert farm_present["ps1_present"] is True
+    (tmp_path / "scripts" / "lab_drop_to_sor.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+    (tmp_path / "scripts" / "lab_drop_to_sor.ps1").write_text("# ps1\n", encoding="utf-8")
+    lab_present = lab_drop_to_sor_cli_twin(tmp_path)
+    assert lab_present["present"] is True
+    assert lab_present["command"] == "./scripts/lab_drop_to_sor.sh"
+    assert lab_present["ps1_present"] is True
+    assert lab_present["make"] == ""
 
     work = tmp_path / "work"
     ciso = work / "out" / "ciso-assistant"
@@ -1068,6 +1099,7 @@ def test_keep_status_and_keep_ciso_advertise_both_operator_twins(
     assert data["posted"] is False
     iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
     assert "cli_twin" in iface and "farm_drop_cli_twin" in iface
+    assert "lab_drop_cli_twin" in iface
     assert "./scripts/sample_to_sor.sh" in iface
     assert "./scripts/farm_drop_to_sor.sh" in iface
     assert "make farm-drop-to-sor" in iface

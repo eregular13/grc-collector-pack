@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 180 — MCP_LAB_TWIN lab_drop (2026-09-21)
+
+Brick: pack `dropbox.mcp_stub` advertises callable `lab_drop` beside
+`keep_status` / `keep_ciso` / `farm_drop_cli_twin`. Maps to existing
+`lab_drop_to_sor` / `prove --use-existing-in`: requires populated
+`work/in`, never reseeds `fixtures/pack_drop`, returns honesty stamps
++ CISO/POA&M paths. Empty `in/` is `EXISTING_IN_FAIL`. `LAB.txt` +
+DEMO seed trees is `LAB_SHAPE_FAIL`. No Makefile/README first-line.
+No STATUS vanity. paying_day **FAIL**. Catalog **unchanged**.
+pytest **848** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=105` `poam=106`
+`demo=true`).
+
 ## cycle 179 — LAB_SHAPE_ASSERT dest_in (2026-09-21)
 
 Brick: after lab prove (`--use-existing-in`), assert risk-register +
