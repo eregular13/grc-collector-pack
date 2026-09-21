@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 179 — LAB_SHAPE_ASSERT dest_in (2026-09-21)
+
+Brick: after lab prove (`--use-existing-in`), assert risk-register +
+POA&M on `out/` and fail-closed (`LAB_SHAPE_FAIL`) if `LAB.txt` / lab
+stamp is present and dest_in looks DEMO-seeded (`seeded=true` or
+honeypot / fixtures pack_drop siblings beyond the operator nmap leaf).
+Default SAMPLE seed path unchanged. No new public entrypoint. No
+STATUS vanity. paying_day **FAIL**. Catalog **unchanged**.
+pytest **840** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=105` `poam=106`
+`demo=true`).
+
 ## cycle 178 — LAB_PROVE_LOCK dest_in (2026-09-21)
 
 Brick: lock the lab prove path. `fixtures/lab-drop/` is a scan-shaped

@@ -1,3 +1,10 @@
+# CRITIC — cycle 179 (LAB_SHAPE_ASSERT)
+
+Lab this brick: pytest **840** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS. Zero P0/P1. `LAB_SHAPE_FAIL`
+refuses DEMO-seeded dest_in when `LAB.txt` is present. CoS #48 rails
+below are unchanged. Catalog **111 / 32 / 30 / 81**. paying_day **FAIL**.
+
 # CRITIC — cycle 174 (farm_drop_to_sor + pack a3a3651b)
 
 **This window (cycle 174):** **8/10** — zero P0/P1. Catalog **unchanged**: **111 / 32 / 30 / 81**.

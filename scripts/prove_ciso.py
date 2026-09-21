@@ -90,9 +90,18 @@ class ExistingInError(RuntimeError):
     """--use-existing-in requires dest_in already populated; will not reseed."""
 
 
+class LabShapeError(RuntimeError):
+    """LAB dest_in mixed with DEMO seed adapters or seeded=true (silent reseed)."""
+
+
 # ASCII-only: Windows cp1252 consoles cannot print U+2260.
 HONESTY_OK_LINE = "FARM_DROP_HONESTY=ok SAMPLE/DEMO != client paying_day=FAIL"
 LAB_HONESTY_OK_LINE = "LAB_DROP_HONESTY=ok LAB/DEMO != client SAMPLE != LAB paying_day=FAIL"
+LAB_SHAPE_FAIL = "LAB_SHAPE_FAIL"
+# Operator nmap leaf is dest_in/nmap/pack_drop/. Sibling dirs under that leaf
+# (rustscan, httpx, ...) are fixture-seed trees, not compose-lab dest_in.
+LAB_OPERATOR_NMAP_LEAF = "nmap"
+LAB_ALLOWED_PACK_DROP_DIRS = frozenset({"evidence"})
 
 
 def _copy_tree(src: Path, dest: Path) -> None:
@@ -134,26 +143,103 @@ def require_existing_in(dest_in: Path) -> Path:
     )
 
 
+def dest_in_has_lab_stamp(dest_in: Path) -> bool:
+    """True when dest_in carries LAB.txt or nmap pack_drop meta lab:true."""
+    dest_in = Path(dest_in)
+    if not dest_in.is_dir():
+        return False
+    if (dest_in / "LAB.txt").is_file():
+        return True
+    for path in dest_in.rglob("LAB.txt"):
+        if path.is_file():
+            return True
+    meta = dest_in / "nmap" / "pack_drop" / "meta.json"
+    if not meta.is_file():
+        return False
+    try:
+        data = json.loads(meta.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    return isinstance(data, dict) and data.get("lab") is True
+
+
+def unexpected_demo_adapter_trees(dest_in: Path) -> list[str]:
+    """DEMO/SAMPLE fixture trees that mean a silent reseed on a LAB dest_in.
+
+    Operator lab dest_in is LAB.txt + nmap/pack_drop leaf. Honeypot and
+    fixtures/pack_drop siblings (rustscan, httpx, ...) are SAMPLE seed.
+    """
+    dest_in = Path(dest_in)
+    unexpected: list[str] = []
+    honeypot = dest_in / "honeypot"
+    if honeypot.is_dir():
+        unexpected.append("honeypot")
+    nmap_drop = dest_in / "nmap" / "pack_drop"
+    if nmap_drop.is_dir():
+        for child in sorted(nmap_drop.iterdir()):
+            if not child.is_dir():
+                continue
+            if child.name in LAB_ALLOWED_PACK_DROP_DIRS:
+                continue
+            sibling = f"nmap/pack_drop/{child.name}"
+            if (child / "meta.json").is_file() or child.name in E2E_PROVEN_PACK_DROP_ADAPTERS:
+                unexpected.append(sibling)
+    return unexpected
+
+
+def assert_lab_dest_in_shape(
+    dest_in: Path,
+    *,
+    seeded: bool | None = None,
+) -> dict[str, Any]:
+    """If LAB.txt / lab stamp is present, refuse seeded=true and DEMO seed trees."""
+    dest_in = Path(dest_in)
+    if not dest_in_has_lab_stamp(dest_in):
+        return {"ok": True, "lab": False, "unexpected": []}
+    if seeded is True:
+        raise LabShapeError(
+            f"{LAB_SHAPE_FAIL} LAB.txt/lab stamp present but seeded=true "
+            "(silent fixture reseed). LAB dest_in requires --use-existing-in."
+        )
+    unexpected = unexpected_demo_adapter_trees(dest_in)
+    if unexpected:
+        raise LabShapeError(
+            f"{LAB_SHAPE_FAIL} unexpected DEMO adapter trees on LAB dest_in: "
+            f"{unexpected} (honeypot / fixtures pack_drop siblings beyond "
+            "operator nmap leaf). LAB dest_in must not be fixture-reseeded."
+        )
+    return {
+        "ok": True,
+        "lab": True,
+        "seeded": False,
+        "unexpected": [],
+        "dest_in": str(dest_in),
+    }
+
+
 def inspect_existing_in(dest_in: Path) -> dict[str, Any]:
     """Describe operator dest_in without copying or wiping it."""
     dest_in = Path(dest_in)
     adapters: dict[str, str] = {}
     nmap_drop = dest_in / "nmap" / "pack_drop"
     if nmap_drop.is_dir():
-        adapters["nmap"] = str(nmap_drop)
+        adapters[LAB_OPERATOR_NMAP_LEAF] = str(nmap_drop)
         for child in sorted(nmap_drop.iterdir()):
             if child.is_dir() and (child / "meta.json").is_file():
                 adapters[child.name] = str(child)
     honeypot = dest_in / "honeypot"
+    unexpected = unexpected_demo_adapter_trees(dest_in)
     return {
         "dest_in": str(dest_in),
         "seeded": False,
         "use_existing_in": True,
         "lab": True,
+        "lab_stamp": dest_in_has_lab_stamp(dest_in),
         "sample": False,
         "client": False,
         "adapters": adapters,
         "honeypot": str(honeypot) if honeypot.is_dir() else "",
+        "unexpected_demo_adapters": unexpected,
         "note": "operator dest_in; no fixture reseed",
     }
 
@@ -213,11 +299,17 @@ def verify_farm_drop_sor(dest: Path) -> dict[str, Any]:
     if stamp.get("client") is True or stamp.get("client_keep") is True:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL client estate claim")
     lab = stamp.get("lab") is True or stamp.get("use_existing_in") is True
+    dest_in = dest / "in"
+    if dest_in_has_lab_stamp(dest_in):
+        assert_lab_dest_in_shape(dest_in, seeded=stamp.get("seeded"))
     if lab:
         if stamp.get("lab") is not True:
             raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL lab must be true")
         if stamp.get("seeded") is True:
-            raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL lab dest_in was reseeded")
+            raise LabShapeError(
+                f"{LAB_SHAPE_FAIL} lab stamp present but seeded=true "
+                "(silent fixture reseed)"
+            )
     elif stamp.get("sample") is not True:
         raise FarmDropHonestyError("FARM_DROP_HONESTY_FAIL sample must be true")
     if stamp.get("demo") is not True:
@@ -315,9 +407,13 @@ def prove_ciso(
         if use_existing_in:
             require_existing_in(dest_in)
             seed = inspect_existing_in(dest_in)
+            assert_lab_dest_in_shape(dest_in, seeded=seed.get("seeded"))
         else:
             seed = seed_prove_in(dest_in, root)
             seed = {**seed, "seeded": True, "use_existing_in": False, "lab": False}
+            # Default seed wipes dest_in first; LAB.txt gone => no-op.
+            # If a lab stamp somehow survived the wipe, refuse seeded=true.
+            assert_lab_dest_in_shape(dest_in, seeded=seed.get("seeded"))
         if dest_out.exists():
             shutil.rmtree(dest_out)
         dest_out.mkdir(parents=True)
@@ -527,6 +623,9 @@ def main(argv: list[str] | None = None) -> int:
         except FarmDropHonestyError as exc:
             print(str(exc), file=sys.stderr)
             return 1
+        except LabShapeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
         stamp = verified.get("stamp") or {}
         if stamp.get("lab") is True or stamp.get("use_existing_in") is True:
             print(LAB_HONESTY_OK_LINE)
@@ -537,6 +636,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         stamp = prove_ciso(dest=dest, use_existing_in=args.use_existing_in)
     except ExistingInError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except LabShapeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(stamp, indent=2, default=str))
@@ -552,6 +654,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         verify_farm_drop_sor(dest)
     except FarmDropHonestyError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except LabShapeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
     if args.use_existing_in:

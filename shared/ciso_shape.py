@@ -1,7 +1,9 @@
-"""Risk-register + POA&M shape for SAMPLE and farm_drop SoR outputs.
+"""Risk-register + POA&M shape for SAMPLE, farm_drop, and lab prove SoR outputs.
 
 Column contract matches schemas/ciso-assistant.md and collectors/grc_loader.py.
-Not an operator entrypoint. SAMPLE/DEMO labels stay honest.
+Lab prove (`--use-existing-in`) also calls assert_risk_register_and_poam on out/.
+Dest_in LAB.txt / DEMO-adapter fail-closed lives in scripts/prove_ciso.py
+(LAB_SHAPE_FAIL). Not an operator entrypoint. SAMPLE/DEMO/LAB labels stay honest.
 """
 
 from __future__ import annotations
