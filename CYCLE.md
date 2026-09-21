@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 181 — FARM_LAB_ALIGN farm vs lab dest_in (2026-09-21)
+
+Operator-facing align: `farm_drop_to_sor` = SAMPLE/DEMO fixture seed
+(`fixtures/pack_drop`, Brick 5 dual-net); `lab_drop_to_sor` =
+`--use-existing-in` dest_in (no reseed; `fixtures/lab-drop` /
+192.168.64.0/24). Both emit risk register + POA&M. SAMPLE
+`172.16.10.0/24` "lab" segment != LAB dest_in. Farm nmap meta now
+stamps `sample=true` `lab=false` `client=false`. Docs cross-link
+FARM_SHIP_GATE / PROVE_CISO / COVEY_PACK_DROP. No new public
+entrypoint. No STATUS vanity. paying_day **FAIL**. Catalog
+**unchanged**. #108–#110 prove/MCP path stands; this brick is the
+align note + honesty lock, not a re-PASS grind.
+
 ## cycle 180 — MCP_LAB_TWIN lab_drop (2026-09-21)
 
 Brick: pack `dropbox.mcp_stub` advertises callable `lab_drop` beside
