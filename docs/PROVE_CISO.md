@@ -121,6 +121,8 @@ keep that dest_in with `lab_drop_to_sor` / `--use-existing-in`:
 # DESKTOP: .\scripts\lab_drop_to_sor.ps1 -Work DIR
 python3 scripts/prove_ciso.py --work DIR --use-existing-in
 # alias: --no-seed
+# MCP conductor (pack dropbox.mcp_stub): tools/call lab_drop
+#   arguments.work = DIR  (or arguments.dest_in = DIR/in)
 ```
 
 `--use-existing-in` does **not** rmtree/reseed `DIR/in`. `DIR/in` must

@@ -14,8 +14,9 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `farm_slot_status` | SLOTS ∩ PATH ∩ allow_tools | Full matrix. Optional `{ "category": "discover" }`. Plan-only |
 | `farm_toolbin_status` | `FARM_TOOL_BIN` then PATH | Per-slot `live_ready` plus `live_ready_count` / `slots[]`. Never `live_ready` for `demo_stub` or file_drop-only names even if a binary is under `FARM_TOOL_BIN`. DEMO stubs may `will_run` in e2e. Does not invoke |
 | `export_ciso_poam` | reads `out/ciso-assistant/` + `out/poam/` + `out/simplerisk/` | SCOPE-gated paths. `posted` false unless `CISO_PUSH=1`. Conductor `http` always false. Does not invent owner/due |
-| `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | Empty pack `in/` is `keep_real` **0/4**. Lab path is `fixtures/keep-samples` (SAMPLE≠client). HardeningKitty / Maester / testssl / Prowler\|ScoutSuite detect only. Advertises both operator twins as hints only: `cli_twin` (`./scripts/sample_to_sor.sh` / `make sample-to-sor` / `.\scripts\sample_to_sor.ps1`) and `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`). **Does not densify pack `in/`.** Does not invent non-sample files. Does not require signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
-| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` + OpenGRC CSVs + Probo preview + `eval/handoff.json`. Return lists every SoR path (`ciso_dir` / `ciso_files` / `ciso_import` / `opengrc` / `probo`) plus `cli_twin` (`./scripts/sample_to_sor.sh` or `make sample-to-sor` or `.\scripts\sample_to_sor.ps1`) and `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1` — hint only; this tool does not run prove_ciso). `arguments.exporters` is optional (script `--exporters` re-write); sinks always come from keep-lab — no second export path. `arguments.isolate_work` is optional unique work subdirectory (default on for shared `keep/work` so overlapping ticks do not share `out/`). Fail path returns `stderr` / last error; one retry on WinError 145 / ENOTEMPTY only — never `ok` true if still failing. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client.** paying_day FAIL |
+| `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | Empty pack `in/` is `keep_real` **0/4**. Lab path is `fixtures/keep-samples` (SAMPLE≠client). HardeningKitty / Maester / testssl / Prowler\|ScoutSuite detect only. Advertises operator twins as hints only: `cli_twin` (`./scripts/sample_to_sor.sh` / `make sample-to-sor` / `.\scripts\sample_to_sor.ps1`), `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`), and `lab_drop_cli_twin` (`./scripts/lab_drop_to_sor.sh` / MCP `lab_drop` / prove `--use-existing-in`; no Makefile first-line). **Does not densify pack `in/`.** Does not invent non-sample files. Does not require signed self-SCOPE. **LAB≠SAMPLE≠client. SAMPLE≠client. DEMO≠client.** paying_day FAIL |
+| `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` + OpenGRC CSVs + Probo preview + `eval/handoff.json`. Return lists every SoR path (`ciso_dir` / `ciso_files` / `ciso_import` / `opengrc` / `probo`) plus `cli_twin` (`./scripts/sample_to_sor.sh` or `make sample-to-sor` or `.\scripts\sample_to_sor.ps1`), `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1` — hint only; this tool does not run prove_ciso), and `lab_drop_cli_twin` (`./scripts/lab_drop_to_sor.sh` / MCP `lab_drop` — hint only). `arguments.exporters` is optional (script `--exporters` re-write); sinks always come from keep-lab — no second export path. `arguments.isolate_work` is optional unique work subdirectory (default on for shared `keep/work` so overlapping ticks do not share `out/`). Fail path returns `stderr` / last error; one retry on WinError 145 / ENOTEMPTY only — never `ok` true if still failing. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client. LAB≠SAMPLE.** paying_day FAIL |
+| `lab_drop` | `scripts/prove_ciso.py --use-existing-in` (`lab_drop_to_sor`) | **LAB dest_in only:** requires populated `arguments.work`/`in` or `arguments.dest_in`. Never reseeds `fixtures/pack_drop`. Empty `in/` (or banners only) is `EXISTING_IN_FAIL`. `LAB.txt` (or nmap pack_drop `lab:true`) + DEMO seed trees (`honeypot/` / fixtures pack_drop siblings) is `LAB_SHAPE_FAIL`. Returns honesty stamps (`lab=true` `seeded=false` `sample=false` `client=false` `paying_day=FAIL`) plus `ciso_dir` / `ciso_files` / `poam` / `prove`. Same rails as `./scripts/lab_drop_to_sor.sh` / `.\scripts\lab_drop_to_sor.ps1` (no Makefile first-line). **LAB≠SAMPLE≠client.** Never writes pack `in/`. Never POST. |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -29,6 +30,7 @@ python3 -m dropbox mcp serve --once          # same one-line JSON-RPC
 python3 -m dropbox mcp farm_toolbin_status
 python3 -m dropbox mcp keep_status
 python3 -m dropbox mcp keep_ciso
+python3 -m dropbox mcp lab_drop
 python3 -c "from dropbox.mcp_stub import dispatch; print(dispatch('scope_status'))"
 ```
 
@@ -102,15 +104,19 @@ returns those SoR paths so the operator does not memorize keep-lab layout.
 `keep_status` and `keep_ciso` also advertise the farm pack_drop twin
 (`farm_drop_cli_twin`): `./scripts/farm_drop_to_sor.sh` /
 `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`
-(`python3 scripts/prove_ciso.py` under `prove/work/`; never pack `in/`).
-That hint does not run prove_ciso and does not invent KEEP. SAMPLE keep
-remains the primary KEEP path. `tools/list` `keep_ciso` may take
+(`python3 scripts/prove_ciso.py` under `prove/work/`; never pack `in/`)
+and the LAB dest_in twin (`lab_drop_cli_twin`):
+`./scripts/lab_drop_to_sor.sh` / MCP `lab_drop` /
+`python3 scripts/prove_ciso.py --use-existing-in` (no Makefile
+first-line; never reseeds). Farm/SAMPLE hints do not run prove_ciso
+and do not invent KEEP. `lab_drop` is the callable LAB path.
+SAMPLE keep remains the primary KEEP path. LAB≠SAMPLE≠client. `tools/list` `keep_ciso` may take
 `arguments.exporters` (same meaning as
 the script `--exporters` re-write); sinks always come from keep-lab.
 `arguments.isolate_work` (or `KEEP_CISO_ISOLATE`) is an optional unique
 work subdirectory under `keep/work` or the supplied `work` so overlapping
 `keep_ciso` calls do not share `out/`. Default on when work is the shared
-`keep/work`. Not a new CLI script. When `keep_status` / `keep_ciso` fail,
+`keep/work`. Not a new CLI script. When `keep_status` / `keep_ciso` / `lab_drop` fail,
 MCP/conductor return `stderr` (or last error text). One retry on
 transient wipe / Windows directory errors only; still-nonzero stays `ok`
 false and CLI/`tools/call` exit/error code 2.
@@ -156,12 +162,19 @@ signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
 {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"keep_ciso"}}
 ```
 
+```json
+{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"lab_drop","arguments":{"work":"/abs/lab-work"}}}
+```
+
 Optional `arguments.exporters` is accepted and documented only — sinks
 already come from `keep.lab` (`export_keep_sinks`). It does not invent a
 second export path. Same optional flag as `./scripts/sample_to_sor.sh --exporters`.
 `farm_drop_cli_twin` is a sibling hint for `./scripts/farm_drop_to_sor.sh`
 (`make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`); `keep_ciso`
 does not execute that path.
+`lab_drop_cli_twin` / MCP `lab_drop` is the LAB dest_in sibling
+(`./scripts/lab_drop_to_sor.sh`; prove `--use-existing-in`). Empty `in/`
+is `EXISTING_IN_FAIL`. `LAB.txt` + DEMO reseed trees is `LAB_SHAPE_FAIL`.
 
 ```json
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"AIExploitGenerator"}}
