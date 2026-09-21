@@ -9,21 +9,11 @@ from pathlib import Path
 
 from scripts.prove_ciso import LAB_HONESTY_OK_LINE, prove_ciso
 from shared.ciso_shape import assert_risk_register_and_poam
+from tests.test_lab_prove_lock import stage_lab_drop_dest_in
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "lab_drop_to_sor.sh"
 PS1 = ROOT / "scripts" / "lab_drop_to_sor.ps1"
-
-
-def _stage_tiny_nmap_pack_drop(dest_in: Path) -> Path:
-    src = ROOT / "fixtures" / "pack_drop" / "nmap"
-    dest = dest_in / "nmap" / "pack_drop"
-    dest.mkdir(parents=True, exist_ok=True)
-    for name in ("meta.json", "assets.jsonl", "findings.jsonl"):
-        (dest / name).write_text((src / name).read_text(encoding="utf-8"), encoding="utf-8")
-    marker = dest_in / "OPERATOR_LAB_MARKER.txt"
-    marker.write_text("do-not-reseed\n", encoding="utf-8")
-    return marker
 
 
 def test_lab_drop_scripts_document_honesty_and_call_use_existing_in() -> None:
@@ -83,7 +73,7 @@ def test_lab_honesty_ok_line_is_ascii_cp1252() -> None:
 def test_lab_drop_to_sor_sh_uses_existing_in(tmp_path: Path) -> None:
     work = tmp_path / "lab-work"
     dest_in = work / "in"
-    marker = _stage_tiny_nmap_pack_drop(dest_in)
+    marker = stage_lab_drop_dest_in(dest_in)
     before = {p.relative_to(dest_in) for p in dest_in.rglob("*") if p.is_file()}
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
@@ -130,7 +120,7 @@ def test_lab_drop_to_sor_sh_uses_existing_in(tmp_path: Path) -> None:
 
 def test_lab_drop_verify_only_after_prove(tmp_path: Path) -> None:
     work = tmp_path / "lab-work"
-    _stage_tiny_nmap_pack_drop(work / "in")
+    stage_lab_drop_dest_in(work / "in")
     stamp = prove_ciso(root=ROOT, dest=work, use_existing_in=True)
     assert stamp["status"] == "pass", stamp.get("reason")
     env = os.environ.copy()

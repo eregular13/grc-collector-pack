@@ -1,0 +1,6 @@
+LAB/DEMO -- not a client estate.
+Scan-shaped compose-lab nmap pack_drop leaf (192.168.64.0/24).
+Host classes: gateway, loader, db, web, windows, mail, iot, ftp, ci, jump.
+Exposure observations only (open ports / products). Not CVE-class.
+Not SAMPLE fixtures/pack_drop. Not SAMPLE keep. Not a client export.
+Not a paying-day stamp. LAB/DEMO != SAMPLE != client.

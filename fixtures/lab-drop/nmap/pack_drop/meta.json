@@ -1,0 +1,12 @@
+{
+  "schema": "covey.pack_drop.v1",
+  "source": "evergreen-covey",
+  "adapter": "nmap",
+  "lane": "nmap",
+  "generated_at": "2026-09-21T00:00:00Z",
+  "demo": true,
+  "lab": true,
+  "sample": false,
+  "client": false,
+  "note": "LAB/DEMO -- not a client estate. Scan-shaped compose-lab nmap pack_drop leaf (192.168.64.0/24). Not SAMPLE fixtures/pack_drop. Not SAMPLE keep. Not a client export. Exposure observations only; not a CVE identifier."
+}

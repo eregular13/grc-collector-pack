@@ -108,23 +108,36 @@ Pytest lock: `python3 -m pytest tests/test_prove_ciso.py -q`
 ## Lab / live dest_in (no fixture reseed)
 
 Default `prove_ciso` still copies `fixtures/pack_drop` (16 adapters) into
-`DIR/in` and wipes whatever was there. DESKTOP compose lab pack_drop is
-discarded by that seed. To keep an operator-populated `DIR/in`:
+`DIR/in` and **wipes** whatever was there (DEMO wipe). DESKTOP compose lab
+pack_drop is discarded by that seed. Do **not** run default `prove_ciso` on
+a live dest_in.
+
+DESKTOP operators: after compose lab `nmap → pack_drop` lands in `DIR/in`,
+keep that dest_in with `lab_drop_to_sor` / `--use-existing-in`:
 
 ```bash
+# DESKTOP after compose lab pack_drop is already in DIR/in:
+./scripts/lab_drop_to_sor.sh --work DIR
+# DESKTOP: .\scripts\lab_drop_to_sor.ps1 -Work DIR
 python3 scripts/prove_ciso.py --work DIR --use-existing-in
 # alias: --no-seed
-# thin wrapper: ./scripts/lab_drop_to_sor.sh --work DIR
-# DESKTOP: .\scripts\lab_drop_to_sor.ps1 -Work DIR
 ```
 
 `--use-existing-in` does **not** rmtree/reseed `DIR/in`. `DIR/in` must
-already hold pack_drop (compose lab or operator copy). Collectors +
+already hold pack_drop (compose lab or operator copy). Empty `DIR/in`
+(or banners only) fail-closed (`EXISTING_IN_FAIL`). Collectors +
 `grc_loader` run; risk-register + POA&M shape (`shared/ciso_shape`, #102)
 is fail-closed: findings>0 implies `risk_scenarios` rows and `poam` rows.
+
+CI/lab fixture: `fixtures/lab-drop/` is a scan-shaped LAB dest_in
+(192.168.64.0/24 nmap pack_drop leaf). LAB != SAMPLE keep != client.
+Pytest copies it into a temp `work/in` and locks this path. It is not
+SAMPLE `fixtures/pack_drop` and not a client KEEP.
+
 LAB/DEMO != SAMPLE != client. `paying_day` stays FAIL. Never pack `in/`.
 `farm_drop_to_sor` remains the fixture seed path. `sample_to_sor` remains
-the primary KEEP path. This is not a new CTA.
+the primary KEEP path. This is not a new CTA. No Makefile / README
+first-line entrypoint.
 
 ## Brick 4 — cold farm wipe/clone ship-gate (CI/lab)
 
