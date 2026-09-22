@@ -33,6 +33,34 @@ const COLS = {
   evidence: [
     ["name", "Name"],
     ["description", "Description"],
+    ["path", "Path"],
+    ["size", "Size"],
+  ],
+  controls: [
+    ["ref_id", "Ref"],
+    ["name", "Name"],
+    ["description", "Description"],
+    ["status", "Status"],
+    ["category", "Category"],
+    ["priority", "Priority"],
+    ["csf_function", "CSF"],
+  ],
+  scenarios: [
+    ["current_risk", "Risk"],
+    ["ref_id", "Ref"],
+    ["name", "Name"],
+    ["description", "Description"],
+    ["assets", "Assets"],
+    ["treatment", "Treatment"],
+    ["additional_controls", "Controls"],
+  ],
+  coverage: [
+    ["token", "Token"],
+    ["family", "Family"],
+    ["poam", "POA&M"],
+    ["findings", "Findings"],
+    ["controls", "Controls"],
+    ["total", "Total"],
   ],
   poam: [
     ["severity", "Severity"],
@@ -55,6 +83,16 @@ const ENDPOINTS = {
   proposed: "/api/proposed",
   evidence: "/api/evidences",
   poam: "/api/poam",
+  controls: "/api/controls",
+  scenarios: "/api/scenarios",
+  coverage: "/api/coverage",
+};
+
+const FAMILY_LABELS = {
+  nist_csf: "NIST CSF",
+  cisa_cpg: "CISA CPG",
+  cis: "CIS",
+  iso: "ISO",
 };
 
 function $(id) {
@@ -112,7 +150,8 @@ function renderKpis(estate) {
         `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
     )
     .join("");
-  renderPoamKpis(estate.poam || {});
+    renderPoamKpis(estate.poam || {});
+    renderCoverageKpis(estate.coverage || {});
 }
 
 function renderPoamKpis(poam) {
@@ -132,6 +171,65 @@ function renderPoamKpis(poam) {
       ([n, label, cls]) =>
         `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
     )
+    .join("");
+}
+
+function renderCoverageKpis(coverage) {
+  const el = $("coverage-kpis");
+  if (!el) return;
+  const families = coverage.families || {};
+  const nist = (families.nist_csf && families.nist_csf.rows) || 0;
+  const cpg = (families.cisa_cpg && families.cisa_cpg.rows) || 0;
+  const cis = (families.cis && families.cis.rows) || 0;
+  const iso = (families.iso && families.iso.rows) || 0;
+  const items = [
+    [coverage.controls, "Controls", ""],
+    [coverage.scenarios, "Scenarios", ""],
+    [nist, "NIST CSF", ""],
+    [cpg, "CISA CPG", ""],
+    [cis, "CIS", ""],
+    [iso, "ISO", ""],
+  ];
+  el.innerHTML = items
+    .map(
+      ([n, label, cls]) =>
+        `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
+    )
+    .join("");
+}
+
+function heatClass(n, max) {
+  const val = Number(n) || 0;
+  if (!val) return "heat-0";
+  const ratio = val / Math.max(1, Number(max) || 1);
+  if (ratio > 0.75) return "heat-4";
+  if (ratio > 0.5) return "heat-3";
+  if (ratio > 0.25) return "heat-2";
+  return "heat-1";
+}
+
+function renderCoverageHeat(tokens) {
+  const el = $("coverage-heat");
+  if (!el) return;
+  if (state.tab !== "coverage") {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  el.classList.remove("hidden");
+  const rows = Array.isArray(tokens) ? tokens : [];
+  if (!rows.length) {
+    el.innerHTML = "<p>No framework_refs tokens on this out/.</p>";
+    return;
+  }
+  const max = Math.max(1, ...rows.map((row) => Number(row.total) || 0));
+  el.innerHTML = rows
+    .map((row) => {
+      const token = escapeHtml(String(row.token || ""));
+      const family = escapeHtml(FAMILY_LABELS[row.family] || String(row.family || ""));
+      const total = Number(row.total) || 0;
+      return `<div class="heat-cell ${heatClass(total, max)}"><b>${token}</b><span>${family} · ${total}</span></div>`;
+    })
     .join("");
 }
 
@@ -162,7 +260,7 @@ function poamRowClass(row) {
 
 function matches(row, q, sev) {
   if (sev) {
-    const val = String(row.severity || row.Severity || "").toLowerCase();
+    const val = String(row.severity || row.Severity || row.current_risk || "").toLowerCase();
     if (val !== sev) return false;
   }
   if (!q) return true;
@@ -172,8 +270,8 @@ function matches(row, q, sev) {
 function cell(key, row) {
   const raw = row[key];
   const text = Array.isArray(raw) ? raw.join(", ") : String(raw ?? "");
-  if (key === "severity") {
-    const cls = text.toLowerCase();
+  if (key === "severity" || key === "current_risk") {
+    const cls = text.toLowerCase().replace(/\s+/g, "-");
     return `<td><span class="sev ${cls}">${escapeHtml(text)}</span></td>`;
   }
   if ((key === "owner" || key === "due") && isBlankPoamField(row, key)) {
@@ -199,6 +297,14 @@ function renderTable() {
   $("proposed-note").classList.toggle("hidden", state.tab !== "proposed");
   const poamNote = $("poam-note");
   if (poamNote) poamNote.classList.toggle("hidden", state.tab !== "poam");
+  const coverageNote = $("coverage-note");
+  if (coverageNote) {
+    coverageNote.classList.toggle(
+      "hidden",
+      state.tab !== "coverage" && state.tab !== "controls" && state.tab !== "scenarios"
+    );
+  }
+  renderCoverageHeat(state.tab === "coverage" ? state.rows : []);
   if (!rows.length) {
     $("table-wrap").innerHTML = "<p>No rows match.</p>";
     return;
@@ -215,8 +321,15 @@ function renderTable() {
 }
 
 async function loadTab() {
-  const rows = await getJson(ENDPOINTS[state.tab]);
-  state.rows = state.tab === "poam" ? sortPoamRows(Array.isArray(rows) ? rows : []) : rows;
+  const payload = await getJson(ENDPOINTS[state.tab]);
+  if (state.tab === "coverage") {
+    state.coverage = payload;
+    state.rows = Array.isArray(payload.tokens) ? payload.tokens : [];
+    renderTable();
+    return;
+  }
+  const rows = Array.isArray(payload) ? payload : [];
+  state.rows = state.tab === "poam" ? sortPoamRows(rows) : rows;
   renderTable();
 }
 

@@ -182,6 +182,238 @@ def poam_summary(out: Path | None = None, rows: list[dict] | None = None) -> dic
     }
 
 
+FRAMEWORK_FAMILIES = (
+    ("cisa_cpg", ("cpg_", "cisa_")),
+    ("nist_csf", ("csf_", "nist_")),
+    ("cis", ("cis_",)),
+    ("iso", ("iso_", "iso-270", "iso270")),
+)
+FRAMEWORK_FAMILY_ORDER = tuple(name for name, _ in FRAMEWORK_FAMILIES)
+CSF_FUNCTION_TOKEN = {
+    "govern": "csf_govern",
+    "identify": "csf_ID",
+    "protect": "csf_PR",
+    "detect": "csf_DE",
+    "respond": "csf_RS",
+    "recover": "csf_RC",
+}
+
+
+def split_ref_tokens(value) -> list[str]:
+    """Split framework_refs / filtering_labels on comma, semicolon, pipe, space."""
+    raw = str(value or "").strip().strip('"').strip("'")
+    if not raw:
+        return []
+    tokens: list[str] = []
+    buf = []
+    for ch in raw:
+        if ch in ",;|/ \t\n":
+            if buf:
+                tokens.append("".join(buf))
+                buf = []
+            continue
+        buf.append(ch)
+    if buf:
+        tokens.append("".join(buf))
+    return [tok.strip() for tok in tokens if tok.strip()]
+
+
+def classify_framework_token(token: str) -> str | None:
+    """NIST/CIS/ISO-ish family for a wizard-safe stamp. None = ignore."""
+    key = str(token or "").strip().lower()
+    if not key or ":" in key:
+        return None
+    mapped = CSF_FUNCTION_TOKEN.get(key)
+    if mapped:
+        key = mapped.lower()
+    # cis-cat / ciscat are sensor labels, not CIS control ids (cis_5_1 / cis-1.x).
+    if key.startswith("cis-") and len(key) > 4 and key[4].isdigit():
+        return "cis"
+    for family, prefixes in FRAMEWORK_FAMILIES:
+        if any(key.startswith(prefix) for prefix in prefixes):
+            return family
+    return None
+
+
+def normalize_framework_token(token: str) -> str:
+    raw = str(token or "").strip()
+    mapped = CSF_FUNCTION_TOKEN.get(raw.lower())
+    return mapped if mapped else raw
+
+
+def _empty_family() -> dict:
+    return {"rows": 0, "hits": 0, "tokens": {}}
+
+
+def _ingest_framework_source(
+    rows: list[dict],
+    columns: tuple[str, ...],
+    source: str,
+    families: dict[str, dict],
+    tokens: dict[str, dict],
+) -> int:
+    """Count framework-ish tokens in the given columns. Returns rows that hit."""
+    hit_rows = 0
+    for row in rows:
+        seen_families: set[str] = set()
+        seen_tokens: set[str] = set()
+        for col in columns:
+            for raw in split_ref_tokens(row.get(col)):
+                family = classify_framework_token(raw)
+                if family is None:
+                    continue
+                token = normalize_framework_token(raw)
+                key = token.lower()
+                if key in seen_tokens:
+                    continue
+                seen_tokens.add(key)
+                seen_families.add(family)
+                bucket = tokens.setdefault(
+                    key,
+                    {
+                        "token": token,
+                        "family": family,
+                        "poam": 0,
+                        "findings": 0,
+                        "controls": 0,
+                        "total": 0,
+                    },
+                )
+                bucket[source] = int(bucket.get(source) or 0) + 1
+                bucket["total"] = int(bucket.get("total") or 0) + 1
+                fam = families[family]
+                fam["tokens"][token] = int(fam["tokens"].get(token) or 0) + 1
+                fam["hits"] = int(fam["hits"] or 0) + 1
+        if seen_families:
+            hit_rows += 1
+            for family in seen_families:
+                families[family]["rows"] = int(families[family]["rows"] or 0) + 1
+    return hit_rows
+
+
+def framework_coverage(out: Path | None = None) -> dict:
+    """Group framework_refs / labels / csf_function into NIST/CIS/ISO-ish counts."""
+    dest = out if out is not None else out_dir()
+    poam = _read_csv(dest / "poam" / "poam.csv")
+    findings = _read_csv(dest / "ciso-assistant" / "findings.csv")
+    controls = _read_csv(dest / "ciso-assistant" / "applied_controls.csv")
+    scenarios = _read_csv(
+        dest / "ciso-assistant" / "risk_scenarios.csv", delim=";"
+    )
+    families = {name: _empty_family() for name in FRAMEWORK_FAMILY_ORDER}
+    tokens: dict[str, dict] = {}
+    poam_hits = _ingest_framework_source(
+        poam, ("framework_refs",), "poam", families, tokens
+    )
+    finding_hits = _ingest_framework_source(
+        findings, ("filtering_labels", "framework_refs"), "findings", families, tokens
+    )
+    control_hits = _ingest_framework_source(
+        controls, ("csf_function",), "controls", families, tokens
+    )
+    ranked = sorted(
+        tokens.values(),
+        key=lambda row: (-int(row["total"]), str(row["family"]), str(row["token"])),
+    )
+    return {
+        "families": families,
+        "tokens": ranked,
+        "sources": {
+            "poam": poam_hits,
+            "findings": finding_hits,
+            "controls": control_hits,
+        },
+        "controls": len(controls),
+        "scenarios": len(scenarios),
+        "poam_rows": len(poam),
+        "findings_rows": len(findings),
+        "client": False,
+    }
+
+
+def _fmt_bytes(n: int) -> str:
+    if n < 1024:
+        return f"{n} B"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.1f} KiB"
+    return f"{n / (1024 * 1024):.1f} MiB"
+
+
+def evidence_files(out: Path | None = None) -> list[dict]:
+    """Path/size hints from out/evidence (lab-report.md and siblings)."""
+    dest = (out if out is not None else out_dir()) / "evidence"
+    files: list[dict] = []
+    if not dest.is_dir():
+        return files
+    for path in sorted(dest.rglob("*")):
+        if not path.is_file():
+            continue
+        try:
+            nbytes = path.stat().st_size
+            rel = path.relative_to(out if out is not None else out_dir()).as_posix()
+        except OSError:
+            continue
+        files.append(
+            {
+                "name": path.name,
+                "path": rel,
+                "bytes": nbytes,
+                "size": _fmt_bytes(nbytes),
+            }
+        )
+    return files
+
+
+def annotate_evidence_row(row: dict, files: list[dict]) -> dict:
+    """Attach an on-disk path/size when the row names a file under out/evidence."""
+    out = dict(row)
+    path = ""
+    nbytes = None
+    size = ""
+    name = str(row.get("name") or "")
+    desc = str(row.get("description") or "")
+    blob = f"{name} {desc}".lower()
+    for item in files:
+        item_name = str(item.get("name") or "")
+        item_path = str(item.get("path") or "")
+        if item_name and item_name.lower() in blob:
+            path, nbytes, size = item_path, item.get("bytes"), str(item.get("size") or "")
+            break
+        if item_path and item_path.lower() in blob:
+            path, nbytes, size = item_path, item.get("bytes"), str(item.get("size") or "")
+            break
+    if not path and files:
+        if "loader" in blob or "lab report" in blob or "lab-report" in blob:
+            hit = next((f for f in files if str(f.get("name") or "") == "lab-report.md"), None)
+            if hit:
+                path, nbytes, size = hit["path"], hit.get("bytes"), str(hit.get("size") or "")
+    if not path and len(files) == 1:
+        hit = files[0]
+        path, nbytes, size = hit["path"], hit.get("bytes"), str(hit.get("size") or "")
+    out["path"] = path
+    out["bytes"] = nbytes
+    out["size"] = size
+    return out
+
+
+def evidence_rows(out: Path | None = None) -> list[dict]:
+    dest = out if out is not None else out_dir()
+    files = evidence_files(dest)
+    rows = [annotate_evidence_row(row, files) for row in _read_csv(dest / "ciso-assistant" / "evidences.csv")]
+    if rows:
+        return rows
+    return [
+        {
+            "name": item["name"],
+            "description": "on-disk evidence under out/evidence",
+            "path": item["path"],
+            "bytes": item["bytes"],
+            "size": item["size"],
+        }
+        for item in files
+    ]
+
+
 def _as_bool(value) -> bool:
     if isinstance(value, bool):
         return value
@@ -530,6 +762,7 @@ def switch_active_out(*, stamp: str | None = None, out_raw: str | None = None) -
         "summary": data["summary"],
         "severity": data["severity"],
         "poam": data["poam"],
+        "coverage": data["coverage"],
     }
 
 
@@ -548,6 +781,7 @@ def estate() -> dict:
     ready = bool(summary)
     mode = refresh_mode_for(honesty, ready)
     poam = poam_rows(out)
+    coverage = framework_coverage(out)
     return {
         "product": "GRC Collector Pack",
         "version": "0.3.0",
@@ -567,6 +801,7 @@ def estate() -> dict:
         "summary": summary,
         "severity": sev,
         "poam": poam_summary(out, poam),
+        "coverage": coverage,
         "safety": {
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),
@@ -600,6 +835,8 @@ def payload(kind: str):
         return None
     if kind == "poam":
         return poam_rows(out)
+    if kind == "evidences":
+        return evidence_rows(out)
     if path.suffix == ".json":
         data = _read_json(path)
         return data if data is not None else []
@@ -791,6 +1028,17 @@ class Handler(BaseHTTPRequestHandler):
                 200,
                 {
                     "poam": data["poam"],
+                    "client": False,
+                    **_honesty_payload(data),
+                },
+            )
+            return
+        if path == "/api/coverage":
+            data = estate()
+            self._json(
+                200,
+                {
+                    **data["coverage"],
                     "client": False,
                     **_honesty_payload(data),
                 },

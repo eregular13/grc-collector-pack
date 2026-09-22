@@ -1,0 +1,4 @@
+ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment
+RSK-lab-1;192.168.64.10;exposure;Telnet exposed;LAB dest_in exposure. Not a client estate.;;High;High;High;;Moderate;Moderate;Moderate;mitigate
+RSK-lab-2;192.168.64.10;exposure;FTP exposed;LAB dest_in exposure. Not a client estate.;;Moderate;Moderate;Moderate;;Low;Low;Low;mitigate
+RSK-lab-smb;192.168.64.11;exposure;SMB exposed;LAB dest_in exposure. Not a client estate.;;Very High;Very High;Very High;;High;High;High;mitigate

@@ -1,5 +1,21 @@
 # CYCLE log
 
+## cycle 185 — CONSOLE_COVERAGE controls + scenarios + heatmap (2026-09-22)
+
+Brick D: loopback console (`python -m product`, 127.0.0.1 only) adds
+Controls + Scenarios tabs (existing `/api/controls` + `/api/scenarios`;
+semicolon `risk_scenarios.csv`) and a Coverage tab that groups
+wizard-safe `framework_refs` (NIST CSF / CISA CPG / CIS / ISO-ish)
+from POA&M + finding labels + `csf_function`. `/api/coverage` and
+`/api/summary` `coverage` keep `client` false. Evidence rows show
+`out/evidence` path/size when present. Never POSTs `/api/risks`.
+Bricks A–C honesty + Active out/ + POA&M KPIs intact. Docs:
+`docs/PROVE_CISO.md` Lab section. Catalog **unchanged**.
+paying_day **FAIL**. pytest **891** passed, 1 skipped. Ten
+collectors + `grc_loader` + `tests/lab_outputs.py` PASS
+(`assets=81` `findings=105` `applied_controls=124` `risk_scenarios=124`
+`poam=106` `demo=true`).
+
 ## cycle 184 — CONSOLE_POAM_DASH operator POA&M triage (2026-09-22)
 
 Brick C: loopback console (`python -m product`, 127.0.0.1 only) adds a

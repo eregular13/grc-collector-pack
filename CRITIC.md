@@ -1,3 +1,16 @@
+# CRITIC — cycle 185 (CONSOLE_COVERAGE)
+
+Lab this brick: pytest **891** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
+Zero P0/P1. Loopback console Controls + Scenarios tabs wire
+`/api/controls` + `/api/scenarios`. Coverage heatmap groups
+`framework_refs` (NIST CSF / CISA CPG / CIS / ISO-ish) via
+`/api/coverage`. Evidence path/size from `out/evidence` when present.
+Bind 127.0.0.1. Never POSTs `/api/risks`. `client` false. Bricks A–C
+intact. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 183 (CONSOLE_RUNS)
 
 Lab this brick: pytest **871** passed, 1 skipped. Ten collectors +
