@@ -10,6 +10,8 @@ There is **no authentication** because the service is loopback-only. A LAN or pu
 
 Refresh re-runs local collectors on files under `in/` / `fixtures/demo/` only when honesty is DEMO/SAMPLE. LAB / use-existing-in / non-demo live `OUT_DIR` is a disk reload — collectors do not run. That is intended on loopback. It is unsafe on a LAN bind, which is why a non-loopback bind never starts.
 
+`GET /api/runs` lists sibling prove `out/` dirs under `PROVE_WORK_ROOT` (or the parent of `OUT_DIR` / common `prove-work` layouts). `POST /api/runs` and `GET /api/runs/select` switch process-local `OUT_DIR` on loopback only, then re-derive honesty. They never invent `client=true` and never POST `/api/risks`.
+
 The console opens no outbound HTTP. It never POSTs `/api/risks`.
 
 ## Push scripts

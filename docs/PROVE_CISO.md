@@ -155,6 +155,17 @@ honesty from `summary.json` / `LAB.txt` / parent `prove-ciso.json`
 disk reload only — it does not run DEMO collectors. Bind stays
 `127.0.0.1`. Never POSTs `/api/risks`.
 
+Sibling prove `out/` dirs: set `PROVE_WORK_ROOT` at the stamps parent
+(e.g. `prove-work/` or `lab-estate/out/`; otherwise the parent of
+`OUT_DIR` / those common layouts). The console lists recent `*/out`
+and `lab-prove-*` stamps that have `summary.json` and/or `LAB.txt`
+(`GET /api/runs`). Pick one in the **Active out/** dropdown, or
+`POST /api/runs` `{"stamp":"lab-prove-…"}` / `GET /api/runs/select?stamp=…`.
+Switching is process-local `OUT_DIR` (no restart). Honesty is
+re-derived via `derive_honesty`; `client` stays false. Latest
+`lab-prove-*` is preferred when present. LAB refresh stays a disk
+reload. Bind stays `127.0.0.1`. Never POSTs `/api/risks`.
+
 LAB/DEMO != SAMPLE != client. `paying_day` stays FAIL. Never pack `in/`.
 `farm_drop_to_sor` remains the fixture seed path. `sample_to_sor` remains
 the primary KEEP path. This is not a new CTA. No Makefile / README

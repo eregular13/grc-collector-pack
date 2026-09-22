@@ -16,7 +16,7 @@ import traceback
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 ALLOWED_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
@@ -37,9 +37,40 @@ COLLECTORS = [
 ]
 
 
+# Sibling prove outs: PROVE_WORK_ROOT or parent of OUT_DIR / common layouts.
+COMMON_PROVE_ROOTS = (
+    "prove-work",
+    "lab-estate/out",
+    "lab-estate",
+    "prove/work",
+)
+MAX_RUNS = 24
+
+
 def out_dir() -> Path:
     raw = os.environ.get("OUT_DIR")
     return Path(raw) if raw else ROOT / "out"
+
+
+def is_prove_out(path: Path) -> bool:
+    """True when path looks like a prove out/ (summary.json and/or LAB.txt)."""
+    dest = Path(path)
+    if not dest.is_dir():
+        return False
+    return (dest / "summary.json").is_file() or (dest / "LAB.txt").is_file()
+
+
+def stamp_name(out: Path) -> str:
+    dest = Path(out)
+    if dest.name == "out":
+        parent = dest.parent
+        try:
+            if parent.resolve() == ROOT.resolve():
+                return "out"
+        except OSError:
+            pass
+        return parent.name or "out"
+    return dest.name or "out"
 
 
 def bind_host() -> str:
@@ -159,6 +190,269 @@ def refresh_mode_for(honesty: dict, ready: bool) -> str:
     return "collectors"
 
 
+class RunSwitchError(ValueError):
+    """Operator picked a stamp/out that is not a discovered prove out."""
+
+    def __init__(self, code: int, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def _skip_scan_roots() -> set[Path]:
+    skip = {ROOT}
+    for rel in ("fixtures", "tests", "in", "collectors", "product", "docs"):
+        skip.add(ROOT / rel)
+    return skip
+
+
+def _looks_like_runs_root(path: Path) -> bool:
+    if not path.is_dir():
+        return False
+    try:
+        children = [p for p in path.iterdir() if p.is_dir()]
+    except OSError:
+        return False
+    if is_prove_out(path) or is_prove_out(path / "out"):
+        return True
+    for child in children:
+        if child.name.startswith("lab-prove-"):
+            return True
+        if is_prove_out(child) or is_prove_out(child / "out"):
+            return True
+    return False
+
+
+def prove_work_root() -> Path:
+    """Configurable stamps parent, else parent of OUT_DIR / common prove-work."""
+    raw = (os.environ.get("PROVE_WORK_ROOT") or "").strip()
+    if raw:
+        return Path(raw)
+    current = out_dir()
+    parent = current.parent
+    skip = _skip_scan_roots()
+    ordered: list[Path] = []
+    if current.name == "out":
+        ordered.append(parent.parent)
+        ordered.append(parent)
+    else:
+        ordered.append(parent)
+    for rel in COMMON_PROVE_ROOTS:
+        ordered.append(ROOT / rel)
+    seen: set[Path] = set()
+    for cand in ordered:
+        try:
+            resolved = cand.resolve()
+        except OSError:
+            continue
+        if resolved in seen or resolved in skip:
+            continue
+        seen.add(resolved)
+        if _looks_like_runs_root(cand):
+            return cand
+    if parent.exists() and parent.resolve() not in skip:
+        return parent
+    return parent
+
+
+def scan_roots() -> list[Path]:
+    """Roots to walk for sibling prove outs. PROVE_WORK_ROOT wins when set."""
+    raw = (os.environ.get("PROVE_WORK_ROOT") or "").strip()
+    if raw:
+        path = Path(raw)
+        return [path] if path.is_dir() else []
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for cand in [prove_work_root(), *(ROOT / rel for rel in COMMON_PROVE_ROOTS)]:
+        if not cand.is_dir():
+            continue
+        try:
+            key = cand.resolve()
+        except OSError:
+            continue
+        if key in seen or key in _skip_scan_roots():
+            continue
+        seen.add(key)
+        found.append(cand)
+    return found
+
+
+def _iter_out_candidates(root: Path) -> list[Path]:
+    found: list[Path] = []
+    if not root.is_dir():
+        return found
+    if is_prove_out(root):
+        found.append(root)
+    nested = root / "out"
+    if is_prove_out(nested):
+        found.append(nested)
+    try:
+        children = [p for p in root.iterdir() if p.is_dir()]
+    except OSError:
+        return found
+    for child in children:
+        if is_prove_out(child):
+            found.append(child)
+        child_out = child / "out"
+        if is_prove_out(child_out):
+            found.append(child_out)
+        if child.name == "out":
+            try:
+                for nested_child in child.iterdir():
+                    if nested_child.is_dir() and is_prove_out(nested_child):
+                        found.append(nested_child)
+            except OSError:
+                pass
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in found:
+        try:
+            key = path.resolve()
+        except OSError:
+            key = path
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
+
+
+def _same_out(left: Path, right: Path) -> bool:
+    try:
+        return left.resolve() == right.resolve()
+    except OSError:
+        return Path(left) == Path(right)
+
+
+def describe_run(path: Path, current: Path | None = None) -> dict:
+    dest = Path(path)
+    summary = _read_json(dest / "summary.json") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+    honesty = derive_honesty(dest, summary)
+    try:
+        mtime = dest.stat().st_mtime
+    except OSError:
+        mtime = 0.0
+    active = _same_out(dest, current) if current is not None else False
+    return {
+        "stamp": stamp_name(dest),
+        "out_dir": str(dest),
+        "honesty_label": honesty["honesty_label"],
+        "lab": honesty["lab"],
+        "sample": honesty["sample"],
+        "demo": honesty["demo"],
+        "client": False,
+        "seeded": honesty["seeded"],
+        "use_existing_in": honesty["use_existing_in"],
+        "ready": bool(summary),
+        "preferred": False,
+        "active": active,
+        "mtime": mtime,
+    }
+
+
+def list_runs() -> dict:
+    """Recent prove outs under PROVE_WORK_ROOT / inferred sibling roots."""
+    current = out_dir()
+    catalog: dict[Path, Path] = {}
+    for root in scan_roots():
+        for cand in _iter_out_candidates(root):
+            try:
+                catalog[cand.resolve()] = cand
+            except OSError:
+                catalog[cand] = cand
+    try:
+        current_key = current.resolve()
+    except OSError:
+        current_key = current
+    if current_key not in catalog:
+        catalog[current_key] = current
+    runs = [describe_run(path, current) for path in catalog.values()]
+    runs.sort(
+        key=lambda row: (
+            0 if str(row["stamp"]).startswith("lab-prove-") else 1,
+            -float(row["mtime"] or 0),
+            str(row["stamp"]),
+        )
+    )
+    preferred_stamp = ""
+    lab_prove = [row for row in runs if str(row["stamp"]).startswith("lab-prove-")]
+    if lab_prove:
+        best = max(lab_prove, key=lambda row: float(row["mtime"] or 0))
+        best["preferred"] = True
+        preferred_stamp = str(best["stamp"])
+    trimmed = runs[:MAX_RUNS]
+    return {
+        "root": str(prove_work_root()),
+        "active_out": str(current),
+        "active_stamp": stamp_name(current),
+        "preferred_stamp": preferred_stamp,
+        "client": False,
+        "runs": trimmed,
+    }
+
+
+def resolve_run(*, stamp: str | None = None, out_raw: str | None = None) -> Path:
+    """Map a stamp or out_dir to a discovered prove out. Never invents paths."""
+    stamp_key = (stamp or "").strip()
+    out_key = (out_raw or "").strip()
+    if not stamp_key and not out_key:
+        raise RunSwitchError(400, "stamp or out_dir required")
+    catalog = list_runs()["runs"]
+    if stamp_key:
+        matches = [row for row in catalog if row["stamp"] == stamp_key]
+        if not matches:
+            raise RunSwitchError(404, "unknown stamp")
+        matches.sort(
+            key=lambda row: (
+                not row["active"],
+                not row["preferred"],
+                -float(row["mtime"] or 0),
+            )
+        )
+        dest = Path(matches[0]["out_dir"])
+        if not is_prove_out(dest):
+            raise RunSwitchError(404, "unknown stamp")
+        return dest
+    target = Path(out_key)
+    for row in catalog:
+        if _same_out(Path(row["out_dir"]), target):
+            dest = Path(row["out_dir"])
+            if not is_prove_out(dest):
+                raise RunSwitchError(404, "unknown out_dir")
+            return dest
+    if is_prove_out(target):
+        try:
+            resolved = target.resolve()
+        except OSError as exc:
+            raise RunSwitchError(404, "unknown out_dir") from exc
+        for root in scan_roots():
+            try:
+                resolved.relative_to(root.resolve())
+                return target
+            except (OSError, ValueError):
+                continue
+    raise RunSwitchError(404, "unknown out_dir")
+
+
+def switch_active_out(*, stamp: str | None = None, out_raw: str | None = None) -> dict:
+    """Process-local OUT_DIR switch. Honesty is re-derived; client stays false."""
+    dest = resolve_run(stamp=stamp, out_raw=out_raw)
+    os.environ["OUT_DIR"] = str(dest)
+    data = estate()
+    return {
+        "ok": True,
+        "switched": True,
+        "stamp": stamp_name(dest),
+        "out_dir": str(dest),
+        "client": False,
+        **_honesty_payload(data),
+        "ready": data["ready"],
+        "summary": data["summary"],
+        "severity": data["severity"],
+    }
+
+
 def estate() -> dict:
     out = out_dir()
     summary = _read_json(out / "summary.json") or {}
@@ -178,6 +472,7 @@ def estate() -> dict:
         "version": "0.3.0",
         "repo": str(ROOT),
         "out_dir": str(out),
+        "active_stamp": stamp_name(out),
         "bind": f"{bind_host()}:{bind_port()}",
         "ready": ready,
         "demo": honesty["demo"],
@@ -356,6 +651,33 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return False
 
+    def _require_loopback(self, action: str) -> bool:
+        peer = (self.client_address[0] if self.client_address else "").strip("[]")
+        if peer not in ALLOWED_HOSTS:
+            self._json(403, {"error": f"{action} is loopback-only"})
+            return True
+        return False
+
+    def _read_json_body(self) -> dict:
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0:
+            return {}
+        raw = self.rfile.read(length)
+        try:
+            data = json.loads(raw.decode("utf-8") or "{}")
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _switch_from_request(self, stamp: str | None, out_raw: str | None) -> None:
+        if self._require_loopback("run switch"):
+            return
+        try:
+            result = switch_active_out(stamp=stamp, out_raw=out_raw)
+            self._json(200, result)
+        except RunSwitchError as exc:
+            self._json(exc.code, {"ok": False, "error": str(exc), "client": False})
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
@@ -378,6 +700,15 @@ class Handler(BaseHTTPRequestHandler):
             data = estate()
             readyish = data["ready"] or data["lab"] or data["use_existing_in"]
             self._json(200 if readyish else 503, data)
+            return
+        if path == "/api/runs":
+            self._json(200, list_runs())
+            return
+        if path == "/api/runs/select":
+            qs = parse_qs(parsed.query)
+            stamp = (qs.get("stamp") or [None])[0]
+            out_raw = (qs.get("out") or qs.get("out_dir") or [None])[0]
+            self._switch_from_request(stamp, out_raw)
             return
         table = {
             "/api/assets": "assets",
@@ -407,12 +738,18 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         if self._forbid_risks(path):
             return
+        if path == "/api/runs":
+            body = self._read_json_body()
+            stamp = body.get("stamp") if isinstance(body.get("stamp"), str) else None
+            out_raw = body.get("out_dir") if isinstance(body.get("out_dir"), str) else None
+            if out_raw is None and isinstance(body.get("out"), str):
+                out_raw = body.get("out")
+            self._switch_from_request(stamp, out_raw)
+            return
         if path != "/api/refresh":
             self._json(404, {"error": "not found"})
             return
-        peer = (self.client_address[0] if self.client_address else "").strip("[]")
-        if peer not in ALLOWED_HOSTS:
-            self._json(403, {"error": "refresh is loopback-only"})
+        if self._require_loopback("refresh"):
             return
         try:
             result = refresh_estate()

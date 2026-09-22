@@ -58,6 +58,26 @@ button, .button {
 button:hover, .button:hover { background: var(--accent); border-color: var(--accent); }
 button:disabled { opacity: 0.5; cursor: wait; }
 
+.run-bar {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.45rem 1.6rem;
+  border-bottom: 1px solid var(--line);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.85rem;
+  background: var(--card);
+}
+.run-bar label { color: var(--muted); white-space: nowrap; }
+.run-bar select {
+  font: 0.85rem "Segoe UI", system-ui, sans-serif;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.3rem 0.45rem;
+  max-width: min(42rem, 100%);
+}
+
 .status { padding: 0.55rem 1.6rem; background: #e7e0d2; border-bottom: 1px solid var(--line); font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.88rem; }
 .status.bad { background: #f3d6d2; color: var(--crit); }
 
