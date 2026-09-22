@@ -109,6 +109,7 @@ def coverage_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         findings=[
             'F-1,Telnet,LAB exposure,high,open,"LAB,cpg_2_W,csf_PR,nist_csf"',
             "F-2,FTP,LAB exposure,medium,open,LAB",
+            "F-3,CIS-CAT leftover,sensor label only,low,open,cis-cat",
         ],
         controls=[
             "CTL-smb,Restrict SMB,Close 445,Global,to_do,technical,1,protect",
@@ -141,9 +142,11 @@ def test_split_and_classify_framework_tokens() -> None:
     assert classify_framework_token("csf_PR") == "nist_csf"
     assert classify_framework_token("protect") == "nist_csf"
     assert classify_framework_token("cis_5_1") == "cis"
+    assert classify_framework_token("cis-1.1") == "cis"
     assert classify_framework_token("iso_27001_A5") == "iso"
     assert classify_framework_token("LAB") is None
     assert classify_framework_token("cloud") is None
+    assert classify_framework_token("cis-cat") is None
     assert classify_framework_token("nist:csf") is None
 
 
@@ -167,6 +170,7 @@ def test_framework_coverage_groups_poam_findings_controls(coverage_out: Path) ->
     assert by_token["csf_PR"]["controls"] >= 1
     assert by_token["cis_5_1"]["family"] == "cis"
     assert by_token["iso_27001_A5"]["family"] == "iso"
+    assert "cis-cat" not in by_token
     assert all(row["total"] >= 1 for row in rollup["tokens"])
 
 

@@ -185,7 +185,7 @@ def poam_summary(out: Path | None = None, rows: list[dict] | None = None) -> dic
 FRAMEWORK_FAMILIES = (
     ("cisa_cpg", ("cpg_", "cisa_")),
     ("nist_csf", ("csf_", "nist_")),
-    ("cis", ("cis_", "cis-")),
+    ("cis", ("cis_",)),
     ("iso", ("iso_", "iso-270", "iso270")),
 )
 FRAMEWORK_FAMILY_ORDER = tuple(name for name, _ in FRAMEWORK_FAMILIES)
@@ -226,6 +226,9 @@ def classify_framework_token(token: str) -> str | None:
     mapped = CSF_FUNCTION_TOKEN.get(key)
     if mapped:
         key = mapped.lower()
+    # cis-cat / ciscat are sensor labels, not CIS control ids (cis_5_1 / cis-1.x).
+    if key.startswith("cis-") and len(key) > 4 and key[4].isdigit():
+        return "cis"
     for family, prefixes in FRAMEWORK_FAMILIES:
         if any(key.startswith(prefix) for prefix in prefixes):
             return family
