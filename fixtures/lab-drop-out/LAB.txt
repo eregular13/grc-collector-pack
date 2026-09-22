@@ -1,0 +1,5 @@
+LAB/DEMO -- not a client estate.
+Console-readable LAB prove out/ (use-existing-in / no DEMO reseed).
+Not SAMPLE fixtures/pack_drop. Not SAMPLE keep. Not a client export.
+Point the loopback console here: OUT_DIR=fixtures/lab-drop-out python -m product.
+Refresh is a disk reload only. Never POSTs /api/risks. Not a paying-day stamp.

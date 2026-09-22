@@ -147,6 +147,14 @@ CI/lab fixture: `fixtures/lab-drop/` is a scan-shaped LAB dest_in
 Pytest copies it into a temp `work/in` and locks this path. It is not
 SAMPLE `fixtures/pack_drop` and not a client KEEP.
 
+Point the loopback console at a lab prove `out/` (no DEMO reseed):
+`OUT_DIR=/path/to/DIR/out python -m product` (example fixture:
+`OUT_DIR=fixtures/lab-drop-out python -m product`). The console reads
+honesty from `summary.json` / `LAB.txt` / parent `prove-ciso.json`
+(`lab` / `sample` / `demo` / `client=false` / `seeded`). Refresh is a
+disk reload only — it does not run DEMO collectors. Bind stays
+`127.0.0.1`. Never POSTs `/api/risks`.
+
 LAB/DEMO != SAMPLE != client. `paying_day` stays FAIL. Never pack `in/`.
 `farm_drop_to_sor` remains the fixture seed path. `sample_to_sor` remains
 the primary KEEP path. This is not a new CTA. No Makefile / README

@@ -1,5 +1,21 @@
 # CYCLE log
 
+## cycle 182 — CONSOLE_HONESTY loopback LAB pills + disk-reload (2026-09-22)
+
+Brick A: local operator console (`python -m product`, 127.0.0.1 only)
+exposes honesty on `/api/summary` (`lab` / `sample` / `demo` /
+`client=false` / `seeded` / `honesty_label`) from `summary.json`,
+`LAB.txt` / `SAMPLE.txt`, and parent `prove-ciso.json`. UI pills
+LAB / SAMPLE / DEMO / client=false. When honesty is LAB (or
+use-existing-in / non-demo live out), Refresh is a disk reload —
+DEMO collectors do not run. Fixture `fixtures/lab-drop-out/`.
+Docs: `docs/PROVE_CISO.md` Lab section (`OUT_DIR=… python -m product`).
+Never POSTs `/api/risks`. RiskReady stay-out. No run picker / KPI /
+OpenGRC UI / CTA. Catalog **unchanged**. paying_day **FAIL**.
+pytest **861** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=105` `poam=106`
+`demo=true`).
+
 ## cycle 181 — FARM_LAB_ALIGN farm vs lab dest_in (2026-09-21)
 
 Operator-facing align: `farm_drop_to_sor` = SAMPLE/DEMO fixture seed

@@ -72,23 +72,122 @@ def _read_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
+def _marker_present(out: Path, name: str) -> bool:
+    if (out / name).is_file():
+        return True
+    return (out.parent / name).is_file()
+
+
+def _prove_stamp(out: Path) -> dict:
+    for path in (out / "prove-ciso.json", out.parent / "prove-ciso.json"):
+        data = _read_json(path)
+        if isinstance(data, dict):
+            return data
+    return {}
+
+
+def derive_honesty(out: Path | None = None, summary: dict | None = None) -> dict:
+    """LAB / SAMPLE / DEMO honesty from summary.json, prove stamp, and markers.
+
+    Reads what prove/lab already writes (summary fields, prove-ciso.json,
+    LAB.txt / SAMPLE.txt). Never invents client=true.
+    """
+    dest = out if out is not None else out_dir()
+    summary = summary if summary is not None else (_read_json(dest / "summary.json") or {})
+    if not isinstance(summary, dict):
+        summary = {}
+    stamp = _prove_stamp(dest)
+    lab_marker = _marker_present(dest, "LAB.txt")
+    sample_marker = _marker_present(dest, "SAMPLE.txt")
+    use_existing = (
+        _as_bool(summary.get("use_existing_in"))
+        or _as_bool(stamp.get("use_existing_in"))
+    )
+    lab = (
+        _as_bool(summary.get("lab"))
+        or _as_bool(stamp.get("lab"))
+        or use_existing
+        or lab_marker
+    )
+    sample = (
+        _as_bool(summary.get("sample"))
+        or _as_bool(stamp.get("sample"))
+        or sample_marker
+    )
+    if lab:
+        sample = False
+        use_existing = True
+    demo = _as_bool(summary.get("demo")) or _as_bool(stamp.get("demo"))
+    if lab or sample:
+        demo = True
+    seeded = _as_bool(summary.get("seeded")) or _as_bool(stamp.get("seeded"))
+    if lab or use_existing:
+        seeded = False
+    if lab:
+        label = "LAB/DEMO — not a client estate"
+    elif sample:
+        label = "SAMPLE/DEMO — not a client estate"
+    elif demo:
+        label = "DEMO — not a client estate"
+    else:
+        label = "not a client estate"
+    return {
+        "lab": lab,
+        "sample": sample,
+        "demo": demo,
+        "client": False,
+        "seeded": seeded,
+        "use_existing_in": use_existing,
+        "honesty_label": label,
+    }
+
+
+def refresh_mode_for(honesty: dict, ready: bool) -> str:
+    """Collectors only for DEMO/SAMPLE bootstrap. LAB / live out = disk reload."""
+    if honesty.get("lab") or honesty.get("use_existing_in"):
+        return "reload"
+    if ready and not honesty.get("demo"):
+        return "reload"
+    return "collectors"
+
+
 def estate() -> dict:
     out = out_dir()
     summary = _read_json(out / "summary.json") or {}
+    if not isinstance(summary, dict):
+        summary = {}
     findings = _read_csv(out / "ciso-assistant" / "findings.csv")
     sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for row in findings:
         key = str(row.get("severity") or "").lower()
         if key in sev:
             sev[key] += 1
+    honesty = derive_honesty(out, summary)
+    ready = bool(summary)
+    mode = refresh_mode_for(honesty, ready)
     return {
         "product": "GRC Collector Pack",
         "version": "0.3.0",
         "repo": str(ROOT),
         "out_dir": str(out),
         "bind": f"{bind_host()}:{bind_port()}",
-        "ready": bool(summary),
-        "demo": bool(summary.get("demo")),
+        "ready": ready,
+        "demo": honesty["demo"],
+        "lab": honesty["lab"],
+        "sample": honesty["sample"],
+        "client": False,
+        "seeded": honesty["seeded"],
+        "use_existing_in": honesty["use_existing_in"],
+        "honesty_label": honesty["honesty_label"],
+        "refresh_mode": mode,
         "summary": summary,
         "severity": sev,
         "safety": {
@@ -164,7 +263,33 @@ def build_drop_zip() -> bytes:
     return buf.getvalue()
 
 
-def refresh_estate() -> dict:
+def _honesty_payload(data: dict) -> dict:
+    return {
+        "lab": data["lab"],
+        "sample": data["sample"],
+        "demo": data["demo"],
+        "client": False,
+        "seeded": data["seeded"],
+        "use_existing_in": data["use_existing_in"],
+        "honesty_label": data["honesty_label"],
+        "refresh_mode": data["refresh_mode"],
+    }
+
+
+def reload_estate() -> dict:
+    data = estate()
+    return {
+        "ok": True,
+        "reloaded": True,
+        "ran": [],
+        "collectors_ran": False,
+        "mode": "reload",
+        "summary": data["summary"],
+        **_honesty_payload(data),
+    }
+
+
+def run_collectors() -> list[str]:
     os.environ["PYTHONPATH"] = str(ROOT)
     os.environ.setdefault("OUT_DIR", str(ROOT / "out"))
     os.environ["DRY_RUN"] = "1"
@@ -181,7 +306,24 @@ def refresh_estate() -> dict:
         module = __import__(mod, fromlist=["main"])
         module.main()
         ran.append(name)
-    return {"ok": True, "ran": ran, "summary": estate()["summary"]}
+    return ran
+
+
+def refresh_estate() -> dict:
+    data = estate()
+    if data["refresh_mode"] == "reload":
+        return reload_estate()
+    ran = run_collectors()
+    data = estate()
+    return {
+        "ok": True,
+        "reloaded": False,
+        "ran": ran,
+        "collectors_ran": True,
+        "mode": "collectors",
+        "summary": data["summary"],
+        **_honesty_payload(data),
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -234,7 +376,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/summary":
             data = estate()
-            self._json(200 if data["ready"] else 503, data)
+            readyish = data["ready"] or data["lab"] or data["use_existing_in"]
+            self._json(200 if readyish else 503, data)
             return
         table = {
             "/api/assets": "assets",

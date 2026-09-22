@@ -22,7 +22,7 @@ bash scripts/lab.sh
 bash scripts/start-product.sh
 ```
 
-Open **http://127.0.0.1:18765/**. Refresh re-runs collectors on local files. Download drop zip for import.
+Open **http://127.0.0.1:18765/**. Refresh re-runs DEMO collectors on local files unless honesty is LAB / use-existing-in (then it only re-reads `OUT_DIR`). Point at a lab prove with `OUT_DIR=/path/to/DIR/out python -m product` — see `docs/PROVE_CISO.md` Lab section. Download drop zip for import.
 
 Expect: pytest green, ten collector prints, `lab_outputs: PASS`, console `/health` `ok: true`. Counts live in `out/summary.json` — do not assume a marketing number.
 

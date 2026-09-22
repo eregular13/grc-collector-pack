@@ -370,6 +370,9 @@ def test_docs_lab_section_points_desktop_at_use_existing_in() -> None:
     assert "not a client" in docs.lower()
     assert "farm_drop_to_sor" in docs
     assert "sample_to_sor" in docs
+    assert "python -m product" in docs
+    assert "OUT_DIR=" in docs
+    assert "fixtures/lab-drop-out" in docs
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "lab-drop-to-sor:" not in makefile
     readme_head = "".join((ROOT / "README.md").read_text(encoding="utf-8").splitlines()[:12])
