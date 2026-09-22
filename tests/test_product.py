@@ -21,6 +21,11 @@ from product.server import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def _isolate_out_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OUT_DIR", str(ROOT / "out"))
+
+
 def test_estate_reads_out() -> None:
     data = estate()
     assert data["product"] == "GRC Collector Pack"
