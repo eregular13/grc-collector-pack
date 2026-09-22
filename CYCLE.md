@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 184 — CONSOLE_POAM_DASH operator POA&M triage (2026-09-22)
+
+Brick C: loopback console (`python -m product`, 127.0.0.1 only) adds a
+POA&M KPI strip (open + critical/high/medium/low + blank-owner +
+blank-due) from `out/poam/poam.csv`. `/api/summary` exposes `poam`
+rollup; `/api/poam/summary` is the same rollup with honesty intact;
+`/api/poam` sorts critical/high first and flags `blank_owner` /
+`blank_due`. Table highlights empty owner/due; banner still says
+owner/due stay blank for a human. Light risk-register framing only.
+Never POSTs `/api/risks`. Brick A/B honesty + Active out/ intact.
+Docs: `docs/PROVE_CISO.md` Lab section. Catalog **unchanged**.
+paying_day **FAIL**.
+
 ## cycle 183 — CONSOLE_RUNS operator prove-out picker (2026-09-22)
 
 Brick B: loopback console lists sibling prove `out/` dirs under

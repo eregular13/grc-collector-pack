@@ -1,0 +1,4 @@
+weakness,asset,severity,framework_refs,recommended_fix,owner,due,status
+Telnet exposed,192.168.64.10,high,"cpg_2_W,csf_PR,csf_protect",Limit Telnet to required networks or disable the listener.,,,open
+FTP exposed,192.168.64.10,medium,"cpg_2_W,csf_PR,csf_protect",Limit FTP to required networks or disable the listener.,,,open
+SMB exposed,192.168.64.11,critical,"cpg_2_W,csf_RS,csf_respond",Close SMB/445 or restrict to required networks.,,,open

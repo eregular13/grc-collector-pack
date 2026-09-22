@@ -103,6 +103,85 @@ def _read_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+CLOSED_POAM_STATUSES = frozenset(
+    {"closed", "complete", "completed", "remediated", "resolved", "done"}
+)
+POAM_SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+
+def _cell_blank(value) -> bool:
+    return not str(value or "").strip()
+
+
+def _poam_severity(row: dict) -> str:
+    return str(row.get("severity") or "").strip().lower()
+
+
+def _poam_is_open(row: dict) -> bool:
+    status = str(row.get("status") or "").strip().lower()
+    return status not in CLOSED_POAM_STATUSES
+
+
+def annotate_poam_row(row: dict) -> dict:
+    """Flags empty owner/due so the console can highlight rows for a human."""
+    out = dict(row)
+    out["blank_owner"] = _cell_blank(row.get("owner"))
+    out["blank_due"] = _cell_blank(row.get("due"))
+    out["open"] = _poam_is_open(row)
+    return out
+
+
+def sort_poam_rows(rows: list[dict]) -> list[dict]:
+    """Critical / high first, then medium / low. Stable on weakness."""
+    return sorted(
+        rows,
+        key=lambda row: (
+            POAM_SEV_ORDER.get(_poam_severity(row), 9),
+            str(row.get("weakness") or ""),
+        ),
+    )
+
+
+def poam_rows(out: Path | None = None) -> list[dict]:
+    dest = out if out is not None else out_dir()
+    raw = _read_csv(dest / "poam" / "poam.csv")
+    return sort_poam_rows([annotate_poam_row(row) for row in raw])
+
+
+def poam_summary(out: Path | None = None, rows: list[dict] | None = None) -> dict:
+    """Open + severity + blank owner/due rollup from poam.csv.
+
+    Owner/due stay blank by design (human / CISO import). Count them; do not fill.
+    """
+    items = rows if rows is not None else poam_rows(out)
+    sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    open_n = 0
+    blank_owner = 0
+    blank_due = 0
+    for row in items:
+        key = _poam_severity(row)
+        if key in sev:
+            sev[key] += 1
+        if row.get("open") if "open" in row else _poam_is_open(row):
+            open_n += 1
+        if row.get("blank_owner") if "blank_owner" in row else _cell_blank(row.get("owner")):
+            blank_owner += 1
+        if row.get("blank_due") if "blank_due" in row else _cell_blank(row.get("due")):
+            blank_due += 1
+    return {
+        "total": len(items),
+        "open": open_n,
+        "critical": sev["critical"],
+        "high": sev["high"],
+        "medium": sev["medium"],
+        "low": sev["low"],
+        "severity": sev,
+        "blank_owner": blank_owner,
+        "blank_due": blank_due,
+        "owner_due_blank_for_human": True,
+    }
+
+
 def _as_bool(value) -> bool:
     if isinstance(value, bool):
         return value
@@ -450,6 +529,7 @@ def switch_active_out(*, stamp: str | None = None, out_raw: str | None = None) -
         "ready": data["ready"],
         "summary": data["summary"],
         "severity": data["severity"],
+        "poam": data["poam"],
     }
 
 
@@ -467,6 +547,7 @@ def estate() -> dict:
     honesty = derive_honesty(out, summary)
     ready = bool(summary)
     mode = refresh_mode_for(honesty, ready)
+    poam = poam_rows(out)
     return {
         "product": "GRC Collector Pack",
         "version": "0.3.0",
@@ -485,6 +566,7 @@ def estate() -> dict:
         "refresh_mode": mode,
         "summary": summary,
         "severity": sev,
+        "poam": poam_summary(out, poam),
         "safety": {
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),
@@ -516,6 +598,8 @@ def payload(kind: str):
     path = mapping.get(kind)
     if path is None:
         return None
+    if kind == "poam":
+        return poam_rows(out)
     if path.suffix == ".json":
         data = _read_json(path)
         return data if data is not None else []
@@ -700,6 +784,17 @@ class Handler(BaseHTTPRequestHandler):
             data = estate()
             readyish = data["ready"] or data["lab"] or data["use_existing_in"]
             self._json(200 if readyish else 503, data)
+            return
+        if path == "/api/poam/summary":
+            data = estate()
+            self._json(
+                200,
+                {
+                    "poam": data["poam"],
+                    "client": False,
+                    **_honesty_payload(data),
+                },
+            )
             return
         if path == "/api/runs":
             self._json(200, list_runs())

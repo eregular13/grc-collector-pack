@@ -96,6 +96,18 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .kpi span { color: var(--muted); font-size: 0.78rem; font-family: "Segoe UI", system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; }
 .kpi.crit b { color: var(--crit); }
 .kpi.high b { color: var(--high); }
+.kpi.blank b { color: var(--high); }
+
+.poam-kpis-wrap { padding: 0 0 0.2rem; }
+.kpis-label {
+  margin: 0.35rem 1.6rem 0;
+  color: var(--muted);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.poam-kpis { padding-top: 0.45rem; }
 
 .tabs { padding: 0.8rem 1.6rem 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .tabs button {
@@ -127,6 +139,16 @@ table { width: 100%; border-collapse: collapse; background: var(--card); font-si
 th, td { text-align: left; padding: 0.42rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 tr:hover td { background: #faf6ec; }
+tr.needs-human td { background: #fff3e0; }
+tr.needs-human:hover td { background: #ffe8c4; }
+tr.blank-owner td.missing-cell,
+tr.blank-due td.missing-cell { box-shadow: inset 3px 0 0 var(--high); }
+.missing {
+  color: var(--high);
+  font-style: italic;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.78rem;
+}
 .sev { font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
 .sev.critical { color: var(--crit); }
 .sev.high { color: var(--high); }

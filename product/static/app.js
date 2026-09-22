@@ -40,9 +40,13 @@ const COLS = {
     ["asset", "Asset"],
     ["framework_refs", "Framework"],
     ["recommended_fix", "Recommended fix"],
+    ["owner", "Owner"],
+    ["due", "Due"],
     ["status", "Status"],
   ],
 };
+
+const POAM_SEV_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
 
 const ENDPOINTS = {
   findings: "/api/findings",
@@ -108,6 +112,52 @@ function renderKpis(estate) {
         `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
     )
     .join("");
+  renderPoamKpis(estate.poam || {});
+}
+
+function renderPoamKpis(poam) {
+  const el = $("poam-kpis");
+  if (!el) return;
+  const items = [
+    [poam.open, "POA&M open", ""],
+    [poam.critical, "Critical", "crit"],
+    [poam.high, "High", "high"],
+    [poam.medium, "Medium", ""],
+    [poam.low, "Low", ""],
+    [poam.blank_owner, "Blank owner", "blank"],
+    [poam.blank_due, "Blank due", "blank"],
+  ];
+  el.innerHTML = items
+    .map(
+      ([n, label, cls]) =>
+        `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
+    )
+    .join("");
+}
+
+function sortPoamRows(rows) {
+  return rows.slice().sort((a, b) => {
+    const sa = POAM_SEV_RANK[String(a.severity || "").toLowerCase()];
+    const sb = POAM_SEV_RANK[String(b.severity || "").toLowerCase()];
+    const ra = sa == null ? 9 : sa;
+    const rb = sb == null ? 9 : sb;
+    if (ra !== rb) return ra - rb;
+    return String(a.weakness || "").localeCompare(String(b.weakness || ""));
+  });
+}
+
+function isBlankPoamField(row, key) {
+  if (key === "owner" && row.blank_owner === true) return true;
+  if (key === "due" && row.blank_due === true) return true;
+  return !String(row[key] ?? "").trim();
+}
+
+function poamRowClass(row) {
+  const classes = [];
+  if (isBlankPoamField(row, "owner")) classes.push("blank-owner");
+  if (isBlankPoamField(row, "due")) classes.push("blank-due");
+  if (classes.length) classes.push("needs-human");
+  return classes.join(" ");
 }
 
 function matches(row, q, sev) {
@@ -124,7 +174,10 @@ function cell(key, row) {
   const text = Array.isArray(raw) ? raw.join(", ") : String(raw ?? "");
   if (key === "severity") {
     const cls = text.toLowerCase();
-    return `<td><span class="sev ${cls}">${text}</span></td>`;
+    return `<td><span class="sev ${cls}">${escapeHtml(text)}</span></td>`;
+  }
+  if ((key === "owner" || key === "due") && isBlankPoamField(row, key)) {
+    return `<td class="missing-cell"><span class="missing">blank — human</span></td>`;
   }
   return `<td>${escapeHtml(text)}</td>`;
 }
@@ -141,7 +194,8 @@ function renderTable() {
   const q = $("q").value.trim().toLowerCase();
   const sev = $("sev").value;
   const cols = COLS[state.tab];
-  const rows = state.rows.filter((r) => matches(r, q, sev));
+  const source = state.tab === "poam" ? sortPoamRows(state.rows) : state.rows;
+  const rows = source.filter((r) => matches(r, q, sev));
   $("proposed-note").classList.toggle("hidden", state.tab !== "proposed");
   const poamNote = $("poam-note");
   if (poamNote) poamNote.classList.toggle("hidden", state.tab !== "poam");
@@ -151,13 +205,18 @@ function renderTable() {
   }
   const head = cols.map(([, label]) => `<th>${label}</th>`).join("");
   const body = rows
-    .map((row) => `<tr>${cols.map(([key]) => cell(key, row)).join("")}</tr>`)
+    .map((row) => {
+      const cls = state.tab === "poam" ? poamRowClass(row) : "";
+      const attr = cls ? ` class="${cls}"` : "";
+      return `<tr${attr}>${cols.map(([key]) => cell(key, row)).join("")}</tr>`;
+    })
     .join("");
   $("table-wrap").innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 async function loadTab() {
-  state.rows = await getJson(ENDPOINTS[state.tab]);
+  const rows = await getJson(ENDPOINTS[state.tab]);
+  state.rows = state.tab === "poam" ? sortPoamRows(Array.isArray(rows) ? rows : []) : rows;
   renderTable();
 }
 

@@ -164,7 +164,10 @@ and `lab-prove-*` stamps that have `summary.json` and/or `LAB.txt`
 Switching is process-local `OUT_DIR` (no restart). Honesty is
 re-derived via `derive_honesty`; `client` stays false. Latest
 `lab-prove-*` is preferred when present. LAB refresh stays a disk
-reload. Bind stays `127.0.0.1`. Never POSTs `/api/risks`.
+reload. The POA&M tab triages `out/poam/poam.csv` (open + severity +
+blank-owner/due KPIs; critical/high first; owner/due stay blank for a
+human) via `/api/summary` `poam` and `/api/poam/summary`. Bind stays
+`127.0.0.1`. Never POSTs `/api/risks`.
 
 LAB/DEMO != SAMPLE != client. `paying_day` stays FAIL. Never pack `in/`.
 `farm_drop_to_sor` remains the fixture seed path. `sample_to_sor` remains
