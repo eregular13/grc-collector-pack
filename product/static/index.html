@@ -33,6 +33,11 @@
 
   <section id="kpis" class="kpis"></section>
 
+  <section id="poam-kpis-wrap" class="poam-kpis-wrap" aria-label="POA&M triage">
+    <p class="kpis-label">POA&M triage · owner/due stay blank for a human</p>
+    <div id="poam-kpis" class="kpis poam-kpis"></div>
+  </section>
+
   <nav class="tabs" role="tablist">
     <button type="button" data-tab="findings" class="on">Findings</button>
     <button type="button" data-tab="assets">Assets</button>
@@ -57,6 +62,7 @@
     These rows are <strong>proposals on disk</strong> (`risks_proposed.json`). This product will not create risks in RiskReady.
   </p>
   <p id="poam-note" class="banner hidden">
+    Risk register draft: findings mapped here for CISO import — not a SaaS register.
     Pentera finds it; Evergreen maps it. Owner and due dates stay <strong>blank</strong> for a human. Hand <code>out/poam/poam.csv</code> with the CISO drop.
   </p>
 
