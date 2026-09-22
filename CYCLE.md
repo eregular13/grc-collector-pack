@@ -11,7 +11,9 @@ rollup; `/api/poam/summary` is the same rollup with honesty intact;
 owner/due stay blank for a human. Light risk-register framing only.
 Never POSTs `/api/risks`. Brick A/B honesty + Active out/ intact.
 Docs: `docs/PROVE_CISO.md` Lab section. Catalog **unchanged**.
-paying_day **FAIL**.
+paying_day **FAIL**. pytest **881** passed, 1 skipped. Ten
+collectors + `grc_loader` + `tests/lab_outputs.py` PASS
+(`assets=81` `findings=105` `poam=106` `demo=true`).
 
 ## cycle 183 — CONSOLE_RUNS operator prove-out picker (2026-09-22)
 

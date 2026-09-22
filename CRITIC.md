@@ -19,6 +19,18 @@ collectors. `client` stays false. Bind 127.0.0.1. Never POSTs
 `/api/risks`. Prior honesty rails below are unchanged. Catalog
 **111 / 32 / 30 / 81**. paying_day **FAIL**.
 
+# CRITIC — cycle 184 (CONSOLE_POAM_DASH)
+
+Lab this brick: pytest **881** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`poam=106` `demo=true`). Zero P0/P1. Loopback console POA&M strip
+shows open + severity + blank-owner/due from `poam.csv`. `/api/summary`
+keeps Brick A honesty; `/api/poam` sorts critical/high first and flags
+empty owner/due. Browser: 106 open / 23 crit / 74 high / 106 blank
+owner+due; table critical-first with `blank — human`. Never POSTs
+`/api/risks`. `client` false. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 180 (MCP_LAB_TWIN)
 
 Lab this brick: pytest **848** passed, 1 skipped. Ten collectors +

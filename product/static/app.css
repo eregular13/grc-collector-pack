@@ -139,8 +139,8 @@ table { width: 100%; border-collapse: collapse; background: var(--card); font-si
 th, td { text-align: left; padding: 0.42rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 tr:hover td { background: #faf6ec; }
-tr.needs-human td { background: #fff3e0; }
-tr.needs-human:hover td { background: #ffe8c4; }
+tr.needs-human td { background: #f6dfb8; }
+tr.needs-human:hover td { background: #efd09a; }
 tr.blank-owner td.missing-cell,
 tr.blank-due td.missing-cell { box-shadow: inset 3px 0 0 var(--high); }
 .missing {
