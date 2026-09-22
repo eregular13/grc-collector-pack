@@ -8,7 +8,7 @@ If `GRC_PRODUCT_HOST` is `0.0.0.0`, `::`, `*`, or any non-loopback address, the 
 
 There is **no authentication** because the service is loopback-only. A LAN or public bind is refused.
 
-Refresh re-runs local collectors on files under `in/` / `fixtures/demo/`. That is intended on loopback. It is unsafe on a LAN bind, which is why a non-loopback bind never starts.
+Refresh re-runs local collectors on files under `in/` / `fixtures/demo/` only when honesty is DEMO/SAMPLE. LAB / use-existing-in / non-demo live `OUT_DIR` is a disk reload — collectors do not run. That is intended on loopback. It is unsafe on a LAN bind, which is why a non-loopback bind never starts.
 
 The console opens no outbound HTTP. It never POSTs `/api/risks`.
 

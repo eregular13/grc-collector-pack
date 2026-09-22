@@ -68,6 +68,28 @@ function fmt(n) {
   return n == null ? "—" : String(n);
 }
 
+function isReload(estate) {
+  if (!estate) return false;
+  return (
+    estate.refresh_mode === "reload" ||
+    !!estate.lab ||
+    !!estate.use_existing_in ||
+    (estate.ready && !estate.demo)
+  );
+}
+
+function applyHonesty(estate) {
+  const lab = !!estate.lab;
+  const sample = !!estate.sample;
+  const demo = !!estate.demo;
+  $("lab-pill").classList.toggle("hidden", !lab);
+  $("sample-pill").classList.toggle("hidden", !sample);
+  $("demo-pill").classList.toggle("hidden", !demo);
+  $("client-pill").classList.toggle("hidden", estate.client !== false);
+  const btn = $("btn-refresh");
+  btn.textContent = isReload(estate) ? "Reload from disk" : "Refresh estate";
+}
+
 function renderKpis(estate) {
   const s = estate.summary || {};
   const sev = estate.severity || {};
@@ -143,11 +165,20 @@ async function boot() {
   try {
     const estate = await getJson("/api/summary");
     state.summary = estate;
-    $("demo-pill").classList.toggle("hidden", !estate.demo);
+    applyHonesty(estate);
     const when = estate.summary && estate.summary.generated_at ? estate.summary.generated_at : "unknown";
-    $("status-bar").textContent = estate.ready
-      ? `Ready · ${estate.summary.canonical} canonical records · generated ${when}`
-      : "No estate yet. Click Refresh estate.";
+    const label = estate.honesty_label || "not a client estate";
+    const canonical = estate.summary && estate.summary.canonical != null ? estate.summary.canonical : "—";
+    if (estate.ready) {
+      const mode = isReload(estate)
+        ? "reload from disk only (collectors not run)"
+        : "Refresh re-runs DEMO collectors";
+      $("status-bar").textContent = `${label} · ${mode} · ${canonical} canonical · generated ${when}`;
+    } else if (estate.lab || estate.use_existing_in) {
+      $("status-bar").textContent = `${label} · Reload from disk only — collectors not run.`;
+    } else {
+      $("status-bar").textContent = "No estate yet. Click Refresh estate.";
+    }
     $("status-bar").classList.toggle("bad", !estate.ready);
     renderKpis(estate);
     $("paths").textContent = `${estate.out_dir}  ·  ${estate.repo}`;
@@ -174,7 +205,9 @@ $("sev").addEventListener("change", renderTable);
 $("btn-refresh").addEventListener("click", async () => {
   const btn = $("btn-refresh");
   btn.disabled = true;
-  $("status-bar").textContent = "Refreshing collectors + loader (local files only)…";
+  $("status-bar").textContent = isReload(state.summary)
+    ? "Reloading OUT_DIR from disk (collectors not run)…"
+    : "Refreshing collectors + loader (local files only)…";
   try {
     await fetch("/api/refresh", { method: "POST" }).then(async (res) => {
       const data = await res.json();

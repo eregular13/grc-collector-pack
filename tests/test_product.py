@@ -28,6 +28,9 @@ def test_estate_reads_out() -> None:
     assert data["safety"]["riskready_review_only"] is True
     assert data["safety"]["riskready_wrap"] is False
     assert data["safety"]["bind"] == "127.0.0.1"
+    assert data["client"] is False
+    assert data["refresh_mode"] in {"reload", "collectors"}
+    assert "honesty_label" in data
     if (ROOT / "out" / "summary.json").exists():
         assert data["ready"] is True
         assert data["summary"]["assets"] >= 20
@@ -77,6 +80,13 @@ def test_http_console_and_forbids_risks() -> None:
         assert "Never POSTs /api/risks" in html
         assert "POA&M" in html
         assert "Evergreen maps it" in html
+        assert 'id="lab-pill"' in html
+        assert ">LAB<" in html
+        assert ">SAMPLE<" in html
+        assert ">DEMO<" in html
+        assert "client=false" in html
+        assert summary["client"] is False
+        assert "honesty_label" in summary
         try:
             urllib.request.urlopen(base + "/api/risks", timeout=5)
             raise AssertionError("GET /api/risks should be forbidden")

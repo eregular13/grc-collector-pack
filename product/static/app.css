@@ -42,6 +42,8 @@ h1 { margin: 0; font-size: 1.85rem; font-weight: 600; letter-spacing: -0.02em; }
   background: var(--card);
 }
 .pill.quiet { color: var(--muted); }
+.pill.lab { border-color: var(--high); color: var(--high); font-weight: 600; }
+.pill.sample { border-color: var(--med); color: var(--med); font-weight: 600; }
 .hidden { display: none !important; }
 
 button, .button {

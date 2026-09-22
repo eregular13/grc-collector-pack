@@ -1,0 +1,21 @@
+{
+  "assets": 8,
+  "findings": 12,
+  "vulnerabilities": 0,
+  "evidences": 1,
+  "applied_controls": 0,
+  "poam": 3,
+  "risk_scenarios": 3,
+  "incidents": 0,
+  "risks_proposed": 3,
+  "ocsf": 0,
+  "canonical": 12,
+  "demo": true,
+  "lab": true,
+  "sample": false,
+  "client": false,
+  "seeded": false,
+  "use_existing_in": true,
+  "estate": "LAB/DEMO — not a client estate",
+  "generated_at": "2026-09-22T00:00:00Z"
+}
