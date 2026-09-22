@@ -1,5 +1,20 @@
 # CYCLE log
 
+## cycle 183 — CONSOLE_RUNS operator prove-out picker (2026-09-22)
+
+Brick B: loopback console lists sibling prove `out/` dirs under
+`PROVE_WORK_ROOT` (or parent of `OUT_DIR` / common `prove-work` /
+`lab-prove-*` layouts) at `GET /api/runs`. Operator switches
+process-local `OUT_DIR` via `POST /api/runs` / `GET /api/runs/select`
+or the **Active out/** dropdown — no restart. Honesty re-derived
+via `derive_honesty`; `client` stays false. Latest `lab-prove-*`
+preferred. After a LAB switch, Refresh is still disk reload.
+Bind 127.0.0.1. Never POSTs `/api/risks`. Brick A honesty intact.
+Docs: `docs/PROVE_CISO.md` Lab section. Catalog **unchanged**.
+paying_day **FAIL**. pytest **871** passed, 1 skipped. Ten
+collectors + `grc_loader` + `tests/lab_outputs.py` PASS
+(`assets=81` `findings=105` `poam=106` `demo=true`).
+
 ## cycle 182 — CONSOLE_HONESTY loopback LAB pills + disk-reload (2026-09-22)
 
 Brick A: local operator console (`python -m product`, 127.0.0.1 only)

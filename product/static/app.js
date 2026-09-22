@@ -161,6 +161,32 @@ async function loadTab() {
   renderTable();
 }
 
+function optionLabel(run) {
+  const pref = run.preferred ? " · latest lab-prove" : "";
+  return `${run.stamp} · ${run.honesty_label}${pref}`;
+}
+
+async function loadRuns() {
+  const wrap = $("run-picker-wrap");
+  const sel = $("run-picker");
+  if (!wrap || !sel) return;
+  try {
+    const data = await getJson("/api/runs");
+    const runs = Array.isArray(data.runs) ? data.runs : [];
+    wrap.classList.toggle("hidden", runs.length === 0);
+    const current = data.active_stamp || (state.summary && state.summary.active_stamp) || "";
+    sel.innerHTML = runs
+      .map((run) => {
+        const stamp = escapeHtml(String(run.stamp || ""));
+        const selected = run.active || run.stamp === current ? " selected" : "";
+        return `<option value="${stamp}"${selected}>${escapeHtml(optionLabel(run))}</option>`;
+      })
+      .join("");
+  } catch (err) {
+    wrap.classList.add("hidden");
+  }
+}
+
 async function boot() {
   try {
     const estate = await getJson("/api/summary");
@@ -182,6 +208,7 @@ async function boot() {
     $("status-bar").classList.toggle("bad", !estate.ready);
     renderKpis(estate);
     $("paths").textContent = `${estate.out_dir}  ·  ${estate.repo}`;
+    await loadRuns();
     await loadTab();
   } catch (err) {
     $("status-bar").textContent = String(err.message || err);
@@ -201,6 +228,28 @@ document.querySelectorAll(".tabs button").forEach((btn) => {
 
 $("q").addEventListener("input", renderTable);
 $("sev").addEventListener("change", renderTable);
+
+const runPicker = $("run-picker");
+if (runPicker) {
+  runPicker.addEventListener("change", async () => {
+    const stamp = runPicker.value;
+    if (!stamp) return;
+    $("status-bar").textContent = `Switching Active out/ to ${stamp}…`;
+    try {
+      const res = await fetch("/api/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stamp }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      await boot();
+    } catch (err) {
+      $("status-bar").textContent = String(err.message || err);
+      $("status-bar").classList.add("bad");
+    }
+  });
+}
 
 $("btn-refresh").addEventListener("click", async () => {
   const btn = $("btn-refresh");
