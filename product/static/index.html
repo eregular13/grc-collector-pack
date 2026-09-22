@@ -38,12 +38,20 @@
     <div id="poam-kpis" class="kpis poam-kpis"></div>
   </section>
 
+  <section id="coverage-kpis-wrap" class="coverage-kpis-wrap" aria-label="Coverage">
+    <p class="kpis-label">Coverage · applied controls + risk scenarios + framework_refs</p>
+    <div id="coverage-kpis" class="kpis coverage-kpis"></div>
+  </section>
+
   <nav class="tabs" role="tablist">
     <button type="button" data-tab="findings" class="on">Findings</button>
     <button type="button" data-tab="assets">Assets</button>
     <button type="button" data-tab="vulns">Vulnerabilities</button>
     <button type="button" data-tab="proposed">Proposed risks</button>
     <button type="button" data-tab="poam">POA&M</button>
+    <button type="button" data-tab="controls">Controls</button>
+    <button type="button" data-tab="scenarios">Scenarios</button>
+    <button type="button" data-tab="coverage">Coverage</button>
     <button type="button" data-tab="evidence">Evidence</button>
   </nav>
 
@@ -65,8 +73,16 @@
     Risk register draft: findings mapped here for CISO import — not a SaaS register.
     Pentera finds it; Evergreen maps it. Owner and due dates stay <strong>blank</strong> for a human. Hand <code>out/poam/poam.csv</code> with the CISO drop.
   </p>
+  <p id="coverage-note" class="banner hidden">
+    Applied controls and risk scenarios are the CISO CSVs already on disk
+    (<code>applied_controls.csv</code>, semicolon <code>risk_scenarios.csv</code>).
+    Framework counts group wizard-safe <code>cpg_*</code> / <code>csf_*</code> /
+    CIS / ISO-ish tokens from POA&amp;M <code>framework_refs</code> and finding labels.
+    Loopback only. Not a SaaS coverage product.
+  </p>
 
   <main>
+    <div id="coverage-heat" class="coverage-heat hidden" aria-label="Framework heatmap"></div>
     <div id="table-wrap"></div>
   </main>
 
