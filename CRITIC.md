@@ -1,3 +1,14 @@
+# CRITIC — cycle 183 (CONSOLE_RUNS)
+
+Lab this brick: pytest **871** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS. Zero P0/P1. Loopback
+console lists/switches sibling prove `out/` dirs (`PROVE_WORK_ROOT`,
+`GET /api/runs`, `POST /api/runs`, Active out/ dropdown). Honesty
+re-derived after switch; `client` stays false. LAB refresh stays
+disk reload. Bind 127.0.0.1. Never POSTs `/api/risks`. Brick A
+CONSOLE_HONESTY intact. Catalog **111 / 32 / 30 / 81**. paying_day
+**FAIL**.
+
 # CRITIC — cycle 182 (CONSOLE_HONESTY)
 
 Lab this brick: pytest **861** passed, 1 skipped. Ten collectors +
