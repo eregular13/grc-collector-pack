@@ -341,3 +341,29 @@ def test_brick_a_lab_fixture_still_honest(monkeypatch: pytest.MonkeyPatch) -> No
     active = next(row for row in listed["runs"] if row["active"])
     assert "lab-drop-out" in active["stamp"]
     assert active["lab"] is True
+
+
+def test_out_dir_prefers_last_lab_prove_when_out_dir_unset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from product.server import last_lab_prove_out, out_dir
+
+    lab_out = tmp_path / "lab-estate" / "out"
+    stamp = lab_out / "lab-prove-20260922-213632"
+    _write_out(stamp, lab=True, assets=8, findings=8)
+    marker = lab_out / "LAST_LAB_PROVE.txt"
+    marker.write_bytes((str(stamp) + "\n").encode("utf-8"))
+    monkeypatch.delenv("OUT_DIR", raising=False)
+    monkeypatch.delenv("LAST_LAB_PROVE", raising=False)
+    monkeypatch.delenv("PROVE_WORK_ROOT", raising=False)
+    monkeypatch.setenv("LAB_ESTATE_OUT", str(lab_out))
+    hinted = last_lab_prove_out()
+    assert hinted is not None
+    assert hinted.resolve() == stamp.resolve()
+    assert out_dir().resolve() == stamp.resolve()
+    monkeypatch.delenv("LAB_ESTATE_OUT", raising=False)
+    monkeypatch.setenv("LAST_LAB_PROVE", str(marker))
+    assert out_dir().resolve() == stamp.resolve()
+    monkeypatch.delenv("LAST_LAB_PROVE", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "hand-out"))
+    assert out_dir() == Path(tmp_path / "hand-out")

@@ -49,7 +49,77 @@ MAX_RUNS = 24
 
 def out_dir() -> Path:
     raw = os.environ.get("OUT_DIR")
-    return Path(raw) if raw else ROOT / "out"
+    if raw:
+        return Path(raw)
+    hinted = last_lab_prove_out()
+    if hinted:
+        return hinted
+    return ROOT / "out"
+
+
+def _read_last_lab_prove_marker(marker: Path) -> Path | None:
+    if not marker.is_file():
+        return None
+    raw = marker.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    text = raw.decode("utf-8", errors="replace").strip()
+    if not text:
+        return None
+    cand = Path(text)
+    if is_prove_out(cand):
+        return cand
+    return None
+
+
+def last_lab_prove_out() -> Path | None:
+    """LAST_LAB_PROVE / LAB_ESTATE_OUT / PROVE_WORK_ROOT stamp. Env only.
+
+    Used when OUT_DIR is unset so python -m product can open a lab-prove
+    stamp without a hand-typed OUT_DIR. Never invents client=true.
+    """
+    ordered: list[Path] = []
+    for key in ("LAST_LAB_PROVE", "LAB_ESTATE_OUT", "PROVE_WORK_ROOT"):
+        raw = (os.environ.get(key) or "").strip()
+        if raw:
+            ordered.append(Path(raw))
+    seen: set[Path] = set()
+    for cand in ordered:
+        try:
+            key = cand.resolve()
+        except OSError:
+            key = cand
+        if key in seen:
+            continue
+        seen.add(key)
+        if cand.is_file():
+            marked = _read_last_lab_prove_marker(cand)
+            if marked:
+                return marked
+            continue
+        if not cand.is_dir():
+            continue
+        if is_prove_out(cand):
+            return cand
+        marked = _read_last_lab_prove_marker(cand / "LAST_LAB_PROVE.txt")
+        if marked:
+            return marked
+        children: list[Path] = []
+        try:
+            for child in cand.iterdir():
+                if not child.is_dir() or not child.name.startswith("lab-prove-"):
+                    continue
+                if is_prove_out(child):
+                    children.append(child)
+                nested = child / "out"
+                if is_prove_out(nested):
+                    children.append(nested)
+        except OSError:
+            continue
+        if children:
+            children.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            return children[0]
+    return None
 
 
 def is_prove_out(path: Path) -> bool:
@@ -1115,7 +1185,9 @@ def main() -> None:
     os.environ.setdefault("RISKREADY_PUSH", "0")
     os.environ.setdefault("GRC_LIVE_SCAN", "0")
     os.environ.setdefault("PYTHONPATH", str(ROOT))
-    os.environ.setdefault("OUT_DIR", str(ROOT / "out"))
+    if not (os.environ.get("OUT_DIR") or "").strip():
+        hinted = last_lab_prove_out()
+        os.environ["OUT_DIR"] = str(hinted if hinted else ROOT / "out")
     host, port = assert_loopback_host(bind_host()), bind_port()
     httpd = make_server(host, port)
     print(f"GRC Collector Pack  http://{host}:{port}/", flush=True)
