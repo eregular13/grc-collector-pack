@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 from exporters.model import (
-    HONESTY_BANNER,
     PackEstate,
     PackFinding,
     load_pack_estate,
@@ -67,11 +66,16 @@ def _category(finding: PackFinding) -> str:
     return "Security Assessment"
 
 
-def _add_finding(finding: PackFinding) -> dict[str, Any]:
+def _add_finding(finding: PackFinding, estate: PackEstate) -> dict[str, Any]:
     sev = canon_severity(finding.severity)
     desc = finding.description or finding.name
     if finding.assets:
         desc = f"{desc} [assets: {', '.join(finding.assets)}]"
+    source = (
+        "grc-collector-pack (LAB/DEMO dest_in file-drop)"
+        if estate.lab and not estate.sample
+        else "grc-collector-pack (SAMPLE/DEMO file-drop)"
+    )
     return {
         "shape": "addFinding",
         "documentation_only": True,
@@ -81,14 +85,14 @@ def _add_finding(finding: PackFinding) -> dict[str, Any]:
         "ref_id": finding.ref_id,
         "kind": _KIND[sev],
         "description": desc,
-        "source": "grc-collector-pack (SAMPLE/DEMO file-drop)",
+        "source": source,
         "status": "OPEN",
         "priority": _PRIORITY[sev],
-        "note": HONESTY_BANNER,
+        "note": estate.banner,
     }
 
 
-def _add_risk_from_finding(finding: PackFinding) -> dict[str, Any]:
+def _add_risk_from_finding(finding: PackFinding, estate: PackEstate) -> dict[str, Any]:
     like = impact = score_severity(finding.severity)
     res = residual_score(like)
     return {
@@ -107,13 +111,13 @@ def _add_risk_from_finding(finding: PackFinding) -> dict[str, Any]:
         "residual_likelihood": res,
         "residual_impact": res,
         "note": (
-            f"{HONESTY_BANNER} Draft treatment maps CISO mitigate → MITIGATED. "
+            f"{estate.banner} Draft treatment maps CISO mitigate → MITIGATED. "
             "Operator confirms before any live addRisk."
         ),
     }
 
 
-def _add_risk_from_scenario(scenario) -> dict[str, Any]:
+def _add_risk_from_scenario(scenario, estate: PackEstate) -> dict[str, Any]:
     like = score_scenario_level(scenario.current_proba or scenario.current_risk)
     impact = score_scenario_level(scenario.current_impact or scenario.current_risk)
     res_like = (
@@ -143,7 +147,7 @@ def _add_risk_from_scenario(scenario) -> dict[str, Any]:
         "residual_likelihood": res_like,
         "residual_impact": res_impact,
         "note": (
-            f"{HONESTY_BANNER} Draft treatment maps CISO {scenario.treatment or 'mitigate'} "
+            f"{estate.banner} Draft treatment maps CISO {scenario.treatment or 'mitigate'} "
             f"→ {treatment}. Operator confirms before any live addRisk."
         ),
     }
@@ -175,8 +179,8 @@ def _create_risk_compat(add_risk: dict[str, Any]) -> dict[str, Any]:
 
 def build_probo_preview(out: Path | None = None, estate: PackEstate | None = None) -> dict[str, Any]:
     estate = estate or load_pack_estate(out)
-    add_findings = [_add_finding(f) for f in estate.all_findings]
-    add_risks: list[dict[str, Any]] = [_add_risk_from_scenario(s) for s in estate.scenarios]
+    add_findings = [_add_finding(f, estate) for f in estate.all_findings]
+    add_risks: list[dict[str, Any]] = [_add_risk_from_scenario(s, estate) for s in estate.scenarios]
     seen = {str(row.get("ref_id") or "").lower() for row in add_risks}
     for finding in estate.all_findings:
         if finding.severity not in {"high", "critical"}:
@@ -184,13 +188,13 @@ def build_probo_preview(out: Path | None = None, estate: PackEstate | None = Non
         key = finding.ref_id.lower()
         if key in seen:
             continue
-        add_risks.append(_add_risk_from_finding(finding))
+        add_risks.append(_add_risk_from_finding(finding, estate))
         seen.add(key)
     create_risk = []
     for finding in estate.findings:
         if finding.severity not in {"high", "critical"}:
             continue
-        draft = _add_risk_from_finding(finding)
+        draft = _add_risk_from_finding(finding, estate)
         compat = _create_risk_compat(draft)
         compat["severity"] = finding.severity
         create_risk.append(compat)
@@ -231,10 +235,11 @@ def write_probo(out: Path | None = None, estate: PackEstate | None = None) -> Pa
     payload = build_probo_preview(out, estate=estate)
     dest = dest_dir / "probo.json"
     dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    banner = str(payload.get("estate") or "")
     (dest_root / "probo" / "README.md").parent.mkdir(parents=True, exist_ok=True)
     (dest_root / "probo" / "README.md").write_text(
         "# Probo import preview (documentation only)\n\n"
-        f"{HONESTY_BANNER}\n\n"
+        f"{banner}\n\n"
         "Canonical file: `out/import_preview/probo.json`.\n\n"
         "- `addFinding` — one draft per CISO finding/vulnerability.\n"
         "- `addRisk` — CISO risk_scenarios plus high/critical findings.\n"

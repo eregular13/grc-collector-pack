@@ -303,6 +303,49 @@ def test_prove_use_existing_in_on_lab_drop_fixture(
     assert "SAMPLE/DEMO" not in canonical
 
 
+def test_lab_dest_in_prove_writes_opengrc_probo_file_true(tmp_path: Path) -> None:
+    """LAB dest_in prove writes posted=false OpenGRC CSVs + Probo drafts from CISO."""
+    dest = tmp_path / "prove"
+    stage_lab_drop_dest_in(dest / "in")
+    stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
+    _honesty_stamps(stamp)
+    out = Path(stamp["out_dir"])
+    og = out / "opengrc"
+    assert (og / "risks.csv").is_file()
+    assert (og / "assets.csv").is_file()
+    assert (og / "implementations.csv").is_file()
+    assert (og / "MANIFEST.json").is_file()
+    manifest = json.loads((og / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["posted"] is False
+    assert manifest["http"] is False
+    assert manifest["sample"] is False
+    assert manifest.get("lab") is True
+    assert manifest["client"] is False
+    assert manifest["paying_day"] == "FAIL"
+    readme = (og / "README.md").read_text(encoding="utf-8")
+    assert "LAB/DEMO" in readme
+    assert "SAMPLE/DEMO" not in readme
+    assert "/api/risks" not in readme
+    risks = (og / "risks.csv").read_text(encoding="utf-8")
+    assert "LAB/DEMO" in risks
+    assert "SAMPLE/DEMO" not in risks
+    probo_path = out / "import_preview" / "probo.json"
+    assert probo_path.is_file()
+    payload = json.loads(probo_path.read_text(encoding="utf-8"))
+    assert payload["posted"] is False
+    assert payload["http"] is False
+    assert payload["sample"] is False
+    assert payload.get("lab") is True
+    assert payload.get("organization_id") is None
+    assert (out / "probo" / "README.md").is_file()
+    assert stamp.get("posted") is False
+    assert stamp.get("http") is False
+    assert "opengrc" in stamp
+    assert "probo" in stamp
+    assert Path(str(stamp["opengrc"])).is_dir()
+    assert Path(str(stamp["probo"])).is_file()
+
+
 def test_lab_drop_to_sor_on_lab_drop_fixture(tmp_path: Path) -> None:
     work = tmp_path / "lab-work"
     dest_in = work / "in"

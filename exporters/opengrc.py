@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 from exporters.model import (
-    HONESTY_BANNER,
     PackEstate,
     load_pack_estate,
     residual_score,
@@ -61,7 +60,7 @@ def _write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
         writer.writerows(rows)
 
 
-def _risk_row_from_scenario(scenario) -> list[Any]:
+def _risk_row_from_scenario(scenario, estate: PackEstate) -> list[Any]:
     like = score_scenario_level(scenario.current_proba or scenario.current_risk)
     impact = score_scenario_level(scenario.current_impact or scenario.current_risk)
     res_like = score_scenario_level(scenario.residual_proba or scenario.residual_risk) if scenario.residual_proba or scenario.residual_risk else residual_score(like)
@@ -74,7 +73,7 @@ def _risk_row_from_scenario(scenario) -> list[Any]:
         extra.append(f"threats={scenario.threats}")
     if scenario.additional_controls:
         extra.append(f"controls={scenario.additional_controls}")
-    extra.append(HONESTY_BANNER)
+    extra.append(estate.banner)
     if extra:
         desc = (desc + " — " if desc else "") + "; ".join(extra)
     return [
@@ -92,11 +91,11 @@ def _risk_row_from_scenario(scenario) -> list[Any]:
     ]
 
 
-def _risk_row_from_finding(finding) -> list[Any]:
+def _risk_row_from_finding(finding, estate: PackEstate) -> list[Any]:
     like = impact = score_severity(finding.severity)
     res = residual_score(like)
     desc = finding.description
-    extra = [HONESTY_BANNER]
+    extra = [estate.banner]
     if finding.assets:
         extra.append("assets=" + ",".join(finding.assets))
     if finding.labels:
@@ -125,19 +124,19 @@ def build_opengrc_rows(estate: PackEstate) -> dict[str, list[list[Any]]]:
         slug = scenario.ref_id.lower()
         if slug.startswith("rsk-"):
             finding_ids_in_scenarios.add(slug[4:])
-    risks: list[list[Any]] = [_risk_row_from_scenario(s) for s in estate.scenarios]
+    risks: list[list[Any]] = [_risk_row_from_scenario(s, estate) for s in estate.scenarios]
     seen = {str(row[0]).lower() for row in risks}
     for finding in estate.all_findings:
         key = finding.ref_id.lower()
         if key in seen or key in scenario_ids or key in finding_ids_in_scenarios:
             continue
-        risks.append(_risk_row_from_finding(finding))
+        risks.append(_risk_row_from_finding(finding, estate))
         seen.add(key)
 
     assets: list[list[Any]] = []
     for asset in estate.assets:
         notes = asset.description or asset.name
-        notes = f"{notes} — {HONESTY_BANNER}"
+        notes = f"{notes} — {estate.banner}"
         assets.append(
             [
                 asset.ref_id,
@@ -156,7 +155,7 @@ def build_opengrc_rows(estate: PackEstate) -> dict[str, list[list[Any]]]:
             [
                 control.name,
                 control.description,
-                f"{control.ref_id} category={control.category} csf={control.csf_function} — {HONESTY_BANNER}",
+                f"{control.ref_id} category={control.category} csf={control.csf_function} — {estate.banner}",
             ]
         )
     return {"risks": risks, "assets": assets, "implementations": implementations}
@@ -191,14 +190,14 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
             "OpenGRC Data Manager → Import Data → select Risks / Assets / "
             "Implementations → map headers (auto-map on field names) → review. "
             "Omit id to create. code / asset_tag upsert if they already exist. "
-            "No taxonomy FKs invented. SAMPLE/DEMO ≠ client."
+            f"No taxonomy FKs invented. {estate.banner}"
         ),
         **estate.honesty(),
     }
     (dest / "MANIFEST.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
     (dest / "README.md").write_text(
         "# OpenGRC import drop (file-only)\n\n"
-        f"{HONESTY_BANNER}\n\n"
+        f"{estate.banner}\n\n"
         "These CSVs match the OpenGRC Data Manager import wizard "
         "(https://docs.opengrc.com/data-manager/import/).\n\n"
         "## Files\n\n"
