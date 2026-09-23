@@ -93,8 +93,11 @@ TOOL_DESC = {
         "(same rails as ./scripts/lab_drop_to_sor.sh). Requires populated "
         "arguments.work/in or arguments.dest_in. Never reseeds fixtures/pack_drop. "
         "Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL. "
-        "Returns honesty stamps + CISO/POA&M paths. LAB≠SAMPLE≠client. "
-        "paying_day FAIL. Not SAMPLE keep. Not client KEEP."
+        "Returns honesty stamps + CISO/POA&M paths plus console_cli_twin / "
+        "console_hint (OUT_DIR=<work>/out python -m product; Windows "
+        "set OUT_DIR=... / python -m product; bind 127.0.0.1; never POSTs "
+        "/api/risks). LAB≠SAMPLE≠client. paying_day FAIL. Not SAMPLE keep. "
+        "Not client KEEP."
     ),
 }
 
@@ -843,8 +846,58 @@ def lab_drop_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
             "./scripts/lab_drop_to_sor.sh / .\\scripts\\lab_drop_to_sor.ps1 "
             "(no Makefile first-line). Never reseeds fixtures/pack_drop. "
             "Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO trees is LAB_SHAPE_FAIL. "
-            "LAB≠SAMPLE≠client. paying_day FAIL. MCP lab_drop is this same path."
+            "LAB≠SAMPLE≠client. paying_day FAIL. MCP lab_drop is this same path. "
+            "Console twin of that out/: OUT_DIR=<work>/out python -m product."
         ),
+    )
+
+
+def console_cli_twin(work: Path | None = None) -> dict[str, Any]:
+    """Loopback console twin of a lab_drop prove out/. Advertise only.
+
+    Same dest_in rails as lab_drop / lab_drop_to_sor. Points python -m product
+    at that work/out. Never invents client=true. Never POSTs /api/risks.
+    """
+    if work:
+        out_dir = Path(work).resolve() / "out"
+        prove = Path(work).resolve() / "prove-ciso.json"
+    else:
+        out_dir = Path("<work>") / "out"
+        prove = Path("<work>") / "prove-ciso.json"
+    out_s = str(out_dir)
+    posix = f"OUT_DIR={out_s} python -m product"
+    windows = f"set OUT_DIR={out_s} && python -m product"
+    return {
+        "name": "product_console",
+        "kind": "loopback_console",
+        "out_dir": out_s,
+        "prove": str(prove),
+        "command": posix,
+        "posix": posix,
+        "windows": windows,
+        "bind": "127.0.0.1",
+        "http": False,
+        "posted": False,
+        "client": False,
+        "lab": True,
+        "sample": False,
+        "paying_day": "FAIL",
+        "note": (
+            "Loopback console twin of this lab_drop out/. "
+            f"{posix} (Windows: {windows}). "
+            "Bind 127.0.0.1. Never POSTs /api/risks. "
+            "Active out/ picker / PROVE_WORK_ROOT lists sibling prove out/. "
+            "No DEMO reseed. LAB≠SAMPLE≠client. paying_day FAIL."
+        ),
+    }
+
+
+def console_hint(work: Path | None = None) -> str:
+    """One-line operator hint: point python -m product at this prove out/."""
+    twin = console_cli_twin(work)
+    return (
+        f"{twin['posix']} (Windows: {twin['windows']}). "
+        "Bind 127.0.0.1. Never POSTs /api/risks. LAB≠SAMPLE≠client."
     )
 
 
@@ -1399,8 +1452,10 @@ def _lab_drop_once(
     poam = str(stamp.get("poam") or (work / "out" / "poam" / "poam.csv"))
     poam_md = str(stamp.get("poam_md") or (work / "out" / "poam" / "poam.md"))
     prove = work / "prove-ciso.json"
+    out_dir = (work / "out").resolve()
     unexpected = unexpected_demo_adapter_trees(dest_in)
     estate = str(stamp.get("estate") or "LAB/DEMO — not a client estate")
+    console = console_cli_twin(work)
     return {
         "tool": "lab_drop",
         "ok": ok,
@@ -1423,6 +1478,7 @@ def _lab_drop_once(
         "pack_in": str(pack_in),
         "pack_in_written": wrote_pack,
         "work": str(work),
+        "out": str(out_dir),
         "ciso_dir": str(ciso_dir),
         "ciso_files": ciso_files,
         "poam": poam,
@@ -1433,6 +1489,8 @@ def _lab_drop_once(
         "cli_twin": lab_drop_to_sor_cli_twin(_repo_root()),
         "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(_repo_root()),
         "sample_cli_twin": sample_to_sor_cli_twin(_repo_root()),
+        "console_cli_twin": console,
+        "console_hint": console_hint(work),
         "posted": False,
         "http": False,
         "wrap": "review-only",
@@ -1448,11 +1506,15 @@ def _lab_drop_once(
             "+ out/poam/poam.csv via python3 scripts/prove_ciso.py --use-existing-in. "
             "Same rails as ./scripts/lab_drop_to_sor.sh / "
             ".\\scripts\\lab_drop_to_sor.ps1 (no Makefile first-line). "
+            "Console twin: OUT_DIR=<work>/out python -m product "
+            "(Windows: set OUT_DIR=... && python -m product). "
+            "Bind 127.0.0.1. Never POSTs /api/risks. "
             "Never reseeds fixtures/pack_drop. Empty in/ is EXISTING_IN_FAIL. "
             "LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL. "
             "Does not densify pack in/. LAB≠SAMPLE≠client. DEMO≠client. "
             "paying_day FAIL. SAMPLE keep remains the primary KEEP path. "
-            "farm_drop_to_sor remains the fixture seed path."
+            "farm_drop_to_sor remains the fixture seed path. "
+            "Does not invent client=true."
         ),
     }
 

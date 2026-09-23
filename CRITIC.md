@@ -1,3 +1,19 @@
+# CRITIC — cycle 186 (MCP_CONSOLE_TWIN)
+
+Lab this brick: pytest **892** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
+Zero P0/P1. MCP `lab_drop` success JSON advertises
+`console_cli_twin` / `console_hint` (`OUT_DIR=<work>/out python -m
+product`; Windows `set OUT_DIR=...` / `python -m product`). Bind
+`127.0.0.1`. Never POSTs `/api/risks`. `client` stays false.
+Operator twin remains `lab_drop_to_sor`. Console twin is that prove
+`out/` (Active out/ / `PROVE_WORK_ROOT`). Docs lock operator scripts
+↔ MCP ↔ console as the same LAB dest_in rails. No Makefile
+first-line. No SaaS. No RiskReady POST. Bricks A–D intact. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. CoS #48
+rails below are unchanged.
+
 # CRITIC — cycle 185 (CONSOLE_COVERAGE)
 
 Lab this brick: pytest **891** passed, 1 skipped. Ten collectors +
