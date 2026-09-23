@@ -12,7 +12,10 @@ POSTs `/api/risks`. `client` stays false. Operator twin remains
 section (`lab_drop` ≡ `lab_drop_to_sor` ≡ console pointed at that
 `out/`; DESKTOP scan→SoR→console is the same rails after pack_drop
 lands in `work/in`). No Makefile first-line. Catalog **unchanged**.
-paying_day **FAIL**.
+paying_day **FAIL**. pytest **892** passed, 1 skipped. Ten
+collectors + `grc_loader` + `tests/lab_outputs.py` PASS
+(`assets=81` `findings=105` `applied_controls=124` `risk_scenarios=124`
+`poam=106` `demo=true`).
 
 ## cycle 185 — CONSOLE_COVERAGE controls + scenarios + heatmap (2026-09-22)
 
