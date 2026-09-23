@@ -1030,6 +1030,9 @@ def build_drop_zip() -> bytes:
     if drop.is_dir():
         files.extend(sorted((drop / "ciso").glob("*.csv")))
         files.extend(sorted((drop / "riskready").glob("*.json")))
+        files.extend(sorted((drop / "opengrc").glob("*")))
+        files.append(drop / "import_preview" / "probo.json")
+        files.extend(sorted((drop / "probo").glob("*")))
     readme = (
         "GRC Collector Pack drop\n"
         "Pentera finds it; Evergreen maps it.\n"

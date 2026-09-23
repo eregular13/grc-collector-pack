@@ -207,6 +207,7 @@ def test_exporter_modules_have_no_sockets_or_risks_post() -> None:
         "scripts/export_opengrc.py",
         "scripts/preview_probo.py",
         "scripts/prove_ciso.py",
+        "scripts/refresh_product_lab_drop_sinks.py",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for token in banned:
