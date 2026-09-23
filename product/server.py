@@ -1023,6 +1023,9 @@ def build_drop_zip() -> bytes:
     files.extend(sorted((out / "ciso-assistant").glob("*.csv")))
     files.extend(sorted((out / "poam").glob("*")))
     files.extend(sorted((out / "riskready").glob("*.json")))
+    files.extend(sorted((out / "opengrc").glob("*")))
+    files.append(out / "import_preview" / "probo.json")
+    files.extend(sorted((out / "probo").glob("*")))
     drop = ROOT / "product-lab" / "drop"
     if drop.is_dir():
         files.extend(sorted((drop / "ciso").glob("*.csv")))
@@ -1032,6 +1035,8 @@ def build_drop_zip() -> bytes:
         "Pentera finds it; Evergreen maps it.\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
         "POA&M: poam/poam.csv — owner and due are blank for a human.\n"
+        "OpenGRC Data Manager CSVs: opengrc/*.csv — file-true leave-behind, posted=false, not live import.\n"
+        "Probo drafts: import_preview/probo.json — file-true, posted=false, not live GraphQL.\n"
         "RiskReady JSON is review-only (LICENSE-LOCK stay-out). Do not wrap or POST.\n"
         "risks_proposed.json is for a human. Do not POST /api/risks.\n"
     )
