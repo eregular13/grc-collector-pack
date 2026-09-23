@@ -7,6 +7,7 @@ Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO trees is LAB_SHAPE_FAIL.
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -229,7 +230,12 @@ def test_lab_drop_uses_existing_in_and_returns_paths(tmp_path: Path) -> None:
     assert list(pack_in.iterdir()) == []
 
 
-def test_lab_drop_fail_closed_on_empty_in(tmp_path: Path) -> None:
+def test_lab_drop_fail_closed_on_empty_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("LAB_ESTATE_OUT", raising=False)
+    monkeypatch.delenv("LAST_LAB_PROVE", raising=False)
+    monkeypatch.delenv("PROVE_WORK_ROOT", raising=False)
     work = tmp_path / "empty"
     dest_in = work / "in"
     dest_in.mkdir(parents=True)
@@ -250,6 +256,8 @@ def test_lab_drop_fail_closed_on_empty_in(tmp_path: Path) -> None:
     missing = dispatch("lab_drop", scope_path=SCOPE, arguments={})
     assert missing["ok"] is False
     assert missing["fail_code"] == "EXISTING_IN_FAIL"
+    assert missing.get("auto_hint") is not True
+    assert missing.get("ran") is not True
     body = handle_jsonrpc(
         {
             "jsonrpc": "2.0",
@@ -356,3 +364,168 @@ def test_console_cli_twin_helper(tmp_path: Path) -> None:
     assert "set OUT_DIR" in hint
     assert "127.0.0.1" in hint
     assert "/api/risks" in hint
+
+
+def test_console_cli_twin_explicit_out_is_the_stamp_not_nested_out(
+    tmp_path: Path,
+) -> None:
+    stamp = tmp_path / "lab-prove-20260922-213632"
+    stamp.mkdir()
+    twin = console_cli_twin(out=stamp)
+    dest = stamp.resolve()
+    assert twin["out_dir"] == str(dest)
+    assert twin["command"] == f"OUT_DIR={dest} python -m product"
+    assert twin["windows"] == f"set OUT_DIR={dest} && python -m product"
+    assert (stamp / "out") != Path(twin["out_dir"])
+    hint = console_hint(out=stamp)
+    assert str(dest) in hint
+    assert "python -m product" in hint
+    assert "set OUT_DIR" in hint
+
+
+def _stage_last_lab_prove(tmp_path: Path) -> dict[str, Path]:
+    lab_root = tmp_path / "lab-estate"
+    lab_out = lab_root / "out"
+    stamp = lab_out / "lab-prove-20260922-213632"
+    stamp.mkdir(parents=True)
+    (stamp / "summary.json").write_text(
+        json.dumps(
+            {
+                "lab": True,
+                "sample": False,
+                "demo": True,
+                "client": False,
+                "seeded": False,
+                "use_existing_in": True,
+                "assets": 48,
+                "findings": 104,
+                "poam": 22,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (stamp / "LAB.txt").write_text(
+        "LAB Docker estate — not a client KEEP. paying_day FAIL.\n",
+        encoding="utf-8",
+    )
+    (stamp / "prove-ciso.json").write_text(
+        json.dumps(
+            {
+                "lab": True,
+                "sample": False,
+                "client": False,
+                "seeded": False,
+                "posted": False,
+                "paying_day": "FAIL",
+                "use_existing_in": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    marker = lab_out / "LAST_LAB_PROVE.txt"
+    marker.write_bytes((str(stamp) + "\n").encode("utf-8"))
+    work = lab_root / "prove-work" / "20260922-213632"
+    dest_in = work / "in"
+    dest_in.mkdir(parents=True)
+    (dest_in / "LAB.txt").write_text("LAB dest_in\n", encoding="utf-8")
+    return {
+        "lab_out": lab_out,
+        "stamp": stamp,
+        "marker": marker,
+        "work": work,
+        "dest_in": dest_in,
+    }
+
+
+def test_lab_drop_auto_hints_last_lab_prove_without_rerunning_prove(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    staged = _stage_last_lab_prove(tmp_path)
+    monkeypatch.delenv("LAB_ESTATE_OUT", raising=False)
+    monkeypatch.delenv("LAST_LAB_PROVE", raising=False)
+    monkeypatch.delenv("PROVE_WORK_ROOT", raising=False)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("auto-hint must not re-run prove_ciso")
+
+    monkeypatch.setattr("scripts.prove_ciso.prove_ciso", boom)
+    data = dispatch(
+        "lab_drop",
+        scope_path=SCOPE,
+        arguments={"lab_out": str(staged["lab_out"])},
+    )
+    assert data["tool"] == "lab_drop"
+    assert data["ok"] is True, data.get("stderr") or data.get("error")
+    assert data["auto_hint"] is True
+    assert data["ran"] is False
+    assert data["seeded"] is False
+    assert data["use_existing_in"] is True
+    assert data["lab"] is True
+    assert data["sample"] is False
+    assert data["client"] is False
+    assert data["client_keep"] is False
+    assert data["paying_day"] == "FAIL"
+    assert data["posted"] is False
+    assert data["http"] is False
+    assert data["live"] is False
+    assert Path(data["out"]).resolve() == staged["stamp"].resolve()
+    assert data["stamp"] == "lab-prove-20260922-213632"
+    assert Path(data["work"]).resolve() == staged["work"].resolve()
+    assert Path(data["dest_in"]).resolve() == staged["dest_in"].resolve()
+    twin = data["console_cli_twin"]
+    assert twin["out_dir"] == str(staged["stamp"].resolve())
+    assert twin["command"] == f"OUT_DIR={staged['stamp'].resolve()} python -m product"
+    assert twin["windows"] == f"set OUT_DIR={staged['stamp'].resolve()} && python -m product"
+    assert twin["bind"] == "127.0.0.1"
+    assert twin["client"] is False
+    assert twin["posted"] is False
+    assert "/api/risks" in twin["note"]
+    hint = data["console_hint"]
+    assert str(staged["stamp"].resolve()) in hint
+    assert "python -m product" in hint
+    assert "set OUT_DIR" in hint
+    assert "Did not re-run prove" in data["note"] or "did not re-run prove" in data["note"].lower()
+    body = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "tools/call",
+            "params": {
+                "name": "lab_drop",
+                "arguments": {"lab_out": str(staged["lab_out"])},
+            },
+        }
+    )
+    assert "error" not in body
+    assert body["result"]["auto_hint"] is True
+    assert body["result"]["ok"] is True
+
+
+def test_lab_drop_auto_hint_from_lab_estate_out_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    staged = _stage_last_lab_prove(tmp_path)
+    monkeypatch.setenv("LAB_ESTATE_OUT", str(staged["lab_out"]))
+    monkeypatch.delenv("LAST_LAB_PROVE", raising=False)
+    monkeypatch.delenv("PROVE_WORK_ROOT", raising=False)
+    data = dispatch("lab_drop", scope_path=SCOPE, arguments={})
+    assert data["ok"] is True
+    assert data["auto_hint"] is True
+    assert data["ran"] is False
+    assert Path(data["out"]).resolve() == staged["stamp"].resolve()
+
+
+def test_tools_list_lab_drop_advertises_auto_hint() -> None:
+    entries = {row["name"]: row for row in tools_list_entries()}
+    desc = entries["lab_drop"]["description"]
+    assert "LAST_LAB_PROVE" in desc
+    assert "auto-hint" in desc.lower() or "auto_hint" in desc
+    props = entries["lab_drop"]["inputSchema"]["properties"]
+    assert props["lab_out"]["type"] == "string"
+    assert "LAST_LAB_PROVE" in props["lab_out"]["description"]
+    iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
+    assert "LAST_LAB_PROVE" in iface
+    assert "lab_out" in iface
+    prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
+    assert "LAST_LAB_PROVE" in prove
+    assert "lab_out" in prove

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- MCP_LAB_DROP_AUTO_HINT: `lab_drop` without work/dest_in auto-hints `LAST_LAB_PROVE` / `lab_out` / `LAB_ESTATE_OUT` (`auto_hint=true` `ran=false`; no re-prove; no seed). Console `python -m product` with `OUT_DIR` unset prefers that stamp. LAB≠SAMPLE≠client. paying_day FAIL. Never POSTs `/api/risks`.
 - FARM_LAB_ALIGN: operator note that `farm_drop_to_sor` is the SAMPLE/DEMO fixture seed and `lab_drop_to_sor` is dest_in `--use-existing-in` (no reseed). Both emit risk register + POA&M. SAMPLE dual-net `172.16.10.0/24` is not LAB dest_in `192.168.64.0/24`. LAB != SAMPLE != client. paying_day FAIL. No new public entrypoint.
 - Brick 4: cold farm_drop→SoR wipe/clone ship-gate (`farm-drop-to-sor-cold`). Isolated clean checkout + `farm_drop_to_sor` + risk-register/POA&M shape. `FARM_SHIP=yes` only when pack HEAD of that assertion surface changes — identical re-PASS is not a ship event. CI/lab scripts under `scripts/ci/` are not a public operator entrypoint. SAMPLE/DEMO != client. paying_day FAIL.
 - Hotfix: `prove_ciso.py --verify-only` and `farm_drop_to_sor` console lines are ASCII (`!=`, not U+2260) so Windows cp1252 (DESKTOP-222GHQV) exits 0. Wrappers set `PYTHONIOENCODING=utf-8`.

@@ -1,5 +1,19 @@
 # CYCLE log
 
+## cycle 187 — MCP_LAB_DROP_AUTO_HINT LAST_LAB_PROVE / console without hand OUT_DIR (2026-09-22)
+
+MCP `lab_drop` without `work`/`dest_in` auto-hints `LAST_LAB_PROVE` /
+`arguments.lab_out` / env `LAB_ESTATE_OUT` (`auto_hint=true` `ran=false`;
+does **not** re-run prove; does **not** seed). `console_cli_twin` may
+point at a `lab-prove-*` stamp that **is** the console `out/` (`out=`).
+`python -m product` with `OUT_DIR` unset prefers that same marker.
+Bind `127.0.0.1`. Never POSTs `/api/risks`. `client` stays false.
+DESKTOP smoke: stamp `lab-prove-20260922-213632` auto-hint + console
+on `:18766` without hand `OUT_DIR` (`lab=true` `sample=false`
+`client=false` assets=48 findings=104 poam=22). Catalog **unchanged**.
+paying_day **FAIL**. Brick pytest `tests/test_mcp_lab_twin.py` +
+`tests/test_product_runs.py` **24** passed.
+
 ## cycle 186 — MCP_CONSOLE_TWIN lab_drop ↔ console hint (2026-09-23)
 
 MCP `lab_drop` success JSON advertises `console_cli_twin` /

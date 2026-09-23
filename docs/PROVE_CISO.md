@@ -130,17 +130,19 @@ python3 scripts/prove_ciso.py --work DIR --use-existing-in
 # alias: --no-seed
 # MCP conductor (pack dropbox.mcp_stub): tools/call lab_drop
 #   arguments.work = DIR  (or arguments.dest_in = DIR/in)
+#   without work: arguments.lab_out = lab-estate/out  (reads LAST_LAB_PROVE; auto-hint, no re-prove)
 # Console twin of that out/ (no DEMO reseed):
 #   OUT_DIR=DIR/out python -m product
 #   Windows: set OUT_DIR=DIR\out
 #            python -m product
+#   or LAB_ESTATE_OUT=lab-estate/out python -m product   (OUT_DIR unset; prefers LAST_LAB_PROVE)
 ```
 
 Twins (same LAB dest_in rails; no DEMO reseed):
 
 | Path | Command |
 |---|---|
-| MCP `lab_drop` | `tools/call lab_drop` `arguments.work=DIR` |
+| MCP `lab_drop` | `tools/call lab_drop` `arguments.work=DIR` (or `arguments.lab_out` / `LAST_LAB_PROVE` auto-hint, no re-prove) |
 | Operator `lab_drop_to_sor` | `./scripts/lab_drop_to_sor.sh --work DIR` / `.\scripts\lab_drop_to_sor.ps1` |
 | Console | `OUT_DIR=DIR/out python -m product` (Windows `set OUT_DIR=DIR\out` / `python -m product`) |
 
