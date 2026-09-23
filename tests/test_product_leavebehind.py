@@ -1,4 +1,4 @@
-"""CONSOLE leave-behind: /api/summary surfaces OpenGRC/Probo counts, posted=false."""
+"""CONSOLE leave-behind: /api/summary and /export.zip surface OpenGRC/Probo, posted=false."""
 
 from __future__ import annotations
 
@@ -6,11 +6,13 @@ import json
 import threading
 import urllib.error
 import urllib.request
+import zipfile
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 
-from product.server import estate, leavebehind_sinks, make_server
+from product.server import build_drop_zip, estate, leavebehind_sinks, make_server
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -220,3 +222,66 @@ def test_ui_renders_opengrc_probo_leavebehind_kpis() -> None:
     assert "renderSinkKpis" in js
     assert "opengrc" in js
     assert "addFinding" in js
+
+
+def test_drop_zip_includes_opengrc_csvs_and_probo_drafts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Download drop matches /api/summary sinks: file-true OpenGRC + Probo, posted=false."""
+    out = tmp_path / "out"
+    _write_summary(out)
+    _write_opengrc(out, posted=False, risks=3)
+    _write_probo(out, posted=False, findings=5)
+    monkeypatch.setenv("OUT_DIR", str(out))
+    blob = build_drop_zip()
+    assert blob[:2] == b"PK"
+    with zipfile.ZipFile(BytesIO(blob)) as zf:
+        names = set(zf.namelist())
+        import_md = zf.read("IMPORT.md").decode("utf-8")
+    assert "opengrc/risks.csv" in names
+    assert "opengrc/assets.csv" in names
+    assert "opengrc/implementations.csv" in names
+    assert "opengrc/MANIFEST.json" in names
+    assert "import_preview/probo.json" in names
+    assert "probo/README.md" in names
+    assert "OpenGRC" in import_md
+    assert "Probo" in import_md
+    assert "posted=false" in import_md.lower()
+    assert "Do not POST /api/risks" in import_md
+    assert "file-true" in import_md.lower() or "not live" in import_md.lower()
+    assert "live import" not in import_md.lower() or "not live" in import_md.lower()
+
+
+def test_http_export_zip_includes_opengrc_probo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    _write_summary(out)
+    _write_opengrc(out, posted=False, risks=3)
+    _write_probo(out, posted=False, findings=5)
+    monkeypatch.setenv("OUT_DIR", str(out))
+    httpd = make_server("127.0.0.1", 0)
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://{host}:{port}"
+        with urllib.request.urlopen(base + "/export.zip", timeout=5) as res:
+            assert res.status == 200
+            ctype = res.headers.get("Content-Type", "")
+            blob = res.read()
+        assert "zip" in ctype.lower()
+        with zipfile.ZipFile(BytesIO(blob)) as zf:
+            names = set(zf.namelist())
+            import_md = zf.read("IMPORT.md").decode("utf-8")
+        assert "opengrc/risks.csv" in names
+        assert "import_preview/probo.json" in names
+        assert "Do not POST /api/risks" in import_md
+        try:
+            urllib.request.urlopen(base + "/api/risks", timeout=5)
+            raise AssertionError("GET /api/risks should be forbidden")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 403
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
