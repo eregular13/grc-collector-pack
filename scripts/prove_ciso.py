@@ -560,6 +560,24 @@ def prove_ciso(
             )
         ),
     }
+    if (ciso_dir / "findings.csv").is_file() or (ciso_dir / "assets.csv").is_file():
+        from exporters.model import load_pack_estate
+        from exporters.opengrc import write_opengrc
+        from exporters.probo import write_probo
+
+        lab_sink = dest_in_has_lab_stamp(dest_in)
+        estate = load_pack_estate(dest_out)
+        estate.lab = bool(lab_sink)
+        estate.sample = False if lab_sink else True
+        estate.demo = True
+        estate.client = False
+        estate.posted = False
+        estate.origin = "lab-dest-in" if lab_sink else estate.origin
+        opengrc = write_opengrc(dest_out, estate=estate)
+        probo = write_probo(dest_out, estate=estate)
+        stamp["opengrc"] = opengrc.get("dir")
+        stamp["probo"] = str(probo)
+        stamp["sinks_posted"] = False
     if not ok:
         stamp["reason"] = {
             "ciso_files": ciso_files,

@@ -266,8 +266,10 @@ CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).
 
 ## Other sinks (same intermediate, not a second prove)
 
-After `prove/work/out/ciso-assistant/*.csv` exists, file-only exporters
-read those CSVs. They do not change CISO headers. `posted=false`.
+After `prove/work/out/ciso-assistant/*.csv` exists, `prove_ciso` writes
+file-only OpenGRC CSVs + Probo drafts from that intermediate. `posted=false`.
+No `/api/risks`. LAB dest_in (`--use-existing-in`) stamps **LAB/DEMO**, not
+SAMPLE/DEMO. Re-run:
 
 ```bash
 python3 -m exporters --sink all --out-dir prove/work/out
