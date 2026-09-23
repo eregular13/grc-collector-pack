@@ -852,12 +852,40 @@ def _probo_leavebehind(out: Path) -> dict:
     }
 
 
+def packaged_drop() -> Path:
+    """Offline SAMPLE/DEMO copy under product-lab/drop. Not a LAB dest_in."""
+    return ROOT / "product-lab" / "drop"
+
+
 def leavebehind_sinks(out: Path | None = None) -> dict:
-    """OpenGRC/Probo file-true leave-behind rollup. posted and http stay false."""
+    """OpenGRC/Probo file-true leave-behind rollup. posted and http stay false.
+
+    Prefer OUT_DIR leave-behind. When those files are missing, fall back to
+    packaged product-lab/drop so /api/summary KPIs match /export.zip.
+    """
     dest = out if out is not None else out_dir()
+    og = _opengrc_leavebehind(dest)
+    probo = _probo_leavebehind(dest)
+    drop = packaged_drop()
+    source_og = "out" if og["present"] else ""
+    source_probo = "out" if probo["present"] else ""
+    if not og["present"] and drop.is_dir():
+        packaged_og = _opengrc_leavebehind(drop)
+        if packaged_og["present"]:
+            og = packaged_og
+            source_og = "product-lab/drop"
+    if not probo["present"] and drop.is_dir():
+        packaged_probo = _probo_leavebehind(drop)
+        if packaged_probo["present"]:
+            probo = packaged_probo
+            source_probo = "product-lab/drop"
+    og = dict(og)
+    og["source"] = source_og
+    probo = dict(probo)
+    probo["source"] = source_probo
     return {
-        "opengrc": _opengrc_leavebehind(dest),
-        "probo": _probo_leavebehind(dest),
+        "opengrc": og,
+        "probo": probo,
     }
 
 

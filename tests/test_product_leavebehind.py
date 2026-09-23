@@ -126,8 +126,10 @@ def test_leavebehind_sinks_reads_opengrc_probo_posted_false(
     assert probo["counts"]["addRisk"] == 2
     data = estate()
     assert data["opengrc"]["posted"] is False
+    assert data["opengrc"]["source"] == "out"
     assert data["opengrc"]["counts"]["risks"] == 3
     assert data["probo"]["posted"] is False
+    assert data["probo"]["source"] == "out"
     assert data["probo"]["counts"]["addFinding"] == 5
     assert data["client"] is False
     assert data["safety"]["posts_api_risks"] is False
@@ -138,14 +140,19 @@ def test_leavebehind_missing_files_posted_false_zero_counts(
 ) -> None:
     out = tmp_path / "out"
     _write_summary(out)
+    empty_drop = tmp_path / "no-packaged-drop"
+    empty_drop.mkdir()
     monkeypatch.setenv("OUT_DIR", str(out))
+    monkeypatch.setattr("product.server.packaged_drop", lambda: empty_drop)
     data = estate()
     assert data["opengrc"]["present"] is False
     assert data["opengrc"]["posted"] is False
     assert data["opengrc"]["http"] is False
+    assert data["opengrc"]["source"] == ""
     assert data["opengrc"]["counts"]["risks"] == 0
     assert data["probo"]["present"] is False
     assert data["probo"]["posted"] is False
+    assert data["probo"]["source"] == ""
     assert data["probo"]["organization_id"] is None
     assert data["probo"]["counts"]["addFinding"] == 0
 
@@ -277,6 +284,106 @@ def test_http_export_zip_includes_opengrc_probo(
         assert "opengrc/risks.csv" in names
         assert "import_preview/probo.json" in names
         assert "Do not POST /api/risks" in import_md
+        try:
+            urllib.request.urlopen(base + "/api/risks", timeout=5)
+            raise AssertionError("GET /api/risks should be forbidden")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 403
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_leavebehind_sinks_falls_back_to_product_lab_drop_when_out_lacks_sinks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """KPIs match packaged zip when OUT_DIR has no OpenGRC/Probo leave-behind."""
+    out = tmp_path / "empty-out"
+    out.mkdir()
+    (out / "summary.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("OUT_DIR", str(out))
+    drop = ROOT / "product-lab" / "drop"
+    og_manifest = json.loads(
+        (drop / "opengrc" / "MANIFEST.json").read_text(encoding="utf-8")
+    )
+    probo_payload = json.loads(
+        (drop / "import_preview" / "probo.json").read_text(encoding="utf-8")
+    )
+    sinks = leavebehind_sinks(out)
+    og = sinks["opengrc"]
+    assert og["present"] is True
+    assert og["posted"] is False
+    assert og["http"] is False
+    assert og["client"] is False
+    assert og["sample"] is True
+    assert og["lab"] is False
+    assert og["source"] == "product-lab/drop"
+    assert og["counts"]["risks"] == og_manifest["counts"]["risks"]
+    assert og["counts"]["assets"] == og_manifest["counts"]["assets"]
+    assert og["counts"]["implementations"] == og_manifest["counts"]["implementations"]
+    probo = sinks["probo"]
+    assert probo["present"] is True
+    assert probo["posted"] is False
+    assert probo["http"] is False
+    assert probo["client"] is False
+    assert probo["sample"] is True
+    assert probo["lab"] is False
+    assert probo["source"] == "product-lab/drop"
+    assert probo["organization_id"] is None
+    assert probo["counts"]["addFinding"] == probo_payload["counts"]["addFinding"]
+    data = estate()
+    assert data["opengrc"]["source"] == "product-lab/drop"
+    assert data["opengrc"]["counts"]["risks"] == og["counts"]["risks"]
+    assert data["probo"]["counts"]["addFinding"] == probo["counts"]["addFinding"]
+    assert data["opengrc"]["posted"] is False
+    assert data["probo"]["posted"] is False
+    assert data["client"] is False
+    assert data["safety"]["posts_api_risks"] is False
+
+
+def test_http_summary_falls_back_to_product_lab_drop_when_out_lacks_sinks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "empty-out"
+    _write_summary(out)
+    monkeypatch.setenv("OUT_DIR", str(out))
+    drop = ROOT / "product-lab" / "drop"
+    og_manifest = json.loads(
+        (drop / "opengrc" / "MANIFEST.json").read_text(encoding="utf-8")
+    )
+    probo_payload = json.loads(
+        (drop / "import_preview" / "probo.json").read_text(encoding="utf-8")
+    )
+    httpd = make_server("127.0.0.1", 0)
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://{host}:{port}"
+        with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
+            summary = json.loads(res.read().decode("utf-8"))
+            assert res.status == 200
+        assert summary["client"] is False
+        assert summary["opengrc"]["present"] is True
+        assert summary["opengrc"]["posted"] is False
+        assert summary["opengrc"]["http"] is False
+        assert summary["opengrc"]["sample"] is True
+        assert summary["opengrc"]["lab"] is False
+        assert summary["opengrc"]["source"] == "product-lab/drop"
+        assert summary["opengrc"]["counts"]["risks"] == og_manifest["counts"]["risks"]
+        assert summary["opengrc"]["counts"]["assets"] == og_manifest["counts"]["assets"]
+        assert (
+            summary["opengrc"]["counts"]["implementations"]
+            == og_manifest["counts"]["implementations"]
+        )
+        assert summary["probo"]["present"] is True
+        assert summary["probo"]["posted"] is False
+        assert summary["probo"]["source"] == "product-lab/drop"
+        assert (
+            summary["probo"]["counts"]["addFinding"]
+            == probo_payload["counts"]["addFinding"]
+        )
+        assert summary["safety"]["posts_api_risks"] is False
         try:
             urllib.request.urlopen(base + "/api/risks", timeout=5)
             raise AssertionError("GET /api/risks should be forbidden")
