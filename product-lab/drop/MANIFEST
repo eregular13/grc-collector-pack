@@ -1,22 +1,29 @@
-# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M
+# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M + OpenGRC + Probo
 
-Estate: demo (`in/` empty → fixtures/demo). Not a client.
+Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.
 Copied from out/ after host lab 2026-09-04T14:51:44Z (this Linux VM).
+OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).
 Pentera finds it; Evergreen maps it.
 Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
+OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.
+Probo `import_preview/probo.json` is documentation-only (posted=false). Not live GraphQL.
 POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
 
 | File | Rows | SHA256 |
 |---|---|---|
-| ciso/applied_controls.csv | 77 | `4c0854eb325ebd0052232187f85a01bb5d09c561251130224295d070d4efa7a3` |
-| ciso/assets.csv | 62 | `2b62467ac144305ee0667979f6ac3c63bee1e6b78a1f60a4fe707ce19b86e0c5` |
-| ciso/evidences.csv | 24 | `1a836bd5874eb49965d5a3b74ebe5c2c76a12c2dfa86a59f0e4bea6450a6fc2b` |
-| ciso/findings.csv | 62 | `519ad642bc192e189f282b6820e9d430c73e0aa8152d591cacc8febdb20de804` |
-| ciso/risk_scenarios.csv | 77 | `a2ca81e0d0607708d4860ac3ce889a0e710e15c2c82d793a68f1895a4fa26eb0` |
-| ciso/vulnerabilities.csv | 15 | `7eb09aeb6c3d26c1b6a37404bd747f2600aaf629c1d3c3ed4ba1e274173aeaa2` |
-| poam/poam.csv | 61 | `d01354e60f00afcc25ace665f8c18541ed13049d58dd3b01689cbd12220e5916` |
-| poam/poam.md | draft | `3b2c2e96e358bc4b3ac43eba486b9611f411e3de13640310c0d71d6201294de3` |
+| ciso/applied_controls.csv | 77 | `fcc9a202b1885f608e24af20cc7aad32ccd76e5b30a5a857ba622b8c93733fbf` |
+| ciso/assets.csv | 62 | `11824fe0f26d37f94872234ed7a6117050531c99abf1ac28856e691779491dd2` |
+| ciso/evidences.csv | 24 | `c315cfbfb06627d906c451d3dc33eb8c9f99a37c1cba464e97c3d1f1001fc0c6` |
+| ciso/findings.csv | 62 | `5867f3690dae5950896548b4aec334556421a3c6890b4db15969a84aa39aa045` |
+| ciso/risk_scenarios.csv | 77 | `d9ab3961138a0ba1c4a8ee2e0a037c8cb027f85d7c738d2670af98b7ac285c73` |
+| ciso/vulnerabilities.csv | 15 | `59c17cc09cac39a54f09dac2a9bfceda1f9dd9aa78c107a7b31ba1caea93df73` |
+| poam/poam.csv | 61 | `667cf5e468ca1a3a09630b611a3d0f3f814baca2350feb6f8422a819e754ee1b` |
+| poam/poam.md | draft | `32898e211416fd1b3d57d33e74fc0f14ed9031ca2ae7fd4b3ed151fdc0b2e113` |
+| opengrc/risks.csv | 82 | `ce6770a1bbb9df8f676d5a47590c8b66fa0fb9f8e0c820759660641e77373dd7` |
+| opengrc/assets.csv | 62 | `0814b67f88210a94ed82d7a92ebbdd6442048efb9ebb2c01e1d2e7b2acffc9c5` |
+| opengrc/implementations.csv | 77 | `a88d78c37404d6436bb826f085ae1cda2578fa52394c3f2c8193b1039a2198b9` |
+| import_preview/probo.json | 77 | `6922680fb5cfbcddff8c7227cd8e83bdb98e1a4385c10f5a1e4ced20ab2b09bb` |
 
-riskready/risks_proposed.json: 57 rows, SHA256 `b11d8be0d7ae1ede5e7e46cb307e52f09bf7557801364e47cb3604bf9f71fd86`
+riskready/risks_proposed.json: 57 rows, SHA256 `613123047dd500f5228deed5900f1c886b980364e80336c31d3de6748d523572` (review-only, never POST /api/risks)
 
 POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row.
