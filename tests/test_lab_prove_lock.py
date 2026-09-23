@@ -373,6 +373,11 @@ def test_docs_lab_section_points_desktop_at_use_existing_in() -> None:
     assert "python -m product" in docs
     assert "OUT_DIR=" in docs
     assert "fixtures/lab-drop-out" in docs
+    assert "lab_drop" in docs
+    assert "set OUT_DIR" in docs
+    assert "scan-to-console" in docs
+    assert "no DEMO reseed" in docs
+    assert "console pointed at that" in docs.lower() or "console twin" in docs.lower()
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "lab-drop-to-sor:" not in makefile
     readme_head = "".join((ROOT / "README.md").read_text(encoding="utf-8").splitlines()[:12])

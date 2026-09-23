@@ -130,7 +130,25 @@ python3 scripts/prove_ciso.py --work DIR --use-existing-in
 # alias: --no-seed
 # MCP conductor (pack dropbox.mcp_stub): tools/call lab_drop
 #   arguments.work = DIR  (or arguments.dest_in = DIR/in)
+# Console twin of that out/ (no DEMO reseed):
+#   OUT_DIR=DIR/out python -m product
+#   Windows: set OUT_DIR=DIR\out
+#            python -m product
 ```
+
+Twins (same LAB dest_in rails; no DEMO reseed):
+
+| Path | Command |
+|---|---|
+| MCP `lab_drop` | `tools/call lab_drop` `arguments.work=DIR` |
+| Operator `lab_drop_to_sor` | `./scripts/lab_drop_to_sor.sh --work DIR` / `.\scripts\lab_drop_to_sor.ps1` |
+| Console | `OUT_DIR=DIR/out python -m product` (Windows `set OUT_DIR=DIR\out` / `python -m product`) |
+
+MCP `lab_drop` ≡ `lab_drop_to_sor` ≡ console pointed at that `out/`
+(no DEMO reseed). DESKTOP one-shot scan→SoR→console
+(`scan-to-console.ps1`) is the same SoR rails after pack_drop lands in
+`DIR/in`. Bind `127.0.0.1`. Never POSTs `/api/risks`. Does not invent
+`client=true`.
 
 `--use-existing-in` does **not** rmtree/reseed `DIR/in`. `DIR/in` must
 already hold pack_drop (compose lab or operator copy). Empty `DIR/in`

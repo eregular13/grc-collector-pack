@@ -780,6 +780,8 @@ def test_keep_status_empty_in_is_zero_of_four(tmp_path: Path, monkeypatch: pytes
     assert "farm_drop_cli_twin" in iface
     assert "lab_drop_cli_twin" in iface
     assert "`lab_drop`" in iface
+    assert "console_cli_twin" in iface
+    assert "python -m product" in iface
     assert "isolate_work" in iface
     assert "`keep_status` then `keep_ciso`" in iface
     assert "denser" not in iface.lower()
@@ -1100,6 +1102,10 @@ def test_keep_status_and_keep_ciso_advertise_both_operator_twins(
     iface = (ROOT / "dropbox" / "operator_mcp_interface.md").read_text(encoding="utf-8")
     assert "cli_twin" in iface and "farm_drop_cli_twin" in iface
     assert "lab_drop_cli_twin" in iface
+    assert "console_cli_twin" in iface
+    assert "console_hint" in iface
+    assert "python -m product" in iface
+    assert "OUT_DIR=" in iface
     assert "./scripts/sample_to_sor.sh" in iface
     assert "./scripts/farm_drop_to_sor.sh" in iface
     assert "make farm-drop-to-sor" in iface

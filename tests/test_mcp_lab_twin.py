@@ -14,6 +14,8 @@ import pytest
 
 from dropbox.mcp_stub import (
     OPERATOR_TOOLS,
+    console_cli_twin,
+    console_hint,
     dispatch,
     handle_jsonrpc,
     keep_tool_fail_text,
@@ -66,6 +68,9 @@ def test_tools_list_advertises_lab_drop_honestly() -> None:
     assert "LAB" in desc and "SAMPLE" in desc
     assert "reseed" in desc.lower()
     assert "paying_day FAIL" in desc
+    assert "python -m product" in desc
+    assert "OUT_DIR" in desc
+    assert "console_cli_twin" in desc or "console_hint" in desc
     props = entries["lab_drop"]["inputSchema"]["properties"]
     assert props["work"]["type"] == "string"
     assert "populated" in props["work"]["description"]
@@ -79,6 +84,25 @@ def test_tools_list_advertises_lab_drop_honestly() -> None:
     assert "LAB_SHAPE_FAIL" in iface
     assert "--use-existing-in" in iface
     assert "LAB≠SAMPLE" in iface or "LAB≠SAMPLE≠client" in iface
+    assert "console_cli_twin" in iface
+    assert "console_hint" in iface
+    assert "OUT_DIR=" in iface
+    assert "python -m product" in iface
+    assert "set OUT_DIR" in iface
+    assert "PROVE_WORK_ROOT" in iface
+    assert "127.0.0.1" in iface
+    assert "/api/risks" in iface
+    assert "scan-to-console" in iface
+    assert "lab_drop_to_sor" in iface
+    prove = (ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8")
+    assert "lab_drop" in prove
+    assert "lab_drop_to_sor" in prove
+    assert "OUT_DIR=" in prove
+    assert "python -m product" in prove
+    assert "set OUT_DIR" in prove
+    assert "scan-to-console" in prove
+    assert "no DEMO reseed" in prove
+    assert "PROVE_WORK_ROOT" in prove
 
 
 def test_keep_status_and_keep_ciso_advertise_lab_drop_twin(
@@ -149,6 +173,38 @@ def test_lab_drop_uses_existing_in_and_returns_paths(tmp_path: Path) -> None:
     assert "LAB≠client" in data["banners"]
     assert data["cli_twin"]["command"] == "./scripts/lab_drop_to_sor.sh"
     assert data["cli_twin"]["make"] == ""
+    out_dir = (work / "out").resolve()
+    assert data["out"] == str(out_dir)
+    twin = data["console_cli_twin"]
+    assert twin["name"] == "product_console"
+    assert twin["kind"] == "loopback_console"
+    assert twin["out_dir"] == str(out_dir)
+    assert twin["command"] == f"OUT_DIR={out_dir} python -m product"
+    assert twin["posix"] == twin["command"]
+    assert twin["windows"] == f"set OUT_DIR={out_dir} && python -m product"
+    assert "python -m product" in twin["posix"]
+    assert "OUT_DIR" in twin["posix"]
+    assert "set OUT_DIR" in twin["windows"]
+    assert "python -m product" in twin["windows"]
+    assert twin["bind"] == "127.0.0.1"
+    assert twin["http"] is False
+    assert twin["posted"] is False
+    assert twin["client"] is False
+    assert twin["lab"] is True
+    assert twin["sample"] is False
+    assert twin["paying_day"] == "FAIL"
+    assert "127.0.0.1" in twin["note"]
+    assert "/api/risks" in twin["note"]
+    assert "LAB≠SAMPLE" in twin["note"] or "LAB≠SAMPLE≠client" in twin["note"]
+    assert "PROVE_WORK_ROOT" in twin["note"]
+    hint = data["console_hint"]
+    assert "OUT_DIR" in hint
+    assert "python -m product" in hint
+    assert str(out_dir) in hint
+    assert "set OUT_DIR" in hint
+    assert "127.0.0.1" in hint
+    assert "/api/risks" in hint
+    assert "LAB≠SAMPLE" in hint or "LAB≠SAMPLE≠client" in hint
     assert Path(data["ciso_dir"]).is_dir()
     assert data["ciso_files"]
     assert all(p.endswith(".csv") and "ciso-assistant" in p for p in data["ciso_files"])
@@ -276,3 +332,27 @@ def test_lab_drop_cli_twin_helper() -> None:
     assert "use-existing-in" in twin["note"]
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "lab-drop-to-sor:" not in makefile
+
+
+def test_console_cli_twin_helper(tmp_path: Path) -> None:
+    work = tmp_path / "lab-work"
+    work.mkdir()
+    twin = console_cli_twin(work)
+    out_dir = (work / "out").resolve()
+    assert twin["out_dir"] == str(out_dir)
+    assert twin["command"] == f"OUT_DIR={out_dir} python -m product"
+    assert "python -m product" in twin["posix"]
+    assert "OUT_DIR" in twin["posix"]
+    assert "set OUT_DIR" in twin["windows"]
+    assert "python -m product" in twin["windows"]
+    assert twin["client"] is False
+    assert twin["http"] is False
+    assert twin["posted"] is False
+    assert twin["bind"] == "127.0.0.1"
+    hint = console_hint(work)
+    assert str(out_dir) in hint
+    assert "python -m product" in hint
+    assert "OUT_DIR" in hint
+    assert "set OUT_DIR" in hint
+    assert "127.0.0.1" in hint
+    assert "/api/risks" in hint

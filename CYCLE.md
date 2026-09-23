@@ -1,5 +1,19 @@
 # CYCLE log
 
+## cycle 186 — MCP_CONSOLE_TWIN lab_drop ↔ console hint (2026-09-23)
+
+MCP `lab_drop` success JSON advertises `console_cli_twin` /
+`console_hint`: `OUT_DIR=<work>/out python -m product` (Windows
+`set OUT_DIR=...` / `python -m product`). Bind `127.0.0.1`. Never
+POSTs `/api/risks`. `client` stays false. Operator twin remains
+`lab_drop_to_sor` / `--use-existing-in`. Console twin is that prove
+`out/` (Active out/ picker / `PROVE_WORK_ROOT`). Docs:
+`dropbox/operator_mcp_interface.md` + `docs/PROVE_CISO.md` Lab
+section (`lab_drop` ≡ `lab_drop_to_sor` ≡ console pointed at that
+`out/`; DESKTOP scan→SoR→console is the same rails after pack_drop
+lands in `work/in`). No Makefile first-line. Catalog **unchanged**.
+paying_day **FAIL**.
+
 ## cycle 185 — CONSOLE_COVERAGE controls + scenarios + heatmap (2026-09-22)
 
 Brick D: loopback console (`python -m product`, 127.0.0.1 only) adds

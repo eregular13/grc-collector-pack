@@ -1,6 +1,6 @@
-cycle: 185
-phase: DONE
-item: COS48-FARM-DROP-TO-SOR
+cycle: 186
+phase: BUILD
+item: MCP_CONSOLE_TWIN
 critic_score: 8/10
 open_p0:
 open_p1:
