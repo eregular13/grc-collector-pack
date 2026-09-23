@@ -206,6 +206,8 @@ def test_exporter_modules_have_no_sockets_or_risks_post() -> None:
         "keep/export.py",
         "scripts/export_opengrc.py",
         "scripts/preview_probo.py",
+        "scripts/prove_ciso.py",
+        "scripts/refresh_product_lab_drop_sinks.py",
     ):
         text = (ROOT / rel).read_text(encoding="utf-8")
         for token in banned:
@@ -213,3 +215,55 @@ def test_exporter_modules_have_no_sockets_or_risks_post() -> None:
         assert "curl" not in text
         assert 'POST "/api/risks"' not in text
         assert "${API}/risks" not in text
+
+
+def test_lab_ciso_intermediate_writes_opengrc_probo_posted_false(tmp_path: Path) -> None:
+    """LAB dest_in CISO intermediate → OpenGRC CSVs + Probo drafts. posted=false. No /api/risks."""
+    out = _tiny_ciso(tmp_path)
+    estate = load_pack_estate(out)
+    estate.lab = True
+    estate.sample = False
+    estate.demo = True
+    estate.client = False
+    estate.origin = "lab-dest-in"
+    stamp = write_opengrc(out, estate=estate)
+    assert stamp["posted"] is False
+    assert stamp["http"] is False
+    assert stamp["client"] is False
+    assert stamp["sample"] is False
+    assert stamp.get("lab") is True
+    assert stamp["paying_day"] == "FAIL"
+    dest = Path(stamp["dir"])
+    readme = (dest / "README.md").read_text(encoding="utf-8")
+    assert "LAB/DEMO" in readme
+    assert "SAMPLE/DEMO" not in readme
+    assert "/api/risks" not in readme
+    with (dest / "risks.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert list(rows[0].keys()) == RISKS_HEADER
+    assert rows[0]["status"] == "Not Assessed"
+    assert "LAB/DEMO" in rows[0]["description"]
+    assert "SAMPLE/DEMO" not in rows[0]["description"]
+    manifest = json.loads((dest / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["posted"] is False
+    assert manifest["http"] is False
+    assert manifest["sample"] is False
+    assert manifest.get("lab") is True
+    preview = build_probo_preview(out, estate=estate)
+    assert preview["posted"] is False
+    assert preview["http"] is False
+    assert preview["sample"] is False
+    assert preview.get("lab") is True
+    assert preview["organization_id"] is None
+    assert all(row["posted"] is False for row in preview["addFinding"])
+    assert all(row.get("organization_id") is None for row in preview["addFinding"])
+    path = write_probo(out, estate=estate)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["posted"] is False
+    assert payload["http"] is False
+    assert payload["sample"] is False
+    assert payload.get("lab") is True
+    probo_readme = (out / "probo" / "README.md").read_text(encoding="utf-8")
+    assert "LAB/DEMO" in probo_readme
+    assert "SAMPLE/DEMO" not in probo_readme
+    assert "posted=false" in probo_readme.lower() or "posted=false" in probo_readme

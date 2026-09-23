@@ -49,7 +49,77 @@ MAX_RUNS = 24
 
 def out_dir() -> Path:
     raw = os.environ.get("OUT_DIR")
-    return Path(raw) if raw else ROOT / "out"
+    if raw:
+        return Path(raw)
+    hinted = last_lab_prove_out()
+    if hinted:
+        return hinted
+    return ROOT / "out"
+
+
+def _read_last_lab_prove_marker(marker: Path) -> Path | None:
+    if not marker.is_file():
+        return None
+    raw = marker.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    text = raw.decode("utf-8", errors="replace").strip()
+    if not text:
+        return None
+    cand = Path(text)
+    if is_prove_out(cand):
+        return cand
+    return None
+
+
+def last_lab_prove_out() -> Path | None:
+    """LAST_LAB_PROVE / LAB_ESTATE_OUT / PROVE_WORK_ROOT stamp. Env only.
+
+    Used when OUT_DIR is unset so python -m product can open a lab-prove
+    stamp without a hand-typed OUT_DIR. Never invents client=true.
+    """
+    ordered: list[Path] = []
+    for key in ("LAST_LAB_PROVE", "LAB_ESTATE_OUT", "PROVE_WORK_ROOT"):
+        raw = (os.environ.get(key) or "").strip()
+        if raw:
+            ordered.append(Path(raw))
+    seen: set[Path] = set()
+    for cand in ordered:
+        try:
+            key = cand.resolve()
+        except OSError:
+            key = cand
+        if key in seen:
+            continue
+        seen.add(key)
+        if cand.is_file():
+            marked = _read_last_lab_prove_marker(cand)
+            if marked:
+                return marked
+            continue
+        if not cand.is_dir():
+            continue
+        if is_prove_out(cand):
+            return cand
+        marked = _read_last_lab_prove_marker(cand / "LAST_LAB_PROVE.txt")
+        if marked:
+            return marked
+        children: list[Path] = []
+        try:
+            for child in cand.iterdir():
+                if not child.is_dir() or not child.name.startswith("lab-prove-"):
+                    continue
+                if is_prove_out(child):
+                    children.append(child)
+                nested = child / "out"
+                if is_prove_out(nested):
+                    children.append(nested)
+        except OSError:
+            continue
+        if children:
+            children.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            return children[0]
+    return None
 
 
 def is_prove_out(path: Path) -> bool:
@@ -766,6 +836,129 @@ def switch_active_out(*, stamp: str | None = None, out_raw: str | None = None) -
     }
 
 
+def _count_or_zero(value) -> int:
+    if isinstance(value, bool) or value is None:
+        return 0
+    if isinstance(value, int):
+        return value if value >= 0 else 0
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return 0
+
+
+def _opengrc_leavebehind(out: Path) -> dict:
+    """File-true OpenGRC Data Manager CSVs. Never a live POST /api/risks."""
+    dest = out / "opengrc"
+    manifest_path = dest / "MANIFEST.json"
+    present = manifest_path.is_file() or (dest / "risks.csv").is_file()
+    manifest = _read_json(manifest_path) if manifest_path.is_file() else {}
+    if not isinstance(manifest, dict):
+        manifest = {}
+    counts = manifest.get("counts") if isinstance(manifest.get("counts"), dict) else {}
+    risks = _count_or_zero(counts.get("risks"))
+    assets = _count_or_zero(counts.get("assets"))
+    impls = _count_or_zero(counts.get("implementations"))
+    if present and risks == 0 and (dest / "risks.csv").is_file():
+        risks = len(_read_csv(dest / "risks.csv"))
+    if present and assets == 0 and (dest / "assets.csv").is_file():
+        assets = len(_read_csv(dest / "assets.csv"))
+    if present and impls == 0 and (dest / "implementations.csv").is_file():
+        impls = len(_read_csv(dest / "implementations.csv"))
+    return {
+        "sink": "opengrc",
+        "present": present,
+        "posted": False,
+        "http": False,
+        "client": False,
+        "lab": bool(manifest.get("lab")) if present else False,
+        "sample": bool(manifest.get("sample")) if present else False,
+        "paying_day": str(manifest.get("paying_day") or "FAIL") if present else "FAIL",
+        "counts": {
+            "risks": risks,
+            "assets": assets,
+            "implementations": impls,
+        },
+        "dir": str(dest) if present else "",
+    }
+
+
+def _probo_leavebehind(out: Path) -> dict:
+    """File-true Probo drafts. Not a live GraphQL createFinding."""
+    path = out / "import_preview" / "probo.json"
+    present = path.is_file()
+    payload = _read_json(path) if present else {}
+    if not isinstance(payload, dict):
+        payload = {}
+    counts = payload.get("counts") if isinstance(payload.get("counts"), dict) else {}
+    add_finding = _count_or_zero(counts.get("addFinding"))
+    add_risk = _count_or_zero(counts.get("addRisk"))
+    create_risk = _count_or_zero(counts.get("createRisk"))
+    if present and add_finding == 0 and isinstance(payload.get("addFinding"), list):
+        add_finding = len(payload["addFinding"])
+    if present and add_risk == 0 and isinstance(payload.get("addRisk"), list):
+        add_risk = len(payload["addRisk"])
+    if present and create_risk == 0 and isinstance(payload.get("createRisk"), list):
+        create_risk = len(payload["createRisk"])
+    org = payload.get("organization_id") if present else None
+    if org == "":
+        org = None
+    return {
+        "sink": "probo",
+        "present": present,
+        "posted": False,
+        "http": False,
+        "client": False,
+        "lab": bool(payload.get("lab")) if present else False,
+        "sample": bool(payload.get("sample")) if present else False,
+        "paying_day": str(payload.get("paying_day") or "FAIL") if present else "FAIL",
+        "organization_id": org if isinstance(org, str) else None,
+        "documentation_only": True,
+        "counts": {
+            "addFinding": add_finding,
+            "addRisk": add_risk,
+            "createRisk": create_risk,
+        },
+        "path": str(path) if present else "",
+    }
+
+
+def packaged_drop() -> Path:
+    """Offline SAMPLE/DEMO copy under product-lab/drop. Not a LAB dest_in."""
+    return ROOT / "product-lab" / "drop"
+
+
+def leavebehind_sinks(out: Path | None = None) -> dict:
+    """OpenGRC/Probo file-true leave-behind rollup. posted and http stay false.
+
+    Prefer OUT_DIR leave-behind. When those files are missing, fall back to
+    packaged product-lab/drop so /api/summary KPIs match /export.zip.
+    """
+    dest = out if out is not None else out_dir()
+    og = _opengrc_leavebehind(dest)
+    probo = _probo_leavebehind(dest)
+    drop = packaged_drop()
+    source_og = "out" if og["present"] else ""
+    source_probo = "out" if probo["present"] else ""
+    if not og["present"] and drop.is_dir():
+        packaged_og = _opengrc_leavebehind(drop)
+        if packaged_og["present"]:
+            og = packaged_og
+            source_og = "product-lab/drop"
+    if not probo["present"] and drop.is_dir():
+        packaged_probo = _probo_leavebehind(drop)
+        if packaged_probo["present"]:
+            probo = packaged_probo
+            source_probo = "product-lab/drop"
+    og = dict(og)
+    og["source"] = source_og
+    probo = dict(probo)
+    probo["source"] = source_probo
+    return {
+        "opengrc": og,
+        "probo": probo,
+    }
+
+
 def estate() -> dict:
     out = out_dir()
     summary = _read_json(out / "summary.json") or {}
@@ -782,6 +975,7 @@ def estate() -> dict:
     mode = refresh_mode_for(honesty, ready)
     poam = poam_rows(out)
     coverage = framework_coverage(out)
+    sinks = leavebehind_sinks(out)
     return {
         "product": "GRC Collector Pack",
         "version": "0.3.0",
@@ -802,6 +996,8 @@ def estate() -> dict:
         "severity": sev,
         "poam": poam_summary(out, poam),
         "coverage": coverage,
+        "opengrc": sinks["opengrc"],
+        "probo": sinks["probo"],
         "safety": {
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),
@@ -855,15 +1051,23 @@ def build_drop_zip() -> bytes:
     files.extend(sorted((out / "ciso-assistant").glob("*.csv")))
     files.extend(sorted((out / "poam").glob("*")))
     files.extend(sorted((out / "riskready").glob("*.json")))
+    files.extend(sorted((out / "opengrc").glob("*")))
+    files.append(out / "import_preview" / "probo.json")
+    files.extend(sorted((out / "probo").glob("*")))
     drop = ROOT / "product-lab" / "drop"
     if drop.is_dir():
         files.extend(sorted((drop / "ciso").glob("*.csv")))
         files.extend(sorted((drop / "riskready").glob("*.json")))
+        files.extend(sorted((drop / "opengrc").glob("*")))
+        files.append(drop / "import_preview" / "probo.json")
+        files.extend(sorted((drop / "probo").glob("*")))
     readme = (
         "GRC Collector Pack drop\n"
         "Pentera finds it; Evergreen maps it.\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
         "POA&M: poam/poam.csv — owner and due are blank for a human.\n"
+        "OpenGRC Data Manager CSVs: opengrc/*.csv — file-true leave-behind, posted=false, not live import.\n"
+        "Probo drafts: import_preview/probo.json — file-true, posted=false, not live GraphQL.\n"
         "RiskReady JSON is review-only (LICENSE-LOCK stay-out). Do not wrap or POST.\n"
         "risks_proposed.json is for a human. Do not POST /api/risks.\n"
     )
@@ -1115,7 +1319,9 @@ def main() -> None:
     os.environ.setdefault("RISKREADY_PUSH", "0")
     os.environ.setdefault("GRC_LIVE_SCAN", "0")
     os.environ.setdefault("PYTHONPATH", str(ROOT))
-    os.environ.setdefault("OUT_DIR", str(ROOT / "out"))
+    if not (os.environ.get("OUT_DIR") or "").strip():
+        hinted = last_lab_prove_out()
+        os.environ["OUT_DIR"] = str(hinted if hinted else ROOT / "out")
     host, port = assert_loopback_host(bind_host()), bind_port()
     httpd = make_server(host, port)
     print(f"GRC Collector Pack  http://{host}:{port}/", flush=True)

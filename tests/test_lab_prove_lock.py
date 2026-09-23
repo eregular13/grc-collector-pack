@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from collectors import inventory_nmap
 from scripts.prove_ciso import (
     ExistingInError,
     dest_in_is_populated,
@@ -191,6 +192,56 @@ def test_lab_drop_fixture_is_scan_shaped() -> None:
         assert str(extra.get("ip") or "").startswith(LAB_NET)
 
 
+def test_lab_drop_inventory_nmap_meta_evidence_stamps_lab_demo() -> None:
+    recs = inventory_nmap.parse_file(LAB_PACK / "meta.json")
+    evid = [r for r in recs if r.get("kind") == "evidence"]
+    assert evid
+    blob = " ".join(str(r.get("description") or "") for r in evid)
+    assert "LAB/DEMO" in blob
+    assert "SAMPLE/DEMO" not in blob
+    assert "not a client" in blob.lower()
+
+
+def test_sample_pack_drop_meta_evidence_still_sample_demo() -> None:
+    sample_meta = ROOT / "fixtures" / "pack_drop" / "nmap" / "meta.json"
+    recs = inventory_nmap.parse_file(sample_meta)
+    evid = [r for r in recs if r.get("kind") == "evidence"]
+    assert evid
+    blob = " ".join(str(r.get("description") or "") for r in evid)
+    assert "SAMPLE/DEMO" in blob
+    assert "LAB/DEMO" not in blob
+    assert "client" in blob.lower()
+
+
+def test_lab_dest_in_lab_txt_stamps_lab_demo_without_meta_lab(tmp_path: Path) -> None:
+    dest_in = tmp_path / "in"
+    drop = dest_in / "nmap" / "pack_drop"
+    drop.mkdir(parents=True)
+    (dest_in / "LAB.txt").write_text(
+        "LAB/DEMO -- not a client estate.\n", encoding="utf-8"
+    )
+    (drop / "meta.json").write_text(
+        json.dumps(
+            {
+                "schema": "covey.pack_drop.v1",
+                "source": "evergreen-covey",
+                "adapter": "nmap",
+                "lane": "nmap",
+                "generated_at": "2026-09-23T00:00:00Z",
+                "demo": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    recs = inventory_nmap.parse_file(drop / "meta.json")
+    evid = [r for r in recs if r.get("kind") == "evidence"]
+    assert evid
+    blob = " ".join(str(r.get("description") or "") for r in evid)
+    assert "LAB/DEMO" in blob
+    assert "SAMPLE/DEMO" not in blob
+    assert "not a client" in blob.lower()
+
+
 def test_prove_use_existing_in_on_lab_drop_fixture(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -240,6 +291,59 @@ def test_prove_use_existing_in_on_lab_drop_fixture(
     assert seed.get("lab") is True
     assert seed.get("sample") is False
     assert seed.get("client") is False
+    evid_csv = (Path(stamp["out_dir"]) / "ciso-assistant" / "evidences.csv").read_text(
+        encoding="utf-8"
+    )
+    assert "LAB/DEMO" in evid_csv
+    assert "SAMPLE/DEMO" not in evid_csv
+    canonical = (Path(stamp["out_dir"]) / "canonical" / "inventory-nmap.jsonl").read_text(
+        encoding="utf-8"
+    )
+    assert "LAB/DEMO" in canonical
+    assert "SAMPLE/DEMO" not in canonical
+
+
+def test_lab_dest_in_prove_writes_opengrc_probo_file_true(tmp_path: Path) -> None:
+    """LAB dest_in prove writes posted=false OpenGRC CSVs + Probo drafts from CISO."""
+    dest = tmp_path / "prove"
+    stage_lab_drop_dest_in(dest / "in")
+    stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
+    _honesty_stamps(stamp)
+    out = Path(stamp["out_dir"])
+    og = out / "opengrc"
+    assert (og / "risks.csv").is_file()
+    assert (og / "assets.csv").is_file()
+    assert (og / "implementations.csv").is_file()
+    assert (og / "MANIFEST.json").is_file()
+    manifest = json.loads((og / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["posted"] is False
+    assert manifest["http"] is False
+    assert manifest["sample"] is False
+    assert manifest.get("lab") is True
+    assert manifest["client"] is False
+    assert manifest["paying_day"] == "FAIL"
+    readme = (og / "README.md").read_text(encoding="utf-8")
+    assert "LAB/DEMO" in readme
+    assert "SAMPLE/DEMO" not in readme
+    assert "/api/risks" not in readme
+    risks = (og / "risks.csv").read_text(encoding="utf-8")
+    assert "LAB/DEMO" in risks
+    assert "SAMPLE/DEMO" not in risks
+    probo_path = out / "import_preview" / "probo.json"
+    assert probo_path.is_file()
+    payload = json.loads(probo_path.read_text(encoding="utf-8"))
+    assert payload["posted"] is False
+    assert payload["http"] is False
+    assert payload["sample"] is False
+    assert payload.get("lab") is True
+    assert payload.get("organization_id") is None
+    assert (out / "probo" / "README.md").is_file()
+    assert stamp.get("posted") is False
+    assert stamp.get("http") is False
+    assert "opengrc" in stamp
+    assert "probo" in stamp
+    assert Path(str(stamp["opengrc"])).is_dir()
+    assert Path(str(stamp["probo"])).is_file()
 
 
 def test_lab_drop_to_sor_on_lab_drop_fixture(tmp_path: Path) -> None:

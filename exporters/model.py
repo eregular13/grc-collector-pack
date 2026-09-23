@@ -24,6 +24,10 @@ HONESTY_BANNER = (
     "SAMPLE/DEMO — not a client estate. File-drop parse only. "
     "posted=false. Not a paying-day stamp."
 )
+LAB_HONESTY_BANNER = (
+    "LAB/DEMO — not a client estate. File-drop parse only. "
+    "posted=false. Not a paying-day stamp."
+)
 
 # OpenGRC 1–5 likelihood/impact. Residual is one step down (never invented 0).
 _SEV_SCORE = {
@@ -177,6 +181,7 @@ class PackEstate:
     demo: bool = True
     client: bool = False
     posted: bool = False
+    lab: bool = False
     source: str = "ciso-assistant"
     origin: str = "ciso-assistant"
 
@@ -184,16 +189,24 @@ class PackEstate:
     def all_findings(self) -> list[PackFinding]:
         return list(self.findings) + list(self.vulnerabilities)
 
+    @property
+    def banner(self) -> str:
+        if self.lab and not self.sample:
+            return LAB_HONESTY_BANNER
+        return HONESTY_BANNER
+
     def honesty(self) -> dict[str, Any]:
+        lab = bool(self.lab) and not bool(self.sample)
         return {
-            "sample": True if self.sample else False,
-            "demo": True if self.demo or self.sample else False,
+            "sample": False if lab else True if self.sample else False,
+            "lab": lab,
+            "demo": True if self.demo or self.sample or lab else False,
             "client": False,
             "client_keep": False,
             "posted": False,
             "http": False,
             "paying_day": "FAIL",
-            "estate": HONESTY_BANNER,
+            "estate": self.banner,
             "riskready": "stay-out — review-only; never a build target here",
             "source": self.source,
             "origin": self.origin,

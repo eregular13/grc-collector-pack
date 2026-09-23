@@ -231,7 +231,36 @@ def _lift_record(
     )
 
 
-def _meta_evidence(row: dict[str, Any], now: str, *, source: str, labels: list[str]) -> dict[str, Any]:
+def _dest_in_is_lab(path: Path | None, row: dict[str, Any]) -> bool:
+    """True when the pack_drop row or a dest_in ancestor is LAB (not SAMPLE)."""
+    if row.get("lab") is True:
+        return True
+    cur = None
+    if path is not None:
+        cur = path.parent if path.is_file() else path
+    hops = 0
+    while cur is not None and hops < 6:
+        if (cur / "LAB.txt").is_file():
+            return True
+        at_dest_in = cur.name == "in"
+        parent = cur.parent
+        if parent == cur:
+            break
+        cur = parent
+        hops += 1
+        if at_dest_in:
+            break
+    return False
+
+
+def _meta_evidence(
+    row: dict[str, Any],
+    now: str,
+    *,
+    source: str,
+    labels: list[str],
+    path: Path | None = None,
+) -> dict[str, Any]:
     adapter = str(row.get("adapter") or row.get("tool") or "nmap")
     generated = str(row.get("generated_at") or row.get("created_at") or row.get("ts") or now)
     schema = str(row.get("schema") or "covey.pack_drop.v1")
@@ -239,6 +268,11 @@ def _meta_evidence(row: dict[str, Any], now: str, *, source: str, labels: list[s
     extra_labels = list(labels) + ["covey", "pack_drop"]
     if adapter and adapter not in extra_labels:
         extra_labels.append(adapter)
+    lab = _dest_in_is_lab(path, row)
+    if lab:
+        estate = "LAB/DEMO -- not a client estate. LAB != SAMPLE != client."
+    else:
+        estate = "SAMPLE/DEMO ≠ client."
     return make_record(
         kind="evidence",
         source=source,
@@ -247,7 +281,7 @@ def _meta_evidence(row: dict[str, Any], now: str, *, source: str, labels: list[s
         description=(
             f"Accepted evergreen-covey pack_drop {schema} ({adapter}) via in/nmap/ at {generated}. "
             "Parse-only file_drop into the existing inventory-nmap → CISO Assistant path. "
-            "Not a live scan. SAMPLE/DEMO ≠ client."
+            f"Not a live scan. {estate}"
         ),
         severity="info",
         category="pack_drop",
@@ -322,7 +356,7 @@ def parse_pack_drop(
                 for k in ("schema", "adapter", "source", "generated_at", "created_at", "lane")
             ):
                 continue
-            recs.append(_meta_evidence(row, now, source=source, labels=labels))
+            recs.append(_meta_evidence(row, now, source=source, labels=labels, path=path))
         return recs
 
     records: list[dict[str, Any]] = []
@@ -332,7 +366,7 @@ def parse_pack_drop(
             continue
         schema = str(row.get("schema") or "").lower()
         if schema in PACK_DROP_SCHEMAS and not row.get("kind") and not row.get("ip"):
-            records.append(_meta_evidence(row, now, source=source, labels=labels))
+            records.append(_meta_evidence(row, now, source=source, labels=labels, path=path))
             continue
         kind = str(row.get("kind") or "").lower()
         ports = _ports(row)

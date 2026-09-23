@@ -1,9 +1,12 @@
-# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M
+# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M + OpenGRC + Probo
 
-Estate: demo (`in/` empty → fixtures/demo). Not a client.
+Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.
 Copied from out/ after host lab 2026-09-04T14:51:44Z (this Linux VM).
+OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).
 Pentera finds it; Evergreen maps it.
 Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
+OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.
+Probo `import_preview/probo.json` is documentation-only (posted=false). Not live GraphQL.
 POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
 
 | File | Rows | SHA256 |
@@ -16,7 +19,11 @@ POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out �
 | ciso/vulnerabilities.csv | 15 | `7eb09aeb6c3d26c1b6a37404bd747f2600aaf629c1d3c3ed4ba1e274173aeaa2` |
 | poam/poam.csv | 61 | `d01354e60f00afcc25ace665f8c18541ed13049d58dd3b01689cbd12220e5916` |
 | poam/poam.md | draft | `3b2c2e96e358bc4b3ac43eba486b9611f411e3de13640310c0d71d6201294de3` |
+| opengrc/risks.csv | 82 | `aac35656785e2fc3f6df07cb0a1216aa09a5c02126e7e80cef946febf64c6971` |
+| opengrc/assets.csv | 62 | `c3e91094a28409c04328b07f7de8e4ecf3cd55e0376db01957cf0d8ba3ece5c5` |
+| opengrc/implementations.csv | 77 | `f4a9579420c58d6b49b41d8677b6748c730ebba69b88a94bed069e27b03da06d` |
+| import_preview/probo.json | 77 | `864caa652d7a6a3078184066bed40255628050f84099e56913b0ff8055e132b5` |
 
-riskready/risks_proposed.json: 57 rows, SHA256 `b11d8be0d7ae1ede5e7e46cb307e52f09bf7557801364e47cb3604bf9f71fd86`
+riskready/risks_proposed.json: 57 rows, SHA256 `b11d8be0d7ae1ede5e7e46cb307e52f09bf7557801364e47cb3604bf9f71fd86` (review-only, never POST /api/risks)
 
 POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row.

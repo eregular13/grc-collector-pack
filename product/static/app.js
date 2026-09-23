@@ -152,6 +152,7 @@ function renderKpis(estate) {
     .join("");
     renderPoamKpis(estate.poam || {});
     renderCoverageKpis(estate.coverage || {});
+    renderSinkKpis(estate);
 }
 
 function renderPoamKpis(poam) {
@@ -165,6 +166,28 @@ function renderPoamKpis(poam) {
     [poam.low, "Low", ""],
     [poam.blank_owner, "Blank owner", "blank"],
     [poam.blank_due, "Blank due", "blank"],
+  ];
+  el.innerHTML = items
+    .map(
+      ([n, label, cls]) =>
+        `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
+    )
+    .join("");
+}
+
+function renderSinkKpis(estate) {
+  const el = $("sink-kpis");
+  if (!el) return;
+  const og = estate.opengrc || {};
+  const probo = estate.probo || {};
+  const ogc = og.counts || {};
+  const pc = probo.counts || {};
+  const items = [
+    [ogc.risks, "OpenGRC risks", ""],
+    [ogc.assets, "OpenGRC assets", ""],
+    [ogc.implementations, "OpenGRC impl", ""],
+    [pc.addFinding, "Probo addFinding", ""],
+    [pc.addRisk, "Probo addRisk", ""],
   ];
   el.innerHTML = items
     .map(
@@ -371,7 +394,9 @@ async function boot() {
       const mode = isReload(estate)
         ? "reload from disk only (collectors not run)"
         : "Refresh re-runs DEMO collectors";
-      $("status-bar").textContent = `${label} · ${mode} · ${canonical} canonical · generated ${when}`;
+      const ogc = (estate.opengrc && estate.opengrc.counts) || {};
+      const pbc = (estate.probo && estate.probo.counts) || {};
+      $("status-bar").textContent = `${label} · ${mode} · ${canonical} canonical · OpenGRC risks ${fmt(ogc.risks)} · Probo addFinding ${fmt(pbc.addFinding)} · posted=false · generated ${when}`;
     } else if (estate.lab || estate.use_existing_in) {
       $("status-bar").textContent = `${label} · Reload from disk only — collectors not run.`;
     } else {

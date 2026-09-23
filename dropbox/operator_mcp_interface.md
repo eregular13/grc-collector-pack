@@ -166,6 +166,12 @@ signed self-SCOPE. **SAMPLE≠client. DEMO≠client.** `tools/call` is plan-only
 {"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"lab_drop","arguments":{"work":"/abs/lab-work"}}}
 ```
 
+```json
+{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"lab_drop","arguments":{"lab_out":"/abs/lab-estate/out"}}}
+```
+
+Without `work`/`dest_in`, `lab_drop` auto-hints `LAST_LAB_PROVE.txt` under `lab_out` (or env `LAB_ESTATE_OUT` / `LAST_LAB_PROVE`). It returns `auto_hint=true` `ran=false` plus `console_cli_twin` pointed at that `lab-prove-*` stamp. It does **not** re-run prove and does **not** seed `fixtures/pack_drop`. Call with `arguments.work` to prove. `python -m product` with `OUT_DIR` unset prefers the same `LAST_LAB_PROVE` / `LAB_ESTATE_OUT` stamp.
+
 Optional `arguments.exporters` is accepted and documented only — sinks
 already come from `keep.lab` (`export_keep_sinks`). It does not invent a
 second export path. Same optional flag as `./scripts/sample_to_sor.sh --exporters`.

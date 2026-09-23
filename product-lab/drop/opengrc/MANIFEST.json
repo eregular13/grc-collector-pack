@@ -1,0 +1,28 @@
+{
+  "product": "grc-collector-pack",
+  "sink": "opengrc",
+  "posted": false,
+  "http": false,
+  "sample": true,
+  "client": false,
+  "paying_day": "FAIL",
+  "counts": {
+    "risks": 82,
+    "assets": 62,
+    "implementations": 77
+  },
+  "files": [
+    "risks.csv",
+    "assets.csv",
+    "implementations.csv",
+    "README.md"
+  ],
+  "import": "OpenGRC Data Manager \u2192 Import Data \u2192 select Risks / Assets / Implementations \u2192 map headers (auto-map on field names) \u2192 review. Omit id to create. code / asset_tag upsert if they already exist. No taxonomy FKs invented. SAMPLE/DEMO \u2014 not a client estate. File-drop parse only. posted=false. Not a paying-day stamp.",
+  "lab": false,
+  "demo": true,
+  "client_keep": false,
+  "estate": "SAMPLE/DEMO \u2014 not a client estate. File-drop parse only. posted=false. Not a paying-day stamp.",
+  "riskready": "stay-out \u2014 review-only; never a build target here",
+  "source": "ciso-assistant",
+  "origin": "ciso-assistant"
+}

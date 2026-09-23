@@ -91,8 +91,11 @@ TOOL_DESC = {
     "lab_drop": (
         "LAB dest_in prove twin: python3 scripts/prove_ciso.py --use-existing-in "
         "(same rails as ./scripts/lab_drop_to_sor.sh). Requires populated "
-        "arguments.work/in or arguments.dest_in. Never reseeds fixtures/pack_drop. "
-        "Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL. "
+        "arguments.work/in or arguments.dest_in to prove. Without work/dest_in, "
+        "auto-hints LAST_LAB_PROVE / arguments.lab_out / LAB_ESTATE_OUT "
+        "(console_cli_twin at that stamp; does not re-run prove; does not seed). "
+        "Never reseeds fixtures/pack_drop. Empty in/ is EXISTING_IN_FAIL. "
+        "LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL. "
         "Returns honesty stamps + CISO/POA&M paths plus console_cli_twin / "
         "console_hint (OUT_DIR=<work>/out python -m product; Windows "
         "set OUT_DIR=... / python -m product; bind 127.0.0.1; never POSTs "
@@ -376,6 +379,23 @@ def tools_list_entries() -> list[dict[str, Any]]:
                     "Explicit dest_in (must be work/in). Must already hold "
                     "pack_drop. Empty or banners-only is EXISTING_IN_FAIL. "
                     "LAB.txt + DEMO adapter trees is LAB_SHAPE_FAIL."
+                ),
+            }
+            props["lab_out"] = {
+                "type": "string",
+                "description": (
+                    "Optional. Parent of LAST_LAB_PROVE.txt / lab-prove-* "
+                    "stamps (DESKTOP lab-estate/out). Without work/dest_in, "
+                    "auto-hints console_cli_twin at that stamp. Does not "
+                    "re-run prove. Does not seed fixtures/pack_drop."
+                ),
+            }
+            props["last_lab_prove"] = {
+                "type": "string",
+                "description": (
+                    "Optional. LAST_LAB_PROVE.txt marker or a lab-prove-* "
+                    "out/ directory. Same auto-hint as lab_out / env "
+                    "LAST_LAB_PROVE. Never reseeds."
                 ),
             }
         tools.append(
@@ -852,13 +872,26 @@ def lab_drop_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
     )
 
 
-def console_cli_twin(work: Path | None = None) -> dict[str, Any]:
+def console_cli_twin(
+    work: Path | None = None, *, out: Path | None = None
+) -> dict[str, Any]:
     """Loopback console twin of a lab_drop prove out/. Advertise only.
 
     Same dest_in rails as lab_drop / lab_drop_to_sor. Points python -m product
-    at that work/out. Never invents client=true. Never POSTs /api/risks.
+    at that work/out, or at an explicit lab-prove stamp (out=) that is itself
+    the console out/. Never invents client=true. Never POSTs /api/risks.
     """
-    if work:
+    if out:
+        out_dir = Path(out).resolve()
+        prove = out_dir / "prove-ciso.json"
+        if not prove.is_file():
+            nested = Path(out).resolve() / "out" / "prove-ciso.json"
+            parent = Path(out).resolve().parent / "prove-ciso.json"
+            if nested.is_file():
+                prove = nested
+            elif parent.is_file():
+                prove = parent
+    elif work:
         out_dir = Path(work).resolve() / "out"
         prove = Path(work).resolve() / "prove-ciso.json"
     else:
@@ -892,9 +925,11 @@ def console_cli_twin(work: Path | None = None) -> dict[str, Any]:
     }
 
 
-def console_hint(work: Path | None = None) -> str:
+def console_hint(
+    work: Path | None = None, *, out: Path | None = None
+) -> str:
     """One-line operator hint: point python -m product at this prove out/."""
-    twin = console_cli_twin(work)
+    twin = console_cli_twin(work, out=out)
     return (
         f"{twin['posix']} (Windows: {twin['windows']}). "
         "Bind 127.0.0.1. Never POSTs /api/risks. LAB≠SAMPLE≠client."
@@ -1285,6 +1320,237 @@ def _keep_ciso_once(
     }
 
 
+def _read_last_lab_prove_marker(marker: Path) -> Path | None:
+    """Read LAST_LAB_PROVE.txt (utf-8, no BOM required). Never invents a path."""
+    if not marker.is_file():
+        return None
+    raw = marker.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    text = raw.decode("utf-8", errors="replace").strip()
+    if not text:
+        return None
+    cand = Path(text)
+    if cand.is_dir() and _console_out_looks_ready(cand):
+        return cand
+    return None
+
+
+def _console_out_looks_ready(path: Path) -> bool:
+    dest = Path(path)
+    if not dest.is_dir():
+        return False
+    return (
+        (dest / "summary.json").is_file()
+        or (dest / "LAB.txt").is_file()
+        or (dest / "prove-ciso.json").is_file()
+    )
+
+
+def _latest_lab_prove_stamp(root: Path) -> Path | None:
+    if not root.is_dir():
+        return None
+    cands: list[Path] = []
+    try:
+        children = list(root.iterdir())
+    except OSError:
+        return None
+    for child in children:
+        if not child.is_dir():
+            continue
+        if child.name.startswith("lab-prove-") and _console_out_looks_ready(child):
+            cands.append(child)
+        nested = child / "out"
+        if child.name.startswith("lab-prove-") and _console_out_looks_ready(nested):
+            cands.append(nested)
+    if not cands:
+        return None
+    cands.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return cands[0]
+
+
+def _resolve_console_out_hint(raw: Path) -> Path | None:
+    """Map a marker file, lab_out dir, or stamp dir to a prove out/. None if missing."""
+    target = Path(raw)
+    if target.is_file():
+        return _read_last_lab_prove_marker(target)
+    if not target.is_dir():
+        return None
+    if _console_out_looks_ready(target):
+        return target
+    marker = target / "LAST_LAB_PROVE.txt"
+    marked = _read_last_lab_prove_marker(marker)
+    if marked:
+        return marked
+    return _latest_lab_prove_stamp(target)
+
+
+def _match_prove_work(console_out: Path) -> tuple[Path | None, Path | None]:
+    """Sibling prove-work/<stamp>/in for lab-prove-<stamp> copies. Optional."""
+    name = console_out.name
+    if not name.startswith("lab-prove-"):
+        parent = console_out.parent
+        if parent.name.startswith("lab-prove-"):
+            name = parent.name
+        else:
+            return None, None
+    ts = name[len("lab-prove-") :]
+    roots = [console_out.parent, console_out.parent.parent]
+    for root in roots:
+        work = root / "prove-work" / ts
+        dest_in = work / "in"
+        if dest_in.is_dir():
+            return work, dest_in
+    return None, None
+
+
+def _hint_honesty(console_out: Path) -> dict[str, Any]:
+    """Honesty from stamp files. Never invents client=true."""
+    summary: dict[str, Any] = {}
+    stamp: dict[str, Any] = {}
+    summary_path = console_out / "summary.json"
+    prove_path = console_out / "prove-ciso.json"
+    if summary_path.is_file():
+        try:
+            loaded = json.loads(summary_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                summary = loaded
+        except (OSError, json.JSONDecodeError):
+            summary = {}
+    if prove_path.is_file():
+        try:
+            loaded = json.loads(prove_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                stamp = loaded
+        except (OSError, json.JSONDecodeError):
+            stamp = {}
+    lab_marker = (console_out / "LAB.txt").is_file()
+    sample_marker = (console_out / "SAMPLE.txt").is_file()
+    lab = bool(summary.get("lab") or stamp.get("lab") or lab_marker)
+    sample = bool(summary.get("sample") or stamp.get("sample") or sample_marker)
+    if lab:
+        sample = False
+    seeded = bool(summary.get("seeded") or stamp.get("seeded"))
+    if lab:
+        seeded = False
+    use_existing = bool(
+        summary.get("use_existing_in") or stamp.get("use_existing_in") or lab
+    )
+    return {
+        "lab": lab,
+        "sample": sample,
+        "demo": True,
+        "client": False,
+        "seeded": seeded,
+        "use_existing_in": use_existing,
+    }
+
+
+def discover_lab_drop_console_out(extra: dict[str, Any] | None = None) -> Path | None:
+    """Find LAST_LAB_PROVE / lab-prove stamp. Args and env only. Never Desktop-hardcoded."""
+    extra = extra if isinstance(extra, dict) else {}
+    ordered: list[Path] = []
+    for key in ("last_lab_prove", "lab_out", "prove_root"):
+        path = _path_arg(extra, key)
+        if path:
+            ordered.append(_resolve_keep_path(path))
+    for env_key in ("LAST_LAB_PROVE", "LAB_ESTATE_OUT", "PROVE_WORK_ROOT"):
+        raw = (os.environ.get(env_key) or "").strip()
+        if raw:
+            ordered.append(Path(raw))
+    seen: set[Path] = set()
+    for cand in ordered:
+        try:
+            key = cand.resolve()
+        except OSError:
+            key = cand
+        if key in seen:
+            continue
+        seen.add(key)
+        found = _resolve_console_out_hint(cand)
+        if found:
+            return found
+    return None
+
+
+def lab_drop_auto_hint_payload(
+    console_out: Path,
+    *,
+    pack_in: Path | None = None,
+) -> dict[str, Any]:
+    """Hint-only lab_drop. Does not prove. Does not seed. LAB≠SAMPLE≠client."""
+    dest = Path(console_out).resolve()
+    work, dest_in = _match_prove_work(dest)
+    honesty = _hint_honesty(dest)
+    twin = console_cli_twin(out=dest)
+    if honesty["lab"]:
+        twin["lab"] = True
+        twin["sample"] = False
+    else:
+        twin["lab"] = False
+        twin["sample"] = bool(honesty["sample"])
+    twin["client"] = False
+    return {
+        "tool": "lab_drop",
+        "ok": True,
+        "auto_hint": True,
+        "ran": False,
+        "fail_code": "",
+        "error": "",
+        "stderr": "",
+        "live": False,
+        "dry_run": True,
+        "scope_gated": True,
+        "demo": True,
+        "sample": honesty["sample"],
+        "lab": honesty["lab"],
+        "seeded": False,
+        "use_existing_in": True,
+        "client": False,
+        "client_keep": False,
+        "estate": "LAB/DEMO — not a client estate" if honesty["lab"] else "not a client estate",
+        "dest_in": str(dest_in) if dest_in else "",
+        "dest_in_written": False,
+        "pack_in": str(pack_in) if pack_in else "",
+        "pack_in_written": False,
+        "work": str(work) if work else "",
+        "out": str(dest),
+        "stamp": dest.name,
+        "last_lab_prove": str(dest),
+        "ciso_dir": str(dest / "ciso-assistant"),
+        "ciso_files": (
+            [str(path) for path in sorted((dest / "ciso-assistant").glob("*.csv"))]
+            if (dest / "ciso-assistant").is_dir()
+            else []
+        ),
+        "poam": str(dest / "poam" / "poam.csv"),
+        "poam_md": str(dest / "poam" / "poam.md"),
+        "prove": str(dest / "prove-ciso.json") if (dest / "prove-ciso.json").is_file() else "",
+        "cli_twin": lab_drop_to_sor_cli_twin(_repo_root()),
+        "farm_drop_cli_twin": farm_drop_to_sor_cli_twin(_repo_root()),
+        "console_cli_twin": twin,
+        "console_hint": console_hint(out=dest),
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "ciso_push": "0",
+        "riskready_push": "0",
+        "grc_live_scan": "0",
+        "dry_run_env": "1",
+        "banners": list(LAB_HONESTY_BANNERS),
+        "paying_day": "FAIL",
+        "note": (
+            "lab_drop auto-hint: existing LAST_LAB_PROVE / lab-prove stamp. "
+            "Did not re-run prove. Did not seed fixtures/pack_drop. "
+            f"Console twin: OUT_DIR={dest} python -m product "
+            f"(Windows: set OUT_DIR={dest} && python -m product). "
+            "Bind 127.0.0.1. Never POSTs /api/risks. "
+            "Call with arguments.work to prove --use-existing-in. "
+            "LAB≠SAMPLE≠client. paying_day FAIL. Does not invent client=true."
+        ),
+    }
+
+
 def _lab_drop_work_and_dest_in(extra: dict[str, Any]) -> tuple[Path, Path]:
     """Resolve work + dest_in. dest_in must be work/in. Never invents a seed."""
     extra = extra if isinstance(extra, dict) else {}
@@ -1373,7 +1639,8 @@ def lab_drop(
 ) -> dict[str, Any]:
     """SCOPE-gated LAB dest_in prove. Same rails as lab_drop_to_sor / --use-existing-in.
 
-    Requires populated work/in (or dest_in). Never reseeds fixtures/pack_drop.
+    Requires populated work/in (or dest_in) to prove. Without work/dest_in,
+    auto-hints LAST_LAB_PROVE / lab_out (does not re-run prove, does not seed).
     Empty in/ is EXISTING_IN_FAIL. LAB.txt + DEMO seed trees is LAB_SHAPE_FAIL.
     LAB≠SAMPLE≠client. paying_day FAIL. Never writes pack in/. Never POST.
     """
@@ -1383,6 +1650,11 @@ def lab_drop(
     work: Path | None = None
     dest_in: Path | None = None
     try:
+        has_work = bool(_path_arg(extra, "work") or _path_arg(extra, "dest_in", "in_dir"))
+        if not has_work:
+            hinted = discover_lab_drop_console_out(extra)
+            if hinted:
+                return lab_drop_auto_hint_payload(hinted, pack_in=pack_in)
         work, dest_in = _lab_drop_work_and_dest_in(extra)
         return _lab_drop_once(
             scope_path=scope_path,
