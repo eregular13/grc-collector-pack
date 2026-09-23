@@ -836,6 +836,101 @@ def switch_active_out(*, stamp: str | None = None, out_raw: str | None = None) -
     }
 
 
+def _count_or_zero(value) -> int:
+    if isinstance(value, bool) or value is None:
+        return 0
+    if isinstance(value, int):
+        return value if value >= 0 else 0
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return 0
+
+
+def _opengrc_leavebehind(out: Path) -> dict:
+    """File-true OpenGRC Data Manager CSVs. Never a live POST /api/risks."""
+    dest = out / "opengrc"
+    manifest_path = dest / "MANIFEST.json"
+    present = manifest_path.is_file() or (dest / "risks.csv").is_file()
+    manifest = _read_json(manifest_path) if manifest_path.is_file() else {}
+    if not isinstance(manifest, dict):
+        manifest = {}
+    counts = manifest.get("counts") if isinstance(manifest.get("counts"), dict) else {}
+    risks = _count_or_zero(counts.get("risks"))
+    assets = _count_or_zero(counts.get("assets"))
+    impls = _count_or_zero(counts.get("implementations"))
+    if present and risks == 0 and (dest / "risks.csv").is_file():
+        risks = len(_read_csv(dest / "risks.csv"))
+    if present and assets == 0 and (dest / "assets.csv").is_file():
+        assets = len(_read_csv(dest / "assets.csv"))
+    if present and impls == 0 and (dest / "implementations.csv").is_file():
+        impls = len(_read_csv(dest / "implementations.csv"))
+    return {
+        "sink": "opengrc",
+        "present": present,
+        "posted": False,
+        "http": False,
+        "client": False,
+        "lab": bool(manifest.get("lab")) if present else False,
+        "sample": bool(manifest.get("sample")) if present else False,
+        "paying_day": str(manifest.get("paying_day") or "FAIL") if present else "FAIL",
+        "counts": {
+            "risks": risks,
+            "assets": assets,
+            "implementations": impls,
+        },
+        "dir": str(dest) if present else "",
+    }
+
+
+def _probo_leavebehind(out: Path) -> dict:
+    """File-true Probo drafts. Not a live GraphQL createFinding."""
+    path = out / "import_preview" / "probo.json"
+    present = path.is_file()
+    payload = _read_json(path) if present else {}
+    if not isinstance(payload, dict):
+        payload = {}
+    counts = payload.get("counts") if isinstance(payload.get("counts"), dict) else {}
+    add_finding = _count_or_zero(counts.get("addFinding"))
+    add_risk = _count_or_zero(counts.get("addRisk"))
+    create_risk = _count_or_zero(counts.get("createRisk"))
+    if present and add_finding == 0 and isinstance(payload.get("addFinding"), list):
+        add_finding = len(payload["addFinding"])
+    if present and add_risk == 0 and isinstance(payload.get("addRisk"), list):
+        add_risk = len(payload["addRisk"])
+    if present and create_risk == 0 and isinstance(payload.get("createRisk"), list):
+        create_risk = len(payload["createRisk"])
+    org = payload.get("organization_id") if present else None
+    if org == "":
+        org = None
+    return {
+        "sink": "probo",
+        "present": present,
+        "posted": False,
+        "http": False,
+        "client": False,
+        "lab": bool(payload.get("lab")) if present else False,
+        "sample": bool(payload.get("sample")) if present else False,
+        "paying_day": str(payload.get("paying_day") or "FAIL") if present else "FAIL",
+        "organization_id": org if isinstance(org, str) else None,
+        "documentation_only": True,
+        "counts": {
+            "addFinding": add_finding,
+            "addRisk": add_risk,
+            "createRisk": create_risk,
+        },
+        "path": str(path) if present else "",
+    }
+
+
+def leavebehind_sinks(out: Path | None = None) -> dict:
+    """OpenGRC/Probo file-true leave-behind rollup. posted and http stay false."""
+    dest = out if out is not None else out_dir()
+    return {
+        "opengrc": _opengrc_leavebehind(dest),
+        "probo": _probo_leavebehind(dest),
+    }
+
+
 def estate() -> dict:
     out = out_dir()
     summary = _read_json(out / "summary.json") or {}
@@ -852,6 +947,7 @@ def estate() -> dict:
     mode = refresh_mode_for(honesty, ready)
     poam = poam_rows(out)
     coverage = framework_coverage(out)
+    sinks = leavebehind_sinks(out)
     return {
         "product": "GRC Collector Pack",
         "version": "0.3.0",
@@ -872,6 +968,8 @@ def estate() -> dict:
         "severity": sev,
         "poam": poam_summary(out, poam),
         "coverage": coverage,
+        "opengrc": sinks["opengrc"],
+        "probo": sinks["probo"],
         "safety": {
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),
