@@ -154,6 +154,7 @@ function renderKpis(estate) {
     renderPoamKpis(estate.poam || {});
     renderCoverageKpis(estate.coverage || {});
     renderSinkKpis(estate);
+    renderPackagedDropManifest(estate);
 }
 
 function renderPoamKpis(poam) {
@@ -211,6 +212,36 @@ function sinkSourceHonesty(ogSource, proboSource) {
     return `${srcText} · LAB dest_in (not SAMPLE packaged)`;
   }
   return srcText;
+}
+
+function renderPackagedDropManifest(estate) {
+  const pd = estate.packaged_drop || {};
+  const labelEl = $("packaged-drop-manifest");
+  const el = $("packaged-drop-kpis");
+  const sha = String(pd.sha256 || "");
+  const count = pd.file_count || 0;
+  const present = !!pd.present;
+  if (labelEl) {
+    if (present && sha) {
+      labelEl.textContent =
+        `SAMPLE packaged drop MANIFEST · posted=false · product-lab/drop/MANIFEST · sha256=${sha} · files=${count} · SAMPLE packaged ≠ LAB dest_in`;
+    } else {
+      labelEl.textContent =
+        "SAMPLE packaged drop MANIFEST · posted=false · missing · SAMPLE packaged ≠ LAB dest_in";
+    }
+  }
+  if (!el) return;
+  const items = [
+    [present ? "product-lab/drop" : "missing", "Packaged drop", present ? "sample" : ""],
+    [count, "MANIFEST files", ""],
+    [present ? "posted=false" : "missing", "posted", ""],
+  ];
+  el.innerHTML = items
+    .map(
+      ([n, label, cls]) =>
+        `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
+    )
+    .join("");
 }
 
 function renderSinkKpis(estate) {

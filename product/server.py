@@ -8,9 +8,11 @@ Never proxies or POSTs /api/risks. Not an eleventh Compose service.
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
 import os
+import re
 import sys
 import traceback
 import zipfile
@@ -45,6 +47,9 @@ COMMON_PROVE_ROOTS = (
     "prove/work",
 )
 MAX_RUNS = 24
+_MANIFEST_ROW = re.compile(
+    r"\|\s*(\S+\.\S+)\s*\|\s*(\d+|draft)\s*\|\s*`([0-9a-f]{64})`\s*\|"
+)
 
 
 def out_dir() -> Path:
@@ -927,6 +932,38 @@ def packaged_drop() -> Path:
     return ROOT / "product-lab" / "drop"
 
 
+def packaged_drop_manifest() -> dict:
+    """SHA256 of product-lab/drop/MANIFEST plus parsed file digests.
+
+    Operators verify hashes from /api/summary without opening MANIFEST.
+    SAMPLE packaged drop, posted=false, never client KEEP, never live POST.
+    """
+    drop = packaged_drop()
+    manifest_path = drop / "MANIFEST"
+    present = manifest_path.is_file()
+    sha256 = ""
+    files: list[dict] = []
+    if present:
+        raw = manifest_path.read_bytes()
+        sha256 = hashlib.sha256(raw).hexdigest()
+        text = raw.decode("utf-8")
+        for rel, rows, digest in _MANIFEST_ROW.findall(text):
+            files.append({"path": rel, "rows": rows, "sha256": digest})
+    return {
+        "present": present,
+        "source": "product-lab/drop",
+        "posted": False,
+        "http": False,
+        "sample": True if present else False,
+        "lab": False,
+        "client": False,
+        "path": "product-lab/drop/MANIFEST" if present else "",
+        "sha256": sha256,
+        "file_count": len(files),
+        "files": files,
+    }
+
+
 def leavebehind_sinks(out: Path | None = None) -> dict:
     """OpenGRC/Probo file-true leave-behind rollup. posted and http stay false.
 
@@ -998,6 +1035,7 @@ def estate() -> dict:
         "coverage": coverage,
         "opengrc": sinks["opengrc"],
         "probo": sinks["probo"],
+        "packaged_drop": packaged_drop_manifest(),
         "safety": {
             "dry_run": os.environ.get("DRY_RUN", "1"),
             "ciso_push": os.environ.get("CISO_PUSH", "0"),

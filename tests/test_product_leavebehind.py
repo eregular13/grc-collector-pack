@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 import urllib.error
@@ -412,6 +413,126 @@ def test_http_summary_falls_back_to_product_lab_drop_when_out_lacks_sinks(
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_estate_includes_packaged_drop_manifest_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Operators verify product-lab/drop hashes from /api/summary without opening MANIFEST."""
+    out = tmp_path / "out"
+    _write_summary(out)
+    monkeypatch.setenv("OUT_DIR", str(out))
+    drop = ROOT / "product-lab" / "drop"
+    manifest = drop / "MANIFEST"
+    expected = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    data = estate()
+    pd = data["packaged_drop"]
+    assert pd["present"] is True
+    assert pd["posted"] is False
+    assert pd["http"] is False
+    assert pd["client"] is False
+    assert pd["lab"] is False
+    assert pd["sample"] is True
+    assert pd["source"] == "product-lab/drop"
+    assert pd["path"] == "product-lab/drop/MANIFEST"
+    assert pd["sha256"] == expected
+    assert len(pd["sha256"]) == 64
+    files = {row["path"]: row for row in pd["files"]}
+    assert "opengrc/risks.csv" in files
+    assert "ciso/assets.csv" in files
+    assert "import_preview/probo.json" in files
+    risks_path = drop / "opengrc" / "risks.csv"
+    assert files["opengrc/risks.csv"]["sha256"] == hashlib.sha256(
+        risks_path.read_bytes()
+    ).hexdigest()
+    assert data["client"] is False
+    assert data["safety"]["posts_api_risks"] is False
+
+
+def test_packaged_drop_manifest_missing_posted_false(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Missing MANIFEST stays posted=false and never invents hashes or client KEEP."""
+    out = tmp_path / "out"
+    _write_summary(out)
+    empty_drop = tmp_path / "no-packaged-drop"
+    empty_drop.mkdir()
+    monkeypatch.setenv("OUT_DIR", str(out))
+    monkeypatch.setattr("product.server.packaged_drop", lambda: empty_drop)
+    data = estate()
+    pd = data["packaged_drop"]
+    assert pd["present"] is False
+    assert pd["posted"] is False
+    assert pd["http"] is False
+    assert pd["client"] is False
+    assert pd["lab"] is False
+    assert pd["sample"] is False
+    assert pd["sha256"] == ""
+    assert pd["files"] == []
+    assert pd["file_count"] == 0
+    assert pd["path"] == ""
+    assert data["safety"]["posts_api_risks"] is False
+
+
+def test_http_summary_includes_packaged_drop_manifest_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    _write_summary(out)
+    monkeypatch.setenv("OUT_DIR", str(out))
+    expected = hashlib.sha256(
+        (ROOT / "product-lab" / "drop" / "MANIFEST").read_bytes()
+    ).hexdigest()
+    httpd = make_server("127.0.0.1", 0)
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://{host}:{port}"
+        with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
+            summary = json.loads(res.read().decode("utf-8"))
+            assert res.status == 200
+        pd = summary["packaged_drop"]
+        assert pd["present"] is True
+        assert pd["posted"] is False
+        assert pd["http"] is False
+        assert pd["client"] is False
+        assert pd["lab"] is False
+        assert pd["sample"] is True
+        assert pd["source"] == "product-lab/drop"
+        assert pd["sha256"] == expected
+        files = {row["path"]: row for row in pd["files"]}
+        assert "opengrc/risks.csv" in files
+        assert "import_preview/probo.json" in files
+        assert summary["client"] is False
+        assert summary["safety"]["posts_api_risks"] is False
+        with urllib.request.urlopen(base + "/", timeout=5) as res:
+            html = res.read().decode("utf-8")
+        assert 'id="packaged-drop-manifest"' in html
+        assert "Never POSTs /api/risks" in html
+        try:
+            urllib.request.urlopen(base + "/api/risks", timeout=5)
+            raise AssertionError("GET /api/risks should be forbidden")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 403
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_ui_surfaces_packaged_drop_manifest_digest() -> None:
+    """Console shows SAMPLE packaged MANIFEST sha256; not LAB dest_in; posted=false."""
+    html = (ROOT / "product" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="packaged-drop-manifest"' in html
+    assert "SAMPLE packaged drop MANIFEST" in html
+    assert "posted=false" in html.lower()
+    assert "renderPackagedDropManifest" in js
+    assert "packaged_drop" in js
+    assert "sha256" in js
+    assert "file_count" in js
+    assert "product-lab/drop/MANIFEST" in js
+    assert "SAMPLE packaged" in js
 
 
 def test_ui_lab_dest_in_packaged_sinks_show_sample_pill() -> None:
