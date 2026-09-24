@@ -221,19 +221,26 @@ function renderPackagedDropManifest(estate) {
   const sha = String(pd.sha256 || "");
   const count = pd.file_count || 0;
   const present = !!pd.present;
+  const hashesOk = !!pd.hashes_ok;
+  const drift = Array.isArray(pd.drift) ? pd.drift : [];
+  const files = Array.isArray(pd.files) ? pd.files : [];
+  const okCount = files.filter((row) => row && row.ok === true).length;
   if (labelEl) {
     if (present && sha) {
       labelEl.textContent =
-        `SAMPLE packaged drop MANIFEST · posted=false · product-lab/drop/MANIFEST · sha256=${sha} · files=${count} · SAMPLE packaged ≠ LAB dest_in`;
+        `SAMPLE packaged drop MANIFEST · posted=false · product-lab/drop/MANIFEST · sha256=${sha} · files=${count} · hashes_ok=${hashesOk} · drift=${drift.length} · SAMPLE packaged ≠ LAB dest_in`;
     } else {
       labelEl.textContent =
-        "SAMPLE packaged drop MANIFEST · posted=false · missing · SAMPLE packaged ≠ LAB dest_in";
+        "SAMPLE packaged drop MANIFEST · posted=false · missing · hashes_ok=false · SAMPLE packaged ≠ LAB dest_in";
     }
   }
   if (!el) return;
   const items = [
     [present ? "product-lab/drop" : "missing", "Packaged drop", present ? "sample" : ""],
     [count, "MANIFEST files", ""],
+    [hashesOk ? "ok" : "drift", "hashes_ok", hashesOk ? "" : "bad"],
+    [okCount, "files ok", ""],
+    [drift.length, "drift", drift.length ? "bad" : ""],
     [present ? "posted=false" : "missing", "posted", ""],
   ];
   el.innerHTML = items

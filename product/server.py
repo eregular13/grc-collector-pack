@@ -935,7 +935,8 @@ def packaged_drop() -> Path:
 def packaged_drop_manifest() -> dict:
     """SHA256 of product-lab/drop/MANIFEST plus parsed file digests.
 
-    Operators verify hashes from /api/summary without opening MANIFEST.
+    Re-hashes each MANIFEST path on disk into files[].ok so operators see
+    drift from /api/summary without opening MANIFEST.
     SAMPLE packaged drop, posted=false, never client KEEP, never live POST.
     """
     drop = packaged_drop()
@@ -943,12 +944,17 @@ def packaged_drop_manifest() -> dict:
     present = manifest_path.is_file()
     sha256 = ""
     files: list[dict] = []
+    drift: list[str] = []
     if present:
         raw = manifest_path.read_bytes()
         sha256 = hashlib.sha256(raw).hexdigest()
         text = raw.decode("utf-8")
         for rel, rows, digest in _MANIFEST_ROW.findall(text):
-            files.append({"path": rel, "rows": rows, "sha256": digest})
+            disk = drop / rel
+            ok = disk.is_file() and hashlib.sha256(disk.read_bytes()).hexdigest() == digest
+            if not ok:
+                drift.append(rel)
+            files.append({"path": rel, "rows": rows, "sha256": digest, "ok": ok})
     return {
         "present": present,
         "source": "product-lab/drop",
@@ -961,6 +967,8 @@ def packaged_drop_manifest() -> dict:
         "sha256": sha256,
         "file_count": len(files),
         "files": files,
+        "hashes_ok": bool(present and files and not drift),
+        "drift": drift,
     }
 
 

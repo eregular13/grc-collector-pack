@@ -445,6 +445,10 @@ def test_estate_includes_packaged_drop_manifest_digest(
     assert files["opengrc/risks.csv"]["sha256"] == hashlib.sha256(
         risks_path.read_bytes()
     ).hexdigest()
+    assert files["opengrc/risks.csv"]["ok"] is True
+    assert pd["hashes_ok"] is True
+    assert pd["drift"] == []
+    assert all(row["ok"] is True for row in pd["files"])
     assert data["client"] is False
     assert data["safety"]["posts_api_risks"] is False
 
@@ -471,6 +475,8 @@ def test_packaged_drop_manifest_missing_posted_false(
     assert pd["files"] == []
     assert pd["file_count"] == 0
     assert pd["path"] == ""
+    assert pd["hashes_ok"] is False
+    assert pd["drift"] == []
     assert data["safety"]["posts_api_risks"] is False
 
 
@@ -504,6 +510,9 @@ def test_http_summary_includes_packaged_drop_manifest_digest(
         files = {row["path"]: row for row in pd["files"]}
         assert "opengrc/risks.csv" in files
         assert "import_preview/probo.json" in files
+        assert files["opengrc/risks.csv"]["ok"] is True
+        assert pd["hashes_ok"] is True
+        assert pd["drift"] == []
         assert summary["client"] is False
         assert summary["safety"]["posts_api_risks"] is False
         with urllib.request.urlopen(base + "/", timeout=5) as res:
@@ -533,6 +542,21 @@ def test_ui_surfaces_packaged_drop_manifest_digest() -> None:
     assert "file_count" in js
     assert "product-lab/drop/MANIFEST" in js
     assert "SAMPLE packaged" in js
+
+
+def test_ui_surfaces_packaged_drop_file_ok_drift() -> None:
+    """Console shows disk-vs-MANIFEST ok/drift; not LAB dest_in; posted=false."""
+    html = (ROOT / "product" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="packaged-drop-manifest"' in html
+    assert "posted=false" in html.lower()
+    assert "hashes_ok" in js
+    assert "drift" in js
+    assert "files" in js
+    assert ".ok" in js
+    assert "hashes_ok" in js
+    assert "SAMPLE packaged" in js
+    assert "posted=false" in js.lower() or "posted=false" in html.lower()
 
 
 def test_ui_lab_dest_in_packaged_sinks_show_sample_pill() -> None:
@@ -589,6 +613,122 @@ def test_http_lab_dest_in_packaged_sinks_keep_dest_lab(
         assert 'id="sink-sample-pill"' in html
         assert "SAMPLE packaged sinks" in html
         assert "Never POSTs /api/risks" in html
+        try:
+            urllib.request.urlopen(base + "/api/risks", timeout=5)
+            raise AssertionError("GET /api/risks should be forbidden")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 403
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_packaged_drop_files_ok_rehashes_disk_vs_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """files[].ok is disk SHA256 vs MANIFEST; operators see drift without opening the file."""
+    out = tmp_path / "out"
+    _write_summary(out)
+    drop = tmp_path / "drop"
+    (drop / "opengrc").mkdir(parents=True)
+    match_bytes = b"ok-file\n"
+    drift_bytes = b"drifted\n"
+    match_digest = hashlib.sha256(match_bytes).hexdigest()
+    stale_digest = hashlib.sha256(b"stale\n").hexdigest()
+    (drop / "opengrc" / "risks.csv").write_bytes(match_bytes)
+    (drop / "opengrc" / "assets.csv").write_bytes(drift_bytes)
+    missing_digest = hashlib.sha256(b"missing\n").hexdigest()
+    (drop / "MANIFEST").write_text(
+        "\n".join(
+            [
+                "# SAMPLE packaged drop",
+                "| File | Rows | SHA256 |",
+                "|---|---|---|",
+                f"| opengrc/risks.csv | 1 | `{match_digest}` |",
+                f"| opengrc/assets.csv | 1 | `{stale_digest}` |",
+                f"| ciso/assets.csv | 1 | `{missing_digest}` |",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OUT_DIR", str(out))
+    monkeypatch.setattr("product.server.packaged_drop", lambda: drop)
+    data = estate()
+    pd = data["packaged_drop"]
+    files = {row["path"]: row for row in pd["files"]}
+    assert files["opengrc/risks.csv"]["ok"] is True
+    assert files["opengrc/risks.csv"]["sha256"] == match_digest
+    assert files["opengrc/assets.csv"]["ok"] is False
+    assert files["opengrc/assets.csv"]["sha256"] == stale_digest
+    assert files["ciso/assets.csv"]["ok"] is False
+    assert pd["hashes_ok"] is False
+    assert pd["drift"] == ["opengrc/assets.csv", "ciso/assets.csv"]
+    assert pd["posted"] is False
+    assert pd["http"] is False
+    assert pd["client"] is False
+    assert pd["lab"] is False
+    assert pd["sample"] is True
+    assert data["client"] is False
+    assert data["safety"]["posts_api_risks"] is False
+
+
+def test_http_summary_packaged_drop_files_ok_shows_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GET /api/summary ships files[].ok + drift; posted=false; never /api/risks."""
+    out = tmp_path / "out"
+    _write_summary(out)
+    drop = tmp_path / "drop"
+    (drop / "opengrc").mkdir(parents=True)
+    match_bytes = b"ok-file\n"
+    match_digest = hashlib.sha256(match_bytes).hexdigest()
+    stale_digest = hashlib.sha256(b"stale\n").hexdigest()
+    (drop / "opengrc" / "risks.csv").write_bytes(match_bytes)
+    (drop / "opengrc" / "assets.csv").write_bytes(b"drifted\n")
+    (drop / "MANIFEST").write_text(
+        "\n".join(
+            [
+                "# SAMPLE packaged drop",
+                "| File | Rows | SHA256 |",
+                "|---|---|---|",
+                f"| opengrc/risks.csv | 1 | `{match_digest}` |",
+                f"| opengrc/assets.csv | 1 | `{stale_digest}` |",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OUT_DIR", str(out))
+    monkeypatch.setattr("product.server.packaged_drop", lambda: drop)
+    httpd = make_server("127.0.0.1", 0)
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://{host}:{port}"
+        with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
+            summary = json.loads(res.read().decode("utf-8"))
+            assert res.status == 200
+        pd = summary["packaged_drop"]
+        files = {row["path"]: row for row in pd["files"]}
+        assert pd["posted"] is False
+        assert pd["http"] is False
+        assert pd["client"] is False
+        assert pd["lab"] is False
+        assert pd["sample"] is True
+        assert files["opengrc/risks.csv"]["ok"] is True
+        assert files["opengrc/assets.csv"]["ok"] is False
+        assert pd["hashes_ok"] is False
+        assert pd["drift"] == ["opengrc/assets.csv"]
+        assert summary["client"] is False
+        assert summary["safety"]["posts_api_risks"] is False
+        with urllib.request.urlopen(base + "/", timeout=5) as res:
+            html = res.read().decode("utf-8")
+        assert 'id="packaged-drop-manifest"' in html
+        js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+        assert "hashes_ok" in js
+        assert ".ok" in js
         try:
             urllib.request.urlopen(base + "/api/risks", timeout=5)
             raise AssertionError("GET /api/risks should be forbidden")
