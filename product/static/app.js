@@ -175,6 +175,33 @@ function renderPoamKpis(poam) {
     .join("");
 }
 
+function sinkSource(raw) {
+  const src = String(raw || "").trim();
+  if (src === "product-lab/drop") return "product-lab/drop";
+  if (src === "out") return "out";
+  return src || "missing";
+}
+
+function sinkSourceKpiLabel(src) {
+  if (src === "product-lab/drop") return "source=product-lab/drop";
+  if (src === "out") return "source=out";
+  return src ? `source=${src}` : "source=missing";
+}
+
+function sinkSourceHonesty(ogSource, proboSource) {
+  const same = ogSource === proboSource;
+  const srcText = same
+    ? sinkSourceKpiLabel(ogSource)
+    : `OpenGRC ${sinkSourceKpiLabel(ogSource)} · Probo ${sinkSourceKpiLabel(proboSource)}`;
+  if (ogSource === "product-lab/drop" || proboSource === "product-lab/drop") {
+    return `${srcText} · SAMPLE packaged ≠ LAB dest_in`;
+  }
+  if (ogSource === "out" || proboSource === "out") {
+    return `${srcText} · LAB dest_in (not SAMPLE packaged)`;
+  }
+  return srcText;
+}
+
 function renderSinkKpis(estate) {
   const el = $("sink-kpis");
   if (!el) return;
@@ -182,10 +209,14 @@ function renderSinkKpis(estate) {
   const probo = estate.probo || {};
   const ogc = og.counts || {};
   const pc = probo.counts || {};
+  const ogSource = sinkSource(og.source);
+  const proboSource = sinkSource(probo.source);
   const items = [
+    [ogSource, "OpenGRC source", ogSource === "product-lab/drop" ? "sample" : ""],
     [ogc.risks, "OpenGRC risks", ""],
     [ogc.assets, "OpenGRC assets", ""],
     [ogc.implementations, "OpenGRC impl", ""],
+    [proboSource, "Probo source", proboSource === "product-lab/drop" ? "sample" : ""],
     [pc.addFinding, "Probo addFinding", ""],
     [pc.addRisk, "Probo addRisk", ""],
   ];
@@ -195,6 +226,11 @@ function renderSinkKpis(estate) {
         `<div class="kpi ${cls}"><b>${fmt(n)}</b><span>${label}</span></div>`
     )
     .join("");
+  const labelEl = $("sink-kpis-label");
+  if (labelEl) {
+    labelEl.textContent =
+      `OpenGRC / Probo leave-behind · posted=false · file-true, not live import · ${sinkSourceHonesty(ogSource, proboSource)}`;
+  }
 }
 
 function renderCoverageKpis(coverage) {
@@ -396,7 +432,9 @@ async function boot() {
         : "Refresh re-runs DEMO collectors";
       const ogc = (estate.opengrc && estate.opengrc.counts) || {};
       const pbc = (estate.probo && estate.probo.counts) || {};
-      $("status-bar").textContent = `${label} · ${mode} · ${canonical} canonical · OpenGRC risks ${fmt(ogc.risks)} · Probo addFinding ${fmt(pbc.addFinding)} · posted=false · generated ${when}`;
+      const ogSource = sinkSource((estate.opengrc && estate.opengrc.source) || "");
+      const pbSource = sinkSource((estate.probo && estate.probo.source) || "");
+      $("status-bar").textContent = `${label} · ${mode} · ${canonical} canonical · OpenGRC risks ${fmt(ogc.risks)} · ${sinkSourceKpiLabel(ogSource)} · Probo addFinding ${fmt(pbc.addFinding)} · ${sinkSourceKpiLabel(pbSource)} · posted=false · generated ${when}`;
     } else if (estate.lab || estate.use_existing_in) {
       $("status-bar").textContent = `${label} · Reload from disk only — collectors not run.`;
     } else {

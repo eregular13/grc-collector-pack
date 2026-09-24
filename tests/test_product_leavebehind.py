@@ -231,6 +231,26 @@ def test_ui_renders_opengrc_probo_leavebehind_kpis() -> None:
     assert "addFinding" in js
 
 
+def test_ui_sink_kpis_show_source_out_vs_packaged_drop() -> None:
+    """SAMPLE packaged counts must not look like LAB dest_in on the sink KPIs."""
+    html = (ROOT / "product" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="sink-kpis-label"' in html
+    assert "SAMPLE packaged" in html
+    assert "LAB dest_in" in html
+    assert "source=out" in html
+    assert "source=product-lab/drop" in html
+    assert "renderSinkKpis" in js
+    assert "og.source" in js
+    assert "probo.source" in js
+    assert "source=out" in js
+    assert "source=product-lab/drop" in js
+    assert "OpenGRC source" in js
+    assert "Probo source" in js
+    assert "SAMPLE packaged" in js
+    assert "LAB dest_in" in js
+
+
 def test_drop_zip_includes_opengrc_csvs_and_probo_drafts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
