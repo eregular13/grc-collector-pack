@@ -128,6 +128,7 @@ function applyHonesty(estate) {
   $("sample-pill").classList.toggle("hidden", !sample);
   $("demo-pill").classList.toggle("hidden", !demo);
   $("client-pill").classList.toggle("hidden", estate.client !== false);
+  applySinkSamplePill(estate);
   const btn = $("btn-refresh");
   btn.textContent = isReload(estate) ? "Reload from disk" : "Refresh estate";
 }
@@ -188,6 +189,16 @@ function sinkSourceKpiLabel(src) {
   return src ? `source=${src}` : "source=missing";
 }
 
+function applySinkSamplePill(estate) {
+  const el = $("sink-sample-pill");
+  if (!el) return;
+  const ogSource = sinkSource((estate.opengrc && estate.opengrc.source) || "");
+  const pbSource = sinkSource((estate.probo && estate.probo.source) || "");
+  const packaged = ogSource === "product-lab/drop" || pbSource === "product-lab/drop";
+  const show = !!estate.lab && packaged;
+  el.classList.toggle("hidden", !show);
+}
+
 function sinkSourceHonesty(ogSource, proboSource) {
   const same = ogSource === proboSource;
   const srcText = same
@@ -231,6 +242,7 @@ function renderSinkKpis(estate) {
     labelEl.textContent =
       `OpenGRC / Probo leave-behind · posted=false · file-true, not live import · ${sinkSourceHonesty(ogSource, proboSource)}`;
   }
+  applySinkSamplePill(estate);
 }
 
 function renderCoverageKpis(coverage) {

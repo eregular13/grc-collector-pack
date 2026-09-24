@@ -412,3 +412,67 @@ def test_http_summary_falls_back_to_product_lab_drop_when_out_lacks_sinks(
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_ui_lab_dest_in_packaged_sinks_show_sample_pill() -> None:
+    """LAB dest_in + product-lab/drop sinks must not look like lab counts."""
+    html = (ROOT / "product" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="lab-pill"' in html
+    assert 'id="sample-pill"' in html
+    assert 'id="sink-sample-pill"' in html
+    assert "SAMPLE packaged sinks" in html
+    assert "applySinkSamplePill" in js
+    assert "sink-sample-pill" in js
+    assert "product-lab/drop" in js
+    assert "estate.lab" in js
+    assert "SAMPLE packaged sinks" in js or "sink-sample-pill" in js
+    # dest_in SAMPLE pill stays separate from sink honesty
+    assert 'id="sample-pill"' in html
+    assert "applyHonesty" in js
+
+
+def test_http_lab_dest_in_packaged_sinks_keep_dest_lab(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Header must be able to show SAMPLE packaged sinks while dest_in stays LAB."""
+    out = tmp_path / "lab-out"
+    _write_summary(out)
+    monkeypatch.setenv("OUT_DIR", str(out))
+    data = estate()
+    assert data["lab"] is True
+    assert data["sample"] is False
+    assert data["client"] is False
+    assert data["opengrc"]["source"] == "product-lab/drop"
+    assert data["opengrc"]["sample"] is True
+    assert data["opengrc"]["lab"] is False
+    assert data["probo"]["source"] == "product-lab/drop"
+    assert data["probo"]["sample"] is True
+    assert data["safety"]["posts_api_risks"] is False
+    httpd = make_server("127.0.0.1", 0)
+    host, port = httpd.server_address[:2]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://{host}:{port}"
+        with urllib.request.urlopen(base + "/api/summary", timeout=5) as res:
+            summary = json.loads(res.read().decode("utf-8"))
+            assert res.status == 200
+        assert summary["lab"] is True
+        assert summary["sample"] is False
+        assert summary["opengrc"]["source"] == "product-lab/drop"
+        assert summary["opengrc"]["posted"] is False
+        with urllib.request.urlopen(base + "/", timeout=5) as res:
+            html = res.read().decode("utf-8")
+        assert 'id="lab-pill"' in html
+        assert 'id="sink-sample-pill"' in html
+        assert "SAMPLE packaged sinks" in html
+        assert "Never POSTs /api/risks" in html
+        try:
+            urllib.request.urlopen(base + "/api/risks", timeout=5)
+            raise AssertionError("GET /api/risks should be forbidden")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 403
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
