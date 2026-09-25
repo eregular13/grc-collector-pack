@@ -98,6 +98,7 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .kpi.high b { color: var(--high); }
 .kpi.blank b { color: var(--high); }
 .kpi.sample b { color: var(--med); }
+.kpi.lab b { color: var(--high); }
 .sink-kpis-wrap { padding: 0 0 0.2rem; }
 .sink-kpis { padding-top: 0.45rem; }
 

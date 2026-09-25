@@ -251,6 +251,30 @@ def test_ui_sink_kpis_show_source_out_vs_packaged_drop() -> None:
     assert "LAB dest_in" in js
 
 
+def test_ui_sink_kpis_show_opengrc_and_probo_lab_sample() -> None:
+    """SAMPLE packaged fallback must not look like LAB dest_in on sink KPIs."""
+    html = (ROOT / "product" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="sink-kpis"' in html
+    assert "opengrc.lab" in html
+    assert "opengrc.sample" in html
+    assert "probo.lab" in html
+    assert "probo.sample" in html
+    assert "posted=false" in html.lower()
+    assert "SAMPLE packaged" in html
+    assert "LAB dest_in" in html
+    assert "renderSinkKpis" in js
+    assert "og.lab" in js
+    assert "og.sample" in js
+    assert "probo.lab" in js
+    assert "probo.sample" in js
+    assert "OpenGRC lab" in js
+    assert "OpenGRC sample" in js
+    assert "Probo lab" in js
+    assert "Probo sample" in js
+    assert "posted=false" in js.lower() or "posted=false" in html.lower()
+
+
 def test_drop_zip_includes_opengrc_csvs_and_probo_drafts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

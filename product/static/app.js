@@ -224,10 +224,14 @@ function renderSinkKpis(estate) {
   const proboSource = sinkSource(probo.source);
   const items = [
     [ogSource, "OpenGRC source", ogSource === "product-lab/drop" ? "sample" : ""],
+    [og.lab === true ? "true" : "false", "OpenGRC lab", og.lab === true ? "lab" : ""],
+    [og.sample === true ? "true" : "false", "OpenGRC sample", og.sample === true ? "sample" : ""],
     [ogc.risks, "OpenGRC risks", ""],
     [ogc.assets, "OpenGRC assets", ""],
     [ogc.implementations, "OpenGRC impl", ""],
     [proboSource, "Probo source", proboSource === "product-lab/drop" ? "sample" : ""],
+    [probo.lab === true ? "true" : "false", "Probo lab", probo.lab === true ? "lab" : ""],
+    [probo.sample === true ? "true" : "false", "Probo sample", probo.sample === true ? "sample" : ""],
     [pc.addFinding, "Probo addFinding", ""],
     [pc.addRisk, "Probo addRisk", ""],
   ];
