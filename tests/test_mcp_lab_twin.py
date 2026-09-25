@@ -56,7 +56,9 @@ def _fingerprint(folder: Path) -> dict[str, bytes]:
 
 def test_tools_list_advertises_lab_drop_honestly() -> None:
     assert "lab_drop" in OPERATOR_TOOLS
-    assert OPERATOR_TOOLS[-1] == "lab_drop"
+    assert "scan_to_sor" in OPERATOR_TOOLS
+    assert OPERATOR_TOOLS[-1] == "scan_to_sor"
+    assert OPERATOR_TOOLS[-2] == "lab_drop"
     listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = [row["name"] for row in listed["result"]["tools"]]
     assert names == list(OPERATOR_TOOLS)

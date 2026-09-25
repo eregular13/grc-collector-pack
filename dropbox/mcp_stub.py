@@ -31,7 +31,15 @@ from dropbox.orchestrator.pipeline import (
     integrity_stops,
     orchestrate,
 )
-from dropbox.scope import ALLOWED_RUNNERS, GateError, LICENSE_LOCK_SPAWN, ORCH_BYO, load_scope
+from dropbox.scope import (
+    ALLOWED_RUNNERS,
+    GateError,
+    LICENSE_LOCK_SPAWN,
+    ORCH_BYO,
+    Scope,
+    load_scope,
+    require_authorized_targets,
+)
 
 # Goose-style live_ready allowlist (Metis). File-drop / LICENSE-LOCK never join.
 LIVE_READY_ALLOW = frozenset(ORCH_BYO) | frozenset(ALLOWED_RUNNERS)
@@ -50,6 +58,7 @@ OPERATOR_TOOLS = (
     "keep_status",
     "keep_ciso",
     "lab_drop",
+    "scan_to_sor",
 )
 
 TOOL_DESC = {
@@ -101,6 +110,15 @@ TOOL_DESC = {
         "set OUT_DIR=... / python -m product; bind 127.0.0.1; never POSTs "
         "/api/risks). LAB≠SAMPLE≠client. paying_day FAIL. Not SAMPLE keep. "
         "Not client KEEP."
+    ),
+    "scan_to_sor": (
+        "One-shot scan → pack → risk register + POA&M (operator scan-and-sor twin). "
+        "Signed SCOPE + authorized targets are checked BEFORE any scanner/collector. "
+        "LAB estate stages fixtures/lab-drop pack_drop then prove --use-existing-in "
+        "(same SoR rails as lab_drop / lab_drop_to_sor). Never live-scans. "
+        "Never reseeds fixtures/pack_drop as client KEEP. Never writes pack in/. "
+        "Never POSTs /api/risks. Refusal is {ok:false, refused:true, reason}. "
+        "LAB≠SAMPLE≠client. paying_day FAIL."
     ),
 }
 
@@ -398,6 +416,50 @@ def tools_list_entries() -> list[dict[str, Any]]:
                     "LAST_LAB_PROVE. Never reseeds."
                 ),
             }
+        if name == "scan_to_sor":
+            props["scope"] = {
+                "type": "string",
+                "description": (
+                    "Signed SCOPE.yaml path. Default dropbox/SCOPE.yaml "
+                    "(or DROPBOX_SCOPE / --scope). Checked before scan."
+                ),
+            }
+            props["targets"] = {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "Authorized target host(s) or IP(s). Also accepts a "
+                    "comma/space string via arguments.target. Each target "
+                    "must be inside the signed SCOPE. Default: "
+                    "SCOPE.internal_hosts."
+                ),
+            }
+            props["target"] = {
+                "type": "string",
+                "description": "Single target or comma/space list (alias of targets).",
+            }
+            props["out"] = {
+                "type": "string",
+                "description": (
+                    "SoR out/ directory (risk register + POA&M). Default "
+                    "<work>/out (work isolated; never pack in/). Alias out_dir."
+                ),
+            }
+            props["work"] = {
+                "type": "string",
+                "description": (
+                    "Isolation dir (in/ + out/). Default isolated under "
+                    "prove/work/scan-to-sor-*. Never pack in/."
+                ),
+            }
+            props["estate"] = {
+                "type": "string",
+                "description": (
+                    "Lab/estate selector. Default lab (fixtures/lab-drop "
+                    "scan-shaped pack_drop). lab-estate is the same. "
+                    "Never client KEEP."
+                ),
+            }
         tools.append(
             {
                 "name": name,
@@ -465,6 +527,8 @@ def dispatch(
         return keep_ciso(scope_path=path, arguments=extra)
     if tool == "lab_drop":
         return lab_drop(scope_path=path, arguments=extra)
+    if tool == "scan_to_sor":
+        return scan_to_sor(scope_path=path, arguments=extra)
     if tool == "export_ciso_poam":
         return export_ciso_poam(scope_path=path)
     raise GateError(f"unknown operator tool {name!r}")
@@ -577,6 +641,12 @@ LAB_DROP_TO_SOR_SCRIPT = "scripts/lab_drop_to_sor.sh"
 LAB_DROP_TO_SOR_MAKE = ""
 LAB_DROP_TO_SOR_PS1 = ".\\scripts\\lab_drop_to_sor.ps1"
 LAB_HONESTY_BANNERS = ("LAB≠SAMPLE", "LAB≠client", "SAMPLE≠client", "DEMO≠client")
+SCAN_TO_SOR_CLI = (
+    "python -m dropbox run --profile all && ./scripts/lab_drop_to_sor.sh --work DIR"
+)
+SCAN_TO_SOR_PS1 = (
+    "python -m dropbox run --profile all; .\\scripts\\lab_drop_to_sor.ps1 -Work DIR"
+)
 
 
 def _repo_root() -> Path:
@@ -766,7 +836,7 @@ def keep_tool_fail_text(result: Any) -> str:
     """Non-empty last-error text when a keep MCP tool returned ok=false."""
     if not isinstance(result, dict):
         return ""
-    if result.get("tool") not in {"keep_status", "keep_ciso", "lab_drop"}:
+    if result.get("tool") not in {"keep_status", "keep_ciso", "lab_drop", "scan_to_sor"}:
         return ""
     if result.get("ok") is not False:
         return ""
@@ -1787,6 +1857,281 @@ def _lab_drop_once(
             "paying_day FAIL. SAMPLE keep remains the primary KEEP path. "
             "farm_drop_to_sor remains the fixture seed path. "
             "Does not invent client=true."
+        ),
+    }
+
+
+def scan_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
+    """Operator scan-and-sor twin. No new shell entrypoint — compose existing CLIs."""
+    detail = _cli_twin_payload(
+        root,
+        name="scan_to_sor",
+        kind="scan_pack_sor",
+        script_rel=LAB_DROP_TO_SOR_SCRIPT,
+        make=LAB_DROP_TO_SOR_MAKE,
+        ps1=LAB_DROP_TO_SOR_PS1,
+        note=(
+            "MCP scan_to_sor twin of the operator scan-and-sor path "
+            "(DESKTOP EvergreenOps scan-to-console.ps1 against lab-estate). "
+            "Compose existing CLIs — no new operator script: "
+            f"{SCAN_TO_SOR_CLI} "
+            f"(Windows: {SCAN_TO_SOR_PS1}). "
+            "SCOPE gate first, then scan/pack, then lab_drop_to_sor / "
+            "prove --use-existing-in. Never live-scans from this stub. "
+            "Never writes pack in/. Never POSTs /api/risks. "
+            "LAB≠SAMPLE≠client. paying_day FAIL."
+        ),
+    )
+    detail["command"] = SCAN_TO_SOR_CLI
+    detail["posix"] = SCAN_TO_SOR_CLI
+    detail["windows"] = SCAN_TO_SOR_PS1
+    return detail
+
+
+def _normalize_scan_targets(extra: dict[str, Any], scope: Scope) -> list[str]:
+    """Explicit targets, else SCOPE.internal_hosts (already authorized)."""
+    raw = extra.get("targets")
+    if raw is None:
+        raw = extra.get("target")
+    if raw is None:
+        return [str(h).strip() for h in scope.internal_hosts if str(h).strip()]
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.replace(",", " ").split() if part.strip()]
+    if isinstance(raw, (list, tuple)):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    text = str(raw).strip()
+    return [text] if text else []
+
+
+def _scan_to_sor_paths(extra: dict[str, Any]) -> tuple[Path, Path, Path]:
+    """Resolve work / dest_in / dest_out. Path math only — no mkdir, never pack in/."""
+    extra = extra if isinstance(extra, dict) else {}
+    root = _repo_root()
+    pack_in = (root / "in").resolve()
+    out_arg = _path_arg(extra, "out", "out_dir")
+    work_arg = _path_arg(extra, "work")
+    if work_arg:
+        work = _resolve_keep_path(work_arg)
+    elif out_arg:
+        out_p = _resolve_keep_path(out_arg)
+        work = out_p.parent if out_p.name == "out" else out_p
+    else:
+        work = root / "prove" / "work" / f"scan-to-sor-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    work = Path(work)
+    try:
+        dest_in_key = (work / "in").resolve()
+    except OSError:
+        dest_in_key = work / "in"
+    if dest_in_key == pack_in or work.resolve() == root.resolve():
+        work = root / "prove" / "work" / f"scan-to-sor-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    dest_in = work / "in"
+    dest_out = work / "out"
+    return work, dest_in, dest_out
+
+
+def _scan_to_sor_refuse_code(reason: str) -> str:
+    text = (reason or "").lower()
+    if "outside engagement window" in text:
+        return "SCOPE_EXPIRED"
+    if "outside authorized scope" in text or "requires at least one" in text:
+        return "SCOPE_TARGET"
+    if (
+        "hash mismatch" in text
+        or "attestation" in text
+        or "attestation_sha256" in text
+        or "attestation_path" in text
+    ):
+        return "SCOPE_UNSIGNED"
+    if "no scope file" in text or "empty or not a mapping" in text or "unreadable" in text:
+        return "SCOPE_MISSING"
+    return "SCOPE_REFUSED"
+
+
+def scan_to_sor_refuse_payload(
+    reason: str,
+    *,
+    work: Path | None = None,
+    dest_in: Path | None = None,
+    dest_out: Path | None = None,
+    targets: list[str] | None = None,
+) -> dict[str, Any]:
+    """Structured SCOPE refusal. ok stays false. Nothing scanned or written."""
+    err = str(reason or "SCOPE gate refused scan_to_sor")
+    if not err.startswith("SCOPE gate"):
+        err = f"SCOPE gate: {err}"
+    return {
+        "tool": "scan_to_sor",
+        "ok": False,
+        "refused": True,
+        "reason": err,
+        "error": err,
+        "stderr": err,
+        "fail_code": _scan_to_sor_refuse_code(err),
+        "live": False,
+        "scanned": False,
+        "wrote_out": False,
+        "lab": True,
+        "sample": False,
+        "client": False,
+        "client_keep": False,
+        "paying_day": "FAIL",
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "targets": list(targets or []),
+        "work": str(work) if work else "",
+        "dest_in": str(dest_in) if dest_in else "",
+        "out": str(dest_out) if dest_out else "",
+        "risk_register": "",
+        "poam": "",
+        "pack_drop": "",
+        "cli_twin": scan_to_sor_cli_twin(_repo_root()),
+        "banners": list(LAB_HONESTY_BANNERS),
+        "note": (
+            f"scan_to_sor refused. {err}. "
+            "Nothing scanned. Nothing written to out/. "
+            "LAB != SAMPLE != client. paying_day FAIL."
+        ),
+    }
+
+
+def scan_and_pack(
+    *,
+    scope: Scope,
+    targets: list[str],
+    dest_in: Path,
+    estate: str = "lab",
+) -> Path:
+    """Scan entry then pack_drop into dest_in. Never live-scan.
+
+    LAB/lab-estate stages fixtures/lab-drop (operator scan-shaped pack_drop).
+    Refusal tests monkeypatch this — it must not run when SCOPE refuses.
+    """
+    from scripts.prove_ciso import _copy_tree
+
+    dest_in = Path(dest_in)
+    estate_l = (estate or "lab").strip().lower()
+    if estate_l in {"", "lab", "lab-estate", "lab_estate"}:
+        src = _repo_root() / "fixtures" / "lab-drop"
+    else:
+        raise GateError(
+            f"unknown estate {estate!r} (lab / lab-estate only; never client KEEP)"
+        )
+    if not src.is_dir():
+        raise RuntimeError(f"LAB scan fixture missing: {src}")
+    dest_in.mkdir(parents=True, exist_ok=True)
+    _copy_tree(src, dest_in)
+    pack = dest_in / "nmap" / "pack_drop"
+    if not pack.is_dir():
+        raise RuntimeError("scan_and_pack failed to stage LAB pack_drop")
+    _ = (scope, targets)
+    return pack
+
+
+def scan_to_sor(
+    scope_path: Path | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """SCOPE-gated scan → pack → risk register + POA&M. Operator scan-and-sor twin.
+
+    Signed SCOPE and authorized targets are checked BEFORE scan_and_pack /
+    collectors. LAB estate stages fixtures/lab-drop then prove --use-existing-in
+    (same SoR rails as lab_drop / lab_drop_to_sor). Never live-scans. Never
+    writes pack in/. Never POSTs /api/risks. LAB≠SAMPLE≠client.
+    """
+    extra = arguments if isinstance(arguments, dict) else {}
+    work, dest_in, dest_out = _scan_to_sor_paths(extra)
+    chosen_scope = _path_arg(extra, "scope") or _keep_scope_path(scope_path)
+    targets: list[str] = []
+    try:
+        scope = load_scope(chosen_scope)
+        targets = _normalize_scan_targets(extra, scope)
+        require_authorized_targets(scope, targets)
+    except GateError as exc:
+        return scan_to_sor_refuse_payload(
+            str(exc), work=work, dest_in=dest_in, dest_out=dest_out, targets=targets
+        )
+
+    estate = str(extra.get("estate") or extra.get("lab") or "lab")
+    try:
+        pack = scan_and_pack(
+            scope=scope, targets=targets, dest_in=dest_in, estate=estate
+        )
+    except GateError as exc:
+        return scan_to_sor_refuse_payload(
+            str(exc), work=work, dest_in=dest_in, dest_out=dest_out, targets=targets
+        )
+
+    from scripts.prove_ciso import prove_ciso, verify_farm_drop_sor
+
+    stamp = prove_ciso(root=_repo_root(), dest=work, use_existing_in=True)
+    verify_farm_drop_sor(work)
+    register = dest_out / "ciso-assistant" / "risk_scenarios.csv"
+    findings = dest_out / "ciso-assistant" / "findings.csv"
+    poam = dest_out / "poam" / "poam.csv"
+    poam_md = dest_out / "poam" / "poam.md"
+    ciso_dir = dest_out / "ciso-assistant"
+    ok = (
+        stamp.get("status") == "pass"
+        and stamp.get("lab") is True
+        and stamp.get("sample") is False
+        and stamp.get("client") is False
+        and register.is_file()
+        and poam.is_file()
+        and pack.is_dir()
+    )
+    return {
+        "tool": "scan_to_sor",
+        "ok": ok,
+        "refused": False,
+        "reason": "" if ok else str(stamp.get("reason") or "scan_to_sor SoR failed"),
+        "error": "" if ok else str(stamp.get("reason") or "scan_to_sor SoR failed"),
+        "stderr": "" if ok else str(stamp.get("reason") or "scan_to_sor SoR failed"),
+        "fail_code": "" if ok else "SOR_FAIL",
+        "live": False,
+        "scanned": True,
+        "wrote_out": bool(register.is_file() or poam.is_file()),
+        "scope_gated": True,
+        "client": False,
+        "demo": True,
+        "sample": False,
+        "lab": True,
+        "client_keep": False,
+        "estate": str(stamp.get("estate") or "LAB/DEMO — not a client estate"),
+        "estate_selector": estate,
+        "targets": targets,
+        "scope": str(scope.path),
+        "work": str(work),
+        "dest_in": str(dest_in),
+        "out": str(dest_out),
+        "pack_drop": str(pack),
+        "risk_register": str(register) if register.is_file() else "",
+        "findings": str(findings) if findings.is_file() else "",
+        "ciso_dir": str(ciso_dir),
+        "poam": str(poam) if poam.is_file() else "",
+        "poam_md": str(poam_md) if poam_md.is_file() else "",
+        "prove": str(work / "prove-ciso.json") if (work / "prove-ciso.json").is_file() else "",
+        "cli_twin": scan_to_sor_cli_twin(_repo_root()),
+        "lab_drop_cli_twin": lab_drop_to_sor_cli_twin(_repo_root()),
+        "posted": False,
+        "http": False,
+        "wrap": "review-only",
+        "ciso_push": "0",
+        "riskready_push": "0",
+        "grc_live_scan": "0",
+        "dry_run_env": "1",
+        "banners": list(LAB_HONESTY_BANNERS),
+        "paying_day": "FAIL",
+        "stamp": stamp,
+        "note": (
+            "scan → pack → SoR: LAB fixtures/lab-drop pack_drop → "
+            "out/ciso-assistant/risk_scenarios.csv + out/poam/poam.csv "
+            "via prove --use-existing-in. Same rails as "
+            "./scripts/lab_drop_to_sor.sh after an operator scan. "
+            "CLI twin: "
+            f"{SCAN_TO_SOR_CLI}. "
+            "Never live-scans. Never writes pack in/. Never POSTs /api/risks. "
+            "LAB≠SAMPLE≠client. paying_day FAIL."
         ),
     }
 

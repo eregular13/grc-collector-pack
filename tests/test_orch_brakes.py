@@ -103,8 +103,14 @@ def test_conductor_refuses_empty_and_unsigned_scope(tmp_path: Path) -> None:
     )
     for scope in (empty, unsigned):
         for name in OPERATOR_TOOLS:
-            with pytest.raises(GateError, match="SCOPE"):
-                dispatch(name, scope_path=scope)
+            if name == "scan_to_sor":
+                result = dispatch(name, scope_path=scope)
+                assert result.get("ok") is False
+                assert result.get("refused") is True
+                assert "SCOPE" in str(result.get("reason") or "")
+            else:
+                with pytest.raises(GateError, match="SCOPE"):
+                    dispatch(name, scope_path=scope)
 
 
 def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
@@ -155,6 +161,7 @@ def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
         ["mcp", "keep_status"],
         ["mcp", "keep_ciso"],
         ["mcp", "lab_drop"],
+        ["mcp", "scan_to_sor"],
         ["mcp", "scope_status"],
         ["schedule"],
         ["ciso"],
