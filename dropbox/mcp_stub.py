@@ -7,10 +7,12 @@ Metasploit / AIExploitGenerator / exploit-chain tools.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import sys
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -114,8 +116,10 @@ TOOL_DESC = {
     "scan_to_sor": (
         "One-shot scan → pack → risk register + POA&M (operator scan-and-sor twin). "
         "Signed SCOPE + authorized targets are checked BEFORE any scanner/collector. "
-        "LAB estate stages fixtures/lab-drop pack_drop then prove --use-existing-in "
-        "(same SoR rails as lab_drop / lab_drop_to_sor). Never live-scans. "
+        "Default (GRC_LIVE_SCAN unset/0/false) stages fixtures/lab-drop pack_drop "
+        "then prove --use-existing-in (same SoR rails as lab_drop / lab_drop_to_sor). "
+        "Opt-in live: GRC_LIVE_SCAN=1 runs existing dropbox run collectors against "
+        "gated lab-estate targets only (estate=lab; 192.168.64.0/24 dest_in). "
         "Never reseeds fixtures/pack_drop as client KEEP. Never writes pack in/. "
         "Never POSTs /api/risks. Refusal is {ok:false, refused:true, reason}. "
         "LAB≠SAMPLE≠client. paying_day FAIL."
@@ -457,7 +461,8 @@ def tools_list_entries() -> list[dict[str, Any]]:
                 "description": (
                     "Lab/estate selector. Default lab (fixtures/lab-drop "
                     "scan-shaped pack_drop). lab-estate is the same. "
-                    "Never client KEEP."
+                    "Live mode (GRC_LIVE_SCAN=1) refuses any estate other "
+                    "than lab / lab-estate. Never client KEEP."
                 ),
             }
         tools.append(
@@ -647,6 +652,18 @@ SCAN_TO_SOR_CLI = (
 SCAN_TO_SOR_PS1 = (
     "python -m dropbox run --profile all; .\\scripts\\lab_drop_to_sor.ps1 -Work DIR"
 )
+SCAN_TO_SOR_LIVE_CLI = (
+    "GRC_LIVE_SCAN=1 python -m dropbox run --profile all --live && "
+    "./scripts/lab_drop_to_sor.sh --work DIR"
+)
+SCAN_TO_SOR_LIVE_PS1 = (
+    "$env:GRC_LIVE_SCAN=1; python -m dropbox run --profile all --live; "
+    ".\\scripts\\lab_drop_to_sor.ps1 -Work DIR"
+)
+# DESKTOP compose-lab / fixtures/lab-drop dest_in (docs/PROVE_CISO.md,
+# fixtures/lab-drop/nmap/pack_drop/meta.json). Do not invent client nets.
+LAB_ESTATE_NETWORKS = ("192.168.64.0/24",)
+LAB_ESTATE_ALIASES = frozenset({"", "lab", "lab-estate", "lab_estate"})
 
 
 def _repo_root() -> Path:
@@ -1861,30 +1878,44 @@ def _lab_drop_once(
     }
 
 
-def scan_to_sor_cli_twin(root: Path | None = None) -> dict[str, Any]:
+def scan_to_sor_cli_twin(root: Path | None = None, *, live: bool = False) -> dict[str, Any]:
     """Operator scan-and-sor twin. No new shell entrypoint — compose existing CLIs."""
+    posix = SCAN_TO_SOR_LIVE_CLI if live else SCAN_TO_SOR_CLI
+    windows = SCAN_TO_SOR_LIVE_PS1 if live else SCAN_TO_SOR_PS1
+    mode = (
+        "Live mode (GRC_LIVE_SCAN=1): existing dropbox run --profile all --live "
+        "against gated lab-estate targets only, then lab_drop_to_sor / "
+        "prove --use-existing-in."
+        if live
+        else (
+            "Fixture mode (GRC_LIVE_SCAN unset/0/false): stages "
+            "fixtures/lab-drop then lab_drop_to_sor / prove --use-existing-in."
+        )
+    )
     detail = _cli_twin_payload(
         root,
         name="scan_to_sor",
-        kind="scan_pack_sor",
+        kind="scan_pack_sor_live" if live else "scan_pack_sor",
         script_rel=LAB_DROP_TO_SOR_SCRIPT,
         make=LAB_DROP_TO_SOR_MAKE,
         ps1=LAB_DROP_TO_SOR_PS1,
         note=(
             "MCP scan_to_sor twin of the operator scan-and-sor path "
             "(DESKTOP EvergreenOps scan-to-console.ps1 against lab-estate). "
+            f"{mode} "
             "Compose existing CLIs — no new operator script: "
-            f"{SCAN_TO_SOR_CLI} "
-            f"(Windows: {SCAN_TO_SOR_PS1}). "
-            "SCOPE gate first, then scan/pack, then lab_drop_to_sor / "
-            "prove --use-existing-in. Never live-scans from this stub. "
+            f"{posix} "
+            f"(Windows: {windows}). "
+            "SCOPE gate first. Live mode also requires estate=lab and "
+            "targets inside lab-estate networks (192.168.64.0/24). "
             "Never writes pack in/. Never POSTs /api/risks. "
             "LAB≠SAMPLE≠client. paying_day FAIL."
         ),
     )
-    detail["command"] = SCAN_TO_SOR_CLI
-    detail["posix"] = SCAN_TO_SOR_CLI
-    detail["windows"] = SCAN_TO_SOR_PS1
+    detail["command"] = posix
+    detail["posix"] = posix
+    detail["windows"] = windows
+    detail["live"] = bool(live)
     return detail
 
 
@@ -1929,8 +1960,65 @@ def _scan_to_sor_paths(extra: dict[str, Any]) -> tuple[Path, Path, Path]:
     return work, dest_in, dest_out
 
 
+def _grc_live_scan_on() -> bool:
+    """Opt-in only. Unset / 0 / false / no / off stay fixture mode."""
+    raw = str(os.environ.get("GRC_LIVE_SCAN") or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _is_lab_estate(estate: str) -> bool:
+    return str(estate or "lab").strip().lower() in LAB_ESTATE_ALIASES
+
+
+def lab_estate_networks() -> tuple[str, ...]:
+    """DESKTOP lab-estate dest_in CIDRs. From fixtures/lab-drop — not invented."""
+    return LAB_ESTATE_NETWORKS
+
+
+def allows_lab_estate_target(target: str) -> bool:
+    """True when target is an IP inside DESKTOP lab-estate networks (192.168.64.0/24)."""
+    raw = (target or "").strip()
+    if not raw:
+        return False
+    host = raw.split("://")[-1].split("/")[0].split(":")[0].lower().rstrip(".")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    for cidr in LAB_ESTATE_NETWORKS:
+        try:
+            net = ipaddress.ip_network(cidr, strict=False)
+        except ValueError:
+            continue
+        if ip in net:
+            return True
+    return False
+
+
+def require_lab_estate(estate: str) -> None:
+    """Live mode is lab / lab-estate only. Any other estate is a refusal."""
+    if _is_lab_estate(estate):
+        return
+    raise GateError(
+        f"live mode refuses estate {estate!r} (lab / lab-estate only; never client KEEP)"
+    )
+
+
+def require_lab_estate_targets(targets: list[str]) -> None:
+    """Live targets must sit in DESKTOP lab-estate networks (and SCOPE)."""
+    rows = [str(item or "").strip() for item in (targets or []) if str(item or "").strip()]
+    missing = [raw for raw in rows if not allows_lab_estate_target(raw)]
+    if missing:
+        shown = ", ".join(missing)
+        raise GateError(f"requested target(s) outside lab-estate networks: {shown}")
+
+
 def _scan_to_sor_refuse_code(reason: str) -> str:
     text = (reason or "").lower()
+    if "outside lab-estate network" in text:
+        return "LIVE_LAB_NET"
+    if "live mode refuses estate" in text:
+        return "LIVE_ESTATE"
     if "outside engagement window" in text:
         return "SCOPE_EXPIRED"
     if "outside authorized scope" in text or "requires at least one" in text:
@@ -1954,8 +2042,9 @@ def scan_to_sor_refuse_payload(
     dest_in: Path | None = None,
     dest_out: Path | None = None,
     targets: list[str] | None = None,
+    live: bool = False,
 ) -> dict[str, Any]:
-    """Structured SCOPE refusal. ok stays false. Nothing scanned or written."""
+    """Structured SCOPE/live refusal. ok stays false. Nothing scanned or written."""
     err = str(reason or "SCOPE gate refused scan_to_sor")
     if not err.startswith("SCOPE gate"):
         err = f"SCOPE gate: {err}"
@@ -1967,7 +2056,7 @@ def scan_to_sor_refuse_payload(
         "error": err,
         "stderr": err,
         "fail_code": _scan_to_sor_refuse_code(err),
-        "live": False,
+        "live": bool(live),
         "scanned": False,
         "wrote_out": False,
         "lab": True,
@@ -1985,7 +2074,7 @@ def scan_to_sor_refuse_payload(
         "risk_register": "",
         "poam": "",
         "pack_drop": "",
-        "cli_twin": scan_to_sor_cli_twin(_repo_root()),
+        "cli_twin": scan_to_sor_cli_twin(_repo_root(), live=bool(live)),
         "banners": list(LAB_HONESTY_BANNERS),
         "note": (
             f"scan_to_sor refused. {err}. "
@@ -2002,7 +2091,7 @@ def scan_and_pack(
     dest_in: Path,
     estate: str = "lab",
 ) -> Path:
-    """Scan entry then pack_drop into dest_in. Never live-scan.
+    """Scan entry then pack_drop into dest_in. Fixture path (GRC_LIVE_SCAN off).
 
     LAB/lab-estate stages fixtures/lab-drop (operator scan-shaped pack_drop).
     Refusal tests monkeypatch this — it must not run when SCOPE refuses.
@@ -2010,8 +2099,7 @@ def scan_and_pack(
     from scripts.prove_ciso import _copy_tree
 
     dest_in = Path(dest_in)
-    estate_l = (estate or "lab").strip().lower()
-    if estate_l in {"", "lab", "lab-estate", "lab_estate"}:
+    if _is_lab_estate(estate):
         src = _repo_root() / "fixtures" / "lab-drop"
     else:
         raise GateError(
@@ -2028,6 +2116,61 @@ def scan_and_pack(
     return pack
 
 
+def run_live_collectors(
+    *,
+    scope: Scope,
+    targets: list[str],
+    dest_in: Path,
+    estate: str = "lab",
+) -> Path:
+    """Existing dropbox run collectors against gated lab-estate targets only.
+
+    Same operator path as `python -m dropbox run --profile all --live` (dropbox
+    runners / scanner_free collectors — not a new scanner). Writes into the
+    isolated dest_in (never pack in/). Tests monkeypatch this — it must not
+    run when SCOPE or live estate/net gates refuse.
+    """
+    from dropbox import runners
+
+    dest_in = Path(dest_in)
+    dest_in.mkdir(parents=True, exist_ok=True)
+    gated = [str(item).strip() for item in targets if str(item).strip()]
+    restricted = replace(scope, internal_hosts=gated, deepen_hosts=gated)
+    saved = {
+        key: os.environ.get(key)
+        for key in ("IN_DIR", "DROPBOX_WORK_IN", "DROPBOX_DEMO", "DROPBOX_LIVE")
+    }
+    os.environ["IN_DIR"] = str(dest_in)
+    os.environ["DROPBOX_WORK_IN"] = str(dest_in)
+    os.environ["DROPBOX_DEMO"] = "0"
+    os.environ["DROPBOX_LIVE"] = "1"
+    try:
+        # Internal profile only — gated lab-estate targets, not external/client.
+        runners.write_inventory(restricted, demo=False)
+        runners.write_lynis(restricted, demo=False)
+    finally:
+        for key, val in saved.items():
+            if val is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = val
+    banner = dest_in / "LAB.txt"
+    if not banner.is_file():
+        banner.write_text(
+            "LAB/DEMO -- not a client estate.\n"
+            "Operator live dest_in (GRC_LIVE_SCAN=1). Not SAMPLE. Not client KEEP.\n",
+            encoding="utf-8",
+        )
+    pack = dest_in / "nmap" / "pack_drop"
+    if pack.is_dir():
+        return pack
+    nmap = dest_in / "nmap"
+    if nmap.is_dir():
+        return nmap
+    _ = estate
+    raise RuntimeError("live collectors produced no dest_in nmap")
+
+
 def scan_to_sor(
     scope_path: Path | None = None,
     arguments: dict[str, Any] | None = None,
@@ -2035,31 +2178,50 @@ def scan_to_sor(
     """SCOPE-gated scan → pack → risk register + POA&M. Operator scan-and-sor twin.
 
     Signed SCOPE and authorized targets are checked BEFORE scan_and_pack /
-    collectors. LAB estate stages fixtures/lab-drop then prove --use-existing-in
-    (same SoR rails as lab_drop / lab_drop_to_sor). Never live-scans. Never
-    writes pack in/. Never POSTs /api/risks. LAB≠SAMPLE≠client.
+    run_live_collectors. Default (GRC_LIVE_SCAN off) stages fixtures/lab-drop
+    then prove --use-existing-in. Opt-in live (GRC_LIVE_SCAN=1) runs existing
+    dropbox run collectors against gated lab-estate targets only. Never writes
+    pack in/. Never POSTs /api/risks. LAB≠SAMPLE≠client.
     """
     extra = arguments if isinstance(arguments, dict) else {}
     work, dest_in, dest_out = _scan_to_sor_paths(extra)
     chosen_scope = _path_arg(extra, "scope") or _keep_scope_path(scope_path)
     targets: list[str] = []
+    live = _grc_live_scan_on()
     try:
         scope = load_scope(chosen_scope)
         targets = _normalize_scan_targets(extra, scope)
         require_authorized_targets(scope, targets)
     except GateError as exc:
         return scan_to_sor_refuse_payload(
-            str(exc), work=work, dest_in=dest_in, dest_out=dest_out, targets=targets
+            str(exc),
+            work=work,
+            dest_in=dest_in,
+            dest_out=dest_out,
+            targets=targets,
+            live=live,
         )
 
     estate = str(extra.get("estate") or extra.get("lab") or "lab")
     try:
-        pack = scan_and_pack(
-            scope=scope, targets=targets, dest_in=dest_in, estate=estate
-        )
+        if live:
+            require_lab_estate(estate)
+            require_lab_estate_targets(targets)
+            pack = run_live_collectors(
+                scope=scope, targets=targets, dest_in=dest_in, estate=estate
+            )
+        else:
+            pack = scan_and_pack(
+                scope=scope, targets=targets, dest_in=dest_in, estate=estate
+            )
     except GateError as exc:
         return scan_to_sor_refuse_payload(
-            str(exc), work=work, dest_in=dest_in, dest_out=dest_out, targets=targets
+            str(exc),
+            work=work,
+            dest_in=dest_in,
+            dest_out=dest_out,
+            targets=targets,
+            live=live,
         )
 
     from scripts.prove_ciso import prove_ciso, verify_farm_drop_sor
@@ -2088,7 +2250,7 @@ def scan_to_sor(
         "error": "" if ok else str(stamp.get("reason") or "scan_to_sor SoR failed"),
         "stderr": "" if ok else str(stamp.get("reason") or "scan_to_sor SoR failed"),
         "fail_code": "" if ok else "SOR_FAIL",
-        "live": False,
+        "live": bool(live),
         "scanned": True,
         "wrote_out": bool(register.is_file() or poam.is_file()),
         "scope_gated": True,
@@ -2111,26 +2273,38 @@ def scan_to_sor(
         "poam": str(poam) if poam.is_file() else "",
         "poam_md": str(poam_md) if poam_md.is_file() else "",
         "prove": str(work / "prove-ciso.json") if (work / "prove-ciso.json").is_file() else "",
-        "cli_twin": scan_to_sor_cli_twin(_repo_root()),
+        "cli_twin": scan_to_sor_cli_twin(_repo_root(), live=live),
         "lab_drop_cli_twin": lab_drop_to_sor_cli_twin(_repo_root()),
         "posted": False,
         "http": False,
         "wrap": "review-only",
         "ciso_push": "0",
         "riskready_push": "0",
-        "grc_live_scan": "0",
+        "grc_live_scan": "1" if live else "0",
         "dry_run_env": "1",
         "banners": list(LAB_HONESTY_BANNERS),
         "paying_day": "FAIL",
         "stamp": stamp,
         "note": (
-            "scan → pack → SoR: LAB fixtures/lab-drop pack_drop → "
-            "out/ciso-assistant/risk_scenarios.csv + out/poam/poam.csv "
-            "via prove --use-existing-in. Same rails as "
-            "./scripts/lab_drop_to_sor.sh after an operator scan. "
-            "CLI twin: "
-            f"{SCAN_TO_SOR_CLI}. "
-            "Never live-scans. Never writes pack in/. Never POSTs /api/risks. "
+            (
+                "scan → pack → SoR (live): GRC_LIVE_SCAN=1 existing dropbox run "
+                "collectors against gated lab-estate targets → "
+                "out/ciso-assistant/risk_scenarios.csv + out/poam/poam.csv "
+                "via prove --use-existing-in. CLI twin: "
+                f"{SCAN_TO_SOR_LIVE_CLI}. "
+            )
+            if live
+            else (
+                "scan → pack → SoR: LAB fixtures/lab-drop pack_drop → "
+                "out/ciso-assistant/risk_scenarios.csv + out/poam/poam.csv "
+                "via prove --use-existing-in. Same rails as "
+                "./scripts/lab_drop_to_sor.sh after an operator scan. "
+                "CLI twin: "
+                f"{SCAN_TO_SOR_CLI}. "
+            )
+        )
+        + (
+            "Never writes pack in/. Never POSTs /api/risks. "
             "LAB≠SAMPLE≠client. paying_day FAIL."
         ),
     }
