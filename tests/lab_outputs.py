@@ -53,7 +53,9 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    poam_h = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status"
+    from shared.ciso_shape import POAM_HEADER
+
+    poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
     sr_path = OUT / "simplerisk" / "poam.csv"
     if sr_path.is_file():

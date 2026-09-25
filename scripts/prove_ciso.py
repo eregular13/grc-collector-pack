@@ -77,6 +77,7 @@ ENV_KEYS = (
     "DROPBOX_LIVE",
     "DROPBOX_DEMO",
     "PYTHONPATH",
+    "GRC_ESTATE_LABEL",
 )
 
 PAYING_PASS_RE = re.compile(r"paying[_ ]day[\"'\s:=]+pass", re.IGNORECASE)
@@ -404,6 +405,8 @@ def prove_ciso(
         os.environ["DROPBOX_LIVE"] = "0"
         os.environ["DROPBOX_DEMO"] = "1"
         os.environ.setdefault("PYTHONPATH", str(root))
+        # Export watermark (poam estate column + banner). LAB != SAMPLE != client.
+        os.environ["GRC_ESTATE_LABEL"] = "LAB" if use_existing_in else "SAMPLE"
         if use_existing_in:
             require_existing_in(dest_in)
             seed = inspect_existing_in(dest_in)
