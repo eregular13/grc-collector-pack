@@ -42,15 +42,17 @@ def _signed_scope(
     start: str = "2026-09-01",
     end: str = "2026-12-31",
     digest: str | None = None,
+    cidrs: str | None = None,
 ) -> Path:
     att, real = _consent(tmp_path)
     hashed = digest if digest is not None else real
+    nets = cidrs if cidrs is not None else "    - 10.20.30.0/23\n"
     return _write_scope(
         tmp_path,
         "client:\n  name: DEMO — not a client estate\nconsent:\n  attestation_path: "
         + str(att)
         + f"\n  attestation_sha256: {hashed}\nengagement:\n  start: {start}\n"
-        f"  end: {end}\ninternal:\n  cidrs:\n    - 10.20.30.0/23\n"
+        f"  end: {end}\ninternal:\n  cidrs:\n{nets}"
         "  hosts:\n    - 127.0.0.1\nexternal:\n  hosts:\n    - vpn.example.com\n"
         "allow_tools:\n  - nmap\n",
     )
@@ -194,6 +196,7 @@ def test_scan_to_sor_happy_path_lab_fixtures(tmp_path: Path) -> None:
     assert result["tool"] == "scan_to_sor"
     assert result["ok"] is True, result.get("stderr") or result.get("reason")
     assert result["refused"] is False
+    assert result["live"] is False
     assert result["scanned"] is True
     assert result["lab"] is True
     assert result["sample"] is False
@@ -252,3 +255,289 @@ def test_scan_to_sor_tools_list_and_docs() -> None:
     assert "SCOPE_EXPIRED" in iface or "expired" in iface
     assert "lab_drop_to_sor" in iface
     assert "python -m dropbox run" in iface
+    assert "GRC_LIVE_SCAN" in iface
+    assert "LIVE_ESTATE" in iface
+    assert "LIVE_LAB_NET" in iface
+    assert "192.168.64.0/24" in iface
+
+
+def _patch_collectors_raise(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
+    calls = {"scan_and_pack": 0, "run_live_collectors": 0}
+
+    def boom_scan(*_a, **_k):
+        calls["scan_and_pack"] += 1
+        raise AssertionError("scan_and_pack invoked after refusal")
+
+    def boom_live(*_a, **_k):
+        calls["run_live_collectors"] += 1
+        raise AssertionError("run_live_collectors invoked after refusal")
+
+    monkeypatch.setattr("dropbox.mcp_stub.scan_and_pack", boom_scan)
+    monkeypatch.setattr("dropbox.mcp_stub.run_live_collectors", boom_live)
+    return calls
+
+
+def _stage_lab_drop(dest_in: Path) -> Path:
+    from scripts.prove_ciso import _copy_tree
+
+    dest_in = Path(dest_in)
+    _copy_tree(ROOT / "fixtures" / "lab-drop", dest_in)
+    pack = dest_in / "nmap" / "pack_drop"
+    assert pack.is_dir()
+    return pack
+
+
+def test_scan_to_sor_live_refuses_target_outside_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    calls = _patch_collectors_raise(monkeypatch)
+    out = tmp_path / "out"
+    result = dispatch(
+        "scan_to_sor",
+        scope_path=SCOPE,
+        arguments={
+            "targets": ["8.8.8.8"],
+            "out": str(out),
+            "work": str(tmp_path / "w"),
+            "estate": "lab",
+        },
+    )
+    assert result["ok"] is False
+    assert result["refused"] is True
+    assert result["live"] is True
+    assert result["scanned"] is False
+    assert result["wrote_out"] is False
+    reason = result["reason"]
+    assert "SCOPE gate" in reason
+    assert "outside authorized SCOPE" in reason
+    assert "8.8.8.8" in reason
+    assert result["fail_code"] == "SCOPE_TARGET"
+    assert calls["scan_and_pack"] == 0
+    assert calls["run_live_collectors"] == 0
+    _assert_out_untouched(out)
+
+
+@pytest.mark.parametrize(
+    ("kind", "scope_factory", "fail_code", "needle"),
+    [
+        (
+            "missing",
+            lambda tmp: tmp / "no-such-SCOPE.yaml",
+            "SCOPE_MISSING",
+            "no SCOPE file",
+        ),
+        (
+            "unsigned",
+            lambda tmp: _signed_scope(tmp, digest="00" * 32),
+            "SCOPE_UNSIGNED",
+            "hash mismatch",
+        ),
+        (
+            "expired",
+            lambda tmp: _signed_scope(tmp, start="2020-01-01", end="2020-12-31"),
+            "SCOPE_EXPIRED",
+            "outside engagement window",
+        ),
+    ],
+    ids=["missing", "unsigned", "expired"],
+)
+def test_scan_to_sor_live_refuses_missing_or_expired_scope(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    scope_factory,
+    fail_code: str,
+    needle: str,
+) -> None:
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    calls = _patch_collectors_raise(monkeypatch)
+    scope = scope_factory(tmp_path)
+    out = tmp_path / "out"
+    result = dispatch(
+        "scan_to_sor",
+        scope_path=scope,
+        arguments={"targets": ["127.0.0.1"], "out": str(out), "work": str(tmp_path / "w")},
+    )
+    assert result["ok"] is False, kind
+    assert result["refused"] is True
+    assert result["live"] is True
+    assert result["scanned"] is False
+    assert result["wrote_out"] is False
+    reason = result["reason"]
+    assert "SCOPE gate" in reason
+    assert needle in reason or (fail_code == "SCOPE_UNSIGNED" and "attestation" in reason)
+    assert result["fail_code"] == fail_code
+    assert calls["scan_and_pack"] == 0
+    assert calls["run_live_collectors"] == 0
+    _assert_out_untouched(out)
+
+
+def test_scan_to_sor_live_refuses_non_lab_estate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    calls = _patch_collectors_raise(monkeypatch)
+    scope = _signed_scope(tmp_path)
+    out = tmp_path / "out"
+    result = dispatch(
+        "scan_to_sor",
+        scope_path=scope,
+        arguments={
+            "targets": ["127.0.0.1"],
+            "out": str(out),
+            "work": str(tmp_path / "w"),
+            "estate": "keep",
+        },
+    )
+    assert result["ok"] is False
+    assert result["refused"] is True
+    assert result["live"] is True
+    assert result["scanned"] is False
+    assert result["wrote_out"] is False
+    reason = result["reason"]
+    assert "SCOPE gate" in reason
+    assert "live mode refuses estate" in reason
+    assert "keep" in reason
+    assert result["fail_code"] == "LIVE_ESTATE"
+    assert calls["scan_and_pack"] == 0
+    assert calls["run_live_collectors"] == 0
+    _assert_out_untouched(out)
+
+
+def test_scan_to_sor_live_refuses_target_outside_lab_estate_networks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    calls = _patch_collectors_raise(monkeypatch)
+    out = tmp_path / "out"
+    result = dispatch(
+        "scan_to_sor",
+        scope_path=SCOPE,
+        arguments={
+            "targets": ["127.0.0.1"],
+            "out": str(out),
+            "work": str(tmp_path / "w"),
+            "estate": "lab",
+        },
+    )
+    assert result["ok"] is False
+    assert result["refused"] is True
+    assert result["live"] is True
+    assert result["scanned"] is False
+    assert result["wrote_out"] is False
+    reason = result["reason"]
+    assert "SCOPE gate" in reason
+    assert "outside lab-estate networks" in reason
+    assert "127.0.0.1" in reason
+    assert result["fail_code"] == "LIVE_LAB_NET"
+    assert calls["scan_and_pack"] == 0
+    assert calls["run_live_collectors"] == 0
+    _assert_out_untouched(out)
+
+
+def test_scan_to_sor_live_happy_path_mocked_collector(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GRC_LIVE_SCAN", "1")
+    calls: dict[str, object] = {"n": 0, "targets": None}
+
+    def fake_live(*, scope, targets, dest_in, estate="lab"):
+        calls["n"] = int(calls["n"]) + 1
+        calls["targets"] = list(targets)
+        calls["estate"] = estate
+        return _stage_lab_drop(Path(dest_in))
+
+    def boom_scan(*_a, **_k):
+        raise AssertionError("fixture scan_and_pack invoked in live mode")
+
+    monkeypatch.setattr("dropbox.mcp_stub.run_live_collectors", fake_live)
+    monkeypatch.setattr("dropbox.mcp_stub.scan_and_pack", boom_scan)
+    work = tmp_path / "scan-work"
+    out = work / "out"
+    pack_in = tmp_path / "pack-in"
+    pack_in.mkdir()
+    scope = _signed_scope(
+        tmp_path,
+        cidrs="    - 10.20.30.0/23\n    - 192.168.64.0/24\n",
+    )
+    result = dispatch(
+        "scan_to_sor",
+        scope_path=scope,
+        arguments={
+            "targets": ["192.168.64.10"],
+            "out": str(out),
+            "work": str(work),
+            "estate": "lab",
+            "pack_in": str(pack_in),
+        },
+    )
+    assert result["tool"] == "scan_to_sor"
+    assert result["ok"] is True, result.get("stderr") or result.get("reason")
+    assert result["refused"] is False
+    assert result["live"] is True
+    assert result["scanned"] is True
+    assert result["lab"] is True
+    assert result["sample"] is False
+    assert result["client"] is False
+    assert result["client_keep"] is False
+    assert result["paying_day"] == "FAIL"
+    assert result["posted"] is False
+    assert result["http"] is False
+    assert result["targets"] == ["192.168.64.10"]
+    assert calls["n"] == 1
+    assert calls["targets"] == ["192.168.64.10"]
+    register = Path(result["risk_register"])
+    poam = Path(result["poam"])
+    pack = Path(result["pack_drop"])
+    assert register.is_file()
+    assert poam.is_file()
+    assert pack.is_dir()
+    twin = result["cli_twin"]
+    assert twin["live"] is True
+    assert "GRC_LIVE_SCAN=1" in twin["command"]
+    assert "--live" in twin["command"]
+    shape = assert_risk_register_and_poam(out)
+    assert shape["findings"] >= 1
+    assert shape["risk_scenarios"] >= 1
+    assert shape["poam_rows"] >= 1
+    assert list(pack_in.rglob("*")) == []
+
+
+def test_scan_to_sor_default_mode_live_false(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GRC_LIVE_SCAN", raising=False)
+    live_calls = {"n": 0}
+
+    def boom_live(*_a, **_k):
+        live_calls["n"] += 1
+        raise AssertionError("run_live_collectors invoked in default fixture mode")
+
+    monkeypatch.setattr("dropbox.mcp_stub.run_live_collectors", boom_live)
+    work = tmp_path / "scan-work"
+    out = work / "out"
+    result = dispatch(
+        "scan_to_sor",
+        scope_path=SCOPE,
+        arguments={
+            "targets": ["127.0.0.1"],
+            "out": str(out),
+            "work": str(work),
+            "estate": "lab",
+        },
+    )
+    assert result["ok"] is True, result.get("stderr") or result.get("reason")
+    assert result["live"] is False
+    assert result["lab"] is True
+    assert result["sample"] is False
+    assert result["client"] is False
+    assert result["paying_day"] == "FAIL"
+    assert result["posted"] is False
+    assert result["http"] is False
+    assert live_calls["n"] == 0
+    twin = result["cli_twin"]
+    assert twin.get("live") is False
+    assert "GRC_LIVE_SCAN=1" not in twin["command"]
+    assert Path(result["risk_register"]).is_file()
+    assert Path(result["poam"]).is_file()

@@ -17,7 +17,7 @@ Thin hooks in `mcp_stub.py`. Each tool is SCOPE-gated. No Hexstrike server. No F
 | `keep_status` | `keep.adapters.scan_keep_dir` on pack `in/{identity,saas,vuln,cloud}/` | Empty pack `in/` is `keep_real` **0/4**. Lab path is `fixtures/keep-samples` (SAMPLE≠client). HardeningKitty / Maester / testssl / Prowler\|ScoutSuite detect only. Advertises operator twins as hints only: `cli_twin` (`./scripts/sample_to_sor.sh` / `make sample-to-sor` / `.\scripts\sample_to_sor.ps1`), `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1`), and `lab_drop_cli_twin` (`./scripts/lab_drop_to_sor.sh` / MCP `lab_drop` / prove `--use-existing-in`; no Makefile first-line). **Does not densify pack `in/`.** Does not invent non-sample files. Does not require signed self-SCOPE. **LAB≠SAMPLE≠client. SAMPLE≠client. DEMO≠client.** paying_day FAIL |
 | `keep_ciso` | `keep.lab.keep_lab` SAMPLE path (`python -m keep lab`) | **SAMPLE keep-lab only:** `fixtures/keep-samples` → `keep/work/out/ciso-assistant/*.csv` + `IMPORT.json` + OpenGRC CSVs + Probo preview + `eval/handoff.json`. Return lists every SoR path (`ciso_dir` / `ciso_files` / `ciso_import` / `opengrc` / `probo`) plus `cli_twin` (`./scripts/sample_to_sor.sh` or `make sample-to-sor` or `.\scripts\sample_to_sor.ps1`), `farm_drop_cli_twin` (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` / `.\scripts\farm_drop_to_sor.ps1` — hint only; this tool does not run prove_ciso), and `lab_drop_cli_twin` (`./scripts/lab_drop_to_sor.sh` / MCP `lab_drop` — hint only). `arguments.exporters` is optional (script `--exporters` re-write); sinks always come from keep-lab — no second export path. `arguments.isolate_work` is optional unique work subdirectory (default on for shared `keep/work` so overlapping ticks do not share `out/`). Fail path returns `stderr` / last error; one retry on WinError 145 / ENOTEMPTY only — never `ok` true if still failing. `DRY_RUN=1` `GRC_LIVE_SCAN=0` `CISO_PUSH=0` `RISKREADY_PUSH=0`. Stamps demo/sample. **Never writes / densifies pack `in/`.** Never POST `/api/risks`. Never spawns scanners. No signed self-SCOPE densify. **SAMPLE≠client. DEMO≠client. LAB≠SAMPLE.** paying_day FAIL |
 | `lab_drop` | `scripts/prove_ciso.py --use-existing-in` (`lab_drop_to_sor`) | **LAB dest_in only:** requires populated `arguments.work`/`in` or `arguments.dest_in`. Never reseeds `fixtures/pack_drop`. Empty `in/` (or banners only) is `EXISTING_IN_FAIL`. `LAB.txt` (or nmap pack_drop `lab:true`) + DEMO seed trees (`honeypot/` / fixtures pack_drop siblings) is `LAB_SHAPE_FAIL`. Returns honesty stamps (`lab=true` `seeded=false` `sample=false` `client=false` `paying_day=FAIL`) plus `ciso_dir` / `ciso_files` / `poam` / `prove` / `out`. Operator twin = `./scripts/lab_drop_to_sor.sh` / `.\scripts\lab_drop_to_sor.ps1` (no Makefile first-line). Console twin = `console_cli_twin` / `console_hint`: `OUT_DIR=<work>/out python -m product` (Windows `set OUT_DIR=...` / `python -m product`; Active out/ picker / `PROVE_WORK_ROOT`). Bind `127.0.0.1`. Never POSTs `/api/risks`. DESKTOP one-shot scan→SoR→console (`scan-to-console.ps1`) is the same SoR rails after pack_drop lands in `work/in`. **LAB≠SAMPLE≠client.** Never writes pack `in/`. Never POST. Does not invent `client=true`. |
-| `scan_to_sor` | gate → `scan_and_pack` (LAB `fixtures/lab-drop`) → `prove_ciso --use-existing-in` | **One-shot scan→pack→SoR** twin of the operator scan-and-sor path (DESKTOP EvergreenOps `scan-to-console.ps1` against lab-estate). Signed SCOPE + authorized targets are checked **before** any scanner/collector. Refusal is `{ok:false, refused:true, reason}`. Success returns `risk_register` / `poam` / `pack_drop` plus `cli_twin`. Never live-scans. Never writes pack `in/`. Never POSTs `/api/risks`. **LAB≠SAMPLE≠client.** |
+| `scan_to_sor` | gate → fixture `scan_and_pack` (LAB `fixtures/lab-drop`) **or** opt-in live `run_live_collectors` (`python -m dropbox run --profile all --live`) → `prove_ciso --use-existing-in` | **One-shot scan→pack→SoR** twin of the operator scan-and-sor path (DESKTOP EvergreenOps `scan-to-console.ps1` against lab-estate). Signed SCOPE + authorized targets are checked **before** any scanner/collector. Default `GRC_LIVE_SCAN` unset/0/false stages fixtures. Opt-in `GRC_LIVE_SCAN=1` runs existing dropbox collectors against gated lab-estate targets only (`estate=lab`; DESKTOP `192.168.64.0/24`). Refusal is `{ok:false, refused:true, reason, live}`. Success returns `risk_register` / `poam` / `pack_drop` / `live` plus `cli_twin`. Never writes pack `in/`. Never POSTs `/api/risks`. **LAB≠SAMPLE≠client.** |
 
 Refused names (raise): Hexstrike attack tools, `AIExploitGenerator`, Metasploit, exploit-chain, unauth autonomous spray.
 
@@ -198,27 +198,34 @@ MCP `lab_drop` ≡ `lab_drop_to_sor` ≡ console pointed at that `out/`.
 One MCP tool for the operator one-shot **scan → pack → risk register + POA&M**
 path. Same SoR rails as `lab_drop` / `lab_drop_to_sor` after pack_drop lands.
 DESKTOP operators run the twin from `C:\Users\R\Desktop\EvergreenOps` against
-the lab-estate (`scan-to-console.ps1`). This stub does **not** live-scan and
-does **not** add a new shell entrypoint.
+the lab-estate (`scan-to-console.ps1`). This stub does **not** add a new shell
+entrypoint. Live collectors stay **opt-in** via `GRC_LIVE_SCAN` (default off).
 
 | | |
 |---|---|
 | Tool | `scan_to_sor` |
 | Args | `scope` (default `dropbox/SCOPE.yaml` / `DROPBOX_SCOPE` / `--scope`); `targets` / `target` (default `SCOPE.internal_hosts`); `out` (default `<work>/out`); `work` (isolated under `prove/work/scan-to-sor-*`; never pack `in/`); `estate` (default `lab` / `lab-estate`) |
-| Return (ok) | `{ok:true, refused:false, risk_register, poam, poam_md, pack_drop, out, work, dest_in, cli_twin, lab:true, sample:false, client:false, paying_day:FAIL, posted:false, http:false}` |
-| Return (refusal) | `{ok:false, refused:true, reason:"SCOPE gate: …", fail_code, scanned:false, wrote_out:false}` — nothing scanned, nothing written to `out/` |
-| CLI twin | `python -m dropbox run --profile all && ./scripts/lab_drop_to_sor.sh --work DIR` (Windows: `python -m dropbox run --profile all; .\scripts\lab_drop_to_sor.ps1 -Work DIR`). No Makefile first-line. No new `scan_to_sor.sh`. |
-| Refusal cases | no SCOPE file / unreadable (`SCOPE_MISSING`); unsigned or attestation hash invalid (`SCOPE_UNSIGNED`); expired engagement window (`SCOPE_EXPIRED`); requested target outside authorized SCOPE (`SCOPE_TARGET`) |
+| Flag | `GRC_LIVE_SCAN` env. Unset / `0` / `false` / `no` / `off` = fixture mode (today). `1` / `true` / `yes` / `on` = live mode after the SCOPE gate. Not default-on in CI / Makefile / scripts. |
+| Return (ok) | `{ok:true, refused:false, live:true\|false, risk_register, poam, poam_md, pack_drop, out, work, dest_in, cli_twin, lab:true, sample:false, client:false, paying_day:FAIL, posted:false, http:false}` |
+| Return (refusal) | `{ok:false, refused:true, live:true\|false, reason:"SCOPE gate: …", fail_code, scanned:false, wrote_out:false}` — nothing scanned, nothing written to `out/` |
+| CLI twin | Fixture: `python -m dropbox run --profile all && ./scripts/lab_drop_to_sor.sh --work DIR` (Windows: `python -m dropbox run --profile all; .\scripts\lab_drop_to_sor.ps1 -Work DIR`). Live: `GRC_LIVE_SCAN=1 python -m dropbox run --profile all --live && ./scripts/lab_drop_to_sor.sh --work DIR`. No Makefile first-line. No new `scan_to_sor.sh`. |
+| Refusal cases | no SCOPE file / unreadable (`SCOPE_MISSING`); unsigned or attestation hash invalid (`SCOPE_UNSIGNED`); expired engagement window (`SCOPE_EXPIRED`); requested target outside authorized SCOPE (`SCOPE_TARGET`); live + estate other than lab / lab-estate (`LIVE_ESTATE`); live + target outside DESKTOP lab-estate networks `192.168.64.0/24` (`LIVE_LAB_NET`) |
 
 ```json
 {"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"scan_to_sor","arguments":{"scope":"dropbox/SCOPE.yaml","targets":["127.0.0.1"],"out":"out","estate":"lab"}}}
 ```
 
-Signed SCOPE is checked **before** `scan_and_pack` / collectors. LAB estate
-stages `fixtures/lab-drop` (scan-shaped pack_drop, labeled LAB/SAMPLE — never
-client KEEP) then `prove_ciso --use-existing-in`. Never reseeds
-`fixtures/pack_drop` as client KEEP. Never writes pack `in/`. Never POSTs
-`/api/risks`. Bind stays off this tool. **LAB≠SAMPLE≠client.**
+Signed SCOPE is checked **before** `scan_and_pack` / `run_live_collectors`.
+Default (flag off) stages `fixtures/lab-drop` (scan-shaped pack_drop, labeled
+LAB — never client KEEP) then `prove_ciso --use-existing-in`. Live mode
+(`GRC_LIVE_SCAN=1`) reuses existing `python -m dropbox run --profile all --live`
+collectors against **only** the targets that passed the gate, then the same
+prove path. Live is lab-estate only: `estate=lab` (alias `lab-estate`) and
+targets must sit in the DESKTOP lab-estate network allowlist
+`192.168.64.0/24` (from `fixtures/lab-drop` / `docs/PROVE_CISO.md` — not
+invented client nets) **and** the signed SCOPE. `cli_twin` reflects live vs
+fixture. Never reseeds `fixtures/pack_drop` as client KEEP. Never writes pack
+`in/`. Never POSTs `/api/risks`. Bind stays off this tool. **LAB≠SAMPLE≠client.**
 
 ```json
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"AIExploitGenerator"}}
