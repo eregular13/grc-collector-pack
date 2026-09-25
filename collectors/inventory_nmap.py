@@ -17,6 +17,7 @@ from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.nbtscan import parse_nbtscan
+from shared.nmap_nse import nse_findings
 from shared.netdiscover import parse_netdiscover
 from shared.pack_drop import parse_pack_drop
 from shared.smbmap import parse_smbmap
@@ -61,6 +62,7 @@ def _emit_host(
     ports: list[tuple[str, str]],
     extra: dict[str, Any] | None = None,
     extra_labels: list[str] | None = None,
+    samba_ports: set[str] | None = None,
 ) -> None:
     extra_out: dict[str, Any] = {"asset_type": "PR", "ip": addr, "hostname": hostname}
     if extra:
@@ -112,7 +114,8 @@ def _emit_host(
                 extra={"port": portid, "service": svc, "ip": addr},
             )
         )
-        if portid == "445":
+        if portid == "445" and portid not in (samba_ports or set()):
+            # Samba has no C$/ADMIN$; do not infer Windows admin shares there.
             records.append(
                 make_record(
                     kind="finding",
@@ -454,6 +457,9 @@ def parse_file(path: Path) -> list[dict]:
                 hostname = hn.attrib.get("name", "")
         name = hostname or addr or "unknown-host"
         ports: list[tuple[str, str]] = []
+        samba_ports: set[str] = set()
+        nse_specs: list[tuple[str, str, dict]] = []
+        smb_port = ""
         ports_el = host.find("ports")
         if ports_el is not None:
             for port in ports_el.findall("port"):
@@ -463,8 +469,49 @@ def parse_file(path: Path) -> list[dict]:
                 portid = port.attrib.get("portid", "")
                 service = port.find("service")
                 svc = service.attrib.get("name", "") if service is not None else ""
+                product = service.attrib.get("product", "") if service is not None else ""
+                if "samba" in product.lower():
+                    samba_ports.add(portid)
+                if portid in {"445", "139"} and not smb_port:
+                    smb_port = portid
                 ports.append((portid, svc))
-        _emit_host(records, now, name, addr, hostname, ports)
+                scripts = [
+                    (sc.attrib.get("id", ""), sc.attrib.get("output", ""))
+                    for sc in port.findall("script")
+                ]
+                for spec in nse_findings(name, addr, portid, svc, product, scripts):
+                    nse_specs.append((portid, svc, spec))
+        host_scripts = [
+            (sc.attrib.get("id", ""), sc.attrib.get("output", ""))
+            for sc in host.findall("hostscript/script")
+        ]
+        for spec in nse_findings(name, addr, smb_port, "microsoft-ds", "", host_scripts):
+            nse_specs.append((smb_port, "microsoft-ds", spec))
+        _emit_host(records, now, name, addr, hostname, ports, samba_ports=samba_ports)
+        for portid, svc, spec in nse_specs:
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{name}-{portid or 'host'}-{spec['check_id']}"),
+                    name=spec["name"],
+                    description=spec["description"],
+                    severity=spec["severity"],
+                    category="misconfiguration",
+                    assets=[name],
+                    labels=LABELS + ["nse", spec["nse_script"]],
+                    collected_at=now,
+                    extra={
+                        "port": portid,
+                        "service": svc,
+                        "ip": addr,
+                        "check_id": spec["check_id"],
+                        "nse_script": spec["nse_script"],
+                        "evidence": spec["evidence"],
+                        "tool": "nmap",
+                    },
+                )
+            )
     _stamp_demo(records, _is_dropbox_demo(path, raw))
     return records
 
