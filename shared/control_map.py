@@ -394,7 +394,7 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     ):
         name = "Enable a host firewall"
         fix = (
-            "Install and enable a host firewall. This is a Lynis posture finding, not a CVE."
+            "Install and enable a host firewall. This is a Lynis/OpenSCAP posture finding, not a CVE."
         )
     elif "permitrootlogin" in text.replace(" ", "").replace("_", "").replace("-", "") or (
         "ssh" in text and "root login" in text
@@ -402,7 +402,37 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Disable SSH root login"
         fix = (
             "Set PermitRootLogin no and use a named sudo account. "
-            "This is a Lynis posture finding, not a CVE."
+            "This is a Lynis/OpenSCAP posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "ssh_empty_passwords" or (
+        "empty password" in text and ("ssh" in text or "permitemptypasswords" in text.replace(" ", ""))
+    ) or "permitemptypasswords" in text.replace(" ", "").replace("_", "").replace("-", ""):
+        name = "Disable SSH empty passwords"
+        fix = (
+            "Set PermitEmptyPasswords no. "
+            "This is a Lynis/OpenSCAP posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "patching" or "security patch" in text or (
+        "package update" in text
+    ):
+        name = "Apply security updates"
+        fix = (
+            "Install outstanding security patches. "
+            "This is a Lynis/OpenSCAP posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "time_sync" or "chrony" in text or (
+        "ntp" in text and ("enable" in text or "time" in text)
+    ):
+        name = "Enable time synchronization"
+        fix = (
+            "Run chrony or ntpd so audit timestamps stay trustworthy. "
+            "This is a Lynis/OpenSCAP posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "host_firewall":
+        name = "Enable a host firewall"
+        fix = (
+            "Install and enable a host firewall. This is a Lynis/OpenSCAP "
+            "posture finding, not a CVE."
         )
     elif "privileged" in text and (
         "container" in text or "pod" in text or "admission" in text

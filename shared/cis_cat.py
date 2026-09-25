@@ -7,6 +7,10 @@ from typing import Any
 
 
 def is_cis_cat(payload: Any = None, *, name: str = "", text: str = "") -> bool:
+    from shared.openscap import is_openscap
+
+    if is_openscap(payload, name=name, text=text):
+        return False
     n = (name or "").lower()
     if "cis-cat" in n or "ciscat" in n or "xccdf" in n:
         return True

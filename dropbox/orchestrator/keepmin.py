@@ -49,9 +49,12 @@ _SENSOR = {
     "cloud": "cloud",
     "prowler": "cloud",
     "scoutsuite": "cloud",
+    "openscap": "wazuh",
 }
 
-SKIP_NAMES = frozenset({".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md", "plan.json"})
+SKIP_NAMES = frozenset(
+    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "plan.json", "MANIFEST"}
+)
 
 
 def _is_lynis(path: Path, text: str) -> bool:
@@ -86,9 +89,19 @@ def detect_keepmin(path: Path) -> str | None:
     text = path.read_text(encoding="utf-8", errors="replace")
     if _is_lynis(path, text):
         return "lynis"
+    if _is_openscap(path, text):
+        return "openscap"
     if _is_nmap(path, text):
         return "nmap"
     return None
+
+
+def _is_openscap(path: Path, text: str) -> bool:
+    name = path.name.lower()
+    if any(tok in name for tok in ("openscap", "oscap", "ssg-", "xccdf-results")):
+        return True
+    low = (text or "").lower()
+    return "ssgproject" in low or "open-scap" in low or "scap-security-guide" in low
 
 
 def inventory_keepmin(folder: Path) -> list[dict[str, Any]]:

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2"
+           id="xccdf_org.ssgproject.content_benchmark_DEBIAN-12">
+  <title>SCAP Security Guide Debian 12 (LAB/DEMO -- not a client estate)</title>
+  <notice>Not a CIS benchmark. ANSSI-style SSG profile. LAB != SAMPLE != client.</notice>
+  <Rule id="xccdf_org.ssgproject.content_rule_sshd_disable_root_login" severity="high">
+    <title>Disable SSH root login</title>
+    <ident system="http://cce.mitre.org">CCE-80901-2</ident>
+    <reference href="https://www.ssi.gouv.fr/">ANSSI BP-028 R31</reference>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_package_iptables_installed" severity="medium">
+    <title>Install iptables host firewall</title>
+    <ident system="http://cce.mitre.org">CCE-82999-4</ident>
+    <reference href="https://www.ssi.gouv.fr/">ANSSI BP-028 R8</reference>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_sshd_disable_empty_passwords" severity="high">
+    <title>Disable SSH empty passwords</title>
+    <ident system="http://cce.mitre.org">CCE-80220-7</ident>
+    <reference href="https://www.ssi.gouv.fr/">ANSSI BP-028 R32</reference>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_security_patches_up_to_date" severity="high">
+    <title>Ensure security patches are up to date</title>
+    <ident system="http://cce.mitre.org">CCE-82956-4</ident>
+    <reference href="https://www.ssi.gouv.fr/">ANSSI BP-028 R1</reference>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_sshd_set_idle_timeout" severity="medium">
+    <title>Set SSH idle timeout</title>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_aide_build_database" severity="medium">
+    <title>Build AIDE database</title>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_enable_authselect" severity="low">
+    <title>Enable authselect</title>
+  </Rule>
+  <Rule id="xccdf_org.ssgproject.content_rule_service_auditd_enabled" severity="medium">
+    <title>Enable auditd service</title>
+    <ident system="http://cce.mitre.org">CCE-80871-7</ident>
+  </Rule>
+  <TestResult id="xccdf_org.open-scap_testresult_anssi_bp28_minimal"
+              start-time="2026-09-25T00:00:00+00:00">
+    <benchmark href="ssg-debian12-ds.xml" id="xccdf_org.ssgproject.content_benchmark_DEBIAN-12"/>
+    <title>OpenSCAP Evaluation Report</title>
+    <target>lab-jump.lab.internal</target>
+    <score system="urn:xccdf:scoring:default" maximum="100">41</score>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_sshd_disable_root_login" severity="high">
+      <result>fail</result>
+      <ident system="http://cce.mitre.org">CCE-80901-2</ident>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_package_iptables_installed" severity="medium">
+      <result>fail</result>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_sshd_disable_empty_passwords" severity="high">
+      <result>fail</result>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_security_patches_up_to_date" severity="high">
+      <result>fail</result>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_sshd_set_idle_timeout" severity="medium">
+      <result>pass</result>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_aide_build_database" severity="medium">
+      <result>notapplicable</result>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_enable_authselect" severity="low">
+      <result>notselected</result>
+    </rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_service_auditd_enabled" severity="medium">
+      <result>error</result>
+    </rule-result>
+  </TestResult>
+</Benchmark>

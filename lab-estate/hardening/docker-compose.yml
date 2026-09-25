@@ -1,0 +1,39 @@
+# Isolated LAB Linux targets + in-container Lynis/OpenSCAP.
+# Not the pack image. No published ports. No public/external targets.
+# Operator: from lab-estate/ run .\\scan-hardening.ps1
+name: lab-estate-hardening
+
+networks:
+  labnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.64.0/24
+
+x-lab-linux: &lab-linux
+  build:
+    context: .
+    dockerfile: Dockerfile
+  networks:
+    labnet: {}
+  restart: "no"
+  # No ports: published. Scan stays on the compose network.
+
+services:
+  lab-jump:
+    <<: *lab-linux
+    hostname: lab-jump.lab.internal
+    environment:
+      LAB_HOSTNAME: lab-jump.lab.internal
+    networks:
+      labnet:
+        ipv4_address: 192.168.64.90
+
+  lab-ftp:
+    <<: *lab-linux
+    hostname: lab-ftp.lab.internal
+    environment:
+      LAB_HOSTNAME: lab-ftp.lab.internal
+    networks:
+      labnet:
+        ipv4_address: 192.168.64.70

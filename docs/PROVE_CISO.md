@@ -163,9 +163,25 @@ POA&M shape (`shared/ciso_shape`, #102) is fail-closed: findings>0
 implies `risk_scenarios` rows and `poam` rows.
 
 CI/lab fixture: `fixtures/lab-drop/` is a scan-shaped LAB dest_in
-(192.168.64.0/24 nmap pack_drop leaf). LAB != SAMPLE keep != client.
+(192.168.64.0/24 nmap pack_drop leaf **plus** `wazuh/` Lynis `report.dat`
+and OpenSCAP XCCDF results). LAB != SAMPLE keep != client.
 Pytest copies it into a temp `work/in` and locks this path. It is not
 SAMPLE `fixtures/pack_drop` and not a client KEEP.
+
+DESKTOP (from `lab-estate/` on Windows + Docker Desktop) — isolated
+Linux containers only, never a public target:
+
+```powershell
+cd lab-estate
+.\scan-hardening.ps1
+# or: .\scan-hardening.ps1 -DestIn C:\path\to\prove\work\in
+cd ..
+.\scripts\lab_drop_to_sor.ps1 -Work .\prove\work
+```
+
+Lynis (GPLv3) mapped warnings/suggestions and OpenSCAP (LGPL) + SSG
+(BSD) `fail`/`error` rows land as LAB findings. Not a CIS benchmark.
+Windows checker is a follow-up (HardeningKitty CSV already parses).
 
 Point the loopback console at a lab prove `out/` (no DEMO reseed):
 `OUT_DIR=/path/to/DIR/out python -m product` (example fixture:
