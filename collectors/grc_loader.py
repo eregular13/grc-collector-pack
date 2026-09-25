@@ -116,8 +116,45 @@ def _dedupe(records: list[dict]) -> list[dict]:
     return list(assets.values()) + list(others.values()) + leftover
 
 
-def _labels(rec: dict) -> str:
+ESTATE_LABELS = ("LAB", "SAMPLE", "DEMO", "UNLABELED")
+
+
+def estate_label(records: list[dict]) -> str:
+    """Run estate watermark for exports. Never CLIENT.
+
+    Explicit GRC_ESTATE_LABEL (LAB/SAMPLE/DEMO only) wins; then a LAB.txt in
+    IN_DIR; then SAMPLE.txt / DROPBOX_DEMO=1; then demo-labeled records.
+    Anything else is UNLABELED (not verified as a client estate).
+    """
+    raw = str(os.environ.get("GRC_ESTATE_LABEL") or "").strip().upper()
+    if raw in {"LAB", "SAMPLE", "DEMO"}:
+        return raw
+    in_raw = os.environ.get("IN_DIR") or ""
+    in_dir = Path(in_raw) if in_raw else None
+    if in_dir is not None and in_dir.is_dir():
+        if (in_dir / "LAB.txt").is_file() or any(in_dir.rglob("LAB.txt")):
+            return "LAB"
+        if (in_dir / "SAMPLE.txt").is_file() or any(in_dir.rglob("SAMPLE.txt")):
+            return "SAMPLE"
+    if os.environ.get("DROPBOX_DEMO") == "1":
+        return "SAMPLE"
+    if any("demo" in (r.get("labels") or []) for r in records):
+        return "DEMO"
+    return "UNLABELED"
+
+
+def estate_banner(label: str) -> str:
+    if label == "UNLABELED":
+        return "ESTATE: UNLABELED — not verified as a client estate. Review before any client use."
+    return f"ESTATE: {label} — not a client estate. {label} output is never client KEEP."
+
+
+def _labels(rec: dict, estate: str | None = None) -> str:
     parts = [str(x).strip() for x in rec.get("labels") or [] if str(x).strip()]
+    if estate:
+        token = f"estate_{estate.lower()}"
+        if token not in parts:
+            parts.append(token)
     for stamp in extra_labels(rec):
         if stamp not in parts:
             parts.append(stamp)
@@ -148,6 +185,7 @@ def load() -> dict:
     records = _dedupe(_load_canonical())
     now = iso_now()
     domain = _domain()
+    estate = estate_label(records)
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
     incidents = [r for r in records if r.get("kind") == "incident"]
@@ -168,7 +206,7 @@ def load() -> dict:
                 atype,
                 extra.get("arn") or extra.get("reference_link") or "",
                 extra.get("observation") or "",
-                _labels(rec),
+                _labels(rec, estate),
                 extra.get("parent_assets") or "",
             ]
         )
@@ -185,7 +223,7 @@ def load() -> dict:
                 rec.get("description"),
                 ciso_finding_severity(rec.get("severity")),
                 rec.get("status") or "identified",
-                _labels(rec),
+                _labels(rec, estate),
             ]
         )
 
@@ -273,6 +311,7 @@ def load() -> dict:
         "owner",
         "due",
         "status",
+        "estate",
     ]
     poam_rows: list[list] = []
     for rec in other_findings + vuln_findings:
@@ -290,6 +329,7 @@ def load() -> dict:
                 "",
                 "",
                 "open",
+                estate,
             ]
         )
 
@@ -300,10 +340,18 @@ def load() -> dict:
     _write_csv(out_ciso / "findings.csv", FINDINGS_HEADER, ciso_findings)
     _write_csv(out_ciso / "vulnerabilities.csv", VULN_HEADER, ciso_vulns)
     _write_csv(out_ciso / "risk_scenarios.csv", SCENARIO_HEADER, scenarios, delimiter=";")
+    write_text(
+        out_ciso / "ESTATE.txt",
+        estate_banner(estate)
+        + "\nfindings.csv / assets.csv carry filtering_labels token "
+        + f"estate_{estate.lower()}. CISO import headers are unchanged.\n",
+    )
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows)
     lines = [
         "# POA&M (operator draft)",
+        "",
+        f"> {estate_banner(estate)}",
         "",
         "Pentera (or any scanner) finds it. Evergreen maps it.",
         "Owner and due are blank — a human fills them. No invented dates.",
@@ -437,6 +485,7 @@ def load() -> dict:
         "ocsf": len(ocsf),
         "canonical": len(records),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
+        "estate": estate,
         "generated_at": now,
     }
     write_json(out_dir() / "summary.json", summary)

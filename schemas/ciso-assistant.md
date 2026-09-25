@@ -87,8 +87,13 @@ One row per canonical finding. `findings.csv` rows > 0 requires `risk_scenarios.
 `out/poam/poam.csv` and `out/poam/poam.md`. Hand to the client with the CISO CSVs.
 
 ```
-weakness,asset,severity,framework_refs,recommended_fix,owner,due,status
+weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate
 ```
+
+- `estate` is the run watermark: `LAB`, `SAMPLE`, `DEMO`, or `UNLABELED` (never client).
+  `poam.md` opens with an `ESTATE: ...` banner. CISO import CSVs keep their headers;
+  `findings.csv` / `assets.csv` carry an `estate_<label>` token in `filtering_labels`
+  and `ciso-assistant/ESTATE.txt` states the label.
 
 - High/critical findings and key medium exposures (SMB 445, RDP 3389) are included.
 - `framework_refs` are wizard-safe `cpg_*` / `csf_*` stamps (no colons).

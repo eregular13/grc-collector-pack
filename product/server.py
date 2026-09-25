@@ -1056,7 +1056,11 @@ def build_drop_zip() -> bytes:
     files.append(out / "import_preview" / "probo.json")
     files.extend(sorted((out / "probo").glob("*")))
     drop = ROOT / "product-lab" / "drop"
-    if drop.is_dir():
+    # Fail closed: packaged SAMPLE product-lab/drop only rides along for a LAB
+    # run (arcname stays product-lab/drop/...). A non-LAB run never ships
+    # packaged sinks, so demo KPIs cannot pass as this run's leave-behind.
+    include_packaged = bool(derive_honesty(out).get("lab"))
+    if include_packaged and drop.is_dir():
         files.extend(sorted((drop / "ciso").glob("*.csv")))
         files.extend(sorted((drop / "riskready").glob("*.json")))
         files.extend(sorted((drop / "opengrc").glob("*")))
@@ -1072,6 +1076,16 @@ def build_drop_zip() -> bytes:
         "RiskReady JSON is review-only (LICENSE-LOCK stay-out). Do not wrap or POST.\n"
         "risks_proposed.json is for a human. Do not POST /api/risks.\n"
     )
+    if include_packaged:
+        readme += (
+            "product-lab/drop/*: SAMPLE packaged sinks (offline demo copy), "
+            "not this LAB run's dest_in. SAMPLE packaged != LAB != client.\n"
+        )
+    else:
+        readme += (
+            "packaged SAMPLE sinks excluded: this is not a LAB run, so "
+            "product-lab/drop is not shipped (fail closed).\n"
+        )
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("IMPORT.md", readme)
         for path in files:
