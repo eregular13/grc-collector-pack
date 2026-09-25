@@ -213,6 +213,14 @@ function sinkSourceHonesty(ogSource, proboSource) {
   return srcText;
 }
 
+function sinkLabSampleHonesty(og, probo) {
+  const ogLab = og && og.lab === true ? "true" : "false";
+  const ogSample = og && og.sample === true ? "true" : "false";
+  const pbLab = probo && probo.lab === true ? "true" : "false";
+  const pbSample = probo && probo.sample === true ? "true" : "false";
+  return `opengrc.lab=${ogLab} · opengrc.sample=${ogSample} · probo.lab=${pbLab} · probo.sample=${pbSample}`;
+}
+
 function renderSinkKpis(estate) {
   const el = $("sink-kpis");
   if (!el) return;
@@ -244,7 +252,7 @@ function renderSinkKpis(estate) {
   const labelEl = $("sink-kpis-label");
   if (labelEl) {
     labelEl.textContent =
-      `OpenGRC / Probo leave-behind · posted=false · file-true, not live import · ${sinkSourceHonesty(ogSource, proboSource)}`;
+      `OpenGRC / Probo leave-behind · posted=false · file-true, not live import · ${sinkSourceHonesty(ogSource, proboSource)} · ${sinkLabSampleHonesty(og, probo)}`;
   }
   applySinkSamplePill(estate);
 }

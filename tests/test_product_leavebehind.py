@@ -275,6 +275,24 @@ def test_ui_sink_kpis_show_opengrc_and_probo_lab_sample() -> None:
     assert "posted=false" in js.lower() or "posted=false" in html.lower()
 
 
+def test_ui_sink_kpis_label_rewrite_includes_opengrc_and_probo_lab_sample() -> None:
+    """Live sink-kpis-label after renderSinkKpis must match lab/sample KPI tiles."""
+    html = (ROOT / "product" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "product" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="sink-kpis-label"' in html
+    assert "renderSinkKpis" in js
+    assert "sink-kpis-label" in js
+    assert "labelEl.textContent" in js
+    assert "opengrc.lab=" in js
+    assert "opengrc.sample=" in js
+    assert "probo.lab=" in js
+    assert "probo.sample=" in js
+    assert "posted=false" in js.lower()
+    assert "SAMPLE packaged" in js
+    assert "LAB dest_in" in js
+    assert "sinkSourceHonesty" in js
+
+
 def test_drop_zip_includes_opengrc_csvs_and_probo_drafts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
