@@ -71,7 +71,8 @@ def _poam(out: Path) -> list[dict[str, str]]:
 
 
 def test_poam_header_has_estate_column() -> None:
-    assert POAM_HEADER.split(",")[-1] == "estate"
+    # estate follows the legacy 8 columns; FedRAMP fields may be appended after it.
+    assert POAM_HEADER.split(",")[8] == "estate"
     assert POAM_HEADER.startswith("weakness,asset,severity,framework_refs,recommended_fix,owner,due,status")
 
 

@@ -87,8 +87,19 @@ One row per canonical finding. `findings.csv` rows > 0 requires `risk_scenarios.
 `out/poam/poam.csv` and `out/poam/poam.md`. Hand to the client with the CISO CSVs.
 
 ```
-weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate
+weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate,poam_id,finding_ref_id,controls,weakness_description,detector_source,weakness_source_id,original_detection_date,scheduled_completion_date,status_date,milestones,original_risk_rating,point_of_contact,cve
 ```
+
+FedRAMP POA&M R3.0-style fields (appended; the first nine columns are unchanged):
+
+- `poam_id` = `POAM-<ref_id>`; `finding_ref_id` links to `findings.csv` `ref_id`.
+- `controls` = SP 800-53 Rev. 5 ids from `control_map` (blank when unmapped, never invented).
+- `weakness_description` = finding description; `detector_source` = collector + tool (e.g. `inventory-nmap (nmap NSE ftp-anon)`); `weakness_source_id` = check/plugin/rule id or blank.
+- `original_detection_date` = first-seen, else scan time (nmap host starttime), else collected_at (UTC date).
+- `scheduled_completion_date` = DEFAULT detection + 30 days (Critical/High), 90 (Moderate), 180 (Low). `due` stays blank until a human commits a date.
+- `status_date` = run date; `milestones` = three dated defaults (validate, apply fix, rescan to verify).
+- `original_risk_rating` = Low/Moderate/High/Critical (`severity` keeps the legacy low/medium/high/critical vocabulary for existing readers).
+- `point_of_contact` is blank, like `owner`. `cve` = explicit CVE ids or known aliases (Heartbleed -> CVE-2014-0160), else blank.
 
 - `estate` is the run watermark: `LAB`, `SAMPLE`, `DEMO`, or `UNLABELED` (never client).
   `poam.md` opens with an `ESTATE: ...` banner. CISO import CSVs keep their headers;
@@ -97,7 +108,7 @@ weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate
 
 - High/critical findings and key medium exposures (SMB 445, RDP 3389) are included.
 - `framework_refs` are wizard-safe `cpg_*` / `csf_*` stamps (no colons).
-- `owner` and `due` stay blank. Status is `open`. A human fills dates — do not invent them.
+- `owner`, `point_of_contact`, and `due` stay blank. Status is `open`. Scheduled completion and milestone dates are labeled defaults, not commitments.
 - Recommended fix is a control narrative (e.g. restrict TCP/445, confirm SMBv1 disabled). Port-open is not a CVE.
 
 ## OCSF
