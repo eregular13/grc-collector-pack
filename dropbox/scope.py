@@ -173,6 +173,25 @@ class Scope:
             return False
         return str(ip) in {i.lower() for i in self.external_ips}
 
+    def allows_target(self, target: str) -> bool:
+        """True when target is an authorized internal or named-external SCOPE host."""
+        return self.allows_internal_target(target) or self.allows_external_target(target)
+
+
+def require_authorized_targets(scope: Scope, targets: list[str]) -> None:
+    """Fail closed if any requested target is outside the signed SCOPE.
+
+    Checked before scan/pack/SoR. Empty target list is a refusal — do not
+    invent an estate.
+    """
+    rows = [str(item or "").strip() for item in (targets or []) if str(item or "").strip()]
+    if not rows:
+        raise GateError("scan_to_sor requires at least one authorized target")
+    missing = [raw for raw in rows if not scope.allows_target(raw)]
+    if missing:
+        shown = ", ".join(missing)
+        raise GateError(f"requested target(s) outside authorized SCOPE: {shown}")
+
 
 def _refuse_external_scope_item(field: str, item: str) -> None:
     """Named hosts/URLs only. Refuse wildcard, CIDR, and 0.0.0.0/0."""

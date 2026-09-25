@@ -672,6 +672,10 @@ def test_farm_slots_and_export_refuse_without_scope(tmp_path: Path) -> None:
     ):
         with pytest.raises(GateError, match="SCOPE"):
             dispatch(name, scope_path=empty)
+    refused = dispatch("scan_to_sor", scope_path=empty)
+    assert refused.get("ok") is False
+    assert refused.get("refused") is True
+    assert "SCOPE" in str(refused.get("reason") or "")
     slots = dispatch("farm_slots", scope_path=SCOPE)
     assert slots["scope_gated"] is True
     assert "DEMO" in slots["client"]
@@ -686,15 +690,18 @@ def test_tools_list_includes_keep_status_and_keep_ciso() -> None:
     assert "keep_status" in OPERATOR_TOOLS
     assert "keep_ciso" in OPERATOR_TOOLS
     assert "lab_drop" in OPERATOR_TOOLS
+    assert "scan_to_sor" in OPERATOR_TOOLS
     listed = handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = [t["name"] for t in listed["result"]["tools"]]
     assert "keep_status" in names
     assert "keep_ciso" in names
     assert "lab_drop" in names
+    assert "scan_to_sor" in names
     assert names == list(OPERATOR_TOOLS)
     assert names.index("keep_status") == names.index("export_ciso_poam") + 1
     assert names.index("keep_ciso") == names.index("keep_status") + 1
     assert names.index("lab_drop") == names.index("keep_ciso") + 1
+    assert names.index("scan_to_sor") == names.index("lab_drop") + 1
     entries = {row["name"]: row for row in tools_list_entries()}
     assert "SAMPLE≠client" in entries["keep_status"]["description"]
     assert "0/4" in entries["keep_status"]["description"]
