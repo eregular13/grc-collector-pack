@@ -1,0 +1,8 @@
+{
+  "source_url": "https://example.test/fixtures/kev.json",
+  "fetched_at_utc": "2026-09-01T12:00:00Z",
+  "catalogVersion": "2026.09.01",
+  "dateReleased": "2026-09-01T00:00:00.0000Z",
+  "count": 2,
+  "sha256": "8aa0cbdfa9dba198dad52336929a377917b820d6774473b7279987a3fd781a5c"
+}

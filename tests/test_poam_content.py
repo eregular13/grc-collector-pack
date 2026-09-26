@@ -310,7 +310,7 @@ def test_loader_writes_failure_titles_and_xz_controls(tmp_path: Path, monkeypatc
             ref_id="CLD-iam-root-mfa-enabled",
             name="Root account MFA enabled",
             description="Root user has no MFA device.",
-            extra={"check_id": "iam_root_mfa_enabled"},
+            extra={"check_id": "iam_root_mfa_enabled", "scan_time": "2026-09-01"},
         ),
         _finding(
             source="vuln-scan",
@@ -320,7 +320,7 @@ def test_loader_writes_failure_titles_and_xz_controls(tmp_path: Path, monkeypatc
             severity="critical",
             category="vulnerability",
             assets=["app-server:latest"],
-            extra={"cve": "CVE-2024-3094", "pkg": "xz-utils"},
+            extra={"cve": "CVE-2024-3094", "pkg": "xz-utils", "scan_time": "2026-09-01"},
         ),
     ]
     write_canonical("mixed", recs)

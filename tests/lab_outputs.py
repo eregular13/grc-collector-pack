@@ -139,6 +139,26 @@ def assert_lab() -> None:
         assert not (OUT / "ciso-assistant" / "findings.csv").read_text(
             encoding="utf-8"
         ).lstrip().startswith("#")
+    fed = OUT / "poam" / "poam_fedramp.csv"
+    if fed.is_file():
+        from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
+
+        _csv_rows(fed, ",".join(FEDRAMP_OPEN_HEADERS))
+        closed = OUT / "poam" / "poam_fedramp_closed.csv"
+        if closed.is_file():
+            first = closed.read_text(encoding="utf-8").splitlines()[0]
+            assert not first.lstrip().startswith("#"), "poam_fedramp_closed.csv header-first"
+        for rel in ("poam-ledger.json", "kev_provenance.json"):
+            path = OUT / "poam" / rel
+            if path.is_file():
+                blob = path.read_text(encoding="utf-8").lstrip()
+                assert blob[:1] in "{[", rel
+                assert not blob.startswith("#")
+    for row in poam:
+        det = (row.get("original_detection_date") or "").strip()
+        assert det == "not recorded" or (
+            len(det) == 10 and det[4] == "-" and det[7] == "-"
+        ), det
     smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
     assert smb, "SMB/445 exposure must map into POA&M"
     rdp = [r for r in poam if "RDP" in (r.get("weakness") or "") or "3389" in (r.get("recommended_fix") or "")]

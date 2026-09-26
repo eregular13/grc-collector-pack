@@ -34,7 +34,10 @@ from shared.estate_pages import (
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.hardening_dedup import dedupe_hardening
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
+from shared.kev import KevSnapshotError, load_kev_catalog
+from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields
+from shared.poam_ledger import run_ledger
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -213,6 +216,10 @@ def load() -> dict:
     records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw_records)))
     merged_n = max(0, len(raw_records) - len(records))
     now = iso_now()
+    try:
+        kev_catalog = load_kev_catalog()
+    except KevSnapshotError as exc:
+        raise SystemExit(str(exc)) from exc
     domain = _domain()
     try:
         dest_in = in_dir()
@@ -352,6 +359,10 @@ def load() -> dict:
     lighter = poam_lighter_requested()
     weaknesses = other_findings + vuln_findings
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    ledger = run_ledger(findings, kev_catalog)
+    ledger_by_ref = {
+        str(item.get("ref_id") or ""): item for item in (ledger.get("items") or {}).values()
+    }
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
     ranked = sorted(
@@ -379,6 +390,9 @@ def load() -> dict:
             )
             continue
         fields = poam_fields(rec, mapped, today)
+        item = ledger_by_ref.get(str(rec.get("ref_id") or ""))
+        if item:
+            fields = apply_ledger_detection(fields, item, rec, mapped)
         poam_rows.append(
             [
                 weakness,
@@ -438,7 +452,7 @@ def load() -> dict:
         "",
         SLA_NOTE,
         "",
-        "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected | Scheduled (default) | Recommended fix | Milestones | Status |",
+        "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected (UTC / recorded zone) | Scheduled (default) | Recommended fix | Milestones | Status |",
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     idx = {name: i for i, name in enumerate(poam_header)}
@@ -449,15 +463,19 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
+    write_fedramp_poam(out_poam, ledger)
+    write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
+    write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, ledger))
     write_estate_sidecar(
         out_poam,
         stamp,
         note=(
             "POA&M is an operator draft, not a CISO Assistant import. "
-            "poam.csv starts with the operator header (no # preamble) and "
-            "carries a per-row estate column. SAMPLE/DEMO/LAB cannot be "
-            "suppressed and is never client KEEP."
+            "poam.csv, poam_fedramp.csv, and poam_fedramp_closed.csv start "
+            "with the operator header (no # preamble). Banner lives in "
+            "ESTATE.txt. Ledger and kev_provenance.json are JSON (no # "
+            "banner). poam.csv carries a per-row estate column. "
+            "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
         ),
     )
     out_sr = out_dir() / "simplerisk"

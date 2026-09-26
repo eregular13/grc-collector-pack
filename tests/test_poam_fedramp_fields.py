@@ -115,7 +115,8 @@ def test_first_seen_wins_over_scan_time(tmp_path: Path, monkeypatch: pytest.Monk
 
 def test_collected_at_when_no_first_seen_or_scan_time(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rows = _load(tmp_path, monkeypatch, [_rec("R1", "high", extra={"port": "21", "check_id": "nse-ftp-anon"})])
-    assert rows[0]["original_detection_date"] == "2026-09-20"
+    assert rows[0]["original_detection_date"] == "not recorded"
+    assert rows[0]["scheduled_completion_date"] == "pending due date"
 
 
 def test_cve_where_known(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -146,7 +147,6 @@ def test_poam_md_says_dates_are_defaults(tmp_path: Path, monkeypatch: pytest.Mon
     low = md.lower()
     assert "default" in low and "15" in md and "30" in md and "90" in md and "180" in md
     assert "evergreen default" in low
-    assert "fedramp" not in low
     assert "point of contact" in low and "blank" in low
     assert "Moderate" in md
     assert "POAM-R1" in md
