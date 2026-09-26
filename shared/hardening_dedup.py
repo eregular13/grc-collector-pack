@@ -29,7 +29,9 @@ def _tool(rec: dict[str, Any]) -> str:
     return str(rec.get("source") or "")
 
 
-def dedupe_hardening(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def dedupe_hardening(
+    records: list[dict[str, Any]], drops: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     """Keep one finding per (host, control_key) when tools differ.
 
     Two HardeningKitty Failed rows that share password_policy stay both
@@ -70,6 +72,8 @@ def dedupe_hardening(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if _tool(rec) and _tool(rec) == _tool(existing):
             out.append(rec)
             continue
+        if drops is not None:
+            drops.append({"rec": rec, "survivor": existing})
         extra = existing.setdefault("extra", {})
         if not isinstance(extra, dict):
             continue
