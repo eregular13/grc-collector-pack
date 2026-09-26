@@ -302,13 +302,6 @@ class EstateStamp:
     def banner_lines(self) -> list[str]:
         return self.banner_md().splitlines()
 
-    def banner_csv_comments(self) -> str:
-        out = []
-        for line in self.banner_lines():
-            body = line[2:] if line.startswith("> ") else line.lstrip(">").strip()
-            out.append(f"# {body}")
-        return "\n".join(out) + "\n"
-
     def banner_oneline(self) -> str:
         return f"{self.label}: {self.sentence}"
 

@@ -96,7 +96,16 @@ def test_poam_csv_and_md_carry_estate(
     md = (out / "poam" / "poam.md").read_text(encoding="utf-8")
     assert md.lstrip().startswith("> **")
     assert expected in md.splitlines()[0]
-    assert first_nonempty_line(out / "simplerisk" / "poam.csv") == POAM_HEADER
+    sr = out / "simplerisk" / "poam.csv"
+    sr_text = sr.read_text(encoding="utf-8")
+    assert sr_text.splitlines()[0].strip() == POAM_HEADER
+    assert first_nonempty_line(sr) == POAM_HEADER
+    assert not any(line.lstrip().startswith("#") for line in sr_text.splitlines())
+    assert sr_text.splitlines()[0].split(",")[8] == "estate"
+    sr_rows = csv_rows(sr)
+    assert {row["estate"] for row in sr_rows} == {expected}
+    estate_txt = (out / "simplerisk" / "ESTATE.txt").read_text(encoding="utf-8")
+    assert expected in estate_txt
     assert_risk_register_and_poam(out)
 
 

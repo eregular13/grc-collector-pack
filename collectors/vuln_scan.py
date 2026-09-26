@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, Greenbone-like JSON, Nikto, Nessus XML, sslscan, or SARIF.
+"""Parse Nuclei JSONL, Trivy JSON, Greenbone XML/CSV/JSON, Nikto, Nessus XML, sslscan, or SARIF.
 
 Parse-only. Does not run nuclei, nikto, Nessus, or sslscan, and does not call a Nessus API.
 """
@@ -9,9 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from shared.greenbone import cvss_band, parse_greenbone
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
+from shared.nikto import nikto_severity
 from shared.nikto import parse_nikto
 from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
@@ -86,6 +88,57 @@ def _greenbone_rows(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _testssl_ref(row: dict[str, Any], host: str) -> str:
+    vid = str(row.get("cve") or row.get("id") or "testssl")
+    ip = str(row.get("ip") or "").split("/")[0].strip()
+    if ip and ip not in {host, ""}:
+        return f"{vid}-{host}-{ip}"
+    return f"{vid}-{host}"
+
+
+def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
+    vid = str(row.get("cve") or row.get("id") or "testssl")
+    extra_labels = [str(x) for x in (row.get("labels") or []) if x]
+    return make_record(
+        kind="finding",
+        source=SOURCE,
+        ref_id=make_ref(SOURCE, _testssl_ref(row, host)),
+        name=str(row.get("id") or row.get("finding") or vid),
+        description=str(row.get("finding") or row.get("cve") or vid),
+        severity=row.get("severity") or "high",
+        category="vulnerability",
+        assets=[host],
+        labels=LABELS + ["testssl"] + extra_labels,
+        collected_at=now,
+        extra={"cve": row.get("cve") or "", "id": row.get("id") or "", "ip": row.get("ip") or ""},
+    )
+
+
+def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
+    host = str(row.get("host") or "unknown")
+    vid = str(row.get("oid") or row.get("name") or "openvas")
+    port = str(row.get("port") or "")
+    return host, make_record(
+        kind="finding",
+        source=SOURCE,
+        ref_id=make_ref(SOURCE, f"{vid}-{host}-{port}"),
+        name=str(row.get("name") or vid),
+        description=str(row.get("description") or vid),
+        severity=row.get("severity") or "medium",
+        category="vulnerability",
+        assets=[host],
+        labels=LABELS + ["greenbone"],
+        collected_at=now,
+        extra={
+            "cve": row.get("cve") or "",
+            "id": vid,
+            "port": port,
+            "cvss": row.get("cvss") or "",
+            "threat": row.get("threat") or "",
+        },
+    )
+
+
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
     records: list[dict] = []
@@ -142,22 +195,7 @@ def parse_file(path: Path) -> list[dict]:
         for row in iter_testssl_findings(peek):
             host = str(row.get("host") or "unknown")
             add_asset(host)
-            vid = str(row.get("cve") or row.get("id") or "testssl")
-            records.append(
-                make_record(
-                    kind="finding",
-                    source=SOURCE,
-                    ref_id=make_ref(SOURCE, f"{vid}-{host}"),
-                    name=str(row.get("id") or row.get("finding") or vid),
-                    description=str(row.get("finding") or row.get("cve") or vid),
-                    severity=row.get("severity") or "high",
-                    category="vulnerability",
-                    assets=[host],
-                    labels=LABELS + ["testssl"],
-                    collected_at=now,
-                    extra={"cve": row.get("cve") or "", "id": row.get("id") or ""},
-                )
-            )
+            records.append(_emit_testssl_row(row, host, now))
         if records:
             return records
 
@@ -194,11 +232,11 @@ def parse_file(path: Path) -> list[dict]:
         for row in nikto:
             url = str(row.get("url") or "/")
             msg = str(row.get("msg") or "")
-            if not nikto_interesting(url, msg):
+            rid = str(row.get("id") or "nikto")
+            if not nikto_interesting(url, msg, rid):
                 continue
             host = str(row.get("host") or "unknown")
             add_asset(host)
-            rid = str(row.get("id") or "nikto")
             records.append(
                 make_record(
                     kind="finding",
@@ -208,7 +246,7 @@ def parse_file(path: Path) -> list[dict]:
                     description=(
                         f"{msg} url={url} (Nikto file-drop; not a live HTTP probe)"
                     ),
-                    severity="high",
+                    severity=nikto_severity(url, msg, rid),
                     category="exposure",
                     assets=[host],
                     labels=LABELS + ["nikto"],
@@ -247,6 +285,14 @@ def parse_file(path: Path) -> list[dict]:
                     },
                 )
             )
+        return records
+
+    greenbone = parse_greenbone(path)
+    if greenbone is not None:
+        for row in greenbone:
+            host, rec = _emit_greenbone_row(row, now)
+            add_asset(host)
+            records.append(rec)
         return records
 
     nuclei = _nuclei_rows(path)
@@ -325,22 +371,7 @@ def parse_file(path: Path) -> list[dict]:
         for row in iter_testssl_findings(payload):
             host = str(row.get("host") or "unknown")
             add_asset(host)
-            vid = str(row.get("cve") or row.get("id") or "testssl")
-            records.append(
-                make_record(
-                    kind="finding",
-                    source=SOURCE,
-                    ref_id=make_ref(SOURCE, f"{vid}-{host}"),
-                    name=str(row.get("id") or row.get("finding") or vid),
-                    description=str(row.get("finding") or row.get("cve") or vid),
-                    severity=row.get("severity") or "high",
-                    category="vulnerability",
-                    assets=[host],
-                    labels=LABELS + ["testssl"],
-                    collected_at=now,
-                    extra={"cve": row.get("cve") or "", "id": row.get("id") or ""},
-                )
-            )
+            records.append(_emit_testssl_row(row, host, now))
         if records:
             return records
 
@@ -348,27 +379,29 @@ def parse_file(path: Path) -> list[dict]:
         nvt = row.get("nvt") if isinstance(row.get("nvt"), dict) else {}
         vid = str(nvt.get("oid") or row.get("name") or "openvas")
         host = str(row.get("host") or "unknown")
+        raw_sev = row.get("severity") or nvt.get("cvss_base") or "medium"
+        sev = cvss_band(raw_sev) or str(raw_sev)
         add_asset(host)
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, vid),
+                ref_id=make_ref(SOURCE, f"{vid}-{host}"),
                 name=str(row.get("name") or vid),
                 description=str(row.get("description") or vid),
-                severity=row.get("severity") or "medium",
+                severity=sev,
                 category="vulnerability",
                 assets=[host],
                 labels=LABELS + ["greenbone"],
                 collected_at=now,
-                extra={"id": vid},
+                extra={"id": vid, "cve": row.get("cve") or ""},
             )
         )
     return records
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".jsonl", ".sarif", ".txt", ".xml", ".nessus"), parse_file)
+    run_collector(SOURCE, (".json", ".jsonl", ".sarif", ".txt", ".xml", ".nessus", ".csv"), parse_file)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
+
+§8 collectors that were silently empty or wrong on real tool output.
+PingCastle RiskRules + case-insensitive HealthCheckGroupData. Greenbone
+GMP XML/CSV. ScubaGear v1.8 product-keyed Results; Graph/Maester never
+invent contoso. testssl all list sections, keep LOW+. Nikto 2.6 JSON
+list-of-hosts; header/soft-404 denylist; no hardcoded high. Samples
+under `fixtures/samples/` + SOURCES.md. Host-lab **unchanged** 81 / 104
+/ 109. pytest **1068** (+15 vs master 1053). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 194 — discovery/web collectors stop inventing assets (2026-09-26)
 
 §9.2 / §8.2 bricks: arp-scan/netdiscover key by IP+MAC (vendor is an
