@@ -150,6 +150,9 @@ def assert_lab() -> None:
     assert reasons & {"honeypot", "severity_info"}, reasons
     scen_refs = [row["ref_id"] for row in scen]
     assert len(set(scen_refs)) == len(scen_refs)
+    from shared.schema import CISO_REF_MAX
+
+    assert max(len(ref) for ref in scen_refs) <= CISO_REF_MAX
     accept_n = 0
     for row in scen:
         treat = row.get("treatment")

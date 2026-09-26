@@ -318,6 +318,9 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     assert len(scenarios) == shape["risk_scenarios"]
     refs = [row["ref_id"] for row in scenarios]
     assert len(set(refs)) == len(refs)
+    from shared.schema import CISO_REF_MAX
+
+    assert max(len(ref) for ref in refs) <= CISO_REF_MAX
     excluded = csv_rows(work / "out" / "poam" / "excluded.csv")
     accept_n = 0
     for row in scenarios:

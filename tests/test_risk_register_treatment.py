@@ -20,7 +20,14 @@ from shared.control_map import (
     risk_register_treatment,
 )
 from shared.io_util import out_dir, write_canonical
-from shared.schema import make_record, residual_level, scenario_level, slug
+from shared.schema import (
+    CISO_REF_MAX,
+    make_record,
+    ref_slug,
+    residual_level,
+    scenario_level,
+    slug,
+)
 
 
 def _finding(**kwargs):
@@ -67,6 +74,17 @@ def test_uncapped_identity_slug_keeps_long_custodian_refs_distinct() -> None:
     assert slug(a) == slug(b)
     assert slug(a, maxlen=None) != slug(b, maxlen=None)
     assert slug(a, maxlen=None).startswith("cld-excl-stop-underutilized-azure-vms-subscription-")
+    ra, rb = ref_slug(a), ref_slug(b)
+    assert ra != rb
+    assert len(f"RSK-{ra}") <= CISO_REF_MAX
+    assert len(f"RSK-{rb}") <= CISO_REF_MAX
+    long_mitigate = (
+        "CLD-account-maintain-different-contact-details-to-security-"
+        "billing-and-operations-account-unknown"
+    )
+    assert len(f"RSK-{slug(long_mitigate, maxlen=None)}") > CISO_REF_MAX
+    assert len(f"RSK-{ref_slug(long_mitigate)}") <= CISO_REF_MAX
+    assert ref_slug("NMAP-smb") == slug("NMAP-smb", maxlen=None)
 
 
 def test_loader_excluded_scenarios_are_accept_not_mitigate(
@@ -242,6 +260,11 @@ def test_real_custodian_register_is_36_not_8(
     scenarios = csv_rows(out_dir() / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
     refs = [row["ref_id"] for row in scenarios]
     assert len(set(refs)) == len(refs) == 36
+    assert max(len(ref) for ref in refs) <= CISO_REF_MAX
+    controls = csv_rows(out_dir() / "ciso-assistant" / "applied_controls.csv")
+    ctl_refs = [row["ref_id"] for row in controls]
+    assert len(set(ctl_refs)) == len(ctl_refs)
+    assert max(len(ref) for ref in ctl_refs) <= CISO_REF_MAX
     accept = [row for row in scenarios if row.get("treatment") == "accept"]
     mitigate = [row for row in scenarios if row.get("treatment") == "mitigate"]
     assert len(accept) == 28

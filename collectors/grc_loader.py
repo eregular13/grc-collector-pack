@@ -68,6 +68,7 @@ from shared.schema import (
     ciso_finding_severity,
     ciso_vuln_severity,
     control_priority,
+    ref_slug,
     residual_level,
     scenario_level,
     slug,
@@ -326,7 +327,7 @@ def load() -> dict:
         register = risk_register_treatment(decision)
         if not register["attach_control"]:
             continue
-        cid = f"CTL-{slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'), maxlen=None)}"
+        cid = f"CTL-{ref_slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
         control_ids_by_finding[rec_ref] = cid
         controls.append(
             [
@@ -378,7 +379,7 @@ def load() -> dict:
             cid = ""
         scenarios.append(
             [
-                f"RSK-{slug(str(rec.get('ref_id') or rec.get('name')), maxlen=None)}",
+                f"RSK-{ref_slug(str(rec.get('ref_id') or rec.get('name')))}",
                 "|".join(rec.get("assets") or []),
                 rec.get("category") or rec.get("source"),
                 rec.get("name"),
