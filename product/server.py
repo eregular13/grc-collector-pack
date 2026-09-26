@@ -163,8 +163,9 @@ def assert_loopback_host(host: str) -> str:
 def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
-    with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delim))
+    from shared.ciso_shape import csv_rows
+
+    return csv_rows(path, delimiter=delim)
 
 
 def _read_json(path: Path):
