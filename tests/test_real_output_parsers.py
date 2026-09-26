@@ -263,24 +263,55 @@ def test_osquery_it_compliance_predicates_on_filebeat_and_msticpy() -> None:
     ubuntu = host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.sample.log")
     ufind = [r for r in ubuntu if r["kind"] == "finding"]
     assert len(ufind) == 1
-    assert "disk encryption" in ufind[0]["name"].lower() or "disk_encryption" in ufind[0]["name"]
+    assert "Disk encryption is disabled" in ufind[0]["name"]
     assert "ubuntu-xenial" in (ufind[0].get("assets") or [])
 
     mac = host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.darwin.log")
     mfind = [r for r in mac if r["kind"] == "finding"]
     assert len(mfind) == 1
-    assert "alf" in mfind[0]["name"].lower() or "firewall" in mfind[0]["name"].lower()
+    assert "Application firewall is disabled" in mfind[0]["name"]
     assert not any("disk_encryption" in r["name"] or "disk encryption" in r["name"].lower() for r in mfind)
 
     mstic = host_wazuh.parse_file(SAMPLES / "osquery" / "msticpy.osqueryd.results.log")
     assert not any(r["kind"] == "finding" for r in mstic)
     assert all((r.get("extra") or {}).get("exclude_reason") == "unmapped" for r in mstic if r.get("kind") == "excluded")
     excluded = [r for r in mstic if r.get("kind") == "excluded"]
-    assert len(excluded) >= 11
-    assert len({r["ref_id"] for r in excluded}) == len(excluded)
+    assert len(excluded) == 11
+    assert len({r["ref_id"] for r in excluded}) == 11
+    assert {r.get("name") for r in mstic if r.get("kind") == "asset"} == {"jumpvm"}
+    assert all("jumpvm" in (r.get("assets") or []) for r in excluded)
     assert "osquery-host" not in {r.get("name") for r in mstic}
     assert not any(str(r.get("name") or "").startswith("pack_") for r in mstic)
     assert not any("pack_" in str(r.get("name") or "") for r in ubuntu + mac)
+
+    snaps = host_wazuh.parse_file(SAMPLES / "osquery" / "msticpy.osqueryd.snapshots.log")
+    assert not any(r["kind"] == "finding" for r in snaps)
+    sexcl = [r for r in snaps if r.get("kind") == "excluded"]
+    assert len(sexcl) == 3
+    assert len({r["ref_id"] for r in sexcl}) == 3
+    assert {r.get("name") for r in snaps if r.get("kind") == "asset"} == {"jumpvm"}
+    assert all((r.get("extra") or {}).get("exclude_reason") == "unmapped" for r in sexcl)
+
+
+def test_real_corpus_four_poam_rows() -> None:
+    """Metis §15: four per-asset weakness rows on the public corpus; msticpy is exclude-only."""
+    rows = []
+    for recs in (
+        host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.sample.log"),
+        host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.darwin.log"),
+        cloud_prowler.parse_file(SAMPLES / "cloud" / "security-context-pods" / "resources.json"),
+        cloud_prowler.parse_file(SAMPLES / "cloud" / "check-ebs-snapshot-public" / "resources.json"),
+    ):
+        rows.extend(r for r in recs if r["kind"] == "finding")
+    assert len(rows) == 4
+    assets = {tuple(r.get("assets") or []) for r in rows}
+    assert any("ubuntu-xenial" in a for a in assets)
+    assert any(any("snap-084bf49b944409f37" == x for x in a) for a in assets)
+    assert any(any(x in {"test/test-pod-1", "default/web"} for x in a) for a in assets)
+    names = " ".join(r["name"] for r in rows)
+    assert "Disk encryption is disabled" in names
+    assert "Application firewall is disabled" in names
+    assert "pack_" not in names
 
 
 def test_osquery_pack_config_is_not_results() -> None:
