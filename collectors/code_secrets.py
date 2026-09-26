@@ -341,7 +341,7 @@ def parse_file(path: Path) -> list[dict]:
                     make_record(
                         kind="finding",
                         source=SOURCE,
-                        ref_id=make_ref(SOURCE, sid),
+                        ref_id=make_ref(SOURCE, f"{sid}-{target}"),
                         name=str(secret.get("Title") or sid),
                         description=str(secret.get("Category") or sid),
                         severity=secret.get("Severity") or "high",
@@ -362,7 +362,7 @@ def parse_file(path: Path) -> list[dict]:
                     make_record(
                         kind="finding",
                         source=SOURCE,
-                        ref_id=make_ref(SOURCE, mid),
+                        ref_id=make_ref(SOURCE, f"{mid}-{target}"),
                         name=str(mis.get("Title") or mid),
                         description=str(mis.get("Message") or mis.get("Description") or mid),
                         severity=mis.get("Severity") or "medium",

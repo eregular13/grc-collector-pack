@@ -163,8 +163,35 @@ def _aces_as_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def _truthy_priv_flag(value: Any) -> bool:
+    return value in (True, 1, "1", "true", "True")
+
+
+def _privileged_from_nodes(nodes: list[dict[str, Any]]) -> set[str]:
+    out: set[str] = set()
+    for node in nodes:
+        props = _props(node)
+        oid = str(
+            node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or node.get("objectId")
+            or ""
+        )
+        name = str(props.get("name") or oid)
+        if _truthy_priv_flag(props.get("admincount")) or _truthy_priv_flag(props.get("highvalue")):
+            if name:
+                out.add(name)
+            if oid:
+                out.add(oid)
+        if oid and _is_default_admin_principal(oid):
+            if name:
+                out.add(name)
+            out.add(oid)
+    return out
+
+
 def _session_and_admin_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """LocalGroups ADMINISTRATORS → AdminTo; Sessions → HasSession."""
+    """LocalGroups ADMINISTRATORS → AdminTo; Sessions → one HasSession per privileged principal."""
     names: dict[str, str] = {}
     for node in nodes:
         props = _props(node)
@@ -177,7 +204,9 @@ def _session_and_admin_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]
         name = str(props.get("name") or oid)
         if oid:
             names[oid] = name
+    privileged = _privileged_from_nodes(nodes)
     out: list[dict[str, Any]] = []
+    sessions: dict[str, list[str]] = {}
     for node in nodes:
         props = _props(node)
         computer = str(
@@ -203,6 +232,9 @@ def _session_and_admin_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]
                     if not msid or _is_default_admin_principal(msid):
                         continue
                     start = names.get(msid, msid)
+                    privileged.add(start)
+                    if msid:
+                        privileged.add(msid)
                     out.append({"kind": "AdminTo", "start": start, "end": computer})
         for key in ("Sessions", "PrivilegedSessions"):
             bag = node.get(key) or node.get(key.lower()) or {}
@@ -217,7 +249,26 @@ def _session_and_admin_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]
                     continue
                 start = names.get(user, user)
                 end = names.get(str(row.get("ComputerSID") or ""), computer) or computer
-                out.append({"kind": "HasSession", "start": start, "end": end})
+                if not (
+                    start in privileged
+                    or user in privileged
+                    or _is_default_admin_principal(user)
+                    or _is_default_admin_principal(start)
+                ):
+                    continue
+                hosts = sessions.setdefault(start, [])
+                if end and end not in hosts:
+                    hosts.append(end)
+    for start, hosts in sessions.items():
+        out.append(
+            {
+                "kind": "HasSession",
+                "start": start,
+                "end": hosts[0] if hosts else start,
+                "session_count": len(hosts),
+                "hosts": hosts,
+            }
+        )
     return out
 
 
@@ -251,6 +302,7 @@ def _fold_props(raw: dict[str, Any]) -> dict[str, Any]:
         "dontreqpreauth": ("dontreqpreauth",),
         "unconstraineddelegation": ("unconstraineddelegation",),
         "highvalue": ("highvalue",),
+        "admincount": ("admincount",),
         "serviceprincipalnames": ("serviceprincipalnames",),
         "pimeligible": ("pimeligible",),
         "roles": ("roles",),
@@ -751,7 +803,66 @@ def parse_file(path: Path) -> list[dict]:
                 },
             )
         )
-    for edge in _edges(payload):
+    raw_edges = _edges(payload)
+    session_acc: dict[str, dict[str, Any]] = {}
+    other_edges: list[dict[str, Any]] = []
+    for edge in raw_edges:
+        kind = str(
+            edge.get("kind")
+            or edge.get("type")
+            or edge.get("label")
+            or edge.get("EdgeType")
+            or edge.get("edgeType")
+            or edge.get("relationship")
+            or ""
+        )
+        folded = kind.upper().replace(" ", "")
+        start = str(
+            edge.get("start")
+            or edge.get("source")
+            or edge.get("Source")
+            or edge.get("startNode")
+            or ""
+        )
+        end = str(
+            edge.get("end")
+            or edge.get("target")
+            or edge.get("Target")
+            or edge.get("endNode")
+            or ""
+        )
+        if folded == "HASESSION":
+            acc = session_acc.setdefault(start, {"hosts": [], "count": 0})
+            raw_count = edge.get("session_count")
+            extra_hosts = edge.get("hosts") if isinstance(edge.get("hosts"), list) else []
+            if raw_count:
+                try:
+                    acc["count"] = max(int(raw_count), int(acc["count"]))
+                except (TypeError, ValueError):
+                    acc["count"] = max(len(extra_hosts) or 1, int(acc["count"]))
+                for host in extra_hosts or ([end] if end else []):
+                    host_s = str(host)
+                    if host_s and host_s not in acc["hosts"]:
+                        acc["hosts"].append(host_s)
+            else:
+                acc["count"] = int(acc["count"]) + 1
+                if end and end not in acc["hosts"]:
+                    acc["hosts"].append(end)
+            continue
+        other_edges.append(edge)
+    for start, acc in session_acc.items():
+        hosts = [str(h) for h in acc["hosts"] if h]
+        count = int(acc["count"] or len(hosts) or 1)
+        other_edges.append(
+            {
+                "kind": "HasSession",
+                "start": start,
+                "end": hosts[0] if hosts else start,
+                "session_count": count,
+                "hosts": hosts,
+            }
+        )
+    for edge in other_edges:
         kind = str(
             edge.get("kind")
             or edge.get("type")
@@ -779,19 +890,39 @@ def parse_file(path: Path) -> list[dict]:
             or edge.get("endNode")
             or ""
         )
+        hosts = edge.get("hosts") if isinstance(edge.get("hosts"), list) else []
+        session_count = edge.get("session_count")
+        extra = {"edge": kind, "start": start, "end": end}
+        assets = [x for x in (start, end) if x]
+        ref_tail = f"{kind}-{start}-{end}"
+        detail = f"{desc} {start} -> {end}".strip()
+        if kind.upper().replace(" ", "") == "HASESSION":
+            try:
+                count = int(session_count or len(hosts) or 1)
+            except (TypeError, ValueError):
+                count = len(hosts) or 1
+            extra["session_count"] = count
+            if hosts:
+                extra["hosts"] = [str(h) for h in hosts]
+            assets = [start] + [str(h) for h in hosts if h and h != start]
+            if not assets:
+                assets = [x for x in (start, end) if x]
+            ref_tail = f"{kind}-{start}"
+            host_bit = ", ".join(str(h) for h in hosts) if hosts else end
+            detail = f"{desc} {start} has {count} session(s)" + (f" on {host_bit}" if host_bit else "")
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"{kind}-{start}-{end}"),
+                ref_id=make_ref(SOURCE, ref_tail),
                 name=title,
-                description=f"{desc} {start} -> {end}".strip(),
+                description=detail,
                 severity=sev,
                 category="identity-gap",
-                assets=[x for x in (start, end) if x],
+                assets=assets,
                 labels=LABELS + ["bloodhound", "edge"],
                 collected_at=now,
-                extra={"edge": kind, "start": start, "end": end},
+                extra=extra,
             )
         )
     return records

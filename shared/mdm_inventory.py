@@ -13,10 +13,40 @@ from pathlib import Path
 from typing import Any
 
 _ENCRYPTED_TRUE = frozenset(
-    {"true", "1", "yes", "encrypted", "compliant", "filevault2", "enabled", "on", "complete"}
+    {
+        "true",
+        "1",
+        "yes",
+        "encrypted",
+        "compliant",
+        "filevault2",
+        "enabled",
+        "on",
+        "complete",
+        "all encrypted",
+        "allencrypted",
+        "boot encrypted",
+        "bootencrypted",
+        "all_encrypted",
+        "boot_encrypted",
+    }
 )
 _ENCRYPTED_FALSE = frozenset(
-    {"false", "0", "no", "not encrypted", "unencrypted", "off", "disabled", "none", "notencrypted"}
+    {
+        "false",
+        "0",
+        "no",
+        "not encrypted",
+        "unencrypted",
+        "off",
+        "disabled",
+        "none",
+        "notencrypted",
+        "some encrypted",
+        "someencrypted",
+        "not_encrypted",
+        "some_encrypted",
+    }
 )
 _ENROLLED_TRUE = frozenset(
     {"true", "1", "yes", "enrolled", "managed", "on", "supervised", "mdm"}
@@ -32,7 +62,6 @@ _ENROLLED_FALSE = frozenset(
         "never",
         "retirepending",
         "retire pending",
-        "unknown",
     }
 )
 _EDR_TRUE = frozenset({"true", "1", "yes", "enabled", "installed", "updated", "healthy", "on"})
@@ -62,12 +91,19 @@ def _as_flag(raw: Any, yes: frozenset[str], no: frozenset[str]) -> bool | None:
 
 
 def _encrypted(device: dict[str, Any]) -> bool | None:
-    for key in ("isEncrypted", "encrypted", "encryptionState", "disk_encryption_enabled"):
+    for key in (
+        "isEncrypted",
+        "encrypted",
+        "encryptionState",
+        "disk_encryption_enabled",
+        "fileVault2EnabledState",
+    ):
         if key in device:
             return _as_flag(device.get(key), _ENCRYPTED_TRUE, _ENCRYPTED_FALSE)
     disk = device.get("diskEncryption") or device.get("disk_encryption")
     if isinstance(disk, dict):
         for key in (
+            "fileVault2EnabledState",
             "fileVault2Enabled",
             "filevault2_enabled",
             "filevault_enabled",
@@ -76,6 +112,9 @@ def _encrypted(device: dict[str, Any]) -> bool | None:
         ):
             if key in disk:
                 return _as_flag(disk.get(key), _ENCRYPTED_TRUE, _ENCRYPTED_FALSE)
+        boot = disk.get("bootPartitionEncryptionDetails")
+        if isinstance(boot, dict) and boot.get("partitionFileVault2State"):
+            return _as_flag(boot.get("partitionFileVault2State"), _ENCRYPTED_TRUE, _ENCRYPTED_FALSE)
     osinfo = device.get("operatingSystem")
     if isinstance(osinfo, dict):
         for key in ("fileVault2Status", "filevault2_status", "filevault_status"):
@@ -92,6 +131,47 @@ def _encrypted(device: dict[str, Any]) -> bool | None:
     return None
 
 
+def _encryption_collected(device: dict[str, Any]) -> bool:
+    """True when the export actually included an encryption field."""
+    for key in (
+        "isEncrypted",
+        "encrypted",
+        "encryptionState",
+        "disk_encryption_enabled",
+        "fileVault2EnabledState",
+    ):
+        if key in device:
+            return True
+    disk = device.get("diskEncryption") or device.get("disk_encryption")
+    if isinstance(disk, dict):
+        for key in (
+            "fileVault2EnabledState",
+            "fileVault2Enabled",
+            "filevault2_enabled",
+            "filevault_enabled",
+            "encrypted",
+            "status",
+        ):
+            if key in disk:
+                return True
+        boot = disk.get("bootPartitionEncryptionDetails")
+        if isinstance(boot, dict) and boot.get("partitionFileVault2State"):
+            return True
+    osinfo = device.get("operatingSystem")
+    if isinstance(osinfo, dict):
+        for key in ("fileVault2Status", "filevault2_status", "filevault_status"):
+            if key in osinfo:
+                return True
+    hardware = device.get("hardware")
+    if isinstance(hardware, dict):
+        for key in ("filevault2_status", "filevault_status", "encrypted"):
+            if key in hardware:
+                return True
+    if isinstance(device.get("filevault2_users"), list):
+        return True
+    return False
+
+
 def _mdm_enrolled(device: dict[str, Any]) -> bool | None:
     # azureADRegistered is "Azure AD registered", not MDM enrollment.
     # A managedDevices export row is already enrolled unless state says otherwise.
@@ -102,8 +182,9 @@ def _mdm_enrolled(device: dict[str, Any]) -> bool | None:
                 token = _token(val)
                 if token in {"company", "corporate", "supervised"}:
                     return True
+                # unknown / personal / none is not "not enrolled".
                 if token in {"unknown", "none", "personal"}:
-                    return None if token == "personal" else False
+                    return None
             return _as_flag(val, _ENROLLED_TRUE, _ENROLLED_FALSE)
     state = device.get("managementState") or device.get("management_state")
     if state is not None and str(state).strip() != "":
@@ -113,7 +194,7 @@ def _mdm_enrolled(device: dict[str, Any]) -> bool | None:
         token = _token(state)
         if token in {"managed", "enrolled"}:
             return True
-        if token in {"retirepending", "retire pending", "unenrolled", "unknown", "wipepending"}:
+        if token in {"retirepending", "retire pending", "unenrolled", "wipepending"}:
             return False
     general = device.get("general") if isinstance(device.get("general"), dict) else {}
     remote = general.get("remoteManagement") or general.get("remote_management")
@@ -211,6 +292,7 @@ def _normalize_device(device: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "name": name,
         "encrypted": _encrypted(device),
+        "encryption_collected": _encryption_collected(device),
         "mdm_enrolled": _mdm_enrolled(device),
         "edr_present": _edr_present(device),
         "platform": str(

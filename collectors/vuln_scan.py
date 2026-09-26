@@ -67,14 +67,74 @@ def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
     return _nuclei_from_payload(payload)
 
 
+def _is_trivy_k8s(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("ClusterName") is not None or payload.get("cluster_name") is not None:
+        if "Resources" in payload or "resources" in payload:
+            return True
+    resources = payload.get("Resources") or payload.get("resources")
+    if not isinstance(resources, list):
+        return False
+    for res in resources:
+        if not isinstance(res, dict):
+            continue
+        if isinstance(res.get("Results") or res.get("results"), list):
+            return True
+        if res.get("Kind") and (res.get("Name") or res.get("Namespace") is not None):
+            return True
+    return False
+
+
+def _is_trivy(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("SchemaVersion") is not None or payload.get("ArtifactName") or payload.get("ArtifactType"):
+        return True
+    if isinstance(payload.get("Results") or payload.get("results"), list):
+        return True
+    return _is_trivy_k8s(payload)
+
+
+def _trivy_result_blocks(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    blocks: list[dict[str, Any]] = []
+    for result in payload.get("Results") or payload.get("results") or []:
+        if isinstance(result, dict):
+            blocks.append(result)
+    for res in payload.get("Resources") or payload.get("resources") or []:
+        if not isinstance(res, dict):
+            continue
+        ns = str(res.get("Namespace") or "")
+        kind = str(res.get("Kind") or "")
+        rname = str(res.get("Name") or "")
+        inner = res.get("Results") or res.get("results") or []
+        if not isinstance(inner, list):
+            continue
+        for result in inner:
+            if not isinstance(result, dict):
+                continue
+            extra = dict(result)
+            extra["_k8s"] = {"namespace": ns, "kind": kind, "name": rname}
+            blocks.append(extra)
+    return blocks
+
+
 def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not isinstance(payload, dict):
         return rows
-    for result in payload.get("Results") or payload.get("results") or []:
-        if not isinstance(result, dict):
-            continue
-        target = str(result.get("Target") or result.get("target") or "image")
+    for result in _trivy_result_blocks(payload):
+        k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
+        target = str(
+            result.get("Target")
+            or result.get("target")
+            or k8s.get("name")
+            or "image"
+        )
+        if k8s.get("namespace"):
+            target = f"{k8s.get('namespace')}/{target}"
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
                 vuln = {**vuln, "_target": target, "_class": "vuln"}
@@ -393,8 +453,10 @@ def parse_file(path: Path) -> list[dict]:
     except Exception:
         return records
 
-    trivy = _trivy_rows(payload)
-    if trivy:
+    if _is_trivy(payload):
+        trivy = _trivy_rows(payload)
+        if not trivy:
+            return records
         trivy_created = ""
         if isinstance(payload, dict):
             trivy_created = str(payload.get("CreatedAt") or payload.get("created_at") or "")

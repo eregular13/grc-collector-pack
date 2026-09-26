@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from collectors import cloud_prowler, host_wazuh, identity_ad, saas_idp, vuln_scan
@@ -140,6 +141,114 @@ def test_osquery_hostidentifier_and_check_snapshot() -> None:
     assert findings
     assert any("disk encryption" in r["name"].lower() or "disk_encryption" in r["name"] for r in findings)
     assert all("hostname.local" in (r.get("assets") or []) for r in findings)
+
+
+def test_osquery_it_compliance_pack_compliant_host_zero_findings() -> None:
+    recs = host_wazuh.parse_file(SAMPLES / "osquery" / "it-compliance-pack.json")
+    pack = json.loads((SAMPLES / "osquery" / "it-compliance-pack.json").read_text(encoding="utf-8"))
+    assert len(pack["queries"]) == 32
+    assert any(r["kind"] == "asset" and r["name"] == "compliant-mac.local" for r in recs)
+    assert not any(r["kind"] == "finding" for r in recs)
+
+
+def test_custodian_rejects_steampipe_list_and_defaults_medium(tmp_path: Path) -> None:
+    steampipe = tmp_path / "steampipe-list.json"
+    steampipe.write_text(
+        json.dumps(
+            [
+                {
+                    "arn": "arn:aws:s3:::query-bucket",
+                    "name": "query-bucket",
+                    "id": "query-bucket",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    recs = cloud_prowler.parse_file(steampipe)
+    assert not any(r["kind"] == "finding" for r in recs)
+
+    dest = tmp_path / "ebs-unused"
+    dest.mkdir()
+    (dest / "metadata.json").write_text(
+        json.dumps({"policy": {"name": "ebs-unused", "resource": "aws.ebs"}}),
+        encoding="utf-8",
+    )
+    (dest / "resources.json").write_text(
+        json.dumps(
+            [
+                {
+                    "VolumeId": "vol-abc",
+                    "Arn": "arn:aws:ec2:us-east-1:111122223333:volume/vol-abc",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    recs = cloud_prowler.parse_file(dest / "resources.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert all(r["severity"] == "medium" for r in findings)
+    assert all(r["extra"].get("severity_source") == "default" for r in findings)
+
+
+def test_scoutsuite_js_assignment_prefix() -> None:
+    recs = cloud_prowler.parse_file(SAMPLES / "cloud" / "scoutsuite-results.js")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert any("demo-scout-js-public" in str(r.get("assets")) for r in findings)
+    assert all(r["severity"] == "high" for r in findings)
+
+
+def test_trivy_k8s_resources_results(tmp_path: Path) -> None:
+    recs = vuln_scan.parse_file(SAMPLES / "trivy" / "k8s-cluster.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert any(r["extra"].get("cve") == "CVE-2019-14697" for r in findings)
+    assert any("nginx" in str(r.get("assets")) for r in findings)
+    empty = {"ClusterName": "kind-kind", "Resources": []}
+    assert vuln_scan._is_trivy(empty)
+    assert vuln_scan._is_trivy_k8s(empty)
+    assert vuln_scan._trivy_rows(empty) == []
+    dest = tmp_path / "empty-k8s.json"
+    dest.write_text(json.dumps(empty), encoding="utf-8")
+    assert vuln_scan.parse_file(dest) == []
+
+
+def test_intune_owner_unknown_is_not_unenrolled() -> None:
+    recs = host_wazuh.parse_file(SAMPLES / "mdm" / "intune-manageddevices-v1.json")
+    assert any(r["kind"] == "asset" and r["name"] == "LAPTOP-GRAPH-03" for r in recs)
+    enroll = [r for r in recs if r["kind"] == "finding" and "MDM enrollment" in r["name"]]
+    assert not enroll
+    assert not any("LAPTOP-GRAPH-03" in r["name"] and "enrollment" in r["name"].lower() for r in recs if r["kind"] == "finding")
+
+
+def test_bloodhound_hassession_rolls_up_per_privileged_principal() -> None:
+    recs = identity_ad.parse_file(SAMPLES / "bloodhound" / "bhce_v6_sessions.json")
+    sessions = [r for r in recs if r["kind"] == "finding" and r["name"] == "BloodHound HasSession"]
+    assert len(sessions) == 1
+    finding = sessions[0]
+    assert finding["extra"].get("session_count") == 3
+    assert "ADMIN@LAB.LOCAL" in (finding.get("assets") or [])
+    assert not any("BOB@LAB.LOCAL" == r["extra"].get("start") for r in sessions)
+
+
+def test_jamf_filevault2_states_and_general_coverage_gap() -> None:
+    recs = host_wazuh.parse_file(SAMPLES / "mdm" / "jamf-computers-inventory.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    names = [r["name"] for r in findings]
+    assert any("Disk encryption" in n and "mac-jamf-02" in n for n in names)
+    assert any("Disk encryption" in n and "mac-jamf-some" in n for n in names)
+    assert not any("Disk encryption" in n and "mac-jamf-01" in n for n in names)
+    assert not any("Disk encryption" in n and "mac-jamf-boot" in n for n in names)
+    assert any("encryption not collected" in n and "mac-jamf-general" in n for n in names)
+    fixture = (SAMPLES / "mdm" / "jamf-computers-inventory.json").read_text(encoding="utf-8")
+    assert "ALL_ENCRYPTED" in fixture
+    assert "BOOT_ENCRYPTED" in fixture
+    assert "SOME_ENCRYPTED" in fixture
+    assert "NOT_ENCRYPTED" in fixture
+    assert "AllPartitionsEncrypted" not in fixture
+    assert "NotEncrypted" not in fixture
 
 
 def test_samples_are_not_client_keep() -> None:

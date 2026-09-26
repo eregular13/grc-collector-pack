@@ -1,29 +1,81 @@
 {
-  "totalCount": 2,
+  "totalCount": 5,
   "results": [
     {
       "id": "1",
+      "udid": "00000000-1111-2222-3333-444444444444",
       "general": {
         "name": "mac-jamf-01",
         "platform": "Mac",
         "remoteManagement": {"managed": true},
         "mdmCapable": {"capable": true, "capableUsers": ["it"]}
       },
-      "diskEncryption": {"fileVault2Enabled": true},
-      "operatingSystem": {"fileVault2Status": "AllPartitionsEncrypted"},
+      "diskEncryption": {
+        "fileVault2EnabledState": "ALL_ENCRYPTED",
+        "bootPartitionEncryptionDetails": {
+          "partitionName": "Macintosh HD",
+          "partitionFileVault2State": "ALL_ENCRYPTED"
+        }
+      },
+      "operatingSystem": {"name": "macOS"},
       "security": {}
     },
     {
       "id": "2",
+      "udid": "00000000-1111-2222-3333-555555555555",
       "general": {
         "name": "mac-jamf-02",
         "platform": "Mac",
         "remoteManagement": {"managed": true},
         "mdmCapable": {"capable": true, "capableUsers": []}
       },
-      "diskEncryption": {"fileVault2Enabled": false},
-      "operatingSystem": {"fileVault2Status": "NotEncrypted"},
+      "diskEncryption": {
+        "fileVault2EnabledState": "NOT_ENCRYPTED"
+      },
+      "operatingSystem": {"name": "macOS"},
       "security": {}
+    },
+    {
+      "id": "3",
+      "udid": "00000000-1111-2222-3333-666666666666",
+      "general": {
+        "name": "mac-jamf-boot",
+        "platform": "Mac",
+        "remoteManagement": {"managed": true},
+        "mdmCapable": {"capable": true}
+      },
+      "diskEncryption": {
+        "fileVault2EnabledState": "BOOT_ENCRYPTED",
+        "bootPartitionEncryptionDetails": {
+          "partitionName": "Macintosh HD",
+          "partitionFileVault2State": "BOOT_ENCRYPTED"
+        }
+      },
+      "operatingSystem": {"name": "macOS"}
+    },
+    {
+      "id": "4",
+      "udid": "00000000-1111-2222-3333-777777777777",
+      "general": {
+        "name": "mac-jamf-some",
+        "platform": "Mac",
+        "remoteManagement": {"managed": true},
+        "mdmCapable": {"capable": true}
+      },
+      "diskEncryption": {
+        "fileVault2EnabledState": "SOME_ENCRYPTED"
+      },
+      "operatingSystem": {"name": "macOS"}
+    },
+    {
+      "id": "5",
+      "udid": "00000000-1111-2222-3333-888888888888",
+      "general": {
+        "name": "mac-jamf-general",
+        "platform": "Mac",
+        "remoteManagement": {"managed": true},
+        "mdmCapable": {"capable": true}
+      }
     }
   ]
 }

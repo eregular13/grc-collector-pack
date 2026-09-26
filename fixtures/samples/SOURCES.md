@@ -16,11 +16,12 @@ LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 - `cloud/s3-encryption-missing/resources.json`: Cloud Custodian (c7n) `resources.json` is a bare list of matched resources (`cloud-custodian` 0.9.52 / `c7n/output.py`). Policy name is the parent directory (plus sibling `metadata.json` `policy.name`).
 - `cloud/powerpipe-benchmark.json`: Powerpipe benchmark JSON tree (`group_id` / `groups` / `controls` / `results[].status`) after `steampipe check` was removed in Steampipe v1.0.0. Shape from Powerpipe v1.5.5 `result_row.go`.
 - `cloud/steampipe-query.json`: `steampipe query --output json` `{columns,rows}` with no `status` (Steampipe CHANGELOG v2.4.7). Inventory only.
+- `cloud/scoutsuite-results.js`: ScoutSuite `scoutsuite_results =` JavaScript assignment (nccgroup/ScoutSuite `HTMLReport` / `scoutsuite_results.js`). Same danger finding shape as the JSON export.
 
 ## MDM
 
 - `mdm/intune-manageddevices-v1.json`: Microsoft Graph v1.0 `managedDevice` (`azureADRegistered`, `isEncrypted`, `complianceState`; no `managementState` / `antivirusStatus`). Docs: graph `manageddevice` resource.
-- `mdm/jamf-computers-inventory.json`: Jamf Pro API 11.32 `GET /v1/computers-inventory` `{totalCount, results[{general, diskEncryption, operatingSystem}]}` camelCase.
+- `mdm/jamf-computers-inventory.json`: Jamf Pro API 11.32 `GET /v1/computers-inventory` `{totalCount, results[{general, diskEncryption, operatingSystem}]}` camelCase. `fileVault2EnabledState` enum from the Jamf Pro API docs: `ALL_ENCRYPTED` / `BOOT_ENCRYPTED` / `SOME_ENCRYPTED` / `NOT_ENCRYPTED`. One `section=GENERAL` row has no `diskEncryption`.
 
 ## IdP / SaaS
 
@@ -33,15 +34,18 @@ LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 
 - `bloodhound/bhce_v6_*.json`: SharpHound CE v6 / BloodHound `@ ca1be93` `Version6AllJSON/raw/{users,computers,domains}.json` (ESC1.LOCAL lab fixture). Trimmed. Default admin ACEs and computer SPNs are present in the source and must not become roastable/critical noise.
 - `bloodhound/bhce_v6_real_exposure.json`: same CE v6 ACE shape; `GetChanges`+`GetChangesAll` on `VICTIM@ESC1.LOCAL` (name from that fixture) to prove true DCSync detection. Default `-512` GenericAll stays silent.
+- `bloodhound/bhce_v6_sessions.json`: CE v6 `Sessions` / `PrivilegedSessions` (`UserSID` / `ComputerSID`). One privileged principal (`admincount=1`) with three hosts; a non-privileged user session stays inventory.
 
 ## Trivy
 
 - `trivy/secrets.json`, `trivy/dockerfile.json`: trimmed from aquasecurity/trivy `@ ae561f8` `integration/testdata/{secrets,dockerfile}.json.golden` (SchemaVersion 2). Secret match redacted.
+- `trivy/k8s-cluster.json`: Trivy k8s report (`ClusterName` + `Resources[].Results[]`) from aquasecurity/trivy `trivy k8s` JSON. One alpine musl CVE on `nginx` in `default`.
 
 ## osquery
 
 - `osquery/docs-process-snapshot.json`: osquery 5.x snapshot envelope from `osquery/docs/wiki/deployment/logging.md` `@ d89a164` (`hostIdentifier`, `action: snapshot`). Inventory query — not a finding.
 - `osquery/snapshot-disk-encryption.jsonl`: same 5.x envelope for a named disk_encryption snapshot (JSONL as osqueryd writes).
+- `osquery/it-compliance-pack.json`: official osquery `packs/it-compliance.conf` (32 query names, `@ master`). Combined `{hostIdentifier, queries}` snapshot for a compliant host (`disk_encryption.encrypted=1`; no status/result columns). Inventory only.
 
 ## PingCastle / Greenbone / ScubaGear / testssl / Nikto (§8 / #139)
 

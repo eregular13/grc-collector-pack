@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from shared.io_util import iso_now, read_json, run_collector
+from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.schema import make_record, make_ref
 
 SOURCE = "cloud-prowler"
@@ -72,13 +72,57 @@ def _looks_prowler_row(row: dict[str, Any]) -> bool:
     )
 
 
-def _looks_custodian_resource(row: Any) -> bool:
+_C7N_KEYS = (
+    "c7n:MatchedFilters",
+    "c7n:MatchedFiltersCount",
+    "c7n:alert-user",
+    "c7n:annotation",
+)
+
+# Policy-name keywords → severity. Unmapped policies default medium.
+_C7N_NAME_SEV = (
+    ("public", "high"),
+    ("admin", "high"),
+    ("unencrypted", "high"),
+    ("encryption-missing", "high"),
+    ("encryption_missing", "high"),
+)
+
+
+def _looks_c7n_keys(row: Any) -> bool:
+    """Custodian-specific keys only. Arn/Name/Id alone is Steampipe-shaped too."""
     if not isinstance(row, dict) or _looks_prowler_row(row) or _looks_asff_row(row):
         return False
-    return any(
-        k in row
-        for k in ("Arn", "arn", "Name", "InstanceId", "BucketName", "id", "Id")
-    )
+    return any(k in row for k in _C7N_KEYS)
+
+
+def _custodian_resources_path(path: Path | None) -> bool:
+    """resources.json plus sibling metadata.json (policy name / resource type)."""
+    if path is None or path.name.lower() != "resources.json":
+        return False
+    return (path.parent / "metadata.json").is_file()
+
+
+def _custodian_severity(pname: str, pol: dict[str, Any], path: Path | None) -> tuple[str, str]:
+    """Severity from policy metadata or a name mapping. Else medium + default."""
+    for key in ("severity", "Severity"):
+        if pol.get(key):
+            return str(pol[key]), "policy"
+    if path is not None:
+        meta = path.parent / "metadata.json"
+        if meta.is_file():
+            try:
+                doc = json.loads(meta.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                doc = {}
+            inner = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
+            if isinstance(inner, dict) and (inner.get("severity") or inner.get("Severity")):
+                return str(inner.get("severity") or inner.get("Severity")), "metadata"
+    low = pname.lower()
+    for needle, sev in _C7N_NAME_SEV:
+        if needle in low:
+            return sev, "policy-name"
+    return "medium", "default"
 
 
 def _custodian_policy_name(path: Path | None) -> str:
@@ -105,12 +149,14 @@ def _iter_findings(payload: Any, path: Path | None = None) -> list[dict[str, Any
         rows = [x for x in payload if isinstance(x, dict)]
         if not rows:
             return []
-        named = bool(path and path.name.lower() == "resources.json")
-        if named or (not _looks_prowler_row(rows[0]) and not _looks_asff_row(rows[0]) and _looks_custodian_resource(rows[0])):
+        if _custodian_resources_path(path) or _looks_c7n_keys(rows[0]):
             return _custodian_from_resources(rows, path)
         if _looks_asff_row(rows[0]):
             return [_asff_to_prowler(x) for x in rows]
-        return rows
+        if _looks_prowler_row(rows[0]):
+            return rows
+        # Bare Steampipe/query lists ({arn,name,id}) are inventory, not Custodian.
+        return []
     if not isinstance(payload, dict):
         return []
     asff = payload.get("Findings")
@@ -205,16 +251,18 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
                 or pname
             )
             arn = str(res.get("Arn") or res.get("arn") or rid)
+            sev, sev_source = _custodian_severity(pname, pol, None)
             out.append(
                 {
                     "CheckID": pname,
                     "CheckTitle": f"Cloud Custodian {pname}",
                     "Status": "FAIL",
-                    "Severity": pol.get("severity") or "high",
+                    "Severity": sev,
                     "ResourceId": rid,
                     "ResourceArn": arn,
                     "Description": str(pol.get("description") or f"Policy {pname} matched {rid}"),
                     "ServiceName": service,
+                    "SeveritySource": sev_source,
                 }
             )
     return out
@@ -222,7 +270,23 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
 
 def _custodian_from_resources(rows: list[dict[str, Any]], path: Path | None) -> list[dict[str, Any]]:
     pname = _custodian_policy_name(path)
-    return _custodian_findings({"name": pname, "resource": "cloud", "resources": rows})
+    resource = "cloud"
+    if path is not None:
+        meta = path.parent / "metadata.json"
+        if meta.is_file():
+            try:
+                doc = json.loads(meta.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                doc = {}
+            inner = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
+            if isinstance(inner, dict) and inner.get("resource"):
+                resource = str(inner["resource"])
+    findings = _custodian_findings({"name": pname, "resource": resource, "resources": rows})
+    sev, sev_source = _custodian_severity(pname, {}, path)
+    for item in findings:
+        item["Severity"] = sev
+        item["SeveritySource"] = sev_source
+    return findings
 
 
 def _powerpipe_findings(payload: Any) -> list[dict[str, Any]]:
@@ -304,8 +368,23 @@ def _steampipe_findings(payload: Any) -> list[dict[str, Any]]:
     return out
 
 
+def _load_cloud_payload(path: Path) -> Any:
+    """JSON, or ScoutSuite ``scoutsuite_results =`` JS assignment."""
+    try:
+        return read_json(path)
+    except Exception:
+        text = read_text(path).lstrip("\ufeff").lstrip()
+    for prefix in ("scoutsuite_results =", "scoutsuite_results="):
+        if text.startswith(prefix):
+            text = text[len(prefix) :].lstrip()
+            break
+    if text.endswith(";"):
+        text = text[:-1].rstrip()
+    return json.loads(text)
+
+
 def parse_file(path: Path) -> list[dict[str, Any]]:
-    payload = read_json(path)
+    payload = _load_cloud_payload(path)
     now = iso_now()
     records: list[dict[str, Any]] = []
     seen_assets: set[str] = set()
@@ -355,6 +434,11 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                         "arn": arn,
                         "status": status or "FAIL",
                         "service": service,
+                        **(
+                            {"severity_source": item.get("SeveritySource")}
+                            if item.get("SeveritySource")
+                            else {}
+                        ),
                     },
                 )
             )
@@ -362,7 +446,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json",), parse_file)
+    run_collector(SOURCE, (".json", ".js"), parse_file)
 
 
 if __name__ == "__main__":

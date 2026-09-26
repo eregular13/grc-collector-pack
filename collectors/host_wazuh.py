@@ -425,6 +425,25 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     extra={"disk_encryption_enabled": False, "provider": provider},
                 )
             )
+        elif device.get("encryption_collected") is False and provider == "jamf":
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"enc-gap-{provider}-{name}"),
+                    name=f"encryption not collected on {name}",
+                    description=(
+                        f"{name} Jamf section=GENERAL export has no diskEncryption / "
+                        f"FileVault state; encryption not collected. {_ASSESS}"
+                    ),
+                    severity="medium",
+                    category="coverage-gap",
+                    assets=[name],
+                    labels=LABELS + extra_labels + ["disk-encryption", "coverage"],
+                    collected_at=now,
+                    extra={"encryption_collected": False, "provider": provider},
+                )
+            )
         if device.get("mdm_enrolled") is False:
             records.append(
                 make_record(

@@ -19,6 +19,15 @@
       "isEncrypted": false,
       "azureADRegistered": false,
       "managedDeviceOwnerType": "company"
+    },
+    {
+      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+      "deviceName": "LAPTOP-GRAPH-03",
+      "operatingSystem": "Windows",
+      "complianceState": "compliant",
+      "isEncrypted": true,
+      "azureADRegistered": true,
+      "managedDeviceOwnerType": "unknown"
     }
   ]
 }
