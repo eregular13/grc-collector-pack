@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 199 — nmap UDP proto-keyed risky ports (2026-09-26)
+
+tcp/445 is SMB; udp/445 is not. Admin-share only on TCP open.
+UDP 161/69 High only when `state=open`. `open|filtered` is info /
+`not_a_weakness` and never a POA&M row. Real Nmap 7.40 fixture
+`udpConnect_10.11.1.0-254.xml` (c4rtographer @ b73866a, MIT): 137
+findings, SNMP 161/udp on 2 hosts (host-scoped POA&M), 135 excluded.
+Host-lab: pytest **1212**; assets **78** findings **104** poam **125**
+(−1 vs cycle 198 is #144 `superseded_by_specific`, already on master
+via update-branch / #140 squash). Farm **48 / 174 / 106** unchanged.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+
 ## cycle 198 — merge master f8b7ff1 #138 into discovery/web (#140) (2026-09-26)
 
 Normal merge of `origin/master` `f8b7ff1` (#138 EGA- asset ledger).

@@ -1,3 +1,15 @@
+# CRITIC — cycle 199 (NMAP_UDP_PROTO_RISKY)
+
+Lab this brick: pytest **1212** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=125` `excluded=1` `superseded_by_specific` `demo=true`). Cold
+farm_drop `assets=48` `findings=174` `poam=106` unchanged. Zero P0/P1.
+Risky ports keyed by proto; UDP open|filtered excluded as
+`not_a_weakness`. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS
+#48 rails below are unchanged.
+
 # CRITIC — cycle 198 (MERGE_138_DISCOVERY_WEB)
 
 Lab this brick: pytest **1190** passed, 1 skipped. Ten collectors +
