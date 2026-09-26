@@ -386,7 +386,11 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
-    if "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", ""):
+    if (
+        "lm hash" in text
+        or "lan manager hash" in text
+        or "lmhash" in text.replace(" ", "").replace("_", "")
+    ):
         return "hk_lm_hash"
     if "write below binary" in text or "binary directory" in text:
         return "k8s_write_binary_dir"

@@ -20,6 +20,7 @@ from shared.control_map import (
 )
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
+from shared.hardening_dedup import dedupe_hardening
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
@@ -201,8 +202,8 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load() -> dict:
-    # ref_id collapse first (double-loader), then same-issue-same-asset.
-    records = dedupe_weaknesses(_dedupe(_load_canonical()))
+    # ref_id collapse, then same-issue-same-asset, then HK/Lynis/oscap keys.
+    records = dedupe_hardening(dedupe_weaknesses(_dedupe(_load_canonical())))
     now = iso_now()
     domain = _domain()
     estate = estate_label(records)

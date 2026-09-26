@@ -138,7 +138,38 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Disable legacy authentication protocols": "Legacy authentication protocols are enabled",
     "Restrict external sharing": "External sharing is not restricted",
     "Review SSH brute-force activity": "SSH brute-force activity was observed",
+    "Enforce password policy": "Password policy is not enforced",
+    "Enforce Windows password history": "Password history is shorter than required",
+    "Disable LM hash storage": "LM hashes are stored",
+    "Enforce account lockout": "Account lockout is not enforced",
+    "Enforce session lock": "Session lock after inactivity is not enforced",
+    "Enable audit logging": "Audit logging is not enabled",
+    "Enable malware protection": "Malware real-time protection is disabled",
+    "Require encryption in transit": "Remote session encryption is not required",
+    "Enable a host firewall": "Host firewall is disabled",
+    "Disable SSH root login": "SSH root login is enabled",
+    "Disable SSH empty passwords": "SSH empty passwords are allowed",
+    "Apply security updates": "Security updates are not applied",
+    "Enable time synchronization": "Time synchronization is not enabled",
 }
+
+# Host-hardening control_keys (Lynis / OpenSCAP / HardeningKitty). Check
+# titles are policy names; the weakness column must state the failure.
+HARDENING_CONTROL_KEYS = frozenset(
+    {
+        "password_policy",
+        "account_lockout",
+        "session_lock",
+        "audit_logging",
+        "malware_protection",
+        "encryption_in_transit",
+        "host_firewall",
+        "ssh_root_login",
+        "ssh_empty_passwords",
+        "patching",
+        "time_sync",
+    }
+)
 
 # SP 800-53 Rev. 5 family → CSF 2.0 function (NIST CSF 2.0 Informative References).
 N53_FAMILY_CSF = {
@@ -407,6 +438,12 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable SSH empty passwords": ["IA-5", "IA-2"],
     "Apply security updates": ["SI-2", "CM-6", "RA-5"],
     "Enable time synchronization": ["AU-8"],
+    "Enforce password policy": ["IA-5"],
+    "Enforce account lockout": ["AC-7"],
+    "Enforce session lock": ["AC-11"],
+    "Enable audit logging": ["AU-2", "AU-12"],
+    "Enable malware protection": ["SI-3"],
+    "Require encryption in transit": ["SC-8"],
     "Deny privileged Kubernetes containers": ["AC-6", "CM-7"],
     "Disable anonymous Kubernetes API access": ["AC-3", "IA-2"],
     "Block Kubernetes privilege escalation": ["AC-6"],
@@ -658,12 +695,20 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     raw = str(rec.get("name") or "").strip()
     key = raw.lower()
     compact = re.sub(r"[^a-z0-9]+", "", key)
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    control = str(mapped.get("control_name") or extra.get("control_name") or "")
     for title, failure in CHECK_TITLE_FAILURE.items():
         if key == title or compact == title.replace(" ", ""):
             return failure
+    # HK / Lynis / oscap check titles are policy names ("EnableFirewall",
+    # "Length of password history maintained"), not the failure.
+    hardening = str(extra.get("control_key") or "") in HARDENING_CONTROL_KEYS
+    if hardening or key.startswith("hardeningkitty"):
+        if control in CONTROL_WEAKNESS:
+            return CONTROL_WEAKNESS[control]
     if raw and _looks_like_pass_title(raw):
         pass
-    elif raw:
+    elif raw and not hardening:
         return raw
     explicit = str(mapped.get("weakness_name") or "").strip()
     if explicit:
@@ -671,11 +716,9 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     ftype = str(mapped.get("finding_type") or "")
     if ftype in TYPE_WEAKNESS_NAME:
         return TYPE_WEAKNESS_NAME[ftype]
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
     if check in MISCONFIG_WEAKNESS:
         return MISCONFIG_WEAKNESS[check]
-    control = str(mapped.get("control_name") or "")
     if control in CONTROL_WEAKNESS:
         return CONTROL_WEAKNESS[control]
     return explicit or control or raw or str(rec.get("ref_id") or "finding")
@@ -737,17 +780,28 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
-    if typed:
+    if typed and not (
+        typed.get("generic")
+        and str(extra.get("control_key") or "") in HARDENING_CONTROL_KEYS
+    ):
         return _typed_map(rec, typed)
     mapped = _map_finding_legacy(rec)
     if mapped.get("generic") and _is_vuln_finding(rec):
         play = _vuln_playbook(rec)
         mapped.update(play)
     n53, cis = _lookup_control_ids(mapped["control_name"])
-    if not mapped.get("nist_800_53"):
-        mapped["nist_800_53"] = n53
-    if not mapped.get("cis"):
-        mapped["cis"] = cis
+    if mapped.get("nist_800_53"):
+        n53 = list(mapped["nist_800_53"])
+    extra_n53 = extra.get("nist_800_53") or []
+    if isinstance(extra_n53, list):
+        for cid in extra_n53:
+            if cid and cid not in n53:
+                n53.append(str(cid))
+    mapped["nist_800_53"] = n53
+    # Never copy extra.cis_v8_internal (INTERNAL-ONLY) into client outputs.
+    if mapped.get("cis"):
+        cis = list(mapped["cis"])
+    mapped["cis"] = cis
     mapped.setdefault("generic", False)
     mapped.setdefault("finding_type", "")
     mapped = _stamp_csf(mapped)
@@ -1111,6 +1165,38 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Disable Anyone links and restrict external sharing to approved domains. "
             "This is a dropped Scuba/SharePoint export finding, not a live API call."
         )
+    elif extra.get("control_key") == "account_lockout" or "lockout" in text:
+        name = "Enforce account lockout"
+        fix = (
+            "Set an account lockout threshold and duration. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "session_lock" or "inactivity limit" in text:
+        name = "Enforce session lock"
+        fix = (
+            "Lock the session after inactivity. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "audit_logging" or "advanced audit" in text:
+        name = "Enable audit logging"
+        fix = (
+            "Turn on advanced audit policy so security events are recorded. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "malware_protection" or "real-time protection" in text:
+        name = "Enable malware protection"
+        fix = (
+            "Keep Microsoft Defender real-time protection enabled. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "encryption_in_transit" or (
+        "encryption level" in text and ("rdp" in text or "client connection" in text)
+    ):
+        name = "Require encryption in transit"
+        fix = (
+            "Require encrypted remote sessions. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
     elif "brute force" in text:
         name = "Review SSH brute-force activity"
         fix = (
@@ -1122,13 +1208,23 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         name = "Enforce Windows password history"
         fix = (
             "Set password history to the recommended length. "
-            "This is a HardeningKitty/CIS posture finding, not a CVE."
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
-    elif "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", "").replace("-", ""):
+    elif (
+        "lm hash" in text
+        or "lan manager hash" in text
+        or "lmhash" in text.replace(" ", "").replace("_", "").replace("-", "")
+    ):
         name = "Disable LM hash storage"
         fix = (
             "Disable storage of LAN Manager hashes. Prefer NTLMv2. "
-            "This is a HardeningKitty/CIS posture finding, not a CVE."
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "password_policy":
+        name = "Enforce password policy"
+        fix = (
+            "Set a minimum password length and aging policy. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
     elif "firewall" in text and (
         "no firewall" in text or "not installed" in text or "inactive" in text

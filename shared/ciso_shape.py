@@ -379,3 +379,9 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
             "# POA&M (operator draft)\nSAMPLE stub. Not a client.\n",
             encoding="utf-8",
         )
+        (folder.parent / "poam" / "excluded.csv").write_text(
+            "finding_ref_id,weakness,asset,severity,excluded_reason\n"
+            "DEMO-I,sample-info,sample-asset,info,severity_info\n"
+            "DEMO-H,sample-honeypot,sample-asset,high,honeypot\n",
+            encoding="utf-8",
+        )

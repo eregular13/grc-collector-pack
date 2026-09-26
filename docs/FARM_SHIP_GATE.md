@@ -68,6 +68,15 @@ printed as metadata. Changing HEAD without touching the surface is skip.
 - Risk register + POA&M **shape** (`assert_risk_register_and_poam`): findings
   >= 1, risk_scenarios >= findings, poam_rows >= 1, headers match, farm
   vulnerabilities == 0 (exposure, not CVE-class). Not mere file counts.
+- Full POA&M plan (default): Lows (180-day) and non-key Mediums (90-day)
+  stay **on** the plan. Infos + honeypot hits go to `poam/excluded.csv`
+  (`finding_ref_id,weakness,asset,severity,excluded_reason`). Measured
+  farm_drop: findings=174, poam=106, excluded=68 (60 info + 8 honeypot).
+  Brick 5 floors: findings >= 110, poam_rows >= 100. The old 35-row floor
+  was the lighter High/key-Medium-only plan; do not revert.
+- `assert_farm_ship_sor` requires `excluded.csv` non-empty with both
+  `severity_info` and `honeypot` reasons. Count identity:
+  `weaknesses_total == poam_included + excluded`.
 
 Elapsed seconds are honesty-only. Not a 10-minute warm grind.
 
