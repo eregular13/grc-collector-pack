@@ -1,0 +1,6 @@
+NAME                   IMAGE               COMMAND                  SERVICE    CREATED         STATUS         PORTS
+misconfig-mc-db-1      mariadb:11          "docker-entrypoint.s…"   mc-db      7 seconds ago   Up 6 seconds   3306/tcp
+misconfig-mc-ftp-1     misconfig-mc-ftp    "vsftpd /etc/vsftpd/…"   mc-ftp     7 seconds ago   Up 6 seconds   21/tcp
+misconfig-mc-redis-1   redis:7-alpine      "docker-entrypoint.s…"   mc-redis   7 seconds ago   Up 6 seconds   6379/tcp
+misconfig-mc-smb-1     misconfig-mc-smb    "smbd --foreground -…"   mc-smb     7 seconds ago   Up 5 seconds   445/tcp
+misconfig-mc-web-1     nginx:1.27-alpine   "/docker-entrypoint.…"   mc-web     7 seconds ago   Up 6 seconds   80/tcp

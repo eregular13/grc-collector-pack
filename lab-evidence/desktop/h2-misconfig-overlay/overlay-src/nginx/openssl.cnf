@@ -1,0 +1,13 @@
+# LAB ONLY: OpenSSL 3 on nginx:alpine otherwise refuses TLS 1.0/1.1 and aNULL.
+openssl_conf = openssl_init
+
+[openssl_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+MinProtocol = TLSv1
+CipherString = ALL:@SECLEVEL=0
+Options = UnsafeLegacyRenegotiation

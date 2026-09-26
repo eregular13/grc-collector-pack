@@ -1,0 +1,6 @@
+LAB/DEMO -- not a client estate.
+misconfig-nse-desktop.xml is real instrumentisto/nmap:7.95 output from the
+DESKTOP Docker overlay (lab-estate/misconfig, project misconfig, internal
+172.31.250.0/24, no published ports). Stamp 20260926-144558.
+Not the box-loopback 127.0.10.2-7 fixture (misconfig-nse.xml).
+Not client data. posted=false.

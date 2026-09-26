@@ -1,0 +1,113 @@
+{
+  "stamp": "20260926-144558",
+  "hits": 11,
+  "expected": 11,
+  "rows": [
+    {
+      "ip": "172.31.250.10",
+      "check_id": "nse-ftp-anon",
+      "expected_severity": "high",
+      "detected": true,
+      "got_severity": "high",
+      "name": "Anonymous FTP login allowed",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.11",
+      "check_id": "nse-redis-noauth",
+      "expected_severity": "high",
+      "detected": true,
+      "got_severity": "high",
+      "name": "Redis accessible without authentication",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.12",
+      "check_id": "nse-http-dirlist",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "HTTP directory listing enabled",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.12",
+      "check_id": "nse-tls-deprecated-protocol",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "Deprecated TLS protocol offered (TLSv1.0/TLSv1.1)",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.12",
+      "check_id": "nse-tls-weak-cipher",
+      "expected_severity": "high",
+      "detected": true,
+      "got_severity": "high",
+      "name": "Weak TLS cipher suites offered (least strength F)",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.12",
+      "check_id": "nse-tls-self-signed",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "Self-signed TLS certificate",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.12",
+      "check_id": "nse-tls-weak-key",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "Weak TLS certificate key (RSA 1024-bit)",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.13",
+      "check_id": "nse-smb-signing-not-required",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "SMB message signing not required",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.13",
+      "check_id": "nse-smb-guest",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "SMB guest access allowed",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.14",
+      "check_id": "nse-db-empty-password",
+      "expected_severity": "critical",
+      "detected": true,
+      "got_severity": "critical",
+      "name": "Database account with empty password",
+      "on_poam": true
+    },
+    {
+      "ip": "172.31.250.14",
+      "check_id": "nse-tls-self-signed",
+      "expected_severity": "medium",
+      "detected": true,
+      "got_severity": "medium",
+      "name": "Self-signed TLS certificate",
+      "on_poam": true
+    }
+  ],
+  "finding_count": 17,
+  "nse_count": 11,
+  "xml_bytes": 42154,
+  "poam_rows": 11,
+  "poam_fedramp_rows": 12,
+  "findings_rows": 16,
+  "assets_rows": 5
+}

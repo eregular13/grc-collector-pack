@@ -1,0 +1,66 @@
+{
+  "status": "pass",
+  "demo": true,
+  "sample": false,
+  "lab": true,
+  "seeded": false,
+  "use_existing_in": true,
+  "client": false,
+  "client_keep": false,
+  "estate": "LAB/DEMO \u2014 not a client estate",
+  "paying_day": "FAIL",
+  "posted": false,
+  "http": false,
+  "wrap": "review-only",
+  "sor": "ciso-assistant",
+  "pack_in_used": false,
+  "pack_in_written": false,
+  "file_drop_read_only": true,
+  "live": false,
+  "hitl": true,
+  "sensors": [
+    "nmap"
+  ],
+  "collectors": [
+    "inventory_nmap.py",
+    "grc_loader.py"
+  ],
+  "ciso_dir": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant",
+  "ciso_files": [
+    "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant\\assets.csv",
+    "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant\\applied_controls.csv",
+    "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant\\evidences.csv",
+    "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant\\findings.csv",
+    "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant\\vulnerabilities.csv",
+    "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\ciso-assistant\\risk_scenarios.csv"
+  ],
+  "poam": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\poam\\poam.csv",
+  "poam_md": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\poam\\poam.md",
+  "counts": {
+    "assets": 5,
+    "findings": 16,
+    "poam": 11,
+    "demo": false,
+    "risk_scenarios": 16,
+    "vulnerabilities": 0
+  },
+  "seed": {
+    "dest_in": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\in",
+    "seeded": false,
+    "use_existing_in": true,
+    "lab": true,
+    "lab_stamp": true,
+    "sample": false,
+    "client": false,
+    "adapters": {},
+    "honeypot": "",
+    "unexpected_demo_adapters": [],
+    "note": "operator dest_in; no fixture reseed"
+  },
+  "in_dir": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\in",
+  "out_dir": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out",
+  "note": "Operator dest_in (no fixture reseed) -> existing collectors -> grc_loader -> out/ciso-assistant. LAB/DEMO != SAMPLE != client. This prove is not a paying-day PASS.",
+  "opengrc": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\opengrc",
+  "probo": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h2-20260926-144558\\out\\import_preview\\probo.json",
+  "sinks_posted": false
+}

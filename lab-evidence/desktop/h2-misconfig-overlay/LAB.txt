@@ -1,0 +1,3 @@
+LAB/DEMO -- not a client estate.
+H2 Docker misconfig overlay scan on internal 172.31.250.0/24 only.
+Stamp 20260926-144558. posted=false. No live GRC write.
