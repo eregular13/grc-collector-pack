@@ -7,13 +7,15 @@ from pathlib import Path
 import pytest
 
 from collectors.cloud_prowler import parse_file as parse_cloud
-from collectors.grc_loader import load
+from collectors.grc_loader import _dedupe, load
 from collectors.identity_ad import parse_file as parse_identity
 from collectors.inventory_nmap import parse_file as parse_nmap
 from collectors.k8s_kubescape import parse_file as parse_k8s
+from shared.asset_ledger import AssetLedger, attach_asset_uids
 from shared.ciso_shape import assert_count_consistency
 from shared.control_map import map_finding
 from shared.finding_types import dedupe_weaknesses
+from shared.hardening_dedup import dedupe_hardening
 from shared.io_util import write_canonical
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,8 +62,14 @@ def test_lab_demo_fixture_counts_agree(tmp_path: Path, monkeypatch: pytest.Monke
     assert "incidents" not in summary
     assert "risks_proposed" not in summary
     assert not (tmp_path / "riskready").exists()
-    raw = [r for r in cloud + identity + k8s if r.get("kind") == "finding"]
-    deduped = [r for r in dedupe_weaknesses(raw) if r.get("kind") == "finding"]
+    raw = [r for r in cloud + identity + k8s if isinstance(r, dict)]
+    deduped = [
+        r
+        for r in dedupe_hardening(
+            dedupe_weaknesses(_dedupe(attach_asset_uids(raw, AssetLedger())))
+        )
+        if r.get("kind") == "finding"
+    ]
     assert summary["weaknesses"] == len(deduped)
     open_n = sum(1 for r in deduped if map_finding(r).get("include_poam"))
     assert summary["poam"] == open_n
