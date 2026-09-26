@@ -1,3 +1,21 @@
+# CRITIC — cycle 197 (MERGE_MASTER_135_137_CANON_TELEMETRY)
+
+Merge `origin/master` `1f8d347` (#135 POA&M schedule / Lows on the plan /
+excluded.csv / telemetry flood guard; #137 host-scoped ref_id /
+canon_severity / multi-host redis) into this branch. Both sides kept:
+Wazuh/Prowler/enum4linux severities go through `canon_severity`; Wazuh
+0-3 info alerts land in `excluded.csv` as `telemetry_info`; SCA ref_id
+stays host-scoped; Prowler keeps account in identity. Gate floors
+unchanged (`MIN_FARM_POAM=100` `MIN_FARM_EXCLUDED=20`). Lab this brick:
+pytest **1159** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `severity_unmapped=0` `demo=true`). Cold SAMPLE→SoR
+findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174 poam=106
+vulns=0 excluded=68. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 196 (PARSER_WRITE_SCA_ALERT_PROWLER)
 
 Lab this brick: pytest **1089** passed, 1 skipped. Ten collectors +

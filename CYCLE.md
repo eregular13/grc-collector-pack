@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 197 — merge master #135/#137; canon_severity + telemetry_info (2026-09-26)
+
+Merge `origin/master` `1f8d347` without rebase. #135 excluded.csv /
+telemetry flood guard / Lows on the plan and #137 host-scoped ref_id /
+canon_severity both kept. Wazuh 0-3 info alerts are `telemetry_info` in
+excluded.csv. SCA ref_id host-scoped; Prowler account-scoped. pytest
+**1159**. Host-lab `assets=84` `findings=103` `vulnerabilities=22`
+`poam=125`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0 excluded=68.
+MIN_FARM_POAM=100 MIN_FARM_EXCLUDED=20 not loosened. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 196 — enum4linux write / Wazuh alert+SCA / Prowler mute+account (2026-09-26)
 
 listing OK is READ; writable SMB finding only on explicit write.
