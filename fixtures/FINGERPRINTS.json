@@ -1,20 +1,20 @@
 {
   "files": {
     "demo/cloud/custodian.json": {
-      "norm": "dca57b383c500d30e03c38e0e987532571c5b0d03aa6e386884f54de1b2f274c",
-      "raw": "c502727c184419286f15b74b8700edea35071ed2ac488890ddb8e0239d67f222"
+      "norm": "718c95278128e414a4a53a6809c77e90e4352eae4a481f396148c742c06f5e66",
+      "raw": "06b086a620c7fb43772f45459e8e02edad15c139b9ac096e4d0587bafcebd02a"
     },
     "demo/cloud/prowler-asff.json": {
-      "norm": "5b8503de899c123726caea163b93b4a92378861570b1fa4108649aa1287e5e0e",
-      "raw": "acb47b26d6e3c731d410f1fa95b7daecf2f9ba5e06f6e82426054f4ff988f422"
+      "norm": "9739e6a046347e0dd71eba1cb4af37562f44f77f1737ff4a97d19b68b3a46d81",
+      "raw": "486924c4a880f37890864a313be5fe027e2a4abccfcf02481759b88aac8de590"
     },
     "demo/cloud/prowler.json": {
-      "norm": "7f246a5b48eafc54ac57e7aaf80192fce1e84f6e387f61c72d3cf4279d774a82",
-      "raw": "463ef8a7397a9de4699cdbbe77d825896f55238ec6f04f74f1834c484ad52cbf"
+      "norm": "f6c23fb1b872ca5257f513839d8995bab90d551ae47c9657410e5f34adad2a7a",
+      "raw": "7c4cc60273afd44d64a9ee2340e4a1c8cd41b58e43328d0570221d4be0b8247d"
     },
     "demo/cloud/scoutsuite.json": {
-      "norm": "66bd162c830be7092e4a94f5ec473d50e2fba091828ced83fd44556dd80080ab",
-      "raw": "cd164d741a3ac14b6cbbb07871264a2b7d1da068489ef8c8c3648b4abcec7bfe"
+      "norm": "a164720e18d8edc496f3c476f3f7b77665774c21ce6018d54c0898195bee6ed1",
+      "raw": "07f9d87ff35e91e4e22a1122ca5796af81c509dfa0514c14cc2a8b1cc92a4a3a"
     },
     "demo/cloud/steampipe.json": {
       "norm": "f310f372e49edbe4a8ac36be66f4fc868ba95710f860015aea7e46e92e1041de",
@@ -33,12 +33,12 @@
       "raw": "cc2fb8e44364c810767155b53c6a202288eba701207f844083a656b987760da5"
     },
     "demo/code/semgrep.sarif.json": {
-      "norm": "64211052d64f94bda5facff4b777bf916abee910d5ba854bb78dc9980fc86b04",
-      "raw": "2d9e249c82eb0c517281d4186ef6ef3377872a1029181680c92a8497d3883019"
+      "norm": "69350333591b9eed45a2189e416706a18a6d3b217878b48ddfd8ff7ee7383015",
+      "raw": "b015d6786e9f474378203f82cb6991634343519e67998cbf8123cf14f2b3a91c"
     },
     "demo/code/trivy-fs.json": {
-      "norm": "e8fea61d5766861a9524b000a54d19b253ac73c7e43ef9a00e842caa1b5fa26a",
-      "raw": "7c64951871780dd61505e1f06cdedc0cc32418b215ee932e8f65911ba1fccb5c"
+      "norm": "0f13a8ff71142c0750a45c17d09f7aab3923c90c3ba4e88406d7661ef49af28c",
+      "raw": "ce75136fce7f24dfae7cb5c65eb45089c5589741730bf25d140820135ab5e1d2"
     },
     "demo/code/trufflehog.jsonl": {
       "norm": "12305a53437e934ade44e34c7d2191bbfc77fa7ba4ca4d27a942b5243f5de484",
@@ -61,16 +61,16 @@
       "raw": "2d6053c16a9688222535d08e04a961993a16fbb6dd22e6ab38de385c8855da04"
     },
     "demo/easm/ffuf.json": {
-      "norm": "40fe6642de869b094dcb8f938607ca698079ab0c028996e58747391a447ab687",
-      "raw": "59044a086f2ae557557a24ae4ffdd2611740b272a865b731daf8ff75c0789a26"
+      "norm": "bd67cb2dff07a900d7efe7b5e560dada295cc386f6bb33e45cde61eac7d4535d",
+      "raw": "42f8ea6fa3d5b99b92afb164306feb162a918f27ecf742e219a1f65d14a621f6"
     },
     "demo/easm/httpx.json": {
-      "norm": "c413ece3830107985cbcaa6b2bb2592349aba65ea6703d1b52c318f3b329f037",
-      "raw": "d7f9baf6d876b0f9dddf50c9f2c529e17c822d0fe87ba7fcca0e0be581966213"
+      "norm": "d72d847383d7ebbea12a8998d1ec981fd1b94207690db539c97e10bc8edca2cd",
+      "raw": "c4928182955d7639d6cab3a4e3eb677ecf060f467e623b6b823e6abb94230a1f"
     },
     "demo/easm/httpx.jsonl": {
-      "norm": "a8b1017f9c3715623b156cdd99c2ad88c03a6cd3692033fb34a5a310a40de87d",
-      "raw": "5b0ac55250bfb71f7d6ec6bceb32a8e45f8565601abb582f0605d0d375f1c1d4"
+      "norm": "508a4a5b6e77f0d7b7ce21040a622388dd243e605e2882cda6e6b48b0d127487",
+      "raw": "ae9bfee76cbcb18e0d910f738ac43f255b1e835d97c0d14e164122c93989e366"
     },
     "demo/easm/subfinder.txt": {
       "norm": "ffa40c8e4071eba600b6ded970415a41b5392353acb6a2db3e7c5709505fc5dd",
@@ -121,20 +121,20 @@
       "raw": "7c41061a6e09cea04a5e7b26fc8a8f07dfcf43ac8ee81559c54a6a5d6165e531"
     },
     "demo/identity/pingcastle.xml": {
-      "norm": "5867cda8ae2df0d6f00fd2eaf5e3af7a048a983bd27caa66b10175085f2435e1",
-      "raw": "6bdfb16e1c556633c5a878b705f4a117dccd7013038d46c5a575798250f9f652"
+      "norm": "464f8409ba18a22522152e1bfef74e6adce91346893aa56089e15d76219eb688",
+      "raw": "9a78c7a77e3f8638492a5f16c61354831bcb5967ecccc324a31f2e74b1c6aae6"
     },
     "demo/k8s/falco.jsonl": {
-      "norm": "c48f6080323eb5b665f426a3531c8041eb3f051e2b7bdd9787c4ed10ba35cad2",
-      "raw": "6f2c98d20c6472488db3408d7e180f3045ff0de3ebbee35673d370a2dad2d894"
+      "norm": "6520418920a0d8086efc91c1d7adac8b750c779157d6f6903221c3623af9cb6f",
+      "raw": "fe8d8558956297704ff4c2608b11189bf91e0ff438ce8ff41158af0ead6ec3d3"
     },
     "demo/k8s/kube-bench.json": {
       "norm": "dc62e951bf7f20d87b2ae6e899b23e5459ee1b08b63f68a0c183a73735c8a486",
       "raw": "581396471f2be070ebb2d8f447706da0a44217786143cb8e5105070150040db8"
     },
     "demo/k8s/kubescape.json": {
-      "norm": "f39360896377843276a6f2e732c668da957e6486e1eec774dbf70a25a4216930",
-      "raw": "bd359363922ec8c7ae2a431dc3034190dd5d07fa3e9f050a36e6fffb3d059697"
+      "norm": "36ef6e13c4080dbd8f45f486d4405399ce8445eb65a21014f87a0f56232cba39",
+      "raw": "1eff8896ca77f0edaf0943769b2b8deedd6ee31a803d87dc8d26de2d059a1c85"
     },
     "demo/mdm/intune-devices.json": {
       "norm": "8bd19f4afcb030ed3f25ec6611c3931b45d96ff3a61aa840ac640531d474f1bf",
@@ -153,12 +153,12 @@
       "raw": "5dfc7b2572f2992b3fd745e5eb342c7e1e9b1ac7ab0a4a2c579d0764cde62672"
     },
     "demo/nmap/masscan.xml": {
-      "norm": "f2e7b0ac9010c406b46ce6d0739b463287c160335e5415b6272edd4efb4b4cc4",
-      "raw": "c886149264114c9ca18c5e7ac58f54157672a482d3c858fb4a00a0380a5a5c51"
+      "norm": "c51b26c9a1ae80c19ea48f79e3ea0af801365b371563d976c4a1f615f61da089",
+      "raw": "ffac469e79c43246feeaa021013ac77994b633a295c6bda6850e421f1c6971f8"
     },
     "demo/nmap/naabu.jsonl": {
-      "norm": "1aa87fd5cf6ecdc09c2b941bd4eebc17492aeed3379d41b8762c834fcdb92d6a",
-      "raw": "55a9707ee036cbf303963a6ea3757e184c5dc8079e7c8af01db73049afbb0e99"
+      "norm": "40a67d4aacfa5e1fd11b0bf0e89fb35e94a0d229fef2cae34bd63084437c5e7b",
+      "raw": "f6c2a526d0a16ab2d269ab2ccefb807cd2f509e8ba36d9ae3b23cf2cd56be5ba"
     },
     "demo/nmap/nbtscan.txt": {
       "norm": "16deedb0f3c0c1581fdf32abab0b2debab0126b8bfca535ac66a368221f3f2a8",
@@ -169,12 +169,12 @@
       "raw": "b3eeddb4df982c1966b5adf6b48f201e1255a577591658629f40ba4f7db15d7b"
     },
     "demo/nmap/scan.gnmap": {
-      "norm": "5aa96493966b30092cc7cfa320dbcc4031c1ea32b493ed4fd307f8268a0d014e",
-      "raw": "6bdc3cfaf3f545bf06ef12d251d56b16e5cf1e566a682ea9e45fdd7b3609f678"
+      "norm": "66e34e6c97719f0c13dd714dcb652e9d6eb537915de3a1f10db7c1f419a1aa81",
+      "raw": "294be0f81248ea470eecc82acb00d8ce34f62dd79d6933c45d97d431f396a69a"
     },
     "demo/nmap/scan.xml": {
-      "norm": "fe4f01b1a4f931c3874f68fad8eaadea8fe602338eddb0eac59e4c07426fe723",
-      "raw": "42f1bab8994c6eb9ca6f63da2bee1e40dfc3bb2c4db0297d9c8c3f080dfd80e8"
+      "norm": "19e22a6f2ccc93754d87061398c5fa31dd47ae554023bea177408d76adeb632f",
+      "raw": "9a6b1f365e8acaf40681cf4578893d56f385049922283932af99b17a7ea46dad"
     },
     "demo/nmap/smbmap.txt": {
       "norm": "6666746a2f9c60649c4a4c6c32e057bf174b891177b4074583b881e010cdd5f7",
@@ -201,8 +201,8 @@
       "raw": "6fb5008e39754d8f0e0337e29fb53df8b942ec87653ac221be6dc97f51d85fca"
     },
     "demo/saas/maester.json": {
-      "norm": "c9da7f19eb853b5e2314479319e97e6091597e6fc4b1edc5660f261e622b87c6",
-      "raw": "aea7f83fabb571e856c48951078dc26d8d12e97bbb05657ed42a32a32c3819df"
+      "norm": "7b1553cfa5206e797bbfc4272ff91399c1cb59cc3d8985e30bea4752d8fdc0ed",
+      "raw": "bdc9f8c0885757728b0031c6df781239b9cf3e5c8f10471b3ff1974bf5f58513"
     },
     "demo/saas/okta-users.json": {
       "norm": "a6adabf6ab24e2ea7160869e036236614629d291572f3ee52c863aeeee58ec12",
@@ -213,48 +213,48 @@
       "raw": "737d526e029dc9e02bdb0ac7f09f58dd7a2ee056d400de465fabc557e2b28c4a"
     },
     "demo/saas/scuba-wrap.json": {
-      "norm": "20b528f19c54ca246813a1c7bea8eb211e6c755969d13064dfc3551794997a64",
-      "raw": "c01ab780420340a76cc7b9b6bf9b3277d46c87352aae5e99472fed91023e2834"
+      "norm": "ac7021fec446084be5e83033a4969e8c1cb73d2db1286f1a828a03efdaa8ccc3",
+      "raw": "457822a62db2759e82035898b61433613aec0406bd5f7c9d94273da78e68b9cf"
     },
     "demo/saas/scuba.json": {
-      "norm": "5dd4621bc38c4170ae071a88b553ef940400d3e0983c3f7aacd4ce77e7d1dd41",
-      "raw": "f4351d6fe4ee0fe621499f8a6b9dd759b7e53e4f139b3a5a5b6d0ed06bf4b214"
+      "norm": "95816eac0507e7b6f94837492d9827129e808de0546f1b11465964cba7084346",
+      "raw": "83cfa19d3a62a7879ca4c7d52fb324e771d1c52aa4b8ee9b736f39fa66125b3e"
     },
     "demo/vuln/demo.nessus": {
-      "norm": "83e9fe7fc5ba69e7348b195a9edf630fd1934a4f035568cae96650d507c320a3",
-      "raw": "a3932be8bae691a375aef33f8c262117facd2060cc10073b8e12dc7ecb07d7f2"
+      "norm": "358eeedc034b642a2f8a36a095275fde1414cbcd07deb252266b571ef4556b73",
+      "raw": "6f79a3d915b6e87836aef3a9efc932337dd044d57fdd6728629d5faad66d7ca8"
     },
     "demo/vuln/demo.sarif": {
-      "norm": "7002ab59797d72240b5982294061e9efa8a551f9385175d59378b2e53062b8b2",
-      "raw": "53257925033cbec793c7fa0cd112092e740d1bde62a1a2a65f03dbc3bf6ce7c2"
+      "norm": "e20496020a67a6356b8778116df3b18d5d9e72f9dcc97aea6190c43755832953",
+      "raw": "10fe52ad676abd963b1bf6644b95a684605089ca34f01f182a00ad8c995471a6"
     },
     "demo/vuln/greenbone.json": {
-      "norm": "3428acddff142ffc5ec354cc7574a1b13b3176feec200f2a4697ccc98364e29d",
-      "raw": "e65d98fe755b3b40639f59f62c8057d3f108fb39f1a0df2be059a01ae4136656"
+      "norm": "d60fede863bfb7b0d4d610bdde6dbcf99e5154ba5ca0836fb87112a9b16adf36",
+      "raw": "90696288ead254d9a5f8df6af43c1f53edb605a012ab618c906496e1af20ac91"
     },
     "demo/vuln/nikto.txt": {
       "norm": "12185809f05f2458ddc89497031689baf591d4f3b8444e9b500865353546b14c",
       "raw": "79d6de51c81754082a1d18bbcf8a265f732f2088b3bbca3aa4ef597092b529a8"
     },
     "demo/vuln/nuclei-multi-host.jsonl": {
-      "norm": "8a03ac365d7f560de6e6a643a9182645c012ed2bb877df94740de5f3956b1f04",
-      "raw": "32678a2649aa5aeefb13b6eb1c96fab5d70afd95bed76a300c74439e203142ab"
+      "norm": "d9ccbbe67cf4a7b849be7810087156fbdb7b35d7be16a6e8cc5777ba8ed91eb5",
+      "raw": "175d9dbfb5a5b106640174383363f634e9b806d5d7368f18a969bb063f9d7c75"
     },
     "demo/vuln/nuclei.jsonl": {
-      "norm": "32f09105254ae27d90a647c391e6876e99c211b45fc06f1bffea7e1b54ceea60",
-      "raw": "8dc87dd81b08555d9ec23b1f091efd9af5f402dab1077a1828b37a682894474b"
+      "norm": "b68bb175a69beae86fbde73b7373687295bd910e81bf7f17ed4985e7fa9926cb",
+      "raw": "03f745c977a6386a024b58029db075a27d8c79ca4b1f3c7669562c8cb707aa83"
     },
     "demo/vuln/sslscan.xml": {
       "norm": "5374a1b7075240a02d4850c18e1090ff46aa32c3e2659d77f704fd9569b73253",
       "raw": "408aa6210ac1e7803d62ba34edd9210daa756646cac44045055dd0da13f6d8d6"
     },
     "demo/vuln/testssl.json": {
-      "norm": "4ba7b1595fec1c6a39fcc728932289138ecfac6f5e364c5835b2dc0546665fd9",
-      "raw": "1693009fb25ce3150f77ae68afe98a0ba96f07eb2e8395ac6747b38448ff70ca"
+      "norm": "48b2f4f31575f88359c165ef4931fdd8b24381dd6fe6bf55caef3262dfedff57",
+      "raw": "aab6bfd68e571ec2eb88dcbbb2dc7b37c1c5f58219cfd002e77bfdbacbe8228b"
     },
     "demo/vuln/trivy.json": {
-      "norm": "aafc173a37eb3b7c1e50f2d5e069676756a263c9b25fe5942f7bb969b7adc5cb",
-      "raw": "33bc4ab2232ff9881488bfe104dba924c5f1a09d3870dc81691bea47a9f0f6d6"
+      "norm": "5d4c585fcf9bb7327bf2393cd2c1c00ee3f14013033ae1b93c52219515e52ac7",
+      "raw": "325b27b8cd9023924681e904c22a3d033874e3bf354cc0b11b0507d92940f51a"
     },
     "demo/wazuh/agents.json": {
       "norm": "7ca58173b68e9efc14f1ab23fc16a0cad53c740e8166b9a34b1930a5e49d2a49",
@@ -269,8 +269,8 @@
       "raw": "686110d941b08ac8bd45bfb9ba9375a4df91b7a1e35b839bc131d37f2795d1ce"
     },
     "demo/wazuh/lynis-report.txt": {
-      "norm": "3a4b55752025231054f403fcecb4262662d8149e43c1d12f0812f74d8b4b73d9",
-      "raw": "db6675a04ca847cbb13ff5a54aadddabf5c17c9d66de7a64878d95d1e792c50c"
+      "norm": "1c406d868afb158e75fee8eee402eba4ec40933ffeb12320a93f31247f9f7f79",
+      "raw": "152a5879a1df2e33ea36d0153a2debafdc775df2a5ab65209cdde15618c8deef"
     },
     "demo/wazuh/osquery-checks.json": {
       "norm": "614b526a607a167c5bc2a7fa4af1ed70f6f4a5e0506ac4545081e7d1bd2fa451",
@@ -473,12 +473,12 @@
       "raw": "e37e43c304b635102b43714a9a4764be6001123ddf3684c8fe68dceefa0ae8ef"
     },
     "lab-drop/vuln/nuclei-multi-host.jsonl": {
-      "norm": "e89fa9e7038b800a250459317c305fdf9841b06c01ae322206012939cb830bb7",
-      "raw": "c4e2d6495dc202646b588efa48651e4ab1afb140d20f14cf76c9e4b08e35e81d"
+      "norm": "86194b91bd0ae11017231be3ddd37769786878c5e11166ce0ec90e5d2628e78c",
+      "raw": "63418ad954854ed6ee4d3ff8e1aeeb26c11265f6483c2807050c50ab0ac2cbbc"
     },
     "lab-drop/wazuh/lynis-lab-jump.dat": {
-      "norm": "8eba1399ad0d3f41a94fcff4b31beab081922ad09b8ef290dc8762e417486191",
-      "raw": "899019ef4c45b7031587b46833af3dcda540dfa02aee63ec31675afc5f312001"
+      "norm": "ef72dd204173a1c06252958b2ec38dfdb2ade9845ef81d49763774a1c49f6886",
+      "raw": "3ea8aa91f9fbf766f95086f4698e7368b30cfd95d42dc7660b6f84cbd372e0a9"
     },
     "lab-drop/wazuh/openscap-lab-jump.xml": {
       "norm": "f73f83e23ec3cafee2dd7024a2a6ba357c43362912b646d2c7c4566bc15d464f",
@@ -873,16 +873,16 @@
       "raw": "d56002189e2375c5d1bd0a3d4f7de2d3e6fbc9bbbee4ce6b53c23b5537076dbd"
     },
     "samples/cloud/s3-encryption-missing/metadata.json": {
-      "norm": "a096a88412310b0d3c121cfe3afb81203487a0f5dc7df9a8c519ed983192320d",
-      "raw": "49f230e9aae4e851dd43e4e1a86b69437da47ecd09be7ccf57278e245138d3cc"
+      "norm": "a19264f1df02d49972d87bbf6a46e26f8083b1b2df8be82ec88d5cce9cff49d6",
+      "raw": "83c07773e50717c861f87216ef0b5235e2b1165158e8d8dc4e3bfe38ddbc99de"
     },
     "samples/cloud/s3-encryption-missing/resources.json": {
       "norm": "e7ede2a683441fcfcbca67340207fa6cb833ba0c93e23ff654572fc3376edff5",
       "raw": "e6f6f3eb71c88e10439e632e109b276d67284a34d5a0d4a146776ec0f27d2663"
     },
     "samples/cloud/scoutsuite-results.js": {
-      "norm": "47e29ae5520ba1d941753e69d362e6271dd7040f709832569ef26f074a7fac0a",
-      "raw": "e912b633252e36b8d251d1e3311565bbebe91861c028393e08b4d1521b9e507a"
+      "norm": "d1d9e31e846f091552510c0590a2ad9fd45079bb809b2662d78993ac30ede961",
+      "raw": "6506096f1f3b6238501f2ecfff5672eacfd6d394d3d78701f4dee4d385a879fe"
     },
     "samples/cloud/security-context-pods/LICENSE": {
       "norm": "2e277b79b1d658f67b00c41085edc974c2ab5bb26ea9d15f91d0485849fc5f4b",
@@ -969,8 +969,8 @@
       "raw": "da6f6014e4bf5e32144c8af126dd193fcf2f9ee4fb7bbd3d04726b88bd4a1b08"
     },
     "samples/naabu.jsonl": {
-      "norm": "1f1780e9d164d40a5bc561ca6873b28135b0e428934e8fa84dec6205f9ea1f82",
-      "raw": "48b0bb99bab414b73cd0bf6da336dee73749d113c25c9ecdf8880852377b96fb"
+      "norm": "546faf46254597627b5de4bb3ca1c4cfb0756447585d962c851137e8d870d6ae",
+      "raw": "1878e12cc23a9729b8fe93e9704f2f44fcbda054019ea6886d241dff517906e4"
     },
     "samples/nbtscan-s.txt": {
       "norm": "992ae7e206f5feda8a03b1a283feb3ba85e7285b33acfb3aa4b46303a0300a40",
