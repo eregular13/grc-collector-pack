@@ -441,7 +441,10 @@ def parse_file(path: Path) -> list[dict]:
     root = ET.fromstring(raw)
     now = iso_now()
     records: list[dict] = []
+    run_start = root.attrib.get("start", "")
     for host in root.findall("host"):
+        host_start = len(records)
+        scan_epoch = host.attrib.get("starttime") or run_start
         state_el = host.find("status")
         if state_el is not None and state_el.attrib.get("state") == "down":
             continue
@@ -512,6 +515,16 @@ def parse_file(path: Path) -> list[dict]:
                     },
                 )
             )
+        if scan_epoch:
+            from datetime import datetime, timezone
+
+            try:
+                stamp = datetime.fromtimestamp(int(scan_epoch), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except (ValueError, OverflowError, OSError):
+                stamp = ""
+            if stamp:
+                for rec in records[host_start:]:
+                    rec.setdefault("extra", {}).setdefault("scan_time", stamp)
     _stamp_demo(records, _is_dropbox_demo(path, raw))
     return records
 

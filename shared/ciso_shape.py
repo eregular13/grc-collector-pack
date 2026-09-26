@@ -12,6 +12,8 @@ import csv
 from pathlib import Path
 from typing import Any
 
+from shared.poam_fields import POAM_EXTRA_FIELDS
+
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
 # vulnerabilities.csv is CVE/secrets/sast only — header-only is allowed when
 # the estate has no CVE-class rows (farm_drop pack_drop is exposure, not CVE).
@@ -49,7 +51,8 @@ CISO_HEADERS = {
         "residual_impact;residual_proba;residual_risk;treatment"
     ),
 }
-POAM_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
+POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
+POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
 FINDING_SEV = frozenset({"low", "medium", "high", "critical"})
@@ -267,7 +270,9 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         poam.parent.mkdir(parents=True, exist_ok=True)
         poam.write_text(
             POAM_HEADER
-            + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open,SAMPLE\n",
+            + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open,SAMPLE,"
+            + "POAM-DEMO-F,DEMO-F,SC-7,SAMPLE stub,sample,,2026-01-01,2026-01-31,2026-01-01,"
+            + "M1 2026-01-08 Validate; M2 2026-01-24 Apply fix; M3 2026-01-31 Rescan,High,,\n",
             encoding="utf-8",
         )
         (folder.parent / "poam" / "poam.md").write_text(

@@ -6,10 +6,12 @@ from __future__ import annotations
 import csv
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.control_map import extra_labels, map_finding
 from shared.evidence import build_evidence_rows
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
     ASSET_TYPES,
@@ -312,13 +314,16 @@ def load() -> dict:
         "due",
         "status",
         "estate",
+        *POAM_EXTRA_FIELDS,
     ]
+    today = datetime.now(timezone.utc).date()
     poam_rows: list[list] = []
     for rec in other_findings + vuln_findings:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         if not mapped.get("include_poam"):
             continue
         assets_s = "|".join(rec.get("assets") or [])
+        fields = poam_fields(rec, mapped, today)
         poam_rows.append(
             [
                 rec.get("name") or rec.get("ref_id"),
@@ -330,6 +335,7 @@ def load() -> dict:
                 "",
                 "open",
                 estate,
+                *[fields[key] for key in POAM_EXTRA_FIELDS],
             ]
         )
 
@@ -354,14 +360,21 @@ def load() -> dict:
         f"> {estate_banner(estate)}",
         "",
         "Pentera (or any scanner) finds it. Evergreen maps it.",
-        "Owner and due are blank — a human fills them. No invented dates.",
+        "Owner and due are blank — a human fills them. No invented owners.",
         "",
-        "| Weakness | Asset | Severity | Framework | Recommended fix | Status |",
-        "|---|---|---|---|---|---|",
+        SLA_NOTE,
+        "",
+        "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected | Scheduled (default) | Recommended fix | Milestones | Status |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
+    idx = {name: i for i, name in enumerate(poam_header)}
     for row in poam_rows:
-        fix = str(row[4]).replace("|", "/")
-        lines.append(f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {fix} | {row[7]} |")
+        cell = lambda key: str(row[idx[key]]).replace("|", "/")  # noqa: E731
+        lines.append(
+            f"| {cell('poam_id')} | {cell('weakness')} | {cell('asset')} | {cell('original_risk_rating')} | "
+            f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
+            f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
+        )
     write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
     out_sr = out_dir() / "simplerisk"
     _write_csv(out_sr / "poam.csv", poam_header, poam_rows)
