@@ -92,7 +92,7 @@ weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate,p
 
 FedRAMP POA&M R3.0-style fields (appended; the first nine columns are unchanged):
 
-- `poam_id` = `POAM-<ref_id>`; `finding_ref_id` links to `findings.csv` `ref_id`.
+- `poam_id` = ledger `EGP-` id (same as `poam_fedramp.csv`); `finding_ref_id` links to `findings.csv` `ref_id`.
 - `controls` = SP 800-53 Rev. 5 ids from `control_map` (blank when unmapped, never invented).
 - `weakness_description` = finding description; `detector_source` = collector + tool (e.g. `inventory-nmap (nmap NSE ftp-anon)`); `weakness_source_id` = check/plugin/rule id or blank.
 - `original_detection_date` = artifact scan timestamp calendar day (Nessus HOST_START/HOST_END, nmap starttime, SARIF startTimeUtc, Trivy CreatedAt, pack_drop meta generated_at, file-level scan time). Literal `not recorded` when the artifact has none — never the pack run date. Dates keep the recorded timezone (UTC when the artifact is Zulu); poam.md labels the zone. The poam.csv column name is unchanged.
