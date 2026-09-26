@@ -197,6 +197,7 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
             "cves": cves,
             "cve": " ".join(cves),
             "description": desc,
+            "solution": _child_text(el, "solution") or _child_text(nvt, "solution"),
             "scan_time": scan_time,
         }
 
@@ -229,6 +230,7 @@ def iter_greenbone_csv(text: str) -> Iterator[dict[str, Any]]:
             "cves": cves,
             "cve": " ".join(cves),
             "description": lower.get("summary") or lower.get("specific result") or name,
+            "solution": lower.get("solution") or "",
             "scan_time": lower.get("timestamp") or lower.get("scan_start") or "",
         }
 
