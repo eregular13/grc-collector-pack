@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;
+after `22d085f` #157 and `befc7d0` #162). No rebase. Vendor
+persist/audit/backfill kept. Pytest **1333**. Host-lab unchanged
+(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 211 — merge master 22d085f (#157) into Gap 2 (2026-09-26)
 
 Normal merge of `origin/master` `22d085f` (#157 B6 playbooks; after
