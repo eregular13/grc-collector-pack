@@ -9,10 +9,12 @@ Dest_in LAB.txt / DEMO-adapter fail-closed lives in scripts/prove_ciso.py
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from typing import Any
 
 from shared.control_map import POAM_EXCLUDE_REASONS
+from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_CSV_NAME, FEDRAMP_OPEN_HEADERS
 from shared.poam_fields import POAM_EXTRA_FIELDS
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
@@ -112,6 +114,8 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
             )
         if "weaknesses_total" in summary:
             assert_poam_breakdown(summary)
+        if summary.get("flood_guard") is not None:
+            assert_flood_guard(summary)
     return {
         "ok": True,
         "findings": findings_n,
@@ -124,8 +128,47 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
     }
 
 
+def assert_flood_guard(summary: dict[str, Any]) -> dict[str, Any]:
+    """findings_in (pre-dedupe) + pending_carried == POA&M rows + excluded rows."""
+    fg = summary.get("flood_guard")
+    if not isinstance(fg, dict):
+        raise RegisterShapeError("COUNT_CONSISTENCY_FAIL flood_guard missing or not a dict")
+    findings_in = int(fg.get("findings_in") or 0)
+    poam_rows = int(fg.get("poam_rows") or 0)
+    excluded_rows = int(fg.get("excluded_rows") or 0)
+    pending = int(fg.get("pending_carried") or 0)
+    if findings_in + pending != poam_rows + excluded_rows:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard findings_in={findings_in} + "
+            f"pending_carried={pending} != poam_rows={poam_rows} + "
+            f"excluded_rows={excluded_rows}"
+        )
+    if "poam" in summary and poam_rows != int(summary.get("poam") or 0):
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard.poam_rows={poam_rows} != "
+            f"poam={summary.get('poam')}"
+        )
+    if "excluded" in summary and excluded_rows != int(summary.get("excluded") or 0):
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard.excluded_rows={excluded_rows} != "
+            f"excluded={summary.get('excluded')}"
+        )
+    if "pending_carried" in summary and pending != int(summary.get("pending_carried") or 0):
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard.pending_carried={pending} != "
+            f"pending_carried={summary.get('pending_carried')}"
+        )
+    return {
+        "ok": True,
+        "findings_in": findings_in,
+        "poam_rows": poam_rows,
+        "excluded_rows": excluded_rows,
+        "pending_carried": pending,
+    }
+
+
 def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
-    """weaknesses_total == poam_included + sum(excluded_by_reason). No silent drops."""
+    """Deduped weaknesses_total == poam_included + named excludes (not merges)."""
     total = int(summary.get("weaknesses_total") or 0)
     included = int(summary.get("poam_included") or 0)
     excluded = summary.get("excluded_by_reason") or {}
@@ -144,10 +187,14 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
             f"COUNT_CONSISTENCY_FAIL excluded={summary.get('excluded')} != "
             f"sum(excluded_by_reason)={excluded_n}"
         )
-    if total != included + excluded_n:
+    # Merges are pre-dedupe; flood_guard owns them. Deduped identity strips them.
+    duplicate_n = int(excluded.get("DUPLICATE_INSTANCE") or 0)
+    named_after_dedupe = excluded_n - duplicate_n
+    if total != included + named_after_dedupe:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
-            f"poam_included={included} + sum(excluded_by_reason)={excluded_n}"
+            f"poam_included={included} + named_excludes={named_after_dedupe} "
+            f"(DUPLICATE_INSTANCE={duplicate_n} counted in flood_guard)"
         )
     if included != int(summary.get("poam") or 0):
         raise RegisterShapeError(
@@ -162,11 +209,14 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
                 f"weaknesses={summary.get('weaknesses')}"
                 + (f" + pending_carried={pending_carried}" if pending_carried else "")
             )
+    if summary.get("flood_guard") is not None:
+        assert_flood_guard(summary)
     return {
         "ok": True,
         "weaknesses_total": total,
         "poam_included": included,
         "excluded_by_reason": {str(k): int(v) for k, v in excluded.items()},
+        "duplicate_instance": duplicate_n,
     }
 
 
@@ -323,6 +373,60 @@ def assert_poam_for_findings(
     }
 
 
+def assert_unique_weakness_asset(poam_rows: list[dict[str, str]]) -> None:
+    """No (weakness, asset) pair repeats on the POA&M register."""
+    seen: set[tuple[str, str]] = set()
+    dups: list[tuple[str, str]] = []
+    for row in poam_rows:
+        key = (
+            str(row.get("weakness") or "").strip().lower(),
+            str(row.get("asset") or "").strip().lower(),
+        )
+        if not key[0] and not key[1]:
+            continue
+        if key in seen:
+            dups.append(key)
+        seen.add(key)
+    if dups:
+        raise RegisterShapeError(f"DUPLICATE_WEAKNESS_ASSET {dups[:8]}")
+
+
+def assert_poam_fedramp_identity(ciso_or_out: Path) -> dict[str, Any]:
+    """poam.csv and poam_fedramp.csv are the same decision set (EGP-, title, controls)."""
+    out = resolve_out_dir(ciso_or_out)
+    poam_path = out / "poam" / "poam.csv"
+    fed_path = out / "poam" / FEDRAMP_CSV_NAME
+    if not poam_path.is_file() or not fed_path.is_file():
+        return {"ok": True, "skipped": True}
+    poam = csv_rows(poam_path)
+    fed = csv_rows(fed_path)
+    if len(poam) != len(fed):
+        raise RegisterShapeError(
+            f"EXPORT_IDENTITY_FAIL rows poam={len(poam)} fedramp={len(fed)}"
+        )
+    left = sorted(poam, key=lambda r: str(r.get("poam_id") or ""))
+    right = sorted(fed, key=lambda r: str(r.get("POAM ID") or ""))
+    for a, b in zip(left, right):
+        pid = str(a.get("poam_id") or "")
+        if pid != str(b.get("POAM ID") or ""):
+            raise RegisterShapeError(
+                f"EXPORT_IDENTITY_FAIL poam_id {pid!r} != {b.get('POAM ID')!r}"
+            )
+        if not pid.startswith("EGP-"):
+            raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL expected EGP- id, got {pid!r}")
+        if str(a.get("controls") or "") != str(b.get("Controls") or ""):
+            raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL controls {pid}")
+        if str(a.get("weakness") or "") != str(b.get("Weakness Name") or ""):
+            raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL title {pid}")
+    header = first_nonempty_line(fed_path)
+    expected = ",".join(FEDRAMP_CSV_HEADERS)
+    if header != expected:
+        raise RegisterShapeError("EXPORT_IDENTITY_FAIL FedRAMP header mismatch")
+    if not expected.startswith(",".join(FEDRAMP_OPEN_HEADERS)):
+        raise RegisterShapeError("EXPORT_IDENTITY_FAIL FedRAMP B-AB prefix lost")
+    return {"ok": True, "rows": len(poam)}
+
+
 def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
     """Usable risk register + POA&M, not merely N CSV files exist."""
     register = assert_ciso_register(ciso_dir_of(ciso_or_out))
@@ -330,6 +434,15 @@ def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
         ciso_or_out,
         findings_count=int(register["counts"].get("findings.csv") or 0),
     )
+    poam_path = poam_path_of(ciso_or_out)
+    if poam_path.is_file():
+        assert_unique_weakness_asset(csv_rows(poam_path))
+        assert_poam_fedramp_identity(ciso_or_out)
+    summary_path = resolve_out_dir(ciso_or_out) / "summary.json"
+    if summary_path.is_file():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if isinstance(summary, dict) and summary.get("flood_guard") is not None:
+            assert_flood_guard(summary)
     return {
         "ok": True,
         "ciso": register["ciso"],
