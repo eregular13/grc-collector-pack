@@ -2,7 +2,28 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Iterator
+
+from shared.schema import canon_severity
+
+# Raw testssl `id` → human failure title. Scanner IDs like
+# cert_expirationStatus must not become the POA&M weakness name.
+TESTSSL_TITLES: dict[str, str] = {
+    "cert_expirationStatus": "TLS certificate is expired or expiring",
+    "cert_caIssuers": "Certificate CA Issuers URL could not be checked",
+    "BREACH": "HTTPS response compression enables BREACH",
+    "LUCKY13": "TLS CBC ciphers enable LUCKY13",
+    "heartbleed": "TLS stack is vulnerable to Heartbleed",
+    "TLS1": "TLS 1.0 is offered",
+    "TLS1_1": "TLS 1.1 is offered",
+    "TLS1_2": "TLS 1.2 is not offered",
+    "TLS1_3": "TLS 1.3 is not offered",
+    "SSLv3": "SSLv3 is offered",
+    "SSLv2": "SSLv2 is offered",
+    "cert_trust_wildcard": "Wildcard certificate trust is too broad",
+    "DNS_CAArecord": "CAA DNS record is missing or invalid",
+}
 
 _SKIP_SEV = frozenset({"ok", "info", "information", "debug", "warnok"})
 _KEEP_SEV = frozenset({"low", "medium", "high", "critical", "warn", "warning"})
@@ -17,6 +38,23 @@ _SKIP_SECTIONS = frozenset(
         "rating",
     }
 )
+
+
+def human_title(fid: str, finding: str = "") -> str:
+    """Human failure title for a testssl id. Never return raw camelCase IDs."""
+    raw = str(fid or "").strip()
+    if raw in TESTSSL_TITLES:
+        return TESTSSL_TITLES[raw]
+    for tok, title in TESTSSL_TITLES.items():
+        if tok.lower() == raw.lower():
+            return title
+    if raw:
+        spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", raw)
+        spaced = spaced.replace("_", " ").strip()
+        looks_like_id = "_" in raw or any(c.isupper() for c in raw[1:])
+        if looks_like_id and spaced:
+            return spaced[:1].upper() + spaced[1:]
+    return str(finding or "").strip() or raw or "TLS finding"
 
 
 def _host_from_row(row: dict[str, Any], default: str) -> str:
@@ -42,7 +80,11 @@ def _emit(row: dict[str, Any], host: str, ip: str = "") -> dict[str, Any] | None
     finding = str(row.get("finding") or row.get("Finding") or "")
     fid = str(row.get("id") or row.get("Id") or row.get("cve") or "testssl")
     blob = f"{fid} {finding} {sev}".lower()
-    if "not vulnerable" in blob or "not offered" in blob:
+    if "not vulnerable" in blob:
+        return None
+    # "not offered" is noise only when the row is already OK/INFO.
+    # TLS 1.2/1.3 not offered is a real CRITICAL/HIGH/MEDIUM/LOW finding.
+    if "not offered" in blob and sev in _SKIP_SEV:
         return None
     if sev in _SKIP_SEV:
         return None
@@ -54,6 +96,7 @@ def _emit(row: dict[str, Any], host: str, ip: str = "") -> dict[str, Any] | None
     if sev in _SCAN_ERROR:
         labels.append("scan-error")
         sev = "info"
+    sev = canon_severity(sev)
     return {
         "host": host,
         "ip": ip,

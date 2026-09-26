@@ -35,6 +35,7 @@ _META_KIND = {
 }
 
 _EDGE_FINDINGS = {
+    "HASSESSION": ("high", "BloodHound HasSession", "Session edge can enable credential theft."),
     "HASESSION": ("high", "BloodHound HasSession", "Session edge can enable credential theft."),
     "ADMINTO": ("high", "BloodHound AdminTo", "Principal has local admin on the target."),
     "GENERICALL": ("critical", "BloodHound GenericAll", "Full control over the object."),
@@ -42,7 +43,20 @@ _EDGE_FINDINGS = {
     "DCSYNC": ("critical", "BloodHound DCSync", "Principal can replicate directory secrets."),
     "ALLOWEDTODELEGATE": ("high", "BloodHound constrained delegation", "Constrained delegation path."),
     "ADDMEMBER": ("medium", "BloodHound AddMember", "Can add members to a privileged group."),
+    "WRITEDACL": ("high", "BloodHound WriteDacl", "WriteDacl can plant a backdoor ACE."),
+    "WRITEOWNER": ("high", "BloodHound WriteOwner", "WriteOwner can take the object."),
+    "OWNS": ("high", "BloodHound Owns", "Owner can rewrite the DACL."),
+    "ADDKEYCREDENTIALLINK": ("high", "BloodHound AddKeyCredentialLink", "Shadow-credentials / key-cred write."),
 }
+
+# Built-in admin / DC principals. Default ACLs from these are not exposures.
+_DEFAULT_ADMIN_RIDS = frozenset({"500", "498", "512", "516", "518", "519", "544", "548"})
+_WELL_KNOWN_ADMIN = (
+    "S-1-5-32-544",
+    "S-1-5-32-548",
+    "S-1-5-32-549",
+    "S-1-5-9",
+)
 
 
 def _looks_like_edge(obj: dict[str, Any]) -> bool:
@@ -92,9 +106,25 @@ def _nodes(payload: Any) -> list[dict[str, Any]]:
     return [n for n in raw if not _looks_like_edge(n)]
 
 
+def _sid_rid(sid: str) -> str:
+    parts = str(sid or "").strip().split("-")
+    return parts[-1] if parts else ""
+
+
+def _is_default_admin_principal(sid: str) -> bool:
+    text = str(sid or "").strip()
+    if not text:
+        return False
+    upper = text.upper()
+    if any(token in upper for token in _WELL_KNOWN_ADMIN):
+        return True
+    return _sid_rid(text) in _DEFAULT_ADMIN_RIDS
+
+
 def _aces_as_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """SharpHound ACE rows → mapped edges only. Empty Aces invent nothing."""
     out: list[dict[str, Any]] = []
+    dcsync_rights: dict[tuple[str, str], set[str]] = {}
     for node in nodes:
         aces = node.get("Aces") or node.get("aces") or []
         if not isinstance(aces, list):
@@ -110,15 +140,137 @@ def _aces_as_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for ace in aces:
             if not isinstance(ace, dict):
                 continue
+            if ace.get("IsInherited") is True:
+                continue
             right = str(ace.get("RightName") or ace.get("rightName") or ace.get("kind") or "")
+            sid = str(ace.get("PrincipalSID") or ace.get("principalSid") or "")
             start = str(
                 ace.get("PrincipalName")
-                or ace.get("PrincipalSID")
+                or sid
                 or ace.get("principal")
                 or ""
             )
-            if right and start:
-                out.append({"kind": right, "start": start, "end": end})
+            if not right or not start:
+                continue
+            if _is_default_admin_principal(sid or start):
+                continue
+            folded = right.upper().replace(" ", "")
+            if folded in {"GETCHANGES", "GETCHANGESALL"}:
+                dcsync_rights.setdefault((start, end), set()).add(folded)
+                continue
+            out.append({"kind": right, "start": start, "end": end})
+    for (start, end), rights in dcsync_rights.items():
+        if "GETCHANGES" in rights and "GETCHANGESALL" in rights:
+            out.append({"kind": "DCSync", "start": start, "end": end})
+    return out
+
+
+def _truthy_priv_flag(value: Any) -> bool:
+    return value in (True, 1, "1", "true", "True")
+
+
+def _privileged_from_nodes(nodes: list[dict[str, Any]]) -> set[str]:
+    out: set[str] = set()
+    for node in nodes:
+        props = _props(node)
+        oid = str(
+            node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or node.get("objectId")
+            or ""
+        )
+        name = str(props.get("name") or oid)
+        if _truthy_priv_flag(props.get("admincount")) or _truthy_priv_flag(props.get("highvalue")):
+            if name:
+                out.add(name)
+            if oid:
+                out.add(oid)
+        if oid and _is_default_admin_principal(oid):
+            if name:
+                out.add(name)
+            out.add(oid)
+    return out
+
+
+def _session_and_admin_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """LocalGroups ADMINISTRATORS → AdminTo; Sessions → one HasSession per privileged principal."""
+    names: dict[str, str] = {}
+    for node in nodes:
+        props = _props(node)
+        oid = str(
+            node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or node.get("objectId")
+            or ""
+        )
+        name = str(props.get("name") or oid)
+        if oid:
+            names[oid] = name
+    privileged = _privileged_from_nodes(nodes)
+    out: list[dict[str, Any]] = []
+    sessions: dict[str, list[str]] = {}
+    for node in nodes:
+        props = _props(node)
+        computer = str(
+            props.get("name")
+            or node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or ""
+        )
+        groups = node.get("LocalGroups") or node.get("local_groups") or []
+        if isinstance(groups, list):
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                oid = str(group.get("ObjectIdentifier") or group.get("Name") or "")
+                gname = str(group.get("Name") or "")
+                if not (oid.upper().endswith("-544") or "ADMINISTRATOR" in gname.upper()):
+                    continue
+                results = group.get("Results") if isinstance(group.get("Results"), list) else []
+                for member in results:
+                    if not isinstance(member, dict):
+                        continue
+                    msid = str(member.get("ObjectIdentifier") or member.get("UserSID") or "")
+                    if not msid or _is_default_admin_principal(msid):
+                        continue
+                    start = names.get(msid, msid)
+                    privileged.add(start)
+                    if msid:
+                        privileged.add(msid)
+                    out.append({"kind": "AdminTo", "start": start, "end": computer})
+        for key in ("Sessions", "PrivilegedSessions"):
+            bag = node.get(key) or node.get(key.lower()) or {}
+            results = bag.get("Results") if isinstance(bag, dict) else bag
+            if not isinstance(results, list):
+                continue
+            for row in results:
+                if not isinstance(row, dict):
+                    continue
+                user = str(row.get("UserSID") or row.get("user") or "")
+                if not user:
+                    continue
+                start = names.get(user, user)
+                end = names.get(str(row.get("ComputerSID") or ""), computer) or computer
+                if not (
+                    start in privileged
+                    or user in privileged
+                    or _is_default_admin_principal(user)
+                    or _is_default_admin_principal(start)
+                ):
+                    continue
+                hosts = sessions.setdefault(start, [])
+                if end and end not in hosts:
+                    hosts.append(end)
+    for start, hosts in sessions.items():
+        out.append(
+            {
+                "kind": "HasSession",
+                "start": start,
+                "end": hosts[0] if hosts else start,
+                "session_count": len(hosts),
+                "hosts": hosts,
+            }
+        )
     return out
 
 
@@ -139,6 +291,7 @@ def _edges(payload: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         collected.extend(e for e in data if isinstance(e, dict) and _looks_like_edge(e))
     collected.extend(_aces_as_edges(_nodes(payload)))
+    collected.extend(_session_and_admin_edges(_nodes(payload)))
     return collected
 
 
@@ -151,6 +304,7 @@ def _fold_props(raw: dict[str, Any]) -> dict[str, Any]:
         "dontreqpreauth": ("dontreqpreauth",),
         "unconstraineddelegation": ("unconstraineddelegation",),
         "highvalue": ("highvalue",),
+        "admincount": ("admincount",),
         "serviceprincipalnames": ("serviceprincipalnames",),
         "pimeligible": ("pimeligible",),
         "roles": ("roles",),
@@ -185,11 +339,55 @@ def _child_text(el: ET.Element, *names: str) -> str:
     return ""
 
 
+# PingCastle privileged-group membership RiskIds (8). 0 members → no finding.
+_GROUP_MEMBERSHIP_RULES: dict[str, tuple[str, ...]] = {
+    "p-backupoperators": ("backup operators",),
+    "p-accountoperators": ("account operators",),
+    "p-printoperators": ("print operators",),
+    "p-serveroperators": ("server operators",),
+    "p-schemaadmins": ("schema admins",),
+    "p-enterpriseadmins": ("enterprise admins",),
+    "p-domainadmins": ("domain admins",),
+    "p-administrators": ("administrators",),
+}
+
+
+def _norm_risk(risk_id: str) -> str:
+    return str(risk_id or "").strip().lower().replace("_", "").replace(" ", "")
+
+
+def _group_rule_names(risk_id: str) -> tuple[str, ...]:
+    return _GROUP_MEMBERSHIP_RULES.get(_norm_risk(risk_id), ())
+
+
+def _member_count(el: ET.Element) -> int | None:
+    """NumberOfMember / Members if the file states a count. None = not stated."""
+    stated = False
+    n = 0
+    for name in ("NumberOfMember", "NumberOfMemberEnabled", "NumberOfMembers"):
+        raw = _child_text(el, name)
+        if raw != "":
+            stated = True
+            try:
+                n = max(n, int(float(raw)))
+            except (TypeError, ValueError):
+                pass
+    for child in list(el):
+        tag = _xml_local(child.tag).lower()
+        if tag == "members":
+            stated = True
+            kids = [c for c in list(child) if _xml_local(c.tag).split("}")[-1]]
+            n = max(n, len(kids))
+    return n if stated else None
+
+
 def _points_severity(raw: str) -> str:
     try:
         points = int(float(str(raw or "0").strip() or "0"))
     except (TypeError, ValueError):
         points = 0
+    if points <= 0:
+        return "info"
     if points >= 50:
         return "critical"
     if points >= 30:
@@ -251,6 +449,7 @@ def _parse_pingcastle_xml(path: Path) -> dict[str, Any]:
                             "name": name,
                             "highvalue": "BACKUP" in name.upper() or "ADMIN" in name.upper(),
                             "description": _child_text(el, "Description") or f"PingCastle group {name}",
+                            "member_count": _member_count(el),
                         },
                     }
                 )
@@ -599,22 +798,36 @@ def parse_file(path: Path) -> list[dict]:
         )
         findings: list[tuple[str, str, str]] = []
         uname = name.upper()
-        if "BACKUP OPERATORS" in uname or (props.get("highvalue") and "BACKUP" in uname):
-            findings.append(("high", "Backup Operators privileged group", "Members can dump SAM / seize privileged files."))
-        if props.get("hasspn") or props.get("serviceprincipalnames"):
-            findings.append(("high", "Roastable SPN", f"{name} has an SPN and is kerberoastable."))
-        if props.get("dontreqpreauth"):
-            findings.append(("high", "AS-REP roastable account", f"{name} does not require Kerberos preauth."))
-        roles = props.get("roles") or []
-        if isinstance(roles, str):
-            roles = [roles]
-        pim = props.get("pimEligible") if "pimEligible" in props else props.get("pimeligible")
-        if any("Global Administrator" in str(r) for r in roles) and not pim:
-            findings.append(("critical", "Entra GA without PIM", f"{name} is Global Administrator without PIM eligibility."))
-        if props.get("unconstraineddelegation"):
-            findings.append(("high", "Unconstrained delegation", f"{name} has unconstrained Kerberos delegation."))
-        if props.get("highvalue") and not findings:
-            findings.append(("medium", "High-value identity", f"{name} is marked high-value."))
+        empty_group = str(kind).lower() == "group" and props.get("member_count") == 0
+        is_computer = (
+            kind.lower() == "computer"
+            or str(props.get("samaccountname") or "").endswith("$")
+            or bool(props.get("operatingsystem"))
+        )
+        is_dc = "OU=DOMAIN CONTROLLERS" in str(props.get("distinguishedname") or "").upper()
+        enabled = props.get("enabled")
+        if empty_group:
+            # Stated 0 members: no group-membership finding (demo files omit the count).
+            pass
+        else:
+            if "BACKUP OPERATORS" in uname or (props.get("highvalue") and "BACKUP" in uname):
+                findings.append(("high", "Backup Operators privileged group", "Members can dump SAM / seize privileged files."))
+            spns = props.get("serviceprincipalnames") or []
+            has_spn = bool(props.get("hasspn") or (isinstance(spns, list) and spns) or (isinstance(spns, str) and spns))
+            if has_spn and not is_computer and enabled is not False:
+                findings.append(("high", "Roastable SPN", f"{name} has an SPN and is kerberoastable."))
+            if props.get("dontreqpreauth"):
+                findings.append(("high", "AS-REP roastable account", f"{name} does not require Kerberos preauth."))
+            roles = props.get("roles") or []
+            if isinstance(roles, str):
+                roles = [roles]
+            pim = props.get("pimEligible") if "pimEligible" in props else props.get("pimeligible")
+            if any("Global Administrator" in str(r) for r in roles) and not pim:
+                findings.append(("critical", "Entra GA without PIM", f"{name} is Global Administrator without PIM eligibility."))
+            if props.get("unconstraineddelegation") and not is_dc:
+                findings.append(("high", "Unconstrained delegation", f"{name} has unconstrained Kerberos delegation."))
+            if props.get("highvalue") and not findings:
+                findings.append(("medium", "High-value identity", f"{name} is marked high-value."))
         for sev, title, desc in findings:
             records.append(
                 make_record(
@@ -623,7 +836,7 @@ def parse_file(path: Path) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"{title}-{name}"),
                     name=title,
                     description=desc,
-                    severity=sev,
+                    severity=canon_severity(sev),
                     category="identity-gap",
                     assets=[name],
                     labels=LABELS,
@@ -631,9 +844,23 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"kind": kind},
                 )
             )
+    group_counts: dict[str, int | None] = {}
+    for node in nodes:
+        props = _props(node)
+        kind = str(node.get("kind") or node.get("type") or "")
+        if kind.lower() != "group":
+            continue
+        gname = str(props.get("name") or node.get("label") or "").strip().lower()
+        if gname:
+            group_counts[gname] = props.get("member_count")
     for rule in pc_rules:
         risk_id = str(rule.get("risk_id") or "pingcastle")
         domain = str(rule.get("domain") or "ad-domain")
+        aliases = _group_rule_names(risk_id)
+        if aliases:
+            matched = [group_counts.get(alias) for alias in aliases if alias in group_counts]
+            if matched and all(count == 0 for count in matched):
+                continue
         records.append(
             make_record(
                 kind="finding",
@@ -641,7 +868,7 @@ def parse_file(path: Path) -> list[dict]:
                 ref_id=make_ref(SOURCE, f"pc-{risk_id}-{domain}"),
                 name=f"PingCastle {risk_id}",
                 description=str(rule.get("rationale") or risk_id),
-                severity=str(rule.get("severity") or "medium"),
+                severity=canon_severity(rule.get("severity") or "medium"),
                 category="identity-gap",
                 assets=[domain],
                 labels=LABELS + ["pingcastle", "risk-rule"],
@@ -654,7 +881,66 @@ def parse_file(path: Path) -> list[dict]:
                 },
             )
         )
-    for edge in _edges(payload):
+    raw_edges = _edges(payload)
+    session_acc: dict[str, dict[str, Any]] = {}
+    other_edges: list[dict[str, Any]] = []
+    for edge in raw_edges:
+        kind = str(
+            edge.get("kind")
+            or edge.get("type")
+            or edge.get("label")
+            or edge.get("EdgeType")
+            or edge.get("edgeType")
+            or edge.get("relationship")
+            or ""
+        )
+        folded = kind.upper().replace(" ", "")
+        start = str(
+            edge.get("start")
+            or edge.get("source")
+            or edge.get("Source")
+            or edge.get("startNode")
+            or ""
+        )
+        end = str(
+            edge.get("end")
+            or edge.get("target")
+            or edge.get("Target")
+            or edge.get("endNode")
+            or ""
+        )
+        if folded in {"HASSESSION", "HASESSION"}:
+            acc = session_acc.setdefault(start, {"hosts": [], "count": 0})
+            raw_count = edge.get("session_count")
+            extra_hosts = edge.get("hosts") if isinstance(edge.get("hosts"), list) else []
+            if raw_count:
+                try:
+                    acc["count"] = max(int(raw_count), int(acc["count"]))
+                except (TypeError, ValueError):
+                    acc["count"] = max(len(extra_hosts) or 1, int(acc["count"]))
+                for host in extra_hosts or ([end] if end else []):
+                    host_s = str(host)
+                    if host_s and host_s not in acc["hosts"]:
+                        acc["hosts"].append(host_s)
+            else:
+                acc["count"] = int(acc["count"]) + 1
+                if end and end not in acc["hosts"]:
+                    acc["hosts"].append(end)
+            continue
+        other_edges.append(edge)
+    for start, acc in session_acc.items():
+        hosts = [str(h) for h in acc["hosts"] if h]
+        count = int(acc["count"] or len(hosts) or 1)
+        other_edges.append(
+            {
+                "kind": "HasSession",
+                "start": start,
+                "end": hosts[0] if hosts else start,
+                "session_count": count,
+                "hosts": hosts,
+            }
+        )
+    for edge in other_edges:
         kind = str(
             edge.get("kind")
             or edge.get("type")
@@ -682,19 +968,39 @@ def parse_file(path: Path) -> list[dict]:
             or edge.get("endNode")
             or ""
         )
+        hosts = edge.get("hosts") if isinstance(edge.get("hosts"), list) else []
+        session_count = edge.get("session_count")
+        extra = {"edge": kind, "start": start, "end": end}
+        assets = [x for x in (start, end) if x]
+        ref_tail = f"{kind}-{start}-{end}"
+        detail = f"{desc} {start} -> {end}".strip()
+        if kind.upper().replace(" ", "") in {"HASSESSION", "HASESSION"}:
+            try:
+                count = int(session_count or len(hosts) or 1)
+            except (TypeError, ValueError):
+                count = len(hosts) or 1
+            extra["session_count"] = count
+            if hosts:
+                extra["hosts"] = [str(h) for h in hosts]
+            assets = [start] + [str(h) for h in hosts if h and h != start]
+            if not assets:
+                assets = [x for x in (start, end) if x]
+            ref_tail = f"{kind}-{start}"
+            host_bit = ", ".join(str(h) for h in hosts) if hosts else end
+            detail = f"{desc} {start} has {count} session(s)" + (f" on {host_bit}" if host_bit else "")
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"{kind}-{start}-{end}"),
+                ref_id=make_ref(SOURCE, ref_tail),
                 name=title,
-                description=f"{desc} {start} -> {end}".strip(),
+                description=detail,
                 severity=sev,
                 category="identity-gap",
-                assets=[x for x in (start, end) if x],
+                assets=assets,
                 labels=LABELS + ["bloodhound", "edge"],
                 collected_at=now,
-                extra={"edge": kind, "start": start, "end": end},
+                extra=extra,
             )
         )
     return records

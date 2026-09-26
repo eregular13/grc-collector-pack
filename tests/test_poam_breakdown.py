@@ -33,6 +33,7 @@ COLLECTORS = (
     "collectors.code_secrets",
     "collectors.saas_idp",
     "collectors.dns_email",
+    "collectors.honeypot",
 )
 
 
@@ -75,6 +76,25 @@ def test_poam_decision_names_low_exposure_and_honeypot() -> None:
     assert decision["include"] is False
     assert decision["reason"] == "honeypot"
     assert map_finding(honeypot)["include_poam"] is False
+
+    cost = _finding(
+        source="cloud-prowler",
+        ref_id="CLD-c7n-cpu",
+        name="Cloud Custodian azure-vm-cpu-underutilized",
+        description="Virtual machines with low CPU utilization",
+        severity="medium",
+        category="excluded",
+        extra={
+            "check_id": "azure-vm-cpu-underutilized",
+            "exclude_reason": "NOT_A_WEAKNESS",
+            "service": "azure.vm",
+        },
+    )
+    decision = poam_decision(cost)
+    assert decision["include"] is False
+    assert decision["reason"] == "NOT_A_WEAKNESS"
+    assert decision["reason"] in POAM_EXCLUDE_REASONS
+    assert map_finding(cost)["include_poam"] is False
 
 
 def test_poam_decision_includes_high_and_key_medium() -> None:

@@ -23,8 +23,11 @@ def test_smb_445_maps_to_hardening_not_cve() -> None:
     )
     mapped = map_finding(rec)
     assert mapped["include_poam"] is True
-    assert "cpg_2_W" in mapped["cpg"]
-    assert "csf_PR" in mapped["csf"]
+    assert "cpg_3_I" in mapped["cpg"]
+    assert "cpg_3_S" not in mapped["cpg"]
+    assert mapped["csf_subcategory"] == "PR.IR-01"
+    assert "csf_PR_IR_01" in mapped["csf"]
+    assert "csf_PR" in mapped["csf"]  # function stamp from PR #128 stays
     assert "CVE-" not in mapped["recommended_fix"]
     assert "445" in mapped["recommended_fix"]
     assert "SMBv1" in mapped["recommended_fix"]
@@ -468,8 +471,10 @@ def test_honeypot_stage_hit_is_not_compromise_poam() -> None:
 
 def test_extra_labels_wizard_safe_no_colon() -> None:
     stamps = extra_labels()
-    assert "cpg_2_W" in stamps
-    assert "csf_PR" in stamps
+    assert "cpg_3_S" in stamps or "cpg_3_I" in stamps
+    assert "csf_PR" not in stamps
+    assert "csf_protect" not in stamps
+    assert "cpg_2_W" not in stamps
     assert all(":" not in s for s in stamps)
     rec = make_record(
         kind="finding",
@@ -481,7 +486,10 @@ def test_extra_labels_wizard_safe_no_colon() -> None:
         extra={"port": "445", "service": "microsoft-ds"},
     )
     mapped = extra_labels(rec)
-    assert "cpg_2_W" in mapped and "csf_PR" in mapped
+    assert "cpg_3_I" in mapped
+    assert "csf_PR" not in mapped
+    assert "csf_protect" not in mapped
+    assert "csf_PR_IR_01" in mapped
     assert all(":" not in s for s in mapped)
 
 
@@ -591,9 +599,9 @@ def test_csf_stamp_follows_control_not_severity() -> None:
     assert smb_high["csf_function"] == "protect"
     assert honeypot_high["csf_function"] == "detect"
     assert time_high["csf_function"] == "detect"
-    assert perimeter_high["csf_function"] == "identify"
+    assert perimeter_high["csf_function"] == "protect"
+    assert "cpg_3_S" in perimeter_high["cpg"]
     assert tls_high["csf_function"] != honeypot_high["csf_function"]
-    assert tls_high["csf_function"] != perimeter_high["csf_function"]
     assert time_high["csf_function"] != smb_high["csf_function"]
 
     tls_low = map_finding(
@@ -658,6 +666,9 @@ def test_csf_unmapped_fallback_is_deterministic_not_severity() -> None:
     assert "csf_unmapped" in unk_low["csf"]
     assert "csf_unmapped" in unk_crit["csf"]
     assert unk_crit["csf_function"] != "respond"
+    assert unk_low["csf_subcategory"] == "unmapped"
+    assert "csf_PR" not in (unk_low.get("framework_refs") or "")
+    assert "cpg_unmapped" in (unk_low.get("framework_refs") or "")
 
 
 def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypatch) -> None:

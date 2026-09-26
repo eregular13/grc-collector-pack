@@ -19,6 +19,7 @@ from shared.kev import (
 )
 from shared.poam_ledger import pending_comment
 from shared.io_util import redact
+from shared.vendor_dependency import VD_NO, VD_NOTE, VD_YES, format_vendor_product
 
 # S1 Open tab row 5 B→AB (R3.0). Match by header text, never by letter.
 FEDRAMP_OPEN_HEADERS: tuple[str, ...] = (
@@ -54,6 +55,9 @@ FEDRAMP_OPEN_HEADERS: tuple[str, ...] = (
 FEDRAMP_CSV_NAME = "poam_fedramp.csv"
 FEDRAMP_CLOSED_CSV_NAME = "poam_fedramp_closed.csv"
 KEV_PROV_NAME = "kev_provenance.json"
+# Extra columns sit after AB (CVE). B→AB stay FEDRAMP_OPEN_HEADERS.
+FEDRAMP_EXTRA_HEADERS: tuple[str, ...] = ("Framework Tags",)
+FEDRAMP_CSV_HEADERS: tuple[str, ...] = FEDRAMP_OPEN_HEADERS + FEDRAMP_EXTRA_HEADERS
 
 M_BLANK_NOTE = (
     "Scheduled Completion Date (col M) is blank in this CSV — the FedRAMP "
@@ -72,11 +76,17 @@ def _comments(item: dict[str, Any]) -> str:
         parts.append(pending_comment(item))
     if item.get("prior_poam_id"):
         parts.append(f"Reopened from {item['prior_poam_id']}; closed row remains on Closed.")
+    parts.extend(item.get("vd_comments") or [])
+    for flag in item.get("vd_flags") or []:
+        parts.append(str(flag))
     return "\n".join(parts)
 
 
 def item_to_row(item: dict[str, Any]) -> list[str]:
     cves = item.get("cves") or []
+    vd = str(item.get("vendor_dependency") or VD_NO)
+    if vd not in {VD_YES, VD_NO}:
+        vd = VD_NO
     return [
         str(item.get("poam_id") or ""),
         "",
@@ -91,9 +101,9 @@ def item_to_row(item: dict[str, Any]) -> list[str]:
         str(item.get("original_detection_date") or ""),
         "",  # M — template formula; never written
         str(item.get("status_date") or ""),
-        str(item.get("vendor_dependency") or ""),
-        str(item.get("last_vendor_checkin") or ""),
-        str(item.get("vendor_product") or ""),
+        vd,
+        str(item.get("last_vendor_checkin") or "") if vd == VD_YES else "",
+        format_vendor_product(item.get("vendor_product")) if vd == VD_YES else "",
         str(item.get("original_risk_rating") or ""),
         "",
         "",
@@ -105,6 +115,7 @@ def item_to_row(item: dict[str, Any]) -> list[str]:
         str(item.get("kev_tracking") or ""),
         str(item.get("kev_due") or ""),
         format_cves(cves),
+        str(item.get("framework_refs") or ""),
     ]
 
 
@@ -112,9 +123,13 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, lineterminator="\n")
-        writer.writerow(list(FEDRAMP_OPEN_HEADERS))
+        writer.writerow(list(FEDRAMP_CSV_HEADERS))
         for row in rows:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
+
+
+def _vendor_dependent(item: dict[str, Any]) -> bool:
+    return str(item.get("vendor_dependency") or "").strip().lower() == "yes"
 
 
 def write_fedramp_poam(out_poam: Path, ledger: dict[str, Any]) -> dict[str, Path]:
@@ -122,12 +137,17 @@ def write_fedramp_poam(out_poam: Path, ledger: dict[str, Any]) -> dict[str, Path
     closed_rows: list[list[str]] = []
     for item in (ledger.get("items") or {}).values():
         row = item_to_row(item)
-        if str(item.get("status") or "") == "closed":
-            closed_rows.append(row)
-        else:
+        # Spec §2.2: don't put VDs on the Closed tab.
+        if _vendor_dependent(item) or str(item.get("status") or "") != "closed":
             open_rows.append(row)
+        else:
+            closed_rows.append(row)
     for item in ledger.get("closed") or []:
-        closed_rows.append(item_to_row(item))
+        row = item_to_row(item)
+        if _vendor_dependent(item):
+            open_rows.append(row)
+        else:
+            closed_rows.append(row)
     open_path = out_poam / FEDRAMP_CSV_NAME
     closed_path = out_poam / FEDRAMP_CLOSED_CSV_NAME
     _write_csv(open_path, open_rows)
@@ -164,6 +184,7 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
             lines.append(f"stale: {catalog.stale}")
     if ledger.get("warnings"):
         lines.append("ledger_warnings: " + ", ".join(ledger["warnings"]))
+    lines.append(VD_NOTE)
     lines.append("Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.")
     lines.append("FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).")
     lines.append(

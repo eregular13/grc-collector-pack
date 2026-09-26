@@ -85,7 +85,8 @@ def test_http_console_and_forbids_risks() -> None:
         assert "GRC Collector Pack" in html
         assert "Never POSTs /api/risks" in html
         assert "POA&M" in html
-        assert "Evergreen maps it" in html
+        assert "Pentera" not in html
+        assert "owner" in html.lower() and "blank" in html.lower()
         assert 'id="lab-pill"' in html
         assert ">LAB<" in html
         assert ">SAMPLE<" in html

@@ -83,11 +83,10 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         "Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.",
         f"Copied from out/ after host lab {copied} (this Linux VM).",
         "OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).",
-        "Pentera finds it; Evergreen maps it.",
         "Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.",
         "OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.",
         "Probo `import_preview/probo.json` is documentation-only (posted=false). Not live GraphQL.",
-        "POA&M owner/due are blank for a human. RiskReady is out of scope — this drop ships no RiskReady JSON. Do not POST /api/risks.",
+        "POA&M owner/due are blank for a human. Do not POST /api/risks.",
         "",
         "| File | Rows | SHA256 |",
         "|---|---|---|",
@@ -113,7 +112,7 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
     for rel, count in table:
         lines.append(f"| {rel} | {count} | `{hashes[rel]}` |")
     lines.append("")
-    lines.append("No RiskReady JSON in this drop. RiskReady is out of scope. Do not POST /api/risks.")
+    lines.append("Do not POST /api/risks.")
     lines.append("")
     lines.append(
         "POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row."
@@ -130,7 +129,7 @@ def _write_readme(counts: dict[str, int]) -> None:
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
 
-**Pentera finds it; Evergreen maps it.** Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
+Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 
 OpenGRC and Probo files are **file-true leave-behind, posted=false, not live import**. Do not POST `/api/risks`.
 
@@ -180,7 +179,7 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 |---|---|
 | `import_preview/probo.json` | {counts["import_preview/probo.json"]} addFinding drafts |
 
-RiskReady is out of scope. This drop does not include RiskReady JSON. Do not POST `/api/risks`.
+Do not POST `/api/risks`.
 """
     (DROP / "README.md").write_text(text, encoding="utf-8")
 

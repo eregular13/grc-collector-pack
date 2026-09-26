@@ -1,3 +1,123 @@
+# CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
+
+Merge `origin/master` `d6ae8d0` (#163) with a normal merge commit. No
+rebase. Gap 2 persist/audit/backfill kept. Pytest **1333**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 211 (MERGE_MASTER_157_INTO_GAP2)
+
+Merge `origin/master` `22d085f` (#157) with a normal merge commit. No
+rebase. Gap 2 persist/audit/backfill kept. Pytest **1331**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 210 (POAM_GAP2_VD_UPGRADE_BASELINE)
+
+Lab this brick: pytest **1314** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=124` `excluded=5` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Pre-#160 ledger upgrade backfills No/default
+without `field_changed` or column N churn. Merged `befc7d0` (#162).
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 209 (POAM_GAP2_VD_PERSIST_NO_AUDIT)
+
+Lab this brick: pytest **1309** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=124` `excluded=5` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Operator No persists like Yes; vendor-field
+changes set `status_date` + `field_changed`. Invalid override warns.
+VD Yes stays off Closed. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
+# CRITIC — cycle 208 (MERGE_MASTER_159_INTO_GAP2)
+
+Merge `origin/master` `1be65cf` (#159) with a normal merge commit. No
+rebase. Gap 2 vendor-dependency columns kept. Pytest **1305**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 207 (POAM_GAP2_VENDOR_DEPENDENCY)
+
+Lab this brick: pytest **1304** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=124` `excluded=5` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Gap 2 O/P/Q default No, suggestion-only,
+operator persist, KEV not suspended. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 206 (MERGE_MASTER_150_INTO_145)
+
+Merge `origin/master` `dd360a2` (#150 UDP 445 not SMB) with a normal
+merge commit. No rebase. #139 follow-ups + Argus B4 + #141 filters
+kept. Lab this brick: pytest **1288** passed, 1 skipped. Host-lab
+`assets=79` `findings=107` `poam=124` `excluded=5` `demo=true`.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 205 (MERGE_MASTER_141_INTO_145)
+
+Merge `origin/master` `9f73537` (#141 collectors false/empty on real
+tool output, plus #152/#151 already on the PR tip). Both sides kept:
+#139 follow-ups + Argus B4 + PingCastle 0-member skip; #141 computer
+SPN / DC unconstrained-delegation filters. Lab this brick: pytest
+**1287** passed, 1 skipped. Ten collectors + honeypot + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=79` `findings=107`
+`vulnerabilities=22` `poam=124` `weaknesses=129` `excluded=5`
+`severity_unmapped=0` `demo=true`). Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 203 (MERGE_MASTER_134_INTO_145)
+
+Lab this brick: pytest **1246** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `poam=124` `weaknesses=126` `excluded=2`
+`severity_unmapped=0` `demo=true`). Zero P0/P1. Merged `origin/master`
+`51bba3c` (#134) with a normal merge commit. No rebase. #139 follow-ups
++ Argus B4 kept. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
+# CRITIC — cycle 199 (MERGE_MASTER_144_140_INTO_145)
+
+Lab this brick: pytest **1225** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=125` `weaknesses=126` `excluded=1` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `origin/master` `76f5e86`
+(#144+#140+#147+#146+#142+#138) with a normal merge commit. No rebase.
+#139 follow-ups + Argus B4 case-insensitive `Timestamp` /
+`TimestampZulu` / `scan_time` kept. Count shift vs prior #145 84/103/125
+is master's EGA- collapse + httpx URL + one `superseded_by_specific`
+fold, not a parser loss or MIN_ loosen. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 196 (PARSERS_139_FOLLOW_UPS)
+
+Lab this brick: pytest **1147** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `weaknesses=125` `severity_unmapped=0` `demo=true`). Zero
+P0/P1. Six #139 follow-ups: all Greenbone CVEs + root-element detect;
+Nikto backup hits kept / unmatched info; PingCastle 8 group rules honor
+member count + 0-point info; ScubaGear DomainName label; testssl
+`not offered` only dropped for OK/INFO; fixture honesty (byte-true vs
+`synthetic_*`). Host-lab assets/findings unchanged vs STATUS 84 / 103.
+POA&M 111→125 is the current loader full plan (excluded=0), not a
+MIN_ loosen. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
+are unchanged. Cold-review add-on: artifact scan time → detection date
+(Greenbone/Scuba), UTC `status_date`, PingCastle rule-specific fix.
+Pytest **1151**.
+
 # CRITIC — cycle 202 (MERGE_MASTER_147_LEDGER_LIFECYCLE)
 
 Merge `origin/master` `9aeb229` (#147 multi-run POA&M ledger

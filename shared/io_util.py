@@ -96,6 +96,24 @@ SKIP_INPUT_NAMES = frozenset(
 DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})
 NEVER_DEMO_LABELS = frozenset({"LAB", "CLIENT"})
 UNRECOGNIZED_STATUS = "unrecognized_shape"
+
+
+class UnrecognizedShape(ValueError):
+    """Live drop is a known suffix but not a shape this sensor can parse."""
+
+    def __init__(self, reason: str, *, file: str = "") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.file = file
+
+
+class SidecarSkip(Exception):
+    """Known sidecar next to a parsed sibling — not a coverage gap."""
+
+    def __init__(self, reason: str = "", *, file: str = "") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.file = file
 SENSOR_GAP_STATUSES = frozenset(
     {"parse_error", "no_records", UNRECOGNIZED_STATUS, "empty", "partial"}
 )
@@ -392,14 +410,39 @@ def run_collector(
     issues: list[dict[str, str]] = []
     for path in files:
         error: str | None = None
+        unrecognized: str | None = None
+        sidecar = False
         try:
             recs = list(parse_file(path) or [])
+        except SidecarSkip as exc:
+            recs = []
+            sidecar = True
+            write_raw_copy(
+                source,
+                path,
+                {"sidecar": True, "file": path.name, "reason": exc.reason or str(exc)},
+            )
+        except UnrecognizedShape as exc:
+            recs = []
+            unrecognized = exc.reason or str(exc)
         except Exception as exc:
             recs = []
             error = f"{type(exc).__name__}: {exc}"
+        if sidecar:
+            continue
         if recs:
             records.extend(recs)
             write_raw_copy(source, path, recs)
+            continue
+        if unrecognized:
+            issues.append(
+                {"status": UNRECOGNIZED_STATUS, "file": path.name, "reason": unrecognized}
+            )
+            write_raw_copy(
+                source,
+                path,
+                {"error": UNRECOGNIZED_STATUS, "file": path.name, "reason": unrecognized},
+            )
             continue
         malformed = error or _malformed_reason(path)
         status = "parse_error" if malformed else "no_records"

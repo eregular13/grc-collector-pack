@@ -1,0 +1,31 @@
+{
+  "ClusterName": "kind-kind",
+  "Resources": [
+    {
+      "Namespace": "default",
+      "Kind": "Pod",
+      "Name": "nginx",
+      "Metadata": {
+        "name": "nginx",
+        "namespace": "default"
+      },
+      "Results": [
+        {
+          "Target": "nginx:1.16 (alpine 3.10.3)",
+          "Class": "os-pkgs",
+          "Type": "alpine",
+          "Vulnerabilities": [
+            {
+              "VulnerabilityID": "CVE-2019-14697",
+              "PkgName": "musl",
+              "InstalledVersion": "1.1.22-r3",
+              "FixedVersion": "1.1.22-r4",
+              "Severity": "HIGH",
+              "Title": "musl: integer overflow in iconv"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

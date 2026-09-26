@@ -153,9 +153,13 @@ def test_product_lab_drop_ships_no_riskready_json() -> None:
         assert not list(rr_dir.glob("*.json"))
     manifest = MANIFEST.read_text(encoding="utf-8")
     assert "riskready/risks_proposed.json" not in manifest
-    assert "out of scope" in manifest.lower() or "ships no RiskReady" in manifest
+    assert "Pentera" not in manifest
+    assert "RiskReady" not in manifest
+    assert "Do not POST /api/risks" in manifest
     readme = (DROP / "README.md").read_text(encoding="utf-8")
     assert "risks_proposed.json" not in readme
+    assert "Pentera" not in readme
+    assert "RiskReady" not in readme
     assert "/api/risks" in readme
 
 
@@ -176,5 +180,6 @@ def test_export_zip_contains_no_riskready_json(
         import_md = zf.read("IMPORT.md").decode("utf-8")
     assert not any("riskready" in name.lower() for name in names)
     assert "risks_proposed.json" not in names
-    assert "out of scope" in import_md.lower()
+    assert "Pentera" not in import_md
+    assert "RiskReady" not in import_md
     assert "Do not POST /api/risks" in import_md

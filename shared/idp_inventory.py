@@ -20,6 +20,7 @@ _PRIVILEGED = (
     "company administrator",
     "privileged role administrator",
     "application administrator",
+    "privileged role",
     "super_admin",
     "super admin",
     "org_admin",
@@ -28,7 +29,7 @@ _PRIVILEGED = (
 )
 
 _MFA_TRUE = frozenset({"true", "1", "yes", "registered", "enrolled", "enabled", "on"})
-_MFA_FALSE = frozenset({"false", "0", "no", "not registered", "unenrolled", "disabled", "off", "none"})
+_MFA_FALSE = frozenset({"false", "0", "no", "not registered", "not enrolled", "unenrolled", "disabled", "off", "none"})
 
 
 def _parse_dt(raw: Any) -> datetime | None:
@@ -88,8 +89,9 @@ def _roles(user: dict[str, Any]) -> list[str]:
             name = str(item or "")
         if name:
             out.append(name)
-    if _as_bool(user.get("isAdmin") or user.get("is_admin")) is True and "Global Administrator" not in out:
-        out.append("Global Administrator")
+    # Graph isAdmin means *any* admin role, not Global Administrator.
+    if _as_bool(user.get("isAdmin") or user.get("is_admin")) is True and not out:
+        out.append("Privileged role (unspecified)")
     return out
 
 
@@ -236,15 +238,29 @@ def _user_rows(payload: Any) -> tuple[str, list[dict[str, Any]]]:
     return tenant, users
 
 
+def _looks_okta_user(row: dict[str, Any]) -> bool:
+    profile = row.get("profile")
+    if isinstance(profile, dict) and (profile.get("login") or profile.get("email")):
+        return True
+    return bool(row.get("status") and row.get("id") and isinstance(profile, dict))
+
+
 def is_idp_inventory(payload: Any, *, name: str = "", text: str = "") -> bool:
     """True only for user-inventory exports. Scuba / Maester / directoryRoles stay out."""
+    if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+        if _looks_okta_user(payload[0]) or _login(payload[0]):
+            return True
     if isinstance(payload, dict):
-        if payload.get("Results") or payload.get("results") or payload.get("TestResults") or payload.get("Maester"):
+        if payload.get("Results") or payload.get("results") or payload.get("TestResults") or payload.get("Tests") or payload.get("Maester"):
+            return False
+        if isinstance(payload.get("policies"), list) and payload["policies"]:
             return False
         if payload.get("directoryRoles") or "directoryRoles" in str(payload.get("@odata.context") or ""):
             return False
         ctx = str(payload.get("@odata.context") or "")
         if "users" in ctx.lower() and "directoryroles" not in ctx.lower():
+            return True
+        if "userregistrationdetails" in ctx.lower():
             return True
         kind = str(payload.get("kind") or "")
         if "directory#users" in kind or "admin#directory#users" in kind:
@@ -252,6 +268,8 @@ def is_idp_inventory(payload: Any, *, name: str = "", text: str = "") -> bool:
         _, users = _user_rows(payload)
         if users:
             sample = users[0]
+            if _looks_okta_user(sample):
+                return True
             if _mfa_registered(sample) is not None:
                 return True
             if _is_guest(sample) or sample.get("userType") or sample.get("signInActivity"):
@@ -263,8 +281,17 @@ def is_idp_inventory(payload: Any, *, name: str = "", text: str = "") -> bool:
         elif payload:
             return False
     head = (text or "")[:800].lower().replace(" ", "")
-    if "userprincipalname" in head or "primaryemail" in head:
-        return "mfa" in head or "2sv" in head or "usertype" in head or "isadmin" in head or "guest" in head
+    if "userprincipalname" in head or "primaryemail" in head or "emailaddress[required]" in head:
+        return (
+            "mfa" in head
+            or "2sv" in head
+            or "2-step" in (text or "")[:800].lower()
+            or "usertype" in head
+            or "isadmin" in head
+            or "superadmin" in head
+            or "guest" in head
+            or "emailaddress[required]" in head
+        )
     low_name = (name or "").lower()
     return any(tok in low_name for tok in ("entra-users", "okta-users", "google-users", "idp-users"))
 
@@ -293,6 +320,8 @@ def _csv_users(text: str) -> list[dict[str, Any]]:
                 lower.get("userprincipalname")
                 or lower.get("upn")
                 or lower.get("primaryemail")
+                or lower.get("emailaddress[required]")
+                or lower.get("emailaddress")
                 or lower.get("email")
                 or lower.get("login")
                 or ""
@@ -305,9 +334,11 @@ def _csv_users(text: str) -> list[dict[str, Any]]:
                 or lower.get("mfaregistered")
                 or lower.get("isenrolledin2sv")
                 or lower.get("twostepverification")
+                or lower.get("2stepverificationstatus")
+                or lower.get("2-stepverificationstatus")
                 or ""
             ),
-            "isAdmin": lower.get("isadmin") or "",
+            "isAdmin": lower.get("isadmin") or lower.get("superadmin") or lower.get("superadminstatus") or "",
             "assignedRoles": lower.get("assignedroles") or lower.get("roles") or "",
             "lastLoginTime": lower.get("lastlogintime") or lower.get("lastsignindatetime") or "",
             "createdDateTime": lower.get("createddatetime") or "",
@@ -333,11 +364,23 @@ def parse_idp_inventory(payload: Any, *, now: datetime | None = None, text: str 
         users_raw = _csv_users(text)
         if users_raw and "@" in str(users_raw[0].get("userPrincipalName") or ""):
             tenant = str(users_raw[0]["userPrincipalName"]).split("@", 1)[1]
-        provider = "google" if "2sv" in text[:400].lower() or "primaryemail" in text[:400].lower() else "idp"
+        provider = (
+            "google"
+            if "2sv" in text[:400].lower()
+            or "primaryemail" in text[:400].lower()
+            or "email address [required]" in text[:400].lower()
+            else "idp"
+        )
     elif is_idp_inventory(payload, text=text):
         tenant, users_raw = _user_rows(payload)
         blob = json.dumps(payload)[:800].lower() if isinstance(payload, (dict, list)) else ""
-        if "okta" in blob or (isinstance(payload, dict) and (payload.get("org") or payload.get("okta_org"))):
+        sample = users_raw[0] if users_raw else {}
+        if (
+            "okta" in blob
+            or (isinstance(payload, dict) and (payload.get("org") or payload.get("okta_org")))
+            or _looks_okta_user(sample)
+            or (isinstance(payload, list) and payload and _looks_okta_user(payload[0]))
+        ):
             provider = "okta"
         elif "google" in blob or (isinstance(payload, dict) and "directory#users" in str(payload.get("kind") or "")):
             provider = "google"

@@ -44,6 +44,14 @@ from shared.kev import (
 from shared.poam_fields import _to_date
 from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
+from shared.vendor_dependency import (
+    VD_INVALID_OVERRIDE,
+    VD_NO,
+    VD_NOT_CLOSED,
+    VD_YES,
+    canon_yes_no,
+    finalize_vendor_fields,
+)
 
 LEDGER_IN_REL = Path("poam") / "poam-ledger.json"
 LEDGER_OUT_REL = Path("poam") / "poam-ledger.json"
@@ -55,6 +63,7 @@ TRACKED_FIELDS = (
     "kev_cves",
     "kev_due",
     "vendor_dependency",
+    "vd_source",
     "last_vendor_checkin",
     "vendor_product",
     "point_of_contact",
@@ -311,10 +320,12 @@ def _new_item(
         "status_date": run_date.isoformat(),
         "closed_date": "",
         "closure_evidence": [],
-        "vendor_dependency": "",
-        "vd_source": "",
+        "vendor_dependency": "No",
+        "vd_source": "default",
         "last_vendor_checkin": "",
         "vendor_product": "",
+        "vd_comments": [],
+        "vd_flags": [],
         "point_of_contact": "",
         "remediation_plan": "",
         "prior_poam_id": "",
@@ -334,8 +345,37 @@ def _tracked_snapshot(item: dict[str, Any]) -> dict[str, Any]:
     return {k: item.get(k) for k in TRACKED_FIELDS}
 
 
-def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: date) -> list[str]:
+VD_AUDIT_FIELDS = (
+    "vendor_dependency",
+    "vd_source",
+    "last_vendor_checkin",
+    "vendor_product",
+)
+
+
+def _vd_snapshot(item: dict[str, Any]) -> dict[str, Any]:
+    return {k: item.get(k) for k in VD_AUDIT_FIELDS}
+
+
+def _vd_is_schema_backfill(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    """Pre-#160 rows lack vendor fields. Filling No/default is not a change."""
+    if str(before.get("vendor_dependency") or "").strip():
+        return False
+    if str(before.get("vd_source") or "").strip():
+        return False
+    return (
+        after.get("vendor_dependency") == VD_NO
+        and after.get("vd_source") == "default"
+        and not str(after.get("last_vendor_checkin") or "").strip()
+        and not str(after.get("vendor_product") or "").strip()
+    )
+
+
+def _apply_override(
+    item: dict[str, Any], override: dict[str, str], run_date: date
+) -> tuple[list[str], list[str]]:
     changed: list[str] = []
+    warns: list[str] = []
     mapping = {
         "vendor_dependency": "vendor_dependency",
         "last_vendor_checkin": "last_vendor_checkin",
@@ -344,10 +384,24 @@ def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: da
         "remediation_plan": "remediation_plan",
     }
     for src, dest in mapping.items():
-        if src in override and override[src] != "" and override[src] != item.get(dest):
-            item[dest] = override[src]
+        if src not in override or override[src] == "":
+            continue
+        val = override[src]
+        if dest == "vendor_dependency":
+            canon = canon_yes_no(val)
+            if canon is None:
+                warns.append(
+                    f"{VD_INVALID_OVERRIDE}:{item.get('poam_id')}:{val}"
+                )
+                continue
+            val = canon
+            if item.get("vd_source") != "operator":
+                item["vd_source"] = "operator"
+                changed.append("vd_source")
+        if val != item.get(dest):
+            item[dest] = val
             changed.append(dest)
-    return changed
+    return changed, warns
 
 
 def _already_mapped(ledger: dict[str, Any], src_fp: str, dest_fp: str, poam_id: str = "") -> bool:
@@ -404,6 +458,62 @@ def _legacy_port_only_allowed(rec: dict[str, Any]) -> bool:
     return proto == "tcp"
 
 
+_NMAP_PORT_CHECK_RE = re.compile(r"^nmap-port-(\d+)/(tcp|udp|sctp)$", re.I)
+_NMAP_DISPLAY_TITLES = {
+    ("23", "tcp"): ("Telnet exposed",),
+    ("21", "tcp"): ("FTP exposed",),
+    ("445", "tcp"): ("SMB 445 exposed",),
+    ("3389", "tcp"): ("RDP exposed",),
+    ("22", "tcp"): ("SSH exposed",),
+    ("80", "tcp"): ("HTTP exposed",),
+    ("161", "udp"): ("SNMP 161/udp exposed", "Open port 161/snmp"),
+    ("69", "udp"): ("TFTP 69/udp exposed", "Open port 69/tftp"),
+}
+
+
+def _nmap_legacy_title_records(rec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pre-check_id nmap port rows keyed on display title (Metis §15 ID churn)."""
+    extra = extra_dict(rec)
+    if str(rec.get("source") or "") != "inventory-nmap":
+        return []
+    check = str(extra.get("check_id") or extra.get("id") or "").strip()
+    matched = _NMAP_PORT_CHECK_RE.match(check)
+    port = str(extra.get("port") or "").strip()
+    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    if matched:
+        port, proto = matched.group(1), matched.group(2).lower()
+    elif check and not check.startswith("nmap-port-"):
+        return []
+    if not port or proto not in {"tcp", "udp", "sctp"}:
+        return []
+    svc = str(extra.get("service") or proto or "unknown")
+    titles = [
+        str(rec.get("name") or ""),
+        f"Open port {port}/{svc}",
+        f"Open port {port}/{proto}",
+        f"Open port {port}/{svc or proto or 'unknown'}",
+        f"Open UDP port {port}/{svc}",
+        f"Open UDP port {port}/{proto}",
+        f"UDP {port} open|filtered (not confirmed open)",
+        *_NMAP_DISPLAY_TITLES.get((port, proto), ()),
+    ]
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for title in titles:
+        name = str(title or "").strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        fake = dict(rec)
+        fake["name"] = name
+        fake_extra = {
+            k: v for k, v in extra.items() if k not in {"id", "rule", "check_id"}
+        }
+        fake["extra"] = fake_extra
+        out.append(fake)
+    return out
+
+
 def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
     """Prior fingerprint schemes (#131, pre-#140 port-only, pre-#131 name)."""
     seen: set[str] = set()
@@ -416,6 +526,16 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
         schemes.append((legacy_port_only_asset_key, "port_only_to_port_proto"))
     for fake in _legacy_alias_records(rec):
         for fn, reason in schemes:
+            fp = fp_v1(fake, asset_key_fn=fn)
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, reason))
+    for fake in _nmap_legacy_title_records(rec):
+        for fn, reason in (
+            (asset_key, "nmap_title_to_check_id"),
+            (legacy_asset_id_port_key, "nmap_title_to_check_id"),
+            (legacy_name_asset_key, "nmap_title_to_check_id"),
+        ):
             fp = fp_v1(fake, asset_key_fn=fn)
             if fp and fp not in seen:
                 seen.add(fp)
@@ -581,7 +701,9 @@ def apply_ledger(
     clock = run_at or datetime.now(timezone.utc)
     if clock.tzinfo is None:
         clock = clock.replace(tzinfo=timezone.utc)
-    run_date = clock.date()
+    from shared.poam_fields import utc_run_date
+
+    run_date = utc_run_date(clock)
     run_iso = clock.strftime("%Y-%m-%dT%H:%M:%SZ")
     ledger = deepcopy(ledger_in) if ledger_in is not None else empty_ledger()
     ledger.setdefault("items", {})
@@ -714,9 +836,17 @@ def apply_ledger(
                     )
 
         ov = overrides.get(str(item.get("poam_id") or ""))
+        before_vd = _vd_snapshot(item)
+        closed_now = False
         if ov:
-            changed = _apply_override(item, ov, run_date)
-            if str(ov.get("status") or "").strip().lower() == "closed" and ov.get("evidence_ref"):
+            changed, ov_warns = _apply_override(item, ov, run_date)
+            warnings.extend(ov_warns)
+            closing = (
+                str(ov.get("status") or "").strip().lower() == "closed" and ov.get("evidence_ref")
+            )
+            if closing and canon_yes_no(item.get("vendor_dependency")) == VD_YES:
+                warnings.append(f"{VD_NOT_CLOSED}:{item.get('poam_id')}")
+            elif closing:
                 closed_on = _to_date(ov.get("status_date") or ov.get("closed_date")) or run_date
                 item["status"] = "closed"
                 item["closed_date"] = closed_on.isoformat()
@@ -724,20 +854,56 @@ def apply_ledger(
                 ev = list(item.get("closure_evidence") or [])
                 ev.append(ov.get("evidence_ref"))
                 item["closure_evidence"] = ev
+                closed_now = True
                 ledger["events"].append(
                     _event(run_iso, fp, str(item["poam_id"]), "closed", {"evidence_ref": ov.get("evidence_ref")})
                 )
             elif changed:
-                item["status_date"] = run_date.isoformat()
-                ledger["events"].append(
-                    _event(run_iso, fp, str(item["poam_id"]), "field_changed", {"override": changed})
+                non_vd = [c for c in changed if c not in VD_AUDIT_FIELDS]
+                if non_vd:
+                    item["status_date"] = run_date.isoformat()
+                    ledger["events"].append(
+                        _event(run_iso, fp, str(item["poam_id"]), "field_changed", {"override": non_vd})
+                    )
+        for flag in finalize_vendor_fields(item, rec, run_date=run_date, override=ov or None):
+            warnings.append(f"{flag}:{item.get('poam_id')}")
+        after_vd = _vd_snapshot(item)
+        if (
+            after_vd != before_vd
+            and not closed_now
+            and not _vd_is_schema_backfill(before_vd, after_vd)
+        ):
+            item["status_date"] = run_date.isoformat()
+            ledger["events"].append(
+                _event(
+                    run_iso,
+                    fp,
+                    str(item.get("poam_id") or ""),
+                    "field_changed",
+                    {"before": before_vd, "after": after_vd},
                 )
+            )
 
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
             continue
         if str(item.get("status") or "") == "closed":
             continue
+        before_vd = _vd_snapshot(item)
+        for flag in finalize_vendor_fields(item, None, run_date=run_date):
+            warnings.append(f"{flag}:{item.get('poam_id')}")
+        after_vd = _vd_snapshot(item)
+        if after_vd != before_vd and not _vd_is_schema_backfill(before_vd, after_vd):
+            item["status_date"] = run_date.isoformat()
+            ledger["events"].append(
+                _event(
+                    run_iso,
+                    fp,
+                    str(item.get("poam_id") or ""),
+                    "field_changed",
+                    {"before": before_vd, "after": after_vd},
+                )
+            )
         if str(item.get("vendor_dependency") or "").strip().lower() == "yes":
             continue
         if str(item.get("operational_requirement") or "").strip().lower() in {"yes", "or"}:

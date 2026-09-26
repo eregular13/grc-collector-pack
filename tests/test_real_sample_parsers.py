@@ -8,12 +8,19 @@ SAMPLE/DEMO ≠ client KEEP. No POST /api/risks.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+from datetime import datetime, timezone
 
 from collectors import cloud_prowler, host_wazuh, identity_ad, saas_idp, vuln_scan
 from keep.adapters import detect_family
+from shared.control_map import map_finding
 from shared.enum4linux import parse_enum4linux
+from shared.greenbone import is_greenbone_xml, parse_greenbone
+from shared.kev import collect_cves
 from shared.nikto import is_nikto_payload, parse_nikto
+from shared.poam_fields import SLA_NOTE, poam_fields, utc_run_date
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.testssl import iter_testssl_findings
 
@@ -554,6 +561,7 @@ def test_samples_sources_credits_public_fixtures() -> None:
     assert "client KEEP" in text
     assert "DefectDojo" in text
     assert "ScubaGear" in text
+    assert "localpci-trim.nessus" in text
     assert "/api/risks" in text
     assert "RiskReady" in text
 
@@ -563,14 +571,14 @@ def test_pingcastle_real_riskrules_and_healthcheck_group() -> None:
     findings = _findings(recs)
     assets = {r["name"] for r in recs if r["kind"] == "asset"}
     assert "example.local" in assets
-    assert "Backup Operators" in assets
+    assert "Backup Operators" not in assets
     assert any(r["extra"].get("risk_id") == "A-MinPwdLen" for r in findings)
     minpwd = next(r for r in findings if r["extra"].get("risk_id") == "A-MinPwdLen")
     assert minpwd["severity"] == "medium"
     assert "less than 8" in minpwd["description"]
     assert "example.local" in minpwd["assets"]
-    assert any(r["name"] == "Backup Operators privileged group" for r in findings)
-    assert any("AS-REP" in r["name"] for r in findings)
+    assert not any(r["name"] == "Backup Operators privileged group" for r in findings)
+    assert not any("AS-REP" in r["name"] for r in findings)
     assert not any("contoso" in str(r.get("assets")) for r in recs)
 
 
@@ -589,7 +597,9 @@ def test_greenbone_gmp_xml_and_csv() -> None:
     hit = xml_find[0]
     assert "Firefox" in hit["name"]
     assert hit["severity"] == "critical"
-    assert hit["extra"].get("cve") == "CVE-2023-4573"
+    assert "CVE-2023-4573" in str(hit["extra"].get("cve") or "")
+    assert "CVE-2023-4574" in str(hit["extra"].get("cve") or "")
+    assert hit["extra"].get("cves") == ["CVE-2023-4573", "CVE-2023-4574"]
     assert "10.0.101.2" in hit["assets"]
     assert any(r["kind"] == "asset" and r["name"] == "10.0.101.2" for r in xml_recs)
 
@@ -661,9 +671,9 @@ def test_graph_and_maester_unknown_tenant_not_contoso(tmp_path: Path) -> None:
 
 
 def test_testssl_all_sections_keep_low_medium() -> None:
-    recs = vuln_scan.parse_file(SAMPLES / "testssl" / "finos_robmoff.at_443_vulnerable.json")
+    recs = vuln_scan.parse_file(SAMPLES / "testssl" / "synthetic_pretty_sections.json")
     findings = _findings(recs)
-    ids = {r["name"] for r in findings}
+    ids = {r["extra"].get("id") for r in findings}
     assert "SSLv3" in ids
     assert "TLS1" in ids
     assert "cert_expirationStatus" in ids
@@ -671,19 +681,26 @@ def test_testssl_all_sections_keep_low_medium() -> None:
     assert "LUCKY13" in ids
     assert "heartbleed" not in ids
     assert "TLS1_2" not in ids
-    by_id = {r["name"]: r for r in findings}
+    names = {r["name"] for r in findings}
+    assert "cert_expirationStatus" not in names
+    assert any("expired" in n.lower() or "expiring" in n.lower() for n in names)
+    by_id = {r["extra"].get("id"): r for r in findings}
     assert by_id["SSLv3"]["severity"] == "high"
     assert by_id["TLS1"]["severity"] == "low"
     assert by_id["BREACH"]["severity"] == "medium"
     assert by_id["LUCKY13"]["severity"] == "low"
     assert by_id["cert_expirationStatus"]["severity"] == "high"
+    assert by_id["cert_expirationStatus"]["name"] == "TLS certificate is expired or expiring"
 
     defaults = vuln_scan.parse_file(SAMPLES / "testssl" / "server-defaults.json")
     df = _findings(defaults)
-    assert any(r["name"] == "cert_expirationStatus" and r["severity"] == "high" for r in df)
-    warn = next(r for r in df if r["name"] == "cert_caIssuers")
+    assert any(
+        r["extra"].get("id") == "cert_expirationStatus" and r["severity"] == "high" for r in df
+    )
+    warn = next(r for r in df if r["extra"].get("id") == "cert_caIssuers")
     assert warn["severity"] == "info"
     assert "scan-error" in warn["labels"]
+    assert warn["name"] != "cert_caIssuers"
 
 
 def test_testssl_demo_still_keeps_high() -> None:
@@ -712,14 +729,16 @@ def test_nikto_26_json_list_and_sensible_severity() -> None:
     assert "uncommon header" not in msgs
     assert "retrieved via header" not in msgs
     assert any("breach" in r["description"].lower() for r in findings)
-    assert all(r["severity"] in {"low", "medium", "high", "critical"} for r in findings)
+    assert all(r["severity"] in {"info", "low", "medium", "high", "critical"} for r in findings)
     assert not any(r["severity"] == "high" and "robots.txt" in r["description"] for r in findings)
 
 
-def test_nikto_juice_shop_drops_soft404_backup_noise() -> None:
+def test_nikto_juice_shop_keeps_backup_file_hits() -> None:
     recs = vuln_scan.parse_file(SAMPLES / "nikto" / "juice-shop-trim.json")
     findings = _findings(recs)
-    assert not any("backup/cert file" in r["description"].lower() for r in findings)
+    backups = [r for r in findings if "backup/cert file" in r["description"].lower()]
+    assert backups, "Nikto 740001 backup/cert hits must not be dropped"
+    assert all(r["severity"] in {"medium", "high", "critical"} for r in backups)
     assert not any("strict-transport-security" in r["description"].lower() for r in findings)
     assert any("lfi" in r["description"].lower() or "directory-traversal" in r["description"].lower() for r in findings)
     lfi = next(r for r in findings if "lfi" in r["description"].lower() or "nextgen" in r["description"].lower())
@@ -751,7 +770,7 @@ def test_iter_testssl_protocols_not_just_vulnerabilities() -> None:
     import json
 
     payload = json.loads(
-        (SAMPLES / "testssl" / "finos_robmoff.at_443_vulnerable.json").read_text(encoding="utf-8")
+        (SAMPLES / "testssl" / "synthetic_pretty_sections.json").read_text(encoding="utf-8")
     )
     rows = list(iter_testssl_findings(payload))
     ids = {r["id"] for r in rows}
@@ -766,3 +785,230 @@ def test_parse_nikto_reads_list_of_hosts() -> None:
     assert rows is not None
     assert len(rows) == 7
     assert rows[0]["host"] == "example.com"
+
+
+def test_nessus_localpci_cves_survive_into_findings_for_kev() -> None:
+    """Metis §7.1: localpci has 156 <cve> tags. Keep stays non-info; KEV can join."""
+    path = SAMPLES / "nessus" / "localpci-trim.nessus"
+    text = path.read_text(encoding="utf-8")
+    assert text.count("<cve>") == 156
+    assert "Not a client KEEP" in text
+    recs = vuln_scan.parse_file(path)
+    findings = _findings(recs)
+    assert len(findings) == 73
+    joined: list[str] = []
+    for rec in findings:
+        extra = rec.get("extra") or {}
+        assert extra.get("tool") == "nessus"
+        assert rec.get("client") is not True
+        assert extra.get("client_keep") is not True
+        joined.extend(collect_cves(rec))
+    unique = set(joined)
+    assert len(joined) == 155
+    assert len(unique) == 155
+    assert "CVE-1999-0632" not in unique  # info plugin 10223; keep not widened
+    assert any("CVE-2000-0666" in (r.get("extra") or {}).get("cve", "") for r in findings)
+    assert detect_family(path) is None
+    sources = (SAMPLES / "SOURCES.md").read_text(encoding="utf-8")
+    assert "localpci-trim.nessus" in sources
+    assert "156" in sources
+    assert "SAMPLE ≠ client KEEP" in sources or "SAMPLE/DEMO" in sources
+
+
+def test_greenbone_keeps_all_cves_and_detects_large_report(tmp_path: Path) -> None:
+    recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
+    hit = _findings(recs)[0]
+    assert collect_cves(hit) == ["CVE-2023-4573", "CVE-2023-4574"]
+    assert "10-0-101-2" in hit["ref_id"]
+
+    pad = "x" * 13000
+    large = (
+        '<?xml version="1.0"?>\n'
+        '<report id="large" extension="xml" content_type="text/xml">\n'
+        f"  <gmp><version>9.0</version></gmp>\n"
+        f"  <!-- {pad} -->\n"
+        "  <results><result>\n"
+        "    <name>Late NVT</name>\n"
+        "    <host>10.0.0.9</host>\n"
+        "    <port>443/tcp</port>\n"
+        '    <nvt oid="1.3.6.1.4.1.25623.1.0.1">\n'
+        "      <name>Late NVT</name>\n"
+        "      <refs><ref id=\"CVE-2024-9999\" type=\"cve\"/></refs>\n"
+        "    </nvt>\n"
+        "    <threat>High</threat><severity>7.5</severity>\n"
+        "    <description>result after 12k of padding</description>\n"
+        "  </result></results>\n"
+        "</report>\n"
+    )
+    assert "<result" not in large[:12000]
+    assert is_greenbone_xml(large, "scan.xml")
+    dest = tmp_path / "large-gmp.xml"
+    dest.write_text(large, encoding="utf-8")
+    parsed = parse_greenbone(dest)
+    assert parsed is not None
+    assert parsed[0]["cves"] == ["CVE-2024-9999"]
+    late = vuln_scan.parse_file(dest)
+    assert _findings(late)
+    assert "10-0-0-9" in _findings(late)[0]["ref_id"]
+
+
+def test_nikto_backup_hits_medium_unmatched_info() -> None:
+    recs = vuln_scan.parse_file(SAMPLES / "nikto" / "juice-shop-trim.json")
+    findings = _findings(recs)
+    backups = [r for r in findings if r["extra"].get("id") == "740001"]
+    assert backups
+    assert all(r["severity"] in {"medium", "high", "critical"} for r in backups)
+
+    issue = vuln_scan.parse_file(SAMPLES / "nikto" / "issue_9274.json")
+    robots = [r for r in _findings(issue) if "robots.txt" in r["description"] and "contains 1 entry" in r["description"]]
+    assert robots
+    assert all(r["severity"] == "info" for r in robots)
+
+
+def test_pingcastle_group_rules_honor_member_count_zero_points_info() -> None:
+    recs = identity_ad.parse_file(SAMPLES / "pingcastle" / "synthetic_group_membership.xml")
+    findings = _findings(recs)
+    risk_ids = {r["extra"].get("risk_id") for r in findings}
+    assert "A-ZeroPoint" in risk_ids
+    zero = next(r for r in findings if r["extra"].get("risk_id") == "A-ZeroPoint")
+    assert zero["severity"] == "info"
+    empty = {
+        "P-BackupOperators",
+        "P-AccountOperators",
+        "P-PrintOperators",
+        "P-ServerOperators",
+    }
+    present = {
+        "P-SchemaAdmins",
+        "P-EnterpriseAdmins",
+        "P-DomainAdmins",
+        "P-Administrators",
+    }
+    assert empty.isdisjoint(risk_ids)
+    assert present <= risk_ids
+    assert not any(r["name"] == "Backup Operators privileged group" for r in findings)
+    assert len(empty | present) == 8
+
+
+def test_scuba_tenant_label_from_domain_not_guid(tmp_path: Path) -> None:
+    recs = saas_idp.parse_file(SAMPLES / "scuba" / "ScubaResults_sample.json")
+    findings = _findings(recs)
+    assert findings
+    assert all("example.onmicrosoft.com" in r["assets"] for r in findings)
+    assert not any("11111111-2222-3333-4444-555555555555" in r["assets"] for r in findings)
+
+    guid_only = tmp_path / "scuba-guid-only.json"
+    guid_only.write_text(
+        json.dumps(
+            {
+                "MetaData": {"TenantId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"},
+                "Results": {
+                    "AAD": [
+                        {
+                            "GroupName": "Legacy",
+                            "Controls": [
+                                {
+                                    "Control ID": "MS.AAD.1.1v1",
+                                    "Requirement": "Legacy authentication SHALL be blocked",
+                                    "Result": "Fail",
+                                    "Criticality": "Shall",
+                                    "Details": "blocked",
+                                }
+                            ],
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    guid_recs = saas_idp.parse_file(guid_only)
+    guid_find = _findings(guid_recs)
+    assert guid_find
+    assert all("unknown" in r["assets"] for r in guid_find)
+    assert not any("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" in r["assets"] for r in guid_find)
+
+
+def test_testssl_keeps_not_offered_when_severity_is_real() -> None:
+    recs = vuln_scan.parse_file(SAMPLES / "testssl" / "synthetic_not_offered.json")
+    findings = _findings(recs)
+    by_id = {r["extra"].get("id"): r for r in findings}
+    assert "TLS1_2" in by_id and by_id["TLS1_2"]["severity"] == "critical"
+    assert "TLS1_3" in by_id and by_id["TLS1_3"]["severity"] == "medium"
+    assert "TLS1" in by_id and by_id["TLS1"]["severity"] == "low"
+    assert "SSLv2" not in by_id
+    assert "SSLv3" not in by_id
+    assert "tls-example-test" in by_id["TLS1_2"]["ref_id"]
+    assert by_id["TLS1_2"]["name"] != "TLS1_2"
+
+
+def test_fixture_honesty_real_vs_synthetic() -> None:
+    sources = (SAMPLES / "SOURCES.md").read_text(encoding="utf-8")
+    assert "byte-true" in sources.lower()
+    assert "synthetic" in sources.lower()
+    assert "TenantName" in sources and "not in the schema" in sources.lower() or "No `TenantName`" in sources
+
+    pc = (SAMPLES / "pingcastle" / "one.xml").read_text(encoding="utf-8")
+    assert "ListNoPreAuth" not in pc
+    assert "A-MinPwdLen" in pc
+    assert (SAMPLES / "pingcastle" / "synthetic_group_membership.xml").is_file()
+
+    scuba = json.loads((SAMPLES / "scuba" / "ScubaResults_sample.json").read_text(encoding="utf-8"))
+    assert "TenantName" not in scuba.get("MetaData", {})
+    assert scuba["MetaData"]["DomainName"] == "example.onmicrosoft.com"
+
+    assert not (SAMPLES / "testssl" / "finos_robmoff.at_443_vulnerable.json").exists()
+    assert (SAMPLES / "testssl" / "synthetic_pretty_sections.json").is_file()
+    assert (SAMPLES / "testssl" / "synthetic_not_offered.json").is_file()
+    nessus = (SAMPLES / "nessus" / "localpci-trim.nessus").read_text(encoding="utf-8")
+    assert nessus.count("<cve>") == 156
+    assert "Not a client KEEP" in nessus
+
+
+def test_greenbone_scan_start_feeds_detection_date() -> None:
+    recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
+    hit = _findings(recs)[0]
+    assert hit["extra"].get("scan_time") == "2023-09-28T14:48:02Z"
+    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    assert fields["original_detection_date"] == "2023-09-28"
+    assert fields["scheduled_completion_date"] != "pending due date"
+    assert fields["scheduled_completion_date"] != "not recorded"
+
+    csv_recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.csv")
+    csv_hit = _findings(csv_recs)[0]
+    assert csv_hit["extra"].get("scan_time") == "2021-02-25T20:01:27Z"
+    csv_fields = poam_fields(csv_hit, map_finding(csv_hit), utc_run_date())
+    assert csv_fields["original_detection_date"] == "2021-02-25"
+
+
+def test_scuba_timestamp_zulu_feeds_detection_date() -> None:
+    recs = saas_idp.parse_file(SAMPLES / "scuba" / "ScubaResults_sample.json")
+    hit = _findings(recs)[0]
+    assert hit["extra"].get("scan_time") == "2024-03-20T18:42:05.043Z"
+    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    assert fields["original_detection_date"] == "2024-03-20"
+    assert fields["scheduled_completion_date"] != "pending due date"
+
+
+def test_poam_status_date_is_utc_across_exports() -> None:
+    utc_day = datetime.now(timezone.utc).date().isoformat()
+    assert utc_run_date().isoformat() == utc_day
+    assert "status_date is the UTC" in SLA_NOTE
+    schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
+    assert "UTC calendar day" in schema
+    recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
+    hit = _findings(recs)[0]
+    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    assert fields["status_date"] == utc_day
+    assert len(fields["status_date"]) == 10
+
+
+def test_pingcastle_rule_specific_remediation() -> None:
+    recs = identity_ad.parse_file(SAMPLES / "pingcastle" / "one.xml")
+    minpwd = next(r for r in _findings(recs) if r["extra"].get("risk_id") == "A-MinPwdLen")
+    mapped = map_finding(minpwd)
+    assert mapped.get("generic") is False
+    assert "minimum password length" in mapped["recommended_fix"].lower()
+    assert "hardeningkitty" not in mapped["recommended_fix"].lower()
+    assert "generic fallback" not in mapped["recommended_fix"].lower()
+    assert mapped["control_name"] == "Raise domain minimum password length"

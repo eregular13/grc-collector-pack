@@ -1,5 +1,123 @@
 # CYCLE log
 
+## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;
+after `22d085f` #157 and `befc7d0` #162). No rebase. Vendor
+persist/audit/backfill kept. Pytest **1333**. Host-lab unchanged
+(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 211 — merge master 22d085f (#157) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `22d085f` (#157 B6 playbooks; after
+`befc7d0` #162). No rebase. Vendor backfill baseline kept. Pytest
+**1331**. Host-lab unchanged (79 / 107 / poam 124 / excluded 5).
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+## cycle 210 — pre-#160 vendor backfill is not a field change (2026-09-26)
+
+Upgrade run over a ledger without O/P/Q fills No/default as a schema
+baseline: no `field_changed`, no Status Date churn. Merged
+`origin/master` `befc7d0` (#162) with a normal merge. Pytest **1314**.
+Host-lab unchanged (79 / 107 / poam 124 / excluded 5). Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
+## cycle 209 — persist operator No + O/P/Q audit (#160) (2026-09-26)
+
+Metis acceptance: operator Vendor Dependency=No persists across later
+runs without overrides.csv (`vd_source=operator`). Any O/P/Q /
+`vd_source` change updates `status_date` and writes `field_changed`.
+Invalid override tokens warn. Vendor-dependent Yes stays off Closed.
+Fingerprint / EGP IDs unchanged. Pytest **1309**. Host-lab unchanged
+(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 208 — merge master 1be65cf (#159) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `1be65cf` (#159 hermetic farm_which PATH).
+No rebase. Gap 2 O/P/Q kept. Pytest **1305**. Host-lab unchanged.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 207 — POA&M Gap 2 vendor dependency O/P/Q (2026-09-26)
+
+FedRAMP R3.0 Open O/P/Q: Vendor Dependency defaults to **No**
+(`vd_source=default`), never invents Yes. Scanner no-fix is
+suggestion-only. Operator override persists on the ledger. P/Q blank
+when No; Q is `Vendor – Product` when Yes. KEV due dates are not
+suspended. Host-lab unchanged: assets **79** findings **107** poam
+**124** excluded **5**. Pytest **1304**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed
+risky ports so UDP 445 is not SMB). No rebase. #139 follow-ups +
+#141 computer-SPN / DC filters + PingCastle 0-member skip kept.
+Host-lab unchanged: assets **79** findings **107** poam **124**
+excluded **5**. Pytest **1288**. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 205 — merge master 9f73537 (#141) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `9f73537` (#141 real-tool collector
+honesty + #152 CSF tags + #151 honeypot exclude). No rebase. #139
+follow-ups + Argus B4 + empty-group PingCastle skip kept alongside
+#141 computer-SPN / DC-delegation filters. Host-lab: assets **79**
+findings **107** poam **124** excluded **5** (3 honeypot + 1 Wazuh
+telemetry + 1 superseded_by_specific). Pytest **1287**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 203 — merge master 51bba3c (#134) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux).
+No rebase. #139 follow-ups + Argus B4 + #144/#140/#147 kept. SOURCES.md is the union.
+Host-lab: assets **78** findings **104** poam **124** excluded **2**
+(telemetry + superseded_by_specific). Pytest **1246**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 199 — merge master 9aeb229 (#144+#140+#147) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `9aeb229` (#144 port-fold + #140
+discovery/web + #147 ledger lifecycle; also #146/#142/#138). No rebase, no force-push.
+#139 follow-ups kept: Greenbone all CVEs + root detect + Timestamp/
+scan_start; Nikto 740001 kept / unmatched info; PingCastle 8 group
+rules honor member count + 0-point info; ScubaGear DomainName +
+TimestampZulu; testssl not-offered only OK/INFO; UTC status_date;
+fixture honesty. Argus B4: case-insensitive scan_time keys including
+Greenbone `Timestamp` and Scuba `TimestampZulu`. Host-lab after merge:
+assets **78** findings **104** vulnerabilities **22** weaknesses **126**
+poam **125** excluded **1** (`superseded_by_specific`). Vs prior #145
+stamp 84/103/125: assets 84→78 is #138 EGA- collapse; findings +1 is
+#140 second httpx URL; poam stays 125 because #144 folds one nmap
+port-only row (weaknesses 126 − 1). Not a MIN_ loosen. Also merged `9aeb229` (#147 ledger
+lifecycle) — host-lab counts unchanged. Pytest **1225**.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+## cycle 196 — #139 real-sample parser follow-ups (2026-09-26)
+
+Greenbone keeps all CVE refs (feeds #131 KEV) and detects GMP on the
+root `<report>` / `<gmp>` shape, not the first 12k chars. Nikto 740001
+backup/cert hits stay medium+; unmatched rows are info. PingCastle's 8
+group-membership RiskIds honor `NumberOfMember` (0 → no finding);
+0-point rules are info. ScubaGear tenant label is DomainName /
+TenantDisplayName, never the TenantId GUID. testssl drops `not offered`
+only when severity is OK/INFO. Invented PingCastle ListNoPreAuth,
+ScubaGear TenantName, and FINOS-named testssl rows moved to clearly
+named synthetic fixtures; `one.xml` is byte-true DefectDojo.
+Host-lab assets/findings **unchanged** 84 / 103. POA&M restamped
+111→125: this run's loader writes a full plan (`excluded=0`,
+`poam==weaknesses==125`). Pytest **1147** (+6 follow-up tests; prior
+STATUS 1087 was a stale stamp vs 1f8d347). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+Cold-review add-on: Greenbone `scan_start`/`Timestamp` and ScubaGear
+`TimestampZulu` feed `extra.scan_time` → #131 detection date (15/30/90/180).
+`status_date` is UTC YYYY-MM-DD on poam.csv / poam_fedramp.csv / ledger.
+PingCastle `A-MinPwdLen` gets a rule-specific password-length fix.
+
 ## cycle 202 — merge master #147 ledger lifecycle; keep Wazuh telemetry (2026-09-26)
 
 Merge `origin/master` `9aeb229` without rebase. #147 multi-run POA&M

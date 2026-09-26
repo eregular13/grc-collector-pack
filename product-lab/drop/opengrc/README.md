@@ -23,4 +23,4 @@ These CSVs match the OpenGRC Data Manager import wizard (https://docs.opengrc.co
 4. Download the in-app CSV template if the wizard rejects a header; map columns.
 5. Status is **Not Assessed**. Owner / department / taxonomy FKs stay blank.
 
-posted=false. No REST. RiskReady is stay-out. This is not a paying-day PASS.
+posted=false. No REST. This is not a paying-day PASS.
