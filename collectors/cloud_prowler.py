@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from shared.asset_ids import stamp_ids
 from shared.io_util import iso_now, read_json, run_collector
 from shared.schema import make_record, make_ref
 
@@ -218,7 +219,10 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     assets=[rid],
                     labels=LABELS + [service],
                     collected_at=now,
-                    extra={"asset_type": asset_type, "arn": arn, "service": service},
+                    extra=stamp_ids(
+                        {"asset_type": asset_type, "arn": arn, "service": service},
+                        arn=arn,
+                    ),
                 )
             )
         if status in {"", "FAIL", "FAILED", "MANUAL"}:
