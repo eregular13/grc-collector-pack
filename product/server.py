@@ -1013,16 +1013,13 @@ def estate() -> dict:
     if not isinstance(summary, dict):
         summary = {}
     summary = _count_identity_summary(out, summary)
-    findings = _read_csv(out / "ciso-assistant" / "findings.csv")
-    sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-    for row in findings:
-        key = str(row.get("severity") or "").lower()
-        if key in sev:
-            sev[key] += 1
     honesty = derive_honesty(out, summary)
     ready = bool(summary)
     mode = refresh_mode_for(honesty, ready)
     poam = poam_rows(out)
+    poam_kpi = poam_summary(out, poam)
+    # One severity count on screen, from the POA&M register (includes vulns).
+    sev = dict(poam_kpi.get("severity") or {"critical": 0, "high": 0, "medium": 0, "low": 0})
     coverage = framework_coverage(out)
     sinks = leavebehind_sinks(out)
     return {
@@ -1043,7 +1040,7 @@ def estate() -> dict:
         "refresh_mode": mode,
         "summary": summary,
         "severity": sev,
-        "poam": poam_summary(out, poam),
+        "poam": poam_kpi,
         "coverage": coverage,
         "opengrc": sinks["opengrc"],
         "probo": sinks["probo"],
