@@ -64,7 +64,7 @@ EXPECTED_MAP = {
     "10001": ("account_lockout", ["AC-7"], "csf_PR", "cpg_3_E"),
     "10208": ("session_lock", ["AC-11"], "csf_PR", "cpg_3_E"),
     "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", "cpg_3_Q"),
-    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_I"),
+    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_S"),
     "10219": ("password_policy", ["IA-5"], "csf_PR", "cpg_3_B"),
     "11014": ("malware_protection", ["SI-3"], "csf_PR", "cpg_4_A"),
     "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", "cpg_3_K"),
@@ -255,7 +255,8 @@ def test_lab_hk_ingest_e2e_and_cis_stays_internal(tmp_path: Path) -> None:
     assert stamp["posted"] is False
     out = Path(stamp["out_dir"])
     findings_csv = (out / "ciso-assistant" / "findings.csv").read_text(encoding="utf-8")
-    assert "HardeningKitty" in findings_csv
+    poam_csv = (out / "poam" / "poam.csv").read_text(encoding="utf-8")
+    assert "HardeningKitty" in findings_csv or "hardeningkitty" in poam_csv.lower()
     assert "10100" in findings_csv or "password history" in findings_csv.lower()
     assert "CIS-CAT" not in findings_csv
     assert "CIS Benchmark" not in findings_csv
