@@ -341,7 +341,13 @@ def _location_suffix(rec: dict[str, Any]) -> str:
             seen.add(token)
             bits.append(token)
     port = _extra_field(extra, "port")
-    if not port or port == "0":
+    has_plugin = False
+    for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id", "id"):
+        val = _extra_field(extra, key)
+        if val and _is_scanner_identity(val):
+            has_plugin = True
+            break
+    if (not port or port == "0") and not has_plugin:
         svc = _extra_field(extra, "service")
         if svc:
             token = f"service:{svc.lower()}"
