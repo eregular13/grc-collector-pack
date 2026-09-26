@@ -1,3 +1,17 @@
+# CRITIC — cycle 197 (METIS11_PR140)
+
+Lab this brick: pytest **1160** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
+`assets=55` `findings=174` `poam=106` (unchanged vs cycle 196).
+Zero P0/P1. Metis §11: port-only → port/proto ledger migration;
+httpx status/soft-404; UDP open|filtered info; smbmap NULL only
+unauthenticated; naabu CDN edge not findings; vulners rollup.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 196 (MERGE_137_DISCOVERY_WEB)
 
 Lab this brick: pytest **1154** passed, 1 skipped. Ten collectors +

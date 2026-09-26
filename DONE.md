@@ -19,8 +19,8 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "canonical": 216,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:46:31Z"
+  "generated_at": "2026-09-26T06:55:31Z"
 }
 ```
 
-Cycle 196 restamp after merge `1f8d347` #137 into discovery/web (pytest 1154; assets 85 / findings 104 / poam 126). CoS #48 rails above stand.
+Cycle 197 Metis §11 on #140 (pytest 1160; host-lab 85 / 104 / 126 unchanged; farm 55 / 174 / 106 unchanged). Cycle 196 restamp after merge `1f8d347` #137 into discovery/web stands as history. CoS #48 rails above stand.

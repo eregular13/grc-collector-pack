@@ -1,5 +1,19 @@
 # CYCLE log
 
+## cycle 197 — Metis §11 review of #140 (2026-09-26)
+
+Ledger migration `host:22` → `host:22/tcp` keeps EGP- ID + earliest
+detection date (no `pending_verification`). httpx: 2xx/3xx (401/403
+only on admin paths) + soft-404; `admin.*` does not flag every URL.
+UDP `open|filtered` is info. smbmap NULL only when unauthenticated and
+shown (no Guest fixture). naabu CDN edge ports are not findings.
+vulners: one finding per CVE at CVSS ≥ 7 or KEV; lower CVEs roll up.
+Host-lab unchanged vs cycle 196: assets **85** findings **104**
+vulnerabilities **22** poam **126**. Farm pack_drop unchanged:
+assets **55** findings **174** poam **106**. pytest **1160**
+(+6 Metis tests). Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 196 — merge master 1f8d347 #137 into discovery/web (#140) (2026-09-26)
 
 Normal merge of `origin/master` `1f8d347` (#137 same-rule per asset +
