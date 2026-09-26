@@ -831,15 +831,50 @@ def test_reformat_mutations_of_sample_fixtures_cannot_claim_client(
     _assert_mutated_fixture_not_client(tmp_path, src, mutated)
 
 
-def test_pack_catalog_disk_cache_roundtrip() -> None:
+def test_planted_tmp_grc_estate_fp_has_no_effect(tmp_path: Path) -> None:
+    """A file under /tmp/grc-estate-fp must not change SAMPLE/CLIENT."""
+    import hashlib
+    import tempfile
+
     import shared.estate_pages as ep
 
+    src = Path(ep.__file__).read_text(encoding="utf-8")
+    assert "grc-estate-fp" not in src
+    assert "_load_disk_catalog" not in src
+    assert "_store_disk_catalog" not in src
+
+    live = b"<nmaprun unique='planted-cache-must-not-hit'/>\n"
+    live_hash = hashlib.sha256(live).hexdigest()
+    planted = Path(tempfile.gettempdir()) / "grc-estate-fp"
+    planted.mkdir(parents=True, exist_ok=True)
+    (planted / "planted.hashes").write_text(live_hash + "\n" + "00" * 32 + "\n")
+    (planted / "planted.hashes.tmp").write_text(live_hash + "\n")
+
     ep._FIXTURE_HASH_CACHE = None
-    first = fixture_content_hashes()
-    assert first
-    ep._FIXTURE_HASH_CACHE = None
-    second = fixture_content_hashes()
-    assert first == second
+    dest_in = tmp_path / "in"
+    dest_in.mkdir()
+    (dest_in / "live.xml").write_bytes(live)
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind == "CLIENT"
+    assert stamp.label == "CLIENT: AcmeHealth"
+
+    sample_in = tmp_path / "sample"
+    sample_in.mkdir()
+    src_fix = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    (sample_in / "fping-a.txt").write_bytes(src_fix.read_bytes())
+    sample = classify_estate(
+        [_finding("f1")],
+        in_dir=sample_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert sample.kind in {"SAMPLE", "MIXED"}
+    assert sample.kind != "CLIENT"
 
 
 def test_pack_fixture_manifest_matches_on_disk() -> None:
