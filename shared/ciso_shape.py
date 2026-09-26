@@ -54,7 +54,7 @@ CISO_HEADERS = {
 }
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
-EXCLUDED_HEADER = "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by"
+EXCLUDED_HEADER = "id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by"
 EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
@@ -154,12 +154,14 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
             f"COUNT_CONSISTENCY_FAIL poam_included={included} != poam={summary.get('poam')}"
         )
     pending_carried = int(summary.get("pending_carried") or 0)
+    kind_excluded = int(summary.get("kind_excluded") or 0)
     if "weaknesses" in summary:
-        expected = int(summary.get("weaknesses") or 0) + pending_carried
+        expected = int(summary.get("weaknesses") or 0) + pending_carried + kind_excluded
         if total != expected:
             raise RegisterShapeError(
                 f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
                 f"weaknesses={summary.get('weaknesses')}"
+                + (f" + kind_excluded={kind_excluded}" if kind_excluded else "")
                 + (f" + pending_carried={pending_carried}" if pending_carried else "")
             )
     return {
@@ -172,6 +174,49 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
 
 class RegisterShapeError(ValueError):
     """CISO risk register or POA&M is missing, header-wrong, or empty when findings exist."""
+
+
+def assert_input_export_accounting(
+    parsed: list[dict[str, Any]],
+    poam_rows: list[dict[str, Any]],
+    excluded_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Every finding/excluded input record is in exactly one of poam.csv or excluded.csv."""
+    keys: list[str] = []
+    for rec in parsed:
+        if rec.get("kind") not in {"finding", "excluded"}:
+            continue
+        key = str(rec.get("ref_id") or "").strip()
+        if key:
+            keys.append(key)
+    unique = list(dict.fromkeys(keys))
+    poam_ids = {
+        str(row.get("finding_ref_id") or row.get("id") or "").strip()
+        for row in poam_rows
+    }
+    poam_ids.discard("")
+    ex_ids = {
+        str(row.get("finding_ref_id") or row.get("id") or "").strip()
+        for row in excluded_rows
+    }
+    ex_ids.discard("")
+    both = sorted(poam_ids & ex_ids)
+    if both:
+        raise RegisterShapeError(
+            f"ACCOUNTING_FAIL in both poam.csv and excluded.csv: {both}"
+        )
+    exported = poam_ids | ex_ids
+    missing = [key for key in unique if key not in exported]
+    if missing:
+        raise RegisterShapeError(
+            f"ACCOUNTING_FAIL missing record keys: {missing}"
+        )
+    return {
+        "ok": True,
+        "parsed": len(unique),
+        "poam": len(poam_ids),
+        "excluded": len(ex_ids),
+    }
 
 
 def first_nonempty_line(path: Path) -> str:
@@ -389,7 +434,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
             EXCLUDED_HEADER + "\n"
-            "DEMO-I,sample-info,sample-asset,info,severity_info,\n"
-            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,\n",
+            "DEMO-I,DEMO-I,sample-info,sample-asset,info,severity_info,\n"
+            "DEMO-H,DEMO-H,sample-honeypot,sample-asset,high,honeypot,\n",
             encoding="utf-8",
         )

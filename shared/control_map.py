@@ -860,6 +860,9 @@ def _is_custodian_not_a_weakness(rec: dict[str, Any]) -> bool:
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     mapped = _map_finding_body(rec)
+    if rec.get("kind") == "excluded":
+        mapped = dict(mapped)
+        mapped["include_poam"] = False
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
         mapped = dict(mapped)
         mapped["include_poam"] = False
@@ -894,15 +897,40 @@ def _is_unauth_redis(rec: dict[str, Any]) -> bool:
     )
 
 
+def _is_needs_review(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("needs_review") is True:
+        return True
+    return str(extra.get("classification") or "").strip().lower() == "needs-review"
+
+
 def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if _is_needs_review(rec):
+        return _stamp_csf(
+            {
+                "control_name": "Needs review (unclassified Cloud Custodian policy)",
+                "recommended_fix": (
+                    "This Cloud Custodian policy matched no known security or "
+                    "cost/ops classification. It stays on the POA&M as "
+                    "needs-review until an operator maps it. Do not drop it."
+                ),
+                "cpg": [],
+                "include_poam": True,
+                "generic": False,
+                "finding_type": "needs_review",
+                "weakness_name": "Needs review (unclassified Cloud Custodian policy)",
+                "key_medium": True,
+            },
+            rec,
+        )
     if _is_custodian_not_a_weakness(rec):
         return _stamp_csf(
             {
                 "control_name": "Cost or operations signal (not a control weakness)",
                 "recommended_fix": (
-                    "This Cloud Custodian match is a cost/ops or unmapped policy, "
+                    "This Cloud Custodian match is a cost/ops policy, "
                     "not a security control failure. Do not open a High POA&M. "
                     "Map the policy to a control if it should be treated as a finding."
                 ),
@@ -910,7 +938,7 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
                 "include_poam": False,
                 "generic": False,
                 "finding_type": "not_a_weakness",
-                "weakness_name": "Not a weakness (cost/ops or unmapped Custodian policy)",
+                "weakness_name": "Not a weakness (cost/ops Custodian policy)",
             },
             rec,
         )
@@ -1873,6 +1901,7 @@ POAM_INCLUDE_REASONS = frozenset(
         "key_medium",
         "severity_low",
         "severity_medium",
+        "needs_review",
     }
 )
 POAM_EXCLUDE_REASONS = frozenset(
@@ -1887,6 +1916,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry_duplicate",
         "superseded_by_specific",
         "not_a_weakness",
+        "unmapped",
     }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
@@ -1964,8 +1994,10 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
 
     Default (full) plan includes every non-info, non-honeypot weakness.
     NSE misconfig is always included. Honeypot / deception-sensor is always
-    excluded. Cost/ops or unmapped Custodian policies are NOT_A_WEAKNESS.
-    Informational is excluded (telemetry_info for telemetry-only
+    excluded. Cost/ops Custodian policies are NOT_A_WEAKNESS. Unclassified
+    Custodian policies stay on the plan as needs_review (never a silent
+    drop). kind:excluded rows (osquery unmapped, Custodian cost) land in
+    excluded.csv. Informational is excluded (telemetry_info for telemetry-only
     rows). Status is not a gate. Repeated telemetry lows are collapsed by
     iter_poam_decisions, not here.
 
@@ -1979,6 +2011,13 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     key_medium = bool(mapped.get("key_medium"))
     if lighter is None:
         lighter = poam_lighter_requested()
+    if rec.get("kind") == "excluded":
+        reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "unmapped")
+        if reason not in POAM_EXCLUDE_REASONS:
+            reason = "unmapped"
+        return {"include": False, "reason": reason, "severity": sev}
+    if _is_needs_review(rec):
+        return {"include": True, "reason": "needs_review", "severity": sev}
     if _is_custodian_not_a_weakness(rec):
         return {"include": False, "reason": "NOT_A_WEAKNESS", "severity": sev}
     if check in MISCONFIG_RULES:

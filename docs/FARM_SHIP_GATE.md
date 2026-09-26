@@ -71,7 +71,7 @@ printed as metadata. Changing HEAD without touching the surface is skip.
 - Full POA&M plan (Evergreen default schedule): Lows (180-day) and non-key
   Mediums (90-day) stay **on** the plan. Infos + honeypot hits go to
   `poam/excluded.csv`
-  (`finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by`).
+  (`id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by`).
   Measured farm_drop after port-only fold: findings=174, poam=106,
   excluded=68 (60 info + 8 honeypot). No `superseded_by_specific` rows —
   pack_drop is exposure-only, so bare port-open rows have no specific

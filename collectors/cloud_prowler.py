@@ -343,18 +343,18 @@ def _c7n_has_token(tokens: set[str], keyword: str) -> bool:
     return kw in tokens or kw.replace("-", "_") in tokens or kw.replace("_", "-") in tokens
 
 
-def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
+def _custodian_classify(pname: str, pol: dict[str, Any]) -> str:
     """Operator map first. Else whole-token on name / description / resource.
 
     Filters (including tag values) are not gated. On keyword conflict,
-    security wins (master behavior). Cost-only or no match → off.
-    Named cost policies stay off via ``_C7N_COST_NAMES``.
+    security wins. Cost-only → ``cost``. No known match → ``unknown``
+    (POA&M needs-review; never a silent drop).
     """
     low = pname.lower()
     if low in _C7N_SECURITY_NAMES:
-        return True
+        return "security"
     if low in _C7N_COST_NAMES:
-        return False
+        return "cost"
     tokens = _c7n_tokens(pname, pol.get("description"), pol.get("resource"))
     blob = " ".join(
         (
@@ -367,10 +367,23 @@ def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
     has_security = has_special or any(_c7n_has_token(tokens, kw) for kw in _C7N_SECURITY)
     has_cost = any(_c7n_has_token(tokens, kw) for kw in _C7N_NOT_WEAKNESS)
     if has_security:
-        return True
+        return "security"
     if has_cost:
-        return False
-    return False
+        return "cost"
+    return "unknown"
+
+
+def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
+    """True only for a known security classification. Unknown is not security."""
+    return _custodian_classify(pname, pol) == "security"
+
+
+def _account_asset_id(account: str) -> str:
+    """Placeholder Prowler resources stay under account:<uid or unknown>."""
+    acct = str(account or "").strip()
+    if not acct or is_placeholder_id(acct):
+        acct = "unknown"
+    return f"account:{acct}"
 
 
 def _custodian_generic_id(res: dict[str, Any]) -> str:
@@ -628,7 +641,7 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
         resource = str(pol.get("resource") or "cloud")
         service = resource.split(".")[-1] if resource else "cloud"
         rows = pol.get("resources") if isinstance(pol.get("resources"), list) else []
-        security = _custodian_is_security(pname, pol)
+        klass = _custodian_classify(pname, pol)
         path = pol.get("_path")
         path_obj = path if isinstance(path, Path) else None
         n_res = sum(1 for r in rows if isinstance(r, dict))
@@ -643,7 +656,7 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
             item = {
                 "CheckID": pname,
                 "CheckTitle": f"Cloud Custodian {pname}",
-                "Status": "FAIL" if security else "EXCLUDED",
+                "Status": "EXCLUDED" if klass == "cost" else "FAIL",
                 "Severity": sev,
                 "ResourceId": rid,
                 "ResourceArn": arn,
@@ -652,8 +665,10 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
                 "SeveritySource": sev_source,
                 "ResourceType": resource,
             }
-            if not security:
+            if klass == "cost":
                 item["ExcludeReason"] = "NOT_A_WEAKNESS"
+            elif klass == "unknown":
+                item["NeedsReview"] = True
             out.append(item)
     return out
 
@@ -806,13 +821,6 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             res0 = _ocsf_resource(item)
             rid = res0.get("uid") or res0.get("name")
         rid = str(rid or check)
-        if is_placeholder_id(rid):
-            continue
-        arn = str(item.get("ResourceArn") or item.get("arn") or rid)
-        if is_placeholder_id(arn):
-            arn = ""
-        desc = str(item.get("Description") or item.get("StatusExtended") or title)
-        service = str(item.get("ServiceName") or item.get("service") or "cloud")
         account = str(
             item.get("AccountId")
             or item.get("account_uid")
@@ -820,8 +828,23 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             or item.get("AwsAccountId")
             or ""
         ).strip()
+        if is_placeholder_id(rid):
+            keep_placeholder = (
+                status in _FAIL_STATUSES
+                or bool(item.get("ExcludeReason"))
+                or status == "EXCLUDED"
+                or bool(item.get("NeedsReview"))
+            )
+            if not keep_placeholder:
+                continue
+            rid = _account_asset_id(account)
         if is_placeholder_id(account):
             account = ""
+        arn = str(item.get("ResourceArn") or item.get("arn") or rid)
+        if is_placeholder_id(arn):
+            arn = ""
+        desc = str(item.get("Description") or item.get("StatusExtended") or title)
+        service = str(item.get("ServiceName") or item.get("service") or "cloud")
         asset_type = "SP" if service.lower() in {"iam", "identity", "aad"} else "PR"
         asset_key = rid.lower()
         if asset_key not in seen_assets:
@@ -877,6 +900,9 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                 "status": status or "FAIL",
                 "service": service,
             }
+            if item.get("NeedsReview"):
+                extra["needs_review"] = True
+                extra["classification"] = "needs-review"
             if account:
                 extra["account_id"] = account
             scan_time = str(item.get("scan_time") or item.get("Timestamp") or item.get("time_dt") or "")

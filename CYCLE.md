@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 213 — fail-closed Custodian/Prowler/osquery accounting (2026-09-26)
+
+Unknown Custodian policies go on the POA&M as needs-review (never
+drop). kind:excluded records (Custodian cost + osquery unmapped) land
+in `poam/excluded.csv` with `id` + reason. Prowler FAIL on placeholder
+resources stays under `account:<uid or unknown>`. Lab accounting:
+every finding/excluded key is in exactly one of poam.csv or
+excluded.csv. e546db1 ledger upgrade keeps every carried ID. Pytest
+**1417**. Host-lab 79 / 107 / poam **123** / excluded **6** (unchanged
+vs e546db1). SAMPLE 8/0 and farm 106/68 unchanged. Real samples
+poam 6→8 excluded 0→28. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
 
 Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;

@@ -1,3 +1,17 @@
+# CRITIC — cycle 213 (FAIL_CLOSED_GATING)
+
+Lab this brick: pytest **1417** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Unknown Custodian stays on the plan as
+needs-review. kind:excluded rows appear in excluded.csv with id.
+Prowler placeholder FAIL kept under `account:unknown`. e546db1
+carried POA&M IDs persist. DEMO/SAMPLE/farm counts unchanged vs
+e546db1. Real-sample corpus poam 6→8 excluded 0→28. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 
 Merge `origin/master` `d6ae8d0` (#163) with a normal merge commit. No

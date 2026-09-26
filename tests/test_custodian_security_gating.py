@@ -165,6 +165,10 @@ def test_whole_token_gate_does_not_substring_match() -> None:
         "premium-storage",
         {"description": "right-size premium disks", "resource": "azure.disk", "filters": []},
     )
+    assert cloud_prowler._custodian_classify(
+        "stage-only",
+        {"description": "tagged later", "resource": "aws.ec2", "filters": []},
+    ) == "unknown"
     assert not cloud_prowler._custodian_is_security(
         "stage-only",
         {"description": "tagged later", "resource": "aws.ec2", "filters": []},
@@ -442,3 +446,70 @@ def test_demo_custodian_encrypt_still_a_finding() -> None:
     assert any("demo-unencrypted-tmp" in str(r.get("assets")) for r in findings)
     assert findings[0]["extra"].get("exclude_reason") != "NOT_A_WEAKNESS"
     assert poam_decision(findings[0])["include"] is True
+
+
+def test_unknown_custodian_policy_is_needs_review_never_dropped() -> None:
+    """Fail-closed: no known class → POA&M needs-review, not a silent drop."""
+    for name, resource, desc in (
+        ("rds-publicly-accessible", "aws.rds", "RDS instances that are publicly accessible"),
+        ("cloudtrail-not-enabled", "aws.cloudtrail", "CloudTrail is not enabled"),
+        ("guardduty-disabled", "aws.guardduty", "GuardDuty detector is disabled"),
+    ):
+        assert cloud_prowler._custodian_classify(
+            name, {"description": desc, "resource": resource, "filters": []}
+        ) == "unknown"
+        recs = cloud_prowler._custodian_findings(
+            {
+                "name": name,
+                "resource": resource,
+                "description": desc,
+                "filters": [],
+                "resources": [{"id": f"{name}-res-1"}],
+            }
+        )
+        assert recs
+        assert recs[0].get("NeedsReview") is True
+        assert recs[0].get("ExcludeReason") != "NOT_A_WEAKNESS"
+        assert recs[0]["Status"] == "FAIL"
+
+
+def test_synthetic_eleven_security_policies_never_drop_unknown() -> None:
+    """8 of 11 named security policies used to vanish; unknown now needs-review."""
+    known = {
+        "s3-encryption-missing": "aws.s3",
+        "security-context-pods": "k8s.pod",
+        "check-ebs-snapshot-public": "aws.ebs-snapshot",
+    }
+    unknown = {
+        "rds-publicly-accessible": "aws.rds",
+        "cloudtrail-not-enabled": "aws.cloudtrail",
+        "guardduty-disabled": "aws.guardduty",
+        "vpc-flow-logs-disabled": "aws.vpc",
+        "s3-versioning-disabled": "aws.s3",
+        "lambda-env-plaintext": "aws.lambda",
+        "ebs-snapshot-retention": "aws.ebs-snapshot",
+        "config-recorder-off": "aws.config",
+    }
+    assert len(known) + len(unknown) == 11
+    on_plan = []
+    dropped = []
+    for name, resource in {**known, **unknown}.items():
+        recs = cloud_prowler._custodian_findings(
+            {
+                "name": name,
+                "resource": resource,
+                "description": name.replace("-", " "),
+                "filters": [],
+                "resources": [{"id": f"{name}-1"}],
+            }
+        )
+        if not recs or recs[0].get("ExcludeReason") == "NOT_A_WEAKNESS":
+            dropped.append(name)
+            continue
+        on_plan.append(name)
+        if name in unknown:
+            assert recs[0].get("NeedsReview") is True
+        else:
+            assert recs[0].get("NeedsReview") in (None, False)
+    assert dropped == []
+    assert len(on_plan) == 11
