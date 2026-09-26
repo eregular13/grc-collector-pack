@@ -1,45 +1,36 @@
-# CRITIC — cycle 215 (REMASTER_6A5EBD6 + REASON_CASE)
+# CRITIC — cycle 216 (B8_METIS_177_LOCATION_CHAIN)
 
-Lab this brick: pytest **1449** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1463** passed, 1 skipped. Ten collectors +
 honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
-`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
-`demo=true`). Zero P0/P1. Merged `origin/master` `6a5ebd6` (#172 +
-#178) with a normal merge commit. EGR- per-policy+account rollup
-kept. Custodian exclude reason is `not_a_weakness` (old
-`NOT_A_WEAKNESS` still accepted). DEMO/SAMPLE/farm counts unchanged
-vs 2b7157b. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
-**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
-below are unchanged.
-
-# CRITIC — cycle 214 (EGR_NEEDS_REVIEW_ROLLUP)
-
-Lab this brick: pytest **1436** passed, 1 skipped. Ten collectors +
-honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
-`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
-`demo=true`). Zero P0/P1. Merged `origin/master` `7ebc697` (#169 +
-#175) with a normal merge commit. Unknown Custodian needs-review
-rolls up one `EGR-` POA&M row per policy+account (2 unknown × 200
-resources → 2 rows; ID stable, not resource order). Known security
-stays per resource. DEMO/SAMPLE/farm counts unchanged vs 92c5520 /
-e546db1. Real-sample corpus poam 6 / excluded 28 after identity
-collapse (28 excluded unchanged; no unknown policies in that set).
-Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
-No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
-unchanged.
-
-# CRITIC — cycle 213 (FAIL_CLOSED_GATING)
-
-Lab this brick: pytest **1417** passed, 1 skipped. Ten collectors +
-honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
-`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
-`demo=true`). Zero P0/P1. Unknown Custodian stays on the plan as
-needs-review. kind:excluded rows appear in excluded.csv with id.
-Prowler placeholder FAIL kept under `account:unknown`. e546db1
-carried POA&M IDs persist. DEMO/SAMPLE/farm counts unchanged vs
-e546db1. Real-sample corpus poam 6→8 excluded 0→28. Catalog
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `73ff785` (#170+#173). 7ebc697
+upgrade is 0 dups / 1 new / 127 Open. FedRAMP Open **127**. Catalog
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
-`/api/risks`. RiskReady stay-out. CoS #48 rails below are
-unchanged.
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 215 (MERGE_MASTER_172_178_INTO_B8)
+
+Merge `origin/master` `6a5ebd6` (#172+#178) with a normal merge
+commit. No rebase. B8 check_id brick kept. Pytest **1440**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 214 (MERGE_MASTER_169_INTO_B8)
+
+Merge `origin/master` `7ebc697` (#169) with a normal merge commit. No
+rebase. B8 check_id brick kept. Pytest **1427**. Host-lab unchanged.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+# CRITIC — cycle 213 (B8_STABLE_CHECK_ID)
+
+Lab this brick: pytest **1419** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=104` `poam=120` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Title-keyed families stamp `check_id`;
+33.3%→50.0% keeps the EGP. FedRAMP Open **126**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 

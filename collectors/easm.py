@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
-from shared.schema import canon_severity, make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref, slug
 from shared.sslscan import parse_sslscan
 from shared.testssl import is_testssl, iter_testssl_findings
 
@@ -264,7 +264,7 @@ def _whatweb_records(now: str, payload: Any) -> list[dict]:
                     assets=[host],
                     labels=labels + ["admin-ui"],
                     collected_at=now,
-                    extra={"title": title, "url": target},
+                    extra={"title": title, "url": target, "check_id": "whatweb-admin"},
                 )
             )
         elif watch:
@@ -284,7 +284,7 @@ def _whatweb_records(now: str, payload: Any) -> list[dict]:
                     assets=[host],
                     labels=labels,
                     collected_at=now,
-                    extra={"url": target},
+                    extra={"url": target, "check_id": "sensitive-hostname"},
                 )
             )
     return records
@@ -396,7 +396,11 @@ def _path_exposure_records(
                 assets=[host],
                 labels=labels + (["admin-ui"] if sev == "high" else ["path-exposure"]),
                 collected_at=now,
-                extra={"url": url, "path": path},
+                extra={
+                    "url": url,
+                    "path": path,
+                    "check_id": f"path-exposure-{slug(path, maxlen=None)}",
+                },
             )
         )
     return records
@@ -585,7 +589,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=labels,
                     collected_at=now,
-                    extra={},
+                    extra={"check_id": "sensitive-hostname"},
                 )
             )
         seen_urls: set[str] = set()
@@ -607,6 +611,7 @@ def parse_file(path: Path) -> list[dict]:
             sev = canon_severity(_path_severity(path_s) if _interesting_path(url or path_s) else "high")
             kb = row.get("knowledgebase") if isinstance(row.get("knowledgebase"), dict) else {}
             page_type = str(kb.get("PageType") or kb.get("pageType") or "").lower()
+            admin_ui = "admin" in f"{title} {path_s} {name}".lower() or "login" in title.lower()
             records.append(
                 make_record(
                     kind="finding",
@@ -614,7 +619,7 @@ def parse_file(path: Path) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"{name}-url-{path_s or url}"),
                     name=(
                         f"Exposed admin interface on {name}"
-                        if "admin" in f"{title} {path_s} {name}".lower() or "login" in title.lower()
+                        if admin_ui
                         else f"Exposed URL {path_s or url} on {name}"
                     ),
                     description=(
@@ -626,7 +631,17 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=labels + ["admin-ui"],
                     collected_at=now,
-                    extra={"title": title, "url": url, "path": path_s, "page_type": page_type},
+                    extra={
+                        "title": title,
+                        "url": url,
+                        "path": path_s,
+                        "page_type": page_type,
+                        "check_id": (
+                            "httpx-admin"
+                            if admin_ui
+                            else f"httpx-url-{slug(path_s or url, maxlen=None)}"
+                        ),
+                    },
                 )
             )
         if "weak" in blob and ("cipher" in blob or "tls" in blob or "ssl" in blob):
@@ -642,7 +657,11 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=labels + ["tls", "https"],
                     collected_at=now,
-                    extra={"port": "443", "service": "https"},
+                    extra={
+                        "port": "443",
+                        "service": "https",
+                        "check_id": "tls-weak-cipher",
+                    },
                 )
             )
     return records
