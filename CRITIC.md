@@ -1,3 +1,24 @@
+# CRITIC — cycle 216 (REMASTER_176_ARGUS_ONE_TRUTH)
+
+Lab this brick: pytest **1495** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=103`
+`vulnerabilities=22` `applied_controls=124` `risk_scenarios=125`
+`poam=119` `excluded=23` `duplicates_merged=17` `pending_carried=0`
+`flood_guard` `findings_in=142` `UNEXPLAINED=0` `demo=true`). Farm drop
+`assets=48` `findings=98` `poam=65` `excluded=109` (`findings_in=174`
+`UNEXPLAINED=0`). FedRAMP Open IDs == poam.csv IDs == exec
+`Open POA&M (poam.csv): N` == console on DEMO and farm (119 / 65).
+Every poam row is EGP- or EGR-. excluded.csv header includes `id` and
+`poam_id`. MANIFEST lists `poam/poam_fedramp.csv`. Merged
+`origin/master` `026304c` (#176) with a normal merge — EGR- rollup,
+Specific playbooks, fail-closed accounting, excluded `id`. Argus
+cold-review-4 (a)–(e) stay on this PR. Host-lab 105/121 → 103/119 is
+Entra GA observation-id merge (17 DUPLICATE_INSTANCE), not a dropped
+collector. Farm 134/85 → 98/65 is port-only asset+port/proto collapse.
+Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 214 (REAL_CORPUS_28_EXCLUDED)
 
 Lab this brick: pytest **1461** passed, 1 skipped. Ten collectors +

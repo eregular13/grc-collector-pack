@@ -1,5 +1,20 @@
 # CYCLE log
 
+## cycle 216 — remaster 026304c + Argus one-truth (2026-09-26)
+
+Merge `origin/master` `026304c` (#176) with a normal merge. No rebase.
+Keep flood_guard + FedRAMP Open == poam.csv. Take master's EGR-
+Custodian rollup, excluded `id`, Specific playbooks, fail-closed
+accounting. Copy EGR- ledger IDs onto poam.csv; mint rollups from
+check_id+account. Argus cold-review-4: Critical FedRAMP + 15-day SLA
+when scan time exists; no POAM- fallback; observation id is
+provenance; exec/console count poam.csv; MANIFEST lists
+poam_fedramp.csv. Pytest **1495**. Host-lab **79 / 103 / 119**
+excluded **23**; flood_guard 142 = 119 + 23 UNEXPLAINED=0. Farm drop
+**48 / 98 / 65** excluded **109**; flood_guard 174 = 65 + 109
+UNEXPLAINED=0. Catalog unchanged. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 214 — real-corpus 28 kind=excluded on excluded.csv (2026-09-26)
 
 Metis acceptance.json lock: osquery 11+3 and Custodian 8+6 parser
