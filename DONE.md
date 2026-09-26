@@ -13,14 +13,14 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "vulnerabilities": 22,
   "evidences": 33,
   "applied_controls": 126,
-  "poam": 126,
+  "poam": 125,
   "risk_scenarios": 126,
   "ocsf": 104,
   "canonical": 209,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:59:35Z"
+  "generated_at": "2026-09-26T07:09:39Z"
 }
 ```
 
-Cycle 198 merge `f8b7ff1` #138 into discovery/web (pytest 1190; host-lab 78 / 104 / 126; farm 48 / 174 / 106). Cycle 197 Metis §11 stands as history. CoS #48 rails above stand.
+Cycle 199 nmap UDP proto-keyed risky ports (pytest 1212; host-lab 78 / 104 / 125; farm 48 / 174 / 106). Cycle 198 merge `f8b7ff1` #138 stands as history. CoS #48 rails above stand.
