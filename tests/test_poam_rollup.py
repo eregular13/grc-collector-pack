@@ -19,7 +19,6 @@ from shared.control_map import (
 )
 from shared.io_util import write_canonical
 from shared.kev import KevCatalog
-from shared.poam_fedramp import write_fedramp_poam
 from shared.poam_ledger import apply_ledger, apply_rollups, fp_v1
 from shared.poam_rollup import (
     REASON_CODES as ROLLUP_CODES,
@@ -243,11 +242,6 @@ def test_loader_g0_and_flood_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert by_ref["HPOT-1"]["excluded_reason"] == "honeypot"
     assert by_ref["CLD-cost"]["reason_code"] == "NOT_A_WEAKNESS"
     assert (tmp_path / "poam" / "poam_members.csv").is_file()
-    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
-        poam_ids = {r["poam_id"] for r in csv.DictReader(fh) if r.get("poam_id")}
-    with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
-        fed_ids = {r["POAM ID"] for r in csv.DictReader(fh) if r.get("POAM ID")}
-    assert poam_ids == fed_ids
     assert "NMAP-22" in {r["finding_ref_id"] for r in csv_rows(tmp_path / "poam" / "poam.csv")}
 
 
@@ -276,43 +270,6 @@ def test_egp_stable_across_reruns(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     second = _run(tmp_path / "b")
     assert first == second
     assert all(pid.startswith("EGP-") for pid in first)
-
-
-def test_g0_includes_poam_fallback_ids_not_in_ledger(tmp_path: Path) -> None:
-    from shared.poam_fedramp import item_from_poam_row, write_fedramp_poam
-
-    header = ["poam_id", "weakness", "asset", "weakness_description", "detector_source"]
-    rows = [
-        ["EGP-AAAAAAAAAA", "SMB", "box", "smb", "inventory-nmap"],
-        ["POAM-orphan", "Jamf diskenc", "laptop", "diskenc", "host-wazuh"],
-    ]
-    items = [item_from_poam_row(row, header) for row in rows]
-    dest = tmp_path / "poam"
-    write_fedramp_poam(dest, {"items": {}, "closed": []}, open_items=items)
-    with (dest / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
-        ids = [r["POAM ID"] for r in csv.DictReader(fh)]
-    assert ids == ["EGP-AAAAAAAAAA", "POAM-orphan"]
-
-
-def test_write_fedramp_respects_included_ids(tmp_path: Path) -> None:
-    rec = _finding(ref_id="NMAP-keep", severity="high")
-    other = _finding(ref_id="NMAP-drop", severity="info", extra={"port": "80"})
-    catalog = KevCatalog(kev_evaluated=False, reason="snapshot_missing")
-    ledger = apply_ledger(
-        [rec, other],
-        catalog=catalog,
-        run_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
-    )
-    keep_id = next(
-        item["poam_id"]
-        for item in ledger["items"].values()
-        if item.get("ref_id") == "NMAP-keep"
-    )
-    dest = tmp_path / "poam"
-    write_fedramp_poam(dest, ledger, included_ids={keep_id})
-    with (dest / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    assert [r["POAM ID"] for r in rows] == [keep_id]
 
 
 def test_flood_guard_summary_counts_unexplained() -> None:

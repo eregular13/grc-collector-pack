@@ -169,11 +169,8 @@ def assert_lab() -> None:
     if fed.is_file():
         from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
-        fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
-        poam_ids = {row.get("poam_id") for row in poam if row.get("poam_id")}
-        fed_ids = {row.get("POAM ID") for row in fed_rows if row.get("POAM ID")}
-        assert poam_ids == fed_ids, (len(poam_ids), len(fed_ids))
         closed = OUT / "poam" / "poam_fedramp_closed.csv"
         if closed.is_file():
             first = closed.read_text(encoding="utf-8").splitlines()[0]

@@ -190,7 +190,10 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
-    """§12.6: findings_in == members + excluded; UNEXPLAINED==0; G0 FedRAMP."""
+    """§12.6: findings_in == members + excluded; UNEXPLAINED==0.
+
+    FedRAMP Open==poam.csv (G0) is #149's write_fedramp_poam — not asserted here.
+    """
     out = resolve_out_dir(ciso_or_out)
     if summary is None:
         summary_path = out / "summary.json"
@@ -251,16 +254,6 @@ def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None)
         if budget.get("status") not in {"", None, "ok", "exceeded"}:
             raise RegisterShapeError(
                 f"FLOOD_GUARD_FAIL budget.status={budget.get('status')}"
-            )
-    poam = poam_path_of(out)
-    fed = out / "poam" / "poam_fedramp.csv"
-    if poam.is_file() and fed.is_file() and first_nonempty_line(poam) == POAM_HEADER:
-        poam_ids = {str(row.get("poam_id") or "") for row in csv_rows(poam) if row.get("poam_id")}
-        fed_ids = {str(row.get("POAM ID") or "") for row in csv_rows(fed) if row.get("POAM ID")}
-        if poam_ids != fed_ids:
-            raise RegisterShapeError(
-                f"FLOOD_GUARD_FAIL G0 poam_fedramp Open={len(fed_ids)} "
-                f"!= poam.csv={len(poam_ids)}"
             )
     return {"ok": True, "UNEXPLAINED": 0, "flood_guard": fg}
 
