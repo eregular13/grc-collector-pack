@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -435,6 +436,9 @@ def load() -> dict:
         )
 
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
+    leftover_rr = out_dir() / "riskready"
+    if leftover_rr.exists():
+        shutil.rmtree(leftover_rr)
 
     summary = {
         "assets": len(ciso_assets),

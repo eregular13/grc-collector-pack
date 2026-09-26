@@ -74,6 +74,9 @@ def _csv_rows(path: Path) -> list[dict[str, str]]:
 
 
 def test_loader_writes_no_riskready_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    leftover = tmp_path / "out" / "riskready"
+    leftover.mkdir(parents=True)
+    (leftover / "risks_proposed.json").write_text("[]", encoding="utf-8")
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1"), _finding("f2", "medium")])
     assert not (out / "riskready").exists()
     leftover = [p for p in out.rglob("*") if "riskready" in p.as_posix().lower()]

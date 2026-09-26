@@ -11,7 +11,7 @@ out/canonical/*
 out/ciso-assistant/*.csv
 out/poam/*
 out/simplerisk/*
-out/riskready/*.json
+out/riskready/
 out/ocsf/*.json
 out/summary.json
 out/compose_lab.json
