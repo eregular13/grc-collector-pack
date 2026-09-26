@@ -9,6 +9,7 @@ Dest_in LAB.txt / DEMO-adapter fail-closed lives in scripts/prove_ciso.py
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from typing import Any
 
@@ -66,8 +67,9 @@ SCENARIO_LEVELS = frozenset({"Low", "Moderate", "High", "Very High"})
 REGISTER_OK_LINE = "REGISTER_SHAPE=ok findings_to_poam != empty paying_day=FAIL"
 
 # Documented count relationship after weakness dedupe:
-#   weaknesses == risk_scenarios == findings.csv + vulnerabilities.csv
+#   risk_scenarios == findings.csv + vulnerabilities.csv + kind_excluded
 #   POA&M == open_risks (include_poam). findings.csv is non-CVE; vulns are CVE-class.
+#   kind:excluded (Custodian cost, osquery unmapped) stay on the register as accept.
 
 
 def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -79,11 +81,21 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
     vulns_n = int(register.get("vulnerabilities") or 0)
     scenarios_n = int(register.get("risk_scenarios") or 0)
     poam_n = int(poam.get("poam_rows") or 0)
-    weaknesses = findings_n + vulns_n
+    if summary is None:
+        summary_path = out / "summary.json"
+        if summary_path.is_file():
+            try:
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                summary = None
+    kind_excluded = int((summary or {}).get("kind_excluded") or 0)
+    finding_class = findings_n + vulns_n
+    weaknesses = finding_class + kind_excluded
     if scenarios_n != weaknesses:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL risk_scenarios={scenarios_n} != "
-            f"findings+vulnerabilities={weaknesses} (deduped weaknesses)"
+            f"findings+vulnerabilities+kind_excluded={weaknesses} "
+            f"(findings={findings_n} vulns={vulns_n} kind_excluded={kind_excluded})"
         )
     if summary:
         if int(summary.get("risk_scenarios") or 0) != scenarios_n:
@@ -105,10 +117,10 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
                 f"COUNT_CONSISTENCY_FAIL summary.open_risks={summary.get('open_risks')} "
                 f"!= poam={poam_n} (POA&M is 1:1 with open risks)"
             )
-        if "weaknesses" in summary and int(summary.get("weaknesses") or 0) != weaknesses:
+        if "weaknesses" in summary and int(summary.get("weaknesses") or 0) != finding_class:
             raise RegisterShapeError(
                 f"COUNT_CONSISTENCY_FAIL summary.weaknesses={summary.get('weaknesses')} "
-                f"!= findings+vulns={weaknesses}"
+                f"!= findings+vulns={finding_class}"
             )
         if "weaknesses_total" in summary:
             assert_poam_breakdown(summary)
@@ -116,11 +128,15 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
         "ok": True,
         "findings": findings_n,
         "vulnerabilities": vulns_n,
-        "weaknesses": weaknesses,
+        "weaknesses": finding_class,
+        "kind_excluded": kind_excluded,
         "risk_scenarios": scenarios_n,
         "poam": poam_n,
         "open_risks": poam_n,
-        "relationship": "POA&M is 1:1 with open risks (include_poam); register is 1:1 with weaknesses",
+        "relationship": (
+            "POA&M is 1:1 with open risks (include_poam); "
+            "register is 1:1 with findings+vulns+kind_excluded"
+        ),
     }
 
 

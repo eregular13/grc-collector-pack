@@ -123,7 +123,7 @@ def _risk_row_from_finding(finding, estate: PackEstate) -> list[Any]:
 
 def build_opengrc_rows(estate: PackEstate) -> dict[str, list[list[Any]]]:
     scenario_ids = {s.ref_id.lower() for s in estate.scenarios}
-    # Scenario refs are often RSK-<finding-slug>; also skip finding ids already used.
+    # Scenario refs are RSK-<finding-slug> with the uncapped identity slug.
     finding_ids_in_scenarios = set()
     for scenario in estate.scenarios:
         slug = scenario.ref_id.lower()
