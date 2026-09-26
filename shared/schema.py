@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any, Iterable
 
@@ -185,6 +186,9 @@ def residual_level(level: str) -> str:
     return order[idx]
 
 
+CISO_REF_MAX = 100  # RiskScenario / AppliedControl CharField(max_length=100)
+
+
 def slug(text: str, maxlen: int | None = 48) -> str:
     """Normalize a token. Display callers may cap length; identity must not."""
     out = []
@@ -199,6 +203,23 @@ def slug(text: str, maxlen: int | None = 48) -> str:
     if maxlen is None:
         return s
     return s[:maxlen]
+
+
+def ref_slug(text: str, *, cap: int = CISO_REF_MAX, prefix_len: int = 4) -> str:
+    """Bounded CISO identity slug. Unique when the uncapped form exceeds cap.
+
+    RiskScenario / AppliedControl ``ref_id`` is CharField(max_length=100).
+    Prefixes are ``RSK-`` / ``CTL-`` (4 chars). Long ARM/Custodian keys keep
+    a stable sha1 suffix instead of a silent 48-char collapse.
+    """
+    s = slug(text, maxlen=None)
+    room = cap - prefix_len
+    if room < 12:
+        raise ValueError(f"ref_slug cap={cap} prefix_len={prefix_len} leaves no room")
+    if len(s) <= room:
+        return s
+    digest = hashlib.sha1(s.encode("utf-8")).hexdigest()[:10]
+    return f"{s[: room - 11]}-{digest}"
 
 
 def make_ref(source: str, key: str) -> str:

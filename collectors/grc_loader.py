@@ -20,7 +20,9 @@ from shared.control_map import (
     iter_poam_decisions,
     map_finding,
     poam_breakdown,
+    poam_decision,
     poam_lighter_requested,
+    risk_register_treatment,
     weakness_name_for,
 )
 from shared.estate_pages import (
@@ -68,6 +70,7 @@ from shared.schema import (
     ciso_finding_severity,
     ciso_vuln_severity,
     control_priority,
+    ref_slug,
     residual_level,
     scenario_level,
     slug,
@@ -284,6 +287,23 @@ def load() -> dict:
 
     vuln_findings = [r for r in findings if _is_vuln(r)]
     other_findings = [r for r in findings if not _is_vuln(r)]
+    weaknesses = other_findings + vuln_findings + pre_excluded
+    lighter = poam_lighter_requested()
+    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    ranked = sorted(
+        weaknesses,
+        key=lambda rec: (
+            sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            str(rec.get("name") or rec.get("ref_id") or ""),
+            str(rec.get("ref_id") or ""),
+        ),
+    )
+    poam_decisions = iter_poam_decisions(ranked, lighter=lighter)
+    decision_by_ref: dict[str, dict] = {
+        str(rec.get("ref_id") or ""): decision
+        for rec, decision in poam_decisions
+        if rec.get("ref_id")
+    }
 
     ciso_findings = []
     for rec in other_findings:
@@ -301,11 +321,16 @@ def load() -> dict:
     controls = []
     control_ids_by_finding: dict[str, str] = {}
     mapped_by_ref: dict[str, dict] = {}
-    for rec in other_findings + vuln_findings:
+    for rec in weaknesses:
         mapped = map_finding(rec)
         mapped_by_ref[str(rec.get("ref_id"))] = mapped
-        cid = f"CTL-{slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
-        control_ids_by_finding[str(rec.get("ref_id"))] = cid
+        rec_ref = str(rec.get("ref_id") or "")
+        decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
+        register = risk_register_treatment(decision)
+        if not register["attach_control"]:
+            continue
+        cid = f"CTL-{ref_slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
+        control_ids_by_finding[rec_ref] = cid
         controls.append(
             [
                 cid,
@@ -343,18 +368,25 @@ def load() -> dict:
         )
 
     scenarios = []
-    for rec in findings:
+    for rec in weaknesses:
         level = scenario_level(rec.get("severity"))
-        resid = residual_level(level)
-        cid = control_ids_by_finding.get(str(rec.get("ref_id")), "")
+        rec_ref = str(rec.get("ref_id") or "")
+        decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
+        register = risk_register_treatment(decision)
+        if register["attach_control"]:
+            resid = residual_level(level)
+            cid = control_ids_by_finding.get(rec_ref, "")
+        else:
+            resid = level
+            cid = ""
         scenarios.append(
             [
-                f"RSK-{slug(str(rec.get('ref_id') or rec.get('name')))}",
+                f"RSK-{ref_slug(str(rec.get('ref_id') or rec.get('name')))}",
                 "|".join(rec.get("assets") or []),
                 rec.get("category") or rec.get("source"),
                 rec.get("name"),
                 rec.get("description"),
-                "",
+                register["existing_controls"],
                 level,
                 level,
                 level,
@@ -362,7 +394,7 @@ def load() -> dict:
                 resid,
                 resid,
                 resid,
-                "mitigate",
+                register["treatment"],
             ]
         )
 
@@ -386,9 +418,6 @@ def load() -> dict:
         *POAM_EXTRA_FIELDS,
     ]
     today = utc_run_date()
-    lighter = poam_lighter_requested()
-    weaknesses = other_findings + vuln_findings + pre_excluded
-    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     poam_ledger = run_ledger(findings, kev_catalog)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
@@ -410,16 +439,20 @@ def load() -> dict:
             ledger_by_fp[fp] = item
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
-    ranked = sorted(
-        weaknesses,
-        key=lambda rec: (
+    def _poam_rank(rec: dict) -> tuple:
+        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        check = str(extra.get("check_id") or "")
+        port_first = 0 if check.startswith("nmap-port-") else 1
+        return (
             sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            port_first,
             str(rec.get("name") or rec.get("ref_id") or ""),
             str(rec.get("ref_id") or ""),
-        ),
-    )
+        )
+
+    ranked = sorted(weaknesses, key=_poam_rank)
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    for rec, decision in iter_poam_decisions(ranked, lighter=lighter):
+    for rec, decision in poam_decisions:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
@@ -688,10 +721,11 @@ def load() -> dict:
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
-            "risk_scenarios == weaknesses == findings + vulnerabilities; "
+            "risk_scenarios == findings + vulnerabilities + kind_excluded; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
             "weaknesses_total == poam_included + excluded == "
             "weaknesses + kind_excluded + pending_carried; "
+            "kind:excluded rows stay on the register as treatment=accept; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),

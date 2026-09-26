@@ -7,6 +7,7 @@ KEV / BOD 22-01 due dates are not suspended by a vendor dependency.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any
 
@@ -37,6 +38,7 @@ VD_NOTE = (
     "'Vendor – Product' when O=Yes."
 )
 
+DEFAULT_COMMENT = "default, not verified"
 SUGGEST_COMMENT = (
     "Scanner reported no fix available; Vendor Dependency stays No until "
     "the operator confirms."
@@ -54,7 +56,18 @@ _NO_FIX_MARKERS = (
     "won't fix",
     "wontfix",
 )
+# Greenbone Solution Type + Trivy Status (after _norm_scanner_token).
+_NO_FIX_TYPES = frozenset({"willnotfix", "noneavailable", "endoflife"})
 _EN_DASH = " – "
+
+
+def _norm_scanner_token(raw: Any) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(raw or "").strip().lower())
+
+
+def no_fix_from_scanner_tokens(*values: Any) -> bool:
+    """True for Greenbone WillNotFix/NoneAvailable or Trivy will_not_fix/end_of_life."""
+    return any(_norm_scanner_token(v) in _NO_FIX_TYPES for v in values if v not in (None, ""))
 
 
 def canon_yes_no(raw: Any) -> str | None:
@@ -93,6 +106,13 @@ def scanner_suggests_no_fix(rec: dict[str, Any] | None) -> bool:
             return True
     if extra.get("fix_available") in (False, "false", "False", "no", "No", "0", 0):
         return True
+    if no_fix_from_scanner_tokens(
+        extra.get("solution_type"),
+        extra.get("status"),
+        extra.get("vuln_status"),
+        extra.get("trivy_status"),
+    ):
+        return True
     blob = " ".join(
         str(extra.get(key) or "")
         for key in ("solution", "remediation", "fix", "plugin_output", "fix_available_text")
@@ -105,6 +125,10 @@ def _append_comment(item: dict[str, Any], note: str) -> None:
     if note not in comments:
         comments.append(note)
     item["vd_comments"] = comments
+
+
+def _drop_comment(item: dict[str, Any], note: str) -> None:
+    item["vd_comments"] = [c for c in (item.get("vd_comments") or []) if c != note]
 
 
 def finalize_vendor_fields(
@@ -127,6 +151,7 @@ def finalize_vendor_fields(
     if ov_vd == VD_YES or persist_yes:
         item["vendor_dependency"] = VD_YES
         item["vd_source"] = "operator"
+        _drop_comment(item, DEFAULT_COMMENT)
         if ov.get("last_vendor_checkin"):
             parsed = _to_date(ov.get("last_vendor_checkin"))
             item["last_vendor_checkin"] = parsed.isoformat() if parsed else ""
@@ -142,11 +167,14 @@ def finalize_vendor_fields(
         item["vendor_product"] = ""
         if ov_vd == VD_NO or persist_no:
             item["vd_source"] = "operator"
+            _drop_comment(item, DEFAULT_COMMENT)
         elif suggested:
             item["vd_source"] = "suggested"
+            _drop_comment(item, DEFAULT_COMMENT)
             _append_comment(item, SUGGEST_COMMENT)
         else:
             item["vd_source"] = "default"
+            _append_comment(item, DEFAULT_COMMENT)
 
     if item["vd_source"] not in VD_SOURCES:
         item["vd_source"] = "default"

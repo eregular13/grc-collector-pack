@@ -23,17 +23,16 @@ NMAP = PACK / "nmap"
 # Brick 4 farm_drop SoR ballpark (thin one-host nmap leaf): 85 findings / 23 poam / 0 vulns.
 # Brick 5 floors are the denser dual-net SAMPLE leaf, still below inventing client KEEP.
 # Full POA&M plan (default) puts Lows + non-key Mediums on the plan. Measured
-# farm_drop after port-only fold (unchanged): findings=174 poam=106
-# excluded=68 (60 severity_info + 8 honeypot). No superseded_by_specific
-# on farm_drop — pack_drop has no specific-on-port peer. Old
-# MIN_FARM_POAM=35 was the lighter High/key-Medium-only plan — do not revert.
+# farm_drop after pack_drop row-id collapse: findings=174 poam unique-EGP
+# (was 106 with duplicate nmap assets+findings pairs). excluded=68.
+# Old MIN_FARM_POAM=35 was the lighter High/key-Medium-only plan — do not revert.
 BEFORE_FARM_FINDINGS = 85
 BEFORE_FARM_POAM = 23
 MIN_NMAP_HOSTS = 14
 MIN_NMAP_PORTS = 30
 MIN_NMAP_FINDINGS = 30
 MIN_FARM_FINDINGS = 110
-MIN_FARM_POAM = 100
+MIN_FARM_POAM = 70
 MIN_FARM_EXCLUDED = 20
 CORP_PREFIX = "10.0.0."
 LAB_PREFIX = "172.16.10."

@@ -148,6 +148,30 @@ def assert_lab() -> None:
     assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}
     assert reasons & {"honeypot", "severity_info"}, reasons
+    scen_refs = [row["ref_id"] for row in scen]
+    assert len(set(scen_refs)) == len(scen_refs)
+    from shared.schema import CISO_REF_MAX
+
+    assert max(len(ref) for ref in scen_refs) <= CISO_REF_MAX
+    accept_n = 0
+    for row in scen:
+        treat = row.get("treatment")
+        assert treat in {"mitigate", "accept"}, row
+        if treat == "accept":
+            accept_n += 1
+            assert str(row.get("existing_controls") or "").startswith("excluded:"), row
+            assert (row.get("additional_controls") or "") == ""
+            assert row.get("residual_risk") == row.get("current_risk"), row
+        else:
+            assert str(row.get("additional_controls") or "").startswith("CTL-"), row
+    assert accept_n == len(excluded)
+    excluded_reasons = {str(row.get("excluded_reason") or "") for row in excluded}
+    accept_reasons = {
+        str(row.get("existing_controls") or "").removeprefix("excluded:")
+        for row in scen
+        if row.get("treatment") == "accept"
+    }
+    assert accept_reasons == excluded_reasons
     for row in excluded:
         assert row.get("severity") in EXCLUDED_SEV, row
         if row.get("excluded_reason") == "severity_info":
@@ -189,6 +213,11 @@ def assert_lab() -> None:
             if vd == "No":
                 assert not (row.get("Last Vendor Check-in Date") or "").strip()
                 assert not (row.get("Vendor Dependent Product Name") or "").strip()
+                comments = row.get("Comments") or ""
+                assert (
+                    "default, not verified" in comments
+                    or "no fix available" in comments.lower()
+                ), comments
             else:
                 product = (row.get("Vendor Dependent Product Name") or "").strip()
                 assert product and product.lower() not in {"n/a", "none"}
