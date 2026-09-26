@@ -1051,7 +1051,6 @@ def build_drop_zip() -> bytes:
     ]
     files.extend(sorted((out / "ciso-assistant").glob("*.csv")))
     files.extend(sorted((out / "poam").glob("*")))
-    files.extend(sorted((out / "riskready").glob("*.json")))
     files.extend(sorted((out / "opengrc").glob("*")))
     files.append(out / "import_preview" / "probo.json")
     files.extend(sorted((out / "probo").glob("*")))
@@ -1062,7 +1061,6 @@ def build_drop_zip() -> bytes:
     include_packaged = bool(derive_honesty(out).get("lab"))
     if include_packaged and drop.is_dir():
         files.extend(sorted((drop / "ciso").glob("*.csv")))
-        files.extend(sorted((drop / "riskready").glob("*.json")))
         files.extend(sorted((drop / "opengrc").glob("*")))
         files.append(drop / "import_preview" / "probo.json")
         files.extend(sorted((drop / "probo").glob("*")))
@@ -1073,8 +1071,8 @@ def build_drop_zip() -> bytes:
         "POA&M: poam/poam.csv — owner and due are blank for a human.\n"
         "OpenGRC Data Manager CSVs: opengrc/*.csv — file-true leave-behind, posted=false, not live import.\n"
         "Probo drafts: import_preview/probo.json — file-true, posted=false, not live GraphQL.\n"
-        "RiskReady JSON is review-only (LICENSE-LOCK stay-out). Do not wrap or POST.\n"
-        "risks_proposed.json is for a human. Do not POST /api/risks.\n"
+        "RiskReady is out of scope. This drop does not include RiskReady JSON.\n"
+        "Do not POST /api/risks.\n"
     )
     if include_packaged:
         readme += (
@@ -1094,6 +1092,8 @@ def build_drop_zip() -> bytes:
                     arc = path.relative_to(out).as_posix()
                 except ValueError:
                     arc = path.relative_to(ROOT).as_posix()
+                if "riskready" in arc.lower():
+                    continue
                 zf.write(path, arcname=arc)
     return buf.getvalue()
 

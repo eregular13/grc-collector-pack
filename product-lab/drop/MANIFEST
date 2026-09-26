@@ -7,7 +7,7 @@ Pentera finds it; Evergreen maps it.
 Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
 OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.
 Probo `import_preview/probo.json` is documentation-only (posted=false). Not live GraphQL.
-POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.
+POA&M owner/due are blank for a human. RiskReady is out of scope — this drop ships no RiskReady JSON. Do not POST /api/risks.
 
 | File | Rows | SHA256 |
 |---|---|---|
@@ -24,6 +24,6 @@ POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out �
 | opengrc/implementations.csv | 77 | `f4a9579420c58d6b49b41d8677b6748c730ebba69b88a94bed069e27b03da06d` |
 | import_preview/probo.json | 77 | `864caa652d7a6a3078184066bed40255628050f84099e56913b0ff8055e132b5` |
 
-riskready/risks_proposed.json: 57 rows, SHA256 `b11d8be0d7ae1ede5e7e46cb307e52f09bf7557801364e47cb3604bf9f71fd86` (review-only, never POST /api/risks)
+No RiskReady JSON in this drop. RiskReady is out of scope. Do not POST /api/risks.
 
 POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row.

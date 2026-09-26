@@ -19,7 +19,6 @@ from shared.schema import (
     ciso_finding_severity,
     ciso_vuln_severity,
     control_priority,
-    csf_function,
     residual_level,
     rr_likelihood_impact,
     scenario_level,
@@ -259,7 +258,7 @@ def load() -> dict:
                 "to_do",
                 "technical",
                 control_priority(rec.get("severity")),
-                mapped["csf_function"] or csf_function(rec.get("severity")),
+                mapped["csf_function"],
             ]
         )
     # unique controls by ref

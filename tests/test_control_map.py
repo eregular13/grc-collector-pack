@@ -520,3 +520,194 @@ def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) ->
     md = (out_dir() / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" in md and "Evergreen maps" in md
     assert "blank" in md.lower()
+
+
+def _finding(*, ref: str, name: str, description: str, severity: str, extra: dict | None = None, **kwargs):
+    return make_record(
+        kind="finding",
+        source=kwargs.get("source", "inventory-nmap"),
+        ref_id=ref,
+        name=name,
+        description=description,
+        severity=severity,
+        category=kwargs.get("category", "exposure"),
+        assets=kwargs.get("assets", ["host-a"]),
+        extra=extra or {},
+    )
+
+
+def test_csf_stamp_follows_control_not_severity() -> None:
+    """Same severity + different controls → different CSF; same control + different sevs → same CSF."""
+    tls_high = map_finding(
+        _finding(
+            ref="NMAP-tls-high",
+            name="TLS expired on vpn.example.com",
+            description="https listener presents an expired certificate.",
+            severity="high",
+            extra={"port": "443", "service": "https"},
+        )
+    )
+    smb_high = map_finding(
+        _finding(
+            ref="NMAP-smb-high",
+            name="SMB 445 exposed",
+            description="filesrv has open TCP/445 (microsoft-ds).",
+            severity="high",
+            extra={"port": "445", "service": "microsoft-ds"},
+        )
+    )
+    honeypot_high = map_finding(
+        _finding(
+            ref="HPOT-high",
+            name="Deception-sensor stage-2 hit",
+            description="deception-sensor evidence / an agent-behavior signal.",
+            severity="high",
+            category="deception-sensor",
+            source="honeypot",
+            extra={"honesty": "deception-sensor", "stage": 2},
+        )
+    )
+    time_high = map_finding(
+        _finding(
+            ref="WAZ-time-high",
+            name="chrony is not enabled",
+            description="Enable chrony so audit timestamps stay trustworthy.",
+            severity="high",
+            category="hardening",
+            source="host-wazuh",
+            extra={"control_key": "time_sync"},
+        )
+    )
+    perimeter_high = map_finding(
+        _finding(
+            ref="EASM-vpn-high",
+            name="Sensitive external hostname on the public perimeter",
+            description="vpn.example.com is published on the public perimeter.",
+            severity="high",
+            category="exposure",
+            source="easm",
+        )
+    )
+    assert tls_high["csf_function"] == "protect"
+    assert smb_high["csf_function"] == "protect"
+    assert honeypot_high["csf_function"] == "detect"
+    assert time_high["csf_function"] == "detect"
+    assert perimeter_high["csf_function"] == "identify"
+    assert tls_high["csf_function"] != honeypot_high["csf_function"]
+    assert tls_high["csf_function"] != perimeter_high["csf_function"]
+    assert time_high["csf_function"] != smb_high["csf_function"]
+
+    tls_low = map_finding(
+        _finding(
+            ref="NMAP-tls-low",
+            name="TLS expired on vpn.example.com",
+            description="https listener presents an expired certificate.",
+            severity="low",
+            extra={"port": "443", "service": "https"},
+        )
+    )
+    tls_crit = map_finding(
+        _finding(
+            ref="NMAP-tls-crit",
+            name="TLS expired on vpn.example.com",
+            description="https listener presents an expired certificate.",
+            severity="critical",
+            extra={"port": "443", "service": "https"},
+        )
+    )
+    assert tls_low["csf_function"] == tls_high["csf_function"] == tls_crit["csf_function"] == "protect"
+    assert "csf_PR" in tls_crit["csf"]
+    assert "csf_RS" not in tls_crit["csf"]  # critical is not Respond
+    assert "csf_ID" not in tls_low["csf"] or tls_low["csf_function"] == "protect"
+
+    honeypot_low = map_finding(
+        _finding(
+            ref="HPOT-low",
+            name="Deception-sensor stage-1 hit",
+            description="deception-sensor evidence / an agent-behavior signal.",
+            severity="low",
+            category="deception-sensor",
+            source="honeypot",
+            extra={"honesty": "deception-sensor", "stage": 1},
+        )
+    )
+    assert honeypot_low["csf_function"] == honeypot_high["csf_function"] == "detect"
+
+
+def test_csf_unmapped_fallback_is_deterministic_not_severity() -> None:
+    unk_low = map_finding(
+        _finding(
+            ref="UNK-low",
+            name="Obscure widget misaligned",
+            description="A one-off finding with no control family.",
+            severity="low",
+            category="other",
+        )
+    )
+    unk_crit = map_finding(
+        _finding(
+            ref="UNK-crit",
+            name="Obscure widget misaligned",
+            description="A one-off finding with no control family.",
+            severity="critical",
+            category="other",
+        )
+    )
+    assert unk_low["control_name"].startswith("Remediate:")
+    assert unk_low["csf_function"] == unk_crit["csf_function"]
+    assert unk_low["csf_function"] == "identify"
+    assert "csf_unmapped" in unk_low["csf"]
+    assert "csf_unmapped" in unk_crit["csf"]
+    assert unk_crit["csf_function"] != "respond"
+
+
+def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypatch) -> None:
+    import csv
+
+    from collectors.grc_loader import load
+    from shared.io_util import out_dir, write_canonical
+
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    recs = [
+        _finding(
+            ref="NMAP-tls-a",
+            name="TLS expired on vpn.example.com",
+            description="https listener presents an expired certificate.",
+            severity="critical",
+            extra={"port": "443", "service": "https"},
+        ),
+        _finding(
+            ref="NMAP-tls-b",
+            name="TLS expired on vpn.example.com",
+            description="https listener presents an expired certificate.",
+            severity="low",
+            extra={"port": "443", "service": "https"},
+        ),
+        _finding(
+            ref="WAZ-time",
+            name="chrony is not enabled",
+            description="Enable chrony so audit timestamps stay trustworthy.",
+            severity="critical",
+            category="hardening",
+            source="host-wazuh",
+            extra={"control_key": "time_sync"},
+        ),
+        _finding(
+            ref="HPOT-1",
+            name="Deception-sensor stage-2 hit",
+            description="deception-sensor evidence / an agent-behavior signal.",
+            severity="critical",
+            category="deception-sensor",
+            source="honeypot",
+            extra={"honesty": "deception-sensor"},
+        ),
+    ]
+    write_canonical("inventory-nmap", recs)
+    load()
+    with (out_dir() / "ciso-assistant" / "applied_controls.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    by_ref = {r["ref_id"]: r for r in rows}
+    assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
+    assert by_ref["CTL-waz-time"]["csf_function"] == "detect"
+    assert by_ref["CTL-hpot-1"]["csf_function"] == "detect"
+    assert by_ref["CTL-nmap-tls-a"]["csf_function"] != by_ref["CTL-waz-time"]["csf_function"]
