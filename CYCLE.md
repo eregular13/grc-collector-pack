@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 198 — merge master f8b7ff1 #138 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `f8b7ff1` (#138 EGA- asset ledger).
+No rebase. Discovery/web parsers + port-only → port/proto migration
+kept; EGA- identity/loader from master. Host-lab: pytest **1190**
+(1 skipped); assets **78** findings **104** vulnerabilities **22**
+poam **126**. Farm pack_drop: assets **48** findings **174** poam
+**106**. Asset drop vs cycle 197 (85 / 55) is #138 EGA- collapse of
+same-host IP/hostname aliases, not a parser loss. Findings/POA&M
+unchanged vs Metis §11. Vs master STATUS 78/103/111: +1 httpx URL,
+POA&M +15 (#135 full plan). Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 197 — Metis §11 review of #140 (2026-09-26)
 
 Ledger migration `host:22` → `host:22/tcp` keeps EGP- ID + earliest
