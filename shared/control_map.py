@@ -31,3 +31,14 @@ CSF_STAMP = {
 # Schema-valid fallback when no 800-53 / CIS / topic maps. Identify = found, not classified.
 CSF_UNMAPPED_FUNCTION = "identify"
 CSF_UNMAPPED_STAMP = "csf_unmapped"
+
+# Honest CPG only from 800-53 ids that sit in that CPG's scope.
+# 2_W = known-weak / unnecessary service posture. 1_E = asset/exposure inventory.
+# Do not stamp either from severity. Drop CPG when no control maps.
+N53_CPG = {
+    "CM-7": CPG_WEAK_SERVICE,
+    "SC-7": CPG_WEAK_SERVICE,
+    "CM-8": CPG_EXPOSURE,
+}
+CVE_N53 = ["SI-2", "RA-5"]
+CVE_CIS = ["cis_7_3", "cis_7_4", "cis_7_7"]
