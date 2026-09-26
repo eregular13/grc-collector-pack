@@ -47,6 +47,30 @@ def _json(path: Path):
     return data
 
 
+def _risk_is_high_critical(row: dict) -> bool:
+    risk = str(
+        row.get("original_risk_rating") or row.get("Original Risk Rating") or ""
+    ).strip()
+    sev = str(row.get("severity") or "").strip().lower()
+    return risk in {"High", "Critical"} or sev in {"high", "critical"}
+
+
+def assert_no_blank_high_critical(rows: list[dict], *, source: str = "poam") -> None:
+    """#179: no High/Critical row may carry a blank Controls or Plan cell."""
+    blanks = []
+    for row in rows:
+        if not _risk_is_high_critical(row):
+            continue
+        pid = str(row.get("poam_id") or row.get("POAM ID") or "")
+        controls = str(row.get("controls") or row.get("Controls") or "").strip()
+        plan = str(
+            row.get("recommended_fix") or row.get("Overall Remediation Plan") or ""
+        ).strip()
+        if not controls or not plan:
+            blanks.append((pid, controls, plan[:40], row.get("weakness") or row.get("Weakness Name")))
+    assert not blanks, f"{source} High/Critical blank Controls/Plan: {blanks}"
+
+
 def assert_lab() -> None:
     assets = _csv_rows(OUT / "ciso-assistant" / "assets.csv", ASSETS_H)
     findings = _csv_rows(OUT / "ciso-assistant" / "findings.csv", FIND_H)
@@ -63,6 +87,7 @@ def assert_lab() -> None:
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
+    assert_no_blank_high_critical(poam, source="poam.csv")
     sr_path = OUT / "simplerisk" / "poam.csv"
     if sr_path.is_file():
         sr_raw = sr_path.read_text(encoding="utf-8")
@@ -206,6 +231,7 @@ def assert_lab() -> None:
         from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
         fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        assert_no_blank_high_critical(fed_rows, source="poam_fedramp.csv")
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
         plan_ids = {r.get("poam_id") or "" for r in poam if r.get("poam_id")}
         fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}

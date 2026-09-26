@@ -159,7 +159,7 @@ def item_to_row(
     vd = str(item.get("vendor_dependency") or VD_NO)
     if vd not in {VD_YES, VD_NO}:
         vd = VD_NO
-    controls = _plan_cell(plan, "controls")
+    controls = _plan_cell(plan, "controls") or str(item.get("controls") or "")
     remediation = _plan_cell(plan, "recommended_fix") or str(
         item.get("remediation_plan") or ""
     )

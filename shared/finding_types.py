@@ -667,7 +667,7 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
     # risk_id is not an alias key: unmapped PingCastle RiskIds must fall
     # through to control_map._pingcastle_playbook (#145), not "unknown".
     # Mapped RiskIds are read via _exact_scanner_id / _PINGCASTLE_EXACT.
-    keys = [
+    raw_keys = [
         extra.get("check_id"),
         extra.get("edge"),
         extra.get("control"),
@@ -677,7 +677,22 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("template_id"),
         extra.get("template-id"),
     ]
-    return [norm_type_key(str(k)) for k in keys if k]
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_keys:
+        if not raw:
+            continue
+        text = str(raw).strip()
+        if not text:
+            continue
+        for cand in (text, normalize_osquery_pack_name(text)):
+            n = norm_type_key(cand) if cand else ""
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+    return out
 
 
 def _risk_id_only(rec: dict[str, Any]) -> bool:

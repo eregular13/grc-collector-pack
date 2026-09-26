@@ -17,6 +17,11 @@ import re
 from typing import Any
 
 _PACK_QUERY = re.compile(r"^pack_[^_]+_(.+)$", re.I)
+_PACK_TOKEN = re.compile(r"pack_[A-Za-z0-9][A-Za-z0-9_.-]*", re.I)
+_PACK_TITLE = re.compile(
+    r"(?:^|\b)osquery\s+pack_[^:]+:\s*pack\s+\S+\s+(\S+)\s*$",
+    re.I,
+)
 
 # Official osquery packs/it-compliance.conf names (plus common inventory).
 # These are counted and never emitted unless a fail predicate matches.
@@ -119,6 +124,31 @@ def _query_key(name: str) -> str:
     if match:
         return match.group(1)
     return low
+
+
+def query_key(name: str) -> str:
+    """Short query id. ``pack_<pack>_<query>`` → ``<query>``."""
+    return _query_key(name)
+
+
+def normalize_osquery_pack_name(text: str) -> str:
+    """Legacy pack spelling → current query id.
+
+    ``pack_it-compliance_alf`` and
+    ``osquery pack_it-compliance_alf: pack it-compliance alf`` both become
+    ``alf``. Already-short names (``alf``) pass through.
+    """
+    raw = str(text or "").strip()
+    if not raw:
+        return ""
+    for token in _PACK_TOKEN.findall(raw):
+        q = _query_key(token)
+        if q and q != token.lower():
+            return q
+    titled = _PACK_TITLE.search(raw)
+    if titled:
+        return titled.group(1).strip().lower()
+    return _query_key(raw)
 
 
 def _host_from(row: dict[str, Any], default: str) -> str:
