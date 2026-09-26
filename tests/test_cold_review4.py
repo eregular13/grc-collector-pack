@@ -597,6 +597,46 @@ def test_scan_time_epoch_ms_and_ignores_creation_time() -> None:
     assert format_detection_date(extra_scan_raw(only_created)) == "not recorded"
 
 
+def test_saas_inventory_rows_keep_distinct_keys() -> None:
+    mfa = {
+        "source": "saas-idp",
+        "name": "MFA not registered",
+        "assets": ["bob@contoso.onmicrosoft.com"],
+        "extra": {"mfa_registered": False, "roles": ["User"]},
+    }
+    ga = {
+        "source": "saas-idp",
+        "name": "Standing Global Administrator",
+        "assets": ["ga@contoso.onmicrosoft.com"],
+        "extra": {"role": "Global Administrator", "pim_eligible": False},
+    }
+    policy = {
+        "source": "saas-idp",
+        "name": "Okta admin MFA gap",
+        "assets": ["example.okta.com"],
+        "extra": {"policy": "pol-mfa-admins"},
+    }
+    assert len({weakness_key(mfa), weakness_key(ga), weakness_key(policy)}) == 3
+    assert "unkeyed" not in weakness_key(mfa)
+    assert "unkeyed" not in weakness_key(ga)
+    first = apply_ledger(
+        [mfa, ga, policy],
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-20T00:00:00Z"),
+        prior_existed=False,
+    )
+    second = apply_ledger(
+        [mfa, ga, policy],
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-21T00:00:00Z"),
+        ledger_in=first,
+        prior_existed=True,
+    )
+    created = [e for e in (second.get("events_this_run") or []) if e.get("kind") == "created"]
+    assert created == []
+    assert len(second["items"]) == len(first["items"]) == 3
+
+
 def test_fingerprints_for_includes_master_alias() -> None:
     rec = {
         "source": "host-wazuh",

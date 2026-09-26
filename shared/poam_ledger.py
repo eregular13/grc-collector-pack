@@ -256,6 +256,10 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
         "check",
         "nse_script",
         "template_id",
+        "role",
+        "policy",
+        "user_type",
+        "result",
     ):
         val = str(extra.get(key) or "").strip()
         if val and _is_scanner_identity(val):
@@ -294,8 +298,17 @@ def weakness_key(rec: dict[str, Any]) -> str:
         if token:
             return f"class:{ftype}:{token}"
         return f"class:{ftype}"
+    if extra.get("mfa_registered") is False:
+        return f"{tool}:mfa_unregistered"
     if token:
         return f"{tool}:{token}"
+    bits: list[str] = []
+    for key in ("role", "policy", "user_type", "result", "product"):
+        val = extra.get(key)
+        if val not in (None, ""):
+            bits.append(f"{key}:{str(val).lower()}")
+    if bits:
+        return f"{tool}:{'|'.join(bits)}"
     return f"{tool}:unkeyed"
 
 
@@ -823,30 +836,6 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
     for old_fp, reason in _legacy_fps_for(rec):
         if old_fp != new_fp and old_fp in items:
             found[old_fp] = (items[old_fp], reason)
-    wk = weakness_key(rec)
-    fam = source_family(rec)
-    alias_keys = _legacy_asset_keys_for(rec)
-    related_wks = {
-        wk,
-        legacy_master_weakness_key(rec),
-        legacy_title_weakness_key(rec),
-    }
-    for fp, item in list(items.items()):
-        if fp == new_fp or fp in found:
-            continue
-        stored_wk = str(item.get("weakness_key") or "")
-        if stored_wk not in related_wks:
-            continue
-        if str(item.get("source_family") or "") != fam:
-            continue
-        stored = str(item.get("asset_key") or "")
-        if stored and stored in alias_keys:
-            reason = (
-                "port_only_to_port_proto"
-                if ":" in stored and "/" not in stored
-                else "asset_id_port_to_ega"
-            )
-            found[fp] = (item, reason)
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):
