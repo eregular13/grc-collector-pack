@@ -515,6 +515,8 @@ def parse_file(path: Path) -> list[dict]:
                     "cve": vid if vid.upper().startswith("CVE") else "",
                     "pkg": vuln.get("PkgName"),
                     "class": vuln.get("_class") or "vuln",
+                    "rule": vid,
+                    "check_id": vid,
                 },
                 **ids,
             )

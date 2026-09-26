@@ -528,9 +528,11 @@ class AssetLedger:
                     or cand.get("principal")
                 ):
                     continue
-                old_names = {x.lower() for x in id_values(cand, "hostname")} | {
-                    x.lower() for x in id_values(cand, "name")
-                }
+                old_names = (
+                    {x.lower() for x in id_values(cand, "hostname")}
+                    | {x.lower() for x in id_values(cand, "name")}
+                    | {x.lower() for x in id_values(cand, "netbios")}
+                )
                 if not (set(names) & old_names):
                     continue
                 old_scope = str(cand.get("scope") or "") or self._scope_of(
@@ -539,6 +541,31 @@ class AssetLedger:
                 if old_scope and old_scope != str(ids.get("scope") or ""):
                     continue
                 if not self._stronger_conflict(ids, cand, "name"):
+                    return asset
+        # Pre-#161: ns/pod names were stored as netbios. Re-anchor to name.
+        incoming_labels = names + [x.lower() for x in id_values(ids, "hostname")]
+        if incoming_labels:
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if cand.get("principal"):
+                    continue
+                old_nb = {x.lower() for x in id_values(cand, "netbios")}
+                if not (set(incoming_labels) & old_nb):
+                    continue
+                if not self._stronger_conflict(ids, cand, "name"):
+                    return asset
+        nbs = [x.lower() for x in id_values(ids, "netbios")]
+        if nbs:
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if cand.get("principal"):
+                    continue
+                old = {x.lower() for x in id_values(cand, "name")} | {
+                    x.lower() for x in id_values(cand, "hostname")
+                }
+                if not (set(nbs) & old):
+                    continue
+                if not self._stronger_conflict(ids, cand, "netbios"):
                     return asset
         return None
 

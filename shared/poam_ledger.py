@@ -242,10 +242,37 @@ def _is_scanner_identity(val: str) -> bool:
     return True
 
 
+def _extra_field(extra: dict[str, Any], key: str) -> str:
+    raw = extra.get(key)
+    if raw is None or raw == "":
+        return ""
+    return str(raw).strip()
+
+
+def _title_discriminator(rec: dict[str, Any]) -> str:
+    """Host-stripped title so two unkeyed findings on one asset stay distinct."""
+    name = normalize_weakness_name(strip_asset_from_title(rec))
+    if name and name not in {"finding", "unknown"}:
+        return f"name:{name}"
+    return ""
+
+
 def _extra_identity_token(rec: dict[str, Any]) -> str:
     """Non-title token so two findings on one asset do not share a class-only key."""
     extra = extra_dict(rec)
     for key in (
+        "finding_id",
+        "stage",
+        "event",
+        "path",
+        "page_type",
+        "record",
+        "record_type",
+        "selector",
+        "RuleID",
+        "rule_id",
+        "agent_status",
+        "disk_encryption_enabled",
         "edge",
         "relationship",
         "objectid",
@@ -261,46 +288,68 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
         "user_type",
         "result",
     ):
-        val = str(extra.get(key) or "").strip()
-        if val and _is_scanner_identity(val):
+        val = _extra_field(extra, key)
+        if not val:
+            continue
+        # Record/stage/path tokens are discriminators, not scanner IDs.
+        if key in {
+            "finding_id",
+            "stage",
+            "event",
+            "path",
+            "page_type",
+            "record",
+            "record_type",
+            "selector",
+            "RuleID",
+            "rule_id",
+            "agent_status",
+            "disk_encryption_enabled",
+        } or _is_scanner_identity(val):
             return f"{key}:{val}"
     return ""
 
 
 def weakness_key(rec: dict[str, Any]) -> str:
-    """Stable weakness identity: scanner id, share, port+class. Never title/service."""
+    """Stable weakness identity: scanner id, share, port+class, then a discriminator."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
-    for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule"):
-        val = str(extra.get(key) or "").strip()
+    for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id"):
+        val = _extra_field(extra, key)
         if val and _is_scanner_identity(val):
             return f"{tool}:{val}"
-    scanner_id = str(extra.get("id") or "").strip()
+    scanner_id = _extra_field(extra, "id")
     if scanner_id and _is_scanner_identity(scanner_id):
         return f"{tool}:{scanner_id}"
-    share = str(extra.get("share") or "").strip()
+    share = _extra_field(extra, "share")
     if share:
         return f"{tool}:share:{share.lower()}"
-    port = str(extra.get("port") or "").strip()
-    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    port = _extra_field(extra, "port")
+    proto = (_extra_field(extra, "protocol") or _extra_field(extra, "proto")).lower()
     token = _extra_identity_token(rec)
+    title = _title_discriminator(rec)
     if port and port != "0":
         cls = finding_type(rec) or str(rec.get("category") or "exposure")
         if token:
             return f"port:{port}/{proto or 'tcp'}:{cls.lower()}:{token}"
         return f"port:{port}/{proto or 'tcp'}:{cls.lower()}"
     cves = collect_cves(rec)
-    extra_cve = str(extra.get("cve") or "").strip()
+    extra_cve = _extra_field(extra, "cve")
     if extra_cve and cves:
         return f"cve:{cves[0]}"
     ftype = finding_type(rec)
     if ftype and ftype not in {"", "unknown"}:
         if token:
+            if token.startswith(("role:", "policy:", "user_type:", "result:")) and title:
+                return f"class:{ftype}:{token}:{title}"
             return f"class:{ftype}:{token}"
-        return f"class:{ftype}"
+        if title:
+            return f"class:{ftype}:{title}"
     if extra.get("mfa_registered") is False:
         return f"{tool}:mfa_unregistered"
     if token:
+        if token.startswith(("role:", "policy:", "user_type:", "result:")) and title:
+            return f"{tool}:{token}:{title}"
         return f"{tool}:{token}"
     bits: list[str] = []
     for key in ("role", "policy", "user_type", "result", "product"):
@@ -308,7 +357,14 @@ def weakness_key(rec: dict[str, Any]) -> str:
         if val not in (None, ""):
             bits.append(f"{key}:{str(val).lower()}")
     if bits:
+        if title:
+            return f"{tool}:{'|'.join(bits)}:{title}"
         return f"{tool}:{'|'.join(bits)}"
+    if title:
+        return f"{tool}:{title}"
+    ref = str(rec.get("ref_id") or "").strip()
+    if ref:
+        return f"{tool}:ref:{ref}"
     return f"{tool}:unkeyed"
 
 

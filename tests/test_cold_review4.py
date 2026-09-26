@@ -650,3 +650,175 @@ def test_fingerprints_for_includes_master_alias() -> None:
         weakness_key_fn=legacy_master_weakness_key,
     )
     assert master_fp in fingerprints_for(rec)
+
+
+def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
+    domain = "mail.example.invalid"
+    spf = {
+        "source": "dns-email",
+        "name": f"SPF softfail-only on {domain}",
+        "assets": [domain],
+        "extra": {"finding_id": "spf_softfail_only", "lane": "email_dns"},
+    }
+    dmarc = {
+        "source": "dns-email",
+        "name": f"DMARC missing on {domain}",
+        "assets": [domain],
+        "extra": {"finding_id": "dmarc_missing", "lane": "email_dns"},
+    }
+    dkim = {
+        "source": "dns-email",
+        "name": f"DKIM selector s1 missing on {domain}",
+        "assets": [domain],
+        "extra": {"finding_id": "dkim_missing-s1", "selector": "s1", "lane": "email_dns"},
+    }
+    assert len({weakness_key(spf), weakness_key(dmarc), weakness_key(dkim)}) == 3
+    assert "unkeyed" not in weakness_key(spf)
+    host = "ssh-canary-01"
+    s1 = {
+        "source": "honeypot",
+        "name": f"Deception-sensor stage-1 hit on {host}",
+        "assets": [host],
+        "extra": {"stage": 1, "event": "hit", "family": "palisade"},
+    }
+    s2 = {
+        "source": "honeypot",
+        "name": f"Deception-sensor stage-2 hit on {host}",
+        "assets": [host],
+        "extra": {"stage": 2, "event": "hit", "family": "palisade"},
+    }
+    sess = {
+        "source": "honeypot",
+        "name": f"Deception-sensor session abc on {host}",
+        "assets": [host],
+        "extra": {"stage": 1, "event": "session", "family": "palisade"},
+    }
+    assert len({weakness_key(s1), weakness_key(s2), weakness_key(sess)}) == 3
+    waz_agent = {
+        "source": "host-wazuh",
+        "name": "Wazuh agent disconnected",
+        "assets": ["web-01"],
+        "extra": {"agent_status": "disconnected"},
+    }
+    waz_disk = {
+        "source": "host-wazuh",
+        "name": "Disk encryption disabled",
+        "assets": ["web-01"],
+        "extra": {"disk_encryption_enabled": False},
+    }
+    assert weakness_key(waz_agent) != weakness_key(waz_disk)
+    easm_path = {
+        "source": "easm",
+        "name": "Admin path exposed",
+        "assets": ["legacy.corp.local"],
+        "extra": {"path": "/admin/", "url": "https://legacy.corp.local/admin/"},
+    }
+    easm_host = {
+        "source": "easm",
+        "name": "Sensitive hostname",
+        "assets": ["legacy.corp.local"],
+        "extra": {"page_type": "hostname", "url": "https://legacy.corp.local/"},
+    }
+    assert weakness_key(easm_path) != weakness_key(easm_host)
+
+
+def test_trivy_two_secrets_weakness_keys_stay_distinct() -> None:
+    a = {
+        "source": "vuln-scan",
+        "name": "AWS Access Key ID",
+        "assets": ["deploy.sh"],
+        "labels": ["trivy"],
+        "extra": {
+            "rule": "aws-access-key-id",
+            "check_id": "aws-access-key-id",
+            "class": "secret",
+            "tool": "trivy",
+        },
+    }
+    b = {
+        "source": "vuln-scan",
+        "name": "My Secret",
+        "assets": ["deploy.sh"],
+        "labels": ["trivy"],
+        "extra": {
+            "rule": "generic-secret",
+            "check_id": "generic-secret",
+            "class": "secret",
+            "tool": "trivy",
+        },
+    }
+    assert weakness_key(a) != weakness_key(b)
+    assert "unkeyed" not in weakness_key(a)
+    assert weakness_key(a) == "trivy:aws-access-key-id"
+    assert weakness_key(b) == "trivy:generic-secret"
+
+
+def test_netbios_ns_pod_reclass_keeps_uid() -> None:
+    from shared.asset_ledger import AssetLedger, make_asset_uid
+
+    ledger = AssetLedger()
+    name = "test/test-pod-1"
+    old = make_record(
+        kind="asset",
+        source="k8s-kubescape",
+        ref_id="K8S-pod-old",
+        name=name,
+        category="workload",
+        assets=[name],
+        extra={"ids": {"netbios": "TEST/TEST-POD-1"}},
+        collected_at=NOW,
+    )
+    old_uid = ledger.observe(old, now=NOW)
+    assert old_uid == make_asset_uid("netbios", "TEST/TEST-POD-1")
+    new = make_record(
+        kind="asset",
+        source="k8s-kubescape",
+        ref_id="K8S-pod-new",
+        name=name,
+        category="workload",
+        assets=[name],
+        collected_at=NOW,
+    )
+    assert ledger.observe(new, now=NOW) == old_uid
+
+
+def test_demo_fedramp_open_stays_126(tmp_path: Path, monkeypatch) -> None:
+    from tests.test_poam_breakdown import _run_lab
+
+    _run_lab(tmp_path, monkeypatch)
+    fed = tmp_path / "poam" / "poam_fedramp.csv"
+    assert fed.is_file()
+    with fed.open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert len(rows) == 126, f"DEMO FedRAMP Open={len(rows)} expected 126"
+
+
+def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
+    import os
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "farm_drop_to_sor.sh"
+    work = tmp_path / "farm-work"
+    proc = subprocess.run(
+        ["bash", str(script), "--work", str(work)],
+        check=False,
+        cwd=root,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(root),
+            "DRY_RUN": "1",
+            "GRC_LIVE_SCAN": "0",
+            "CISO_PUSH": "0",
+            "RISKREADY_PUSH": "0",
+            "DROPBOX_LIVE": "0",
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    fed = work / "out" / "poam" / "poam_fedramp.csv"
+    assert fed.is_file()
+    with fed.open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert len(rows) == 172, f"farm FedRAMP Open={len(rows)} expected 172"
