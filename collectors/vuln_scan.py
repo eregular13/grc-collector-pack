@@ -510,16 +510,19 @@ def parse_file(path: Path) -> list[dict]:
             target = str(vuln.get("_target") or "image")
             ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
             add_asset(target, ids)
-            extra = stamp_ids(
-                {
-                    "cve": vid if vid.upper().startswith("CVE") else "",
-                    "pkg": vuln.get("PkgName"),
-                    "class": vuln.get("_class") or "vuln",
-                    "rule": vid,
-                    "check_id": vid,
-                },
-                **ids,
-            )
+            klass = str(vuln.get("_class") or "vuln")
+            is_cve = vid.upper().startswith("CVE")
+            extra_blob: dict[str, Any] = {
+                "cve": vid if is_cve else "",
+                "pkg": vuln.get("PkgName"),
+                "class": klass,
+            }
+            # CVE rows stay on cve:CVE-… (master). rule/check_id is only for
+            # misconfig/secret IDs (KSV/AVD/DS/RuleID).
+            if not is_cve:
+                extra_blob["rule"] = vid
+                extra_blob["check_id"] = vid
+            extra = stamp_ids(extra_blob, **ids)
             if trivy_created:
                 extra["scan_time"] = trivy_created
             records.append(

@@ -767,6 +767,30 @@ def test_trivy_two_secrets_weakness_keys_stay_distinct() -> None:
     assert weakness_key(b) == "trivy:generic-secret"
 
 
+def test_trivy_cve_rows_stay_on_cve_key() -> None:
+    rec = {
+        "source": "vuln-scan",
+        "name": "xz-utils supply chain backdoor",
+        "ref_id": "VULN-CVE-2024-3094-app",
+        "assets": ["app:latest"],
+        "labels": ["trivy"],
+        "extra": {
+            "cve": "CVE-2024-3094",
+            "pkg": "xz-utils",
+            "class": "vuln",
+            "tool": "trivy",
+        },
+    }
+    assert weakness_key(rec) == "cve:CVE-2024-3094"
+    assert not rec["extra"].get("check_id")
+    master_fp = fp_v1(
+        rec,
+        asset_key_fn=legacy_master_asset_key,
+        weakness_key_fn=legacy_master_weakness_key,
+    )
+    assert master_fp in fingerprints_for(rec)
+
+
 def test_netbios_ns_pod_reclass_keeps_uid() -> None:
     from shared.asset_ledger import AssetLedger, make_asset_uid
 
@@ -836,3 +860,40 @@ def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
     assert len(rows) == 172, f"farm FedRAMP Open={len(rows)} expected 172"
+
+
+def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Upgrade a 932cf7c DEMO ledger: FedRAMP Open stays 126, 0 new, 0 ghosts."""
+    from tests.test_poam_breakdown import _run_lab
+
+    prior = json.loads(
+        Path(__file__).resolve().parent.joinpath(
+            "fixtures", "demo-poam-ledger-master.json"
+        ).read_text(encoding="utf-8")
+    )
+    prior_ids = {it["poam_id"] for it in prior["items"].values()}
+    assert len(prior_ids) == 126
+    (tmp_path / "poam").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "poam" / "poam-ledger.json").write_text(
+        json.dumps(prior, indent=2) + "\n", encoding="utf-8"
+    )
+    summary = _run_lab(tmp_path, monkeypatch)
+    ledger = json.loads((tmp_path / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    created = [
+        e for e in (ledger.get("events_this_run") or []) if e.get("kind") == "created"
+    ]
+    open_items = [
+        it for it in ledger["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed_rows = list(csv.DictReader(fh))
+    reseen_ids = {it["poam_id"] for it in open_items}
+    ghosts = prior_ids - reseen_ids
+    assert created == [], [e.get("poam_id") for e in created]
+    assert ghosts == set(), f"ghosts {sorted(ghosts)}"
+    assert len(open_items) == 126
+    assert len(fed_rows) == 126
+    assert reseen_ids == prior_ids
+    assert summary.get("demo") is True

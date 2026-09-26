@@ -133,6 +133,10 @@ def test_trivy_secrets_and_misconfig_only() -> None:
     mfind = [r for r in mis if r["kind"] == "finding"]
     assert any(r["extra"].get("cve") == "" and "DS-0002" in r["ref_id"] or "DS-0002" in r["name"] or r["name"].startswith("Image user") for r in mfind)
     assert any(r["extra"].get("check_id") == "DS-0002" or r["extra"].get("rule") == "DS-0002" for r in mfind)
+    cve_rows = vuln_scan.parse_file(SAMPLES / "trivy" / "k8s-cluster.json")
+    cve_find = [r for r in cve_rows if r["kind"] == "finding" and str(r["extra"].get("cve") or "").startswith("CVE")]
+    assert cve_find
+    assert all(not r["extra"].get("check_id") and not r["extra"].get("rule") for r in cve_find)
 
 
 def test_trivy_two_secrets_on_one_file_stay_distinct(tmp_path: Path) -> None:
