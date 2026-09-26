@@ -8,33 +8,56 @@ from typing import Any, Iterator
 
 from shared.io_util import read_json, read_jsonl, read_text
 
-_SKIP = (
+_HEADER_NOISE = (
     "x-frame-options",
     "x-content-type-options",
     "strict-transport-security",
     "x-xss-protection",
     "content-security-policy",
     "referrer-policy",
+    "expect-ct",
     "httponly",
     "secure flag",
+    "retrieved via header",
+    "uncommon header",
+    "server banner changed",
+    "etag",
+    "etags",
+    "potentially interesting backup",
 )
-_INTERESTING = (
+_HIGH = (
+    "xss",
+    "cross site scripting",
+    "cve-",
+    "lfi",
+    "rce",
+    "sql injection",
+    "default password",
+    "default credential",
+    "remote code",
+    "directory traversal",
+)
+_MEDIUM = (
     "admin",
     "login",
+    "manager",
     "phpmyadmin",
     "wp-admin",
     ".git",
     ".env",
     "phpinfo",
     "server-status",
-    "server-info",
     "directory index",
     "directory listing",
     "indexing found",
-    "default password",
-    "default credential",
-    "backup",
-    "cve-",
+    " 'put'",
+    "\"put\"",
+    "put' method",
+    "delete' may",
+    "delete' method",
+    "'delete'",
+    "allowed http methods",
+    "breach",
 )
 
 
@@ -42,13 +65,24 @@ def _tag(el: ET.Element) -> str:
     return el.tag.split("}")[-1].lower()
 
 
-def is_interesting(url: str, msg: str) -> bool:
+def is_noise(url: str, msg: str, nid: str = "") -> bool:
     blob = f"{url} {msg}".lower()
-    if any(skip in blob for skip in _SKIP) and not any(
-        tok in blob for tok in ("admin", "login", ".git", ".env", "phpmyadmin")
-    ):
-        return False
-    return any(tok in blob for tok in _INTERESTING)
+    _ = nid
+    return any(tok in blob for tok in _HEADER_NOISE)
+
+
+def nikto_severity(url: str, msg: str, nid: str = "") -> str:
+    blob = f"{url} {msg} {nid}".lower()
+    if any(tok in blob for tok in _HIGH):
+        return "high"
+    if any(tok in blob for tok in _MEDIUM):
+        return "medium"
+    return "low"
+
+
+def is_interesting(url: str, msg: str, nid: str = "") -> bool:
+    """True when the row is not header / soft-404 backup noise."""
+    return not is_noise(url, msg, nid)
 
 
 def is_nikto_payload(payload: Any) -> bool:
@@ -77,6 +111,16 @@ def is_nikto_payload(payload: Any) -> bool:
         row = payload[0]
         if row.get("template-id") or row.get("nvt") or "finding" in row:
             return False
+        nested = row.get("vulnerabilities") or row.get("items")
+        if isinstance(nested, list):
+            if not nested:
+                return True
+            first = nested[0] if isinstance(nested[0], dict) else {}
+            return bool(
+                first.get("msg")
+                or first.get("url") is not None
+                or first.get("OSVDB") is not None
+            )
         return bool(row.get("msg") and (row.get("url") is not None or row.get("OSVDB") is not None))
     return False
 
@@ -113,17 +157,21 @@ def _host_from(row: dict[str, Any], default: str) -> str:
 def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if isinstance(payload, list):
-        host = default_host
         for row in payload:
-            if isinstance(row, dict):
-                out.append(
-                    {
-                        "host": _host_from(row, host),
-                        "url": str(row.get("url") or row.get("uri") or "/"),
-                        "msg": str(row.get("msg") or row.get("description") or row.get("message") or ""),
-                        "id": str(row.get("id") or row.get("OSVDB") or row.get("osvdbid") or "nikto"),
-                    }
-                )
+            if not isinstance(row, dict):
+                continue
+            nested = row.get("vulnerabilities") or row.get("items")
+            if isinstance(nested, list):
+                out.extend(_rows_from_payload(row, _host_from(row, default_host)))
+                continue
+            out.append(
+                {
+                    "host": _host_from(row, default_host),
+                    "url": str(row.get("url") or row.get("uri") or "/"),
+                    "msg": str(row.get("msg") or row.get("description") or row.get("message") or ""),
+                    "id": str(row.get("id") or row.get("OSVDB") or row.get("osvdbid") or "nikto"),
+                }
+            )
         return out
     if not isinstance(payload, dict):
         return out

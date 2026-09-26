@@ -1,0 +1,50 @@
+{
+  "host": "juice-shop.herokuapp.com",
+  "ip": "52.51.36.193",
+  "port": "443",
+  "banner": "Cowboy",
+  "vulnerabilities": [
+    {
+      "id": "999970",
+      "OSVDB": "0",
+      "method": "GET",
+      "url": "/",
+      "msg": "The site uses SSL and the Strict-Transport-Security HTTP header is not defined."
+    },
+    {
+      "id": "999966",
+      "OSVDB": "0",
+      "method": "GET",
+      "url": "/",
+      "msg": "The Content-Encoding header is set to \"deflate\" this may mean that the server is vulnerable to the BREACH attack."
+    },
+    {
+      "id": "740001",
+      "OSVDB": "0",
+      "method": "HEAD",
+      "url": "/backup.tar",
+      "msg": "Potentially interesting backup/cert file found. "
+    },
+    {
+      "id": "740001",
+      "OSVDB": "0",
+      "method": "HEAD",
+      "url": "/dump.pem",
+      "msg": "Potentially interesting backup/cert file found. "
+    },
+    {
+      "id": "001811",
+      "OSVDB": "3092",
+      "method": "GET",
+      "url": "/public/",
+      "msg": "This might be interesting."
+    },
+    {
+      "id": "006737",
+      "OSVDB": "0",
+      "method": "POST",
+      "url": "/wp-content/plugins/nextgen-gallery/products/photocrati_nextgen/modules/nextgen_addgallery_page/static/jquery.filetree/connectors/jqueryFileTree.php",
+      "msg": "NextGEN Gallery LFI, see https://security.dxw.com/advisories/directory-traversal-in-nextgen-gallery-2-0-0/"
+    }
+  ]
+}
