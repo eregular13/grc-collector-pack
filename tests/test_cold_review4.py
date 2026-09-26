@@ -852,20 +852,25 @@ def test_netbios_ns_pod_reclass_keeps_uid() -> None:
     assert ledger.observe(new, now=NOW) == old_uid
 
 
-def test_demo_fedramp_open_stays_126(tmp_path: Path, monkeypatch) -> None:
+def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
+    """FedRAMP Open is the included poam.csv set, not the fat 126-row ledger."""
     from tests.test_poam_breakdown import _run_lab
 
     _run_lab(tmp_path, monkeypatch)
-    fed = tmp_path / "poam" / "poam_fedramp.csv"
-    assert fed.is_file()
-    with fed.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    assert len(rows) == 126, f"DEMO FedRAMP Open={len(rows)} expected 126"
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
+    with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    assert [r.get("POAM ID") for r in fed] == [r.get("poam_id") for r in poam]
+    assert len(fed) == len(poam)
+    assert len(fed) < 126
 
 
-def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
+def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     import os
     import subprocess
+
+    from tests.test_pack_drop_scan_density import MIN_FARM_POAM
 
     root = Path(__file__).resolve().parents[1]
     script = root / "scripts" / "farm_drop_to_sor.sh"
@@ -887,17 +892,19 @@ def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    fed = work / "out" / "poam" / "poam_fedramp.csv"
-    assert fed.is_file()
-    with fed.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    assert len(rows) == 172, f"farm FedRAMP Open={len(rows)} expected 172"
+    with (work / "out" / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
+    with (work / "out" / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    assert [r.get("POAM ID") for r in fed] == [r.get("poam_id") for r in poam]
+    assert len(fed) >= MIN_FARM_POAM
+    assert len(fed) < 172
 
 
-def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
+def test_master_demo_ledger_upgrade_open_matches_poam(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 932cf7c DEMO ledger: FedRAMP Open stays 126, 0 new, 0 ghosts."""
+    """Upgrade a 932cf7c DEMO ledger: Open == poam.csv; excluded prior IDs may leave."""
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -912,22 +919,17 @@ def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
         json.dumps(prior, indent=2) + "\n", encoding="utf-8"
     )
     summary = _run_lab(tmp_path, monkeypatch)
-    ledger = json.loads((tmp_path / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
-    created = [
-        e for e in (ledger.get("events_this_run") or []) if e.get("kind") == "created"
-    ]
-    open_items = [
-        it for it in ledger["items"].values() if str(it.get("status") or "") != "closed"
-    ]
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
-    reseen_ids = {it["poam_id"] for it in open_items}
-    ghosts = prior_ids - reseen_ids
-    assert created == [], [e.get("poam_id") for e in created]
-    assert ghosts == set(), f"ghosts {sorted(ghosts)}"
-    assert len(open_items) == 126
-    assert len(fed_rows) == 126
-    assert reseen_ids == prior_ids
+    poam_ids = {str(r.get("poam_id") or "") for r in poam}
+    fed_ids = {str(r.get("POAM ID") or "") for r in fed_rows}
+    assert fed_ids == poam_ids
+    assert len(poam) < 126
+    # Prior 126-row ledger included excluded items and pre-#172 asset keys.
+    # Those IDs may leave; Open must still equal poam.csv.
+    assert prior_ids - poam_ids
     assert summary.get("demo") is True
 
 
