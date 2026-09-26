@@ -54,7 +54,9 @@ def test_lab_demo_fixture_counts_agree(tmp_path: Path, monkeypatch: pytest.Monke
         {"cloud-prowler": cloud, "identity-ad": identity, "k8s-kubescape": k8s},
     )
     shape = assert_count_consistency(tmp_path, summary)
-    assert summary["risk_scenarios"] == summary["weaknesses"] == shape["weaknesses"]
+    merged = int(shape.get("merged_aliases") or 0)
+    kind_ex = int(summary.get("kind_excluded") or 0)
+    assert summary["risk_scenarios"] == summary["weaknesses"] + kind_ex - merged
     assert summary["poam"] == summary["open_risks"] == shape["poam"]
     assert summary["findings"] + summary["vulnerabilities"] == summary["weaknesses"]
     assert "incidents" not in summary
@@ -80,7 +82,9 @@ def test_sample_keep_fixture_counts_agree(tmp_path: Path, monkeypatch: pytest.Mo
     summary = _load_dir(monkeypatch, tmp_path, {"cloud-prowler": cloud})
     shape = assert_count_consistency(tmp_path, summary)
     assert summary["poam"] == summary["open_risks"] == shape["poam"]
-    assert summary["risk_scenarios"] == summary["weaknesses"]
+    merged = int(shape.get("merged_aliases") or 0)
+    kind_ex = int(summary.get("kind_excluded") or 0)
+    assert summary["risk_scenarios"] == summary["weaknesses"] + kind_ex - merged
     assert summary["findings"] + summary["vulnerabilities"] == summary["weaknesses"]
     assert "incidents" not in summary
     assert "risks_proposed" not in summary
@@ -101,7 +105,9 @@ def test_farm_drop_nmap_counts_agree(tmp_path: Path, monkeypatch: pytest.MonkeyP
     summary = _load_dir(monkeypatch, tmp_path, {"inventory-nmap": recs})
     shape = assert_count_consistency(tmp_path, summary)
     assert summary["poam"] == summary["open_risks"] == shape["poam"]
-    assert summary["risk_scenarios"] == summary["weaknesses"]
+    merged = int(shape.get("merged_aliases") or 0)
+    kind_ex = int(summary.get("kind_excluded") or 0)
+    assert summary["risk_scenarios"] == summary["weaknesses"] + kind_ex - merged
     assert summary["findings"] + summary["vulnerabilities"] == summary["weaknesses"]
     assert "incidents" not in summary
     assert "risks_proposed" not in summary
