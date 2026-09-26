@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 209 — persist operator No + O/P/Q audit (#160) (2026-09-26)
+
+Metis acceptance: operator Vendor Dependency=No persists across later
+runs without overrides.csv (`vd_source=operator`). Any O/P/Q /
+`vd_source` change updates `status_date` and writes `field_changed`.
+Invalid override tokens warn. Vendor-dependent Yes stays off Closed.
+Fingerprint / EGP IDs unchanged. Pytest **1309**. Host-lab unchanged
+(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 208 — merge master 1be65cf (#159) into Gap 2 (2026-09-26)
 
 Normal merge of `origin/master` `1be65cf` (#159 hermetic farm_which PATH).
