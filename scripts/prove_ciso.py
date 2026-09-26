@@ -64,7 +64,7 @@ LAB_BANNER = (
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 SKIP_EXISTING_IN_NAMES = frozenset(
-    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md"}
+    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
 )
 
 ENV_KEYS = (
@@ -77,6 +77,7 @@ ENV_KEYS = (
     "DROPBOX_LIVE",
     "DROPBOX_DEMO",
     "PYTHONPATH",
+    "GRC_ESTATE_LABEL",
 )
 
 PAYING_PASS_RE = re.compile(r"paying[_ ]day[\"'\s:=]+pass", re.IGNORECASE)
@@ -404,6 +405,8 @@ def prove_ciso(
         os.environ["DROPBOX_LIVE"] = "0"
         os.environ["DROPBOX_DEMO"] = "1"
         os.environ.setdefault("PYTHONPATH", str(root))
+        # Export watermark (poam estate column + banner). LAB != SAMPLE != client.
+        os.environ["GRC_ESTATE_LABEL"] = "LAB" if use_existing_in else "SAMPLE"
         if use_existing_in:
             require_existing_in(dest_in)
             seed = inspect_existing_in(dest_in)

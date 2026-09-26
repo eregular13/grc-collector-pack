@@ -196,7 +196,8 @@ function applySinkSamplePill(estate) {
   const ogSource = sinkSource((estate.opengrc && estate.opengrc.source) || "");
   const pbSource = sinkSource((estate.probo && estate.probo.source) || "");
   const packaged = ogSource === "product-lab/drop" || pbSource === "product-lab/drop";
-  const show = !!estate.lab && packaged;
+  // Any packaged product-lab/drop source gets the pill, LAB or not.
+  const show = packaged;
   el.classList.toggle("hidden", !show);
 }
 

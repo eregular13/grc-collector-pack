@@ -1,0 +1,11 @@
+LAB dest_in wazuh drop — Lynis report.dat + OpenSCAP XCCDF.
+SHA256 of LF bytes. LAB != SAMPLE != client. Never POST /api/risks.
+Not a CIS benchmark / CIS-CAT deliverable.
+
+
+| File | SHA256 |
+|---|---|
+| LAB.txt | `ad4de780a378c8fb148eb0429f2aab907d97682267cd5e35f919ae655d087f59` |
+| lynis-lab-jump.dat | `899019ef4c45b7031587b46833af3dcda540dfa02aee63ec31675afc5f312001` |
+| openscap-lab-jump.xml | `7599e2c5a9f016c9a0b99468bfccdfa3197b62de54bd765c20e57b3d8923ad37` |
+

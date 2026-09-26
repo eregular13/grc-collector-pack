@@ -6,3 +6,5 @@ dropbox/SCOPE.example.yaml text eol=lf
 # product-lab/drop MANIFEST SHA256 is of LF git blobs. Windows autocrlf
 # would rewrite CSVs/JSON and fail tests/test_drop_manifest.py.
 product-lab/drop/** text eol=lf
+# LAB dest_in hardening drop (Lynis/OpenSCAP) SHA256 is of LF blobs.
+fixtures/lab-drop/** text eol=lf
