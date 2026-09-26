@@ -1,8 +1,8 @@
 """Same-title fallback rows stay distinct when path/url/file/line/user/evidence differ.
 
 Metis FOLLOW-UP from #161: DEMO easm "Exposed admin interface" on two URLs
-must not share one EGP. Upgrade from a pre-location ledger rematches — no
-ghosts and no new EGPs for a row that only gained a discriminator.
+must not share one EGP. Upgrade rematch: first sibling keeps the legacy
+EGP; newly discriminated siblings mint new IDs (CoS sign-off).
 
 LAB/SAMPLE/DEMO ≠ client KEEP. No POST /api/risks.
 """
@@ -163,8 +163,8 @@ def test_synthetic_two_services_without_port() -> None:
     assert "service:ssh" in weakness_key(ssh)
 
 
-def test_pre_location_upgrade_no_new_egp_no_ghost() -> None:
-    """Two URL rows that shared one #161 key rematch one EGP on upgrade."""
+def test_pre_location_upgrade_first_keeps_egp_siblings_mint_new() -> None:
+    """First URL keeps the #161 EGP; the other URL mints a new ID. No ghost."""
     login = _easm_admin("/login", "https://admin.example.com/login", "url-login")
     apex = _easm_admin(
         "https://admin.example.com", "https://admin.example.com", "url-apex"
@@ -201,9 +201,14 @@ def test_pre_location_upgrade_no_new_egp_no_ghost() -> None:
         it for it in out["items"].values() if str(it.get("status") or "") != "closed"
     ]
     ids = {it["poam_id"] for it in open_items}
-    assert created == [], [e.get("poam_id") for e in created]
-    assert ids == {"EGP-KEEPADMIN"}
-    assert len(open_items) == 1
+    assert "EGP-KEEPADMIN" in ids
+    assert len(open_items) == 2
+    assert len(created) == 1, [e.get("poam_id") for e in created]
+    assert created[0]["poam_id"] != "EGP-KEEPADMIN"
+    assert created[0]["poam_id"] in ids
+    assert {it["poam_id"] for it in open_items if it["poam_id"] != "EGP-KEEPADMIN"} == {
+        created[0]["poam_id"]
+    }
     fresh = apply_ledger(
         [login, apex],
         catalog=_unevaluated(),
@@ -215,7 +220,6 @@ def test_pre_location_upgrade_no_new_egp_no_ghost() -> None:
         it for it in fresh["items"].values() if str(it.get("status") or "") != "closed"
     ]
     assert len(fresh_open) == 2
-    assert {it["poam_id"] for it in fresh_open} != {"EGP-KEEPADMIN"}
 
 
 def test_cve_key_does_not_grow_file_location() -> None:

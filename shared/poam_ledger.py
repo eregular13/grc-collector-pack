@@ -1023,19 +1023,13 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
     Same weakness + two old asset keys → keep the older EGP- ID and earliest
     Original Detection Date; the other EGP- ID is recorded on ``fp_migrations``
     as an alias (not deleted). Different weaknesses stay separate items.
+
+    Location split (Metis #170): the first sibling to rematch a pre-location
+    fp keeps that EGP. Later siblings that now have a distinct location key
+    mint new EGPs — do not fold them onto the already-migrated dest.
     """
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
-    # Sibling that only gained a location discriminator: stay on the migrated EGP.
-    rematch_from = {old_fp for old_fp, _reason in _legacy_fps_for(rec) if old_fp}
-    rematch_from.add(fp_v1(rec, weakness_key_fn=legacy_pre_location_weakness_key))
-    rematch_from.discard("")
-    if new_fp not in items:
-        for row in ledger.get("fp_migrations") or []:
-            src = str(row.get("from") or "")
-            dest = str(row.get("to") or "")
-            if src in rematch_from and dest in items:
-                return dest
     found: dict[str, tuple[dict[str, Any], str]] = {}
     for old_fp, reason in _legacy_fps_for(rec):
         if old_fp != new_fp and old_fp in items:

@@ -896,10 +896,14 @@ def test_farm_fedramp_open_stays_174(tmp_path: Path) -> None:
     assert len(rows) == 174, f"farm FedRAMP Open={len(rows)} expected 174"
 
 
-def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
+def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 932cf7c DEMO ledger: FedRAMP Open stays 126, 0 new, 0 ghosts."""
+    """master→this-branch: first Exposed-admin URL keeps its EGP; sibling is new.
+
+    Fresh DEMO FedRAMP Open is 127. Upgrade must not stay at 126 — the
+    newly discriminated /login (or apex) URL is tracked. 0 ghosts.
+    """
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -925,9 +929,18 @@ def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
         fed_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
     ghosts = prior_ids - reseen_ids
-    assert created == [], [e.get("poam_id") for e in created]
+    new_ids = reseen_ids - prior_ids
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
-    assert len(open_items) == 126
-    assert len(fed_rows) == 126
-    assert reseen_ids == prior_ids
+    assert len(created) == 1, [e.get("poam_id") for e in created]
+    assert {e.get("poam_id") for e in created} == new_ids
+    assert len(open_items) == 127
+    assert len(fed_rows) == 127
+    assert prior_ids <= reseen_ids
+    admin_rows = [
+        it
+        for it in open_items
+        if str(it.get("name") or "").startswith("Exposed admin interface on")
+    ]
+    assert len(admin_rows) == 2
+    assert len({it["poam_id"] for it in admin_rows}) == 2
     assert summary.get("demo") is True
