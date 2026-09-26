@@ -6,6 +6,7 @@ SAMPLE/DEMO != client. Farm path stays exposure (vulnerabilities == 0).
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -21,13 +22,18 @@ NMAP = PACK / "nmap"
 
 # Brick 4 farm_drop SoR ballpark (thin one-host nmap leaf): 85 findings / 23 poam / 0 vulns.
 # Brick 5 floors are the denser dual-net SAMPLE leaf, still below inventing client KEEP.
+# Full POA&M plan (default) puts Lows + non-key Mediums on the plan. Measured
+# farm_drop after that change: findings=174 poam=106 excluded=68
+# (60 severity_info + 8 honeypot). Old MIN_FARM_POAM=35 was the lighter
+# High/key-Medium-only plan — do not revert.
 BEFORE_FARM_FINDINGS = 85
 BEFORE_FARM_POAM = 23
 MIN_NMAP_HOSTS = 14
 MIN_NMAP_PORTS = 30
 MIN_NMAP_FINDINGS = 30
 MIN_FARM_FINDINGS = 110
-MIN_FARM_POAM = 35
+MIN_FARM_POAM = 100
+MIN_FARM_EXCLUDED = 20
 CORP_PREFIX = "10.0.0."
 LAB_PREFIX = "172.16.10."
 HOST_CLASSES = (
@@ -173,6 +179,20 @@ def test_farm_drop_prove_register_is_denser_and_exposure_only(tmp_path: Path) ->
     assert shape["risk_scenarios"] >= shape["findings"]
     assert shape["poam_rows"] >= MIN_FARM_POAM
     assert shape["poam_rows"] > BEFORE_FARM_POAM
+    excluded_path = Path(stamp["out_dir"]) / "poam" / "excluded.csv"
+    assert excluded_path.is_file()
+    with excluded_path.open(encoding="utf-8", newline="") as fh:
+        excluded = list(csv.DictReader(fh))
+    assert len(excluded) >= MIN_FARM_EXCLUDED
+    reasons = {str(row.get("excluded_reason") or "") for row in excluded}
+    assert "severity_info" in reasons
+    assert "honeypot" in reasons
+    summary = json.loads((Path(stamp["out_dir"]) / "summary.json").read_text(encoding="utf-8"))
+    assert summary["poam_plan"] == "full"
+    assert int(summary["weaknesses_total"]) == int(summary["poam_included"]) + int(
+        summary["excluded"]
+    )
+    assert int(summary["excluded"]) == len(excluded)
     assert shape["vulnerabilities"] == 0
     assert shape["vulns_cve_class_only"] is True
     assert stamp["counts"]["findings"] == shape["findings"]
