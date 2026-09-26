@@ -18,22 +18,22 @@ from __future__ import annotations
 
 from typing import Any
 
-# Honest CPG only from 800-53 ids that sit in that CPG's scope.
-# 2_W = known-weak / unnecessary service. 1_E = asset/exposure inventory.
-# Do not stamp either from severity. Empty when no control honestly maps.
-_N53_CPG = {
-    "CM-7": "cpg_2_W",
-    "SC-7": "cpg_2_W",
-    "CM-8": "cpg_1_E",
-}
+from shared.framework_class_map import (
+    CONTROL_CLASS,
+    UNMAPPED,
+    WEAKNESS_CLASS_MAP,
+    cpg_stamp,
+)
 
 
-def _cpg_from_n53(n53: list[str]) -> str:
-    for cid in n53:
-        tag = _N53_CPG.get(str(cid).split("(")[0])
-        if tag:
-            return tag
-    return ""
+def _cpg_from_class(control_name: str) -> str:
+    """CPG 2.0 stamp from the one weakness-class table. Empty if unmapped."""
+    cls = CONTROL_CLASS.get(control_name) or UNMAPPED
+    row = WEAKNESS_CLASS_MAP.get(cls) or {}
+    cid = str(row.get("cpg") or UNMAPPED)
+    if cid == UNMAPPED:
+        return ""
+    return cpg_stamp(cid)
 
 
 # Pack control keys already used by shared.control_map (underscore CSF/CPG).
@@ -338,8 +338,8 @@ def extra_control_fields(
         "control_key": key,
         "control_name": meta.get("control_name") or "",
         "csf": meta.get("csf") or "csf_PR",
-        # Derive from 800-53. Never fall back to a blanket cpg_2_W.
-        "cpg": _cpg_from_n53(n53),
+        # CPG 2.0 from the one weakness-class table. Never a blanket cpg_2_W.
+        "cpg": _cpg_from_class(str(meta.get("control_name") or "")),
         "nist_800_53": n53,
     }
     if include_cis_internal:

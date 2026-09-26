@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
+from shared.framework_class_map import apply_class_mapping
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
 
@@ -568,8 +569,8 @@ def _derive_cpg(n53: list[str]) -> list[str]:
     return out
 
 
-def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
-    """Attach CSF 2.0 + CPG stamps from 800-53 / CIS / topic. Never from severity."""
+def _stamp_csf(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Attach CSF 2.0 function (PR #128) + class subcategory/CPG. Never from severity."""
     n53 = list(mapped.get("nist_800_53") or [])
     cis = list(mapped.get("cis") or [])
     name = str(mapped.get("control_name") or "")
@@ -595,9 +596,9 @@ def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
     mapped["csf"] = stamps
     mapped["csf_function"] = primary
     mapped["csf_functions"] = [fn for fn in CSF_FUNCTIONS if fn in found]
-    mapped["cpg"] = _derive_cpg(n53)
-    refs = list(mapped["cpg"]) + stamps + _n53_tokens(n53) + list(cis)
-    mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
+    # CPG + CSF subcategory come from the weakness-class table, not a
+    # CM-7/SC-7 catch-all and not a function-level csf_PR default.
+    apply_class_mapping(mapped, rec)
     return mapped
 
 
@@ -740,7 +741,8 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
             "finding_type": typed.get("finding_type") or "",
             "weakness_name": str(typed.get("weakness_name") or ""),
             "key_medium": bool(typed.get("key_medium")),
-        }
+        },
+        rec,
     )
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
@@ -772,7 +774,8 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
                 "generic": False,
                 "finding_type": check,
                 "weakness_name": MISCONFIG_WEAKNESS.get(check, ""),
-            }
+            },
+            rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
@@ -785,7 +788,8 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
             {
                 **play,
                 "cpg": [],
-            }
+            },
+            rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
@@ -813,7 +817,7 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     mapped["cis"] = cis
     mapped.setdefault("generic", False)
     mapped.setdefault("finding_type", "")
-    mapped = _stamp_csf(mapped)
+    mapped = _stamp_csf(mapped, rec)
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
 
@@ -1586,7 +1590,18 @@ def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
         if mapped.get("csf"):
             stamps.append("nist_csf")
     else:
-        stamps = [CPG_WEAK_SERVICE, CPG_EXPOSURE, "csf_PR", "nist_csf", "cisa_cpg"]
+        stamps = [
+            CPG_WEAK_SERVICE,
+            CPG_EXPOSURE,
+            "csf_PR",
+            "nist_csf",
+            "cisa_cpg",
+            "cpg_3_S",
+            "cpg_2_B",
+            "csf_PR_IR_01",
+            "csf_unmapped",
+            "cpg_unmapped",
+        ]
     out: list[str] = []
     for stamp in stamps:
         if stamp and ":" not in stamp and stamp not in out:
