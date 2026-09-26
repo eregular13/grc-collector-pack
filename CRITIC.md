@@ -5,8 +5,11 @@ behaviors kept: LAB/operator parse failure never fills `fixtures/demo`
 (`parse_error` / `no_records`), and real-sample parsers (Prowler
 OCSF/CSV, Wazuh JSONL/SCA, XCCDF severity, SARIF Trivy critical,
 enum4linux-ng). Malformed Prowler/Wazuh/XCCDF/SARIF/enum4linux on a
-LAB run is `parse_error`, not demo fill. Host-lab baseline remains
-`assets=81` `findings=104` `poam=109` (`demo=true`). Zero P0/P1.
+LAB run is `parse_error`, not demo fill. Lab this brick: pytest
+**1056** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=104` `poam=109`
+`demo=true`). Cold SAMPLE→SoR findings=6 poam=8 vulns=2. Cold
+farm_drop→SoR findings=174 poam=48 vulns=0. Zero P0/P1.
 Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
 No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
 unchanged.

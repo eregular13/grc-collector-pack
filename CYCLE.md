@@ -9,9 +9,10 @@ and never substitutes `fixtures/demo` on LAB/CLIENT/operator drops,
 and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
 severity, SARIF Trivy critical, enum4linux-ng). Malformed
 Prowler/Wazuh/XCCDF/SARIF/enum4linux on a LAB run is `parse_error`,
-not demo fill. No force-push. PR #134 stays open. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
-stay-out.
+not demo fill. No force-push. PR #134 stays open. pytest **1056**.
+Host-lab `assets=81` `findings=104` `poam=109`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/48/0. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
 
 ## cycle 191 — merge master #130 HK into real-sample parsers (2026-09-26)
 
