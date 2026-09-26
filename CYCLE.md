@@ -7,7 +7,11 @@ Normal merge of `origin/master` `6a5ebd6` (#172 Wazuh host key, #178 CLIENT guar
 #161 follow-ups, plus #160 vendor columns). No rebase. Keep flood_guard +
 FedRAMP Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE. Parser
 `kind=excluded` now counts in findings_in and lands on excluded.csv; osquery
-unmapped → NOT_A_WEAKNESS (detail unmapped query). Catalog unchanged.
+unmapped → NOT_A_WEAKNESS (detail unmapped query). Pytest **1451**.
+Host-lab **79 / 105 / 121** excluded **21** (honeypot 3 + telemetry 1 +
+superseded 2 + DUPLICATE_INSTANCE 15); flood_guard 142 = 121 + 21. Farm
+**48 / 134 / 85** excluded **89**; flood_guard 174 = 85 + 89. poam 122→121
+is one extra superseded_by_specific. Catalog unchanged.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
 ## cycle 207 — merge origin/master 1be65cf (#134+#159) (2026-09-26)

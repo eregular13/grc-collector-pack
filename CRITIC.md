@@ -5,9 +5,16 @@ a normal merge commit. No rebase. Both sides kept: flood_guard + FedRAMP
 Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE + kind=excluded
 in findings_in; master ledger fingerprints, vendor-dependency columns,
 console `severity_from_open_poam`, nse-redis-noauth, playbook types.
-Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
-**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
-are unchanged.
+Lab this brick: pytest **1451** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=105`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=127`
+`poam=121` `excluded=21` `duplicates_merged=15` `flood_guard`
+`findings_in=142` `demo=true`). Farm `assets=48` `findings=134`
+`poam=85` `excluded=89` (`findings_in=174`). Host-lab poam 122→121 is
+one extra `superseded_by_specific` after the master merge, not a
+dropped collector. Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
 
 # CRITIC — cycle 207 (MERGE_MASTER_159_INTO_149)
 
