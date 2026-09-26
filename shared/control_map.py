@@ -754,7 +754,10 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     mapped = _map_finding_body(rec)
-    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+    from shared.poam_rollup import EXCLUDE_KLASSES, classify
+
+    klass, _rk, _band = classify(rec)
+    if klass in EXCLUDE_KLASSES:
         mapped = dict(mapped)
         mapped["include_poam"] = False
     return mapped
@@ -1397,8 +1400,18 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
+        "DUPLICATE_INSTANCE",
+        "INFO_ONLY",
+        "TELEMETRY",
+        "NOT_A_WEAKNESS",
+        "FALSE_POSITIVE_CANDIDATE",
+        "MANUAL_CHECK",
+        "MUTED",
+        "unexplained",
+        "UNEXPLAINED",
     }
 )
+REASON_CODES = POAM_INCLUDE_REASONS | POAM_EXCLUDE_REASONS | frozenset({"escalate"})
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
 TELEMETRY_SOURCES = frozenset({"host-wazuh", "wazuh"})
 TELEMETRY_CATEGORIES = frozenset({"incident", "alert", "telemetry", "siem-alert"})
@@ -1476,52 +1489,74 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     NSE misconfig is always included. Honeypot / deception-sensor is always
     excluded. Informational is excluded (telemetry_info for telemetry-only
     rows). Status is not a gate. Repeated telemetry lows are collapsed by
-    iter_poam_decisions, not here.
+    iter_poam_decisions → poam_rollup.build (E1), not here.
 
     GRC_POAM_LIGHTER=1 restores the lighter plan: Lows and non-key Mediums
     are excluded (severity_low / severity_medium_not_key) and recorded.
     """
+    from shared.poam_rollup import classify, extra_exclude_token, reason_code_of
+
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
     sev = canon_severity(rec.get("severity"))
     mapped = map_finding(rec)
     key_medium = bool(mapped.get("key_medium"))
+    klass, rk, band = classify(rec)
     if lighter is None:
         lighter = poam_lighter_requested()
+
+    def _done(include: bool, reason: str) -> dict[str, Any]:
+        return {
+            "include": include,
+            "reason": reason,
+            "reason_code": reason_code_of(reason),
+            "severity": sev,
+            "klass": klass,
+            "rollup_key": rk,
+            "band": band,
+        }
+
+    token = extra_exclude_token(rec)
+    if token == "MUTED":
+        return _done(False, "MUTED")
+    if token == "FALSE_POSITIVE_CANDIDATE":
+        return _done(False, "FALSE_POSITIVE_CANDIDATE")
+    if token == "MANUAL_CHECK":
+        return _done(False, "MANUAL_CHECK")
+    if token == "NOT_A_WEAKNESS":
+        return _done(False, "NOT_A_WEAKNESS")
     if check in MISCONFIG_RULES:
-        return {"include": True, "reason": "nse_misconfig", "severity": sev}
+        return _done(True, "nse_misconfig")
     if _is_honeypot(rec):
-        return {"include": False, "reason": "honeypot", "severity": sev}
+        return _done(False, "honeypot")
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
         if sev == "info":
-            return {"include": False, "reason": "telemetry_info", "severity": sev}
-        return {"include": False, "reason": "telemetry", "severity": sev}
+            return _done(False, "telemetry_info")
+        return _done(False, "telemetry")
     if sev == "info":
-        return {"include": False, "reason": "severity_info", "severity": sev}
+        return _done(False, "severity_info")
     if sev in {"high", "critical"}:
-        return {"include": True, "reason": "severity_high_critical", "severity": sev}
+        return _done(True, "severity_high_critical")
     if key_medium:
-        return {"include": True, "reason": "key_medium", "severity": sev}
+        return _done(True, "key_medium")
     if sev == "low":
-        if lighter:
-            return {"include": False, "reason": "severity_low", "severity": sev}
-        return {"include": True, "reason": "severity_low", "severity": sev}
+        return _done(not lighter, "severity_low")
     if sev == "medium":
         if lighter:
-            return {"include": False, "reason": "severity_medium_not_key", "severity": sev}
-        return {"include": True, "reason": "severity_medium", "severity": sev}
+            return _done(False, "severity_medium_not_key")
+        return _done(True, "severity_medium")
     included = bool(mapped.get("include_poam"))
-    return {
-        "include": included,
-        "reason": "severity_high_critical" if included else "unexplained",
-        "severity": sev,
-    }
+    return _done(included, "severity_high_critical" if included else "unexplained")
 
 
 def iter_poam_decisions(
-    findings: list[dict[str, Any]], *, lighter: bool | None = None
+    findings: list[dict[str, Any]],
+    *,
+    lighter: bool | None = None,
+    ledger: dict[str, Any] | None = None,
+    assets_n: int | None = None,
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
-    """Per-finding POA&M decisions with telemetry flood-guard collapse.
+    """Per-finding POA&M decisions. Collapse is poam_rollup.build (E1 + fold).
 
     Multiple low telemetry rows that share (rule/check id, asset) become one
     included row. The extras are excluded as telemetry_duplicate so
@@ -1531,34 +1566,24 @@ def iter_poam_decisions(
     finding is excluded as superseded_by_specific (winner = highest
     severity, then lowest EGP- id). The row stays in the finding set.
     """
-    from shared.port_fold import SUPERSEDED_REASON, egp_id_for, port_only_superseders
+    from shared.poam_rollup import build
 
     if lighter is None:
         lighter = poam_lighter_requested()
-    seen: set[tuple[str, str]] = set()
-    superseders = port_only_superseders(findings)
-    out: list[tuple[dict[str, Any], dict[str, Any]]] = []
-    for rec in findings:
-        decision = dict(poam_decision(rec, lighter=lighter))
-        if (
-            decision.get("include")
-            and decision.get("severity") == "low"
-            and is_telemetry_finding(rec)
-        ):
-            key = telemetry_collapse_key(rec)
-            if key[0] and key in seen:
-                decision["include"] = False
-                decision["reason"] = "telemetry_duplicate"
-            elif key[0]:
-                seen.add(key)
-        winner = superseders.get(str(rec.get("ref_id") or ""))
-        if winner is not None:
-            decision["include"] = False
-            decision["reason"] = SUPERSEDED_REASON
-            decision["superseded_by"] = egp_id_for(winner)
-            decision["superseded_by_ref"] = str(winner.get("ref_id") or "")
-        out.append((rec, decision))
-    return out
+    if assets_n is None:
+        assets: set[str] = set()
+        for rec in findings:
+            for name in rec.get("assets") or []:
+                if name:
+                    assets.add(str(name))
+        assets_n = len(assets)
+    seed = [(rec, dict(poam_decision(rec, lighter=lighter))) for rec in findings]
+    return build(
+        seed,
+        profile="lighter" if lighter else "full",
+        assets_n=assets_n,
+        ledger=ledger,
+    )
 
 
 def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = None) -> dict[str, Any]:

@@ -14,6 +14,7 @@ from typing import Any
 
 from shared.control_map import POAM_EXCLUDE_REASONS
 from shared.poam_fields import POAM_EXTRA_FIELDS
+from shared.poam_rollup import REASON_CODES
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
 # vulnerabilities.csv is CVE/secrets/sast only — header-only is allowed when
@@ -54,7 +55,10 @@ CISO_HEADERS = {
 }
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
-EXCLUDED_HEADER = "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by"
+EXCLUDED_HEADER = (
+    "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,"
+    "reason_code,rolled_into,source,detail"
+)
 EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
@@ -112,6 +116,9 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
             )
         if "weaknesses_total" in summary:
             assert_poam_breakdown(summary)
+        assert_flood_guard(out, summary)
+    else:
+        assert_flood_guard(out)
     return {
         "ok": True,
         "findings": findings_n,
@@ -133,11 +140,15 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded_by_reason must be a dict")
     if any(not str(reason or "").strip() for reason in excluded):
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded item missing named reason")
-    unknown = sorted(str(reason) for reason in excluded if reason not in POAM_EXCLUDE_REASONS)
+    allowed = POAM_EXCLUDE_REASONS | REASON_CODES
+    unknown = sorted(str(reason) for reason in excluded if reason not in allowed)
     if unknown:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
         )
+    unexplained = int((excluded.get("unexplained") or 0) + (excluded.get("UNEXPLAINED") or 0))
+    if unexplained:
+        raise RegisterShapeError(f"COUNT_CONSISTENCY_FAIL UNEXPLAINED={unexplained} (must be 0)")
     excluded_n = sum(int(count) for count in excluded.values())
     if "excluded" in summary and int(summary.get("excluded") or 0) != excluded_n:
         raise RegisterShapeError(
@@ -162,12 +173,59 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
                 f"weaknesses={summary.get('weaknesses')}"
                 + (f" + pending_carried={pending_carried}" if pending_carried else "")
             )
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    if fg and int(fg.get("UNEXPLAINED") or 0) != 0:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard.UNEXPLAINED={fg.get('UNEXPLAINED')} (must be 0)"
+        )
     return {
         "ok": True,
         "weaknesses_total": total,
         "poam_included": included,
         "excluded_by_reason": {str(k): int(v) for k, v in excluded.items()},
     }
+
+
+def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
+    """§12.6: UNEXPLAINED==0; FedRAMP Open POAM IDs == poam.csv (G0)."""
+    out = resolve_out_dir(ciso_or_out)
+    if summary is None:
+        summary_path = out / "summary.json"
+        if summary_path.is_file():
+            import json
+
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary = summary or {}
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    unexplained = int(fg.get("UNEXPLAINED") or 0)
+    excluded = summary.get("excluded_by_reason") or {}
+    if isinstance(excluded, dict):
+        unexplained += int(excluded.get("unexplained") or 0) + int(excluded.get("UNEXPLAINED") or 0)
+    excluded_path = out / "poam" / "excluded.csv"
+    if excluded_path.is_file() and excluded_path.read_text(encoding="utf-8").strip():
+        first = first_nonempty_line(excluded_path)
+        if first == EXCLUDED_HEADER:
+            for row in csv_rows(excluded_path):
+                reason = str(row.get("excluded_reason") or "").strip()
+                code = str(row.get("reason_code") or "").strip()
+                if reason in {"", "unexplained", "UNEXPLAINED"} or code in {
+                    "UNEXPLAINED",
+                    "unexplained",
+                }:
+                    unexplained += 1
+    if unexplained:
+        raise RegisterShapeError(f"FLOOD_GUARD_FAIL UNEXPLAINED={unexplained} (must be 0)")
+    poam = poam_path_of(out)
+    fed = out / "poam" / "poam_fedramp.csv"
+    if poam.is_file() and fed.is_file() and first_nonempty_line(poam) == POAM_HEADER:
+        poam_ids = {str(row.get("poam_id") or "") for row in csv_rows(poam) if row.get("poam_id")}
+        fed_ids = {str(row.get("POAM ID") or "") for row in csv_rows(fed) if row.get("POAM ID")}
+        if poam_ids != fed_ids:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL G0 poam_fedramp Open={len(fed_ids)} "
+                f"!= poam.csv={len(poam_ids)}"
+            )
+    return {"ok": True, "UNEXPLAINED": 0, "flood_guard": fg}
 
 
 class RegisterShapeError(ValueError):
@@ -330,6 +388,10 @@ def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
         ciso_or_out,
         findings_count=int(register["counts"].get("findings.csv") or 0),
     )
+    try:
+        assert_flood_guard(ciso_or_out)
+    except RegisterShapeError:
+        raise
     return {
         "ok": True,
         "ciso": register["ciso"],
@@ -389,7 +451,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
             EXCLUDED_HEADER + "\n"
-            "DEMO-I,sample-info,sample-asset,info,severity_info,\n"
-            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,\n",
+            "DEMO-I,sample-info,sample-asset,info,severity_info,,INFO_ONLY,,demo,info-only\n"
+            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,,NOT_A_WEAKNESS,,demo,honeypot\n",
             encoding="utf-8",
         )

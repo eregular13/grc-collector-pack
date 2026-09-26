@@ -125,6 +125,15 @@ def assert_lab() -> None:
         assert row.get("severity") in EXCLUDED_SEV, row
         if row.get("excluded_reason") == "severity_info":
             assert row.get("severity") == "info", row
+        assert row.get("excluded_reason") not in {"", "unexplained", "UNEXPLAINED"}
+        assert row.get("reason_code") not in {"", "UNEXPLAINED", "unexplained"}
+    fg = summary.get("flood_guard") or {}
+    assert int(fg.get("UNEXPLAINED") or 0) == 0
+    members_path = OUT / "poam" / "poam_members.csv"
+    assert members_path.is_file(), "poam/poam_members.csv missing"
+    from shared.poam_rollup import POAM_MEMBERS_FIELDS
+
+    _csv_rows(members_path, ",".join(POAM_MEMBERS_FIELDS))
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()
@@ -153,8 +162,11 @@ def assert_lab() -> None:
     if fed.is_file():
         from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
-        _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
+        poam_ids = {row.get("poam_id") for row in poam if row.get("poam_id")}
+        fed_ids = {row.get("POAM ID") for row in fed_rows if row.get("POAM ID")}
+        assert poam_ids == fed_ids, (len(poam_ids), len(fed_ids))
         closed = OUT / "poam" / "poam_fedramp_closed.csv"
         if closed.is_file():
             first = closed.read_text(encoding="utf-8").splitlines()[0]

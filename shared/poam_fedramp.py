@@ -121,14 +121,37 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
 
 
-def write_fedramp_poam(out_poam: Path, ledger: dict[str, Any]) -> dict[str, Path]:
+def write_fedramp_poam(
+    out_poam: Path,
+    ledger: dict[str, Any],
+    *,
+    included_ids: set[str] | None = None,
+) -> dict[str, Path]:
+    """Export included rollup rows only (G0: Open rows == poam.csv rows)."""
+    if included_ids is not None:
+        keep = {str(x) for x in included_ids if x}
+    else:
+        keep = {
+            str(item.get("poam_id") or "")
+            for item in (ledger.get("items") or {}).values()
+            if item.get("include") is True
+        }
+        if not keep:
+            # apply_rollups not run — fail closed to included-or-open-unmarked
+            keep = {
+                str(item.get("poam_id") or "")
+                for item in (ledger.get("items") or {}).values()
+                if item.get("include") is not False and str(item.get("status") or "") != "closed"
+            }
     open_rows: list[list[str]] = []
     closed_rows: list[list[str]] = []
     for item in (ledger.get("items") or {}).values():
         row = item_to_row(item)
+        pid = str(item.get("poam_id") or "")
         if str(item.get("status") or "") == "closed":
             closed_rows.append(row)
-        else:
+            continue
+        if pid and pid in keep:
             open_rows.append(row)
     for item in ledger.get("closed") or []:
         closed_rows.append(item_to_row(item))
