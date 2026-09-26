@@ -19,6 +19,26 @@ TYPED_SOURCES = frozenset({"cloud-prowler", "identity-ad", "k8s-kubescape"})
 
 SEV_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
+# Tool labels that must survive a same-issue-same-asset merge (Falco +
+# Kubescape privileged on prod-cluster, etc.). Collector `source` is often
+# the same lane (k8s-kubescape) so labels/tools are the evidence.
+TOOL_LABELS = frozenset(
+    {
+        "falco",
+        "kubescape",
+        "kube-bench",
+        "nuclei",
+        "trivy",
+        "greenbone",
+        "semgrep",
+        "checkov",
+        "sarif",
+        "scuba",
+        "gitleaks",
+        "trufflehog",
+    }
+)
+
 # Normalized extra.check_id / extra.edge / extra.control / extra.id → type.
 TYPE_ALIASES: dict[str, str] = {
     # Cloud — AWS (fixtures + collector CheckID). Azure/GCP equivalents only
@@ -521,6 +541,35 @@ def _sev_rank(rec: dict[str, Any]) -> int:
     return SEV_RANK.get(str(rec.get("severity") or "info").lower(), 0)
 
 
+def tools_of(rec: dict[str, Any]) -> list[str]:
+    """Scanner/tool names from labels + extra.tools. Survives a merge."""
+    extra = extra_dict(rec)
+    out: list[str] = []
+    for raw in extra.get("tools") or []:
+        token = str(raw or "").strip().lower()
+        if token and token not in out:
+            out.append(token)
+    for lab in rec.get("labels") or []:
+        token = str(lab or "").strip().lower()
+        if token in TOOL_LABELS and token not in out:
+            out.append(token)
+    return out
+
+
+def _record_tools(extra: dict[str, Any], rec: dict[str, Any]) -> None:
+    tools = extra.setdefault("tools", [])
+    if not isinstance(tools, list):
+        extra["tools"] = tools = []
+    sources = extra.setdefault("sources", [])
+    if not isinstance(sources, list):
+        extra["sources"] = sources = []
+    for token in tools_of(rec):
+        if token not in tools:
+            tools.append(token)
+        if token not in sources:
+            sources.append(token)
+
+
 def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     extra = kept.setdefault("extra", {})
     if not isinstance(extra, dict):
@@ -532,6 +581,8 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     for src in (kept.get("source"), other.get("source")):
         if src and src not in sources:
             sources.append(src)
+    _record_tools(extra, kept)
+    _record_tools(extra, other)
     also = extra.setdefault("also_ids", [])
     if not isinstance(also, list):
         extra["also_ids"] = also = []
@@ -546,6 +597,10 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
         other_extra.get("control"),
         other_extra.get("id"),
         other_extra.get("edge"),
+        other_extra.get("rule"),
+        extra.get("rule"),
+        extra.get("id"),
+        extra.get("control"),
     ):
         token = str(cid or "").strip()
         if token and token not in also_check:
@@ -619,6 +674,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                         }
                     ],
                 )
+                _record_tools(extra, rec)
             index[key] = rec
             out.append(rec)
             continue

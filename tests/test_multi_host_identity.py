@@ -414,6 +414,42 @@ def test_scuba_same_requirement_two_tenants(tmp_path: Path) -> None:
     assert all(r["extra"].get("check_id") == "Legacy authentication protocols disabled" for r in kept)
 
 
+def test_falco_privileged_and_kubescape_c0057_keep_both_tools() -> None:
+    """Same k8s_privileged on prod-cluster merges; Falco + Kubescape stay in evidence."""
+    from pathlib import Path
+
+    from shared.finding_types import finding_type
+    from shared.poam_fields import detector_source
+
+    demo = Path(__file__).resolve().parents[1] / "fixtures" / "demo" / "k8s"
+    recs = k8s_kubescape.parse_file(demo / "falco.jsonl")
+    recs.extend(k8s_kubescape.parse_file(demo / "kubescape.json"))
+    kept = _through_loader(recs)
+    priv = [
+        r
+        for r in kept
+        if finding_type(r) == "k8s_privileged" and primary_asset(r) == "prod-cluster"
+    ]
+    assert len(priv) == 1, [(primary_asset(r), r.get("name"), finding_type(r)) for r in kept]
+    extra = priv[0]["extra"]
+    tools = {str(t).lower() for t in (extra.get("tools") or [])}
+    sources = {str(s).lower() for s in (extra.get("sources") or [])}
+    labels = {str(x).lower() for x in (priv[0].get("labels") or [])}
+    seen = tools | sources | labels
+    assert "falco" in seen
+    assert "kubescape" in seen
+    names = {str(p.get("name") or "") for p in (extra.get("provenance") or [])}
+    assert "Launch Privileged Container" in names
+    assert "Privileged container" in names
+    refs = {str(p.get("ref_id") or "") for p in (extra.get("provenance") or [])}
+    assert any("c-0057" in r.lower() for r in refs)
+    assert any("launch-privileged" in r.lower() for r in refs)
+    also = {str(x) for x in (extra.get("also_ids") or [])}
+    assert also
+    det = detector_source(priv[0])
+    assert "falco" in det and "kubescape" in det
+
+
 def test_loader_summary_counts_severity_unmapped(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("OUT_DIR", str(tmp_path))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))

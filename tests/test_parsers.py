@@ -1320,6 +1320,7 @@ def test_empty_in_still_loads_demo_including_sarif(tmp_path, monkeypatch) -> Non
     assert demo is True
     names = {p.name for p in files}
     assert "nuclei.jsonl" in names
+    assert "nuclei-multi-host.jsonl" in names
     assert "demo.sarif" in names
     assert "nikto.txt" in names
     assert "demo.nessus" in names
