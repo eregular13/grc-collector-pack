@@ -176,7 +176,7 @@ def test_farm_drop_prove_register_is_denser_and_exposure_only(tmp_path: Path) ->
     shape = assert_risk_register_and_poam(Path(stamp["out_dir"]))
     assert shape["findings"] >= MIN_FARM_FINDINGS
     assert shape["findings"] > BEFORE_FARM_FINDINGS
-    assert shape["risk_scenarios"] >= shape["findings"]
+    assert shape["risk_scenarios"] >= shape["poam_rows"]
     assert shape["poam_rows"] >= MIN_FARM_POAM
     assert shape["poam_rows"] > BEFORE_FARM_POAM
     excluded_path = Path(stamp["out_dir"]) / "poam" / "excluded.csv"

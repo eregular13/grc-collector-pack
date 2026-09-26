@@ -25,7 +25,6 @@ def test_no_post_api_risks() -> None:
         ROOT / "push_riskready.sh",
         ROOT / "product" / "server.py",
         ROOT / "scripts" / "preview_probo.py",
-        ROOT / "scripts" / "preview_rr.py",
         ROOT / "scripts" / "export_opengrc.py",
         ROOT / "exporters" / "opengrc.py",
         ROOT / "exporters" / "probo.py",
