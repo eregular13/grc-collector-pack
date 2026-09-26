@@ -147,9 +147,9 @@ def test_port_scan_twins_share_dual_net_without_cve() -> None:
     rust = inventory_nmap.parse_file(PACK / "rustscan" / "assets.jsonl")
     naabu = inventory_nmap.parse_file(PACK / "naabu" / "assets.jsonl")
     fping = inventory_nmap.parse_file(PACK / "fping" / "assets.jsonl")
-    rust_names = {row["name"] for row in rust if row["kind"] == "asset"]
-    naabu_names = {row["name"] for row in naabu if row["kind"] == "asset"]
-    fping_names = {row["name"] for row in fping if row["kind"] == "asset"]
+    rust_names = {row["name"] for row in rust if row["kind"] == "asset"}
+    naabu_names = {row["name"] for row in naabu if row["kind"] == "asset"}
+    fping_names = {row["name"] for row in fping if row["kind"] == "asset"}
     assert {"10.9.8.7", "10.0.0.30", "172.16.10.20"} <= rust_names
     assert {"10.9.8.30", "10.0.0.40", "172.16.10.30"} <= naabu_names
     assert {"10.9.8.10", "10.0.0.10", "172.16.10.10"} <= fping_names
