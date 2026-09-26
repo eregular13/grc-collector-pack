@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
+from shared.framework_class_map import apply_class_mapping
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
 
@@ -134,11 +135,21 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Tighten SPF softfail (~all)": "SPF is softfail-only (~all)",
     "Publish DKIM for the listed selector": "DKIM is missing for the listed selector",
     "Rotate and revoke exposed credentials": "Hardcoded or leaked credential is present",
+    "Review privileged directory role": "Privileged directory role is assigned (unspecified)",
+    "Remove standing Global Administrator assignment": "Standing Global Administrator is assigned",
     "Remove standing privileged role assignment": "Standing privileged role is assigned",
     "Disable legacy authentication protocols": "Legacy authentication protocols are enabled",
     "Restrict external sharing": "External sharing is not restricted",
     "Review SSH brute-force activity": "SSH brute-force activity was observed",
     "Enforce password policy": "Password policy is not enforced",
+    "Raise domain minimum password length": "Domain minimum password length is below 8",
+    "Restrict Account Operators membership": "Account Operators has standing members",
+    "Restrict Print Operators membership": "Print Operators has standing members",
+    "Restrict Server Operators membership": "Server Operators has standing members",
+    "Restrict Schema Admins membership": "Schema Admins has standing members",
+    "Restrict Enterprise Admins membership": "Enterprise Admins has standing members",
+    "Restrict Administrators membership": "Builtin Administrators has standing members",
+    "Review informational PingCastle finding": "PingCastle reported a zero-point finding",
     "Enforce Windows password history": "Password history is shorter than required",
     "Disable LM hash storage": "LM hashes are stored",
     "Enforce account lockout": "Account lockout is not enforced",
@@ -421,6 +432,13 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Harden kerberoastable service accounts": ["IA-5", "AC-6"],
     "Remove unconstrained Kerberos delegation": ["AC-6", "IA-2"],
     "Restrict Backup Operators membership": ["AC-6", "AC-2"],
+    "Restrict Account Operators membership": ["AC-6", "AC-2"],
+    "Restrict Print Operators membership": ["AC-6", "AC-2"],
+    "Restrict Server Operators membership": ["AC-6", "AC-2"],
+    "Restrict Schema Admins membership": ["AC-6", "AC-2"],
+    "Restrict Enterprise Admins membership": ["AC-6", "AC-2"],
+    "Restrict Administrators membership": ["AC-6", "AC-2"],
+    "Raise domain minimum password length": ["IA-5"],
     "Restrict Domain Admins membership": ["AC-6", "AC-2"],
     "Enable full-disk encryption": ["SC-28", "MP-5"],
     "Deploy endpoint detection and response": ["SI-4"],
@@ -431,6 +449,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Require phishing-resistant MFA for privileged users": ["IA-2", "IA-2(1)"],
     "Require MFA for privileged SaaS admins": ["IA-2", "IA-2(1)"],
     "Remove standing Global Administrator assignment": ["AC-2", "AC-6", "AC-5"],
+    "Review privileged directory role": ["AC-2", "AC-6"],
     "Enforce Windows password history": ["IA-5"],
     "Disable LM hash storage": ["IA-5", "CM-6"],
     "Enable a host firewall": ["SC-7", "CM-7"],
@@ -568,8 +587,8 @@ def _derive_cpg(n53: list[str]) -> list[str]:
     return out
 
 
-def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
-    """Attach CSF 2.0 + CPG stamps from 800-53 / CIS / topic. Never from severity."""
+def _stamp_csf(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Attach CSF 2.0 function (PR #128) + class subcategory/CPG. Never from severity."""
     n53 = list(mapped.get("nist_800_53") or [])
     cis = list(mapped.get("cis") or [])
     name = str(mapped.get("control_name") or "")
@@ -595,9 +614,9 @@ def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
     mapped["csf"] = stamps
     mapped["csf_function"] = primary
     mapped["csf_functions"] = [fn for fn in CSF_FUNCTIONS if fn in found]
-    mapped["cpg"] = _derive_cpg(n53)
-    refs = list(mapped["cpg"]) + stamps + _n53_tokens(n53) + list(cis)
-    mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
+    # CPG + CSF subcategory come from the weakness-class table, not a
+    # CM-7/SC-7 catch-all and not a function-level csf_PR default.
+    apply_class_mapping(mapped, rec)
     return mapped
 
 
@@ -740,24 +759,34 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
             "finding_type": typed.get("finding_type") or "",
             "weakness_name": str(typed.get("weakness_name") or ""),
             "key_medium": bool(typed.get("key_medium")),
-        }
+        },
+        rec,
     )
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
 
 
-def _is_not_a_weakness(rec: dict[str, Any]) -> bool:
+def _is_custodian_not_a_weakness(rec: dict[str, Any]) -> bool:
+    """Custodian cost/ops only. nmap extra.not_a_weakness stays on the nmap path."""
+    if str(rec.get("source") or "") != "cloud-prowler":
+        return False
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
-    if reason == "NOT_A_WEAKNESS" or extra.get("not_a_weakness") is True:
-        return True
-    return str(rec.get("category") or "").lower() in {"not-a-weakness", "not_a_weakness"}
+    return str(extra.get("exclude_reason") or extra.get("poam_exclude") or "") == "NOT_A_WEAKNESS"
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
+    mapped = _map_finding_body(rec)
+    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+        mapped = dict(mapped)
+        mapped["include_poam"] = False
+    return mapped
+
+
+def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
+    """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    if _is_not_a_weakness(rec):
+    if _is_custodian_not_a_weakness(rec):
         return _stamp_csf(
             {
                 "control_name": "Cost or operations signal (not a control weakness)",
@@ -771,7 +800,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
                 "generic": False,
                 "finding_type": "not_a_weakness",
                 "weakness_name": "Not a weakness (cost/ops or unmapped Custodian policy)",
-            }
+            },
+            rec,
         )
     check = str(extra.get("check_id") or "")
     rule = MISCONFIG_RULES.get(check)
@@ -787,7 +817,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
                 "generic": False,
                 "finding_type": check,
                 "weakness_name": MISCONFIG_WEAKNESS.get(check, ""),
-            }
+            },
+            rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
@@ -800,7 +831,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             {
                 **play,
                 "cpg": [],
-            }
+            },
+            rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
@@ -828,9 +860,91 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     mapped["cis"] = cis
     mapped.setdefault("generic", False)
     mapped.setdefault("finding_type", "")
-    mapped = _stamp_csf(mapped)
+    mapped = _stamp_csf(mapped, rec)
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
+
+
+_PINGCASTLE_RULES: dict[str, dict[str, str]] = {
+    "A-MinPwdLen": {
+        "name": "Raise domain minimum password length",
+        "fix": (
+            "Set the domain minimum password length to at least 8 characters "
+            "(14 recommended) in the Default Domain Policy. "
+            "This is a PingCastle healthcheck finding, not a Windows "
+            "baseline audit or a live AD call."
+        ),
+    },
+    "A-ZeroPoint": {
+        "name": "Review informational PingCastle finding",
+        "fix": (
+            "No score was assigned. Confirm the rationale is still true, then "
+            "close or accept. This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-BackupOperators": {
+        "name": "Restrict Backup Operators membership",
+        "fix": (
+            "Remove standing Backup Operators members; the group can dump SAM. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-AccountOperators": {
+        "name": "Restrict Account Operators membership",
+        "fix": (
+            "Empty Account Operators; members can create privileged accounts. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-PrintOperators": {
+        "name": "Restrict Print Operators membership",
+        "fix": (
+            "Empty Print Operators; members can load a driver and seize SYSTEM. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-ServerOperators": {
+        "name": "Restrict Server Operators membership",
+        "fix": (
+            "Empty Server Operators; members can take control of DCs. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-SchemaAdmins": {
+        "name": "Restrict Schema Admins membership",
+        "fix": (
+            "Keep Schema Admins empty except during a documented schema update. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-EnterpriseAdmins": {
+        "name": "Restrict Enterprise Admins membership",
+        "fix": (
+            "Minimize Enterprise Admins to break-glass accounts only. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-DomainAdmins": {
+        "name": "Restrict Domain Admins membership",
+        "fix": (
+            "Minimize Domain Admins; no standing workstation logons. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-Administrators": {
+        "name": "Restrict Administrators membership",
+        "fix": (
+            "Minimize builtin Administrators; prefer Domain Admins only on DCs. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+}
+
+
+def _pingcastle_playbook(rec: dict[str, Any]) -> dict[str, str] | None:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    rid = str(extra.get("risk_id") or "").strip()
+    return _PINGCASTLE_RULES.get(rid)
 
 
 def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
@@ -1169,6 +1283,13 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Use PIM eligible assignments instead of standing Global Administrator. "
             "This is a dropped Scuba/Graph export finding, not a Graph API call."
         )
+    elif "privileged role" in text:
+        name = "Review privileged directory role"
+        fix = (
+            "Confirm the admin role from the dropped IdP export. "
+            "isAdmin means any admin role, not Global Administrator. "
+            "This is not a Graph or Okta API call."
+        )
     elif "standing privileged" in text or (
         "standing" in text and "role" in text and "administrator" not in text
     ):
@@ -1340,6 +1461,18 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Do not publish vpn/admin/dev hostnames on the open internet. "
             "This is a dropped EASM finding, not a live DNS/HTTP probe."
         )
+    elif extra.get("risk_id"):
+        play = _pingcastle_playbook(rec)
+        if play:
+            name = play["name"]
+            fix = play["fix"]
+        else:
+            name = f"Remediate PingCastle {extra.get('risk_id') or rec.get('name')}"
+            fix = (
+                f"Apply the PingCastle {extra.get('risk_id') or 'risk'} remediation "
+                "from the healthcheck rationale. This is a PingCastle file-drop finding, "
+                "not a live AD call."
+            )
     elif str(rec.get("category") or "") == "exposure":
         name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"
         fix = (
@@ -1371,11 +1504,14 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
 
 # Named reasons for POA&M include/exclude. Every weakness gets exactly one.
 # Default plan puts Lows and non-key Mediums on the POA&M. Infos and honeypot
-# stay off. Info-level telemetry is telemetry_info (not one 180-day row per
-# alert). Repeated telemetry lows that share (rule/check id, asset) collapse
-# to one included row; the extras are telemetry_duplicate. A bare nmap-style
-# port-open row on a host+port that already has a specific finding
-# (nuclei/Nessus/testssl/NSE/…) is superseded_by_specific. A lighter plan
+# stay off. Aggregated SIEM alerts are telemetry (excluded) unless rule.level
+# is >= 12 or the rule is a known compromise indicator. Info-level telemetry
+# is telemetry_info (not one 180-day row per alert). Repeated included
+# telemetry lows that share (rule/check id, asset) collapse; the extras are
+# telemetry_duplicate. A bare nmap-style port-open row on a host+port that
+# already has a specific finding (nuclei/Nessus/testssl/NSE/…) is
+# superseded_by_specific. UDP open|filtered is not_a_weakness (not a
+# confirmed open port). A lighter plan
 # (GRC_POAM_LIGHTER) restores the old exclude set.
 POAM_INCLUDE_REASONS = frozenset(
     {
@@ -1393,9 +1529,11 @@ POAM_EXCLUDE_REASONS = frozenset(
         "severity_info",
         "severity_low",
         "severity_medium_not_key",
+        "telemetry",
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
+        "not_a_weakness",
     }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
@@ -1415,6 +1553,19 @@ def _is_honeypot(rec: dict[str, Any]) -> bool:
         or extra.get("honesty") == "deception-sensor"
         or "deception-sensor" in text
     )
+
+
+def keep_telemetry_on_plan(rec: dict[str, Any]) -> bool:
+    """High Wazuh levels and known compromise indicators stay on the POA&M."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("compromise") is True:
+        return True
+    raw = extra.get("rule_level")
+    try:
+        level = int(raw)
+    except (TypeError, ValueError):
+        level = 0
+    return level >= 12
 
 
 def is_telemetry_finding(rec: dict[str, Any]) -> bool:
@@ -1475,15 +1626,19 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     key_medium = bool(mapped.get("key_medium"))
     if lighter is None:
         lighter = poam_lighter_requested()
-    if _is_not_a_weakness(rec):
+    if _is_custodian_not_a_weakness(rec):
         return {"include": False, "reason": "NOT_A_WEAKNESS", "severity": sev}
     if check in MISCONFIG_RULES:
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):
         return {"include": False, "reason": "honeypot", "severity": sev}
-    if sev == "info":
-        if is_telemetry_finding(rec):
+    if extra.get("not_a_weakness") or str(extra.get("exclude_reason") or "") == "not_a_weakness":
+        return {"include": False, "reason": "not_a_weakness", "severity": sev}
+    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+        if sev == "info":
             return {"include": False, "reason": "telemetry_info", "severity": sev}
+        return {"include": False, "reason": "telemetry", "severity": sev}
+    if sev == "info":
         return {"include": False, "reason": "severity_info", "severity": sev}
     if sev in {"high", "critical"}:
         return {"include": True, "reason": "severity_high_critical", "severity": sev}
@@ -1583,7 +1738,18 @@ def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
         if mapped.get("csf"):
             stamps.append("nist_csf")
     else:
-        stamps = [CPG_WEAK_SERVICE, CPG_EXPOSURE, "csf_PR", "nist_csf", "cisa_cpg"]
+        stamps = [
+            CPG_WEAK_SERVICE,
+            CPG_EXPOSURE,
+            "csf_PR",
+            "nist_csf",
+            "cisa_cpg",
+            "cpg_3_S",
+            "cpg_2_B",
+            "csf_PR_IR_01",
+            "csf_unmapped",
+            "cpg_unmapped",
+        ]
     out: list[str] = []
     for stamp in stamps:
         if stamp and ":" not in stamp and stamp not in out:

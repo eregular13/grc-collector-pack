@@ -1,0 +1,81 @@
+{
+  "policy": {
+    "name": "stop-underutilized-aws-instances",
+    "resource": "aws.ec2",
+    "filters": [
+      {
+        "type": "metrics",
+        "name": "CPUUtilization",
+        "namespace": "AWS/EC2",
+        "statistics": "Average",
+        "days": 30,
+        "period": 3600,
+        "op": "less-than",
+        "value": 10
+      }
+    ],
+    "actions": [
+      {
+        "type": "stop"
+      }
+    ]
+  },
+  "version": "0.9.45",
+  "execution": {
+    "id": "3fe0cd29-9cad-48f7-9fb3-37c6d977bf14",
+    "start": 1752228133.0759587,
+    "end_time": 1752228140.18684,
+    "duration": 7.110881328582764
+  },
+  "config": {
+    "region": "us-east-2",
+    "regions": [
+      "us-east-2"
+    ],
+    "cache": "~/.cache/cloud-custodian.cache",
+    "profile": null,
+    "account_id": "268705120251",
+    "assume_role": null,
+    "session_policy": null,
+    "external_id": null,
+    "log_group": null,
+    "tracer": null,
+    "metrics_enabled": null,
+    "metrics": null,
+    "output_dir": "./output",
+    "cache_period": 15,
+    "dryrun": true,
+    "authorization_file": null,
+    "subparser": "run",
+    "config": null,
+    "configs": [
+      "/tmp/tmp471x6_01.yml"
+    ],
+    "policy_filters": [],
+    "resource_types": [],
+    "verbose": null,
+    "quiet": null,
+    "debug": false,
+    "skip_validation": false,
+    "command": "c7n.commands.run",
+    "vars": null
+  },
+  "sys-stats": {},
+  "api-stats": {
+    "monitoring.GetMetricStatistics": 6
+  },
+  "metrics": [
+    {
+      "MetricName": "ResourceCount",
+      "Timestamp": "2025-07-11T15:02:20.158855",
+      "Value": 6,
+      "Unit": "Count"
+    },
+    {
+      "MetricName": "ResourceTime",
+      "Timestamp": "2025-07-11T15:02:20.158864",
+      "Value": 7.077417612075806,
+      "Unit": "Seconds"
+    }
+  ]
+}

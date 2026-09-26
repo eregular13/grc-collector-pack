@@ -1,0 +1,6 @@
+{
+  "policy": {
+    "name": "s3-encryption-missing",
+    "resource": "aws.s3"
+  }
+}

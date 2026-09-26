@@ -2,6 +2,8 @@
 <report id="0b63ae21-1a37-474a-b436-2f6561d36990" extension="xml" content_type="text/xml">
   <report id="27748e67-fa00-462d-8a05-8479a07988a0">
     <gmp><version>9.0</version></gmp>
+    <timestamp>2023-09-28T14:48:02Z</timestamp>
+    <scan_start>2023-09-28T14:48:02Z</scan_start>
     <results start="1" max="-1">
       <result id="b87d3a32-8ff8-4010-aada-4b4f578b084d">
         <name>Mozilla Firefox Security Update (mfsa_2023-32_2023-36) - Windows</name>

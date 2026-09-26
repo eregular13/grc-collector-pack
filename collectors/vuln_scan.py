@@ -18,7 +18,7 @@ from shared.nikto import nikto_severity
 from shared.nikto import parse_nikto
 from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 from shared.testssl import is_testssl, iter_testssl_findings
 
 SOURCE = "vuln-scan"
@@ -68,6 +68,61 @@ def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
     return _nuclei_from_payload(payload)
 
 
+def _is_trivy_k8s(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("ClusterName") is not None or payload.get("cluster_name") is not None:
+        if "Resources" in payload or "resources" in payload:
+            return True
+    resources = payload.get("Resources") or payload.get("resources")
+    if not isinstance(resources, list):
+        return False
+    for res in resources:
+        if not isinstance(res, dict):
+            continue
+        if isinstance(res.get("Results") or res.get("results"), list):
+            return True
+        if res.get("Kind") and (res.get("Name") or res.get("Namespace") is not None):
+            return True
+    return False
+
+
+def _is_trivy(payload: Any) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("SchemaVersion") is not None or payload.get("ArtifactName") or payload.get("ArtifactType"):
+        return True
+    # Trivy uses capital Results. Lowercase results is Greenbone / other tools.
+    if isinstance(payload.get("Results"), list):
+        return True
+    return _is_trivy_k8s(payload)
+
+
+def _trivy_result_blocks(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    blocks: list[dict[str, Any]] = []
+    for result in payload.get("Results") or payload.get("results") or []:
+        if isinstance(result, dict):
+            blocks.append(result)
+    for res in payload.get("Resources") or payload.get("resources") or []:
+        if not isinstance(res, dict):
+            continue
+        ns = str(res.get("Namespace") or "")
+        kind = str(res.get("Kind") or "")
+        rname = str(res.get("Name") or "")
+        inner = res.get("Results") or res.get("results") or []
+        if not isinstance(inner, list):
+            continue
+        for result in inner:
+            if not isinstance(result, dict):
+                continue
+            extra = dict(result)
+            extra["_k8s"] = {"namespace": ns, "kind": kind, "name": rname}
+            blocks.append(extra)
+    return blocks
+
+
 def _trivy_ids(payload: dict[str, Any]) -> dict[str, Any]:
     meta = payload.get("Metadata") if isinstance(payload.get("Metadata"), dict) else {}
     tags = meta.get("RepoTags") if isinstance(meta.get("RepoTags"), list) else []
@@ -86,14 +141,52 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return rows
     ids = _trivy_ids(payload)
-    for result in payload.get("Results") or payload.get("results") or []:
-        if not isinstance(result, dict):
-            continue
-        target = str(result.get("Target") or result.get("target") or "image")
+    for result in _trivy_result_blocks(payload):
+        k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
+        target = str(
+            result.get("Target")
+            or result.get("target")
+            or k8s.get("name")
+            or "image"
+        )
+        if k8s.get("namespace"):
+            target = f"{k8s.get('namespace')}/{target}"
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
-                vuln = {**vuln, "_target": target, "_ids": ids}
+                vuln = {**vuln, "_target": target, "_class": "vuln", "_ids": ids}
                 rows.append(vuln)
+        for secret in result.get("Secrets") or result.get("secrets") or []:
+            if not isinstance(secret, dict):
+                continue
+            rows.append(
+                {
+                    "VulnerabilityID": str(secret.get("RuleID") or secret.get("Title") or "secret"),
+                    "Title": str(secret.get("Title") or secret.get("RuleID") or "secret"),
+                    "Description": str(secret.get("Category") or secret.get("Match") or secret.get("Title") or "secret"),
+                    "Severity": secret.get("Severity") or "high",
+                    "PkgName": "",
+                    "_target": target,
+                    "_class": "secret",
+                    "_ids": ids,
+                }
+            )
+        for mis in result.get("Misconfigurations") or result.get("misconfigurations") or []:
+            if not isinstance(mis, dict):
+                continue
+            if str(mis.get("Status") or mis.get("status") or "").upper() not in {"FAIL", "FAILED"}:
+                continue
+            rows.append(
+                {
+                    "VulnerabilityID": str(mis.get("ID") or mis.get("AVDID") or mis.get("Title") or "misconfig"),
+                    "Title": str(mis.get("Title") or mis.get("ID") or "misconfiguration"),
+                    "Description": str(mis.get("Message") or mis.get("Description") or mis.get("Title") or "misconfig"),
+                    "Severity": mis.get("Severity") or "medium",
+                    "PkgName": "",
+                    "_target": target,
+                    "_class": "misconfig",
+                    "_ids": ids,
+                }
+            )
     return rows
 
 
@@ -120,7 +213,7 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
         ref_id=make_ref(SOURCE, _testssl_ref(row, host)),
         name=str(row.get("id") or row.get("finding") or vid),
         description=str(row.get("finding") or row.get("cve") or vid),
-        severity=row.get("severity") or "high",
+        severity=canon_severity(row.get("severity") or "high"),
         category="vulnerability",
         assets=[host],
         labels=LABELS + ["testssl"] + extra_labels,
@@ -129,30 +222,41 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
     )
 
 
+def _greenbone_cves(row: dict[str, Any]) -> list[str]:
+    raw = row.get("cves")
+    if isinstance(raw, (list, tuple)):
+        return [str(c).strip() for c in raw if str(c).strip()]
+    joined = str(row.get("cve") or "").strip()
+    return [part for part in joined.replace(",", " ").split() if part.upper().startswith("CVE")]
+
+
 def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
     host = str(row.get("host") or "unknown")
     vid = str(row.get("oid") or row.get("name") or "openvas")
     port = str(row.get("port") or "")
+    cves = _greenbone_cves(row)
     return host, make_record(
         kind="finding",
         source=SOURCE,
         ref_id=make_ref(SOURCE, f"{vid}-{host}-{port}"),
         name=str(row.get("name") or vid),
         description=str(row.get("description") or vid),
-        severity=row.get("severity") or "medium",
+        severity=canon_severity(row.get("severity") or "medium"),
         category="vulnerability",
         assets=[host],
         labels=LABELS + ["greenbone"],
         collected_at=now,
-                extra={
-                    "cve": row.get("cve") or "",
-                    "id": vid,
-                    "rule": vid,
-                    "oid": vid,
-                    "port": port,
-                    "cvss": row.get("cvss") or "",
-                    "threat": row.get("threat") or "",
-                },
+        extra={
+            "cve": " ".join(cves),
+            "cves": cves,
+            "id": vid,
+            "rule": vid,
+            "oid": vid,
+            "port": port,
+            "cvss": row.get("cvss") or "",
+            "threat": row.get("threat") or "",
+            **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
+        },
     )
 
 
@@ -271,7 +375,7 @@ def parse_file(path: Path) -> list[dict]:
                     description=(
                         f"{msg} url={url} (Nikto file-drop; not a live HTTP probe)"
                     ),
-                    severity=nikto_severity(url, msg, rid),
+                    severity=canon_severity(nikto_severity(url, msg, rid)),
                     category="exposure",
                     assets=[host],
                     labels=LABELS + ["nikto"],
@@ -388,8 +492,10 @@ def parse_file(path: Path) -> list[dict]:
     except Exception:
         return records
 
-    trivy = _trivy_rows(payload)
-    if trivy:
+    if _is_trivy(payload):
+        trivy = _trivy_rows(payload)
+        if not trivy:
+            return records
         trivy_created = ""
         if isinstance(payload, dict):
             trivy_created = str(payload.get("CreatedAt") or payload.get("created_at") or "")
@@ -398,7 +504,14 @@ def parse_file(path: Path) -> list[dict]:
             target = str(vuln.get("_target") or "image")
             ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
             add_asset(target, ids)
-            extra = stamp_ids({"cve": vid, "pkg": vuln.get("PkgName")}, **ids)
+            extra = stamp_ids(
+                {
+                    "cve": vid if vid.upper().startswith("CVE") else "",
+                    "pkg": vuln.get("PkgName"),
+                    "class": vuln.get("_class") or "vuln",
+                },
+                **ids,
+            )
             if trivy_created:
                 extra["scan_time"] = trivy_created
             records.append(
@@ -445,7 +558,13 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["greenbone"],
                 collected_at=now,
-                extra={"id": vid, "rule": vid, "oid": vid, "cve": row.get("cve") or ""},
+                extra={
+                    "id": vid,
+                    "rule": vid,
+                    "oid": vid,
+                    "cve": row.get("cve") or "",
+                    "cves": _greenbone_cves(row),
+                },
             )
         )
     return records

@@ -6,7 +6,10 @@ Parse-only. Does not run Wazuh, osquery, Fleet, or a live agent query.
 
 from __future__ import annotations
 
+import json
+import os
 import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -14,19 +17,50 @@ from shared.asset_ids import stamp_ids
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, lynis_control
-from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.io_util import UnrecognizedShape, iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
-from shared.osquery_checks import iter_osquery_failures
-from shared.schema import make_record, make_ref
+from shared.osquery_checks import (
+    is_osquery_pack_config,
+    is_osquery_results_payload,
+    iter_osquery_failures,
+    iter_osquery_unmapped,
+    load_osquery_payload,
+    looks_osquery_text,
+    osquery_hosts,
+)
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
+UNKNOWN_AGENT = "unknown-agent"
+_SCA_PATH_SKIP = frozenset(
+    {
+        "wazuh",
+        "host-wazuh",
+        "host_wazuh",
+        "in",
+        "samples",
+        "fixtures",
+        "demo",
+        "lab-drop",
+        "keep-samples",
+    }
+)
+_SCA_SEV_PATTERNS = (
+    (re.compile(r"\bcritical\b", re.I), "critical"),
+    (re.compile(r"\bhigh\b", re.I), "high"),
+    (re.compile(r"\bmedium\b|\bmoderate\b", re.I), "medium"),
+    (re.compile(r"\blow\b", re.I), "low"),
+)
 
 
 def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
-    name = row.get("name") or row.get("hostname") or row.get("computer_name") or row.get("display_name")
+    if row.get("action") or row.get("snapshot") or row.get("diffResults") or row.get("hostIdentifier"):
+        name = row.get("hostIdentifier") or row.get("hostname")
+    else:
+        name = row.get("name") or row.get("hostname") or row.get("computer_name") or row.get("display_name")
     if not name and row.get("id") not in (None, ""):
         name = row.get("id")
     if not name:
@@ -72,14 +106,261 @@ def _host_rows(raw: Any) -> list[dict[str, Any]]:
     return out
 
 
-def _agents(payload: Any) -> list[dict[str, Any]]:
+def _is_alert_row(row: dict[str, Any]) -> bool:
+    if not isinstance(row, dict):
+        return False
+    if row.get("CheckID") or row.get("benchmark"):
+        return False
+    rule = row.get("rule")
+    return isinstance(rule, dict) or "full_log" in row
+
+
+def _alert_level(rule: dict[str, Any]) -> int:
+    try:
+        return int(rule.get("level") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+# Wazuh's own rule.level table (docs.wazuh.com / ruleset). Vendor severity
+# words on the alert are ignored — a missing level is info, never High.
+_COMPROMISE_RULE_IDS = frozenset(
+    {
+        "510",
+        "511",
+        "520",
+        "521",
+        "550",
+        "551",
+        "591",
+        "592",
+    }
+)
+_COMPROMISE_GROUPS = frozenset(
+    {
+        "attack_success",
+        "malware",
+        "rootkit",
+        "trojan",
+        "virus",
+        "web_scan_success",
+    }
+)
+_COMPROMISE_TITLE = re.compile(
+    r"\b(rootkit|malware detected|attack successful|integrity checksum changed|"
+    r"trojan(?:ed)?|shell spawned)\b",
+    re.I,
+)
+
+
+def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> tuple[str, bool]:
+    """Map Wazuh by rule.level only: 0-3 info, 4-7 low, 8-11 medium, 12-14 high, 15+ critical.
+
+    Missing / unparsable level is info — never default High. Vendor `severity`
+    on the alert is ignored so a fixture word cannot promote a level-5 flood.
+    """
+    del alert  # level table only; vendor severity is not a band.
+    if rule.get("level") in (None, ""):
+        return "info", False
+    level = _alert_level(rule)
+    if level <= 3:
+        return "info", False
+    if level <= 7:
+        return "low", False
+    if level <= 11:
+        return "medium", False
+    if level >= 15:
+        return "critical", False
+    return "high", False
+
+
+def _alert_groups(rule: dict[str, Any]) -> list[str]:
+    raw = rule.get("groups") or rule.get("gdpr") or []
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.replace(",", " ").split() if part.strip()]
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if item]
+    return []
+
+
+def _is_compromise_rule(rule: dict[str, Any], title: str) -> bool:
+    rid = str(rule.get("id") or "").strip()
+    if rid in _COMPROMISE_RULE_IDS:
+        return True
+    groups = {g.lower() for g in _alert_groups(rule)}
+    if groups & _COMPROMISE_GROUPS:
+        return True
+    return bool(_COMPROMISE_TITLE.search(str(title or "")))
+
+
+def _alert_agent(alert: dict[str, Any]) -> str:
+    agent = alert.get("agent") if isinstance(alert.get("agent"), dict) else {}
+    return str(agent.get("name") or agent.get("id") or "unknown")
+
+
+def _alert_time(alert: dict[str, Any]) -> str:
+    return str(alert.get("timestamp") or alert.get("time") or alert.get("@timestamp") or "")
+
+
+def _aggregate_alerts(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One finding per (rule.id, agent) with count and first/last seen."""
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for alert in alerts:
+        rule = alert.get("rule") if isinstance(alert.get("rule"), dict) else {}
+        rid = str(rule.get("id") or alert.get("id") or "alert")
+        groups[(rid, _alert_agent(alert))].append(alert)
+    out: list[dict[str, Any]] = []
+    for (rid, agent), rows in groups.items():
+        rule = rows[0].get("rule") if isinstance(rows[0].get("rule"), dict) else {}
+        times = [t for t in (_alert_time(a) for a in rows) if t]
+        times.sort()
+        title = str(rule.get("description") or rows[0].get("id") or "wazuh alert")
+        sev, unmapped = _alert_severity(rows[0], rule)
+        out.append(
+            {
+                "rule_id": rid,
+                "agent": agent,
+                "title": title,
+                "severity": sev,
+                "severity_unmapped": unmapped,
+                "level": rule.get("level"),
+                "compromise": _is_compromise_rule(rule, title),
+                "count": len(rows),
+                "first_seen": times[0] if times else "",
+                "last_seen": times[-1] if times else "",
+            }
+        )
+    return out
+
+
+def _extract_alerts(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
-        return [a for a in payload if isinstance(a, dict)]
+        if payload and isinstance(payload[0], dict) and (
+            payload[0].get("action")
+            or payload[0].get("snapshot")
+            or payload[0].get("diffResults")
+            or payload[0].get("hostIdentifier")
+        ):
+            return []
+        return [a for a in payload if isinstance(a, dict) and _is_alert_row(a)]
+    if not isinstance(payload, dict):
+        return []
+    raw = payload.get("alerts")
+    if raw is None:
+        raw = payload.get("hits")
+    if isinstance(raw, dict):
+        inner = raw.get("hits") if isinstance(raw.get("hits"), list) else []
+        out: list[dict[str, Any]] = []
+        for hit in inner:
+            if not isinstance(hit, dict):
+                continue
+            src = hit.get("_source") if isinstance(hit.get("_source"), dict) else hit
+            if isinstance(src, dict) and _is_alert_row(src):
+                out.append(src)
+        return out
+    if isinstance(raw, list):
+        return [a for a in raw if isinstance(a, dict) and _is_alert_row(a)]
+    return []
+
+
+def _affected_items(payload: Any) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
     data = payload.get("data")
     if isinstance(data, dict) and isinstance(data.get("affected_items"), list):
         return [a for a in data["affected_items"] if isinstance(a, dict)]
+    return []
+
+
+def _is_sca_item(row: dict[str, Any]) -> bool:
+    result = str(row.get("result") or "").lower().replace(" ", "")
+    if result not in {"passed", "failed", "notapplicable"}:
+        return False
+    return bool(row.get("policy_id") or row.get("title"))
+
+
+def _is_sca_payload(payload: Any) -> bool:
+    items = _affected_items(payload)
+    return bool(items) and all(_is_sca_item(row) for row in items)
+
+
+def _sca_failures(payload: Any) -> list[dict[str, Any]]:
+    return [row for row in _affected_items(payload) if _is_sca_item(row) and str(row.get("result") or "").lower() == "failed"]
+
+
+def _agent_from_obj(obj: Any) -> str:
+    if isinstance(obj, dict):
+        return str(obj.get("name") or obj.get("id") or obj.get("agent_name") or "").strip()
+    if obj not in (None, ""):
+        return str(obj).strip()
+    return ""
+
+
+def _sca_agent(payload: Any, path: Path, row: dict[str, Any] | None = None) -> tuple[str, str]:
+    """Agent from the check, enclosing export, path, or operator hint. Never invent a host."""
+    if isinstance(row, dict):
+        named = _agent_from_obj(row.get("agent")) or str(
+            row.get("agent_name") or row.get("agent_id") or ""
+        ).strip()
+        if named:
+            return named, "row"
+    data = payload.get("data") if isinstance(payload, dict) else {}
+    if isinstance(data, dict):
+        named = _agent_from_obj(data.get("agent")) or str(
+            data.get("agent_name") or data.get("agent_id") or ""
+        ).strip()
+        if named:
+            return named, "export"
+    if isinstance(payload, dict):
+        named = _agent_from_obj(payload.get("agent")) or str(
+            payload.get("agent_name") or payload.get("agent_id") or ""
+        ).strip()
+        if named:
+            return named, "export"
+    hint = str(os.environ.get("WAZUH_SCA_AGENT") or os.environ.get("GRC_WAZUH_AGENT") or "").strip()
+    if hint:
+        return hint, "hint"
+    parent = path.parent.name if path else ""
+    if parent and parent.lower() not in _SCA_PATH_SKIP:
+        return parent, "path"
+    stem = path.stem if path else ""
+    match = re.match(r"(?:sca[-_])(.+)|(.+)[-_]sca(?:[-_].+)?$", stem, re.I)
+    if match:
+        token = str(match.group(1) or match.group(2) or "").strip()
+        if token and token.lower() not in {"checks", "check", "results", "export", "policy"}:
+            return token, "path"
+    return UNKNOWN_AGENT, "unknown"
+
+
+def _sca_severity(row: dict[str, Any]) -> tuple[str, str]:
+    raw = row.get("severity")
+    if raw not in (None, ""):
+        return str(raw).strip(), "field"
+    parts: list[str] = []
+    for key in ("rationale", "compliance", "description", "title", "reason", "remediation"):
+        val = row.get(key)
+        if isinstance(val, (list, dict)):
+            parts.append(str(val))
+        elif val not in (None, ""):
+            parts.append(str(val))
+    blob = " ".join(parts)
+    for pat, sev in _SCA_SEV_PATTERNS:
+        if pat.search(blob):
+            source = "rationale" if row.get("rationale") and pat.search(str(row.get("rationale"))) else "compliance"
+            return sev, source
+    return "medium", "default"
+
+
+def _agents(payload: Any) -> list[dict[str, Any]]:
+    if _is_sca_payload(payload):
+        return []
+    if isinstance(payload, list):
+        return [a for a in payload if isinstance(a, dict) and not _is_alert_row(a)]
+    if not isinstance(payload, dict):
+        return []
+    data = payload.get("data")
+    if isinstance(data, dict) and isinstance(data.get("affected_items"), list):
+        return [a for a in data["affected_items"] if isinstance(a, dict) and not _is_sca_item(a)]
     if isinstance(payload.get("agents"), list):
         return [a for a in payload["agents"] if isinstance(a, dict)]
     osq = payload.get("osquery")
@@ -109,6 +390,9 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
         return rows
     if isinstance(payload.get("host"), dict):
         host = _normalize_host(payload["host"])
+        return [host] if host else []
+    if payload.get("hostIdentifier") or payload.get("action") or payload.get("snapshot"):
+        host = _normalize_host(payload)
         return [host] if host else []
     return []
 
@@ -332,6 +616,13 @@ def _emit_check_rows(
                     extra={"asset_type": "PR"},
                 )
             )
+        extra = {"id": hid, "name": title, "check_id": hid}
+        for key in ("severity_source", "agent_source"):
+            if row.get(key):
+                extra[key] = row[key]
+        if host == UNKNOWN_AGENT:
+            extra["agent_unknown"] = True
+        raw_sev = row.get("severity") or "high"
         records.append(
             make_record(
                 kind="finding",
@@ -339,12 +630,12 @@ def _emit_check_rows(
                 ref_id=make_ref(SOURCE, f"{prefix}-{hid}-{host}"),
                 name=title_fmt.format(title=title, id=hid),
                 description=title,
-                severity="high",
+                severity=raw_sev,
                 category="host-posture",
                 assets=[host],
                 labels=LABELS + labels,
                 collected_at=now,
-                extra={"id": hid, "name": title, "check_id": hid},
+                extra=extra,
             )
         )
     return records
@@ -362,11 +653,12 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
     extra_labels = [provider, "mdm", "inventory"]
     seen: set[str] = set()
 
-    def add_asset(name: str) -> None:
+    def add_asset(name: str, ids: dict | None = None) -> None:
         key = name.lower()
         if key in seen:
             return
         seen.add(key)
+        fields = dict(ids or {})
         records.append(
             make_record(
                 kind="asset",
@@ -378,7 +670,12 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                 assets=[name],
                 labels=LABELS + extra_labels,
                 collected_at=now,
-                extra={"asset_type": "PR", "provider": provider},
+                extra=stamp_ids(
+                    {"asset_type": "PR", "provider": provider},
+                    hostname=name,
+                    uuid=str(fields.get("uuid") or ""),
+                    fqdn=name if "." in name else "",
+                ),
             )
         )
 
@@ -411,7 +708,7 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
         name = str(device.get("name") or "")
         if not name:
             continue
-        add_asset(name)
+        add_asset(name, {"uuid": device.get("uuid") or ""})
         if device.get("encrypted") is False:
             records.append(
                 make_record(
@@ -428,6 +725,25 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     labels=LABELS + extra_labels + ["disk-encryption"],
                     collected_at=now,
                     extra={"disk_encryption_enabled": False, "provider": provider},
+                )
+            )
+        elif device.get("encryption_collected") is False and provider == "jamf":
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"enc-gap-{provider}-{name}"),
+                    name=f"encryption not collected on {name}",
+                    description=(
+                        f"{name} Jamf section=GENERAL export has no diskEncryption / "
+                        f"FileVault state; encryption not collected. {_ASSESS}"
+                    ),
+                    severity="medium",
+                    category="coverage-gap",
+                    assets=[name],
+                    labels=LABELS + extra_labels + ["disk-encryption", "coverage"],
+                    collected_at=now,
+                    extra={"encryption_collected": False, "provider": provider},
                 )
             )
         if device.get("mdm_enrolled") is False:
@@ -470,12 +786,87 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
     return records
 
 
+def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> list[dict]:
+    records = _emit_check_rows(
+        iter_osquery_failures(payload),
+        now,
+        prefix="osquery",
+        labels=["osquery"],
+        title_fmt="osquery {id}: {title}",
+    )
+    seen_hosts = {r["name"] for r in records if r.get("kind") == "asset"}
+    for host in osquery_hosts(payload):
+        if host in seen_hosts:
+            continue
+        seen_hosts.add(host)
+        records.append(
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{host}"),
+                name=host,
+                description=f"Host {host}",
+                category="host",
+                assets=[host],
+                labels=LABELS + ["osquery"],
+                collected_at=now,
+                extra=stamp_ids({"asset_type": "PR"}, hostname=host, fqdn=host if "." in host else ""),
+            )
+        )
+    for row in iter_osquery_unmapped(payload):
+        host = row.get("host") or ""
+        if not host:
+            continue
+        hid = row.get("id") or "osquery"
+        records.append(
+            {
+                "kind": "excluded",
+                "source": SOURCE,
+                "ref_id": make_ref(SOURCE, f"osquery-unmapped-{hid}-{host}"),
+                "name": f"osquery unmapped: {hid}",
+                "description": row.get("title") or hid,
+                "severity": "info",
+                "category": "excluded",
+                "assets": [host],
+                "labels": LABELS + ["osquery", "unmapped"],
+                "collected_at": now,
+                "extra": {
+                    "exclude_reason": "unmapped",
+                    "id": hid,
+                    "check_id": hid,
+                    "host": host,
+                },
+            }
+        )
+    return stamp_lab_labels(records, lab=path_is_lab(path)) if path is not None else records
+
+
 def parse_file(path: Path) -> list[dict]:
     if path.name in SKIP_INPUT_NAMES:
         return []
-    if path.suffix.lower() in {".txt", ".log", ".dat"}:
-        return parse_lynis_report(read_text(path), iso_now(), path=path)
     text = read_text(path)
+    try:
+        maybe_osq = json.loads(text.lstrip("\ufeff"))
+    except Exception:
+        maybe_osq = None
+    if is_osquery_pack_config(maybe_osq):
+        raise UnrecognizedShape(
+            "unrecognized shape; osquery pack config is not results",
+            file=path.name,
+        )
+    # osqueryd results logs are JSON lines — never Lynis, even when suffix is .log.
+    if looks_osquery_text(text):
+        osq_payload = load_osquery_payload(text)
+        wazuh_wrap = isinstance(osq_payload, dict) and (
+            osq_payload.get("osquery") or osq_payload.get("agents")
+        )
+        if osq_payload is not None and not wazuh_wrap and (
+            path.suffix.lower() in {".log", ".txt", ".dat", ".jsonl"}
+            or is_osquery_results_payload(osq_payload)
+        ):
+            return _emit_osquery_records(osq_payload, iso_now(), path=path)
+    if path.suffix.lower() in {".txt", ".log", ".dat"}:
+        return parse_lynis_report(text, iso_now(), path=path)
     now = iso_now()
     if path.suffix.lower() == ".csv":
         mdm = parse_mdm_file(path)
@@ -492,7 +883,17 @@ def parse_file(path: Path) -> list[dict]:
                 title_fmt="CIS-CAT {id}: {title}",
             )
         return []
-    payload = read_json(path)
+    if path.suffix.lower() == ".jsonl":
+        payload = read_jsonl(path)
+        if not payload:
+            return []
+    else:
+        try:
+            payload = read_json(path)
+        except Exception:
+            payload = read_jsonl(path)
+            if not payload:
+                return []
     records: list[dict] = []
     if is_openscap(payload, name=path.name, text=text):
         return _emit_openscap_rows(iter_openscap_failures(text), now, path=path)
@@ -507,6 +908,31 @@ def parse_file(path: Path) -> list[dict]:
             )
         )
         return records
+    if _is_sca_payload(payload):
+        sca_rows: list[dict[str, str]] = []
+        for row in _sca_failures(payload):
+            hid = str(row.get("id") or row.get("policy_id") or "sca")
+            title = str(row.get("title") or hid)
+            host, agent_source = _sca_agent(payload, path, row)
+            sev, sev_source = _sca_severity(row)
+            sca_rows.append(
+                {
+                    "id": hid,
+                    "title": title,
+                    "host": host,
+                    "result": "fail",
+                    "severity": sev,
+                    "severity_source": sev_source,
+                    "agent_source": agent_source,
+                }
+            )
+        return _emit_check_rows(
+            sca_rows,
+            now,
+            prefix="sca",
+            labels=["sca"],
+            title_fmt="Wazuh SCA {id}: {title}",
+        )
     for agent in _agents(payload):
         name = str(agent.get("name") or agent.get("id") or "agent")
         status = str(agent.get("status") or "unknown").lower()
@@ -611,55 +1037,54 @@ def parse_file(path: Path) -> list[dict]:
                 extra={"policy": pname, "name": pname},
             )
         )
-    alerts = []
-    if isinstance(payload, dict):
-        raw_alerts = payload.get("alerts") or payload.get("hits") or []
-        if isinstance(raw_alerts, list):
-            alerts = [a for a in raw_alerts if isinstance(a, dict)]
-    for alert in alerts:
-        rule = alert.get("rule") if isinstance(alert.get("rule"), dict) else {}
-        agent = alert.get("agent") if isinstance(alert.get("agent"), dict) else {}
-        aname = str(agent.get("name") or "unknown")
-        title = str(rule.get("description") or alert.get("id") or "wazuh alert")
+    for alert in _aggregate_alerts(_extract_alerts(payload)):
+        aname = str(alert["agent"])
+        title = str(alert["title"])
+        sev = canon_severity(alert["severity"])
+        extra = {
+            "rule_id": alert["rule_id"],
+            "rule_level": alert["level"],
+            "count": alert["count"],
+            "first_seen": alert["first_seen"],
+            "last_seen": alert["last_seen"],
+            "telemetry": True,
+        }
+        if alert.get("compromise"):
+            extra["compromise"] = True
+        if alert.get("severity_unmapped"):
+            extra["severity_unmapped"] = True
+            extra.setdefault("severity_raw", str(alert["severity"]))
         records.append(
             make_record(
                 kind="incident",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"inc-{alert.get('id', title)}"),
+                ref_id=make_ref(SOURCE, f"inc-{alert['rule_id']}-{aname}"),
                 name=title,
                 description=title,
-                severity=alert.get("severity") or ("high" if int(rule.get("level") or 0) >= 10 else "medium"),
+                severity=sev,
                 category="incident",
                 assets=[aname],
                 labels=LABELS + ["alert"],
                 collected_at=now,
-                extra={"rule_id": rule.get("id")},
+                extra=extra,
             )
         )
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"alert-{alert.get('id', title)}"),
+                ref_id=make_ref(SOURCE, f"alert-{alert['rule_id']}-{aname}"),
                 name=title,
                 description=title,
-                severity=alert.get("severity") or "high",
+                severity=sev,
                 category="incident",
                 assets=[aname],
                 labels=LABELS + ["alert"],
                 collected_at=now,
-                extra={"rule_id": rule.get("id"), "telemetry": True},
+                extra=extra,
             )
         )
-    records.extend(
-        _emit_check_rows(
-            iter_osquery_failures(payload),
-            now,
-            prefix="osquery",
-            labels=["osquery"],
-            title_fmt="osquery {id}: {title}",
-        )
-    )
+    records.extend(_emit_osquery_records(payload, now, path=path))
     mdm = parse_mdm_inventory(payload, name=path.name, text=text)
     if mdm:
         records.extend(_emit_mdm_inventory(mdm, now))
@@ -669,7 +1094,7 @@ def parse_file(path: Path) -> list[dict]:
 def main() -> None:
     run_collector(
         SOURCE,
-        (".json", ".xml", ".txt", ".log", ".dat", ".csv"),
+        (".json", ".jsonl", ".xml", ".txt", ".log", ".dat", ".csv"),
         parse_file,
         finalize=dedupe_hardening,
     )

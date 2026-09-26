@@ -1,8 +1,0 @@
-[
-  {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-lab/providers/Microsoft.Compute/virtualMachines/vm-idle-01",
-    "name": "vm-idle-01",
-    "type": "Microsoft.Compute/virtualMachines",
-    "location": "eastus"
-  }
-]

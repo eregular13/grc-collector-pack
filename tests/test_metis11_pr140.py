@@ -5,9 +5,19 @@ from __future__ import annotations
 from pathlib import Path
 
 from collectors import easm, inventory_nmap
+from shared.control_map import poam_decision
 from shared.schema import canon_severity
 
 ROOT = Path(__file__).resolve().parents[1]
+SAMPLES = ROOT / "fixtures" / "samples"
+_TCP_ONLY_TITLES = (
+    "SMB 445 exposed",
+    "Telnet exposed",
+    "FTP exposed",
+    "RDP exposed",
+    "SSH exposed",
+    "HTTP exposed",
+)
 
 
 def _findings(recs: list[dict]) -> list[dict]:
@@ -177,3 +187,52 @@ def test_vulners_high_cve_separate_low_rolled_up(tmp_path: Path) -> None:
     assert "CVE-2024-99999" not in (rolled[0]["extra"].get("cves") or [])
     assert rolled[0]["severity"] == canon_severity("medium")
     assert rolled[0]["assets"] == ["192.168.0.1"]
+
+
+def test_real_udp_scan_no_tcp_rule_on_udp_snmp_two_hosts() -> None:
+    """chroniccrash/c4rtographer@b73866a udpConnect: SNMP on 2 hosts, 135 excluded."""
+    dest = SAMPLES / "udpConnect_10.11.1.0-254.xml"
+    recs = inventory_nmap.parse_file(dest)
+    findings = _findings(recs)
+    assert len(findings) == 137
+    assert not any("Administrative share" in r["name"] for r in findings)
+    for rec in findings:
+        extra = rec.get("extra") or {}
+        if extra.get("protocol") == "udp":
+            assert rec["name"] not in _TCP_ONLY_TITLES
+            assert "SMB 445" not in rec["name"]
+            assert "Administrative share" not in rec["name"]
+            assert "TCP" not in rec["description"]
+            assert rec["ref_id"].endswith(f"-{extra.get('port')}-{extra.get('protocol')}")
+    included = [r for r in findings if poam_decision(r)["include"]]
+    excluded = [r for r in findings if not poam_decision(r)["include"]]
+    # Host-scoped per #137: SNMP 161/udp on 2 hosts → 2 rows; 135 excluded.
+    assert len(included) == 2
+    assert {a for r in included for a in r["assets"]} == {"10.11.1.22", "10.11.1.115"}
+    assert all((r.get("extra") or {}).get("port") == "161" for r in included)
+    assert all((r.get("extra") or {}).get("protocol") == "udp" for r in included)
+    assert all((r.get("extra") or {}).get("state") in {None, "open"} for r in included)
+    assert all(r["severity"] == canon_severity("medium") for r in included)
+    assert all(r["ref_id"].startswith("NMAP-") for r in included)
+    assert all(r["ref_id"].endswith("-161-udp") for r in included)
+    assert all("UDP/161" in r["description"] for r in included)
+    assert len(excluded) == 135
+    assert all(poam_decision(r)["reason"] == "not_a_weakness" for r in excluded)
+    of_rows = [r for r in findings if (r.get("extra") or {}).get("state") == "open|filtered"]
+    assert len(of_rows) == 101
+    open_non_risky = [
+        r
+        for r in findings
+        if (r.get("extra") or {}).get("protocol") == "udp"
+        and (r.get("extra") or {}).get("state") in {None, "open"}
+        and (r.get("extra") or {}).get("port") != "161"
+    ]
+    assert len(open_non_risky) == 34
+    assert all(poam_decision(r)["reason"] == "not_a_weakness" for r in open_non_risky)
+    udp445 = [r for r in findings if (r.get("extra") or {}).get("port") == "445"]
+    assert udp445
+    assert all((r.get("extra") or {}).get("protocol") == "udp" for r in udp445)
+    assert all(r["severity"] == canon_severity("info") for r in udp445)
+    assert all(not poam_decision(r)["include"] for r in udp445)
+    assert all("SMB" not in r["name"] for r in udp445)
+    assert not any("Administrative share" in r["name"] for r in findings)

@@ -225,7 +225,10 @@ def test_import_csvs_first_line_is_not_a_hash_comment(
         first = text.splitlines()[0]
         assert not first.lstrip().startswith("#"), rel
         if rel.endswith(".csv"):
-            assert first == ",".join(FEDRAMP_OPEN_HEADERS), rel
+            from shared.poam_fedramp import FEDRAMP_CSV_HEADERS
+
+            assert first == ",".join(FEDRAMP_CSV_HEADERS), rel
+            assert first.startswith(",".join(FEDRAMP_OPEN_HEADERS))
         else:
             assert text.lstrip()[:1] in "{["
     assert (out / "poam" / "ESTATE.txt").is_file()
@@ -347,6 +350,34 @@ def test_exec_and_trust_generated_from_run_counts(
     summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
     assert summary["estate_kind"] == "LAB"
     assert summary.get("client") is False
+
+
+def test_exec_counts_info_as_own_bucket_not_dropped_low(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [
+            _asset(),
+            _finding("f-low", sev="low"),
+            _finding("f-info", sev="info"),
+        ],
+        GRC_ESTATE_LABEL="LAB",
+    )
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    low_line = next(line for line in exec_text.splitlines() if line.startswith("| Low |"))
+    info_line = next(line for line in exec_text.splitlines() if line.startswith("| Info |"))
+    low_parts = [p.strip() for p in low_line.split("|")]
+    info_parts = [p.strip() for p in info_line.split("|")]
+    assert low_parts[2] == "1"
+    assert low_parts[3] == "1"
+    assert info_parts[2] == "1"
+    assert info_parts[3] == "0"
+    excluded = csv_rows(out / "poam" / "excluded.csv")
+    info_ex = [row for row in excluded if row.get("finding_ref_id") == "f-info"]
+    assert info_ex and info_ex[0]["severity"] == "info"
+    assert info_ex[0]["excluded_reason"] == "severity_info"
 
 
 def test_exporters_stamp_opengrc_and_probo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

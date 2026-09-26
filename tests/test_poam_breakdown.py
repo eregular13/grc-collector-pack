@@ -33,6 +33,7 @@ COLLECTORS = (
     "collectors.code_secrets",
     "collectors.saas_idp",
     "collectors.dns_email",
+    "collectors.honeypot",
 )
 
 
@@ -82,7 +83,7 @@ def test_poam_decision_names_low_exposure_and_honeypot() -> None:
         name="Cloud Custodian azure-vm-cpu-underutilized",
         description="Virtual machines with low CPU utilization",
         severity="medium",
-        category="not-a-weakness",
+        category="excluded",
         extra={
             "check_id": "azure-vm-cpu-underutilized",
             "exclude_reason": "NOT_A_WEAKNESS",

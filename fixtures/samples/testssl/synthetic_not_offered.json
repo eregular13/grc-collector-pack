@@ -1,0 +1,18 @@
+{
+  "Invocation": "testssl.sh --jsonfile-pretty",
+  "version": "3.3dev",
+  "scanResult": [
+    {
+      "targetHost": "tls.example.test",
+      "ip": "203.0.113.90",
+      "port": "443",
+      "protocols": [
+        {"id": "SSLv2", "severity": "OK", "finding": "SSLv2 not offered (OK)"},
+        {"id": "SSLv3", "severity": "INFO", "finding": "SSLv3 not offered"},
+        {"id": "TLS1_2", "severity": "CRITICAL", "finding": "TLSv1.2 is not offered"},
+        {"id": "TLS1_3", "severity": "MEDIUM", "finding": "TLSv1.3 is not offered"},
+        {"id": "TLS1", "severity": "LOW", "finding": "TLSv1 is not offered (legacy required)"}
+      ]
+    }
+  ]
+}

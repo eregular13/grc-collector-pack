@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from collectors import cloud_prowler, grc_loader, inventory_nmap, vuln_scan
+from collectors import cloud_prowler, grc_loader, host_wazuh, identity_ad, inventory_nmap, vuln_scan
 from shared.io_util import allow_demo_fallback, load_sensor_coverage, run_collector
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,6 +85,90 @@ def test_lab_malformed_sensors_zero_demo_named_parse_error(tmp_path, monkeypatch
     assert summary["sensors"]["vuln-scan"]["status"] == "parse_error"
     assert summary["coverage"]["sensors"]
     assert (tmp_path / "out" / "ciso-assistant" / "findings.csv").read_text(encoding="utf-8").count("\n") == 1
+
+
+def test_lab_malformed_real_sample_families_parse_error_not_demo(tmp_path, monkeypatch) -> None:
+    """#133 fail-closed + #134 parsers: LAB malformed drops stay parse_error."""
+    dest_in = _prep(tmp_path, monkeypatch, label="LAB")
+    (dest_in / "LAB.txt").write_text("LAB/DEMO -- not a client estate.\n", encoding="utf-8")
+    (dest_in / "cloud").mkdir(parents=True)
+    (dest_in / "cloud" / "prowler-ocsf.json").write_text(
+        '[{"status":"New","status_code":"FAIL","finding_info":{"title":',
+        encoding="utf-8",
+    )
+    (dest_in / "wazuh").mkdir(parents=True)
+    (dest_in / "wazuh" / "alerts.json").write_text(
+        '{"rule":{"level":3,"description":"truncated","id":"1"},"agent":{"name":',
+        encoding="utf-8",
+    )
+    (dest_in / "identity").mkdir(parents=True)
+    (dest_in / "identity" / "xccdf-results.xml").write_text(
+        '<Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf">'
+        "<TestResult><rule-result idref=",
+        encoding="utf-8",
+    )
+    (dest_in / "identity" / "enum4linux-ng.json").write_text(
+        '{"target":{"host":"dc01"},"sessions":{"null":',
+        encoding="utf-8",
+    )
+    (dest_in / "vuln").mkdir(parents=True)
+    (dest_in / "vuln" / "trivy.sarif").write_text(
+        '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Trivy","rules":[',
+        encoding="utf-8",
+    )
+
+    cloud = run_collector("cloud-prowler", (".json", ".csv"), cloud_prowler.parse_file)
+    wazuh = run_collector(
+        "host-wazuh",
+        (".json", ".jsonl", ".xml", ".txt", ".log", ".dat", ".csv"),
+        host_wazuh.parse_file,
+    )
+    identity = run_collector(
+        "identity-ad",
+        (".json", ".xml", ".csv", ".txt"),
+        identity_ad.parse_file,
+    )
+    vuln = run_collector(
+        "vuln-scan",
+        (".json", ".jsonl", ".sarif", ".txt", ".xml", ".nessus"),
+        vuln_scan.parse_file,
+    )
+
+    recs = cloud + wazuh + identity + vuln
+    assert recs == []
+    assert not any("demo" in (r.get("labels") or []) for r in recs)
+
+    expected = {
+        "cloud-prowler": "prowler-ocsf.json",
+        "host-wazuh": "alerts.json",
+        "vuln-scan": "trivy.sarif",
+    }
+    for source, name in expected.items():
+        status = _status_for(tmp_path / "out", source)
+        assert status["status"] == "parse_error", source
+        assert status["demo"] is False, source
+        assert status["records"] == 0, source
+        assert status["issues"][0]["file"] == name, source
+        assert status["issues"][0]["status"] == "parse_error", source
+        assert status["issues"][0]["reason"], source
+
+    ident = _status_for(tmp_path / "out", "identity-ad")
+    assert ident["status"] == "parse_error"
+    assert ident["demo"] is False
+    assert ident["records"] == 0
+    files = {item["file"]: item["status"] for item in ident["issues"]}
+    assert files.get("xccdf-results.xml") == "parse_error"
+    assert files.get("enum4linux-ng.json") == "parse_error"
+
+    summary = grc_loader.load()
+    assert summary["demo"] is False
+    assert summary["estate"] == "LAB: TEST ENVIRONMENT"
+    assert summary["estate_kind"] == "LAB"
+    assert summary["findings"] == 0
+    for source in ("cloud-prowler", "host-wazuh", "identity-ad", "vuln-scan"):
+        assert summary["sensors"][source]["status"] == "parse_error"
+    findings_csv = (tmp_path / "out" / "ciso-assistant" / "findings.csv").read_text(encoding="utf-8")
+    assert findings_csv.count("\n") == 1
 
 
 def test_lab_empty_sensor_does_not_load_demo(tmp_path, monkeypatch) -> None:
