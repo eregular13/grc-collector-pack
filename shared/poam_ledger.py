@@ -590,6 +590,7 @@ def apply_ledger(
     ledger.setdefault("closed", [])
     ledger.setdefault("events", [])
     ledger.setdefault("fp_migrations", [])
+    prior_events_n = len(ledger["events"])
     warnings = list(ledger.get("warnings") or [])
     if not prior_existed:
         warnings.append(LEDGER_LOST)
@@ -765,14 +766,44 @@ def apply_ledger(
         ledger["warnings"] = sorted(set(ledger["warnings"] + [LEDGER_CHAIN_BROKEN]))
     ledger["run_at"] = run_iso
     ledger["prev_sha256"] = str((ledger_in or {}).get("sha256") or "")
+    ledger["events_this_run"] = list(ledger["events"][prior_events_n:])
     ledger["sha256"] = payload_sha256(ledger)
     return ledger
+
+
+def ledger_run_delta(ledger: dict[str, Any]) -> dict[str, int]:
+    """Client-facing counts for this run: open / new / pending / reopened / closed.
+
+    Prefer ``events_this_run`` (the events ``apply_ledger`` appended). The
+    timestamp filter is a fallback for older ledgers; second-resolution
+    ``run_at`` can collide across back-to-back operator runs.
+    """
+    items = ledger.get("items") or {}
+    if "events_this_run" in ledger:
+        events = list(ledger.get("events_this_run") or [])
+    else:
+        run_iso = str(ledger.get("run_at") or "")
+        events = [e for e in (ledger.get("events") or []) if str(e.get("at") or "") == run_iso]
+    open_n = sum(
+        1
+        for item in items.values()
+        if str(item.get("status") or "") != "closed"
+    )
+    return {
+        "open": open_n,
+        "new": sum(1 for e in events if e.get("kind") == "created"),
+        "pending_verification": sum(
+            1 for item in items.values() if str(item.get("status") or "") == "pending_verification"
+        ),
+        "reopened": sum(1 for e in events if e.get("kind") == "reopened"),
+        "closed": sum(1 for e in events if e.get("kind") == "closed"),
+    }
 
 
 def pending_comment(item: dict[str, Any]) -> str:
     dates = ", ".join(item.get("missed_dates") or [])
     return (
-        f"Not detected in rescans {dates}; "
+        f"pending_verification — not detected in rescans {dates}; "
         "closure requires evidence + 3PAO verification"
     )
 

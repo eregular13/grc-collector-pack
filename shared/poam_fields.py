@@ -186,8 +186,10 @@ def apply_ledger_detection(
     rec: dict[str, Any],
     mapped: dict[str, Any],
 ) -> dict[str, str]:
-    """Stamp ledger-stable original_detection_date onto poam.csv fields."""
+    """Stamp ledger-stable EGP- ID and original_detection_date onto poam.csv."""
     out = dict(fields)
+    if item.get("poam_id"):
+        out["poam_id"] = str(item["poam_id"])
     stored = str(item.get("original_detection_date") or NOT_RECORDED)
     incoming, _basis, _tz = artifact_detection(rec)
     odd = merge_detection(stored, incoming)

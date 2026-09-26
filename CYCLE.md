@@ -1,9 +1,9 @@
 # CYCLE log
 
-## cycle 199 — merge master 76f5e86 (#144+#140) into #145 (2026-09-26)
+## cycle 199 — merge master 9aeb229 (#144+#140+#147) into #145 (2026-09-26)
 
-Normal merge of `origin/master` `76f5e86` (#144 port-fold + #140
-discovery/web; also #146/#142/#138). No rebase, no force-push.
+Normal merge of `origin/master` `9aeb229` (#144 port-fold + #140
+discovery/web + #147 ledger lifecycle; also #146/#142/#138). No rebase, no force-push.
 #139 follow-ups kept: Greenbone all CVEs + root detect + Timestamp/
 scan_start; Nikto 740001 kept / unmatched info; PingCastle 8 group
 rules honor member count + 0-point info; ScubaGear DomainName +
@@ -14,7 +14,8 @@ assets **78** findings **104** vulnerabilities **22** weaknesses **126**
 poam **125** excluded **1** (`superseded_by_specific`). Vs prior #145
 stamp 84/103/125: assets 84→78 is #138 EGA- collapse; findings +1 is
 #140 second httpx URL; poam stays 125 because #144 folds one nmap
-port-only row (weaknesses 126 − 1). Not a MIN_ loosen. Pytest **1222**.
+port-only row (weaknesses 126 − 1). Not a MIN_ loosen. Also merged `9aeb229` (#147 ledger
+lifecycle) — host-lab counts unchanged. Pytest **1225**.
 Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out.
 

@@ -1,11 +1,11 @@
 # CRITIC — cycle 199 (MERGE_MASTER_144_140_INTO_145)
 
-Lab this brick: pytest **1222** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1225** passed, 1 skipped. Ten collectors +
 `grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
 `vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
 `poam=125` `weaknesses=126` `excluded=1` `severity_unmapped=0`
 `demo=true`). Zero P0/P1. Merged `origin/master` `76f5e86`
-(#144+#140+#146+#142+#138) with a normal merge commit. No rebase.
+(#144+#140+#147+#146+#142+#138) with a normal merge commit. No rebase.
 #139 follow-ups + Argus B4 case-insensitive `Timestamp` /
 `TimestampZulu` / `scan_time` kept. Count shift vs prior #145 84/103/125
 is master's EGA- collapse + httpx URL + one `superseded_by_specific`
