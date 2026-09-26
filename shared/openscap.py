@@ -112,12 +112,40 @@ def _result_value(el: ET.Element) -> str:
 
 
 def _target_host(root: ET.Element) -> str:
+    fqdn = ""
+    host = ""
+    target = ""
     for el in root.iter():
-        if _local(el.tag) in {"target", "hostname"}:
-            val = (_text(el) or el.attrib.get("name") or "").strip()
-            if val:
-                return val
-    return "openscap-host"
+        loc = _local(el.tag)
+        val = (_text(el) or el.attrib.get("name") or "").strip()
+        if not val:
+            continue
+        if loc == "fqdn":
+            fqdn = fqdn or val
+        elif loc == "target":
+            target = target or val
+        elif loc == "hostname":
+            host = host or val
+    return fqdn or target or host or "openscap-host"
+
+
+def target_ids(root: ET.Element) -> dict[str, Any]:
+    """Collect ARF ai:fqdn / connections for extra.ids."""
+    ids: dict[str, Any] = {"fqdn": "", "hostname": "", "ip": [], "mac": []}
+    for el in root.iter():
+        loc = _local(el.tag)
+        val = (_text(el) or el.attrib.get("name") or "").strip()
+        if loc == "fqdn" and val and not ids["fqdn"]:
+            ids["fqdn"] = val
+        elif loc == "hostname" and val and not ids["hostname"]:
+            ids["hostname"] = val
+        elif loc in {"ip-v4", "ip-v6", "ip-address"} and val:
+            ids["ip"].append(val)
+        elif loc == "mac-address" and val:
+            ids["mac"].append(val)
+        elif loc == "fact" and "mac" in str(el.attrib.get("name") or "").lower() and val:
+            ids["mac"].append(val)
+    return ids
 
 
 def _result_refs(el: ET.Element) -> list[str]:
@@ -147,6 +175,7 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
         return []
     catalog = _rule_catalog(root)
     host = _target_host(root)
+    ids = target_ids(root)
     out: list[dict[str, Any]] = []
     for el in _iter_rule_results(root):
         result = _result_value(el)
@@ -200,6 +229,7 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
                 "references": clean_refs,
                 "control_key": control,
                 "extra": extra,
+                "ids": ids,
             }
         )
     return out

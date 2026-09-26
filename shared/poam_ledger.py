@@ -4,8 +4,8 @@ Fingerprint::
 
     fp_v1 = sha256("v1|" + source_family + "|" + weakness_key + "|" + asset_key)
 
-``asset_key`` is ASSET ID + PORT (see ``shared.asset_key.asset_key``), not the
-lower-cased name. IDs are ``EGP-`` + first 10 hex of fp_v1, upper-cased.
+``asset_key`` is the EGA- asset UID + PORT (see ``shared.asset_key.asset_key``),
+not the lower-cased name. IDs are ``EGP-`` + first 10 hex of fp_v1, upper-cased.
 """
 
 from __future__ import annotations
@@ -20,9 +20,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from shared.asset_key import (
+    alias_display_names,
     asset_host,
+    asset_id,
     asset_key,
     display_asset,
+    legacy_asset_id_port_key,
     legacy_name_asset_key,
     legacy_port_only_asset_key,
     normalize_weakness_name,
@@ -347,91 +350,188 @@ def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: da
     return changed
 
 
-def _candidate_legacy_fps(rec: dict[str, Any]) -> list[tuple[str, str]]:
-    """Old fingerprints that should map onto the current ``fp_v1(rec)``."""
-    new_fp = fp_v1(rec)
-    out: list[tuple[str, str]] = []
-    name_fp = fp_v1(rec, asset_key_fn=legacy_name_asset_key)
-    if name_fp != new_fp:
-        out.append((name_fp, "name_to_asset_id_port"))
+def _already_mapped(ledger: dict[str, Any], src_fp: str, dest_fp: str, poam_id: str = "") -> bool:
+    for row in ledger.get("fp_migrations") or []:
+        if row.get("from") == src_fp and row.get("to") == dest_fp:
+            if not poam_id or str(row.get("poam_id") or "") == poam_id:
+                return True
+    return False
+
+
+def _record_fp_migration(
+    ledger: dict[str, Any],
+    *,
+    src_fp: str,
+    dest_fp: str,
+    poam_id: str,
+    odd: str,
+    reason: str,
+    alias_of: str = "",
+) -> None:
+    if _already_mapped(ledger, src_fp, dest_fp, poam_id):
+        return
+    row = {
+        "from": src_fp,
+        "to": dest_fp,
+        "poam_id": poam_id,
+        "original_detection_date": odd,
+        "reason": reason,
+    }
+    if alias_of:
+        row["alias_of"] = alias_of
+    ledger.setdefault("fp_migrations", []).append(row)
+
+
+def _legacy_alias_records(rec: dict[str, Any]) -> list[dict[str, Any]]:
+    extras = extra_dict(rec)
+    fakes: list[dict[str, Any]] = []
+    for name in alias_display_names(rec) or [""]:
+        fake = dict(rec)
+        fake["assets"] = [name] if name else list(rec.get("assets") or [])
+        if name:
+            fake["name"] = name
+        fake_extra = dict(extras)
+        fake_extra.pop("asset_uid", None)
+        fake["extra"] = fake_extra
+        fakes.append(fake)
+    return fakes
+
+
+def _legacy_port_only_allowed(rec: dict[str, Any]) -> bool:
+    """Port-only keys defaulted to TCP. Do not let UDP steal a TCP item."""
     extra = extra_dict(rec)
-    port = str(extra.get("port") or "").strip()
-    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
-    # Port-only → port/proto. Old records without a proto default to tcp.
-    if port and port != "0" and proto:
-        assumed = proto or "tcp"
-        if assumed == "tcp":
-            port_fp = fp_v1(rec, asset_key_fn=legacy_port_only_asset_key)
-            if port_fp != new_fp:
-                out.append((port_fp, "port_only_to_port_proto"))
+    proto = str(extra.get("protocol") or extra.get("proto") or "tcp").strip().lower()
+    return proto == "tcp"
+
+
+def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
+    """Prior fingerprint schemes (#131, pre-#140 port-only, pre-#131 name)."""
+    seen: set[str] = set()
+    out: list[tuple[str, str]] = []
+    schemes: list[tuple[Any, str]] = [
+        (legacy_name_asset_key, "name_to_ega"),
+        (legacy_asset_id_port_key, "asset_id_port_to_ega"),
+    ]
+    if _legacy_port_only_allowed(rec):
+        schemes.append((legacy_port_only_asset_key, "port_only_to_port_proto"))
+    for fake in _legacy_alias_records(rec):
+        for fn, reason in schemes:
+            fp = fp_v1(fake, asset_key_fn=fn)
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, reason))
     return out
 
 
-def _apply_fp_migration(
-    rec: dict[str, Any],
-    ledger: dict[str, Any],
-    run_iso: str,
-    *,
-    mapped: str,
-    new_fp: str,
-    reason: str,
-) -> str:
-    items: dict[str, Any] = ledger["items"]
-    item = items.pop(mapped)
-    kept_id = item.get("poam_id")
-    kept_date = item.get("original_detection_date")
-    if new_fp in items:
-        other = items[new_fp]
-        d1 = _to_date(kept_date)
-        d2 = _to_date(other.get("original_detection_date"))
-        if d1 and (not d2 or d1 < d2):
-            other["original_detection_date"] = kept_date
-            other["poam_id"] = kept_id
-        item = other
-    else:
-        item["fp"] = new_fp
-        item["asset_key"] = asset_key(rec)
-        items[new_fp] = item
-    ledger["fp_migrations"].append(
-        {
-            "from": mapped,
-            "to": new_fp,
-            "poam_id": item.get("poam_id"),
-            "original_detection_date": item.get("original_detection_date"),
-            "reason": reason,
-        }
-    )
-    ledger["events"].append(
-        _event(run_iso, new_fp, str(item.get("poam_id") or ""), "migrated", {"from": mapped})
-    )
-    return new_fp
+def _legacy_asset_keys_for(rec: dict[str, Any]) -> set[str]:
+    """#131 / pre-#140 / pre-#131 asset_key strings a prior ledger item may still hold."""
+    keys: set[str] = set()
+    for fake in _legacy_alias_records(rec):
+        keys.add(legacy_name_asset_key(fake))
+        keys.add(legacy_asset_id_port_key(fake))
+        if _legacy_port_only_allowed(rec):
+            keys.add(legacy_port_only_asset_key(fake))
+    return {k for k in keys if k}
+
+
+def _item_sort_key(item: dict[str, Any]) -> tuple:
+    detected = _to_date(item.get("original_detection_date"))
+    first = str(item.get("first_seen") or "")
+    pid = str(item.get("poam_id") or "")
+    return (detected is None, detected or date.max, first, pid)
 
 
 def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str) -> str:
+    """Map prior fps onto the current EGA- key. Never remint a surviving EGP- ID.
+
+    Same weakness + two old asset keys → keep the older EGP- ID and earliest
+    Original Detection Date; the other EGP- ID is recorded on ``fp_migrations``
+    as an alias (not deleted). Different weaknesses stay separate items.
+    """
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
-    if new_fp in items:
-        return new_fp
-    for old_fp, reason in _candidate_legacy_fps(rec):
-        mapped = None
-        if old_fp in items:
-            mapped = old_fp
-        else:
-            for row in ledger.get("fp_migrations") or []:
-                if row.get("from") == old_fp and row.get("to"):
-                    mapped = old_fp
-                    break
-        if mapped and mapped in items:
-            old_ak = str(items[mapped].get("asset_key") or "")
-            if reason == "port_only_to_port_proto" and "/" in old_ak:
-                stored = old_ak.rsplit("/", 1)[-1].lower()
-                extra = extra_dict(rec)
-                proto = str(extra.get("protocol") or extra.get("proto") or "tcp").lower()
-                if stored and stored != proto:
-                    continue
-            return _apply_fp_migration(
-                rec, ledger, run_iso, mapped=mapped, new_fp=new_fp, reason=reason
+    found: dict[str, tuple[dict[str, Any], str]] = {}
+    for old_fp, reason in _legacy_fps_for(rec):
+        if old_fp != new_fp and old_fp in items:
+            found[old_fp] = (items[old_fp], reason)
+    wk = weakness_key(rec)
+    fam = source_family(rec)
+    alias_keys = _legacy_asset_keys_for(rec)
+    for fp, item in list(items.items()):
+        if fp == new_fp or fp in found:
+            continue
+        if str(item.get("weakness_key") or "") != wk:
+            continue
+        if str(item.get("source_family") or "") != fam:
+            continue
+        stored = str(item.get("asset_key") or "")
+        if stored and stored in alias_keys:
+            reason = (
+                "port_only_to_port_proto"
+                if ":" in stored and "/" not in stored
+                else "asset_id_port_to_ega"
             )
+            found[fp] = (item, reason)
+    if new_fp in items:
+        found[new_fp] = (items[new_fp], "current")
+    if not found or (len(found) == 1 and new_fp in found):
+        return new_fp
+
+    ranked = sorted(found.items(), key=lambda pair: _item_sort_key(pair[1][0]))
+    aliases: list[str] = []
+    surv_fp, (surv, surv_reason) = ranked[0]
+    survivor = items.pop(surv_fp, None) or dict(surv)
+    survivor["fp"] = new_fp
+    survivor["asset_key"] = asset_key(rec)
+    aliases.extend(str(x) for x in (survivor.get("aliased_poam_ids") or []) if x)
+    items[new_fp] = survivor
+    if surv_fp != new_fp:
+        _record_fp_migration(
+            ledger,
+            src_fp=surv_fp,
+            dest_fp=new_fp,
+            poam_id=str(survivor.get("poam_id") or ""),
+            odd=str(survivor.get("original_detection_date") or ""),
+            reason=surv_reason,
+        )
+        ledger["events"].append(
+            _event(run_iso, new_fp, str(survivor.get("poam_id") or ""), "migrated", {"from": surv_fp})
+        )
+
+    survivor_id = str(items[new_fp].get("poam_id") or "")
+    for old_fp, (item, reason) in found.items():
+        if old_fp == surv_fp:
+            continue
+        if old_fp != new_fp:
+            items.pop(old_fp, None)
+        alias_id = str(item.get("poam_id") or "")
+        odd = str(item.get("original_detection_date") or "")
+        d_alias = _to_date(odd)
+        d_keep = _to_date(items[new_fp].get("original_detection_date"))
+        if d_alias and (not d_keep or d_alias < d_keep):
+            items[new_fp]["original_detection_date"] = odd
+        if alias_id and alias_id != survivor_id and alias_id not in aliases:
+            aliases.append(alias_id)
+        _record_fp_migration(
+            ledger,
+            src_fp=old_fp,
+            dest_fp=new_fp,
+            poam_id=alias_id,
+            odd=odd,
+            reason=reason,
+            alias_of=survivor_id,
+        )
+        ledger["events"].append(
+            _event(
+                run_iso,
+                new_fp,
+                survivor_id,
+                "migrated_alias",
+                {"from": old_fp, "alias_poam_id": alias_id},
+            )
+        )
+    if aliases:
+        items[new_fp]["aliased_poam_ids"] = aliases
     return new_fp
 
 
@@ -444,6 +544,17 @@ def build_coverage(instances: Iterable[dict[str, Any]]) -> dict[str, set[str]]:
         host = asset_host(rec)
         if host:
             bucket.add(host)
+        # Pre-EGA keys so unobserved sibling weaknesses on a merged host
+        # still count as covered (#131 pending_verification contract).
+        for fake in _legacy_alias_records(rec):
+            for key in (
+                legacy_asset_id_port_key(fake),
+                legacy_name_asset_key(fake),
+                legacy_port_only_asset_key(fake),
+                asset_id(fake),
+            ):
+                if key:
+                    bucket.add(key)
     return cov
 
 

@@ -8,7 +8,12 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.asset_key import asset_key, legacy_name_asset_key, legacy_port_only_asset_key
+from shared.asset_key import (
+    asset_key,
+    legacy_asset_id_port_key,
+    legacy_name_asset_key,
+    legacy_port_only_asset_key,
+)
 from shared.ciso_shape import POAM_HEADER
 from shared.kev import KevCatalog
 from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
@@ -17,6 +22,7 @@ from shared.poam_ledger import (
     LEDGER_LOST,
     apply_ledger,
     assign_poam_id,
+    empty_ledger,
     fan_out_instances,
     fp_v1,
     load_ledger_file,
@@ -127,7 +133,8 @@ def test_3_5_3_dedupe_bug_covered() -> None:
     ids = {i["poam_id"] for i in ledger["items"].values()}
     assets = {i["asset_key"] for i in ledger["items"].values()}
     assert len(ids) == 2
-    assert assets == {"alpine:3.19", "debian:12"}
+    assert len(assets) == 2
+    assert all(k.startswith("EGA-") for k in assets)
 
 
 def test_3_5_4_port_distinguishes() -> None:
@@ -373,9 +380,12 @@ def test_migration_map_name_to_asset_id_port_keeps_id_and_earliest_date() -> Non
         "extra": {"check_id": "s3_bucket_public_access", "arn": "arn:aws:s3:::Demo-Public-Assets"},
     }
     old_fp = fp_v1(rec, asset_key_fn=legacy_name_asset_key)
+    mid_fp = fp_v1(rec, asset_key_fn=legacy_asset_id_port_key)
     new_fp = fp_v1(rec)
     assert old_fp != new_fp
-    assert "demo-public-assets" in asset_key(rec)
+    assert mid_fp != new_fp
+    assert "demo-public-assets" in legacy_asset_id_port_key(rec)
+    assert asset_key(rec).startswith("EGA-")
     assert "arn:aws:s3:::demo-public-assets" == legacy_name_asset_key(rec)
 
     # Seed a name-based ledger item (as if produced before the key change).
@@ -413,8 +423,10 @@ def test_migration_port_only_to_port_proto_keeps_id_and_date() -> None:
     old_fp = fp_v1(old, asset_key_fn=legacy_port_only_asset_key)
     new_fp = fp_v1(new)
     assert old_fp != new_fp
-    assert asset_key(old) == "filesrv.corp.local:22"
-    assert asset_key(new) == "filesrv.corp.local:22/TCP"
+    assert legacy_port_only_asset_key(old) == "filesrv.corp.local:22"
+    assert legacy_asset_id_port_key(new) == "filesrv.corp.local:22/TCP"
+    assert asset_key(new).startswith("EGA-")
+    assert asset_key(new).endswith(":22/TCP")
     assert legacy_port_only_asset_key(new) == "filesrv.corp.local:22"
 
     seeded = _apply([old], when="2026-07-02T00:00:00Z")
@@ -439,18 +451,152 @@ def test_migration_port_only_to_port_proto_keeps_id_and_date() -> None:
 
 
 def test_fp_v1_golden_vector() -> None:
-    """Golden fp_v1 values guard against accidental re-keying."""
+    """#131 golden stays the asset-id+port vector; current key is EGA- + port."""
     golden = json.loads((ROOT / "tests" / "fixtures" / "poam" / "fp_v1_golden.json").read_text(encoding="utf-8"))
     expected = hashlib.sha256(
         (
             "v1|vuln-scan|nessus:42411|"
-            + asset_key(GOLDEN_NESSUS)
+            + legacy_asset_id_port_key(GOLDEN_NESSUS)
         ).encode("utf-8")
     ).hexdigest()
-    assert fp_v1(GOLDEN_NESSUS) == expected == golden["fp_v1"]
-    assert fp_v1(GOLDEN_NESSUS)[:10] == expected[:10]
-    assert asset_key(GOLDEN_NESSUS) == golden["asset_key"] == "http://10.0.0.20:445/TCP"
+    assert fp_v1(GOLDEN_NESSUS, asset_key_fn=legacy_asset_id_port_key) == expected == golden["fp_v1"]
+    assert legacy_asset_id_port_key(GOLDEN_NESSUS) == golden["asset_key"] == "http://10.0.0.20:445/TCP"
+    current = asset_key(GOLDEN_NESSUS)
+    assert current.startswith("EGA-")
+    assert current.endswith(":445/TCP")
+    assert fp_v1(GOLDEN_NESSUS) != golden["fp_v1"]
     assert asset_key.__doc__ and "EGA-" in asset_key.__doc__
+
+
+def _seed_item(fp: str, poam_id: str, rec: dict, odd: str, first_seen: str) -> dict:
+    return {
+        "poam_id": poam_id,
+        "fp": fp,
+        "source_family": rec["source"],
+        "weakness_key": weakness_key(rec),
+        "asset_key": legacy_asset_id_port_key(rec),
+        "original_detection_date": odd,
+        "first_seen": first_seen,
+        "status": "open",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+
+
+def test_ega_merge_same_weakness_keeps_older_id_and_aliases_other() -> None:
+    """Two old asset keys → one EGA- asset, same weakness: older EGP- wins; other is a map alias."""
+    extra = {"id": "42411", "tool": "nessus", "port": "445", "protocol": "tcp"}
+    ip_rec = _rec(assets=["10.0.0.30"], extra=dict(extra), name="SMB shares")
+    host_rec = _rec(assets=["web-01"], extra=dict(extra), name="SMB shares")
+    assert weakness_key(ip_rec) == weakness_key(host_rec)
+    old_ip = fp_v1(ip_rec, asset_key_fn=legacy_asset_id_port_key)
+    old_host = fp_v1(host_rec, asset_key_fn=legacy_asset_id_port_key)
+    assert old_ip != old_host
+
+    seeded = empty_ledger()
+    seeded["items"] = {
+        old_ip: _seed_item(old_ip, "EGP-OLDER0001", ip_rec, "2026-01-01", "2026-01-01T00:00:00Z"),
+        old_host: _seed_item(old_host, "EGP-NEWER0002", host_rec, "2026-06-01", "2026-06-01T00:00:00Z"),
+    }
+
+    merged = _rec(
+        assets=["web-01.corp.local"],
+        extra={
+            **extra,
+            "asset_uid": "EGA-MERGED001",
+            "ids": {"fqdn": "web-01.corp.local", "ip": ["10.0.0.30"], "hostname": "web-01"},
+            "also_names": ["10.0.0.30", "web-01"],
+        },
+        name="SMB shares",
+    )
+    new_fp = fp_v1(merged)
+    assert new_fp not in {old_ip, old_host}
+    assert asset_key(merged).startswith("EGA-MERGED001")
+
+    out = _apply([merged], ledger=seeded, when="2026-09-01T00:00:00Z")
+    assert new_fp in out["items"]
+    assert old_ip not in out["items"]
+    assert old_host not in out["items"]
+    got = out["items"][new_fp]
+    assert got["poam_id"] == "EGP-OLDER0001"
+    assert got["original_detection_date"] == "2026-01-01"
+    assert "EGP-NEWER0002" in (got.get("aliased_poam_ids") or [])
+    mapped_ids = {m.get("poam_id") for m in out["fp_migrations"]}
+    assert "EGP-OLDER0001" in mapped_ids
+    assert "EGP-NEWER0002" in mapped_ids
+    assert any(
+        m.get("poam_id") == "EGP-NEWER0002" and m.get("alias_of") == "EGP-OLDER0001"
+        for m in out["fp_migrations"]
+    )
+
+
+def test_ega_merge_different_weaknesses_keep_both_ids() -> None:
+    """Merged hosts with different weaknesses keep both EGP- IDs as separate items."""
+    extra_smb = {"id": "42411", "tool": "nessus", "port": "445", "protocol": "tcp"}
+    extra_ssl = {"id": "20007", "tool": "nessus", "port": "443", "protocol": "tcp"}
+    ip_rec = _rec(assets=["10.0.0.30"], extra=dict(extra_smb), name="SMB shares")
+    host_rec = _rec(assets=["web-01"], extra=dict(extra_ssl), name="SSL cert")
+    assert weakness_key(ip_rec) != weakness_key(host_rec)
+    old_smb = fp_v1(ip_rec, asset_key_fn=legacy_asset_id_port_key)
+    old_ssl = fp_v1(host_rec, asset_key_fn=legacy_asset_id_port_key)
+
+    seeded = empty_ledger()
+    seeded["items"] = {
+        old_smb: _seed_item(old_smb, "EGP-SMB000001", ip_rec, "2026-01-01", "2026-01-01T00:00:00Z"),
+        old_ssl: _seed_item(old_ssl, "EGP-SSL000002", host_rec, "2026-02-01", "2026-02-01T00:00:00Z"),
+    }
+
+    aliases = {
+        "asset_uid": "EGA-MERGED001",
+        "ids": {"fqdn": "web-01.corp.local", "ip": ["10.0.0.30"], "hostname": "web-01"},
+        "also_names": ["10.0.0.30", "web-01"],
+    }
+    merged_smb = _rec(assets=["web-01.corp.local"], extra={**extra_smb, **aliases}, name="SMB shares")
+    merged_ssl = _rec(assets=["web-01.corp.local"], extra={**extra_ssl, **aliases}, name="SSL cert")
+    out = _apply([merged_smb, merged_ssl], ledger=seeded, when="2026-09-01T00:00:00Z")
+    ids = {i["poam_id"] for i in out["items"].values()}
+    assert ids == {"EGP-SMB000001", "EGP-SSL000002"}
+    assert len(out["items"]) == 2
+    assert {i["original_detection_date"] for i in out["items"].values()} == {"2026-01-01", "2026-02-01"}
+
+
+def test_ega_swap_rescan_is_idempotent_no_new_ids() -> None:
+    """Rescan after the EGA- swap remints nothing — IDs and dates stay put."""
+    extra = {"id": "42411", "tool": "nessus", "port": "445", "protocol": "tcp"}
+    ip_rec = _rec(assets=["10.0.0.30"], extra=dict(extra), name="SMB shares")
+    host_rec = _rec(assets=["web-01"], extra=dict(extra), name="SMB shares")
+    old_ip = fp_v1(ip_rec, asset_key_fn=legacy_asset_id_port_key)
+    old_host = fp_v1(host_rec, asset_key_fn=legacy_asset_id_port_key)
+    seeded = empty_ledger()
+    seeded["items"] = {
+        old_ip: _seed_item(old_ip, "EGP-OLDER0001", ip_rec, "2026-01-01", "2026-01-01T00:00:00Z"),
+        old_host: _seed_item(old_host, "EGP-NEWER0002", host_rec, "2026-06-01", "2026-06-01T00:00:00Z"),
+    }
+    merged = _rec(
+        assets=["web-01.corp.local"],
+        extra={
+            **extra,
+            "asset_uid": "EGA-MERGED001",
+            "ids": {"fqdn": "web-01.corp.local", "ip": ["10.0.0.30"], "hostname": "web-01"},
+            "also_names": ["10.0.0.30", "web-01"],
+        },
+        name="SMB shares",
+    )
+    first = _apply([merged], ledger=seeded, when="2026-09-01T00:00:00Z")
+    new_fp = fp_v1(merged)
+    pid = first["items"][new_fp]["poam_id"]
+    odd = first["items"][new_fp]["original_detection_date"]
+    mapped = list(first["fp_migrations"])
+
+    second = _apply([merged], ledger=first, when="2026-09-02T00:00:00Z")
+    assert set(second["items"]) == set(first["items"])
+    assert second["items"][new_fp]["poam_id"] == pid == "EGP-OLDER0001"
+    assert second["items"][new_fp]["original_detection_date"] == odd == "2026-01-01"
+    assert {i["poam_id"] for i in second["items"].values()} == {pid}
+    assert not any(e["kind"] == "created" for e in second["events"])
+    assert {(m.get("from"), m.get("to"), m.get("poam_id")) for m in second["fp_migrations"]} == {
+        (m.get("from"), m.get("to"), m.get("poam_id")) for m in mapped
+    }
 
 
 def test_existing_poam_csv_header_constant_unchanged() -> None:
