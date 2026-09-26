@@ -6,6 +6,8 @@ Fingerprint::
 
 ``asset_key`` is the EGA- asset UID + PORT (see ``shared.asset_key.asset_key``),
 not the lower-cased name. IDs are ``EGP-`` + first 10 hex of fp_v1, upper-cased.
+Unknown Custodian needs-review rows roll up per policy+account as ``EGR-``
++ first 10 hex of ``egr_key(policy, account)`` — not resource order.
 """
 
 from __future__ import annotations
@@ -672,13 +674,40 @@ def item_maps_to_current(
     return False
 
 
-def assign_poam_id(fp: str, used: dict[str, str]) -> str:
-    """EGP- + first 10 hex, upper-cased. Collision with a different fp → 12 hex."""
-    short = "EGP-" + fp[:10].upper()
+def egr_key(policy: str, account: str) -> str:
+    """Stable digest for an EGR- rollup. Policy name + account, not resources."""
+    acct = str(account or "").strip() or "unknown"
+    payload = f"egr|{str(policy or '').strip().lower()}|{acct}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def is_egr_rollup(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("rollup") is True:
+        return True
+    return str(extra.get("poam_prefix") or "").strip().upper() in {"EGR-", "EGR"}
+
+
+def _egr_account(rec: dict[str, Any]) -> str:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    acct = str(extra.get("account_id") or "").strip()
+    if acct:
+        return acct
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
+    if assets and assets[0].lower().startswith("account:"):
+        return assets[0].split(":", 1)[1] or "unknown"
+    return "unknown"
+
+
+def assign_poam_id(fp: str, used: dict[str, str], prefix: str = "EGP-") -> str:
+    """EGP-/EGR- + first 10 hex, upper-cased. Collision with a different fp → 12 hex."""
+    if prefix not in {"EGP-", "EGR-"}:
+        prefix = "EGP-"
+    short = prefix + fp[:10].upper()
     holder = used.get(short)
     if holder is None or holder == fp:
         return short
-    return "EGP-" + fp[:12].upper()
+    return prefix + fp[:12].upper()
 
 
 def next_reopen_id(base_id: str, existing: set[str]) -> str:
@@ -1511,7 +1540,13 @@ def apply_ledger(
         used = _used_ids(ledger)
         item = ledger["items"].get(fp)
         if item is None:
-            poam_id = assign_poam_id(fp, used)
+            extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+            if is_egr_rollup(rec):
+                policy = str(extra.get("check_id") or rec.get("name") or "")
+                mint_fp = egr_key(policy, _egr_account(rec))
+                poam_id = assign_poam_id(mint_fp, used, prefix="EGR-")
+            else:
+                poam_id = assign_poam_id(fp, used)
             used[poam_id] = fp
             item = _new_item(
                 rec,
