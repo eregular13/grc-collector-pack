@@ -469,45 +469,46 @@ def _csv_rows(text: str, delim: str) -> list[list[str]] | None:
     return rows
 
 
-def _try_canonical_csv(text: str) -> bytes | None:
-    if not text.strip():
-        return None
-    texts = [text]
-    already_table = any(_csv_rows(text, d) is not None for d in _CSV_DELIMS if d in text)
-    if not already_table:
-        unquoted = _strip_wrapping_csv_quotes(text)
-        if unquoted != text:
-            texts.append(unquoted)
-    delims = list(_CSV_DELIMS)
-    try:
-        sniffed = csv.Sniffer().sniff(text[:8192], delimiters="".join(_CSV_DELIMS))
-        if sniffed.delimiter in _CSV_DELIMS:
-            delims = [sniffed.delimiter, *[d for d in delims if d != sniffed.delimiter]]
-    except csv.Error:
-        pass
-    best: list[list[str]] | None = None
-    best_score = (-1, -1)
-    for src in texts:
-        for delim in delims:
-            if delim not in src:
-                continue
-            rows = _csv_rows(src, delim)
-            if rows is None:
-                continue
-            score = (max(len(r) for r in rows), len(rows))
-            if score > best_score:
-                best_score = score
-                best = rows
-    if best is None:
-        return None
-    header = [" ".join(c.split()) for c in best[0]]
-    body = sorted(tuple(" ".join(c.split()) for c in r) for r in best[1:])
+def _rows_to_csv_canon(rows: list[list[str]]) -> bytes:
+    header = [" ".join(c.split()) for c in rows[0]]
+    body = sorted(tuple(" ".join(c.split()) for c in r) for r in rows[1:])
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
     writer.writerow(header)
     for row in body:
         writer.writerow(row)
     return buf.getvalue().encode("utf-8")
+
+
+def _canonical_csv_forms(text: str) -> list[bytes]:
+    """One canon per delimiter that parses, plus an unquoted-line retry.
+
+    A semicolon SAMPLE re-saved with a comma reader + QUOTE_ALL must
+    still share a fingerprint with the catalog (Metis #186 v3).
+    """
+    if not text.strip():
+        return []
+    texts = [text]
+    unquoted = _strip_wrapping_csv_quotes(text)
+    if unquoted != text:
+        texts.append(unquoted)
+    seen: list[bytes] = []
+    for src in texts:
+        for delim in _CSV_DELIMS:
+            if delim not in src:
+                continue
+            rows = _csv_rows(src, delim)
+            if rows is None:
+                continue
+            canon = _rows_to_csv_canon(rows)
+            if canon not in seen:
+                seen.append(canon)
+    return seen
+
+
+def _try_canonical_csv(text: str) -> bytes | None:
+    forms = _canonical_csv_forms(text)
+    return forms[0] if forms else None
 
 
 def _edge_normalize_bytes(data: bytes) -> bytes:
@@ -561,9 +562,12 @@ def _normalized_forms(data: bytes) -> list[bytes]:
     except UnicodeDecodeError:
         return forms
     text_eol = text.replace("\r\n", "\n").replace("\r", "\n")
-    for fn in (_try_canonical_json, _try_canonical_jsonl, _try_canonical_csv):
+    for fn in (_try_canonical_json, _try_canonical_jsonl):
         canon = fn(text_eol)
         if canon is not None:
+            forms.append(canon)
+    for canon in _canonical_csv_forms(text_eol):
+        if canon not in forms:
             forms.append(canon)
     collapsed = _collapse_text(text_eol).encode("utf-8")
     if collapsed not in forms:
