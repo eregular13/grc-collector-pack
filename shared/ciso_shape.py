@@ -137,11 +137,18 @@ def assert_flood_guard(summary: dict[str, Any]) -> dict[str, Any]:
     poam_rows = int(fg.get("poam_rows") or 0)
     excluded_rows = int(fg.get("excluded_rows") or 0)
     pending = int(fg.get("pending_carried") or 0)
-    if findings_in + pending != poam_rows + excluded_rows:
+    unexplained = findings_in + pending - poam_rows - excluded_rows
+    if unexplained != 0:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL flood_guard findings_in={findings_in} + "
             f"pending_carried={pending} != poam_rows={poam_rows} + "
-            f"excluded_rows={excluded_rows}"
+            f"excluded_rows={excluded_rows} UNEXPLAINED={unexplained}"
+        )
+    stamped = fg.get("unexplained", fg.get("UNEXPLAINED"))
+    if stamped is not None and int(stamped) != unexplained:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard.unexplained={stamped} != "
+            f"UNEXPLAINED={unexplained}"
         )
     if "poam" in summary and poam_rows != int(summary.get("poam") or 0):
         raise RegisterShapeError(
@@ -164,6 +171,7 @@ def assert_flood_guard(summary: dict[str, Any]) -> dict[str, Any]:
         "poam_rows": poam_rows,
         "excluded_rows": excluded_rows,
         "pending_carried": pending,
+        "unexplained": unexplained,
     }
 
 

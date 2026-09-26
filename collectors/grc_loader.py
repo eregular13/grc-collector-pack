@@ -729,12 +729,15 @@ def load() -> dict:
         excluded_by_reason["DUPLICATE_INSTANCE"] = int(excluded_by_reason.get("DUPLICATE_INSTANCE") or 0) + merged_n
     for reason, count in parser_excluded_reasons.items():
         excluded_by_reason[reason] = int(excluded_by_reason.get(reason) or 0) + int(count)
+    unexplained = findings_in + pending_carried - len(poam_rows) - len(excluded_rows)
     flood_guard = {
         "findings_in": findings_in,
         "poam_rows": len(poam_rows),
         "excluded_rows": len(excluded_rows),
         "pending_carried": pending_carried,
         "parser_excluded": parser_excluded_n,
+        "unexplained": unexplained,
+        "UNEXPLAINED": unexplained,
         "identity": "findings_in + pending_carried == poam_rows + excluded_rows",
     }
     sensor_rows = load_sensor_coverage(out_dir())

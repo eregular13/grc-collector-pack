@@ -836,6 +836,7 @@ def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> l
                 "collected_at": now,
                 "extra": {
                     "exclude_reason": "unmapped",
+                    "exclude_detail": "unmapped query",
                     "id": hid,
                     "check_id": hid,
                     "host": host,

@@ -627,6 +627,8 @@ def test_parser_excluded_counts_in_flood_guard(
     assert summary["flood_guard"]["findings_in"] == 2
     assert summary["flood_guard"]["poam_rows"] == 1
     assert summary["flood_guard"]["excluded_rows"] == 1
+    assert summary["flood_guard"]["unexplained"] == 0
+    assert summary["flood_guard"]["UNEXPLAINED"] == 0
     assert summary["parser_excluded"] == 1
     excluded = csv_rows(out / "poam" / "excluded.csv")
     assert len(excluded) == 1

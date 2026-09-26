@@ -345,6 +345,72 @@ def test_osquery_it_compliance_predicates_on_filebeat_and_msticpy() -> None:
     assert all((r.get("extra") or {}).get("exclude_reason") == "unmapped" for r in sexcl)
 
 
+def test_real_corpus_28_excluded_reach_excluded_csv(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Metis acceptance.json: osquery 11+3 and Custodian 8+6 land on excluded.csv."""
+    import csv
+
+    from collectors.grc_loader import load
+    from shared.ciso_shape import assert_flood_guard
+    from shared.io_util import out_dir, write_canonical
+
+    accept = json.loads((SAMPLES / "acceptance.json").read_text(encoding="utf-8"))
+    expected = int(accept["excluded"]["total"])
+    assert expected == 28
+    assert accept["label"] == "SAMPLE"
+    assert accept["client"] is False
+    assert accept["flood_guard"]["unexplained"] == 0
+
+    osq_results = host_wazuh.parse_file(SAMPLES / "osquery" / "msticpy.osqueryd.results.log")
+    osq_snaps = host_wazuh.parse_file(SAMPLES / "osquery" / "msticpy.osqueryd.snapshots.log")
+    az = cloud_prowler.parse_file(
+        SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json"
+    )
+    aws = cloud_prowler.parse_file(
+        SAMPLES / "cloud" / "stop-underutilized-aws-instances" / "resources.json"
+    )
+    osq_excl = [r for r in osq_results + osq_snaps if r.get("kind") == "excluded"]
+    c7n_excl = [r for r in az + aws if r.get("kind") == "excluded"]
+    assert len(osq_excl) == (
+        accept["excluded"]["osquery"]["msticpy.osqueryd.results.log"]
+        + accept["excluded"]["osquery"]["msticpy.osqueryd.snapshots.log"]
+    )
+    assert len(c7n_excl) == (
+        accept["excluded"]["custodian"]["stop-underutilized-azure-vms"]
+        + accept["excluded"]["custodian"]["stop-underutilized-aws-instances"]
+    )
+    assert len(osq_excl) + len(c7n_excl) == expected
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    monkeypatch.setenv("GRC_ESTATE_LABEL", "SAMPLE")
+    (tmp_path / "in").mkdir(parents=True, exist_ok=True)
+    write_canonical("host-wazuh", osq_results + osq_snaps)
+    write_canonical("cloud-prowler", az + aws)
+    summary = load()
+    assert_flood_guard(summary)
+    fg = summary["flood_guard"]
+    assert int(fg.get("unexplained") or fg.get("UNEXPLAINED") or 0) == 0
+    assert fg["UNEXPLAINED"] == 0
+    assert summary["parser_excluded"] == expected
+    assert summary["excluded"] >= expected
+    assert fg["findings_in"] + int(fg.get("pending_carried") or 0) == (
+        fg["poam_rows"] + fg["excluded_rows"]
+    )
+
+    with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    by_ref = {row["finding_ref_id"]: row for row in rows}
+    for rec in osq_excl + c7n_excl:
+        row = by_ref[rec["ref_id"]]
+        assert row["excluded_reason"] == "NOT_A_WEAKNESS"
+    for rec in osq_excl:
+        assert by_ref[rec["ref_id"]]["superseded_by"] == "unmapped query"
+    assert {r["ref_id"] for r in osq_excl + c7n_excl} <= set(by_ref)
+
+
 def test_real_corpus_four_poam_rows() -> None:
     """Metis §15: four per-asset weakness rows on the public corpus; msticpy is exclude-only."""
     rows = []
@@ -473,3 +539,8 @@ def test_samples_are_not_client_keep() -> None:
     assert "client KEEP" in text
     assert "/api/risks" in text
     assert "RiskReady" in text
+    assert "acceptance.json" in text
+    accept = json.loads((SAMPLES / "acceptance.json").read_text(encoding="utf-8"))
+    assert accept["label"] == "SAMPLE"
+    assert accept["client"] is False
+    assert accept["excluded"]["total"] == 28
