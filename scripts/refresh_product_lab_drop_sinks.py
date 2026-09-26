@@ -1,4 +1,8 @@
-"""Refresh product-lab/drop OpenGRC CSVs + Probo drafts from packaged CISO CSVs.
+"""Refresh product-lab/drop from a host-lab out/ (or packaged CISO CSVs).
+
+Operator path matches scripts/lab.sh: empty in/ → fixtures/demo → collectors
+→ grc_loader → out/, then this script copies CISO/POA&M/estate pages into
+product-lab/drop and rebuilds OpenGRC + Probo from those CSVs.
 
 File-true leave-behind. posted=false. SAMPLE/DEMO fixtures ≠ LAB ≠ client.
 Never POSTs. Never /api/risks. Cron-safe (no python -c).
@@ -6,9 +10,12 @@ Never POSTs. Never /api/risks. Cron-safe (no python -c).
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import json
+import os
+import shutil
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from exporters.model import load_pack_estate
@@ -17,6 +24,15 @@ from exporters.probo import write_probo
 
 ROOT = Path(__file__).resolve().parents[1]
 DROP = ROOT / "product-lab" / "drop"
+CISO_CSVS = (
+    "applied_controls.csv",
+    "assets.csv",
+    "evidences.csv",
+    "findings.csv",
+    "risk_scenarios.csv",
+    "vulnerabilities.csv",
+)
+ESTATE_PAGES = ("EXECUTIVE_SUMMARY.md", "SCOPE_AND_TRUST.md")
 
 
 def _sha256(path: Path) -> str:
@@ -29,12 +45,43 @@ def _csv_rows(path: Path) -> int:
     return len(csv_rows(path))
 
 
+def _copied_at() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def sync_from_out(src_out: Path, drop: Path = DROP) -> None:
+    """Copy host-lab generator outputs into the packaged drop (DEMO/SAMPLE only)."""
+    src_out = Path(src_out)
+    drop = Path(drop)
+    ciso_src = src_out / "ciso-assistant"
+    if not (ciso_src / "findings.csv").is_file():
+        raise SystemExit(f"no host-lab CISO CSVs under {ciso_src}")
+    for name in CISO_CSVS:
+        dest = drop / "ciso" / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ciso_src / name, dest)
+    estate = ciso_src / "ESTATE.txt"
+    if estate.is_file():
+        shutil.copy2(estate, drop / "ciso" / "ESTATE.txt")
+    poam_src = src_out / "poam"
+    if poam_src.is_dir():
+        (drop / "poam").mkdir(parents=True, exist_ok=True)
+        for path in sorted(poam_src.iterdir()):
+            if path.is_file():
+                shutil.copy2(path, drop / "poam" / path.name)
+    for name in ESTATE_PAGES:
+        src = src_out / name
+        if src.is_file():
+            shutil.copy2(src, drop / name)
+
+
 def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
+    copied = _copied_at()
     lines = [
         "# product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M + OpenGRC + Probo",
         "",
         "Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.",
-        "Copied from out/ after host lab 2026-09-04T14:51:44Z (this Linux VM).",
+        f"Copied from out/ after host lab {copied} (this Linux VM).",
         "OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).",
         "Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.",
         "OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.",
@@ -51,8 +98,12 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         ("ciso/findings.csv", counts["ciso/findings.csv"]),
         ("ciso/risk_scenarios.csv", counts["ciso/risk_scenarios.csv"]),
         ("ciso/vulnerabilities.csv", counts["ciso/vulnerabilities.csv"]),
+        ("ciso/ESTATE.txt", "draft"),
         ("poam/poam.csv", counts["poam/poam.csv"]),
         ("poam/poam.md", "draft"),
+        ("poam/ESTATE.txt", "draft"),
+        ("EXECUTIVE_SUMMARY.md", "draft"),
+        ("SCOPE_AND_TRUST.md", "draft"),
         ("opengrc/risks.csv", counts["opengrc/risks.csv"]),
         ("opengrc/assets.csv", counts["opengrc/assets.csv"]),
         ("opengrc/implementations.csv", counts["opengrc/implementations.csv"]),
@@ -73,7 +124,7 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
 def _write_readme(counts: dict[str, int]) -> None:
     text = f"""# Drop package
 
-**Copied:** 2026-09-04T14:12:58Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** {_copied_at()} from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). SAMPLE/DEMO. Not a client. Not a LAB dest_in prove.
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
@@ -86,7 +137,7 @@ OpenGRC and Probo files are **file-true leave-behind, posted=false, not live imp
 
 CISO Assistant Community import CSVs. Headers are the contract. `risk_scenarios.csv` is **semicolon**-separated. Finding severity `low|medium|high|critical`. Vuln severity `Information|Low|Medium|High|Critical`. Asset type `PR` or `SP`. `filtering_labels` include wizard-safe `cpg_2_W` / `csf_*` (no colons).
 
-Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment UUIDs.
+`filtering_labels` include `estate_demo`. `ciso/ESTATE.txt` is the estate banner sidecar (import CSVs stay header-first). Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment UUIDs.
 
 | File | Rows |
 |---|---|
@@ -99,7 +150,7 @@ Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment U
 
 ## `poam/`
 
-Operator draft. Not a CISO import. Owner and due stay blank.
+Operator draft. Not a CISO import. Owner and due stay blank. `poam.csv` has an `estate` column (DEMO/SAMPLE/LAB, never client KEEP). Banner lives in `poam/ESTATE.txt` plus `EXECUTIVE_SUMMARY.md` / `SCOPE_AND_TRUST.md`.
 
 | File | Rows |
 |---|---|
@@ -133,7 +184,11 @@ Do not POST `/api/risks`.
     (DROP / "README.md").write_text(text, encoding="utf-8")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] in {"--from-out", "sync"}:
+        raw = args[1] if len(args) > 1 else os.environ.get("OUT_DIR") or str(ROOT / "out")
+        sync_from_out(Path(raw))
     estate = load_pack_estate(DROP)
     stamp = write_opengrc(DROP, estate=estate)
     probo_path = write_probo(DROP, estate=estate)
@@ -145,8 +200,12 @@ def main() -> int:
         "ciso/findings.csv": DROP / "ciso" / "findings.csv",
         "ciso/risk_scenarios.csv": DROP / "ciso" / "risk_scenarios.csv",
         "ciso/vulnerabilities.csv": DROP / "ciso" / "vulnerabilities.csv",
+        "ciso/ESTATE.txt": DROP / "ciso" / "ESTATE.txt",
         "poam/poam.csv": DROP / "poam" / "poam.csv",
         "poam/poam.md": DROP / "poam" / "poam.md",
+        "poam/ESTATE.txt": DROP / "poam" / "ESTATE.txt",
+        "EXECUTIVE_SUMMARY.md": DROP / "EXECUTIVE_SUMMARY.md",
+        "SCOPE_AND_TRUST.md": DROP / "SCOPE_AND_TRUST.md",
         "opengrc/risks.csv": DROP / "opengrc" / "risks.csv",
         "opengrc/assets.csv": DROP / "opengrc" / "assets.csv",
         "opengrc/implementations.csv": DROP / "opengrc" / "implementations.csv",
