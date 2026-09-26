@@ -1,3 +1,16 @@
+# CRITIC — cycle 198 (MERGE_138_DISCOVERY_WEB)
+
+Lab this brick: pytest **1190** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
+`assets=48` `findings=174` `poam=106`. Zero P0/P1. Merged master
+`f8b7ff1` (#138) with a normal merge commit. Asset delta vs cycle
+197 is EGA- same-host collapse (85→78 lab, 55→48 farm), not a
+dropped collector. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS
+#48 rails below are unchanged.
+
 # CRITIC — cycle 197 (MERGE_138_ASSET_UID_AND_142_UNRECOGNIZED)
 
 Lab this brick: pytest **1201** passed, 1 skipped. Ten collectors +
@@ -8,6 +21,20 @@ farm_drop_to_sor honesty PASS. Zero P0/P1. Merged master `fdb8d6a`
 (#138 EGA- `asset_uid` / #142 `unrecognized_shape`). Intune/Jamf/
 Entra/Google/Okta assets stamp `extra.ids`. Unread sensor files are
 `unrecognized_shape`. Assets **78** is #138 ledger collapse (was 84).
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 197 (METIS11_PR140)
+
+Lab this brick: pytest **1160** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
+`assets=55` `findings=174` `poam=106` (unchanged vs cycle 196).
+Zero P0/P1. Metis §11: port-only → port/proto ledger migration;
+httpx status/soft-404; UDP open|filtered info; smbmap NULL only
+unauthenticated; naabu CDN edge not findings; vulners rollup.
 Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
 No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
 unchanged.
@@ -23,6 +50,19 @@ it-compliance pack inventory-only; Custodian not Steampipe lists;
 ScoutSuite `.js`; Trivy k8s `Resources[].Results[]`; Intune owner
 unknown ≠ unenrolled; HasSession rolled up per privileged principal;
 Jamf FileVault2 enums + GENERAL coverage gap. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 196 (MERGE_137_DISCOVERY_WEB)
+
+Lab this brick: pytest **1154** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Zero P0/P1. Merged
+master `1f8d347` (#137) with a normal merge commit. Count delta vs
+master STATUS: assets 84→85, findings 103→104, poam 111→126 — L2/NBT
+`10.0.0.50` + second httpx admin URL; POA&M is #135 full plan (Lows
+included) plus that extra finding. Catalog **unchanged**
 **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out. CoS #48 rails below are unchanged.
 
@@ -58,6 +98,18 @@ host-scoped `ref_id` + `canon_severity` stay. §9 parser fixes stay.
 ScubaGear/Maester tenant from #139 wins. Catalog **unchanged**
 **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 195 (MERGE_MASTER_DISCOVERY_WEB)
+
+Lab this brick: pytest **1086** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
+Zero P0/P1. Merged master `5adc8b7` (#139 / #136) with a normal merge
+commit. SOURCES.md is the union of both lists. Count delta vs master
+STATUS: assets 81→82, findings 104→105, poam 109→110 — same as the
+pre-merge discovery/web lab; #139 host-lab was unchanged. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
@@ -123,6 +175,19 @@ CIS v8 IDs INTERNAL-ONLY. Synthetic fixture (not Seen). Catalog
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
 No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
 unchanged.
+
+# CRITIC — cycle 194 (DISCOVERY_WEB_SAMPLES)
+
+Lab this brick: pytest **1066** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
+Zero P0/P1. Discovery/web parsers no longer invent `Ltd` hosts, merge
+`<unknown>` NetBIOS, count fping timeouts, drop httpx `.git/config`,
+or ignore smbmap NULL/Guest / spaced shares. Count delta vs master
+STATUS: assets 81→82, findings 104→105, poam 109→110 — explained in
+CYCLE 194. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 

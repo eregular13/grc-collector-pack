@@ -1,0 +1,4 @@
+Host,Share,Privs,Comment
+10.0.0.50,C$,READ_WRITE,Default share
+10.0.0.50,Company Data,READ_ONLY,Finance share
+10.0.0.50,IPC$,NO_ACCESS,Remote IPC

@@ -1,0 +1,4 @@
+# fping -c 1 (output.c). Timeouts are not live hosts.
+10.0.0.50 : [0], 84 bytes, 0.42 ms (0.42 avg, 0% loss)
+10.0.0.51 : [0], timed out (NaN avg, 100% loss)
+10.0.0.52 : [0], 84 bytes, 1.10 ms (1.10 avg, 0% loss)

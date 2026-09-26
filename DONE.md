@@ -9,18 +9,18 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 ```json
 {
   "assets": 78,
-  "findings": 103,
+  "findings": 104,
   "vulnerabilities": 22,
   "evidences": 33,
-  "applied_controls": 125,
-  "poam": 125,
-  "risk_scenarios": 125,
-  "ocsf": 103,
-  "canonical": 208,
+  "applied_controls": 126,
+  "poam": 126,
+  "risk_scenarios": 126,
+  "ocsf": 104,
+  "canonical": 209,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:03:34Z"
+  "generated_at": "2026-09-26T06:59:35Z"
 }
 ```
 
-Cycle 197 restamp after merge #138/#142 (pytest 1201; assets 78 / findings 103 / poam 125). CoS #48 rails above stand.
+Cycle 198 merge `origin/master` `76f5e86` #140 into parser-real-output (honesty restamp after lab). Cycle 197 merge #138/#142 stands as history. CoS #48 rails above stand.
