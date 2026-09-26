@@ -452,10 +452,8 @@ def load() -> dict:
 
     ranked = sorted(weaknesses, key=_poam_rank)
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    for rec, decision in poam_decisions:
-        mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
-        assets_s = "|".join(rec.get("assets") or [])
-        weakness = weakness_name_for(rec, mapped)
+
+    def _ledger_item_for(rec: dict) -> dict | None:
         rec_ref = str(rec.get("ref_id") or "")
         item = ledger_by_ref.get(rec_ref)
         if item is None:
@@ -465,9 +463,31 @@ def load() -> dict:
                     break
         if item is None:
             item = ledger_by_fp.get(fp_v1(rec))
+        return item
+
+    # Shared-EGP folds (#180): an excluded pack_drop duplicate and the
+    # specific plan row resolve to the same item. Mark excluded only when
+    # no included record maps to that item this run.
+    included_pids: set[str] = set()
+    for rec, decision in poam_decisions:
         if not decision.get("include"):
-            if item:
+            continue
+        item = _ledger_item_for(rec)
+        pid = str((item or {}).get("poam_id") or "")
+        if pid:
+            included_pids.add(pid)
+    for rec, decision in poam_decisions:
+        mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
+        assets_s = "|".join(rec.get("assets") or [])
+        weakness = weakness_name_for(rec, mapped)
+        item = _ledger_item_for(rec)
+        if item:
+            pid = str(item.get("poam_id") or "")
+            if pid and pid in included_pids:
+                item["excluded_reason"] = ""
+            elif not decision.get("include"):
                 item["excluded_reason"] = str(decision.get("reason") or "unexplained")
+        if not decision.get("include"):
             winner_ref = str(decision.get("superseded_by_ref") or "")
             winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
             superseded_by = ""
@@ -487,8 +507,6 @@ def load() -> dict:
                 ]
             )
             continue
-        if item:
-            item["excluded_reason"] = ""
         fields = poam_fields(rec, mapped, today)
         status = "open"
         if item:

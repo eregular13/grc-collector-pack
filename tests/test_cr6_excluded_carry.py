@@ -17,11 +17,15 @@ from pathlib import Path
 
 import pytest
 
+from collectors import inventory_nmap
 from collectors.grc_loader import load
 from shared.io_util import write_canonical
 from shared.kev import KevCatalog
-from shared.poam_ledger import apply_ledger, excluded_reason_for, item_is_excluded
+from shared.poam_ledger import apply_ledger, excluded_reason_for, item_is_excluded, fp_v1
 from shared.schema import make_record
+
+ROOT = Path(__file__).resolve().parents[1]
+NMAP_DROP = ROOT / "fixtures" / "pack_drop" / "nmap"
 
 CANARY = "ssh-canary-01"
 HPOT_ROWS = (
@@ -198,3 +202,139 @@ def test_dropped_honeypot_feed_does_not_resurrect_poam(
     assert second.get("pending_carried") == 1
     assert len(poam2) == first_n
     assert first_ids <= {row["poam_id"] for row in poam2 if row.get("poam_id")}
+
+
+def test_shared_egp_excluded_duplicate_does_not_mark_plan_item() -> None:
+    """#180 fold: pack_drop duplicate + specific High share one EGP.
+
+    The excluded duplicate must not stamp excluded_reason on the plan item.
+    """
+    specific = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-dc-445/tcp",
+        "name": "SMB 445 exposed",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["dc.corp.local"],
+        "labels": ["nmap"],
+        "extra": {
+            "port": "445",
+            "protocol": "tcp",
+            "service": "microsoft-ds",
+            "ip": "10.0.0.10",
+            "check_id": "nmap-port-445/tcp",
+            "tool": "nmap",
+        },
+    }
+    duplicate = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-nmap-10-microsoftds-445",
+        "name": "SMB 445 exposed",
+        "severity": "info",
+        "category": "exposure",
+        "assets": ["dc.corp.local"],
+        "labels": ["nmap", "covey"],
+        "extra": {
+            "port": "445",
+            "protocol": "tcp",
+            "service": "microsoft-ds",
+            "ip": "10.0.0.10",
+            "id": "nmap-10-microsoftds-445",
+            "adapter": "nmap",
+            "pack_drop": "covey",
+        },
+    }
+    assert fp_v1(specific) == fp_v1(duplicate)
+    ledger = apply_ledger([duplicate, specific], catalog=_unevaluated())
+    assert len(ledger["items"]) == 1
+    item = next(iter(ledger["items"].values()))
+    assert not item_is_excluded(item), item.get("excluded_reason")
+    assert item["excluded_reason"] == ""
+
+
+def test_shared_egp_plan_item_carries_when_nmap_drops(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    incoming = tmp_path / "in"
+    outgoing = tmp_path / "out"
+    incoming.mkdir()
+    outgoing.mkdir()
+    monkeypatch.setenv("IN_DIR", str(incoming))
+    monkeypatch.setenv("OUT_DIR", str(outgoing))
+    monkeypatch.setenv("GRC_ESTATE_LABEL", "SAMPLE")
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+
+    recs = []
+    recs.extend(inventory_nmap.parse_file(NMAP_DROP / "assets.jsonl"))
+    recs.extend(inventory_nmap.parse_file(NMAP_DROP / "findings.jsonl"))
+    write_canonical("inventory-nmap", recs)
+    first = load()
+    poam1 = list(csv.DictReader((outgoing / "poam" / "poam.csv").open(encoding="utf-8")))
+    plan_ids = {row["poam_id"] for row in poam1 if row.get("poam_id")}
+    assert plan_ids
+    ledger1 = json.loads((outgoing / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    marked_on_plan = [
+        item
+        for item in (ledger1.get("items") or {}).values()
+        if str(item.get("poam_id") or "") in plan_ids and item_is_excluded(item)
+    ]
+    assert marked_on_plan == [], [
+        (item.get("poam_id"), item.get("excluded_reason"), item.get("name"))
+        for item in marked_on_plan
+    ]
+    assert first.get("pending_carried") == 0
+
+    dest = incoming / "poam"
+    dest.mkdir()
+    shutil.copy(outgoing / "poam" / "poam-ledger.json", dest / "poam-ledger.json")
+    (outgoing / "canonical" / "inventory-nmap.jsonl").unlink()
+    write_canonical("honeypot", [_honeypot(*HPOT_ROWS[0])])
+    second = load()
+    poam2 = list(csv.DictReader((outgoing / "poam" / "poam.csv").open(encoding="utf-8")))
+    plan2 = {row["poam_id"] for row in poam2 if row.get("poam_id")}
+    missing = plan_ids - plan2
+    assert not missing, missing
+    assert second.get("pending_carried") == len(plan_ids)
+
+
+def test_farm_dropped_nmap_keeps_all_plan_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Metis farm feed-drop: carried ledger + missing nmap must keep plan IDs."""
+    from dropbox.orchestrator.ciso_path import run_ciso_path
+    from scripts.prove_ciso import prove_ciso
+
+    work = tmp_path / "farm"
+    prove_ciso(dest=work)
+    poam1 = list(csv.DictReader((work / "out" / "poam" / "poam.csv").open(encoding="utf-8")))
+    plan_ids = {row["poam_id"] for row in poam1 if row.get("poam_id")}
+    assert len(plan_ids) >= 70, len(plan_ids)
+    ledger1 = json.loads((work / "out" / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    marked_on_plan = [
+        item
+        for item in (ledger1.get("items") or {}).values()
+        if str(item.get("poam_id") or "") in plan_ids and item_is_excluded(item)
+    ]
+    assert marked_on_plan == [], [
+        (item.get("poam_id"), item.get("excluded_reason"), item.get("name"))
+        for item in marked_on_plan
+    ]
+
+    dest = work / "in" / "poam"
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copy(work / "out" / "poam" / "poam-ledger.json", dest / "poam-ledger.json")
+    nmap = work / "in" / "nmap"
+    if nmap.exists():
+        shutil.rmtree(nmap)
+    canon = work / "out" / "canonical"
+    if canon.exists():
+        shutil.rmtree(canon)
+    monkeypatch.setenv("IN_DIR", str(work / "in"))
+    monkeypatch.setenv("OUT_DIR", str(work / "out"))
+    run_ciso_path(work / "in", work / "out")
+    poam2 = list(csv.DictReader((work / "out" / "poam" / "poam.csv").open(encoding="utf-8")))
+    plan2 = {row["poam_id"] for row in poam2 if row.get("poam_id")}
+    missing = plan_ids - plan2
+    assert not missing, sorted(missing)

@@ -1029,7 +1029,7 @@ def _new_item(
         "current_scanner_rating": scanner,
         "scanner_critical": scanner == "critical",
         "status": "open",
-        "excluded_reason": excluded_reason_for(rec),
+        "excluded_reason": "",
         "status_date": run_date.isoformat(),
         "closed_date": "",
         "closure_evidence": [],
@@ -1713,6 +1713,8 @@ def apply_ledger(
     instances = fan_out_instances(findings)
     coverage = build_coverage(instances)
     seen: set[str] = set()
+    included_fps: set[str] = set()
+    excluded_by_fp: dict[str, str] = {}
     catalog_sha = catalog.sha256 if catalog.kev_evaluated else ""
     legacy_cache: dict[int, list[tuple[str, str]]] = {}
 
@@ -1721,6 +1723,11 @@ def apply_ledger(
             rec, ledger, run_iso, instances=instances, legacy_cache=legacy_cache
         )
         seen.add(fp)
+        reason = excluded_reason_for(rec)
+        if reason:
+            excluded_by_fp.setdefault(fp, reason)
+        else:
+            included_fps.add(fp)
         cves = collect_cves(rec)
         kev = join_kev(cves, catalog)
         used = _used_ids(ledger)
@@ -1796,7 +1803,6 @@ def apply_ledger(
                     item["ref_id"] = str(rec.get("ref_id") or "")
                 item["name"] = str(rec.get("name") or item.get("name") or "")
                 item["description"] = str(rec.get("description") or item.get("description") or "")
-                item["excluded_reason"] = excluded_reason_for(rec)
                 incoming, incoming_basis = detection_time(rec)
                 item["original_detection_date"] = merge_detection(
                     str(item.get("original_detection_date") or NOT_RECORDED),
@@ -1891,6 +1897,12 @@ def apply_ledger(
                     {"before": before_vd, "after": after_vd},
                 )
             )
+
+    for fp, item in ledger["items"].items():
+        if fp in included_fps:
+            item["excluded_reason"] = ""
+        elif fp in excluded_by_fp:
+            item["excluded_reason"] = excluded_by_fp[fp]
 
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
