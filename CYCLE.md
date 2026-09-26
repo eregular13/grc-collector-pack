@@ -2,17 +2,18 @@
 
 ## cycle 195 — merge master + real-output parser bricks (2026-09-26)
 
-Merge origin/master (`5adc8b7`; #133 DEMO fallback honesty, #132 estate
-pages / header-first import CSVs, #139 real-sample PingCastle/Greenbone/
-ScubaGear/testssl/Nikto, #136 no out/riskready) into
-`cursor/parser-real-output-0dba`. Keep master's behavior everywhere plus
-§9 parser fixes (Custodian list, Intune enrollment, IdP isAdmin, Jamf
-`results[]`, Powerpipe/Steampipe, Okta/Google detect, BloodHound CE v6,
-Trivy secrets/misconfig, osquery `hostIdentifier`, ScoutSuite
-danger→high, Maester default medium). ScubaGear/Maester tenant from #139
-(`_tenant_from`, never invent contoso). Union `SOURCES.md`. Host-lab
-**unchanged** 81 / 104 / 109. pytest **1087** (+19 vs master 1068).
-Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+Merge origin/master (`cbbbc90` after `5adc8b7`; #133 DEMO fallback
+honesty, #132 estate pages / header-first import CSVs, #139 real-sample
+PingCastle/Greenbone/ScubaGear/testssl/Nikto, #136 no out/riskready,
+#131 offline KEV + EGP- ledger) into `cursor/parser-real-output-0dba`.
+Keep master's behavior everywhere plus §9 parser fixes (Custodian list,
+Intune enrollment, IdP isAdmin, Jamf `results[]`, Powerpipe/Steampipe,
+Okta/Google detect, BloodHound CE v6, Trivy secrets/misconfig, osquery
+`hostIdentifier`, ScoutSuite danger→high, Maester default medium).
+ScubaGear/Maester tenant from #139 (`_tenant_from`, never invent
+contoso). Union `SOURCES.md`. Host-lab **unchanged** 81 / 104 / 109.
+pytest **1129** (+61 vs the 1068 stamp on 5adc8b7). Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out.
 
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
