@@ -1,17 +1,18 @@
 # CRITIC — cycle 195 (MERGE_MASTER_REAL_OUTPUT_PARSERS)
 
-Lab this brick: pytest **1129** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1141** passed, 1 skipped. Ten collectors +
 `grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
-`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+`applied_controls=123` `risk_scenarios=123` `poam=123` `demo=true`).
 sample_to_sor + farm_drop_to_sor honesty PASS (cold work dirs).
-Zero P0/P1. Host-lab counts **unchanged** vs master `cbbbc90` /
-cycle 194 (81 / 104 / 109). Pytest **1129** = master ~1068 plus #131
-KEV/ledger tests plus the §9 real-output parser tests. Merge
-origin/master (`#133` `#132` `#139` `#136` `#131`) into the parser
-branch; ScubaGear/Maester tenant from #139 wins (never invent
-contoso). Union `SOURCES.md`. Catalog **unchanged**
-**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
-RiskReady stay-out. CoS #48 rails below are unchanged.
+Zero P0/P1. Findings **unchanged** vs cycle 194 (81 / 104). POA&M
+**123** (was 109) is master's #135 full-plan inclusion (Lows and
+non-key Mediums), not a parser-count change. Pytest **1141** = master
+~1068 plus #131/#135 tests plus the §9 real-output parser tests.
+Merge origin/master (`#133` `#132` `#139` `#136` `#131` `#135`);
+ScubaGear/Maester tenant from #139 wins (never invent contoso). Union
+`SOURCES.md`. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
