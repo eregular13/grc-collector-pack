@@ -68,8 +68,18 @@ TYPE_ALIASES: dict[str, str] = {
     "dcsync": "ad_dcsync",
     "genericall": "ad_genericall",
     "adminto": "ad_adminto",
+    "hassession": "ad_session",
+    "hasession": "ad_session",
     "hasesession": "ad_session",
     "genericwrite": "ad_genericwrite",
+    "xccdf_sample_rule_ssh_permitroot": "ssh_root_login",
+    "sample_rule_ssh_permitroot": "ssh_root_login",
+    "xccdf_sample_rule_firewall": "host_fw",
+    "sample_rule_firewall": "host_fw",
+    "alf": "host_fw",
+    "ds_0002": "docker_nonroot",
+    "ds0002": "docker_nonroot",
+    "check_ebs_snapshot_public": "ebs_snapshot_public",
     "allowedtodelegate": "ad_constrained_delegation",
     "addmember": "ad_addmember",
     "1.1": "hk_password_history",
@@ -214,6 +224,49 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
             "access. This is a BloodHound file-drop finding, not a live AD call."
         ),
         "nist_800_53": ["AC-6", "AC-2"],
+    },
+    "ad_session": {
+        "control_name": "End privileged HasSession logons",
+        "recommended_fix": (
+            "Log off the privileged HasSession, stop using Domain Admin on "
+            "workstations, and rotate that credential if the host is untrusted. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        ),
+        "nist_800_53": ["AC-6", "AC-2"],
+    },
+    "ssh_root_login": {
+        "control_name": "Disable SSH root login",
+        "recommended_fix": (
+            "Set PermitRootLogin no and use a named sudo account. This is a "
+            "CIS-CAT/XCCDF file-drop finding, not a live SSH call."
+        ),
+        "nist_800_53": ["IA-2", "CM-6"],
+    },
+    "host_fw": {
+        "control_name": "Enable a host firewall",
+        "recommended_fix": (
+            "Enable the host or application firewall (macOS ALF, firewalld, "
+            "iptables, or ufw). This is a CIS-CAT/XCCDF or osquery file-drop "
+            "finding, not a live host call."
+        ),
+        "nist_800_53": ["SC-7", "CM-7"],
+    },
+    "docker_nonroot": {
+        "control_name": "Run container images as a non-root USER",
+        "recommended_fix": (
+            "Add a non-root USER instruction in the Dockerfile so the image "
+            "does not run as root. This is a Trivy Dockerfile misconfig "
+            "file-drop, not a live image build."
+        ),
+        "nist_800_53": ["AC-6", "CM-7"],
+    },
+    "ebs_snapshot_public": {
+        "control_name": "Block public EBS snapshot sharing",
+        "recommended_fix": (
+            "Make the EBS snapshot private and drop public or CrossAccount "
+            "share-all. This is a Cloud Custodian file-drop, not a live AWS call."
+        ),
+        "nist_800_53": ["AC-3", "SC-7"],
     },
     "ad_backup_operators": {
         "control_name": "Restrict Backup Operators membership",
@@ -550,6 +603,11 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "ad_dcsync": "Non-DC principal has DCSync / replication rights",
     "ad_genericall": "Principal has GenericAll on a privileged object",
     "ad_adminto": "Principal has standing local-admin (AdminTo) rights",
+    "ad_session": "Privileged principal has a HasSession on a workstation",
+    "ssh_root_login": "SSH PermitRootLogin is enabled",
+    "host_fw": "Host firewall or macOS ALF is disabled",
+    "docker_nonroot": "Container image runs as root",
+    "ebs_snapshot_public": "EBS snapshot is shared publicly",
     "ad_backup_operators": "Backup Operators has standing members",
     "ad_kerberoast": "Service account is kerberoastable",
     "ad_asrep": "Account does not require Kerberos preauthentication",
@@ -790,6 +848,14 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         "local admin" in text and "bloodhound" in text
     ):
         return "ad_adminto"
+    if (
+        "hassession" in text.replace(" ", "")
+        or "hasession" in text.replace(" ", "")
+        or "has session" in text
+    ):
+        return "ad_session"
+    if "ebs" in text and "snapshot" in text and "public" in text:
+        return "ebs_snapshot_public"
     if "null session" in text or extra_dict(rec).get("access") == "null-session":
         return "ad_smb_null_session"
     if "domain admins" in text:
@@ -947,12 +1013,40 @@ def primary_asset(rec: dict[str, Any]) -> str:
     return normalize_asset_id(extra.get("arn") or rec.get("name") or "")
 
 
+_IDENTITY_LOCATION_KEYS = (
+    "path",
+    "url",
+    "file",
+    "line",
+    "user",
+    "evidence",
+    "evidence_ref",
+    "cmd",
+    "command",
+)
+
+
+def _identity_location(extra: dict[str, Any]) -> str:
+    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows."""
+    bits: list[str] = []
+    seen: set[str] = set()
+    for key in _IDENTITY_LOCATION_KEYS:
+        val = str(extra.get(key) or "").strip().lower()
+        if not val or val in seen:
+            continue
+        seen.add(val)
+        bits.append(f"{key}:{val}")
+    return "|".join(bits)
+
+
 def finding_identity(rec: dict[str, Any]) -> str:
     """Full rule/vuln/check id. Never a 48-char display slug.
 
     Collectors store the raw SARIF rule, Trivy CVE, check_id, etc. in extra.
     ``make_ref`` / ``slug(..., maxlen=48)`` is display-only and must not feed
     this key — two long IDs that share a prefix would otherwise collide.
+    Repeating check_ids (httpx-admin / whatweb-admin / path-exposure) keep
+    the #170 path/url discriminator so root vs /login do not collapse.
     """
     extra = extra_dict(rec)
     for key in (
@@ -968,7 +1062,12 @@ def finding_identity(rec: dict[str, Any]) -> str:
     ):
         val = str(extra.get(key) or "").strip()
         if val:
-            return val.lower()
+            ident = val.lower()
+            if key != "cve" and not ident.startswith("cve-"):
+                loc = _identity_location(extra)
+                if loc:
+                    ident = f"{ident}:{loc}"
+            return ident
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
 
 

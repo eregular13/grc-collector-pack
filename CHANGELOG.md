@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- B8_STABLE_CHECK_ID: title-keyed DEMO families (secrets, easm, wazuh
+  posture, identity) stamp a stable `extra.check_id` so percentages and
+  hostnames in the display title cannot remint EGP IDs. Intune
+  encryption compliance uses `enc-compliance-{provider}`; 33.3%→50.0%
+  keeps the same fingerprint. `httpx-admin` / `whatweb-admin` /
+  `path-exposure-*` keep the #170 path/url location discriminator so
+  root vs `/login` stay two items. `_legacy_fps_for` chains
+  title→check_id + #172 host-less + #170 `pre_location_*` (#172 first)
+  so a 7ebc697 DEMO ledger upgrades with 0 duplicate opens, 1 new
+  (#170 split), 127 FedRAMP Open. Vendor fields stay out of `fp_v1`.
+  MIN_ gates unchanged. No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - POAM_GAP2_VENDOR_DEPENDENCY: FedRAMP R3.0 Open O/P/Q. Vendor
   Dependency defaults to No (`vd_source=default`); never invents Yes.
   Last Vendor Check-in Date and Vendor Dependent Product Name are blank

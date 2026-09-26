@@ -143,6 +143,7 @@ _INTERNET_FACING_CONTROLS = frozenset(
         "Disable public accessibility on RDS",
         "Block public object-storage access",
         "Block public object-storage ACL and policy",
+        "Block public EBS snapshot sharing",
         "Restrict security-group ingress from the internet",
     }
 )
@@ -371,6 +372,10 @@ CONTROL_CLASS: dict[str, str] = {
     "Publish DKIM for the listed selector": "email_dns",
     "Block public object-storage access": "exposure_access",
     "Block public object-storage ACL and policy": "exposure_access",
+    "Block public EBS snapshot sharing": "exposure_access",
+    "End privileged HasSession logons": "identity_privilege",
+    "Run container images as a non-root USER": "identity_privilege",
+    "Disable weak SSH cryptographic algorithms": "tls_crypto",
     "Remove standing IAM AdministratorAccess": "identity_privilege",
     "Require MFA on the cloud root account": "identity_mfa",
     "Restrict security-group ingress from the internet": "exposure_network",
