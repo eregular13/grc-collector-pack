@@ -1,5 +1,22 @@
 # CYCLE log
 
+## cycle 196 — #139 real-sample parser follow-ups (2026-09-26)
+
+Greenbone keeps all CVE refs (feeds #131 KEV) and detects GMP on the
+root `<report>` / `<gmp>` shape, not the first 12k chars. Nikto 740001
+backup/cert hits stay medium+; unmatched rows are info. PingCastle's 8
+group-membership RiskIds honor `NumberOfMember` (0 → no finding);
+0-point rules are info. ScubaGear tenant label is DomainName /
+TenantDisplayName, never the TenantId GUID. testssl drops `not offered`
+only when severity is OK/INFO. Invented PingCastle ListNoPreAuth,
+ScubaGear TenantName, and FINOS-named testssl rows moved to clearly
+named synthetic fixtures; `one.xml` is byte-true DefectDojo.
+Host-lab assets/findings **unchanged** 84 / 103. POA&M restamped
+111→125: this run's loader writes a full plan (`excluded=0`,
+`poam==weaknesses==125`). Pytest **1147** (+6 follow-up tests; prior
+STATUS 1087 was a stale stamp vs 1f8d347). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 
 Merged master `f3db646` (#132 estate pages + #139 real parsers) into the

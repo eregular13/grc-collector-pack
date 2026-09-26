@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from shared.io_util import read_json, read_jsonl, read_text
+from shared.schema import canon_severity
 
 _HEADER_NOISE = (
     "x-frame-options",
@@ -23,7 +24,6 @@ _HEADER_NOISE = (
     "server banner changed",
     "etag",
     "etags",
-    "potentially interesting backup",
 )
 _HIGH = (
     "xss",
@@ -58,6 +58,24 @@ _MEDIUM = (
     "'delete'",
     "allowed http methods",
     "breach",
+    "backup/cert",
+    "backup file",
+    "interesting backup",
+    ".bak",
+    "web.config",
+    "wp-config",
+    "php.ini",
+)
+# Nikto 740001 and the 7400xx backup/config-exposure family.
+_BACKUP_ID = "740001"
+_BACKUP_MSG = (
+    "backup/cert",
+    "backup file",
+    "interesting backup",
+    ".bak",
+    "web.config",
+    "wp-config",
+    "php.ini",
 )
 
 
@@ -65,19 +83,32 @@ def _tag(el: ET.Element) -> str:
     return el.tag.split("}")[-1].lower()
 
 
+def is_backup_exposure(url: str, msg: str, nid: str = "") -> bool:
+    """Real backup/config-exposure hits (740001 and similar). Not header noise."""
+    nid_s = str(nid or "").strip()
+    blob = f"{url} {msg}".lower()
+    if nid_s == _BACKUP_ID:
+        return True
+    if nid_s.startswith("7400") and any(tok in blob for tok in ("backup", "cert", "config", ".bak", ".old")):
+        return True
+    return any(tok in blob for tok in _BACKUP_MSG)
+
+
 def is_noise(url: str, msg: str, nid: str = "") -> bool:
     blob = f"{url} {msg}".lower()
     _ = nid
+    if is_backup_exposure(url, msg, nid):
+        return False
     return any(tok in blob for tok in _HEADER_NOISE)
 
 
 def nikto_severity(url: str, msg: str, nid: str = "") -> str:
     blob = f"{url} {msg} {nid}".lower()
     if any(tok in blob for tok in _HIGH):
-        return "high"
-    if any(tok in blob for tok in _MEDIUM):
-        return "medium"
-    return "low"
+        return canon_severity("high")
+    if is_backup_exposure(url, msg, nid) or any(tok in blob for tok in _MEDIUM):
+        return canon_severity("medium")
+    return canon_severity("info")
 
 
 def is_interesting(url: str, msg: str, nid: str = "") -> bool:

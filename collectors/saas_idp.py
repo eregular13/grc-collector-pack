@@ -12,7 +12,7 @@ from typing import Any, Iterator
 
 from shared.idp_inventory import parse_idp_file
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "saas-idp"
 LABELS = ["saas", "idp"]
@@ -95,29 +95,42 @@ def _strip_html(text: str) -> str:
     return _HTML.sub("", text or "").strip()
 
 
+_GUID = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
 def _tenant_from(*sources: Any) -> str:
-    """Use the real tenant from MetaData/row/payload. Never invent contoso."""
-    keys = (
+    """Tenant label from DomainName / TenantDisplayName / DisplayName.
+
+    ScubaGear schema has TenantId (GUID), DisplayName, DomainName — not TenantName.
+    A GUID is not the tenant label.
+    """
+    label_keys = (
+        "DomainName",
+        "domainName",
+        "TenantDisplayName",
+        "tenantDisplayName",
+        "DisplayName",
+        "displayName",
         "TenantDomain",
         "tenantDomain",
-        "TenantName",
-        "tenantName",
         "Tenant",
         "tenant",
-        "TenantId",
-        "TenantID",
-        "tenantId",
     )
     found: list[str] = []
     for src in sources:
         if not isinstance(src, dict):
             continue
-        for key in keys:
+        for key in label_keys:
             val = src.get(key)
-            if val:
-                token = str(val).strip()
-                if token and token.lower() != "m365" and token not in found:
-                    found.append(token)
+            if not val:
+                continue
+            token = str(val).strip()
+            if not token or token.lower() == "m365" or _GUID.fullmatch(token):
+                continue
+            if token not in found:
+                found.append(token)
     if not found:
         return _UNKNOWN_TENANT
     domains = [t for t in found if "." in t]
@@ -314,7 +327,7 @@ def parse_file(path: Path) -> list[dict]:
         for product, row in _iter_scuba_controls(results):
             if not _failing(row.get("Result") or row.get("result") or row.get("Status")):
                 continue
-            sev = _criticality_severity(row)
+            sev = canon_severity(_criticality_severity(row))
             if not _high_enough(sev):
                 continue
             tenant = _tenant_from(row, meta, payload)

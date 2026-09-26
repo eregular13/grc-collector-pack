@@ -20,7 +20,7 @@ from shared.hardening_map import extra_control_fields, hk_control
 from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "identity-ad"
 LABELS = ["identity", "ad"]
@@ -184,11 +184,55 @@ def _child_text(el: ET.Element, *names: str) -> str:
     return ""
 
 
+# PingCastle privileged-group membership RiskIds (8). 0 members → no finding.
+_GROUP_MEMBERSHIP_RULES: dict[str, tuple[str, ...]] = {
+    "p-backupoperators": ("backup operators",),
+    "p-accountoperators": ("account operators",),
+    "p-printoperators": ("print operators",),
+    "p-serveroperators": ("server operators",),
+    "p-schemaadmins": ("schema admins",),
+    "p-enterpriseadmins": ("enterprise admins",),
+    "p-domainadmins": ("domain admins",),
+    "p-administrators": ("administrators",),
+}
+
+
+def _norm_risk(risk_id: str) -> str:
+    return str(risk_id or "").strip().lower().replace("_", "").replace(" ", "")
+
+
+def _group_rule_names(risk_id: str) -> tuple[str, ...]:
+    return _GROUP_MEMBERSHIP_RULES.get(_norm_risk(risk_id), ())
+
+
+def _member_count(el: ET.Element) -> int | None:
+    """NumberOfMember / Members if the file states a count. None = not stated."""
+    stated = False
+    n = 0
+    for name in ("NumberOfMember", "NumberOfMemberEnabled", "NumberOfMembers"):
+        raw = _child_text(el, name)
+        if raw != "":
+            stated = True
+            try:
+                n = max(n, int(float(raw)))
+            except (TypeError, ValueError):
+                pass
+    for child in list(el):
+        tag = _xml_local(child.tag).lower()
+        if tag == "members":
+            stated = True
+            kids = [c for c in list(child) if _xml_local(c.tag).split("}")[-1]]
+            n = max(n, len(kids))
+    return n if stated else None
+
+
 def _points_severity(raw: str) -> str:
     try:
         points = int(float(str(raw or "0").strip() or "0"))
     except (TypeError, ValueError):
         points = 0
+    if points <= 0:
+        return "info"
     if points >= 50:
         return "critical"
     if points >= 30:
@@ -250,6 +294,7 @@ def _parse_pingcastle_xml(path: Path) -> dict[str, Any]:
                             "name": name,
                             "highvalue": "BACKUP" in name.upper() or "ADMIN" in name.upper(),
                             "description": _child_text(el, "Description") or f"PingCastle group {name}",
+                            "member_count": _member_count(el),
                         },
                     }
                 )
@@ -586,22 +631,27 @@ def parse_file(path: Path) -> list[dict]:
         )
         findings: list[tuple[str, str, str]] = []
         uname = name.upper()
-        if "BACKUP OPERATORS" in uname or (props.get("highvalue") and "BACKUP" in uname):
-            findings.append(("high", "Backup Operators privileged group", "Members can dump SAM / seize privileged files."))
-        if props.get("hasspn") or props.get("serviceprincipalnames"):
-            findings.append(("high", "Roastable SPN", f"{name} has an SPN and is kerberoastable."))
-        if props.get("dontreqpreauth"):
-            findings.append(("high", "AS-REP roastable account", f"{name} does not require Kerberos preauth."))
-        roles = props.get("roles") or []
-        if isinstance(roles, str):
-            roles = [roles]
-        pim = props.get("pimEligible") if "pimEligible" in props else props.get("pimeligible")
-        if any("Global Administrator" in str(r) for r in roles) and not pim:
-            findings.append(("critical", "Entra GA without PIM", f"{name} is Global Administrator without PIM eligibility."))
-        if props.get("unconstraineddelegation"):
-            findings.append(("high", "Unconstrained delegation", f"{name} has unconstrained Kerberos delegation."))
-        if props.get("highvalue") and not findings:
-            findings.append(("medium", "High-value identity", f"{name} is marked high-value."))
+        empty_group = str(kind).lower() == "group" and props.get("member_count") == 0
+        if empty_group:
+            # Stated 0 members: no group-membership finding (demo files omit the count).
+            pass
+        else:
+            if "BACKUP OPERATORS" in uname or (props.get("highvalue") and "BACKUP" in uname):
+                findings.append(("high", "Backup Operators privileged group", "Members can dump SAM / seize privileged files."))
+            if props.get("hasspn") or props.get("serviceprincipalnames"):
+                findings.append(("high", "Roastable SPN", f"{name} has an SPN and is kerberoastable."))
+            if props.get("dontreqpreauth"):
+                findings.append(("high", "AS-REP roastable account", f"{name} does not require Kerberos preauth."))
+            roles = props.get("roles") or []
+            if isinstance(roles, str):
+                roles = [roles]
+            pim = props.get("pimEligible") if "pimEligible" in props else props.get("pimeligible")
+            if any("Global Administrator" in str(r) for r in roles) and not pim:
+                findings.append(("critical", "Entra GA without PIM", f"{name} is Global Administrator without PIM eligibility."))
+            if props.get("unconstraineddelegation"):
+                findings.append(("high", "Unconstrained delegation", f"{name} has unconstrained Kerberos delegation."))
+            if props.get("highvalue") and not findings:
+                findings.append(("medium", "High-value identity", f"{name} is marked high-value."))
         for sev, title, desc in findings:
             records.append(
                 make_record(
@@ -610,7 +660,7 @@ def parse_file(path: Path) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"{title}-{name}"),
                     name=title,
                     description=desc,
-                    severity=sev,
+                    severity=canon_severity(sev),
                     category="identity-gap",
                     assets=[name],
                     labels=LABELS,
@@ -618,9 +668,23 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"kind": kind},
                 )
             )
+    group_counts: dict[str, int | None] = {}
+    for node in nodes:
+        props = _props(node)
+        kind = str(node.get("kind") or node.get("type") or "")
+        if kind.lower() != "group":
+            continue
+        gname = str(props.get("name") or node.get("label") or "").strip().lower()
+        if gname:
+            group_counts[gname] = props.get("member_count")
     for rule in pc_rules:
         risk_id = str(rule.get("risk_id") or "pingcastle")
         domain = str(rule.get("domain") or "ad-domain")
+        aliases = _group_rule_names(risk_id)
+        if aliases:
+            matched = [group_counts.get(alias) for alias in aliases if alias in group_counts]
+            if matched and all(count == 0 for count in matched):
+                continue
         records.append(
             make_record(
                 kind="finding",
@@ -628,7 +692,7 @@ def parse_file(path: Path) -> list[dict]:
                 ref_id=make_ref(SOURCE, f"pc-{risk_id}-{domain}"),
                 name=f"PingCastle {risk_id}",
                 description=str(rule.get("rationale") or risk_id),
-                severity=str(rule.get("severity") or "medium"),
+                severity=canon_severity(rule.get("severity") or "medium"),
                 category="identity-gap",
                 assets=[domain],
                 labels=LABELS + ["pingcastle", "risk-rule"],

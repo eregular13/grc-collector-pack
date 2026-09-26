@@ -1,3 +1,19 @@
+# CRITIC — cycle 196 (PARSERS_139_FOLLOW_UPS)
+
+Lab this brick: pytest **1147** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `weaknesses=125` `severity_unmapped=0` `demo=true`). Zero
+P0/P1. Six #139 follow-ups: all Greenbone CVEs + root-element detect;
+Nikto backup hits kept / unmatched info; PingCastle 8 group rules honor
+member count + 0-point info; ScubaGear DomainName label; testssl
+`not offered` only dropped for OK/INFO; fixture honesty (byte-true vs
+`synthetic_*`). Host-lab assets/findings unchanged vs STATUS 84 / 103.
+POA&M 111→125 is the current loader full plan (excluded=0), not a
+MIN_ loosen. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
+are unchanged.
+
 # CRITIC — cycle 195 (MERGE_EVIDENCE_AND_MULTI_HOST_LAB)
 
 Lab this brick: pytest **1087** passed, 1 skipped. Ten collectors +
