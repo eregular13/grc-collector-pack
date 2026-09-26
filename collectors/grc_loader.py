@@ -32,7 +32,9 @@ from shared.estate_pages import (
     write_export_manifest,
 )
 from shared.evidence import build_evidence_rows
+from shared.ciso_shape import EXCLUDED_FIELDS
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
+from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
@@ -230,6 +232,7 @@ def load() -> dict:
     estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
+    fold_port_only_into_specific(findings)
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
     severity_unmapped = sum(
         1
@@ -384,6 +387,13 @@ def load() -> dict:
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
         if not decision.get("include"):
+            winner_ref = str(decision.get("superseded_by_ref") or "")
+            winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
+            superseded_by = ""
+            if winner_item:
+                superseded_by = str(winner_item.get("poam_id") or "")
+            if not superseded_by:
+                superseded_by = str(decision.get("superseded_by") or "")
             excluded_rows.append(
                 [
                     rec.get("ref_id") or "",
@@ -391,6 +401,7 @@ def load() -> dict:
                     assets_s,
                     ciso_finding_severity(rec.get("severity")),
                     decision.get("reason") or "unexplained",
+                    superseded_by,
                 ]
             )
             continue
@@ -431,8 +442,7 @@ def load() -> dict:
     )
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
-    excluded_header = ["finding_ref_id", "weakness", "asset", "severity", "excluded_reason"]
-    _write_csv(out_poam / "excluded.csv", excluded_header, excluded_rows)
+    _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
     if lighter:
         plan_line = (
             "POA&M plan: lighter — Lows and non-key Mediums excluded at operator "
@@ -445,7 +455,10 @@ def load() -> dict:
             "Mediums (90-day) are on the plan, sorted by risk. Infos and honeypot "
             "hits are listed in poam/excluded.csv, not on the plan. Info-level "
             "telemetry is excluded (telemetry_info); repeated low alerts that "
-            "share a rule/check id and asset collapse to one row."
+            "share a rule/check id and asset collapse to one row. A bare "
+            "port-open row on a host+port that already has a specific finding "
+            "is excluded as superseded_by_specific (winner = highest severity, "
+            "then lowest EGP- id)."
         )
     lines = [
         stamp.banner_md(),
@@ -561,7 +574,9 @@ def load() -> dict:
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
             "POA&M is 1:1 with open risks (poam_decision); "
-            "weaknesses_total == poam_included + excluded == poam_included + sum(excluded_by_reason)"
+            "weaknesses_total == poam_included + excluded == poam_included + sum(excluded_by_reason); "
+            "port-only rows superseded by a specific finding on the same host+port "
+            "are excluded as superseded_by_specific"
         ),
         "generated_at": now,
     }

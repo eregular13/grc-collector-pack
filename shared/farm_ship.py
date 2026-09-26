@@ -35,6 +35,8 @@ FARM_SHIP_PATHS: tuple[str, ...] = (
     "shared/ciso_shape.py",
     "shared/farm_ship.py",
     "collectors/grc_loader.py",
+    "shared/control_map.py",
+    "shared/port_fold.py",
     "docs/FARM_SHIP_GATE.md",
     "tests/test_farm_ship_gate.py",
 )
