@@ -95,25 +95,14 @@ def test_poam_csv_and_md_carry_estate(
     banner = md.splitlines()[0:4]
     assert any(f"ESTATE: {expected}" in line and "not a client estate" in line for line in banner), banner
     sr_text = (out / "simplerisk" / "poam.csv").read_text(encoding="utf-8")
-    sr_header = next(
-        line.strip()
-        for line in sr_text.splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    )
-    assert sr_header == POAM_HEADER
-    assert "estate" in sr_header.split(",")
-    banner_blob = "\n".join(
-        [
-            sr_text,
-            (out / "simplerisk" / "README.md").read_text(encoding="utf-8"),
-            (out / "simplerisk" / "ESTATE.txt").read_text(encoding="utf-8"),
-        ]
-    )
-    assert f"ESTATE: {expected}" in banner_blob
-    assert "not a client estate" in banner_blob
-    with (out / "simplerisk" / "poam.csv").open(encoding="utf-8", newline="") as fh:
-        data_lines = [ln for ln in fh if ln.strip() and not ln.lstrip().startswith("#")]
-        sr_rows = list(csv.DictReader(data_lines))
+    sr_lines = sr_text.splitlines()
+    assert sr_lines[0].strip() == POAM_HEADER
+    assert not any(line.lstrip().startswith("#") for line in sr_lines)
+    assert sr_lines[0].split(",")[8] == "estate"
+    estate_txt = (out / "simplerisk" / "ESTATE.txt").read_text(encoding="utf-8")
+    assert f"ESTATE: {expected}" in estate_txt
+    assert "not a client estate" in estate_txt
+    sr_rows = list(csv.DictReader(sr_text.splitlines()))
     assert {row["estate"] for row in sr_rows} == {expected}
     assert_risk_register_and_poam(out)
 

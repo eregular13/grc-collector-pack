@@ -164,8 +164,7 @@ def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
     with path.open(encoding="utf-8", newline="") as fh:
-        # Skip estate-banner comments so PR #132 CSV banners (and SimpleRisk
-        # leave-behind comments) do not become a header row.
+        # Skip leftover `#` comment lines so a header row is never a banner.
         lines = [ln for ln in fh if ln.strip() and not ln.lstrip().startswith("#")]
     if not lines:
         return []

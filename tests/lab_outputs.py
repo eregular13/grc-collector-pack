@@ -60,8 +60,14 @@ def assert_lab() -> None:
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
     sr_path = OUT / "simplerisk" / "poam.csv"
     if sr_path.is_file():
+        sr_raw = sr_path.read_text(encoding="utf-8")
+        assert sr_raw.splitlines()[0].strip() == poam_h
+        assert not any(line.lstrip().startswith("#") for line in sr_raw.splitlines())
         sr = _csv_rows(sr_path, poam_h)
         assert len(sr) == len(poam)
+        estate_txt = OUT / "simplerisk" / "ESTATE.txt"
+        assert estate_txt.is_file()
+        assert "ESTATE:" in estate_txt.read_text(encoding="utf-8")
 
     rr_dir = OUT / "riskready"
     assert not rr_dir.exists(), "loader must not write out/riskready"

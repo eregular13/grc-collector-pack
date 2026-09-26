@@ -189,20 +189,9 @@ def _is_vuln(rec: dict) -> bool:
     return cat in VULN_CATEGORIES or ref.upper().startswith("CVE") or cve.upper().startswith("CVE") or ref.upper().startswith("VULN-CVE")
 
 
-def _write_csv(
-    path: Path,
-    header: list[str],
-    rows: list[list],
-    delimiter: str = ",",
-    comments: list[str] | None = None,
-) -> None:
+def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str = ",") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
-        for line in comments or []:
-            text = str(line).rstrip()
-            if not text.startswith("#"):
-                text = f"# {text}"
-            fh.write(text + "\n")
         writer = csv.writer(fh, delimiter=delimiter, lineterminator="\n")
         writer.writerow(header)
         for row in rows:
@@ -405,7 +394,7 @@ def load() -> dict:
     write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
     out_sr = out_dir() / "simplerisk"
     banner = estate_banner(estate)
-    _write_csv(out_sr / "poam.csv", poam_header, poam_rows, comments=[banner])
+    _write_csv(out_sr / "poam.csv", poam_header, poam_rows)
     write_text(
         out_sr / "ESTATE.txt",
         banner

@@ -89,30 +89,25 @@ def test_loader_writes_no_riskready_files(tmp_path: Path, monkeypatch: pytest.Mo
 def test_simplerisk_poam_csv_has_estate_banner_and_column(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Covered on master now. PR #132 (open) may add # comments to more CSVs.
+    """Machine-imported CSV: exact header, no # preamble. Banner is ESTATE.txt.
 
-    This test skips comment lines for the header so it stays correct if #132
-    lands later. Banner may live as a CSV # comment, ESTATE.txt, or README.
+    PR #132 is being revised the same way. Estate label is the per-row
+    `estate` column (importer-tolerant) plus out/simplerisk/ESTATE.txt.
     """
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")])
     sr = out / "simplerisk" / "poam.csv"
     assert sr.is_file()
     text = sr.read_text(encoding="utf-8")
-    header = next(
-        line.strip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")
-    )
-    assert header == POAM_HEADER
-    assert header.split(",")[8] == "estate"
+    lines = text.splitlines()
+    assert lines[0].strip() == POAM_HEADER
+    assert not any(line.lstrip().startswith("#") for line in lines)
+    assert lines[0].split(",")[8] == "estate"
     rows = _csv_rows(sr)
     assert rows
     assert {row["estate"] for row in rows} == {"LAB"}
-    blob = text
-    for name in ("ESTATE.txt", "README.md"):
-        extra = out / "simplerisk" / name
-        if extra.is_file():
-            blob += "\n" + extra.read_text(encoding="utf-8")
-    assert "ESTATE: LAB" in blob
-    assert "not a client estate" in blob
+    estate_txt = (out / "simplerisk" / "ESTATE.txt").read_text(encoding="utf-8")
+    assert "ESTATE: LAB" in estate_txt
+    assert "not a client estate" in estate_txt
 
 
 def test_console_works_without_riskready_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
