@@ -26,6 +26,8 @@ code,name,description,status,inherent_likelihood,inherent_impact,inherent_risk,r
 - scores are 1–5; `*_risk` = likelihood × impact
 - residual is one step down when CISO residual is blank
 - `is_active` = `true`
+- No extra `estate` column — the Data Manager wizard maps the fillable
+  fields above. Estate label is in `ESTATE.txt` and in description/notes.
 
 ## assets.csv
 

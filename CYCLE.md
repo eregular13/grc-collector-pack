@@ -1,5 +1,44 @@
 # CYCLE log
 
+## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
+
+§8 collectors that were silently empty or wrong on real tool output.
+PingCastle RiskRules + case-insensitive HealthCheckGroupData. Greenbone
+GMP XML/CSV. ScubaGear v1.8 product-keyed Results; Graph/Maester never
+invent contoso. testssl all list sections, keep LOW+. Nikto 2.6 JSON
+list-of-hosts; header/soft-404 denylist; no hardcoded high. Samples
+under `fixtures/samples/` + SOURCES.md. Host-lab **unchanged** 81 / 104
+/ 109. pytest **1068** (+15 vs master 1053). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 193 — import CSVs start with exact header (2026-09-26)
+
+CISO Assistant / OpenGRC / spreadsheet importers do not skip `#` comments.
+Machine-imported CSVs now start with the locked importer header (no preamble).
+CISO and OpenGRC omit the extra `estate` column; POA&M keeps it (operator
+draft). Banner lives in EXECUTIVE_SUMMARY.md, SCOPE_AND_TRUST.md, poam.md,
+and `out/<sink>/ESTATE.txt`. Fail-closed classify unchanged. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 192 — rebase estate pages onto master + CI (2026-09-26)
+
+Rebase `cursor/estate-exec-trust-pages-f8c2` onto master after #128/#129/#130.
+Keep weakness dedupe, count consistency, RiskReady JSON drop, HardeningKitty
+LAB feed, and the estate banner / exec / SCOPE_AND_TRUST wiring. CSF loader
+test skips `#` banner comments so DictReader is not poisoned. PR #132 ready,
+not draft. Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+## cycle 191 — estate banner + exec summary + SCOPE_AND_TRUST (2026-09-26)
+
+Argus Part 0 banner on every named export (exec summary, SCOPE_AND_TRUST.md,
+poam.csv/poam.md, CISO CSVs, OpenGRC, Probo) plus an `estate` column on every
+CSV row. Exactly one allowed label; fail closed; SAMPLE/DEMO/LAB and
+product-lab/drop fallback cannot become CLIENT and cannot be suppressed.
+One-page exec summary and SCOPE_AND_TRUST.md generated from the run; missing
+values print "not recorded"; reviewer slots stay placeholders. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
 
 Merge master `05a29fd` (#130 HardeningKitty) into the DEMO fallback

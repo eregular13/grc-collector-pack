@@ -161,7 +161,8 @@ def test_critical_sla_is_shorter_than_high() -> None:
     assert SLA_DAYS["High"] == 30
     assert SLA_DAYS["Moderate"] == 90
     assert SLA_DAYS["Low"] == 180
-    assert "15" in SLA_NOTE and "A9" in SLA_NOTE
+    assert "15" in SLA_NOTE and "Evergreen default" in SLA_NOTE
+    assert "FedRAMP" not in SLA_NOTE and "A9" not in SLA_NOTE
     rec = _finding(
         severity="critical",
         extra={"check_id": "iam_root_mfa_enabled", "scan_time": "2026-09-01"},
@@ -350,3 +351,87 @@ def test_poam_decision_info_never_included() -> None:
     )
     assert poam_decision(rec)["include"] is False
     assert poam_decision(rec)["reason"] == "severity_info"
+
+
+def _wazuh_alert(**kwargs):
+    extra = {"rule_id": kwargs.pop("rule_id", "5710"), "telemetry": True}
+    extra.update(kwargs.pop("extra", {}))
+    return _finding(
+        source="host-wazuh",
+        ref_id=kwargs.pop("ref_id", "WAZ-alert-1"),
+        name=kwargs.pop("name", "sshd: brute force trying to get access"),
+        description=kwargs.pop("description", "sshd: brute force trying to get access"),
+        severity=kwargs.pop("severity", "low"),
+        category="incident",
+        assets=kwargs.pop("assets", ["web-01"]),
+        labels=kwargs.pop("labels", ["wazuh", "host", "alert"]),
+        extra=extra,
+        **kwargs,
+    )
+
+
+def test_poam_decision_telemetry_info_named() -> None:
+    rec = _wazuh_alert(ref_id="WAZ-alert-info", severity="info")
+    decision = poam_decision(rec)
+    assert decision["include"] is False
+    assert decision["reason"] == "telemetry_info"
+
+
+def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Same Wazuh rule + asset must not mint one 180-day POA&M row per alert."""
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    recs = [
+        _wazuh_alert(ref_id="WAZ-alert-17001", extra={"rule_id": "5710"}),
+        _wazuh_alert(ref_id="WAZ-alert-17002", extra={"rule_id": "5710"}),
+        _wazuh_alert(ref_id="WAZ-alert-17003", extra={"rule_id": "5710"}),
+        _wazuh_alert(
+            ref_id="WAZ-alert-info",
+            severity="info",
+            name="Host login success",
+            description="syslog: user login",
+            extra={"rule_id": "5501"},
+        ),
+        _wazuh_alert(
+            ref_id="WAZ-alert-other-host",
+            extra={"rule_id": "5710"},
+            assets=["db-01"],
+        ),
+    ]
+    write_canonical("host-wazuh", recs)
+    summary = load()
+    assert summary["weaknesses_total"] == 5
+    assert summary["poam_included"] == 2
+    assert summary["excluded"] == 3
+    assert summary["weaknesses_total"] == summary["poam_included"] + summary["excluded"]
+    assert summary["excluded_by_reason"] == {
+        "telemetry_duplicate": 2,
+        "telemetry_info": 1,
+    }
+    assert summary["weaknesses_total"] == summary["poam_included"] + sum(
+        summary["excluded_by_reason"].values()
+    )
+    with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    refs = [r["finding_ref_id"] for r in rows]
+    assert "WAZ-alert-17001" in refs
+    assert "WAZ-alert-other-host" in refs
+    assert "WAZ-alert-17002" not in refs
+    assert "WAZ-alert-17003" not in refs
+    assert "WAZ-alert-info" not in refs
+    assert len(rows) == 2
+    assert {r["original_risk_rating"] for r in rows} == {"Low"}
+    with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
+        ex = list(csv.DictReader(fh))
+    by_ref = {row["finding_ref_id"]: row["excluded_reason"] for row in ex}
+    assert by_ref["WAZ-alert-17002"] == "telemetry_duplicate"
+    assert by_ref["WAZ-alert-17003"] == "telemetry_duplicate"
+    assert by_ref["WAZ-alert-info"] == "telemetry_info"
+    walked = poam_breakdown(recs)
+    assert walked["poam_included"] == 2
+    assert walked["excluded_by_reason"] == {
+        "telemetry_duplicate": 2,
+        "telemetry_info": 1,
+    }

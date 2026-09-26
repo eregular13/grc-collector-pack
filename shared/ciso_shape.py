@@ -168,6 +168,7 @@ class RegisterShapeError(ValueError):
 
 
 def first_nonempty_line(path: Path) -> str:
+    """First non-empty line. Import CSVs must start with the exact header."""
     if not path.is_file():
         return ""
     for line in path.read_text(encoding="utf-8").splitlines():

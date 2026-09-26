@@ -6,13 +6,9 @@ set -euo pipefail
 OUT="${OUT_DIR:-./out}/riskready"
 echo "LICENSE-LOCK: RiskReady stay-out. Review-only. Never wrap or POST."
 echo "RISKREADY_PUSH=${RISKREADY_PUSH:-0} is ignored — no login, no HTTP."
-echo "Human review files (never auto-POST risks):"
-for f in risks_proposed.json assets.json evidence.json incidents.json; do
-  p="${OUT}/${f}"
-  if [[ -f "$p" ]]; then
-    echo "  READY ${p}"
-  else
-    echo "  MISSING ${p} (run collectors + loader first)"
-  fi
-done
+echo "This pack no longer writes out/riskready/. Count identity is CISO register + POA&M."
+echo "Never auto-POST risks. Stay-out forever."
+if [[ -d "$OUT" ]]; then
+  echo "  leftover directory ${OUT} is not a pack output (ignore / delete)"
+fi
 exit 0

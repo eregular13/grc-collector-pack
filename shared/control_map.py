@@ -1347,7 +1347,10 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
 
 # Named reasons for POA&M include/exclude. Every weakness gets exactly one.
 # Default plan puts Lows and non-key Mediums on the POA&M. Infos and honeypot
-# stay off. A lighter plan (GRC_POAM_LIGHTER) restores the old exclude set.
+# stay off. Info-level telemetry is telemetry_info (not one 180-day row per
+# alert). Repeated telemetry lows that share (rule/check id, asset) collapse
+# to one included row; the extras are telemetry_duplicate. A lighter plan
+# (GRC_POAM_LIGHTER) restores the old exclude set.
 POAM_INCLUDE_REASONS = frozenset(
     {
         "nse_misconfig",
@@ -1358,9 +1361,19 @@ POAM_INCLUDE_REASONS = frozenset(
     }
 )
 POAM_EXCLUDE_REASONS = frozenset(
-    {"honeypot", "severity_info", "severity_low", "severity_medium_not_key"}
+    {
+        "honeypot",
+        "severity_info",
+        "severity_low",
+        "severity_medium_not_key",
+        "telemetry_info",
+        "telemetry_duplicate",
+    }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
+TELEMETRY_SOURCES = frozenset({"host-wazuh", "wazuh"})
+TELEMETRY_CATEGORIES = frozenset({"incident", "alert", "telemetry", "siem-alert"})
+TELEMETRY_LABELS = frozenset({"alert", "telemetry"})
 
 
 def _is_honeypot(rec: dict[str, Any]) -> bool:
@@ -1376,6 +1389,39 @@ def _is_honeypot(rec: dict[str, Any]) -> bool:
     )
 
 
+def is_telemetry_finding(rec: dict[str, Any]) -> bool:
+    """Wazuh alerts and other telemetry-only rows — not hardening/posture checks."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("telemetry") is True:
+        return True
+    source = str(rec.get("source") or "").lower()
+    category = str(rec.get("category") or "").lower()
+    labels = {str(item).lower() for item in (rec.get("labels") or [])}
+    if source in TELEMETRY_SOURCES and (
+        category in TELEMETRY_CATEGORIES or bool(labels & TELEMETRY_LABELS)
+    ):
+        return True
+    return category in TELEMETRY_CATEGORIES and bool(labels & TELEMETRY_LABELS)
+
+
+def telemetry_collapse_key(rec: dict[str, Any]) -> tuple[str, str]:
+    """(rule/check id or title, asset). Empty rule falls back to the alert name."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    rule = ""
+    for key in ("rule_id", "check_id", "rule", "plugin_id", "id"):
+        rule = str(extra.get(key) or "").strip().lower()
+        if rule:
+            break
+    if not rule:
+        rule = str(rec.get("name") or rec.get("ref_id") or "").strip().lower()
+    assets = rec.get("assets") or []
+    asset = "|".join(str(item) for item in assets if item).strip().lower()
+    if not asset:
+        extra_asset = str(extra.get("agent") or extra.get("hostname") or "").strip().lower()
+        asset = extra_asset
+    return (rule, asset)
+
+
 def poam_lighter_requested() -> bool:
     raw = str(os.environ.get(LIGHTER_ENV) or "").strip().lower()
     return raw in {"1", "true", "yes", "on"}
@@ -1386,7 +1432,9 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
 
     Default (full) plan includes every non-info, non-honeypot weakness.
     NSE misconfig is always included. Honeypot / deception-sensor is always
-    excluded. Informational is excluded. Status is not a gate.
+    excluded. Informational is excluded (telemetry_info for telemetry-only
+    rows). Status is not a gate. Repeated telemetry lows are collapsed by
+    iter_poam_decisions, not here.
 
     GRC_POAM_LIGHTER=1 restores the lighter plan: Lows and non-key Mediums
     are excluded (severity_low / severity_medium_not_key) and recorded.
@@ -1403,6 +1451,8 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     if _is_honeypot(rec):
         return {"include": False, "reason": "honeypot", "severity": sev}
     if sev == "info":
+        if is_telemetry_finding(rec):
+            return {"include": False, "reason": "telemetry_info", "severity": sev}
         return {"include": False, "reason": "severity_info", "severity": sev}
     if sev in {"high", "critical"}:
         return {"include": True, "reason": "severity_high_critical", "severity": sev}
@@ -1424,14 +1474,43 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     }
 
 
+def iter_poam_decisions(
+    findings: list[dict[str, Any]], *, lighter: bool | None = None
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Per-finding POA&M decisions with telemetry flood-guard collapse.
+
+    Multiple low telemetry rows that share (rule/check id, asset) become one
+    included row. The extras are excluded as telemetry_duplicate so
+    weaknesses_total == poam_included + sum(excluded_by_reason).
+    """
+    if lighter is None:
+        lighter = poam_lighter_requested()
+    seen: set[tuple[str, str]] = set()
+    out: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for rec in findings:
+        decision = dict(poam_decision(rec, lighter=lighter))
+        if (
+            decision.get("include")
+            and decision.get("severity") == "low"
+            and is_telemetry_finding(rec)
+        ):
+            key = telemetry_collapse_key(rec)
+            if key[0] and key in seen:
+                decision["include"] = False
+                decision["reason"] = "telemetry_duplicate"
+            elif key[0]:
+                seen.add(key)
+        out.append((rec, decision))
+    return out
+
+
 def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = None) -> dict[str, Any]:
     """weaknesses_total == poam_included + sum(excluded_by_reason)."""
     if lighter is None:
         lighter = poam_lighter_requested()
     excluded: dict[str, int] = {}
     included = 0
-    for rec in findings:
-        decision = poam_decision(rec, lighter=lighter)
+    for _rec, decision in iter_poam_decisions(findings, lighter=lighter):
         if decision["include"]:
             included += 1
             continue

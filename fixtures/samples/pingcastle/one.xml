@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HealthcheckData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <EngineVersion>3.2.0.1</EngineVersion>
+  <DomainFQDN>example.local</DomainFQDN>
+  <NetBIOSName>EXAMPLE</NetBIOSName>
+  <ForestFQDN>example.local</ForestFQDN>
+  <GlobalScore>10</GlobalScore>
+  <RiskRules>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>Anomalies</Category>
+      <Model>WeakPassword</Model>
+      <RiskId>A-MinPwdLen</RiskId>
+      <Rationale>Password policy allows length less than 8 characters</Rationale>
+    </HealthcheckRiskRule>
+  </RiskRules>
+  <PrivilegedGroups>
+    <HealthCheckGroupData>
+      <GroupName>Backup Operators</GroupName>
+      <Description>PingCastle privileged group</Description>
+    </HealthCheckGroupData>
+  </PrivilegedGroups>
+  <ListNoPreAuth>
+    <HealthcheckAccountDetailData>
+      <Name>SVC-NOPREAUTH</Name>
+      <SamAccountName>SVC-NOPREAUTH</SamAccountName>
+      <Description>AS-REP roastable (ListNoPreAuth)</Description>
+    </HealthcheckAccountDetailData>
+  </ListNoPreAuth>
+</HealthcheckData>

@@ -71,9 +71,10 @@ def test_internal_external_scripts_leave_demo_artifacts(
     write_canonical("easm", easm_recs)
     summary = load()
     assert summary.get("poam", 0) >= 1
+    from shared.ciso_shape import csv_rows
+
     poam = out / "poam" / "poam.csv"
-    with poam.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = csv_rows(poam)
     assert rows
     blob = " ".join((r.get("weakness") or "") + " " + (r.get("recommended_fix") or "") for r in rows)
     assert "SMB" in blob or "445" in blob

@@ -1,8 +1,9 @@
 """FedRAMP R3.0-style POA&M fields derived from data the pack already has.
 
-No invented owners. Scheduled completion dates are *defaults* (15/30/90/180 days
-from original detection by risk rating), clearly labeled as such; `due` stays
-the human-committed date and is left blank. Dates are UTC calendar dates.
+No invented owners. Scheduled completion dates follow the Evergreen default
+schedule (15/30/90/180 days from original detection by risk rating), clearly
+labeled as such; `due` stays the human-committed date and is left blank.
+Dates are UTC calendar dates.
 """
 
 from __future__ import annotations
@@ -30,20 +31,17 @@ POAM_EXTRA_FIELDS = (
 )
 
 RISK_RATING = {"critical": "Critical", "high": "High", "medium": "Moderate", "low": "Low"}
-# High/Moderate/Low follow FedRAMP POA&M Template R3.0 Instructions A9 (30/90/180).
-# Critical is 15 days: a CISO-facing default shorter than A9, which groups
-# Critical with High at 30. Documented here so the clock is not silent.
+# Evergreen default schedule. Not a FedRAMP deadline set. Critical 15 / High 30 /
+# Moderate 90 / Low 180. Documented here so the clock is not silent.
 SLA_DAYS = {"Critical": 15, "High": 30, "Moderate": 90, "Low": 180}
 FIRST_MILESTONE_DAYS = {15: 3, 30: 7, 90: 14, 180: 30}
 KNOWN_CVE = (("heartbleed", "CVE-2014-0160"),)
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 SLA_NOTE = (
-    "Scheduled completion dates are DEFAULTS computed from original detection date + risk rating "
-    "(Critical 15 days, High 30, Moderate 90, Low 180). High/Moderate/Low follow FedRAMP POA&M "
-    "R3.0 Instructions A9. Critical is shorter than A9 (which groups Critical with High at 30) "
-    "so a Critical row is not on the same clock as High. They are not a committed date: `due` "
-    "stays blank until a human commits one. Owner and point of contact are blank for a human "
-    "to assign. Dates are UTC."
+    "Scheduled completion dates are the Evergreen default schedule, computed from "
+    "original detection date + risk rating (Critical 15 days, High 30, Moderate 90, "
+    "Low 180). They are not a committed date: `due` stays blank until a human commits "
+    "one. Owner and point of contact are blank for a human to assign. Dates are UTC."
 )
 
 
@@ -99,7 +97,16 @@ def detector_source(rec: dict[str, Any]) -> str:
 
 def source_identifier(rec: dict[str, Any]) -> str:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    for key in ("check_id", "plugin_id", "pluginID", "template_id", "template-id", "rule", "id"):
+    for key in (
+        "check_id",
+        "plugin_id",
+        "pluginID",
+        "template_id",
+        "template-id",
+        "rule_id",
+        "rule",
+        "id",
+    ):
         val = str(extra.get(key) or "").strip()
         if val:
             return val

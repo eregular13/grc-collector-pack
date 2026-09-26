@@ -19,7 +19,7 @@
       <span id="demo-pill" class="pill hidden">DEMO</span>
       <span id="client-pill" class="pill quiet hidden">client=false</span>
       <span class="pill quiet">Never POSTs /api/risks</span>
-      <span class="pill quiet">RiskReady stay-out · review JSON only</span>
+      <span class="pill quiet">RiskReady stay-out</span>
       <button type="button" id="btn-refresh">Refresh estate</button>
       <a class="button" href="/export.zip">Download drop zip</a>
     </div>
@@ -53,7 +53,7 @@
     <button type="button" data-tab="findings" class="on">Findings</button>
     <button type="button" data-tab="assets">Assets</button>
     <button type="button" data-tab="vulns">Vulnerabilities</button>
-    <button type="button" data-tab="proposed">Proposed risks</button>
+    <button type="button" data-tab="proposed">Open risks</button>
     <button type="button" data-tab="poam">POA&M</button>
     <button type="button" data-tab="controls">Controls</button>
     <button type="button" data-tab="scenarios">Scenarios</button>
@@ -73,7 +73,9 @@
   </div>
 
   <p id="proposed-note" class="banner hidden">
-    These rows are <strong>proposals on disk</strong> (`risks_proposed.json`). This product will not create risks in RiskReady.
+    These rows are the POA&amp;M open risks (count identity with
+    <code>out/poam/poam.csv</code>). RiskReady JSON is not generated.
+    This product will not POST <code>/api/risks</code>.
   </p>
   <p id="poam-note" class="banner hidden">
     Risk register draft: findings mapped here for CISO import — not a SaaS register.
@@ -96,7 +98,7 @@
   </main>
 
   <footer>
-    <p>CISO Assistant CSVs: import with clica / UI. RiskReady JSON is LICENSE-LOCK stay-out — human review only, never wrap or POST. High and critical stay proposed until a human acts.</p>
+    <p>CISO Assistant CSVs: import with clica / UI. RiskReady is LICENSE-LOCK stay-out — not generated, never wrap or POST. Open risks are the POA&amp;M (count identity).</p>
     <p id="paths" class="mono"></p>
   </footer>
   <script src="/static/app.js"></script>
