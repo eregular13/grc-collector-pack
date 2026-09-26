@@ -1,10 +1,11 @@
 """FedRAMP R3.0-style POA&M fields derived from data the pack already has.
 
-No invented owners. Scheduled completion dates are *defaults* (30/90/180 days
-from original detection by risk rating), clearly labeled as such; `due` stays
-the human-committed date and is left blank. Detection dates come from the
-artifact scan timestamp (labeled UTC / recorded offset in poam.md). Missing
-scan time is the literal ``not recorded`` — never the pack run date.
+No invented owners. Scheduled completion dates follow the Evergreen default
+schedule (15/30/90/180 days from original detection by risk rating), clearly
+labeled as such; `due` stays the human-committed date and is left blank.
+Detection dates come from the artifact scan timestamp (labeled UTC / recorded
+offset in poam.md). Missing scan time is the literal ``not recorded`` — never
+the pack run date. The separate FedRAMP export keeps its own template values.
 """
 
 from __future__ import annotations
@@ -39,22 +40,23 @@ POAM_EXTRA_FIELDS = (
 )
 
 RISK_RATING = {"critical": "Critical", "high": "High", "medium": "Moderate", "low": "Low"}
-# FedRAMP POA&M Template R3.0 Instructions A9: High/Critical 30, Moderate 90, Low 180.
-SLA_DAYS = {"Critical": 30, "High": 30, "Moderate": 90, "Low": 180}
-FIRST_MILESTONE_DAYS = {30: 7, 90: 14, 180: 30}
+# Evergreen default schedule. Not a FedRAMP deadline set. Critical 15 / High 30 /
+# Moderate 90 / Low 180. Documented here so the clock is not silent.
+SLA_DAYS = {"Critical": 15, "High": 30, "Moderate": 90, "Low": 180}
+FIRST_MILESTONE_DAYS = {15: 3, 30: 7, 90: 14, 180: 30}
 KNOWN_CVE = (("heartbleed", "CVE-2014-0160"),)
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 SLA_NOTE = (
-    "Scheduled completion dates are DEFAULTS computed from original detection date + risk rating "
-    "(Critical/High 30 days, Moderate 90, Low 180; FedRAMP POA&M R3.0 convention). They are not a "
-    "committed date: `due` stays blank until a human commits one. Owner and point of contact are "
-    "blank for a human to assign. Original Detection Date is the artifact scan timestamp's "
-    "calendar day in the recorded timezone (UTC when the artifact is Zulu; offset-preserving "
-    "when the artifact carries one — a 23:00 PT scan stays that calendar day, not the next UTC "
-    "day). The poam.csv column name is unchanged; this UTC / recorded-zone note lives here and "
-    "on the FedRAMP export footer. When the artifact has no scan time the cell is the literal "
-    "'not recorded' (never the pack run date) and scheduled / milestone dates stay "
-    "'pending due date'."
+    "Scheduled completion dates are the Evergreen default schedule, computed from "
+    "original detection date + risk rating (Critical 15 days, High 30, Moderate 90, "
+    "Low 180). They are not a committed date: `due` stays blank until a human commits "
+    "one. Owner and point of contact are blank for a human to assign. Original Detection "
+    "Date is the artifact scan timestamp's calendar day in the recorded timezone (UTC "
+    "when the artifact is Zulu; offset-preserving when the artifact carries one — a "
+    "23:00 PT scan stays that calendar day, not the next UTC day). The poam.csv column "
+    "name is unchanged; this UTC / recorded-zone note lives here. When the artifact has "
+    "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
+    "scheduled / milestone dates stay 'pending due date'."
 )
 
 
@@ -89,7 +91,16 @@ def detector_source(rec: dict[str, Any]) -> str:
 
 def source_identifier(rec: dict[str, Any]) -> str:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    for key in ("check_id", "plugin_id", "pluginID", "template_id", "template-id", "rule", "id"):
+    for key in (
+        "check_id",
+        "plugin_id",
+        "pluginID",
+        "template_id",
+        "template-id",
+        "rule_id",
+        "rule",
+        "id",
+    ):
         val = str(extra.get(key) or "").strip()
         if val:
             return val

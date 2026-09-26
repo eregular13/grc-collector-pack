@@ -277,6 +277,37 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Failure-oriented weakness names. Check titles that read as passes
+# (e.g. "Root account MFA enabled") must not appear as the weakness.
+TYPE_WEAKNESS_NAME: dict[str, str] = {
+    "s3_public_access": "S3 bucket allows public access",
+    "s3_encryption": "S3 bucket default encryption is not enabled",
+    "ebs_encryption": "EBS volume is not encrypted",
+    "iam_admin_access": "IAM user has standing AdministratorAccess",
+    "iam_root_mfa": "Root account has no MFA",
+    "iam_user_mfa": "IAM user has no MFA",
+    "sg_ingress_open": "Security group allows inbound traffic from the internet",
+    "cloudtrail_logging": "CloudTrail multi-region trail is missing",
+    "rds_public": "RDS instance is publicly accessible",
+    "ad_dcsync": "Non-DC principal has DCSync / replication rights",
+    "ad_genericall": "Principal has GenericAll on a privileged object",
+    "ad_adminto": "Principal has standing local-admin (AdminTo) rights",
+    "ad_backup_operators": "Backup Operators has standing members",
+    "ad_kerberoast": "Service account is kerberoastable",
+    "ad_asrep": "Account does not require Kerberos preauthentication",
+    "ad_domain_admins": "Domain Admins has standing members",
+    "ad_unconstrained_delegation": "Account has unconstrained Kerberos delegation",
+    "entra_ga_pim": "Global Administrator is a standing assignment",
+    "ad_smb_null_session": "SMB null / anonymous sessions are allowed",
+    "hk_password_history": "Windows password history is not enforced",
+    "hk_lm_hash": "LM hash storage is enabled",
+    "k8s_privileged": "Privileged Kubernetes containers are admitted",
+    "k8s_anonymous_auth": "Anonymous Kubernetes API access is enabled",
+    "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
+    "k8s_hostnetwork": "Workload uses hostNetwork",
+    "k8s_write_binary_dir": "Workload can write under container binary directories",
+}
+
 # Distinct types may share remediations only with an explicit reason.
 SHARED_REMEDIATION_ALLOWLIST: dict[tuple[str, str], str] = {}
 
@@ -355,7 +386,11 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
-    if "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", ""):
+    if (
+        "lm hash" in text
+        or "lan manager hash" in text
+        or "lmhash" in text.replace(" ", "").replace("_", "")
+    ):
         return "hk_lm_hash"
     if "write below binary" in text or "binary directory" in text:
         return "k8s_write_binary_dir"
@@ -435,7 +470,9 @@ def generic_remediation(rec: dict[str, Any]) -> dict[str, Any]:
         "generic": True,
         "finding_type": "unknown",
         "nist_800_53": [],
+        "cis": [],
         "key_medium": False,
+        "weakness_name": "",
     }
 
 
@@ -455,7 +492,9 @@ def type_remediation(rec: dict[str, Any]) -> dict[str, Any] | None:
         "generic": False,
         "finding_type": ftype,
         "nist_800_53": list(meta.get("nist_800_53") or []),
+        "cis": list(meta.get("cis") or []),
         "key_medium": bool(meta.get("key_medium")),
+        "weakness_name": TYPE_WEAKNESS_NAME.get(ftype) or str(meta.get("weakness_name") or ""),
     }
 
 

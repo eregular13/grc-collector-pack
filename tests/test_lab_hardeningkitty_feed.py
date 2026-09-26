@@ -59,15 +59,28 @@ HK_OFFICIAL_COLS = HK_AUDIT_COLUMNS
 
 # Real MS baseline IDs from finding_list_msft_security_baseline_windows_11_24h2_machine.csv
 EXPECTED_MAP = {
-    "10100": ("password_policy", ["IA-5"], "csf_PR", "cpg_2_W"),
-    "10101": ("password_policy", ["IA-5"], "csf_PR", "cpg_2_W"),
-    "10001": ("account_lockout", ["AC-7"], "csf_PR", "cpg_2_W"),
-    "10208": ("session_lock", ["AC-11"], "csf_PR", "cpg_2_W"),
-    "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", "cpg_1_E"),
+    "10100": ("password_policy", ["IA-5"], "csf_PR", ""),
+    "10101": ("password_policy", ["IA-5"], "csf_PR", ""),
+    "10001": ("account_lockout", ["AC-7"], "csf_PR", ""),
+    "10208": ("session_lock", ["AC-11"], "csf_PR", ""),
+    "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", ""),
     "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_2_W"),
-    "10219": ("password_policy", ["IA-5"], "csf_PR", "cpg_2_W"),
-    "11014": ("malware_protection", ["SI-3"], "csf_PR", "cpg_2_W"),
-    "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", "cpg_2_W"),
+    "10219": ("password_policy", ["IA-5"], "csf_PR", ""),
+    "11014": ("malware_protection", ["SI-3"], "csf_PR", ""),
+    "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", ""),
+}
+
+# Client-facing weakness column: check titles are policy names, not failures.
+HK_FAILURE_WEAKNESS = {
+    "10100": "Password history is shorter than required",
+    "10101": "Password policy is not enforced",
+    "10001": "Account lockout is not enforced",
+    "10208": "Session lock after inactivity is not enforced",
+    "10400": "Audit logging is not enabled",
+    "10501": "Host firewall is disabled",
+    "10219": "LM hashes are stored",
+    "11014": "Malware real-time protection is disabled",
+    "10964": "Remote session encryption is not required",
 }
 
 CLIENT_OUTPUT_GLOBS = (
@@ -176,6 +189,35 @@ def test_hk_control_map_and_800_53() -> None:
         assert all(str(t).startswith(CIS_V8_PREFIX) for t in extra[CIS_V8_INTERNAL_FIELD])
     lynis_extra = extra_control_fields("host_firewall")
     assert CIS_V8_INTERNAL_FIELD not in lynis_extra
+
+
+def test_hk_lab_rows_failure_titles_and_honest_cpg() -> None:
+    """HK check titles are policy names; CPG only from 800-53 (CM-7/SC-7/CM-8)."""
+    findings = [r for r in identity_ad.parse_file(HK_CSV) if r["kind"] == "finding"]
+    assert findings
+    by_id = {str(r["extra"].get("check_id")): r for r in findings}
+    for hid, expected in HK_FAILURE_WEAKNESS.items():
+        rec = by_id[hid]
+        mapped = map_finding(rec)
+        assert mapped["weakness_name"] == expected, (hid, mapped["weakness_name"])
+        assert mapped["weakness_name"] != rec["name"]
+        assert not mapped["weakness_name"].lower().startswith("hardeningkitty")
+        key, n53, _csf, extra_cpg = EXPECTED_MAP[hid]
+        # extra.nist_800_53 unions with CONTROL_800_53 for the same control.
+        for cid in n53:
+            assert cid in mapped["nist_800_53"], (hid, cid, mapped["nist_800_53"])
+        honest = ["cpg_2_W"] if any(
+            cid in mapped["nist_800_53"] for cid in ("CM-7", "SC-7")
+        ) else (
+            ["cpg_1_E"] if "CM-8" in mapped["nist_800_53"] else []
+        )
+        assert mapped["cpg"] == honest, (hid, mapped["cpg"], mapped["nist_800_53"])
+        if extra_cpg:
+            assert extra_cpg in mapped["framework_refs"]
+        else:
+            assert "cpg_" not in mapped["framework_refs"]
+        assert CIS_V8_PREFIX not in mapped["framework_refs"]
+        assert rec["extra"].get("control_key") == key
 
 
 def test_hk_same_tool_keeps_distinct_checks() -> None:
