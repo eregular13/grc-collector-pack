@@ -38,6 +38,7 @@ from shared.estate_pages import (
     build_fixture_manifest,
     classify_estate,
     file_content_fingerprints,
+    fingerprints_from_bytes,
     fixture_content_hashes,
     in_dir_fixture_hits,
     normalize_fixture_bytes,
@@ -934,6 +935,29 @@ def test_prior_release_restamped_fixtures_still_classify_sample(tmp_path: Path) 
         assert not stamp.label.startswith("CLIENT:")
         fps = file_content_fingerprints(dest_in / src.name)
         assert fps & catalog, rel
+
+
+def test_legacy_sample_sha256_matches_prior_sample_testdata() -> None:
+    """legacy_sample_sha256 is exactly the fingerprints of prior_sample_5e6e591."""
+    dest = ROOT / "fixtures" / _FIXTURE_MANIFEST_NAME
+    expected = json.loads(dest.read_text(encoding="utf-8"))
+    listed = {str(h).strip().lower() for h in (expected.get(_LEGACY_SAMPLE_KEY) or [])}
+    paths = sorted(p for p in _PRIOR_SAMPLE_DIR.rglob("*") if p.is_file())
+    computed: set[str] = set()
+    for src in paths:
+        fps = fingerprints_from_bytes(src.read_bytes())
+        assert fps, f"no fingerprints for {src.relative_to(_PRIOR_SAMPLE_DIR)}"
+        computed.update(fps)
+    extra = sorted(listed - computed)
+    missing = sorted(computed - listed)
+    assert extra == [] and missing == [], (
+        f"legacy_sample_sha256 must equal fingerprints_from_bytes of "
+        f"tests/data/prior_sample_5e6e591/ ({len(paths)} files). "
+        f"extra={extra} missing={missing}"
+    )
+    assert len(listed) == 128
+    assert len(computed) == 128
+    assert len(paths) == 32
 
 
 def test_unreadable_fixture_in_catalog_fail_closed(
