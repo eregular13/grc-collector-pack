@@ -358,8 +358,143 @@ def _location_suffix(rec: dict[str, Any]) -> str:
     return "|".join(bits)
 
 
+def _wazuh_host_segment(raw: str) -> str:
+    """First DNS label, lowercased. ``hosta.corp.local`` → ``hosta``. IPs stay whole."""
+    text = str(raw or "").strip().lower().rstrip(".")
+    if not text:
+        return ""
+    token = text.split()[0]
+    if not token:
+        return ""
+    if token[0].isdigit() or ":" in token:
+        return token
+    return token.split(".", 1)[0]
+
+
+def _wazuh_raw_host(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent string before first-segment fold."""
+    extra = extra_dict(rec)
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
+    if assets:
+        return assets[0].split()[0].lower().rstrip(".")
+    for key in ("agent", "hostname", "host"):
+        val = _extra_field(extra, key)
+        if val:
+            return val.split()[0].lower().rstrip(".")
+    ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
+    for key in ("agent", "hostname"):
+        val = str(ids.get(key) or "").strip()
+        if val:
+            return val.split()[0].lower().rstrip(".")
+    return ""
+
+
+def _is_dns_fqdn(raw: str) -> bool:
+    text = str(raw or "").strip().lower().rstrip(".")
+    if not text:
+        return False
+    token = text.split()[0]
+    if not token or token[0].isdigit() or ":" in token:
+        return False
+    return "." in token
+
+
+def _wazuh_host_token(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent — first name segment, not a ledger-merged hostname."""
+    return _wazuh_host_segment(_wazuh_raw_host(rec))
+
+
+def _stored_wazuh_hosts(item: dict[str, Any]) -> set[str]:
+    """Host tokens from the stored display/host field only — never the title."""
+    display = str(item.get("display_asset") or "").strip()
+    if not display:
+        return set()
+    seg = _wazuh_host_segment(display)
+    return {seg} if seg else set()
+
+
+def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> bool:
+    """True only when the stored host-less Wazuh row is this incoming host.
+
+    First-segment match covers short↔FQDN (``hosta`` / ``hosta.corp.local``).
+    When both stored display and incoming host are FQDNs, require the full
+    name so ``web01.corp-a.local`` cannot absorb ``web01.corp-b.local``.
+    """
+    incoming = _wazuh_raw_host(rec)
+    display = str(item.get("display_asset") or "").strip()
+    if not incoming or not display:
+        return False
+    parts = display.split()
+    if not parts:
+        return False
+    stored = parts[0].lower().rstrip(".")
+    if not stored:
+        return False
+    if _is_dns_fqdn(incoming) and _is_dns_fqdn(stored):
+        return incoming == stored
+    return _wazuh_host_segment(incoming) == _wazuh_host_segment(stored)
+
+
+def _find_stored_wazuh_by_display(
+    rec: dict[str, Any], items: dict[str, Any]
+) -> list[tuple[str, dict[str, Any]]]:
+    """Host-less Wazuh rows whose stored display first-segment is this host.
+
+    29c4c3e keyed host-less; a later short-name vs FQDN observation may land on a
+    different EGA. Match ``display_asset`` only — never title — so hostb cannot
+    steal hosta's EGP.
+    """
+    extra = extra_dict(rec)
+    if extra.get("agent_status") in (None, "") and extra.get("disk_encryption_enabled") in (
+        None,
+        "",
+    ):
+        return []
+    hostless = _weakness_key_core(rec)
+    if not hostless or hostless == weakness_key(rec):
+        return []
+    out: list[tuple[str, dict[str, Any]]] = []
+    for old_fp, item in items.items():
+        if str(item.get("status") or "") == "closed":
+            continue
+        if str(item.get("weakness_key") or "") != hostless:
+            continue
+        if _wazuh_hostless_item_matches(rec, item):
+            out.append((old_fp, item))
+    incoming = _wazuh_raw_host(rec)
+    if incoming and not _is_dns_fqdn(incoming):
+        fqdn_hits = [
+            pair
+            for pair in out
+            if _is_dns_fqdn(str(pair[1].get("display_asset") or ""))
+        ]
+        # Bare web01 vs two stored FQDNs is ambiguous — mint a new ID.
+        if len(fqdn_hits) >= 2:
+            return []
+    return out
+
+
+def _attach_wazuh_host(rec: dict[str, Any], key: str) -> str:
+    """Keep host/agent on Wazuh coverage keys so IP-joined EGAs stay two EGPs."""
+    if _tool_tag(rec) != "wazuh":
+        return key
+    extra = extra_dict(rec)
+    if extra.get("agent_status") in (None, "") and extra.get("disk_encryption_enabled") in (
+        None,
+        "",
+    ):
+        return key
+    host = _wazuh_host_token(rec)
+    if not host:
+        return key
+    suffix = f":{host}"
+    if key.lower().endswith(suffix):
+        return key
+    return f"{key}{suffix}"
+
+
 def _weakness_key_core(rec: dict[str, Any]) -> str:
-    """Pre-location key (#161). Migration source when only a discriminator was added."""
+    """Pre-location / pre-host-suffix key. Migration source only."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id"):
@@ -424,12 +559,11 @@ def legacy_pre_location_weakness_key(rec: dict[str, Any]) -> str:
 def weakness_key(rec: dict[str, Any]) -> str:
     """Stable weakness identity: scanner id, share, port+class, then location."""
     core = _weakness_key_core(rec)
-    if core.startswith("cve:"):
-        return core
-    loc = _location_suffix(rec)
-    if loc:
-        return f"{core}:{loc}"
-    return core
+    if not core.startswith("cve:"):
+        loc = _location_suffix(rec)
+        if loc:
+            core = f"{core}:{loc}"
+    return _attach_wazuh_host(rec, core)
 
 
 def fp_v1(
@@ -985,7 +1119,26 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
     if fp and fp not in seen:
         seen.add(fp)
         out.append((fp, "title_master_ega"))
+    extra = extra_dict(rec)
+    if _tool_tag(rec) == "wazuh" and (
+        extra.get("agent_status") not in (None, "")
+        or extra.get("disk_encryption_enabled") not in (None, "")
+    ):
+        hostless = _weakness_key_core(rec)
+        if hostless and hostless != weakness_key(rec):
+            for fn, reason in (
+                (asset_key, "wazuh_add_host"),
+                (legacy_master_asset_key, "wazuh_add_host"),
+                (legacy_asset_id_port_key, "wazuh_add_host"),
+                (legacy_name_asset_key, "wazuh_add_host"),
+            ):
+                fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=lambda _r, k=hostless: k)
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
     # Pre-location fallback (#161): same title on one asset, no path/url/file.
+    # After wazuh_add_host so hosta's stored host-less fp is claimed before a
+    # same-title sibling (KR-B / EGP-946F27C7C3).
     for fn, reason in (
         (asset_key, "pre_location_to_location"),
         (legacy_master_asset_key, "pre_location_master_ega"),
@@ -1157,11 +1310,18 @@ def _may_claim_legacy_fp(
     legacy_cache: dict[int, list[tuple[str, str]]],
 ) -> bool:
     """Same-title siblings: location match wins; first in record order only if none match."""
-    siblings = [
-        other
-        for other in instances
-        if any(fp == old_fp for fp, _reason in _legacy_fps_cached(other, legacy_cache))
-    ]
+    siblings = []
+    for other in instances:
+        reasons = [
+            reason
+            for fp, reason in _legacy_fps_cached(other, legacy_cache)
+            if fp == old_fp
+        ]
+        if not reasons:
+            continue
+        if "wazuh_add_host" in reasons and not _wazuh_hostless_item_matches(other, item):
+            continue
+        siblings.append(other)
     if len(siblings) <= 1:
         return True
     if _location_affinity(rec, item) > 0:
@@ -1197,9 +1357,16 @@ def _migrate_if_needed(
     found: dict[str, tuple[dict[str, Any], str]] = {}
     for old_fp, reason in _legacy_fps_cached(rec, cache):
         if old_fp != new_fp and old_fp in items:
-            if not _may_claim_legacy_fp(rec, items[old_fp], old_fp, peers, cache):
+            item = items[old_fp]
+            if reason == "wazuh_add_host" and not _wazuh_hostless_item_matches(rec, item):
                 continue
-            found[old_fp] = (items[old_fp], reason)
+            if not _may_claim_legacy_fp(rec, item, old_fp, peers, cache):
+                continue
+            found[old_fp] = (item, reason)
+    if _tool_tag(rec) == "wazuh":
+        for old_fp, item in _find_stored_wazuh_by_display(rec, items):
+            if old_fp not in found:
+                found[old_fp] = (item, "wazuh_add_host")
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):

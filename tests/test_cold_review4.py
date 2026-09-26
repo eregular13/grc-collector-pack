@@ -8,9 +8,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.asset_ids import classify_name, is_placeholder_id
+from shared.asset_ids import classify_name, is_placeholder_id, stamp_ids
 from shared.asset_key import legacy_name_asset_key
-from shared.asset_ledger import AssetLedger, asset_uid
+from shared.asset_ledger import AssetLedger, asset_uid, attach_asset_uids
 from shared.kev import KevCatalog
 from shared.poam_ledger import (
     _is_scanner_identity,
@@ -577,6 +577,9 @@ def test_ledger_files_do_not_count_as_live_inputs(tmp_path: Path, monkeypatch) -
     from shared.io_util import SKIP_INPUT_NAMES, in_dir_has_live_inputs
 
     assert "poam-ledger.json" in SKIP_INPUT_NAMES
+    assert "AUTHORIZATION.txt" in SKIP_INPUT_NAMES
+    assert "AUTHORIZATION.md" in SKIP_INPUT_NAMES
+    assert "AUTH.txt" in SKIP_INPUT_NAMES
     dest = tmp_path / "in"
     (dest / "poam").mkdir(parents=True)
     (dest / "poam" / "poam-ledger.json").write_text("{}", encoding="utf-8")
@@ -944,3 +947,541 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     assert len(admin_rows) == 2
     assert len({it["poam_id"] for it in admin_rows}) == 2
     assert summary.get("demo") is True
+
+
+def _nmap_fqdn_asset(fqdn: str, ip: str) -> dict:
+    return make_record(
+        kind="asset",
+        source="inventory-nmap",
+        ref_id=make_ref("inventory-nmap", f"asset-{fqdn}"),
+        name=fqdn,
+        description=f"Host {fqdn}",
+        category="host",
+        assets=[fqdn],
+        labels=["nmap"],
+        collected_at=NOW,
+        extra=stamp_ids({}, fqdn=fqdn, ip=ip),
+    )
+
+
+def _fleet_short_asset(name: str) -> dict:
+    return make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", f"asset-{name}"),
+        name=name,
+        description=f"Fleet host {name}",
+        category="host",
+        assets=[name],
+        labels=["wazuh", "host"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname=name),
+    )
+
+
+def _wazuh_disconnected(host: str) -> dict:
+    return {
+        "kind": "finding",
+        "source": "host-wazuh",
+        "ref_id": make_ref("host-wazuh", f"coverage-{host}"),
+        "name": f"Wazuh agent disconnected: {host}",
+        "description": f"Endpoint {host} is disconnected; coverage gap.",
+        "severity": "high",
+        "category": "coverage-gap",
+        "assets": [host],
+        "labels": ["wazuh", "host", "coverage"],
+        "collected_at": NOW,
+        "extra": {"agent_status": "disconnected"},
+    }
+
+
+def _poam_open(records: list[dict]) -> list[dict]:
+    ledger = AssetLedger()
+    stamped = attach_asset_uids(records, ledger, now=NOW)
+    findings = [r for r in stamped if r.get("kind") == "finding"]
+    out = apply_ledger(
+        findings,
+        catalog=_unevaluated(),
+        run_at=_run(NOW),
+        ledger_in=empty_ledger(),
+        prior_existed=True,
+    )
+    return [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+
+
+def test_ambiguous_bare_web01_four_rows_both_orders() -> None:
+    """Bare web01 must not fold into web01.corp-a or web01.corp-b. 4 rows either order.
+
+    Two nmap hosts (port-22) plus the Fleet coverage row on the bare name, and
+    one FQDN coverage row so a fold would collapse a POA&M ID. Master keeps
+    four rows; both ledger orders must too.
+    """
+    pair = (
+        ("web01.corp-a.local", "10.1.0.10"),
+        ("web01.corp-b.local", "10.2.0.10"),
+    )
+    for order in (pair, tuple(reversed(pair))):
+        records = []
+        for fqdn, ip in order:
+            records.append(_nmap_fqdn_asset(fqdn, ip))
+            records.append(_nmap_port(fqdn, "22", service="ssh", extra={"ip": ip}))
+        records.append(_wazuh_disconnected(order[0][0]))
+        records.append(_fleet_short_asset("web01"))
+        records.append(_wazuh_disconnected("web01"))
+        ledger = AssetLedger()
+        stamped = attach_asset_uids(records, ledger, now=NOW)
+        uids = {
+            str((r.get("extra") or {}).get("asset_uid") or "")
+            for r in stamped
+            if r.get("kind") == "asset"
+        }
+        assert len(uids) == 3, f"order {order[0][0]} first folded to {uids}"
+        open_items = _poam_open(records)
+        assert len(open_items) == 4, (
+            f"order {order[0][0]} first → {len(open_items)} rows "
+            f"{[(it.get('name'), it.get('poam_id')) for it in open_items]}"
+        )
+
+
+def test_wazuh_ip_reuse_keeps_two_egps() -> None:
+    """hostb may join hosta's EGA by IP; Wazuh rows stay two distinct EGPs."""
+    hosta = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hosta"),
+        name="hosta",
+        category="host",
+        assets=["hosta"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hosta", ip="10.5.0.5"),
+    )
+    hostb = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hostb"),
+        name="hostb",
+        category="host",
+        assets=["hostb"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hostb", ip="10.5.0.5"),
+    )
+    fa = _wazuh_disconnected("hosta")
+    fb = _wazuh_disconnected("hostb")
+    assert weakness_key(fa) != weakness_key(fb)
+    assert weakness_key(fa).endswith(":hosta")
+    assert weakness_key(fb).endswith(":hostb")
+    hostless = {
+        **fa,
+        "assets": ["hosta"],
+        "extra": {"agent_status": "disconnected"},
+    }
+    from shared.poam_ledger import _legacy_fps_for, _weakness_key_core
+
+    assert _weakness_key_core(hostless) == "wazuh:agent_status:disconnected"
+    assert any(reason == "wazuh_add_host" for _fp, reason in _legacy_fps_for(fa))
+    assert fp_v1(fa, weakness_key_fn=_weakness_key_core) in fingerprints_for(fa)
+    ledger = AssetLedger()
+    stamped = attach_asset_uids([hosta, hostb, fa, fb], ledger, now=NOW)
+    findings = [r for r in stamped if r.get("kind") == "finding"]
+    assert len({str((r.get("extra") or {}).get("asset_uid") or "") for r in findings}) == 1
+    out = apply_ledger(
+        findings,
+        catalog=_unevaluated(),
+        run_at=_run(NOW),
+        ledger_in=empty_ledger(),
+        prior_existed=True,
+    )
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    assert len(open_items) == 2
+    assert {it["poam_id"] for it in open_items}.__len__() == 2
+    assert {it["weakness_key"] for it in open_items} == {
+        weakness_key(fa),
+        weakness_key(fb),
+    }
+
+
+def test_wazuh_ip_reuse_upgrade_keeps_hosta_egp() -> None:
+    """29c4c3e hosta ledger + hostb same IP: hosta keeps EGP-946F27C7C3, hostb is new."""
+    from shared.poam_ledger import _weakness_key_core
+
+    hosta_egp = "EGP-946F27C7C3"
+    hosta = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hosta"),
+        name="hosta",
+        category="host",
+        assets=["hosta"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hosta", ip="10.5.0.5"),
+    )
+    hostb = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hostb"),
+        name="hostb",
+        category="host",
+        assets=["hostb"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hostb", ip="10.5.0.5"),
+    )
+    fa = _wazuh_disconnected("hosta")
+    fb = _wazuh_disconnected("hostb")
+    first = AssetLedger()
+    stamped_a = attach_asset_uids([hosta, fa], first, now=NOW)
+    fa1 = next(r for r in stamped_a if r.get("kind") == "finding")
+    old_fp = fp_v1(fa1, weakness_key_fn=_weakness_key_core)
+    prior = empty_ledger()
+    prior["items"][old_fp] = {
+        "poam_id": hosta_egp,
+        "fp": old_fp,
+        "source_family": "host-wazuh",
+        "weakness_key": _weakness_key_core(fa1),
+        "asset_key": fa1["extra"]["asset_uid"],
+        "display_asset": "hosta",
+        "name": "Wazuh agent disconnected: hosta",
+        "description": "Endpoint hosta is disconnected; coverage gap.",
+        "ref_id": fa1["ref_id"],
+        "original_detection_date": "2026-08-01",
+        "first_seen": "2026-08-01T00:00:00Z",
+        "last_seen": "2026-08-01T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    for order in ((fb, fa), (fa, fb)):
+        second = AssetLedger()
+        stamped = attach_asset_uids([hosta, hostb, fa, fb], second, now=NOW)
+        by_host = {
+            str((r.get("assets") or [""])[0]): r
+            for r in stamped
+            if r.get("kind") == "finding"
+        }
+        incoming = [by_host["hostb"] if rec is fb else by_host["hosta"] for rec in order]
+        out = apply_ledger(
+            incoming,
+            catalog=_unevaluated(),
+            run_at=_run("2026-09-02T00:00:00Z"),
+            ledger_in=prior,
+            prior_existed=True,
+        )
+        open_items = [
+            it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+        ]
+        assert len(open_items) == 2, order[0]["assets"]
+        by_wk = {it["weakness_key"]: it for it in open_items}
+        assert weakness_key(fa) in by_wk
+        assert weakness_key(fb) in by_wk
+        assert by_wk[weakness_key(fa)]["poam_id"] == hosta_egp
+        assert by_wk[weakness_key(fa)]["original_detection_date"] == "2026-08-01"
+        hostb_id = by_wk[weakness_key(fb)]["poam_id"]
+        assert hostb_id != hosta_egp
+        assert hostb_id.startswith("EGP-")
+
+
+def _wazuh_host_asset(name: str, **ids: object) -> dict:
+    blob: dict = {"fqdn": name} if "." in name else {"hostname": name}
+    blob.update(ids)
+    return make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", f"asset-{name}"),
+        name=name,
+        category="host",
+        assets=[name],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, **blob),
+    )
+
+
+def test_wazuh_short_name_and_fqdn_same_id_fresh_both_directions() -> None:
+    """hosta and hosta.corp.local stay one EGP, either observation order."""
+    from shared.poam_ledger import _stored_wazuh_hosts, _wazuh_host_token
+
+    short = _wazuh_disconnected("hosta")
+    fqdn = _wazuh_disconnected("hosta.corp.local")
+    assert weakness_key(short) == weakness_key(fqdn)
+    assert weakness_key(short).endswith(":hosta")
+    assert _wazuh_host_token(fqdn) == "hosta"
+    assert _stored_wazuh_hosts({"display_asset": "hosta.corp.local"}) == {"hosta"}
+    assert _stored_wazuh_hosts(
+        {"display_asset": "hosta", "name": "Ensure disk encryption on application"}
+    ) == {"hosta"}
+    assert "disk" not in _stored_wazuh_hosts(
+        {"display_asset": "hosta", "name": "Ensure disk encryption on application"}
+    )
+    for first, second in ((short, fqdn), (fqdn, short)):
+        records = [
+            _wazuh_host_asset("hosta"),
+            _wazuh_host_asset("hosta.corp.local", ip="10.5.0.8"),
+            first,
+            second,
+        ]
+        open_items = _poam_open(records)
+        assert len(open_items) == 1, first["assets"]
+        assert open_items[0]["weakness_key"] == weakness_key(short)
+
+
+def test_wazuh_short_name_and_fqdn_upgrade_from_29c4c3e_both_directions() -> None:
+    """29c4c3e ledger on one name, upgrade on the other: same EGP, no ghost."""
+    from shared.poam_ledger import _weakness_key_core
+
+    pairs = (
+        ("hosta", "hosta.corp.local"),
+        ("hosta.corp.local", "hosta"),
+    )
+    for prior_name, next_name in pairs:
+        prior_rec = _wazuh_disconnected(prior_name)
+        next_rec = _wazuh_disconnected(next_name)
+        first = AssetLedger()
+        stamped = attach_asset_uids(
+            [_wazuh_host_asset(prior_name), prior_rec], first, now=NOW
+        )
+        old = next(r for r in stamped if r.get("kind") == "finding")
+        old_fp = fp_v1(old, weakness_key_fn=_weakness_key_core)
+        prior = empty_ledger()
+        prior["items"][old_fp] = {
+            "poam_id": "EGP-SHORTFQDN1",
+            "fp": old_fp,
+            "source_family": "host-wazuh",
+            "weakness_key": _weakness_key_core(old),
+            "asset_key": old["extra"]["asset_uid"],
+            "display_asset": prior_name,
+            "name": prior_rec["name"],
+            "description": prior_rec["description"],
+            "ref_id": old["ref_id"],
+            "original_detection_date": "2026-08-01",
+            "first_seen": "2026-08-01T00:00:00Z",
+            "last_seen": "2026-08-01T00:00:00Z",
+            "status": "open",
+            "severity": "high",
+            "missed_covered_runs": 0,
+            "kev_comments": [],
+        }
+        second = AssetLedger()
+        incoming = attach_asset_uids(
+            [
+                _wazuh_host_asset("hosta"),
+                _wazuh_host_asset("hosta.corp.local", ip="10.5.0.8"),
+                next_rec,
+            ],
+            second,
+            now=NOW,
+        )
+        findings = [r for r in incoming if r.get("kind") == "finding"]
+        out = apply_ledger(
+            findings,
+            catalog=_unevaluated(),
+            run_at=_run("2026-09-02T00:00:00Z"),
+            ledger_in=prior,
+            prior_existed=True,
+        )
+        open_items = [
+            it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+        ]
+        created = [
+            e for e in (out.get("events_this_run") or []) if e.get("kind") == "created"
+        ]
+        ghosts = [
+            it
+            for it in out["items"].values()
+            if str(it.get("status") or "") != "closed"
+            and it.get("poam_id") == "EGP-SHORTFQDN1"
+            and str(it.get("last_seen") or "").startswith("2026-08-01")
+        ]
+        assert len(open_items) == 1, (prior_name, next_name, [it["poam_id"] for it in open_items])
+        assert open_items[0]["poam_id"] == "EGP-SHORTFQDN1"
+        assert created == []
+        assert ghosts == []
+
+
+def _seed_29c4c3e_wazuh(host: str, ip: str, poam_id: str) -> tuple[str, dict]:
+    from shared.poam_ledger import _weakness_key_core
+
+    rec = _wazuh_disconnected(host)
+    stamped = attach_asset_uids(
+        [_wazuh_host_asset(host, ip=ip), rec], AssetLedger(), now=NOW
+    )
+    finding = next(r for r in stamped if r.get("kind") == "finding")
+    old_fp = fp_v1(finding, weakness_key_fn=_weakness_key_core)
+    item = {
+        "poam_id": poam_id,
+        "fp": old_fp,
+        "source_family": "host-wazuh",
+        "weakness_key": _weakness_key_core(finding),
+        "asset_key": finding["extra"]["asset_uid"],
+        "display_asset": host,
+        "name": rec["name"],
+        "description": rec["description"],
+        "ref_id": finding["ref_id"],
+        "original_detection_date": "2026-08-01",
+        "first_seen": "2026-08-01T00:00:00Z",
+        "last_seen": "2026-08-01T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    return old_fp, item
+
+
+def _x2dom_hosts() -> tuple[tuple[str, str, str], tuple[str, str, str]]:
+    return (
+        ("web01.corp-a.local", "10.1.0.10", "EGP-1D468451C2"),
+        ("web01.corp-b.local", "10.2.0.20", "EGP-D9A5F91ED9"),
+    )
+
+
+def _apply_x2dom(prior: dict, hosts: list[tuple[str, str]]) -> dict:
+    records: list[dict] = []
+    for host, ip in hosts:
+        records.append(_wazuh_host_asset(host, ip=ip))
+        records.append(_wazuh_disconnected(host))
+    stamped = attach_asset_uids(records, AssetLedger(), now=NOW)
+    findings = [r for r in stamped if r.get("kind") == "finding"]
+    return apply_ledger(
+        findings,
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-02T00:00:00Z"),
+        ledger_in=prior,
+        prior_existed=True,
+    )
+
+
+def test_x2dom_both_hosts_both_runs_keep_two_egps() -> None:
+    """web01.corp-a and web01.corp-b stay two EGPs on upgrade, either order."""
+    from shared.poam_ledger import _wazuh_hostless_item_matches
+
+    a, b = _x2dom_hosts()
+    assert not _wazuh_hostless_item_matches(
+        _wazuh_disconnected(b[0]), {"display_asset": a[0]}
+    )
+    for order in ((a, b), (b, a)):
+        prior = empty_ledger()
+        for host, ip, pid in order:
+            fp, item = _seed_29c4c3e_wazuh(host, ip, pid)
+            prior["items"][fp] = item
+        out = _apply_x2dom(prior, [(h, ip) for h, ip, _pid in order])
+        open_items = [
+            it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+        ]
+        ids = {it["poam_id"] for it in open_items}
+        aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+        remaps = [
+            e for e in (out.get("events_this_run") or []) if e.get("kind") == "migrated"
+        ]
+        stolen = [
+            e
+            for e in (out.get("events_this_run") or [])
+            if e.get("kind") == "migrated_alias"
+        ]
+        assert ids == {a[2], b[2]}, (order[0][0], ids)
+        assert not aliases
+        assert stolen == []
+        assert {e.get("poam_id") for e in remaps} <= {a[2], b[2]}
+
+
+def test_x2dom_a_then_b_does_not_steal_egp() -> None:
+    """corp-a only on 29c4c3e, corp-b only on upgrade: both IDs, no steal."""
+    a, b = _x2dom_hosts()
+    prior = empty_ledger()
+    fp, item = _seed_29c4c3e_wazuh(a[0], a[1], a[2])
+    prior["items"][fp] = item
+    out = _apply_x2dom(prior, [(b[0], b[1])])
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    assert a[2] in ids
+    assert len(ids) == 2
+    assert a[2] not in {
+        it["poam_id"]
+        for it in open_items
+        if str(it.get("display_asset") or "") == b[0]
+    }
+    b_row = next(it for it in open_items if str(it.get("display_asset") or "") == b[0])
+    assert b_row["poam_id"] != a[2]
+    assert b_row["poam_id"].startswith("EGP-")
+
+
+def test_wazuh_empty_display_asset_never_matches() -> None:
+    """A stored host-less row must not crash or match any incoming host."""
+    from shared.poam_ledger import _wazuh_hostless_item_matches, _weakness_key_core
+
+    rec = _wazuh_disconnected("hosta")
+    assert not _wazuh_hostless_item_matches(rec, {"display_asset": ""})
+    assert not _wazuh_hostless_item_matches(rec, {"display_asset": None})
+    assert not _wazuh_hostless_item_matches(rec, {})
+    prior = empty_ledger()
+    prior["items"]["deadbeef"] = {
+        "poam_id": "EGP-HOSTLESS01",
+        "fp": "deadbeef",
+        "source_family": "host-wazuh",
+        "weakness_key": _weakness_key_core(rec),
+        "asset_key": "EGA-MISSING00",
+        "display_asset": "",
+        "name": "Wazuh agent disconnected",
+        "description": "no host",
+        "ref_id": "WAZ-coverage-unknown",
+        "original_detection_date": "2026-08-01",
+        "first_seen": "2026-08-01T00:00:00Z",
+        "last_seen": "2026-08-01T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    out = apply_ledger(
+        [rec],
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-02T00:00:00Z"),
+        ledger_in=prior,
+        prior_existed=True,
+    )
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    assert "EGP-HOSTLESS01" in ids
+    assert any(pid != "EGP-HOSTLESS01" and str(pid).startswith("EGP-") for pid in ids)
+    stolen = [
+        e for e in (out.get("events_this_run") or []) if e.get("kind") == "migrated_alias"
+    ]
+    assert stolen == []
+
+
+def test_x_short_only_ambiguous_mints_new_id() -> None:
+    """Bare web01 vs two stored FQDNs is ambiguous: new EGP, no aliases."""
+    a, b = _x2dom_hosts()
+    prior = empty_ledger()
+    for host, ip, pid in (a, b):
+        fp, item = _seed_29c4c3e_wazuh(host, ip, pid)
+        prior["items"][fp] = item
+    out = _apply_x2dom(prior, [("web01", "10.3.0.30")])
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+    stolen = [
+        e for e in (out.get("events_this_run") or []) if e.get("kind") == "migrated_alias"
+    ]
+    assert a[2] in ids
+    assert b[2] in ids
+    assert len(ids) == 3
+    web01_row = next(
+        it for it in open_items if str(it.get("display_asset") or "") == "web01"
+    )
+    assert web01_row["poam_id"] not in {a[2], b[2]}
+    assert not aliases
+    assert stolen == []

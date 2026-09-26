@@ -489,7 +489,13 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "honeypot": "detect_telemetry",
     "nse-ftp-anon": "exposure_access",
     "nse-redis-noauth": "exposure_access",
+    "nse_redis_noauth": "exposure_access",
     "exposed-redis": "exposure_access",
+    "exposed_redis": "exposure_access",
+    "redis_noauth": "exposure_access",
+    "redis-noauth": "exposure_access",
+    "redis-unauth": "exposure_access",
+    "redis_unauth": "exposure_access",
     "nse-http-dirlist": "config_benchmark",
     "nse-tls-deprecated-protocol": "tls_crypto",
     "nse-tls-weak-cipher": "tls_crypto",
@@ -535,16 +541,59 @@ def cpg_stamp(cpg_id: str) -> str:
     return "cpg_" + cpg_id.replace(".", "_")
 
 
-def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
+# Nuclei / nmap ids that are Redis-without-auth (exposure), not a patch CVE.
+# Hyphen and underscore forms: finding_types.norm_type_key rewrites '-'.
+REDIS_AUTH_TEMPLATE_IDS = frozenset(
+    {
+        "exposed-redis",
+        "exposed_redis",
+        "nse-redis-noauth",
+        "nse_redis_noauth",
+        "redis_noauth",
+        "redis-noauth",
+        "redis-unauth",
+        "redis_unauth",
+    }
+)
+
+_REDIS_AUTH_BLOB_TOKS = (
+    "without auth",
+    "unauthenticated",
+    "noauth",
+    "no auth",
+    "requirepass",
+    "accessible without authentication",
+    "unprotected by password",
+)
+
+
+def redis_auth_template_ids(
+    rec: dict[str, Any], mapped: dict[str, Any] | None = None
+) -> list[str]:
+    """Every extra/template id. Do not first-win on check_id or finding_type."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    tid = str(
-        mapped.get("finding_type")
-        or extra.get("template_id")
-        or extra.get("rule")
-        or extra.get("check_id")
-        or ""
-    ).lower()
-    if tid in {"exposed-redis", "nse-redis-noauth"}:
+    mapped = mapped or {}
+    raw: list[str] = []
+    for key in ("check_id", "template_id", "rule", "template-id", "id"):
+        val = str(extra.get(key) or "").strip().lower()
+        if val:
+            raw.append(val)
+    ftype = str(mapped.get("finding_type") or "").strip().lower()
+    # vuln_playbook sets finding_type=vulnerability and must not hide extra.rule.
+    if ftype and ftype not in {"vulnerability", "unknown", "generic"}:
+        raw.append(ftype)
+    out: list[str] = []
+    seen: set[str] = set()
+    for val in raw:
+        for form in (val, val.replace("-", "_").replace(" ", "_")):
+            if form and form not in seen:
+                seen.add(form)
+                out.append(form)
+    return out
+
+
+def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
+    if any(tid in REDIS_AUTH_TEMPLATE_IDS for tid in redis_auth_template_ids(rec, mapped)):
         return True
     blob = " ".join(
         str(x or "")
@@ -557,17 +606,7 @@ def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
     ).lower()
     if "redis" not in blob:
         return False
-    return any(
-        tok in blob
-        for tok in (
-            "without auth",
-            "unauthenticated",
-            "noauth",
-            "no auth",
-            "requirepass",
-            "accessible without authentication",
-        )
-    )
+    return any(tok in blob for tok in _REDIS_AUTH_BLOB_TOKS)
 
 
 def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> str:
@@ -583,6 +622,9 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
     )
     if ftype in FINDING_TYPE_CLASS:
         return FINDING_TYPE_CLASS[ftype]
+    for tid in redis_auth_template_ids(rec, mapped):
+        if tid in FINDING_TYPE_CLASS:
+            return FINDING_TYPE_CLASS[tid]
     if _looks_unauth_redis(mapped, rec):
         return "exposure_access"
     name = str(mapped.get("control_name") or "")
