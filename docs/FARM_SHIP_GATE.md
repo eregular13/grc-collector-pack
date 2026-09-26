@@ -42,7 +42,7 @@ base SHA (or `github.event.before` on push to master).
 
 - `scripts/farm_drop_to_sor.sh` / `.ps1`
 - `scripts/prove_ciso.py`
-- `shared/ciso_shape.py` / `shared/farm_ship.py`
+- `shared/ciso_shape.py` / `shared/estate_pages.py` / `shared/farm_ship.py`
 - `collectors/grc_loader.py` (POA&M emitter)
 - `fixtures/pack_drop/`
 - the gate itself (`.github/workflows/lab.yml`, `scripts/ci/*`, this doc,
