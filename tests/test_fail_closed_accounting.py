@@ -68,7 +68,8 @@ def test_kind_excluded_custodian_cost_lands_in_excluded_csv(
     for rec in excluded:
         hit = by_id[rec["ref_id"]]
         assert hit["finding_ref_id"] == rec["ref_id"]
-        assert hit["excluded_reason"] == "NOT_A_WEAKNESS"
+        assert hit["excluded_reason"] == "not_a_weakness"
+        assert hit["excluded_reason"] != "NOT_A_WEAKNESS"
         assert hit["id"]
     assert summary["kind_excluded"] == 8
     assert summary["excluded"] >= 8

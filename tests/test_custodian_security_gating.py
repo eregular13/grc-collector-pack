@@ -81,7 +81,7 @@ def test_t18b_empty_storage_encryption_no_finding(tmp_path: Path) -> None:
 def test_t18c_azure_vm_cpu_underutilized_not_a_weakness() -> None:
     recs = cloud_prowler.parse_file(CLOUD / "stop-underutilized-azure-vms" / "resources.json")
     findings = _findings(recs)
-    excluded = [r for r in recs if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    excluded = [r for r in recs if (r.get("extra") or {}).get("exclude_reason") == "not_a_weakness"]
     assert findings == []
     assert len(excluded) == 8
     refs = [r["ref_id"] for r in excluded]
@@ -90,7 +90,7 @@ def test_t18c_azure_vm_cpu_underutilized_not_a_weakness() -> None:
     hit = excluded[0]
     decision = poam_decision(hit)
     assert decision["include"] is False
-    assert decision["reason"] == "NOT_A_WEAKNESS"
+    assert decision["reason"] == "not_a_weakness"
     assert decision["reason"] in POAM_EXCLUDE_REASONS
     mapped = map_finding(hit)
     assert mapped["include_poam"] is False
@@ -199,12 +199,12 @@ def test_cost_policy_tag_public_filter_is_not_a_weakness() -> None:
         }
     )
     assert recs
-    assert all(r.get("ExcludeReason") == "NOT_A_WEAKNESS" for r in recs)
+    assert all(r.get("ExcludeReason") == "not_a_weakness" for r in recs)
     assert recs[0]["ResourceId"] == "i-aaa111"
 
 
 def test_stop_idle_admin_workstations_is_not_a_weakness() -> None:
-    """Operator cost map is authority — A4 stays NOT_A_WEAKNESS."""
+    """Operator cost map is authority — A4 stays not_a_weakness."""
     pol = {
         "description": "Stop idle admin workstations after hours",
         "resource": "aws.ec2",
@@ -219,7 +219,7 @@ def test_stop_idle_admin_workstations_is_not_a_weakness() -> None:
         }
     )
     assert recs
-    assert recs[0].get("ExcludeReason") == "NOT_A_WEAKNESS"
+    assert recs[0].get("ExcludeReason") == "not_a_weakness"
     assert recs[0]["Status"] == "EXCLUDED"
 
 
@@ -503,7 +503,7 @@ def test_synthetic_eleven_security_policies_never_drop_unknown() -> None:
                 "resources": [{"id": f"{name}-1"}],
             }
         )
-        if not recs or recs[0].get("ExcludeReason") == "NOT_A_WEAKNESS":
+        if not recs or recs[0].get("ExcludeReason") in {"NOT_A_WEAKNESS", "not_a_weakness"}:
             dropped.append(name)
             continue
         on_plan.append(name)

@@ -853,12 +853,22 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
     return mapped
 
 
+def _canon_exclude_reason(reason: str) -> str:
+    """One spelling: not_a_weakness. Accept the old Custodian NOT_A_WEAKNESS."""
+    raw = str(reason or "").strip()
+    if raw.upper() == "NOT_A_WEAKNESS":
+        return "not_a_weakness"
+    return raw
+
+
 def _is_custodian_not_a_weakness(rec: dict[str, Any]) -> bool:
     """Custodian cost/ops only. nmap extra.not_a_weakness stays on the nmap path."""
     if str(rec.get("source") or "") != "cloud-prowler":
         return False
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    return str(extra.get("exclude_reason") or extra.get("poam_exclude") or "") == "NOT_A_WEAKNESS"
+    return _canon_exclude_reason(
+        extra.get("exclude_reason") or extra.get("poam_exclude") or ""
+    ) == "not_a_weakness"
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
@@ -2022,14 +2032,16 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     if lighter is None:
         lighter = poam_lighter_requested()
     if rec.get("kind") == "excluded":
-        reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "unmapped")
+        reason = _canon_exclude_reason(
+            extra.get("exclude_reason") or extra.get("poam_exclude") or "unmapped"
+        )
         if reason not in POAM_EXCLUDE_REASONS:
             reason = "unmapped"
         return {"include": False, "reason": reason, "severity": sev}
     if _is_needs_review(rec):
         return {"include": True, "reason": "needs_review", "severity": sev}
     if _is_custodian_not_a_weakness(rec):
-        return {"include": False, "reason": "NOT_A_WEAKNESS", "severity": sev}
+        return {"include": False, "reason": "not_a_weakness", "severity": sev}
     if check in MISCONFIG_RULES:
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):

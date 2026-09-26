@@ -742,7 +742,7 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
                 "ResourceType": resource,
             }
             if klass == "cost":
-                item["ExcludeReason"] = "NOT_A_WEAKNESS"
+                item["ExcludeReason"] = "not_a_weakness"
             out.append(item)
     return out
 
@@ -982,7 +982,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     "labels": LABELS + [service, "not-a-weakness"],
                     "collected_at": now,
                     "extra": {
-                        "exclude_reason": str(item.get("ExcludeReason") or "NOT_A_WEAKNESS"),
+                        "exclude_reason": str(item.get("ExcludeReason") or "not_a_weakness"),
                         "check_id": check,
                         "arn": arn,
                         "status": status or "EXCLUDED",
