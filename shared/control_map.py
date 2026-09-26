@@ -9,7 +9,14 @@ import os
 import re
 from typing import Any
 
-from shared.finding_types import TYPE_WEAKNESS_NAME, finding_type, has_xss_signal, type_remediation
+from shared.finding_types import (
+    TYPE_WEAKNESS_NAME,
+    extra_dict,
+    finding_type,
+    has_xss_signal,
+    type_remediation,
+    union_controls,
+)
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
     REDIS_AUTH_TEMPLATE_IDS,
@@ -880,10 +887,29 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     return explicit or control or raw or str(rec.get("ref_id") or "finding")
 
 
+def _with_merged_controls(mapped: dict[str, Any], rec: dict[str, Any]) -> dict[str, Any]:
+    """Carry extra.nist_800_53 folded in by a weakness/alias merge."""
+    extra = extra_dict(rec)
+    n53 = union_controls(mapped.get("nist_800_53") or [], extra.get("nist_800_53") or [])
+    if n53 == list(mapped.get("nist_800_53") or []):
+        return mapped
+    mapped = dict(mapped)
+    mapped["nist_800_53"] = n53
+    return _stamp_csf(mapped, rec)
+
+
 def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
     """Type-specific remediations; CSF/CPG from 800-53, not severity."""
     sev = canon_severity(rec.get("severity"))
     n53 = list(typed.get("nist_800_53") or [])
+    extra = extra_dict(rec)
+    n53 = union_controls(n53, extra.get("nist_800_53") or [])
+    # saas-idp standing-GA / tenant PIM used the title map (includes AC-5)
+    # before slim typed them entra_ga_pim. Keep that union so alias merge
+    # can carry AC-5 and EGP-8F1A843A26 does not drop it.
+    if typed.get("finding_type") == "entra_ga_pim" and str(rec.get("source") or "") == "saas-idp":
+        title_n53, _ = _lookup_control_ids(str(typed.get("control_name") or ""))
+        n53 = union_controls(n53, title_n53)
     mapped = _stamp_csf(
         {
             "control_name": typed["control_name"],
@@ -1033,7 +1059,7 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
             rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
-        return mapped
+        return _with_merged_controls(mapped, rec)
     typed = type_remediation(rec)
     if typed and not typed.get("generic"):
         return _typed_map(rec, typed)

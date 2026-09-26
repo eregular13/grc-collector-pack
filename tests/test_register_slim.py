@@ -15,6 +15,7 @@ from shared.estate_pages import (
     PageContext,
     build_executive_summary,
 )
+from shared.control_map import map_finding
 from shared.finding_types import (
     dedupe_key,
     dedupe_weaknesses,
@@ -22,6 +23,7 @@ from shared.finding_types import (
     finding_type,
     primary_asset,
     register_asset_key,
+    union_controls,
 )
 from shared.kev import KevCatalog
 from shared.poam_ledger import apply_ledger, empty_ledger, fp_v1, payload_sha256
@@ -292,3 +294,47 @@ def test_exec_names_open_poam_from_poam_csv() -> None:
         )
     )
     assert "Open POA&M (poam.csv): 2" in text
+
+
+def _ga_tenant_pim() -> dict:
+    """DEMO Scuba tenant row that keeps EGP-8F1A843A26."""
+    return make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-privileged-roles-use-pim-contoso-onmicrosoft-com",
+        name="Privileged roles use PIM",
+        description="Global Administrator assigned permanently",
+        severity="critical",
+        category="identity-gap",
+        assets=["contoso.onmicrosoft.com"],
+        extra={"control": "Privileged roles use PIM"},
+    )
+
+
+def test_union_controls_stable_deduped_order() -> None:
+    assert union_controls(["AC-2", "AC-6"], ["AC-2", "AC-6", "AC-5"]) == [
+        "AC-2",
+        "AC-6",
+        "AC-5",
+    ]
+
+
+def test_alias_merge_unions_controls_and_keeps_demo_ac5() -> None:
+    """Merged-away title-map AC-5 rides onto the survivor; tenant keeps AC-5.
+
+    Master cited AC-5 on Standing GA, Graph GA, and tenant EGP-8F1A843A26.
+    Slim aliases the first two onto the BloodHound UPN row. Row counts/IDs
+    stay put; the survivor takes the union.
+    """
+    standing, graph, tenant = _ga_standing(), _ga_graph(), _ga_tenant_pim()
+    for rec, label in ((standing, "standing"), (graph, "graph"), (tenant, "tenant")):
+        n53 = map_finding(rec).get("nist_800_53") or []
+        assert "AC-5" in n53, (label, n53)
+        assert n53 == ["AC-2", "AC-6", "AC-5"], (label, n53)
+
+    bh = _ga_scuba()
+    assert "AC-5" not in (map_finding(bh).get("nist_800_53") or [])
+    merged = [r for r in dedupe_weaknesses([bh, graph, standing]) if r.get("kind") == "finding"]
+    assert len(merged) == 1
+    assert map_finding(merged[0]).get("nist_800_53") == ["AC-2", "AC-6", "AC-5"]
+    assert (merged[0].get("extra") or {}).get("nist_800_53") == ["AC-2", "AC-6", "AC-5"]

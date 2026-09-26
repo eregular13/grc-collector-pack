@@ -662,6 +662,29 @@ def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
     return extra if isinstance(extra, dict) else {}
 
 
+def union_controls(*groups: Any) -> list[str]:
+    """De-duplicated controls, first-seen order (survivor, then merged-away)."""
+    out: list[str] = []
+    for group in groups:
+        if not group:
+            continue
+        for raw in group:
+            token = str(raw or "").strip()
+            if token and token not in out:
+                out.append(token)
+    return out
+
+
+def _mapped_nist_controls(rec: dict[str, Any]) -> list[str]:
+    """Controls already on the row plus the current map_finding stamp."""
+    extra = extra_dict(rec)
+    have = list(extra.get("nist_800_53") or [])
+    from shared.control_map import map_finding
+
+    mapped = map_finding(rec)
+    return union_controls(have, mapped.get("nist_800_53") or [])
+
+
 def _alias_keys(rec: dict[str, Any]) -> list[str]:
     extra = extra_dict(rec)
     # risk_id is not an alias key: unmapped PingCastle RiskIds must fall
@@ -1222,6 +1245,10 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extra["also_descriptions"] = extras = []
         if other_desc not in extras:
             extras.append(other_desc)
+    extra["nist_800_53"] = union_controls(
+        _mapped_nist_controls(kept),
+        _mapped_nist_controls(other),
+    )
 
 
 def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
