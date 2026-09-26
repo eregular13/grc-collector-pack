@@ -205,6 +205,11 @@ def load() -> dict:
     findings = [r for r in records if r.get("kind") == "finding"]
     incidents = [r for r in records if r.get("kind") == "incident"]
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
+    severity_unmapped = sum(
+        1
+        for r in findings
+        if isinstance(r.get("extra"), dict) and r["extra"].get("severity_unmapped")
+    )
 
     sources = sorted({str(r.get("source") or "sensor") for r in records})
 
@@ -516,6 +521,7 @@ def load() -> dict:
         "risks_proposed": len(proposed),
         "ocsf": len(ocsf),
         "canonical": len(records),
+        "severity_unmapped": severity_unmapped,
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
         "count_basis": (

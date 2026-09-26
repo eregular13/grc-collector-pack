@@ -27,6 +27,56 @@ def _sev_from_score(score: Any) -> str:
     return "low"
 
 
+def _sev_from_score_factor(score: Any) -> str:
+    """Kubescape scoreFactor: ≥7 high, ≥4 medium, else low."""
+    try:
+        n = float(score)
+    except (TypeError, ValueError):
+        return "medium"
+    if n >= 7:
+        return "high"
+    if n >= 4:
+        return "medium"
+    return "low"
+
+
+def _kube_bench_severity(row: dict[str, Any]) -> str:
+    """FAIL+scored → high; unscored FAIL → medium; WARN is a manual check → low."""
+    status = str(row.get("status") or row.get("State") or "").strip().upper()
+    if status in {"WARN", "WARNING"}:
+        return "low"
+    scored = row.get("scored")
+    if scored is False or str(scored).lower() in {"false", "0", "no"}:
+        return "medium"
+    return "high"
+
+
+def _kubescape_item_severity(ctrl: dict[str, Any]) -> Any:
+    if ctrl.get("scoreFactor") is not None:
+        return _sev_from_score_factor(ctrl.get("scoreFactor"))
+    if ctrl.get("severityScore") is not None:
+        return _sev_from_score(ctrl.get("severityScore"))
+    nested = ctrl.get("severity")
+    if isinstance(nested, dict) and nested.get("score") is not None:
+        return _sev_from_score(nested.get("score"))
+    if nested not in (None, ""):
+        return nested
+    return "medium"
+
+
+def _scope_name(payload: Any, path: Path | None = None) -> str:
+    if isinstance(payload, dict):
+        for key in ("clusterName", "cluster", "node_name", "nodeName", "hostname"):
+            val = str(payload.get(key) or "").strip()
+            if val:
+                return val
+    if path is not None:
+        stem = path.stem.strip()
+        if stem and stem.lower() not in {"kube-bench", "kubescape", "falco", "results", "output"}:
+            return stem
+    return "cluster"
+
+
 def _falco_events(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return [e for e in payload if isinstance(e, dict) and (e.get("rule") or e.get("output"))]
@@ -139,25 +189,28 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"asset_type": "PR"},
                 )
             )
+            rule = str(ev.get("rule") or ev.get("output") or "falco")
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, str(ev.get("rule") or ev.get("output") or "falco")),
+                    ref_id=make_ref(SOURCE, f"{rule}-{cluster}"),
                     name=str(ev.get("rule") or "Falco event"),
                     description=str(ev.get("output") or ev.get("rule")),
                     severity=_falco_severity(ev.get("priority")),
                     category="incident",
-                    assets=[pod, cluster],
+                    assets=[cluster, pod],
                     labels=LABELS + ["falco"],
                     collected_at=now,
-                    extra={"pod": pod, "namespace": fields.get("k8s.ns.name")},
+                    extra={
+                        "pod": pod,
+                        "namespace": fields.get("k8s.ns.name"),
+                        "rule": rule,
+                    },
                 )
             )
         return records
-    cluster = "cluster"
-    if isinstance(payload, dict):
-        cluster = str(payload.get("clusterName") or payload.get("cluster") or "cluster")
+    cluster = _scope_name(payload, path)
     seen_assets: set[str] = set()
     seen_cids: set[str] = set()
 
@@ -187,29 +240,38 @@ def parse_file(path: Path) -> list[dict]:
         desc: str,
         sev: Any,
         labels: list[str],
+        asset: str | None = None,
     ) -> None:
-        key = cid.lower() or name.lower()
-        if not key or key in seen_cids:
+        host = str(asset or cluster or "cluster").strip() or "cluster"
+        key = f"{(cid.lower() or name.lower())}|{host.lower()}"
+        if not cid and not name:
+            return
+        if key in seen_cids:
             return
         seen_cids.add(key)
         add_cluster()
-        try:
-            sev = _sev_from_score(float(sev))
-        except (TypeError, ValueError):
-            sev = sev or "high"
+        if isinstance(sev, (int, float)):
+            sev = _sev_from_score(sev)
+        elif isinstance(sev, str) and sev.replace(".", "", 1).isdigit():
+            try:
+                sev = _sev_from_score(float(sev))
+            except (TypeError, ValueError):
+                sev = sev or "medium"
+        else:
+            sev = sev or "medium"
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"{cid}-{cluster}"),
+                ref_id=make_ref(SOURCE, f"{cid}-{host}"),
                 name=name,
                 description=desc,
                 severity=sev,
                 category="cloud-misconfiguration",
-                assets=[cluster],
+                assets=[host],
                 labels=labels,
                 collected_at=now,
-                extra={"control": cid, "id": cid},
+                extra={"control": cid, "id": cid, "rule": cid},
             )
         )
 
@@ -228,7 +290,7 @@ def parse_file(path: Path) -> list[dict]:
                     str(cid),
                     name,
                     str(ctrl.get("description") or name),
-                    _sev_from_score(ctrl.get("severityScore") or ctrl.get("severity")),
+                    _kubescape_item_severity(ctrl),
                     LABELS,
                 )
         for row in _kubescape_result_rows(payload):
@@ -239,12 +301,13 @@ def parse_file(path: Path) -> list[dict]:
                 continue
             cid = str(row.get("controlID") or row.get("id") or row.get("name") or "ks")
             name = str(row.get("name") or row.get("text") or cid)
-            sev = row.get("severityScore")
-            if sev is None and isinstance(row.get("severity"), dict):
-                sev = row["severity"].get("score")
-            if sev is None:
-                sev = row.get("severity") or "high"
-            add_finding(cid, name, str(row.get("description") or row.get("remediation") or name), sev, LABELS)
+            add_finding(
+                cid,
+                name,
+                str(row.get("description") or row.get("remediation") or name),
+                _kubescape_item_severity(row),
+                LABELS,
+            )
         for res in payload.get("resources") or []:
             if not isinstance(res, dict):
                 continue
@@ -272,12 +335,14 @@ def parse_file(path: Path) -> list[dict]:
             continue
         cid = str(row.get("test_number") or row.get("id") or row.get("text") or "cis")
         name = str(row.get("test_desc") or row.get("text") or cid)
+        node = str(row.get("node_name") or row.get("nodeName") or row.get("node") or cluster)
         add_finding(
             cid,
             name,
             str(row.get("reason") or row.get("remediation") or name),
-            row.get("severity") or "high",
+            _kube_bench_severity(row),
             LABELS + ["kube-bench"],
+            asset=node,
         )
     return records
 

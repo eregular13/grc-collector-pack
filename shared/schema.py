@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Iterable
 
 KINDS = frozenset({"asset", "finding", "evidence", "incident"})
@@ -17,21 +18,42 @@ RR_IMPACT = frozenset(
     {"NEGLIGIBLE", "MINOR", "MODERATE", "MAJOR", "SEVERE"}
 )
 
+# Vendor vocabularies seen in file-drop tools (semgrep, testssl, ScoutSuite,
+# Falco, RH/Oracle, kube-bench WARN, checkov, etc.). Unknown words must not
+# silently become info — see map_severity / extra.severity_unmapped.
 _SEV_ALIASES = {
     "informational": "info",
     "information": "info",
     "none": "info",
     "info": "info",
+    "negligible": "info",
+    "note": "info",
+    "debug": "info",
+    "trace": "info",
     "low": "low",
+    "minor": "low",
+    "notice": "low",
     "med": "medium",
     "moderate": "medium",
     "mod": "medium",
     "medium": "medium",
+    "warning": "medium",
+    "warn": "medium",
     "high": "high",
+    "error": "high",
+    "err": "high",
+    "important": "high",
+    "major": "high",
+    "danger": "high",
     "crit": "critical",
     "critical": "critical",
     "severe": "critical",
+    "fatal": "critical",
+    "emergency": "critical",
+    "alert": "critical",
+    "panic": "critical",
 }
+_CVSS_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 _CISO_VULN = {
     "info": "Information",
@@ -80,9 +102,54 @@ PREFIX = {
 }
 
 
+def _cvss_band(raw: str) -> str | None:
+    """Map a bare CVSS 0–10 number. Reject inf/nan and out-of-range values."""
+    s = str(raw or "").strip()
+    if not s or not _CVSS_RE.fullmatch(s):
+        return None
+    try:
+        n = float(s)
+    except ValueError:
+        return None
+    if n < 0 or n > 10:
+        return None
+    if n == 0:
+        return "info"
+    if n < 4.0:
+        return "low"
+    if n < 7.0:
+        return "medium"
+    if n < 9.0:
+        return "high"
+    return "critical"
+
+
+def map_severity(raw: Any) -> tuple[str, bool]:
+    """Return (canonical severity, unmapped).
+
+    Empty / missing → info (not a vendor word). Known aliases and CVSS
+    numbers map in-band. Any other token → medium and unmapped=True so the
+    loader can count extra.severity_unmapped instead of silently using info.
+    """
+    if raw is None:
+        return "info", False
+    text = str(raw).strip()
+    if not text:
+        return "info", False
+    s = text.lower()
+    if s in _SEV_ALIASES:
+        return _SEV_ALIASES[s], False
+    if s in FINDING_SEV:
+        return s, False
+    cvss = _cvss_band(s)
+    if cvss is not None:
+        return cvss, False
+    return "medium", True
+
+
 def canon_severity(raw: Any) -> str:
-    s = str(raw or "info").strip().lower()
-    return _SEV_ALIASES.get(s, s if s in FINDING_SEV else "info")
+    sev, _unmapped = map_severity(raw)
+    return sev
 
 
 def ciso_finding_severity(raw: Any) -> str:
@@ -153,18 +220,23 @@ def make_record(
 ) -> dict[str, Any]:
     if kind not in KINDS:
         raise ValueError(f"invalid kind {kind}")
+    sev, unmapped = map_severity(severity)
+    extra_out = dict(extra or {})
+    if unmapped:
+        extra_out["severity_unmapped"] = True
+        extra_out.setdefault("severity_raw", str(severity))
     rec = {
         "kind": kind,
         "source": source,
         "ref_id": ref_id,
         "name": name,
         "description": description,
-        "severity": canon_severity(severity),
+        "severity": sev,
         "status": status,
         "category": category,
         "assets": [str(a) for a in (assets or []) if a],
         "labels": [str(x) for x in (labels or []) if x],
         "collected_at": collected_at,
-        "extra": extra or {},
+        "extra": extra_out,
     }
     return rec

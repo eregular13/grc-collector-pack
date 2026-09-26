@@ -239,7 +239,7 @@ def parse_file(path: Path) -> list[dict]:
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, req),
+                    ref_id=make_ref(SOURCE, f"{req}-{tenant}"),
                     name=req,
                     description=str(row.get("Details") or req),
                     severity=sev,
@@ -247,7 +247,11 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[tenant],
                     labels=LABELS + [str(row.get("ProductName") or "aad").lower(), "scuba"],
                     collected_at=now,
-                    extra={"product": row.get("ProductName")},
+                    extra={
+                        "product": row.get("ProductName"),
+                        "check_id": req,
+                        "rule": req,
+                    },
                 )
             )
         return records
