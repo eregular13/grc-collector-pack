@@ -54,6 +54,8 @@ CISO_HEADERS = {
 }
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
+EXCLUDED_HEADER = "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by"
+EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
 FINDING_SEV = frozenset({"low", "medium", "high", "critical"})
@@ -381,8 +383,8 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
             encoding="utf-8",
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
-            "finding_ref_id,weakness,asset,severity,excluded_reason\n"
-            "DEMO-I,sample-info,sample-asset,info,severity_info\n"
-            "DEMO-H,sample-honeypot,sample-asset,high,honeypot\n",
+            EXCLUDED_HEADER + "\n"
+            "DEMO-I,sample-info,sample-asset,info,severity_info,\n"
+            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,\n",
             encoding="utf-8",
         )

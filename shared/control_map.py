@@ -1358,8 +1358,11 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
 # Default plan puts Lows and non-key Mediums on the POA&M. Infos and honeypot
 # stay off. Aggregated SIEM alerts are telemetry (excluded) unless rule.level
 # is >= 12 or the rule is a known compromise indicator. Info-level telemetry
-# is telemetry_info. Repeated included telemetry lows that share (rule/check
-# id, asset) collapse; the extras are telemetry_duplicate. A lighter plan
+# is telemetry_info (not one 180-day row per alert). Repeated included
+# telemetry lows that share (rule/check id, asset) collapse; the extras are
+# telemetry_duplicate. A bare nmap-style port-open row on a host+port that
+# already has a specific finding (nuclei/Nessus/testssl/NSE/…) is
+# superseded_by_specific. A lighter plan
 # (GRC_POAM_LIGHTER) restores the old exclude set.
 POAM_INCLUDE_REASONS = frozenset(
     {
@@ -1379,6 +1382,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry",
         "telemetry_info",
         "telemetry_duplicate",
+        "superseded_by_specific",
     }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
@@ -1508,10 +1512,17 @@ def iter_poam_decisions(
     Multiple low telemetry rows that share (rule/check id, asset) become one
     included row. The extras are excluded as telemetry_duplicate so
     weaknesses_total == poam_included + sum(excluded_by_reason).
+
+    A port-only row that shares a normalized host+port with a specific
+    finding is excluded as superseded_by_specific (winner = highest
+    severity, then lowest EGP- id). The row stays in the finding set.
     """
+    from shared.port_fold import SUPERSEDED_REASON, egp_id_for, port_only_superseders
+
     if lighter is None:
         lighter = poam_lighter_requested()
     seen: set[tuple[str, str]] = set()
+    superseders = port_only_superseders(findings)
     out: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for rec in findings:
         decision = dict(poam_decision(rec, lighter=lighter))
@@ -1526,6 +1537,12 @@ def iter_poam_decisions(
                 decision["reason"] = "telemetry_duplicate"
             elif key[0]:
                 seen.add(key)
+        winner = superseders.get(str(rec.get("ref_id") or ""))
+        if winner is not None:
+            decision["include"] = False
+            decision["reason"] = SUPERSEDED_REASON
+            decision["superseded_by"] = egp_id_for(winner)
+            decision["superseded_by_ref"] = str(winner.get("ref_id") or "")
         out.append((rec, decision))
     return out
 

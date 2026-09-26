@@ -178,6 +178,8 @@ def test_ship_surface_lists_head_and_assertion_paths() -> None:
     assert "shared/ciso_shape.py" in FARM_SHIP_PATHS
     assert "shared/estate_pages.py" in FARM_SHIP_PATHS
     assert "shared/farm_ship.py" in FARM_SHIP_PATHS
+    assert "shared/control_map.py" in FARM_SHIP_PATHS
+    assert "shared/port_fold.py" in FARM_SHIP_PATHS
     assert "fixtures/pack_drop" in FARM_SHIP_TREES
     for rel in FARM_SHIP_PATHS:
         assert (ROOT / rel).is_file(), rel
