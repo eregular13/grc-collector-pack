@@ -411,7 +411,7 @@ def test_custodian_ebs_snapshot_and_aws_cost_on_real_runs() -> None:
 
     aws = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-aws-instances" / "resources.json")
     assert not any(r["kind"] == "finding" for r in aws)
-    excluded = [r for r in aws if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    excluded = [r for r in aws if (r.get("extra") or {}).get("exclude_reason") == "not_a_weakness"]
     assert len(excluded) == 6
 
 
@@ -462,7 +462,7 @@ def test_custodian_security_vs_cost_on_real_runs() -> None:
 
     vms = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json")
     assert not any(r["kind"] == "finding" for r in vms)
-    excluded = [r for r in vms if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    excluded = [r for r in vms if (r.get("extra") or {}).get("exclude_reason") == "not_a_weakness"]
     assert len(excluded) == 8
 
 
