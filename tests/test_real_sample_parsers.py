@@ -41,6 +41,9 @@ def test_prowler_ocsf_keeps_fail_and_resource_uid() -> None:
     assert "check" not in assets
     assert "<resource_uid>" not in assets
     assert not any(is_placeholder_id(a) for a in assets)
+    assert findings, "Prowler FAIL on placeholder resources must stay on the plan"
+    assert all(str((r.get("assets") or [""])[0]).startswith("account:") for r in findings)
+    assert all((r.get("assets") or [""])[0] == "account:unknown" for r in findings)
     assert all(not is_placeholder_id((r.get("assets") or [""])[0]) for r in findings)
     assert all(not is_placeholder_id(r["extra"].get("account_id") or "") for r in findings)
     assert all(r["extra"].get("status") == "FAIL" for r in findings)
@@ -54,6 +57,8 @@ def test_prowler_csv_semicolon() -> None:
     assert "<resource_uid>" not in assets
     assert not any(is_placeholder_id(a) for a in assets)
     assert not any(r["extra"].get("check_id") == "account_maintain_current_contact_details" for r in findings)
+    assert findings, "Prowler FAIL on placeholder resources must stay on the plan"
+    assert all(str((r.get("assets") or [""])[0]).startswith("account:") for r in findings)
     assert all(not is_placeholder_id((r.get("assets") or [""])[0]) for r in findings)
     assert all(not is_placeholder_id(r["extra"].get("account_id") or "") for r in findings)
     assert detect_family(SAMPLES / "prowler" / "example_output_aws.csv") == "prowler"
