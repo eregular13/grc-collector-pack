@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 205 — merge master 9f73537 (#141) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `9f73537` (#141 real-tool collector
+honesty + #152 CSF tags + #151 honeypot exclude). No rebase. #139
+follow-ups + Argus B4 + empty-group PingCastle skip kept alongside
+#141 computer-SPN / DC-delegation filters. Host-lab: assets **79**
+findings **107** poam **124** excluded **5** (3 honeypot + 1 Wazuh
+telemetry + 1 superseded_by_specific). Pytest **1287**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 203 — merge master 51bba3c (#134) into #145 (2026-09-26)
 
 Normal merge of `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux).

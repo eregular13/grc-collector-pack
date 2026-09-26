@@ -1,0 +1,3 @@
+Email Address [Required],First Name [Required],Last Name [Required],Status [READ ONLY],Super Admin,2-Step Verification Status,Last Sign In [READ ONLY],Org Unit Path [Required]
+admin@example.com,Admin,User,Active,True,Not enrolled,2026-08-01T00:00:00Z,/
+user@example.com,Regular,User,Active,False,Enrolled,2026-09-01T00:00:00Z,/Staff

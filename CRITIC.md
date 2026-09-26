@@ -1,3 +1,16 @@
+# CRITIC — cycle 205 (MERGE_MASTER_141_INTO_145)
+
+Merge `origin/master` `9f73537` (#141 collectors false/empty on real
+tool output, plus #152/#151 already on the PR tip). Both sides kept:
+#139 follow-ups + Argus B4 + PingCastle 0-member skip; #141 computer
+SPN / DC unconstrained-delegation filters. Lab this brick: pytest
+**1287** passed, 1 skipped. Ten collectors + honeypot + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=79` `findings=107`
+`vulnerabilities=22` `poam=124` `weaknesses=129` `excluded=5`
+`severity_unmapped=0` `demo=true`). Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 203 (MERGE_MASTER_134_INTO_145)
 
 Lab this brick: pytest **1246** passed, 1 skipped. Ten collectors +

@@ -135,6 +135,8 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Tighten SPF softfail (~all)": "SPF is softfail-only (~all)",
     "Publish DKIM for the listed selector": "DKIM is missing for the listed selector",
     "Rotate and revoke exposed credentials": "Hardcoded or leaked credential is present",
+    "Review privileged directory role": "Privileged directory role is assigned (unspecified)",
+    "Remove standing Global Administrator assignment": "Standing Global Administrator is assigned",
     "Remove standing privileged role assignment": "Standing privileged role is assigned",
     "Disable legacy authentication protocols": "Legacy authentication protocols are enabled",
     "Restrict external sharing": "External sharing is not restricted",
@@ -447,6 +449,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Require phishing-resistant MFA for privileged users": ["IA-2", "IA-2(1)"],
     "Require MFA for privileged SaaS admins": ["IA-2", "IA-2(1)"],
     "Remove standing Global Administrator assignment": ["AC-2", "AC-6", "AC-5"],
+    "Review privileged directory role": ["AC-2", "AC-6"],
     "Enforce Windows password history": ["IA-5"],
     "Disable LM hash storage": ["IA-5", "CM-6"],
     "Enable a host firewall": ["SC-7", "CM-7"],
@@ -1254,6 +1257,13 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         fix = (
             "Use PIM eligible assignments instead of standing Global Administrator. "
             "This is a dropped Scuba/Graph export finding, not a Graph API call."
+        )
+    elif "privileged role" in text:
+        name = "Review privileged directory role"
+        fix = (
+            "Confirm the admin role from the dropped IdP export. "
+            "isAdmin means any admin role, not Global Administrator. "
+            "This is not a Graph or Okta API call."
         )
     elif "standing privileged" in text or (
         "standing" in text and "role" in text and "administrator" not in text
