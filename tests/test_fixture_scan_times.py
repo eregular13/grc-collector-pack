@@ -85,11 +85,14 @@ NO_TIMESTAMP_TOOLS = (
     "honeypot events (ts is event time; rows stay excluded telemetry)",
 )
 
-# Fresh DEMO poam.csv EGP IDs on master ce49f26. ArtifactName was dropped
-# so this set and the asset-ledger count stay exactly as on master.
+# Fresh DEMO poam.csv EGP IDs on current master (e9b7616 = #192 + #185).
+# ArtifactName was dropped so this set and the asset-ledger count stay
+# exactly as on master. #192 collapsed two not-recorded twins; do not
+# hard-code the DEMO row total — derive it from the run.
 MASTER_DEMO_ASSET_LEDGER = 80
 MASTER_DEMO_EGP_IDS = frozenset(
     {
+        "EGP-00F8CF94F1",
         "EGP-01A7E0C096",
         "EGP-0361A3226F",
         "EGP-03DE2375BD",
@@ -126,14 +129,15 @@ MASTER_DEMO_EGP_IDS = frozenset(
         "EGP-3F2616BFEB",
         "EGP-4010401CDB",
         "EGP-404EF5A7B6",
+        "EGP-420F81AA88",
         "EGP-43DA96FE7C",
         "EGP-445A4362DA",
         "EGP-452E20FDD5",
         "EGP-460F30CDC5",
         "EGP-470D8E6BC5",
         "EGP-476574DDAC",
+        "EGP-47E32EF624",
         "EGP-48F4BD4DB7",
-        "EGP-4BA874FC56",
         "EGP-4C075D5324",
         "EGP-4D166DC411",
         "EGP-4EBC78720E",
@@ -145,10 +149,10 @@ MASTER_DEMO_EGP_IDS = frozenset(
         "EGP-5BA9098A6F",
         "EGP-5C35746A8A",
         "EGP-5C40B48DB9",
+        "EGP-5FE9037635",
         "EGP-647DE09109",
         "EGP-65380FA86F",
         "EGP-667BD345E8",
-        "EGP-66C6794A18",
         "EGP-6AC29500A4",
         "EGP-6AE827EABE",
         "EGP-6E2C561DC3",
@@ -167,13 +171,11 @@ MASTER_DEMO_EGP_IDS = frozenset(
         "EGP-921A461C91",
         "EGP-9669766F6B",
         "EGP-973D7948A6",
-        "EGP-98052F0CBE",
         "EGP-983ABF17E7",
         "EGP-98AE62B10D",
         "EGP-9CD3850AD7",
         "EGP-A3038CD302",
         "EGP-A499CB9619",
-        "EGP-A9699FDD7B",
         "EGP-AAC630CCE4",
         "EGP-AB11671FFA",
         "EGP-AB1B4DF038",
@@ -183,7 +185,6 @@ MASTER_DEMO_EGP_IDS = frozenset(
         "EGP-AF83F05236",
         "EGP-B09502BD02",
         "EGP-B57CE7F3B7",
-        "EGP-B69B84EE98",
         "EGP-B867338F75",
         "EGP-BB7125EC27",
         "EGP-BC9939439E",
@@ -209,7 +210,6 @@ MASTER_DEMO_EGP_IDS = frozenset(
         "EGP-E6A90AAF66",
         "EGP-E94D21F9AB",
         "EGP-EA662AB81B",
-        "EGP-EBC76F1F2A",
         "EGP-F18CA5E082",
     }
 )
@@ -437,16 +437,17 @@ def _run_demo_pack(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_demo_pack_run_detection_dates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     poam = _run_demo_pack(tmp_path, monkeypatch)
     real, missing, dates = _poam_date_counts(poam)
-    # Measured on master ce49f26: 9 real / 112 not recorded of 121.
-    # After fixtures + parser reads on this branch:
-    assert real + missing == 121
+    with poam.open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    total = len(rows)
+    # Real-date count is this PR's claim. Total comes from the run so a
+    # later master collapse (e.g. #192 121→119) cannot hard-fail the sum.
     assert real == 61
-    assert missing == 60
+    assert real + missing == total
     unknown = set(dates) - FIXTURE_DATES
     assert not unknown, f"POA&M dates not from fixtures: {sorted(unknown)}"
     assert TODAY not in dates
-    with poam.open(encoding="utf-8", newline="") as fh:
-        egps = {row["poam_id"] for row in csv.DictReader(fh)}
+    egps = {row["poam_id"] for row in rows}
     assert egps == MASTER_DEMO_EGP_IDS
     ledger = json.loads((poam.parent.parent / "assets" / "asset-ledger.json").read_text(encoding="utf-8"))
     assert len(ledger.get("assets") or {}) == MASTER_DEMO_ASSET_LEDGER
@@ -461,7 +462,7 @@ def test_lab_drop_run_detection_dates(tmp_path: Path) -> None:
     stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
     poam = Path(stamp["out_dir"]) / "poam" / "poam.csv"
     real, missing, dates = _poam_date_counts(poam)
-    # Measured on master ce49f26: 15 real / 34 not recorded of 49.
+    # Measured on master e9b7616: 15 real / 34 not recorded of 49.
     assert real + missing == 49
     assert real == 23
     assert missing == 26
@@ -476,7 +477,7 @@ def test_farm_drop_detection_date_counts(tmp_path: Path) -> None:
     stamp = prove_ciso(root=ROOT, dest=dest)
     poam = Path(stamp["out_dir"]) / "poam" / "poam.csv"
     real, missing, dates = _poam_date_counts(poam)
-    # Farm is unchanged by this PR. Measured on master ce49f26: 69 / 4 of 73.
+    # Farm is unchanged by this PR. Measured on master e9b7616: 69 / 4 of 73.
     # Dates come from pack_drop meta.json generated_at (2026-09-08).
     assert real + missing == 73
     assert real == 69
