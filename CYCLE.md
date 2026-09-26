@@ -1,205 +1,104 @@
 # CYCLE log
 
-## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
+## cycle 207 — merge origin/master 1be65cf (#134+#159) (2026-09-26)
 
-Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;
-after `22d085f` #157 and `befc7d0` #162). No rebase. Vendor
-persist/audit/backfill kept. Pytest **1333**. Host-lab unchanged
-(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+Normal merge of `origin/master` `1be65cf` (#159 farm_which PATH
+isolate; also #134+#141+#145+#150+#151+#152+#155+#156). No rebase.
+Keep register-one-truth + flood_guard + FedRAMP Open = poam.csv +
+included_for_ledger + DUPLICATE_INSTANCE; take master's telemetry
+exclude, CSF/CPG class tags, real-sample parsers, Argus B4,
+honeypot exclude, not_a_weakness, framework_refs on ledger items.
+Identity assert accepts master's `Framework Tags` extra column
+(`FEDRAMP_CSV_HEADERS`). Host-lab **79 / 105 / 122** excluded **20**
+(honeypot 3 + telemetry 1 + superseded 1 + DUPLICATE_INSTANCE 15);
+flood_guard 142 = 122 + 20. Farm **48 / 134 / 85** excluded **89**;
+flood_guard 174 = 85 + 89. pytest **1304**. Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
-## cycle 211 — merge master 22d085f (#157) into Gap 2 (2026-09-26)
+## cycle 201 — FedRAMP Open = poam.csv; flood_guard (2026-09-26)
 
-Normal merge of `origin/master` `22d085f` (#157 B6 playbooks; after
-`befc7d0` #162). No rebase. Vendor backfill baseline kept. Pytest
-**1331**. Host-lab unchanged (79 / 107 / poam 124 / excluded 5).
-Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+FedRAMP Open rows are the included POA&M decision set only — info,
+honeypot, and lighter-excluded ledger items never export as Open.
+Loader dedupe writes each merged-away finding to excluded.csv as
+DUPLICATE_INSTANCE with the surviving EGP- id. summary.flood_guard
+is findings_in + pending_carried == poam_rows + excluded_rows,
+asserted in lab_outputs and the farm gate. No rollups or umbrellas.
+Host-lab unique counts **unchanged** 78 / 101 / 122; excluded 1→17
+(16 DUPLICATE_INSTANCE + 1 superseded). flood_guard 139 = 122 + 17.
+Farm 48 / 134 / 85; excluded 49→89 (40 DUPLICATE_INSTANCE);
+flood_guard 174 = 85 + 89. MIN_FARM_FINDINGS=110 and
+MIN_FARM_EXCLUDED=20 unchanged. pytest **1226**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out.
 
-## cycle 210 — pre-#160 vendor backfill is not a field change (2026-09-26)
+## cycle 200 — no Pentera in console or drop-refresh (2026-09-26)
 
-Upgrade run over a ledger without O/P/Q fills No/default as a schema
-baseline: no `field_changed`, no Status Date churn. Merged
-`origin/master` `befc7d0` (#162) with a normal merge. Pytest **1314**.
-Host-lab unchanged (79 / 107 / poam 124 / excluded 5). Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
-stay-out.
-
-## cycle 209 — persist operator No + O/P/Q audit (#160) (2026-09-26)
-
-Metis acceptance: operator Vendor Dependency=No persists across later
-runs without overrides.csv (`vd_source=operator`). Any O/P/Q /
-`vd_source` change updates `status_date` and writes `field_changed`.
-Invalid override tokens warn. Vendor-dependent Yes stays off Closed.
-Fingerprint / EGP IDs unchanged. Pytest **1309**. Host-lab unchanged
-(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 208 — merge master 1be65cf (#159) into Gap 2 (2026-09-26)
-
-Normal merge of `origin/master` `1be65cf` (#159 hermetic farm_which PATH).
-No rebase. Gap 2 O/P/Q kept. Pytest **1305**. Host-lab unchanged.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 207 — POA&M Gap 2 vendor dependency O/P/Q (2026-09-26)
-
-FedRAMP R3.0 Open O/P/Q: Vendor Dependency defaults to **No**
-(`vd_source=default`), never invents Yes. Scanner no-fix is
-suggestion-only. Operator override persists on the ledger. P/Q blank
-when No; Q is `Vendor – Product` when Yes. KEV due dates are not
-suspended. Host-lab unchanged: assets **79** findings **107** poam
-**124** excluded **5**. Pytest **1304**. Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
-
-Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed
-risky ports so UDP 445 is not SMB). No rebase. #139 follow-ups +
-#141 computer-SPN / DC filters + PingCastle 0-member skip kept.
-Host-lab unchanged: assets **79** findings **107** poam **124**
-excluded **5**. Pytest **1288**. Catalog **unchanged**. paying_day
+Removed the Pentera vendor line from the drop-refresh script writers
+and the loopback console (HTML + export.zip IMPORT.md). Drift test
+asserts no `Pentera` in those sources or in temp-dir refresh writes.
+`product-lab/drop` is not regenerated in this brick. Merged
+`origin/master` `9aeb229` (#147) with a normal merge — carried
+pending ledger rows now export on both CSVs. Host-lab **unchanged**
+78 / 101 / 122. pytest **1223**. Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
-## cycle 205 — merge master 9f73537 (#141) into #145 (2026-09-26)
+## cycle 199 — register one truth (2026-09-26)
 
-Normal merge of `origin/master` `9f73537` (#141 real-tool collector
-honesty + #152 CSF tags + #151 honeypot exclude). No rebase. #139
-follow-ups + Argus B4 + empty-group PingCastle skip kept alongside
-#141 computer-SPN / DC-delegation filters. Host-lab: assets **79**
-findings **107** poam **124** excluded **5** (3 honeypot + 1 Wazuh
-telemetry + 1 superseded_by_specific). Pytest **1287**. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 203 — merge master 51bba3c (#134) into #145 (2026-09-26)
-
-Normal merge of `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux).
-No rebase. #139 follow-ups + Argus B4 + #144/#140/#147 kept. SOURCES.md is the union.
-Host-lab: assets **78** findings **104** poam **124** excluded **2**
-(telemetry + superseded_by_specific). Pytest **1246**. Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 199 — merge master 9aeb229 (#144+#140+#147) into #145 (2026-09-26)
-
-Normal merge of `origin/master` `9aeb229` (#144 port-fold + #140
-discovery/web + #147 ledger lifecycle; also #146/#142/#138). No rebase, no force-push.
-#139 follow-ups kept: Greenbone all CVEs + root detect + Timestamp/
-scan_start; Nikto 740001 kept / unmatched info; PingCastle 8 group
-rules honor member count + 0-point info; ScubaGear DomainName +
-TimestampZulu; testssl not-offered only OK/INFO; UTC status_date;
-fixture honesty. Argus B4: case-insensitive scan_time keys including
-Greenbone `Timestamp` and Scuba `TimestampZulu`. Host-lab after merge:
-assets **78** findings **104** vulnerabilities **22** weaknesses **126**
-poam **125** excluded **1** (`superseded_by_specific`). Vs prior #145
-stamp 84/103/125: assets 84→78 is #138 EGA- collapse; findings +1 is
-#140 second httpx URL; poam stays 125 because #144 folds one nmap
-port-only row (weaknesses 126 − 1). Not a MIN_ loosen. Also merged `9aeb229` (#147 ledger
-lifecycle) — host-lab counts unchanged. Pytest **1225**.
-Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
-RiskReady stay-out.
-
-## cycle 196 — #139 real-sample parser follow-ups (2026-09-26)
-
-Greenbone keeps all CVE refs (feeds #131 KEV) and detects GMP on the
-root `<report>` / `<gmp>` shape, not the first 12k chars. Nikto 740001
-backup/cert hits stay medium+; unmatched rows are info. PingCastle's 8
-group-membership RiskIds honor `NumberOfMember` (0 → no finding);
-0-point rules are info. ScubaGear tenant label is DomainName /
-TenantDisplayName, never the TenantId GUID. testssl drops `not offered`
-only when severity is OK/INFO. Invented PingCastle ListNoPreAuth,
-ScubaGear TenantName, and FINOS-named testssl rows moved to clearly
-named synthetic fixtures; `one.xml` is byte-true DefectDojo.
-Host-lab assets/findings **unchanged** 84 / 103. POA&M restamped
-111→125: this run's loader writes a full plan (`excluded=0`,
-`poam==weaknesses==125`). Pytest **1147** (+6 follow-up tests; prior
-STATUS 1087 was a stale stamp vs 1f8d347). Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-Cold-review add-on: Greenbone `scan_start`/`Timestamp` and ScubaGear
-`TimestampZulu` feed `extra.scan_time` → #131 detection date (15/30/90/180).
-`status_date` is UTC YYYY-MM-DD on poam.csv / poam_fedramp.csv / ledger.
-PingCastle `A-MinPwdLen` gets a rule-specific password-length fix.
-
-## cycle 202 — merge master #147 ledger lifecycle; keep Wazuh telemetry (2026-09-26)
-
-Merge `origin/master` `9aeb229` without rebase. #147 multi-run POA&M
-ledger lifecycle and this branch's Wazuh rule.level telemetry exclude
-both kept. pytest **1235**. Host-lab `assets=78` `findings=104`
-`poam=124` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
-excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
+One POA&M decision set across register, FedRAMP export, console, and
+exec. Merge same weakness on same EGA- asset (both sources as
+evidence). poam.csv ≡ poam_fedramp.csv (EGP- IDs, titles, controls).
+Failure-stating titles on findings.csv / register / FedRAMP / exec
+top-5. Evergreen Critical 15; FedRAMP +30 only where labelled.
+Console severity from poam.csv. Exec top-5: severity, then KEV, then
+asset criticality; unmapped never High. Redis remediations are
+type-specific. MCP nmap will_run PATH-stubbed. Merged origin/master
+`76f5e86` (#140) — no rebase. Host-lab: pytest **1219** (1 skipped);
+assets **78** findings **101** vulnerabilities **22** poam **122**.
+Farm: assets **48** findings **134** poam **85**. Shift vs cycle 198
+(104/126 lab, 174/106 farm) is unique (weakness, asset) merge, not
+lost coverage. Catalog **unchanged**. paying_day **FAIL**. No POST
 `/api/risks`. RiskReady stay-out.
 
-## cycle 201 — merge master #140 discovery/web; keep Wazuh telemetry (2026-09-26)
+## cycle 198 — merge master f8b7ff1 #138 into discovery/web (#140) (2026-09-26)
 
-Merge `origin/master` `76f5e86` without rebase. #140 Metis §11
-discovery/web parsers and this branch's Wazuh rule.level telemetry
-exclude both kept. pytest **1232**. Host-lab `assets=78` `findings=104`
-`poam=124` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
-excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
-`/api/risks`. RiskReady stay-out.
-
-## cycle 200 — merge master #144 port-fold; keep Wazuh telemetry (2026-09-26)
-
-Merge `origin/master` `ec61cde` without rebase. #144
-`superseded_by_specific` and this branch's Wazuh rule.level telemetry
-exclude both kept. pytest **1213**. Host-lab `assets=78` `findings=103`
-`poam=123` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
-excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
-`/api/risks`. RiskReady stay-out.
-
-## cycle 199 — merge master #138/#142/#146; keep Wazuh level table (2026-09-26)
-
-Merge `origin/master` `2818608` without rebase. #138 asset_uid ledger,
-#142 unread sensors, #146 SCOPE_AND_TRUST coverage all kept. Wazuh
-rule.level table + telemetry exclude still stand. pytest **1204**.
-Host-lab `assets=78` `findings=103` `poam=124` `excluded=1`. SAMPLE→SoR
-6/8/2. farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 198 — Wazuh rule.level table + telemetry flood off the plan (2026-09-26)
-
-Map Wazuh by rule.level (0-3 info, 4-7 low, 8-11 medium, 12+ high);
-missing level is info, never High. Aggregated alerts excluded as
-telemetry unless level ≥ 12 or a known compromise indicator. 300
-level-5 alerts → one excluded row, 0 High. DEMO 5710 brute-force left
-the plan (`excluded=1` telemetry). pytest **1162**. Host-lab
-`assets=84` `findings=103` `poam=124`. SAMPLE→SoR 6/8/2.
-farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**. paying_day
+Normal merge of `origin/master` `f8b7ff1` (#138 EGA- asset ledger).
+No rebase. Discovery/web parsers + port-only → port/proto migration
+kept; EGA- identity/loader from master. Host-lab: pytest **1190**
+(1 skipped); assets **78** findings **104** vulnerabilities **22**
+poam **126**. Farm pack_drop: assets **48** findings **174** poam
+**106**. Asset drop vs cycle 197 (85 / 55) is #138 EGA- collapse of
+same-host IP/hostname aliases, not a parser loss. Findings/POA&M
+unchanged vs Metis §11. Vs master STATUS 78/103/111: +1 httpx URL,
+POA&M +15 (#135 full plan). Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
-## cycle 197 — merge master #135/#137; canon_severity + telemetry_info (2026-09-26)
+## cycle 197 — Metis §11 review of #140 (2026-09-26)
 
-Merge `origin/master` `1f8d347` without rebase. #135 excluded.csv /
-telemetry flood guard / Lows on the plan and #137 host-scoped ref_id /
-canon_severity both kept. Wazuh 0-3 info alerts are `telemetry_info` in
-excluded.csv. SCA ref_id host-scoped; Prowler account-scoped. pytest
-**1159**. Host-lab `assets=84` `findings=103` `vulnerabilities=22`
-`poam=125`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0 excluded=68.
-MIN_FARM_POAM=100 MIN_FARM_EXCLUDED=20 not loosened. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
-stay-out.
+Ledger migration `host:22` → `host:22/tcp` keeps EGP- ID + earliest
+detection date (no `pending_verification`). httpx: 2xx/3xx (401/403
+only on admin paths) + soft-404; `admin.*` does not flag every URL.
+UDP `open|filtered` is info. smbmap NULL only when unauthenticated and
+shown (no Guest fixture). naabu CDN edge ports are not findings.
+vulners: one finding per CVE at CVSS ≥ 7 or KEV; lower CVEs roll up.
+Host-lab unchanged vs cycle 196: assets **85** findings **104**
+vulnerabilities **22** poam **126**. Farm pack_drop unchanged:
+assets **55** findings **174** poam **106**. pytest **1160**
+(+6 Metis tests). Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
 
-## cycle 196 — enum4linux write / Wazuh alert+SCA / Prowler mute+account (2026-09-26)
+## cycle 196 — merge master 1f8d347 #137 into discovery/web (#140) (2026-09-26)
 
-listing OK is READ; writable SMB finding only on explicit write.
-Wazuh alerts aggregate by (rule.id, agent) with count and first/last
-seen; levels 0-3 are info (never POA&M). SCA agent from path/export/
-hint or unknown-agent, never wazuh-host; severity from the check or
-medium default. Prowler skips muted and MANUAL; account ID in
-identity. pytest **1089**. Host-lab / SAMPLE / farm_drop counts
-unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+Normal merge of `origin/master` `1f8d347` (#137 same-rule per asset +
+vendor severities; also #135/#131). No rebase. Discovery/web parsers
+kept; loader/severity/dedupe from master. Recomputed host-lab: pytest
+**1154** (1 skipped); assets **85** findings **104** vulnerabilities
+**22** poam **126** (`applied_controls=126` `risk_scenarios=126`
+`severity_unmapped=0` `poam_plan=full` `demo=true`). Vs master STATUS
+84/103/111: +1 asset `10.0.0.50` (L2/NBT no invented hostname), +1
+httpx admin URL, POA&M +15 because default full plan includes the
+Lows/non-key Mediums #135 already put on the register (14) plus the
+new httpx row. Catalog **unchanged**. paying_day **FAIL**. No POST
 `/api/risks`. RiskReady stay-out.
-
-## cycle 195 — merge master #132/#139/#136 into real-sample parsers (2026-09-26)
-
-Merge `origin/master` `5adc8b7` (PR #132 estate banner + exact-header
-CSVs, PR #139 PingCastle/Greenbone/Scuba/testssl/Nikto, PR #136 retire
-RiskReady JSON) into `cursor/real-sample-parsers-ea49`. Both sample
-tables and every test kept. #133 parse_error / no demo fill on
-LAB/CLIENT stands. #132 import CSVs start with the exact header;
-LAB estate banner is `LAB: TEST ENVIRONMENT`. No force-push. PR #134
-stays open. pytest **1084**. Host-lab `assets=81` `findings=104`
-`poam=109`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/48/0. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
-stay-out.
 
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 
@@ -224,6 +123,18 @@ semgrep ERROR/WARNING/INFO. Lab `findings=103` `poam=108` `weaknesses=122`
 Kubescape C-0057 on `prod-cluster`). Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
 
+## cycle 195 — merge master 5adc8b7 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `5adc8b7` (#139 real-sample parsers,
+#136 retire `out/riskready`) into this branch. No rebase. Union
+`fixtures/samples/SOURCES.md` (PingCastle/Greenbone/Scuba/testssl/Nikto
++ discovery/web). Recomputed host-lab on the merged tree: pytest
+**1086** (1 skipped); assets **82** findings **105** poam **110**
+(`applied_controls=124` `risk_scenarios=124` `demo=true`). Same delta
+vs master STATUS 81/104/109 as pre-merge (L2/NBT `10.0.0.50` + second
+httpx admin URL). Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 
 §8 collectors that were silently empty or wrong on real tool output.
@@ -234,6 +145,19 @@ list-of-hosts; header/soft-404 denylist; no hardcoded high. Samples
 under `fixtures/samples/` + SOURCES.md. Host-lab **unchanged** 81 / 104
 / 109. pytest **1068** (+15 vs master 1053). Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 194 — discovery/web collectors stop inventing assets (2026-09-26)
+
+§9.2 / §8.2 bricks: arp-scan/netdiscover key by IP+MAC (vendor is an
+attribute; no Ltd collapse); fping ignores `-c` timeouts and parses
+`-e`/`-a`/`-J`; nbtscan keys by IP and parses `-s`/`-v`; httpx keeps
+each URL; smbmap Status/CSV/grepable/spaces/ANSI; naabu protocol+CDN;
+ffuf path-class severity; nmap vulners CVEs + UDP `open|filtered` + MAC.
+Real-shaped samples under `fixtures/samples/` (SOURCES.md). Host-lab:
+assets **82** (+1 `10.0.0.50` from L2/NBT, no longer a fake hostname),
+findings **105** (+1 second admin URL on the demo httpx pair), poam
+**110** (+1). Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
 
 ## cycle 193 — import CSVs start with exact header (2026-09-26)
 
@@ -262,34 +186,6 @@ product-lab/drop fallback cannot become CLIENT and cannot be suppressed.
 One-page exec summary and SCOPE_AND_TRUST.md generated from the run; missing
 values print "not recorded"; reviewer slots stay placeholders. Catalog
 **unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 192 — merge master #133 DEMO fallback into real-sample parsers (2026-09-26)
-
-Merge `origin/master` `036aff8` (PR #133 no demo fixture fill on
-LAB/operator parse failures) into `cursor/real-sample-parsers-ea49`.
-Both behaviors kept: `run_collector` reports `parse_error` / `no_records`
-and never substitutes `fixtures/demo` on LAB/CLIENT/operator drops,
-and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
-severity, SARIF Trivy critical, enum4linux-ng). Malformed
-Prowler/Wazuh/XCCDF/SARIF/enum4linux on a LAB run is `parse_error`,
-not demo fill. No force-push. PR #134 stays open. pytest **1056**.
-Host-lab `assets=81` `findings=104` `poam=109`. SAMPLE→SoR 6/8/2.
-farm_drop→SoR 174/48/0. Catalog **unchanged**. paying_day **FAIL**.
-No POST `/api/risks`. RiskReady stay-out.
-
-## cycle 191 — merge master #130 HK into real-sample parsers (2026-09-26)
-
-Merge `origin/master` `05a29fd` (PR #130 HardeningKitty TestResult +
-filename host) into `cursor/real-sample-parsers-ea49`. Both behaviors
-kept: HK official Audit CSV (`TestResult` authoritative; host from
-filename/sidecar/env; LAB dest_in under `fixtures/lab-drop/identity/`)
-and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
-`rule-result@severity`, SARIF Trivy critical, enum4linux-ng
-`target.host` / `sessions.null` / listing). No force-push. PR #134
-stays open. pytest **1046**. Host-lab `assets=81` `findings=104`
-`poam=109`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/48/0. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
-stay-out.
 
 ## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
 
@@ -332,20 +228,6 @@ schema fixture (not an observed scan). Every row LAB. LAB cannot enter
 KEEP / keep_real. CIS Controls v8 IDs stay INTERNAL-ONLY and never appear
 in CISO / POA&M / client exports. Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
-
-## cycle 189 — real-sample parser fidelity (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF/SARIF, enum4linux-ng) (2026-09-26)
-
-Parsers now read real tool shapes instead of invented fixtures: Prowler v4/v5
-OCSF (`status_code`, `resources[].uid`) + semicolon CSV; Wazuh alerts.json
-JSONL + rule-level severity + SCA failed checks (not fake agents);
-CIS/XCCDF `rule-result@severity`; SARIF `rules[].properties.security-severity`
-(Trivy CRITICAL stays critical); enum4linux-ng `target.host`, `sessions.null`,
-share `access.listing`. Trimmed real samples under `fixtures/samples/`
-(SOURCES.md). Demo enum4linux fixture replaced with real keys (same findings).
-Host-lab after merge follows #130 weakness-dedupe baseline (assets=81
-findings=104 poam=109) unless re-lab changes it. SAMPLE→SoR and
-farm_drop→SoR counts unchanged vs this branch. Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 
