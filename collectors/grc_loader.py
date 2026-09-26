@@ -55,6 +55,7 @@ from shared.io_util import (
 )
 from shared.schema import (
     ASSET_TYPES,
+    canon_severity,
     ciso_finding_severity,
     ciso_vuln_severity,
     control_priority,
@@ -418,7 +419,7 @@ def load() -> dict:
                     rec.get("ref_id") or "",
                     weakness,
                     assets_s,
-                    ciso_finding_severity(rec.get("severity")),
+                    canon_severity(rec.get("severity")),
                     decision.get("reason") or "unexplained",
                     superseded_by,
                 ]
