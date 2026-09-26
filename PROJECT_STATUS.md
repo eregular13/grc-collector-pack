@@ -20,7 +20,7 @@ Sensors + normalizer only. Not a GRC UI.
 
 Ten Docker Compose services (one `python:3.12-slim` image) parse OSS scanner artifacts from `in/<sensor>/` or, when empty, `fixtures/demo/`. They write canonical JSONL. `grc-loader` emits files that **CISO Assistant Community** and **RiskReady Community Edition** already ingest.
 
-Defaults: no credentials, no live scans, no sockets in collectors. High/critical findings go to `out/riskready/risks_proposed.json` only. Nothing POSTs `/api/risks`. MIT. No Wiz / Orca / Prisma / CrowdStrike / Qualys / Tenable / Vanta / Drata required deps.
+Defaults: no credentials, no live scans, no sockets in collectors. Open risks are the POA&M (count identity). RiskReady JSON is not generated. Nothing POSTs `/api/risks`. MIT. No Wiz / Orca / Prisma / CrowdStrike / Qualys / Tenable / Vanta / Drata required deps.
 
 ---
 
@@ -87,7 +87,8 @@ fixtures/demo/<same keys>/                                 ← used when in/ is 
 collectors/*.py                                            ← parse → out/canonical/*.jsonl
 collectors/grc_loader.py                                   ← GRC files
 out/ciso-assistant/*.csv
-out/riskready/{assets,incidents,evidence,risks_proposed}.json
+out/poam/poam.csv
+out/simplerisk/poam.csv
 out/ocsf/compliance_findings.json
 out/summary.json
 out/evidence/lab-report.md
@@ -128,11 +129,9 @@ Exact headers. `risk_scenarios.csv` is semicolon. Finding severity `low|medium|h
 
 `push_ciso.sh` only if `CISO_PUSH=1`. REST limited to `/api/assets/` and `/api/evidences/`. Default `0`.
 
-### RiskReady (`out/riskready/`)
+### RiskReady (not generated)
 
-`assets.json`, `incidents.json` (explicit + every high/critical finding), `evidence.json` (`TECHNICAL` / `SENSOR` / `DRAFT`), `risks_proposed.json` (**never auto-POST**). Likelihood/impact enums mapped from severity.
-
-`push_riskready.sh` is LICENSE-LOCK stay-out: review-only even if `RISKREADY_PUSH=1`. No login, no wrap POSTs. Default `0`.
+LICENSE-LOCK stay-out. The loader does not write `out/riskready/`. Count identity is CISO register + POA&M. `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`. No login, no wrap POSTs. Default `0`. Never POST `/api/risks`.
 
 ### Evidence
 
