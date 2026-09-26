@@ -132,10 +132,10 @@ def map_severity(raw: Any) -> tuple[str, bool]:
     loader can count extra.severity_unmapped instead of silently using info.
     """
     if raw is None:
-        return "info", False
+        return "info", True
     text = str(raw).strip()
     if not text:
-        return "info", False
+        return "info", True
     s = text.lower()
     if s in _SEV_ALIASES:
         return _SEV_ALIASES[s], False
@@ -191,7 +191,7 @@ def slug(text: str, maxlen: int | None = 48) -> str:
     for ch in (text or "").lower():
         if ch.isalnum():
             out.append(ch)
-        elif ch in "-_." and (not out or out[-1] != "-"):
+        elif ch in "-_" and (not out or out[-1] != "-"):
             out.append("-")
         elif ch in " /:\\" and (not out or out[-1] != "-"):
             out.append("-")
