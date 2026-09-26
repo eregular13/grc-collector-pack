@@ -12,7 +12,7 @@ from pathlib import Path
 
 from collectors import inventory_nmap
 from scripts.prove_ciso import prove_ciso
-from shared.ciso_shape import assert_risk_register_and_poam
+from shared.ciso_shape import assert_flood_guard, assert_risk_register_and_poam
 from shared.control_map import map_finding
 from shared.farm_ship import assert_farm_ship_sor
 
@@ -192,9 +192,7 @@ def test_farm_drop_prove_register_is_denser_and_exposure_only(tmp_path: Path) ->
     assert "honeypot" in reasons
     summary = json.loads((Path(stamp["out_dir"]) / "summary.json").read_text(encoding="utf-8"))
     assert summary["poam_plan"] == "full"
-    assert int(summary["weaknesses_total"]) == int(summary["poam_included"]) + int(
-        summary["excluded"]
-    )
+    assert_flood_guard(summary)
     assert int(summary["excluded"]) == len(excluded)
     assert shape["vulnerabilities"] == 0
     assert shape["vulns_cve_class_only"] is True
