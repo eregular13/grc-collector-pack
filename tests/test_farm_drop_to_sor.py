@@ -316,11 +316,26 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     assert (work / "out" / "poam" / "poam.md").is_file()
     scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
     assert len(scenarios) == shape["risk_scenarios"]
+    excluded = csv_rows(work / "out" / "poam" / "excluded.csv")
+    accept_n = 0
     for row in scenarios:
         assert row["ref_id"]
         assert row["name"]
         assert row.get("current_risk") in SCENARIO_LEVELS, row
-        assert row.get("treatment") == "mitigate"
+        treat = row.get("treatment")
+        assert treat in {"mitigate", "accept"}, row
+        if treat == "accept":
+            accept_n += 1
+            assert str(row.get("existing_controls") or "").startswith("excluded:"), row
+            assert (row.get("additional_controls") or "") == ""
+            assert row.get("residual_risk") == row.get("current_risk"), row
+            assert row.get("residual_impact") == row.get("current_impact"), row
+            assert row.get("residual_proba") == row.get("current_proba"), row
+        else:
+            assert (row.get("existing_controls") or "") == ""
+            assert str(row.get("additional_controls") or "").startswith("CTL-"), row
+    assert accept_n == len(excluded)
+    assert accept_n >= 1
     for row in csv_rows(ciso / "findings.csv"):
         assert row["severity"] in FINDING_SEV, row
         assert row["ref_id"]
