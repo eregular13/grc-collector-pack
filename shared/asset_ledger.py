@@ -343,6 +343,20 @@ class AssetLedger:
                 self.collisions.append(detail)
                 self.warnings.append(f"uuid_collision:{key}")
 
+    def _alias_values(self, asset: dict[str, Any], typ: str) -> list[str]:
+        """Every live alias of ``typ``. ``_ids_of`` last-write-wins would hide extras."""
+        out: list[str] = []
+        for alias in asset.get("aliases") or []:
+            if (
+                isinstance(alias, dict)
+                and str(alias.get("type") or "") == typ
+                and not alias.get("valid_to")
+            ):
+                val = str(alias.get("value") or "").strip()
+                if val:
+                    out.append(val)
+        return out
+
     def _ids_of(self, asset: dict[str, Any]) -> dict[str, Any]:
         blob: dict[str, Any] = {}
         for alias in asset.get("aliases") or []:
@@ -416,6 +430,9 @@ class AssetLedger:
             return False
         left = id_values(obs, key)
         right = id_values(cand, key)
+        alias_right = self._alias_values(asset, key)
+        if alias_right:
+            right = alias_right
         if not left or not right:
             return False
         if key in {"uuid", "bios_uuid"} and (
@@ -440,23 +457,44 @@ class AssetLedger:
                 if gap is not None and gap > LEASE_DAYS:
                     return False
         elif key == "netbios":
-            if left[0].lower() != right[0].lower():
+            if left[0].lower() not in {x.lower() for x in right}:
                 return False
             od = str(obs.get("domain") or "")
             cd = str(cand.get("domain") or "")
             if od and cd and od.lower() != cd.lower():
                 return False
         elif key in {"name", "principal"}:
-            if left[0].lower() != right[0].lower():
+            hit = next((x for x in right if x.lower() == left[0].lower()), None)
+            if hit is None:
                 return False
             oscope = str(obs.get("scope") or "")
-            cscope = str(cand.get("scope") or "") or self._scope_of(asset, key, right[0])
+            cscope = str(cand.get("scope") or "") or self._scope_of(asset, key, hit)
             if oscope != cscope:
                 return False
         else:
-            if left[0].lower() != right[0].lower():
+            if left[0].lower() not in {x.lower() for x in right}:
                 return False
         return not self._stronger_conflict(obs, cand, key)
+
+    def _ambiguous_fqdn_labels(self, labels: set[str]) -> set[str]:
+        """Short names claimed by more than one active FQDN. Do not fold a bare host onto those."""
+        counts: dict[str, int] = {}
+        wanted = {str(x).lower() for x in labels if x}
+        if not wanted:
+            return set()
+        for asset in self._active_assets():
+            cand = self._ids_of(asset)
+            if cand.get("principal"):
+                continue
+            seen = {
+                str(fq).split(".", 1)[0].lower()
+                for fq in id_values(cand, "fqdn")
+                if str(fq).strip()
+            }
+            for lab in seen:
+                if lab in wanted:
+                    counts[lab] = counts.get(lab, 0) + 1
+        return {lab for lab, n in counts.items() if n > 1}
 
     def _find_match(self, ids: dict[str, Any], now: str, source: str = "") -> dict[str, Any] | None:
         if is_container(ids):
@@ -483,21 +521,35 @@ class AssetLedger:
         fqdns = [x.lower() for x in id_values(ids, "fqdn")]
         if hostnames and not fqdns:
             label = hostnames[0]
+            matches: list[dict[str, Any]] = []
             for asset in self._active_assets():
                 cand = self._ids_of(asset)
                 if cand.get("principal"):
                     continue
                 for fq in id_values(cand, "fqdn"):
-                    if str(fq).split(".", 1)[0].lower() == label:
-                        if not self._stronger_conflict(ids, cand, "hostname"):
-                            return asset
+                    if str(fq).split(".", 1)[0].lower() != label:
+                        continue
+                    if not self._stronger_conflict(ids, cand, "hostname"):
+                        matches.append(asset)
+                        break
+            if len(matches) > 1 or label in self._ambiguous_fqdn_labels({label}):
+                self._log(
+                    "ambiguous_hostname",
+                    "",
+                    now,
+                    label=label,
+                    candidates=max(len(matches), 2),
+                )
+            elif len(matches) == 1:
+                return matches[0]
         if fqdns and not hostnames:
             label = fqdns[0].split(".", 1)[0]
             for asset in self._active_assets():
                 cand = self._ids_of(asset)
                 if id_values(cand, "fqdn") or cand.get("principal"):
                     continue
-                if label in {x.lower() for x in id_values(cand, "hostname")}:
+                host_aliases = {x.lower() for x in self._alias_values(asset, "hostname")}
+                if label in host_aliases or label in {x.lower() for x in id_values(cand, "hostname")}:
                     if not self._stronger_conflict(ids, cand, "fqdn"):
                         return asset
         # Pre-#161: UPN was stored as fqdn. Re-anchor to principal.
@@ -859,21 +911,23 @@ class AssetLedger:
                         l_bare = bool(lhost and not lfqdn)
                         r_bare = bool(rhost and not rfqdn)
                         if l_bare and rlabels and lhost & rlabels:
-                            self.merge(
-                                str(left["asset_uid"]),
-                                str(right["asset_uid"]),
-                                now=now,
-                                reason="hostname_fqdn",
-                            )
-                            merged = True
+                            if not self._ambiguous_fqdn_labels(lhost):
+                                self.merge(
+                                    str(left["asset_uid"]),
+                                    str(right["asset_uid"]),
+                                    now=now,
+                                    reason="hostname_fqdn",
+                                )
+                                merged = True
                         elif r_bare and llabels and rhost & llabels:
-                            self.merge(
-                                str(left["asset_uid"]),
-                                str(right["asset_uid"]),
-                                now=now,
-                                reason="hostname_fqdn",
-                            )
-                            merged = True
+                            if not self._ambiguous_fqdn_labels(rhost):
+                                self.merge(
+                                    str(left["asset_uid"]),
+                                    str(right["asset_uid"]),
+                                    now=now,
+                                    reason="hostname_fqdn",
+                                )
+                                merged = True
                     if merged:
                         changed = True
                         break
