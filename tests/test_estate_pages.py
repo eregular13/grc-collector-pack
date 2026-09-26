@@ -22,11 +22,16 @@ from shared.estate_pages import (
     REVIEWER_NEXT_STEP,
     REVIEWER_WHAT_WE_FOUND,
     REVIEWER_WHY_IT_MATTERS,
+    SAMPLE_AUTH,
+    SENTENCE_FOR_KIND,
     EstateStamp,
+    PageContext,
+    _engagement_window,
     assert_client_export_honesty,
     classify_estate,
     parse_out_of_scope_names,
     parse_scope_table_areas,
+    write_client_pages,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +75,17 @@ def _run_loader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[d
             fh.write(json.dumps(rec) + "\n")
     monkeypatch.setenv("OUT_DIR", str(out))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
-    for key in ("GRC_ESTATE_LABEL", "DROPBOX_DEMO", "GRC_HIDE_ESTATE", "GRC_SUPPRESS_ESTATE"):
+    for key in (
+        "GRC_ESTATE_LABEL",
+        "DROPBOX_DEMO",
+        "GRC_HIDE_ESTATE",
+        "GRC_SUPPRESS_ESTATE",
+        "GRC_AUTHORIZER",
+        "GRC_AUTH_DATE",
+        "GRC_SCOPE_REF",
+        "GRC_SCOPE_PATH",
+        "GRC_CLIENT_NAME",
+    ):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
         monkeypatch.setenv(key, value)
@@ -292,6 +307,8 @@ def test_estate_pages_and_detection_dates_agree_not_recorded(
     window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
     assert "2026-09-26T06:00:00Z" not in window
     assert "2026-09-26T06:00:00Z" not in trust
+    assert "2026-09-01" not in window
+    assert "2026-12-31" not in window
     assert NOT_RECORDED in trust
 
 
@@ -537,3 +554,144 @@ def test_manifest_verifies_with_sha256sum_c(
     assert "| File |" not in manifest
     assert "MANIFEST" not in {line.split()[-1] for line in manifest.splitlines() if line.strip()}
     assert_client_export_honesty(out)
+
+
+DEMO_SCOPE_START = "2026-09-01"
+DEMO_SCOPE_END = "2026-12-31"
+_CLIENT_ONLY_NAME_ENV = {
+    "GRC_ESTATE_LABEL": "CLIENT",
+    "GRC_CLIENT_NAME": "Acme Corp",
+}
+_CLIENT_AUTH_ENV = {
+    **_CLIENT_ONLY_NAME_ENV,
+    "GRC_AUTHORIZER": "Jane Roe",
+    "GRC_AUTH_DATE": "2026-09-20",
+}
+
+
+def test_fixtures_plus_client_label_is_sample_or_mixed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bundled fixture bytes in in/ cannot become a CLIENT estate."""
+    src = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "nmap" / "fping-a.txt").write_bytes(src.read_bytes())
+
+    sample = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env=dict(_CLIENT_AUTH_ENV),
+        client_name="Acme Corp",
+    )
+    assert sample.kind in {"SAMPLE", "MIXED"}
+    assert sample.kind != "CLIENT"
+    assert not sample.label.startswith("CLIENT:")
+    assert SENTENCE_FOR_KIND["CLIENT"] not in sample.sentence
+
+    (dest_in / "nmap" / "unique-live.xml").write_text(
+        "<nmaprun unique='not-a-fixture'/>\n", encoding="utf-8"
+    )
+    mixed = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env=dict(_CLIENT_AUTH_ENV),
+        client_name="Acme Corp",
+    )
+    assert mixed.kind == "MIXED"
+    assert mixed.kind != "CLIENT"
+    assert not mixed.label.startswith("CLIENT:")
+
+    out = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [_asset(), _finding("f1")],
+        **_CLIENT_AUTH_ENV,
+    )
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert summary["estate_kind"] in {"SAMPLE", "MIXED"}
+    assert summary.get("client") is False
+    for blob in (exec_text, trust):
+        assert not blob.splitlines()[0].startswith("> **CLIENT:")
+        assert SENTENCE_FOR_KIND["CLIENT"] not in blob
+    assert SAMPLE_AUTH in trust
+    assert "Authorized by: not recorded" not in trust
+
+
+def test_empty_client_without_auth_does_not_claim_client_deliverable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Name + GRC_ESTATE_LABEL=CLIENT is not a CLIENT deliverable."""
+    dest_in = tmp_path / "in"
+    dest_in.mkdir(parents=True)
+    stamp = classify_estate(
+        [],
+        in_dir=dest_in,
+        env=dict(_CLIENT_ONLY_NAME_ENV),
+        client_name="Acme Corp",
+    )
+    assert stamp.kind != "CLIENT"
+    assert not stamp.label.startswith("CLIENT:")
+    assert SENTENCE_FOR_KIND["CLIENT"] not in stamp.sentence
+
+    out = tmp_path / "pages"
+    write_client_pages(out, PageContext(stamp=stamp, records=[], in_dir=dest_in))
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
+    for blob in (exec_text, trust):
+        assert not blob.splitlines()[0].startswith("> **CLIENT:")
+        assert SENTENCE_FOR_KIND["CLIENT"] not in blob
+        assert "CLIENT deliverable" not in blob.lower()
+    assert SAMPLE_AUTH in trust
+    assert "Authorized by: not recorded" not in trust
+    window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
+    assert DEMO_SCOPE_START not in window
+    assert DEMO_SCOPE_END not in window
+
+    loaded = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [],
+        **_CLIENT_ONLY_NAME_ENV,
+    )
+    summary = json.loads((loaded / "summary.json").read_text(encoding="utf-8"))
+    assert summary["estate_kind"] != "CLIENT"
+    assert summary.get("client") is False
+    loaded_exec = (loaded / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    assert not loaded_exec.splitlines()[0].startswith("> **CLIENT:")
+    assert SENTENCE_FOR_KIND["CLIENT"] not in loaded_exec
+
+
+def test_non_demo_does_not_inherit_demo_scope_dates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pack dropbox/SCOPE.yaml 2026-09-01..2026-12-31 is DEMO-only."""
+    demo_start, demo_end = _engagement_window([], kind="DEMO")
+    assert demo_start == DEMO_SCOPE_START
+    assert demo_end == DEMO_SCOPE_END
+
+    sample_start, sample_end = _engagement_window([], kind="SAMPLE")
+    assert sample_start == NOT_RECORDED
+    assert sample_end == NOT_RECORDED
+    lab_start, lab_end = _engagement_window([], kind="LAB")
+    assert lab_start == NOT_RECORDED
+    assert lab_end == NOT_RECORDED
+
+    monkeypatch.setenv("GRC_SCOPE_PATH", str(ROOT / "dropbox" / "SCOPE.yaml"))
+    leaked = _engagement_window([], kind="SAMPLE")
+    assert leaked == (NOT_RECORDED, NOT_RECORDED)
+
+    out = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [_asset(), _finding("f1")],
+        GRC_ESTATE_LABEL="SAMPLE",
+    )
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
+    assert DEMO_SCOPE_START not in window
+    assert DEMO_SCOPE_END not in window
+    assert NOT_RECORDED in window
+
