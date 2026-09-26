@@ -272,6 +272,7 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
             "cvss": row.get("cvss") or "",
             "threat": row.get("threat") or "",
             **_no_fix_extra(row.get("solution_type")),
+            **({"solution": str(row.get("solution"))} if row.get("solution") else {}),
             **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
         },
     )
@@ -432,6 +433,8 @@ def parse_file(path: Path) -> list[dict]:
                 extra["scan_time"] = row.get("scan_time")
             if cves:
                 extra["cve"] = " ".join(cves)
+            if row.get("solution"):
+                extra["solution"] = str(row.get("solution"))
             records.append(
                 make_record(
                     kind="finding",
