@@ -15,7 +15,11 @@ import xml.etree.ElementTree as ET
 
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.enum4linux import parse_enum4linux
+from shared.hardening_dedup import dedupe_hardening
+from shared.hardening_map import extra_control_fields, hk_control
+from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.schema import make_record, make_ref
 
 SOURCE = "identity-ad"
@@ -210,46 +214,78 @@ def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
     return nodes
 
 
-def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
-    """Parse HardeningKitty Audit CSV. Failed/warning rows only. Actual values redacted."""
+def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> list[dict]:
+    """Parse HardeningKitty Audit CSV. Failed rows only. Actual values redacted.
+
+    Official HK report (HardeningKitty.psm1 @ da0976073caa): Result is the
+    measured value; TestResult is Passed/Failed. TestResult is
+    authoritative — TestResult=Passed never becomes a finding.
+    Legacy/demo CSVs that put Passed|Failed in Result still parse.
+    Host comes from filename / sidecar / env / optional column — never
+    the invented default windows-host. Never CIS Benchmark / CIS-CAT.
+    """
     records: list[dict] = []
-    sample = text[:4000]
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+    if not lines:
+        return stamp_lab_labels(records, lab=path_is_lab(path))
+    sample = "\n".join(lines[:40])
     dialect = csv.excel
     if "," in sample or ";" in sample or "\t" in sample:
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
         except csv.Error:
             dialect = csv.excel
-    reader = csv.DictReader(StringIO(text), dialect=dialect)
-    host = "windows-host"
+    reader = csv.DictReader(StringIO("\n".join(lines)), dialect=dialect)
     seen_hosts: set[str] = set()
     for row in reader:
         if not row:
             continue
         lower = {str(k).strip().lower().replace(" ", ""): (v or "").strip() for k, v in row.items() if k}
-        host = (
-            lower.get("computername")
-            or lower.get("hostname")
-            or lower.get("computer")
-            or lower.get("system")
-            or host
-        )
-        result = (lower.get("result") or lower.get("status") or lower.get("outcome") or "").lower()
-        if result in {"passed", "pass", "ok", "true", "compliant", "notapplicable", "n/a", "na"}:
-            continue
-        if result not in {"failed", "fail", "warning", "warn", "noncompliant", "error", ""}:
+        host, host_source, unresolved = resolve_hk_host(path, lower)
+        outcome, failed = hk_row_failed(lower)
+        if not failed:
             continue
         hid = lower.get("id") or lower.get("number") or lower.get("name") or "hk"
         name = lower.get("name") or lower.get("title") or hid
-        sev = lower.get("severity") or ("medium" if result in {"warning", "warn"} else "high")
+        category = lower.get("category") or ""
+        sev = (
+            lower.get("severityfinding")
+            or lower.get("severity")
+            or ("medium" if outcome in {"warning", "warn"} else "high")
+        )
+        if str(sev).lower() == "passed":
+            sev = "high"
         recommended = (
             lower.get("recommended")
             or lower.get("recommendedvalue")
             or lower.get("expected")
             or ""
         )
+        control = hk_control(hid, name, category)
+        extra = extra_control_fields(control, include_cis_internal=True)
+        extra.update(
+            {
+                "id": hid,
+                "check_id": hid,
+                "result": outcome or "failed",
+                "name": name,
+                "category": category,
+                "recommended": recommended,
+                "severity": sev,
+                "tool": "hardeningkitty",
+                "baseline": "msft_security_baseline",
+                "host_source": host_source,
+                "host_unresolved": unresolved,
+            }
+        )
+        labels = LABELS + ["hardeningkitty"]
+        if unresolved:
+            labels = labels + ["host-unresolved"]
         if host not in seen_hosts:
             seen_hosts.add(host)
+            asset_extra = {"asset_type": "PR", "tool": "hardeningkitty", "host_source": host_source}
+            if unresolved:
+                asset_extra["host_unresolved"] = True
             records.append(
                 make_record(
                     kind="asset",
@@ -259,9 +295,9 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
                     description=f"Windows host {host}",
                     category="host",
                     assets=[host],
-                    labels=LABELS + ["windows", "hardeningkitty"],
+                    labels=LABELS + ["windows", "hardeningkitty"] + (["host-unresolved"] if unresolved else []),
                     collected_at=now,
-                    extra={"asset_type": "PR"},
+                    extra=asset_extra,
                 )
             )
         records.append(
@@ -270,16 +306,19 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
                 source=SOURCE,
                 ref_id=make_ref(SOURCE, f"hk-{hid}-{host}"),
                 name=f"HardeningKitty {name}",
-                description=f"{name} result={result or 'failed'} recommended={recommended or '[n/a]'} actual=[REDACTED]",
+                description=(
+                    f"{name} result={outcome or 'failed'} "
+                    f"recommended={recommended or '[n/a]'} actual=[REDACTED]"
+                ),
                 severity=sev,
                 category="identity-gap",
                 assets=[host],
-                labels=LABELS + ["hardeningkitty"],
+                labels=labels,
                 collected_at=now,
-                extra={"id": hid, "result": result or "failed", "name": name},
+                extra=extra,
             )
         )
-    return records
+    return stamp_lab_labels(records, lab=path_is_lab(path))
 
 
 def _emit_cis_cat(rows: list[dict[str, str]], now: str) -> list[dict]:
@@ -412,11 +451,15 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
 
 
 def parse_file(path: Path) -> list[dict]:
+    if path.name in SKIP_INPUT_NAMES:
+        return []
+    if path.suffix.lower() == ".host" or path.name.endswith(".csv.host"):
+        return []
     text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
     payload: Any = {}
     meta_kind = ""
     if path.suffix.lower() == ".csv" or ("," in text[:200] and "Severity" in text[:400]):
-        return parse_hardeningkitty_csv(text, iso_now())
+        return parse_hardeningkitty_csv(text, iso_now(), path=path)
     enum = parse_enum4linux(path, text)
     if enum is not None:
         return _emit_enum4linux(enum, iso_now())
@@ -544,7 +587,12 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".xml", ".csv", ".txt"), parse_file)
+    run_collector(
+        SOURCE,
+        (".json", ".xml", ".csv", ".txt"),
+        parse_file,
+        finalize=dedupe_hardening,
+    )
 
 
 if __name__ == "__main__":

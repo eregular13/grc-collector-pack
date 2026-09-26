@@ -1,0 +1,15 @@
+# SYNTHETIC schema fixture — not an observed HardeningKitty scan.
+# Hand-authored. Header is the official Invoke-HardeningKitty Audit Export-Csv
+# (scipag/HardeningKitty.psm1 @ da0976073caa). Result=measured; TestResult=Passed|Failed.
+# Never Seen. Never CIS Benchmark / CIS-CAT. LAB dest_in only.
+ID,Category,Name,Severity,Result,Recommended,TestResult,SeverityFinding,DefaultValue,Filter
+10100,Account Policies,Length of password history maintained,Low,5,24,Failed,Low,,
+10101,Account Policies,Minimum password length,Medium,8,14,Failed,Medium,,
+10102,Account Policies,Password must meet complexity requirements,Medium,1,1,Passed,Medium,,
+10001,Account Policies,Account lockout threshold,Low,0,10,Failed,Low,,
+10208,Security Options,Interactive logon: Machine inactivity limit,Low,0,900,Failed,Low,,
+10400,Advanced Audit Policy Configuration,Credential Validation,Low,No Auditing,Success and Failure,Failed,Low,,
+10501,Windows Firewall,"EnableFirewall (Domain Profile, Policy)",Medium,0,1,Failed,Medium,,
+10219,Security Options,Network security: Do not store LAN Manager hash value on next password change,High,0,1,Failed,High,,
+11014,Administrative Templates: Windows Components,Microsoft Defender Antivirus: Real-time Protection: Turn off real-time protection,Medium,1,0,Failed,Medium,,
+10964,Administrative Templates: Windows Components,Remote Desktop Session Host: Security: Set client connection encryption level,Medium,1,3,Failed,Medium,,

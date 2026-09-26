@@ -3,5 +3,6 @@ Scan-shaped compose-lab nmap pack_drop leaf (192.168.64.0/24).
 Not SAMPLE fixtures/pack_drop. Not SAMPLE keep. Not a client export.
 Operator dest_in for prove --use-existing-in / lab_drop_to_sor.
 Lynis report.dat + OpenSCAP XCCDF live under wazuh/ (hardening gaps, not only ports).
+HardeningKitty MS Security Baseline CSV lives under identity/ (Failed-only; synthetic schema fixture until a Windows lab host runs scan-windows-hardening.ps1).
 CI copies this tree into a temp work/in. DESKTOP uses live compose-lab dest_in.
 Not a paying-day stamp. LAB/DEMO != SAMPLE != client.
