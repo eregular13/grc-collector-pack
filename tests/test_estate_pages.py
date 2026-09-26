@@ -363,9 +363,12 @@ def test_exec_counts_info_as_own_bucket_not_dropped_low(
     exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     low_line = next(line for line in exec_text.splitlines() if line.startswith("| Low |"))
     info_line = next(line for line in exec_text.splitlines() if line.startswith("| Info |"))
-    assert "| 1 |" in low_line
-    assert "| 1 |" in info_line
-    assert "| 0 |" in info_line.split("|")[3]
+    low_parts = [p.strip() for p in low_line.split("|")]
+    info_parts = [p.strip() for p in info_line.split("|")]
+    assert low_parts[2] == "1"
+    assert low_parts[3] == "1"
+    assert info_parts[2] == "1"
+    assert info_parts[3] == "0"
     excluded = csv_rows(out / "poam" / "excluded.csv")
     info_ex = [row for row in excluded if row.get("finding_ref_id") == "f-info"]
     assert info_ex and info_ex[0]["severity"] == "info"
