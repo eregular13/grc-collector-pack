@@ -81,7 +81,9 @@ def test_classify_extra_exclude_tokens() -> None:
 
     naw = _finding(extra={"exclude_reason": "NOT_A_WEAKNESS"})
     assert classify(naw)[0] == "not_a_weakness"
-    assert poam_decision(naw)["reason"] == "NOT_A_WEAKNESS"
+    # Wire reason stays the #150/#156 name; canonical code is NOT_A_WEAKNESS.
+    assert poam_decision(naw)["reason"] == "not_a_weakness"
+    assert poam_decision(naw)["reason_code"] == "NOT_A_WEAKNESS"
 
     fp = _finding(extra={"false_positive": True})
     assert poam_decision(fp)["reason"] == "FALSE_POSITIVE_CANDIDATE"
