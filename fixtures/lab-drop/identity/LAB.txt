@@ -1,0 +1,5 @@
+LAB/DEMO -- not a client estate.
+HardeningKitty MS Security Baseline dest_in (in/identity/).
+Not a CIS benchmark / CIS-CAT deliverable. Never finding_list_cis_*.
+Not SAMPLE keep. Not a client export. File-drop ingest only.
+LAB != SAMPLE != client. paying_day FAIL.

@@ -1,4 +1,4 @@
-# lab-estate hardening scan (Lynis + OpenSCAP)
+# lab-estate hardening scan (Lynis + OpenSCAP + HardeningKitty)
 
 Isolated Linux lab containers only. Writes raw Lynis `report.dat` and
 OpenSCAP XCCDF `--results` XML into the same dest_in the nmap pack_drop
@@ -34,7 +34,29 @@ CI / no Docker: copy `fixtures/lab-drop/wazuh/` into dest_in and run
 
 Hardening index / XCCDF score are scores, not findings.
 
+## Windows lab host (HardeningKitty, no Docker)
+
+Authorized Windows lab host only. Does **not** start Docker. Fetches
+HardeningKitty (MIT) at run time on that host — not in the pack image.
+Uses `finding_list_msft_security_baseline_*` only. Never `finding_list_cis_*`.
+Not a CIS benchmark / CIS-CAT deliverable.
+
+```powershell
+cd lab-estate
+.\scan-windows-hardening.ps1 -AuthorizedLab
+# or: .\scan-windows-hardening.ps1 -AuthorizedLab -DestIn C:\path\to\prove\work\in
+cd ..
+.\scripts\lab_drop_to_sor.ps1 -Work .\prove\work
+```
+
+The runner writes `hardeningkitty-<HOSTNAME>-<yyyyMMdd-HHmmss>.csv`
+plus a `<csv>.host` sidecar. Official HK CSV has no host column;
+`Result` is the measured value and `TestResult` is Passed/Failed.
+
+CI / no Windows: copy `fixtures/lab-drop/identity/` (synthetic schema
+fixture, not an observed scan) into dest_in. Pytest does this.
+
 ## Follow-up
 
-Windows checker (HardeningKitty already parses operator-landed CSV) is
-out of scope for this runner.
+Linux Lynis/oscap runner is `scan-hardening.ps1` (Docker Desktop).
+Windows HardeningKitty runner is `scan-windows-hardening.ps1` (local host).
