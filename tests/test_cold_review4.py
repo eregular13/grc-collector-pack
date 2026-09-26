@@ -652,6 +652,35 @@ def test_fingerprints_for_includes_master_alias() -> None:
     assert master_fp in fingerprints_for(rec)
 
 
+def test_legacy_master_asset_key_uses_first_asset_not_title() -> None:
+    """Finding titles must not classify as NetBIOS and steal the host EGA."""
+    from shared.asset_ledger import make_asset_uid
+
+    k8s = {
+        "source": "k8s-kubescape",
+        "name": "Write below binary dir",
+        "assets": ["prod-cluster"],
+        "extra": {"rule": "Write below binary dir"},
+    }
+    assert legacy_master_asset_key(k8s) == make_asset_uid("hostname", "prod-cluster")
+    upn = {
+        "source": "identity-ad",
+        "name": "BloodHound GenericAll",
+        "assets": ["HELPDESK@CORP.LOCAL"],
+        "extra": {"edge": "GenericAll"},
+    }
+    assert legacy_master_asset_key(upn) == make_asset_uid("fqdn", "helpdesk@corp.local")
+    saas = {
+        "source": "saas-idp",
+        "name": "MFA not registered",
+        "assets": ["bob@contoso.onmicrosoft.com"],
+        "extra": {"mfa_registered": False},
+    }
+    assert legacy_master_asset_key(saas) == make_asset_uid(
+        "fqdn", "bob@contoso.onmicrosoft.com"
+    )
+
+
 def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
     domain = "mail.example.invalid"
     spf = {

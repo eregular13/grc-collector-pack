@@ -396,11 +396,16 @@ def migrate_finding_refs(ref: str) -> list[str]:
 
 
 def legacy_master_asset_key(rec: dict[str, Any]) -> str:
-    """Pre-#161 EGA- key: UPN as FQDN, cloud short names as hostname, no scope."""
+    """Pre-#161 EGA- key: UPN as FQDN, cloud short names as hostname, no scope.
+
+    Master's ``ega_asset_id`` keyed the first asset (or extra host/arn/fqdn),
+    never the finding title. Titles such as ``Write below binary dir`` classify
+    as NetBIOS under ``classify_name_pre161`` and must not steal the cluster
+    hostname. Current ``extra.ids`` may carry principal/scope — ignore them.
+    """
     from shared.asset_ids import (
         classify_name_pre161,
         extra_dict as ids_extra,
-        lift_extra_fields,
         merge_ids,
         strongest_anchor,
     )
@@ -408,15 +413,30 @@ def legacy_master_asset_key(rec: dict[str, Any]) -> str:
     from shared.asset_key import _port_proto
 
     extra = ids_extra(rec)
-    lifted = dict(lift_extra_fields(extra))
-    lifted.pop("principal", None)
-    lifted.pop("scope", None)
-    parts = [lifted, classify_name_pre161(rec.get("name"))]
-    assets = rec.get("assets") or []
+    assets = [a for a in (rec.get("assets") or []) if str(a).strip()]
+    name = assets[0] if assets else (
+        extra.get("host") or extra.get("arn") or extra.get("fqdn") or extra.get("hostname") or ""
+    )
+    lifted: dict[str, Any] = {}
+    for key in (
+        "ip",
+        "mac",
+        "fqdn",
+        "hostname",
+        "arn",
+        "uuid",
+        "bios_uuid",
+        "agent",
+        "netbios",
+        "host",
+    ):
+        if extra.get(key) not in (None, ""):
+            lifted[key] = extra.get(key)
+    parts = [lifted, classify_name_pre161(name)]
     if assets:
         parts.append(classify_name_pre161(assets[0]))
     ids = merge_ids(*parts)
-    typ, value = strongest_anchor(ids)
+    typ, value = strongest_anchor(ids, skip={"principal"})
     uid = make_asset_uid(typ, value)
     suffix = _port_proto(rec)
     return f"{uid}{suffix}" if uid else suffix.lstrip(":")
