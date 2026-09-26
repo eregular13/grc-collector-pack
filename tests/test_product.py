@@ -21,13 +21,6 @@ from product.server import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture(autouse=True)
-def _isolate_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    out = tmp_path / "product-out"
-    out.mkdir()
-    monkeypatch.setenv("OUT_DIR", str(out))
-
-
 def test_estate_reads_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     out = tmp_path / "estate-out"
     out.mkdir()
