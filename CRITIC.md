@@ -5,7 +5,7 @@ a normal merge commit. No rebase. Both sides kept: flood_guard + FedRAMP
 Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE + kind=excluded
 in findings_in; master ledger fingerprints, vendor-dependency columns,
 console `severity_from_open_poam`, nse-redis-noauth, playbook types.
-Lab this brick: pytest **1451** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1460** passed, 1 skipped. Also merged `6a80701` (#170 same-title URL discriminator) with Open still == poam.csv. Ten collectors +
 `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=105`
 `vulnerabilities=22` `applied_controls=126` `risk_scenarios=127`
 `poam=121` `excluded=21` `duplicates_merged=15` `flood_guard`
