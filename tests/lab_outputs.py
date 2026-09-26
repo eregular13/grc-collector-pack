@@ -54,7 +54,12 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    from shared.ciso_shape import EXCLUDED_HEADER, POAM_HEADER, assert_count_consistency
+    from shared.ciso_shape import (
+        EXCLUDED_HEADER,
+        POAM_HEADER,
+        assert_count_consistency,
+        assert_input_export_accounting,
+    )
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
@@ -117,6 +122,28 @@ def assert_lab() -> None:
     assert excluded_path.is_file(), "poam/excluded.csv missing"
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
     assert excluded, "DEMO/lab excluded.csv must not be header-only"
+    assert "id" in EXCLUDED_HEADER.split(",")
+    for row in excluded:
+        assert row.get("id"), row
+        assert row.get("finding_ref_id"), row
+        assert row.get("id") == row.get("finding_ref_id"), row
+        assert row.get("excluded_reason"), row
+    from collectors.grc_loader import _dedupe
+    from shared.finding_types import dedupe_weaknesses
+    from shared.hardening_dedup import dedupe_hardening
+    from shared.io_util import read_jsonl
+
+    parsed: list[dict] = []
+    canon = OUT / "canonical"
+    if canon.is_dir():
+        for path in sorted(canon.glob("*.jsonl")):
+            parsed.extend(row for row in read_jsonl(path) if isinstance(row, dict))
+    records = dedupe_hardening(dedupe_weaknesses(_dedupe(parsed)))
+    assert_input_export_accounting(
+        [r for r in records if r.get("kind") in {"finding", "excluded"}],
+        poam,
+        excluded,
+    )
     assert int(summary.get("excluded") or 0) == len(excluded)
     assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}

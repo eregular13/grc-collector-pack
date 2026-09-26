@@ -34,7 +34,7 @@ from shared.estate_pages import (
     write_export_manifest,
 )
 from shared.evidence import build_evidence_rows
-from shared.ciso_shape import EXCLUDED_FIELDS
+from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
@@ -253,6 +253,7 @@ def load() -> dict:
     estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
+    pre_excluded = [r for r in records if r.get("kind") == "excluded"]
     fold_port_only_into_specific(findings)
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
     severity_unmapped = sum(
@@ -414,6 +415,9 @@ def load() -> dict:
         *POAM_EXTRA_FIELDS,
     ]
     today = utc_run_date()
+    lighter = poam_lighter_requested()
+    weaknesses = other_findings + vuln_findings + pre_excluded
+    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     poam_ledger = run_ledger(findings, kev_catalog)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
@@ -435,8 +439,16 @@ def load() -> dict:
             ledger_by_fp[fp] = item
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
+    ranked = sorted(
+        weaknesses,
+        key=lambda rec: (
+            sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            str(rec.get("name") or rec.get("ref_id") or ""),
+            str(rec.get("ref_id") or ""),
+        ),
+    )
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    for rec, decision in poam_decisions:
+    for rec, decision in iter_poam_decisions(ranked, lighter=lighter):
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
@@ -450,6 +462,7 @@ def load() -> dict:
                 superseded_by = str(decision.get("superseded_by") or "")
             excluded_rows.append(
                 [
+                    rec.get("ref_id") or "",
                     rec.get("ref_id") or "",
                     weakness,
                     assets_s,
@@ -555,6 +568,11 @@ def load() -> dict:
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
+    assert_input_export_accounting(
+        [r for r in records if r.get("kind") in {"finding", "excluded"}],
+        [dict(zip(poam_header, row)) for row in poam_rows],
+        [dict(zip(EXCLUDED_FIELDS, row)) for row in excluded_rows],
+    )
     if lighter:
         plan_line = (
             "POA&M plan: lighter — Lows and non-key Mediums excluded at operator "
@@ -669,6 +687,7 @@ def load() -> dict:
         "poam_included": int(breakdown["poam_included"]) + pending_carried,
         "pending_carried": pending_carried,
         "excluded": len(excluded_rows),
+        "kind_excluded": len(pre_excluded),
         "excluded_by_reason": breakdown["excluded_by_reason"],
         "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
         "poam_plan_note": (
@@ -691,7 +710,8 @@ def load() -> dict:
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
-            "weaknesses_total == poam_included + excluded == weaknesses + pending_carried; "
+            "weaknesses_total == poam_included + excluded == "
+            "weaknesses + kind_excluded + pending_carried; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),
