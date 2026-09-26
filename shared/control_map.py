@@ -482,6 +482,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Enable malware protection": ["SI-3"],
     "Require encryption in transit": ["SC-8"],
     "Deny privileged Kubernetes containers": ["AC-6", "CM-7"],
+    "Require a Kubernetes container securityContext": ["AC-6", "CM-6", "CM-7"],
     "Disable anonymous Kubernetes API access": ["AC-3", "IA-2"],
     "Block Kubernetes privilege escalation": ["AC-6"],
     "Avoid hostNetwork on Kubernetes workloads": ["SC-7", "CM-7"],
@@ -2093,10 +2094,12 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     NSE misconfig is always included. Honeypot / deception-sensor is always
     excluded. Cost/ops Custodian policies are NOT_A_WEAKNESS. Unclassified
     Custodian policies stay on the plan as needs_review (never a silent
-    drop). kind:excluded rows (osquery unmapped, Custodian cost) land in
-    excluded.csv. Informational is excluded (telemetry_info for telemetry-only
-    rows). Status is not a gate. Repeated telemetry lows are collapsed by
-    iter_poam_decisions, not here.
+    drop). Classified Custodian security with no honest 800-53 stamp
+    also stays on the plan. kind:excluded rows (osquery unmapped,
+    Custodian cost) land in excluded.csv. Informational is excluded
+    (telemetry_info for telemetry-only rows). Status is not a gate.
+    Repeated telemetry lows are collapsed by iter_poam_decisions, not
+    here.
 
     GRC_POAM_LIGHTER=1 restores the lighter plan: Lows and non-key Mediums
     are excluded (severity_low / severity_medium_not_key) and recorded.

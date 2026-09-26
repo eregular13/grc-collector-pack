@@ -80,6 +80,9 @@ TYPE_ALIASES: dict[str, str] = {
     "ds_0002": "docker_nonroot",
     "ds0002": "docker_nonroot",
     "check_ebs_snapshot_public": "ebs_snapshot_public",
+    # Cloud Custodian security-context class (k8s.pod missing securityContext).
+    "security_context_pods": "k8s_security_context",
+    "security_context": "k8s_security_context",
     "allowedtodelegate": "ad_constrained_delegation",
     "addmember": "ad_addmember",
     "1.1": "hk_password_history",
@@ -383,6 +386,17 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "nist_800_53": ["SI-7", "CM-6", "AC-3"],
         "key_medium": True,
     },
+    "k8s_security_context": {
+        "control_name": "Require a Kubernetes container securityContext",
+        "recommended_fix": (
+            "Set a container securityContext: runAsNonRoot, drop extra capabilities, "
+            "and do not omit the element so the runtime default stays privileged. "
+            "This is a Cloud Custodian k8s.pod file-drop, not a live kubectl call "
+            "and not a privileged=true admission finding."
+        ),
+        "nist_800_53": ["AC-6", "CM-6", "CM-7"],
+        "key_medium": True,
+    },
     # Playbook text is paraphrase-only. PingCastle reports are NPOSL-3.0;
     # Nikto plugin DBs are All Rights Reserved. Never copy vendor wording.
     "tls_breach": {
@@ -622,6 +636,7 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
     "k8s_hostnetwork": "Workload uses hostNetwork",
     "k8s_write_binary_dir": "Workload can write under container binary directories",
+    "k8s_security_context": "Container securityContext is missing",
     "tls_breach": "HTTPS response compression enables BREACH",
     "tls_lucky13": "TLS CBC ciphers enable LUCKY13",
     "tls_cert_expiration": "TLS certificate is expired or expiring",
@@ -660,6 +675,46 @@ def norm_type_key(raw: str) -> str:
 def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
     extra = rec.get("extra")
     return extra if isinstance(extra, dict) else {}
+
+
+def is_custodian_policy_row(rec: dict[str, Any]) -> bool:
+    """Cloud Custodian policy row (security / needs-review / named c7n title)."""
+    name = str(rec.get("name") or "").strip().lower()
+    if name.startswith("cloud custodian"):
+        return True
+    if str(rec.get("source") or "") != "cloud-prowler":
+        return False
+    extra = extra_dict(rec)
+    klass = str(extra.get("classification") or "").strip().lower()
+    return klass in {"security", "needs-review", "cost"} or extra.get("needs_review") is True
+
+
+def _custodian_security_type(rec: dict[str, Any]) -> str:
+    """Honest class for Custodian security-policy / security-context names."""
+    if not is_custodian_policy_row(rec):
+        return ""
+    extra = extra_dict(rec)
+    blob = " ".join(
+        norm_type_key(str(x or ""))
+        for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
+    )
+    compact = blob.replace("_", "")
+    if (
+        "security_context" in blob
+        or "securitycontext" in compact
+        or "sec_con" in blob
+    ):
+        return "k8s_security_context"
+    # Public / open SSH or RDP (EC2.13 / EC2.14) — internet-facing SG ingress.
+    exposed = any(tok in blob for tok in ("public", "open", "0_0_0_0", "3389"))
+    admin = any(tok in blob for tok in ("ssh", "rdp", "3389"))
+    if exposed and admin:
+        return "sg_ingress_open"
+    if "public" in blob and any(
+        tok in blob for tok in ("ingress", "security_group")
+    ):
+        return "sg_ingress_open"
+    return ""
 
 
 def _alias_keys(rec: dict[str, Any]) -> list[str]:
@@ -882,6 +937,18 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "k8s_anonymous_auth"
     if "privileged" in text and ("container" in text or "pod" in text or "admission" in text):
         return "k8s_privileged"
+    if (
+        "securitycontext" in text.replace(" ", "").replace("_", "").replace("-", "")
+        or "security-context" in text
+        or "security_context" in text
+        or "sec-con" in text
+    ) and (
+        "pod" in text
+        or "container" in text
+        or "k8s" in text
+        or "kubernetes" in text
+    ):
+        return "k8s_security_context"
     if ("s3" in text or "bucket" in text) and (
         "public access" in text
         or "public-access" in text
@@ -928,6 +995,9 @@ def finding_type(rec: dict[str, Any]) -> str:
         mapped = TYPE_ALIASES.get(key)
         if mapped:
             return mapped
+    c7n = _custodian_security_type(rec)
+    if c7n:
+        return c7n
     guessed = _heuristic_type(rec)
     source = str(rec.get("source") or "")
     # Unmapped PingCastle RiskId-only rows stay untyped so #145 playbooks win.
