@@ -10,7 +10,11 @@ import re
 from typing import Any
 
 from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
-from shared.framework_class_map import apply_class_mapping
+from shared.framework_class_map import (
+    BLANKET_REGISTER_STAMPS,
+    apply_class_mapping,
+    csf_cpg_tag_set,
+)
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
 
@@ -245,7 +249,8 @@ TOPIC_CSF = {
     "Deploy endpoint detection and response": "detect",
     "Restore endpoint coverage": "detect",
     "Enable time synchronization": "detect",
-    "Lock down sensitive perimeter hostnames": "identify",
+    "Lock down sensitive perimeter hostnames": "protect",
+    "Stop writes under container binary directories": "detect",
 }
 
 
@@ -469,7 +474,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Avoid hostNetwork on Kubernetes workloads": ["SC-7", "CM-7"],
     "Stop writes under container binary directories": ["SI-7", "CM-6", "AC-3"],
     "Restrict exposed admin interfaces": ["AC-17", "SC-7"],
-    "Lock down sensitive perimeter hostnames": ["CM-8"],
+    "Lock down sensitive perimeter hostnames": ["SC-7"],
     "Remove standing privileged role assignment": ["AC-2", "AC-6"],
     "Disable legacy authentication protocols": ["IA-2", "IA-5"],
     "Restrict external sharing": ["AC-3", "AC-6"],
@@ -775,10 +780,40 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     return mapped
 
 
+def _is_unauth_redis(rec: dict[str, Any]) -> bool:
+    """Nuclei exposed-redis / nmap redis-info — auth gap, not a patch finding."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    tid = str(
+        extra.get("check_id")
+        or extra.get("template_id")
+        or extra.get("rule")
+        or extra.get("template-id")
+        or ""
+    ).lower()
+    if tid in {"exposed-redis", "nse-redis-noauth"}:
+        return True
+    text = _blob(rec)
+    if "redis" not in text:
+        return False
+    return any(
+        tok in text
+        for tok in (
+            "without auth",
+            "unauthenticated",
+            "noauth",
+            "no auth",
+            "requirepass",
+            "accessible without authentication",
+        )
+    )
+
+
 def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
+    if _is_unauth_redis(rec):
+        check = "nse-redis-noauth"
     rule = MISCONFIG_RULES.get(check)
     if rule:
         mapped = _stamp_csf(
@@ -1697,25 +1732,27 @@ def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = Non
 def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
     """Wizard-safe CPG + CSF stamps. No colons on the CISO wire.
 
-    With no record, return the known stamp vocabulary. With a finding,
-    stamp only what the 800-53 / CIS map actually produced — do not force
-    cpg_2_W onto every row.
+    Findings get the same class-based CSF/CPG stamps as poam.csv
+    (subcategory + CPG 2.0 goal). Assets and other kinds get none.
+    Never the blanket ``csf_PR`` / ``csf_protect`` or retired
+    ``cpg_2_W`` / ``cpg_1_E``.
     """
     if rec and rec.get("kind") == "finding":
         mapped = map_finding(rec)
-        stamps = list(mapped.get("cpg") or []) + list(mapped.get("csf") or [])
-        if mapped.get("cpg"):
+        csf, cpg = csf_cpg_tag_set(str(mapped.get("framework_refs") or ""))
+        stamps = [t for t in list(cpg) + list(csf) if t not in BLANKET_REGISTER_STAMPS]
+        if any(t.startswith("cpg_") for t in stamps):
             stamps.append("cisa_cpg")
-        if mapped.get("csf"):
+        if any(t.startswith("csf_") for t in stamps):
             stamps.append("nist_csf")
+    elif rec:
+        stamps = []
     else:
         stamps = [
-            CPG_WEAK_SERVICE,
-            CPG_EXPOSURE,
-            "csf_PR",
             "nist_csf",
             "cisa_cpg",
             "cpg_3_S",
+            "cpg_3_I",
             "cpg_2_B",
             "csf_PR_IR_01",
             "csf_unmapped",
@@ -1723,6 +1760,6 @@ def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
         ]
     out: list[str] = []
     for stamp in stamps:
-        if stamp and ":" not in stamp and stamp not in out:
+        if stamp and ":" not in stamp and stamp not in BLANKET_REGISTER_STAMPS and stamp not in out:
             out.append(stamp)
     return out

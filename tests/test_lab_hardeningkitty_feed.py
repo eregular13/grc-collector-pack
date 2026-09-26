@@ -64,7 +64,7 @@ EXPECTED_MAP = {
     "10001": ("account_lockout", ["AC-7"], "csf_PR", "cpg_3_E"),
     "10208": ("session_lock", ["AC-11"], "csf_PR", "cpg_3_E"),
     "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", "cpg_3_Q"),
-    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_S"),
+    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_I"),
     "10219": ("password_policy", ["IA-5"], "csf_PR", "cpg_3_B"),
     "11014": ("malware_protection", ["SI-3"], "csf_PR", "cpg_4_A"),
     "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", "cpg_3_K"),
