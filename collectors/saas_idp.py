@@ -228,9 +228,9 @@ def _emit_idp_inventory(inv: dict, now: str) -> list[dict]:
                 labels=LABELS + extra_labels,
                 collected_at=now,
                 extra=stamp_ids(
-                    {"asset_type": "SP", "provider": provider},
+                    {"asset_type": "SP", "provider": provider, "principal": name},
                     name=name,
-                    hostname=name if "@" not in name else "",
+                    principal=name,
                 ),
             )
         )
