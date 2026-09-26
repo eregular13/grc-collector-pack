@@ -119,6 +119,10 @@ _OPEN_PORT_OBSERVED = re.compile(
     r"^open(?:\s+[a-z0-9._/-]+(?:\s+on)?)?\s+(?:tcp|udp|sctp)/\d+\s+observed$",
     re.I,
 )
+_OPEN_PORT_N = re.compile(
+    r"^open\s+port\s+\d+(?:/[a-z0-9._-]+)?$",
+    re.I,
+)
 _PORT_EXPOSURE_TITLE = re.compile(
     r"^[a-z0-9._/+-]+(?:\s+\d+(?:/(?:tcp|udp|sctp))?)?(?:\s+[a-z0-9._/+-]+)?\s+exposed$",
     re.I,
@@ -319,7 +323,7 @@ def _is_port_exposure_observation(rec: dict[str, Any]) -> bool:
         return True
     if str(rec.get("kind") or "").strip().lower() == "observation":
         return True
-    if _OPEN_PORT_OBSERVED.match(name):
+    if _OPEN_PORT_OBSERVED.match(name) or _OPEN_PORT_N.match(name):
         return True
     return bool(_PORT_EXPOSURE_TITLE.match(name))
 
