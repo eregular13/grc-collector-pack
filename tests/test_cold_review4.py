@@ -1074,33 +1074,39 @@ def test_ambiguous_bare_web01_four_rows_both_orders() -> None:
 
     Two nmap hosts (port-22) plus the Fleet coverage row on the bare name, and
     one FQDN coverage row so a fold would collapse a POA&M ID. Master keeps
-    four rows; both ledger orders must too.
+    four rows; FQDN-first and wazuh-first (grc_loader) must too.
     """
     pair = (
         ("web01.corp-a.local", "10.1.0.10"),
         ("web01.corp-b.local", "10.2.0.10"),
     )
     for order in (pair, tuple(reversed(pair))):
-        records = []
+        nmap_block = []
         for fqdn, ip in order:
-            records.append(_nmap_fqdn_asset(fqdn, ip))
-            records.append(_nmap_port(fqdn, "22", service="ssh", extra={"ip": ip}))
-        records.append(_wazuh_disconnected(order[0][0]))
-        records.append(_fleet_short_asset("web01"))
-        records.append(_wazuh_disconnected("web01"))
-        ledger = AssetLedger()
-        stamped = attach_asset_uids(records, ledger, now=NOW)
-        uids = {
-            str((r.get("extra") or {}).get("asset_uid") or "")
-            for r in stamped
-            if r.get("kind") == "asset"
-        }
-        assert len(uids) == 3, f"order {order[0][0]} first folded to {uids}"
-        open_items = _poam_open(records)
-        assert len(open_items) == 4, (
-            f"order {order[0][0]} first → {len(open_items)} rows "
-            f"{[(it.get('name'), it.get('poam_id')) for it in open_items]}"
-        )
+            nmap_block.append(_nmap_fqdn_asset(fqdn, ip))
+            nmap_block.append(_nmap_port(fqdn, "22", service="ssh", extra={"ip": ip}))
+        wazuh_block = [
+            _fleet_short_asset("web01"),
+            _wazuh_disconnected("web01"),
+        ]
+        fqdn_finding = [_wazuh_disconnected(order[0][0])]
+        for records, label in (
+            (nmap_block + fqdn_finding + wazuh_block, f"fqdn-first:{order[0][0]}"),
+            (wazuh_block + nmap_block + fqdn_finding, f"wazuh-first:{order[0][0]}"),
+        ):
+            ledger = AssetLedger()
+            stamped = attach_asset_uids(records, ledger, now=NOW)
+            uids = {
+                str((r.get("extra") or {}).get("asset_uid") or "")
+                for r in stamped
+                if r.get("kind") == "asset"
+            }
+            assert len(uids) == 3, f"{label} folded to {uids}"
+            open_items = _poam_open(records)
+            assert len(open_items) == 4, (
+                f"{label} → {len(open_items)} rows "
+                f"{[(it.get('name'), it.get('poam_id')) for it in open_items]}"
+            )
 
 
 def test_wazuh_ip_reuse_keeps_two_egps() -> None:
