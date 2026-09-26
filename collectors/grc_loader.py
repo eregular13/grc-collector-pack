@@ -427,6 +427,7 @@ def load() -> dict:
         )
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
+    observed_refs = {str(rec.get("ref_id") or "") for rec in weaknesses if rec.get("ref_id")}
     pending_carried = 0
     for item in (poam_ledger.get("items") or {}).values():
         pid = str(item.get("poam_id") or "")
@@ -434,6 +435,10 @@ def load() -> dict:
         if not pid or pid in listed_ids:
             continue
         if status not in {"open", "pending_verification", "reopened"}:
+            continue
+        # Present this scan but excluded / collapsed: stay off the plan.
+        # Only carry items the scanner did not observe (pending FLAP, etc.).
+        if str(item.get("ref_id") or "") in observed_refs:
             continue
         pending_carried += 1
         listed_ids.add(pid)
