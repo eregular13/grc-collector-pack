@@ -3,7 +3,8 @@
 Lynis: only mapped warnings/suggestions become findings.
 OpenSCAP: fail/error always become findings; this map stamps controls
 and lets Lynis+oscap+HK dedupe the same gap on the same host.
-HardeningKitty: Failed (TestResult/Result) become findings; Passed silent.
+HardeningKitty: TestResult=Failed become findings; Result is the measured
+value. TestResult=Passed stays silent. Legacy Result=Failed still parses.
 Hardening index is a score, not a finding.
 Not a CIS benchmark / CIS-CAT deliverable.
 

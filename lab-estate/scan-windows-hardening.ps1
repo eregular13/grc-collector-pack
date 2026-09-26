@@ -131,19 +131,20 @@ if ([System.IO.Path]::GetFileName($List) -like "finding_list_cis_*") {
 }
 
 Import-Module (Join-Path $HkRoot "HardeningKitty.psm1") -Force
-$Report = Join-Path $Identity ("hardeningkitty-lab-" + $env:COMPUTERNAME + ".csv")
+# Pack dest_in name: hardeningkitty-<HOSTNAME>-<yyyyMMdd-HHmmss>.csv
+# Host comes from the file name (official HK CSV has no host column).
+# Matches upstream default hardeningkitty_report_<hostname>_<list>-<date>.csv
+# ($env:COMPUTERNAME.ToLower(), HardeningKitty.psm1 L843 / L868).
+$HostName = ($env:COMPUTERNAME).ToLower()
+$Stamp = Get-Date -Format yyyyMMdd-HHmmss
+$Report = Join-Path $Identity ("hardeningkitty-" + $HostName + "-" + $Stamp + ".csv")
 Write-Host "Invoke-HardeningKitty -Mode Audit -FileFindingList $List"
 Invoke-HardeningKitty -Mode Audit -FileFindingList $List -Report -ReportFile $Report -SkipMachineInformation
 
-# Stamp ComputerName so dest_in ingest can attach the host. Official HK
-# report columns stay intact; this is an extra column the pack parser reads.
+# Sidecar override the parser also accepts. Do not add ComputerName to the CSV
+# — official HK Export-Csv columns stay ID..Filter only.
 if (Test-Path $Report) {
-    $rows = Import-Csv -Path $Report
-    $hostName = $env:COMPUTERNAME
-    foreach ($row in $rows) {
-        Add-Member -InputObject $row -NotePropertyName ComputerName -NotePropertyValue $hostName -Force
-    }
-    $rows | Export-Csv -Path $Report -NoTypeInformation -Encoding utf8
+    Set-Content -Path ($Report + ".host") -Value $HostName -Encoding utf8
 }
 
 $Python = if ($env:PYTHON) { $env:PYTHON } else { "python" }

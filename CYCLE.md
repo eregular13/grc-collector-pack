@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 190 — HK TestResult authority + filename host (2026-09-26)
+
+Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV
+(scipag/HardeningKitty.psm1 @ da0976073caa). `TestResult` is
+authoritative (Passed never a finding; Result is the measured value;
+legacy Result=Failed still parses). Host from
+`hardeningkitty-<HOSTNAME>-<timestamp>.csv` / upstream
+`hardeningkitty_report_<hostname>_<list>-<date>.csv` / `.host` sidecar /
+`HARDENINGKITTY_HOST` — never silent `windows-host`. Two SYNTHETIC
+fixtures, official header only. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
 ## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
 
 Extend the existing HardeningKitty CSV parser (Failed/`TestResult=Failed`

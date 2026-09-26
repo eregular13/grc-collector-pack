@@ -49,6 +49,10 @@ cd ..
 .\scripts\lab_drop_to_sor.ps1 -Work .\prove\work
 ```
 
+The runner writes `hardeningkitty-<HOSTNAME>-<yyyyMMdd-HHmmss>.csv`
+plus a `<csv>.host` sidecar. Official HK CSV has no host column;
+`Result` is the measured value and `TestResult` is Passed/Failed.
+
 CI / no Windows: copy `fixtures/lab-drop/identity/` (synthetic schema
 fixture, not an observed scan) into dest_in. Pytest does this.
 

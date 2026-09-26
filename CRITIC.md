@@ -1,3 +1,14 @@
+# CRITIC — cycle 190 (HK_TESTRESULT_AND_HOST)
+
+Lab this brick: pytest **1012** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`poam=106` `demo=true`). Zero P0/P1.
+HardeningKitty ingest now matches official Audit CSV: TestResult
+authoritative; host from filename/sidecar/env; two SYNTHETIC hosts;
+never `windows-host`. CIS v8 INTERNAL-ONLY. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 189 (LAB_HARDENINGKITTY_WINDOWS)
 
 Lab this brick: pytest **1004** passed, 1 skipped. Ten collectors +

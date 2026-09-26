@@ -168,8 +168,10 @@ def detect_family(path: Path) -> str | None:
 
     LAB dest_in never enters the KEEP inventory (LAB != SAMPLE != client).
     """
-    skip = {".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md", "LAB.txt", "MANIFEST", "MANIFEST.json"}
+    skip = {".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md", "LAB.txt", "MANIFEST", "MANIFEST.json", "HARDENINGKITTY.host"}
     if not path.is_file() or path.name in skip:
+        return None
+    if path.suffix.lower() == ".host" or path.name.endswith(".csv.host"):
         return None
     if path_is_lab(path):
         return None

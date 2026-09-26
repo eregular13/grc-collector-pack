@@ -30,29 +30,31 @@ from shared.hardening_map import (
     extra_control_fields,
     hk_control,
 )
+from shared.hardeningkitty_csv import (
+    HK_AUDIT_COLUMNS,
+    HK_AUDIT_HEADER,
+    WINDOWS_HOST_DEFAULT,
+    hk_host_from_filename,
+    hk_row_failed,
+)
 from shared.lab_stamp import LAB_LABEL
 from tests.test_lab_prove_lock import stage_lab_drop_dest_in
 
 ROOT = Path(__file__).resolve().parents[1]
 LAB_DROP = ROOT / "fixtures" / "lab-drop"
 IDENTITY = LAB_DROP / "identity"
-HK_CSV = IDENTITY / "hardeningkitty-lab-SYNTHETIC.csv"
+HK_CSV_A = IDENTITY / "hardeningkitty-lab-win.lab.internal-20260926T000000Z-SYNTHETIC.csv"
+HK_CSV_B = IDENTITY / "hardeningkitty-lab-win-b.lab.internal-20260926T000001Z-SYNTHETIC.csv"
+HK_CSV = HK_CSV_A
 README = IDENTITY / "README.md"
 GITATTRIBUTES = ROOT / ".gitattributes"
 RUNNER = ROOT / "lab-estate" / "scan-windows-hardening.ps1"
 DEMO_HK = ROOT / "fixtures" / "demo" / "identity" / "hardeningkitty.csv"
+HOST_A = "lab-win.lab.internal"
+HOST_B = "lab-win-b.lab.internal"
 
-# Official HK report: TestResult=Failed, Result=actual. Plus ComputerName.
-HK_OFFICIAL_COLS = (
-    "ID",
-    "Category",
-    "Name",
-    "Severity",
-    "Result",
-    "Recommended",
-    "TestResult",
-    "SeverityFinding",
-)
+# Official HK Audit Export-Csv header (HardeningKitty.psm1 @ da0976073caa).
+HK_OFFICIAL_COLS = HK_AUDIT_COLUMNS
 
 # Real MS baseline IDs from finding_list_msft_security_baseline_windows_11_24h2_machine.csv
 EXPECTED_MAP = {
@@ -91,37 +93,41 @@ def test_gitattributes_pins_lab_drop_eol_lf() -> None:
         if stripped.startswith("fixtures/lab-drop/**") and "eol=lf" in stripped:
             pinned = True
     assert pinned
-    for path in (HK_CSV, IDENTITY / "LAB.txt", README):
+    for path in (HK_CSV_A, HK_CSV_B, IDENTITY / "LAB.txt", README):
         assert bytes([13]) not in path.read_bytes(), path.name
 
 
 def test_synthetic_fixture_is_honest_ms_baseline_not_seen() -> None:
     assert (IDENTITY / "LAB.txt").is_file()
-    assert HK_CSV.is_file()
+    assert HK_CSV_A.is_file()
+    assert HK_CSV_B.is_file()
     assert README.is_file()
     banner = (IDENTITY / "LAB.txt").read_text(encoding="utf-8")
-    note = README.read_text(encoding="utf-8") + HK_CSV.read_text(encoding="utf-8")
+    note = README.read_text(encoding="utf-8") + HK_CSV_A.read_text(encoding="utf-8")
     assert "LAB/DEMO" in banner
     assert "not a client" in banner.lower()
-    assert "SYNTHETIC" in HK_CSV.name
+    assert "SYNTHETIC" in HK_CSV_A.name and "SYNTHETIC" in HK_CSV_B.name
     assert "not an observed" in note.lower()
     assert "schema fixture" in note.lower()
     assert "not" in note.lower() and "seen" in note.lower()
     assert "finding_list_msft_security_baseline" in note
     assert "not a CIS" in note.lower() or "never cis" in note.lower()
-    assert "finding_list_cis_" not in HK_CSV.read_text(encoding="utf-8").split("ID,", 1)[-1]
-    head = next(
-        ln for ln in HK_CSV.read_text(encoding="utf-8").splitlines() if ln.startswith("ID,")
-    )
-    for col in HK_OFFICIAL_COLS:
-        assert col in head.split(",")[0] or col in head
+    assert "ComputerName" not in HK_AUDIT_HEADER
+    for csv_path in (HK_CSV_A, HK_CSV_B):
+        body = csv_path.read_text(encoding="utf-8")
+        assert "finding_list_cis_" not in body.split("ID,", 1)[-1]
+        head = next(ln for ln in body.splitlines() if ln.startswith("ID,"))
+        assert head == HK_AUDIT_HEADER
+        assert "ComputerName" not in head
+        cols = head.split(",")
+        assert tuple(cols) == HK_OFFICIAL_COLS
 
 
 def test_hk_failed_only_and_lab_labeled() -> None:
     recs = identity_ad.parse_file(HK_CSV)
     findings = [r for r in recs if r["kind"] == "finding"]
     assets = [r for r in recs if r["kind"] == "asset"]
-    assert assets and assets[0]["name"] == "lab-win.lab.internal"
+    assert assets and assets[0]["name"] == HOST_A
     ids = {str(r["extra"].get("check_id") or r["extra"].get("id")) for r in findings}
     assert "10100" in ids
     assert "10501" in ids
@@ -186,7 +192,7 @@ def test_hk_lynis_dedupe_cross_tool_same_host() -> None:
         "kind": "finding",
         "source": "host-wazuh",
         "name": "Lynis FIRE-4590: No firewall software installed",
-        "assets": ["lab-win.lab.internal"],
+        "assets": [HOST_A],
         "labels": ["lynis"],
         "extra": {"control_key": "host_firewall", "check_id": "FIRE-4590", "tool": "lynis"},
     }
@@ -202,7 +208,8 @@ def test_lab_hk_ingest_e2e_and_cis_stays_internal(tmp_path: Path) -> None:
     dest = tmp_path / "prove"
     dest_in = dest / "in"
     stage_lab_drop_dest_in(dest_in)
-    assert (dest_in / "identity" / HK_CSV.name).is_file()
+    assert (dest_in / "identity" / HK_CSV_A.name).is_file()
+    assert (dest_in / "identity" / HK_CSV_B.name).is_file()
     stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
     assert stamp["status"] == "pass", stamp.get("reason")
     assert stamp["lab"] is True
@@ -220,7 +227,8 @@ def test_lab_hk_ingest_e2e_and_cis_stays_internal(tmp_path: Path) -> None:
     assert CIS_V8_PREFIX not in findings_csv
     canonical = (out / "canonical" / "identity-ad.jsonl").read_text(encoding="utf-8")
     assert '"LAB"' in canonical or ", \"LAB\"" in canonical
-    assert "lab-win.lab.internal" in canonical
+    assert HOST_A in canonical
+    assert HOST_B in canonical
     assert CIS_V8_INTERNAL_FIELD in canonical
     hidden = all_cis_v8_internal_tokens()
     assert hidden
@@ -269,7 +277,7 @@ def test_lab_hk_cannot_enter_keep_path(tmp_path: Path) -> None:
 def test_identity_manifest_sha256_matches(tmp_path: Path) -> None:
     dest = tmp_path / "identity"
     dest.mkdir()
-    for src in (HK_CSV, IDENTITY / "LAB.txt", README):
+    for src in (HK_CSV_A, HK_CSV_B, IDENTITY / "LAB.txt", README):
         (dest / src.name).write_bytes(src.read_bytes())
     write_drop_manifest(
         dest,
@@ -305,3 +313,97 @@ def test_windows_runner_is_lab_ms_baseline_not_cis() -> None:
     assert "scipag/HardeningKitty" in text
     assert "CIS-CAT" in text
     assert "CIS Benchmark" in text
+    assert "hardeningkitty-" in text
+    assert "yyyyMMdd-HHmmss" in text
+    assert "Add-Member" not in text
+    assert ".host" in text
+
+
+def _official_hk_row(
+    hid: str,
+    name: str,
+    result: str,
+    recommended: str,
+    test_result: str,
+    *,
+    severity: str = "Medium",
+) -> str:
+    return (
+        f"{hid},Account Policies,{name},{severity},{result},"
+        f"{recommended},{test_result},{severity},,"
+    )
+
+
+def test_official_header_testresult_failed_is_finding_passed_is_not(tmp_path: Path) -> None:
+    """Real HK Export-Csv: Result is measured; TestResult decides fail/pass."""
+    dest = tmp_path / f"hardeningkitty-win-official-20260926T010000Z.csv"
+    dest.write_text(
+        HK_AUDIT_HEADER
+        + "\n"
+        + _official_hk_row("10100", "Length of password history maintained", "5", "24", "Failed")
+        + "\n"
+        + _official_hk_row("10102", "Password must meet complexity requirements", "1", "1", "Passed")
+        + "\n"
+        + _official_hk_row("10101", "Minimum password length", "Failed", "14", "Passed")
+        + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    recs = identity_ad.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    ids = {str(r["extra"].get("check_id")) for r in findings}
+    assert "10100" in ids
+    assert "10102" not in ids
+    assert "10101" not in ids  # TestResult=Passed wins over Result=Failed
+    assert all(r["assets"] == ["win-official"] for r in recs)
+    assert WINDOWS_HOST_DEFAULT not in {r["name"] for r in recs}
+    blob = str(recs)
+    assert " actual=5" not in blob
+    assert "[REDACTED]" in blob
+
+
+def test_two_official_files_are_two_hosts() -> None:
+    assert hk_host_from_filename(HK_CSV_A.name) == HOST_A
+    assert hk_host_from_filename(HK_CSV_B.name) == HOST_B
+    recs = identity_ad.parse_file(HK_CSV_A) + identity_ad.parse_file(HK_CSV_B)
+    assets = sorted({r["name"] for r in recs if r["kind"] == "asset"})
+    assert assets == sorted([HOST_A, HOST_B])
+    assert WINDOWS_HOST_DEFAULT not in assets
+    by_host = {}
+    for rec in recs:
+        if rec["kind"] != "finding":
+            continue
+        for host in rec["assets"]:
+            by_host.setdefault(host, []).append(rec["extra"].get("check_id"))
+    assert "10100" in by_host[HOST_A]
+    assert "10501" in by_host[HOST_B]
+    assert by_host[HOST_A] != by_host[HOST_B] or HOST_A != HOST_B
+
+
+def test_missing_host_does_not_collapse_onto_windows_host(tmp_path: Path) -> None:
+    header_rows = (
+        HK_AUDIT_HEADER
+        + "\n"
+        + _official_hk_row("10100", "Length of password history maintained", "5", "24", "Failed")
+        + "\n"
+    )
+    one = tmp_path / "left" / "audit.csv"
+    two = tmp_path / "right" / "audit.csv"
+    one.parent.mkdir()
+    two.parent.mkdir()
+    one.write_text(header_rows, encoding="utf-8", newline="\n")
+    two.write_text(header_rows, encoding="utf-8", newline="\n")
+    recs_one = identity_ad.parse_file(one)
+    recs_two = identity_ad.parse_file(two)
+    names_one = {r["name"] for r in recs_one if r["kind"] == "asset"}
+    names_two = {r["name"] for r in recs_two if r["kind"] == "asset"}
+    assert names_one
+    assert names_two
+    assert WINDOWS_HOST_DEFAULT not in names_one
+    assert WINDOWS_HOST_DEFAULT not in names_two
+    assert names_one != names_two
+    assert all(r["extra"].get("host_unresolved") is True for r in recs_one)
+    assert all(r["extra"].get("host_unresolved") is True for r in recs_two)
+    assert hk_row_failed({"testresult": "passed", "result": "failed"}) == ("passed", False)
+    assert hk_row_failed({"testresult": "failed", "result": "5"}) == ("failed", True)
+    assert hk_row_failed({"result": "failed"}) == ("failed", True)

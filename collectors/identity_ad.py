@@ -17,6 +17,7 @@ from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.enum4linux import parse_enum4linux
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, hk_control
+from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.schema import make_record, make_ref
@@ -213,32 +214,15 @@ def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
     return nodes
 
 
-_HK_PASS = frozenset({"passed", "pass", "ok", "true", "compliant", "notapplicable", "n/a", "na"})
-_HK_FAIL = frozenset({"failed", "fail", "warning", "warn", "noncompliant", "error"})
-
-
-def _hk_failed(lower: dict[str, str]) -> tuple[str, bool]:
-    """HK official report uses TestResult=Passed|Failed; Result is the actual.
-
-    Older operator/demo CSVs put Passed|Failed in Result. Prefer TestResult.
-    """
-    test = (lower.get("testresult") or "").lower()
-    result = (lower.get("result") or lower.get("status") or lower.get("outcome") or "").lower()
-    outcome = test or result
-    if outcome in _HK_PASS:
-        return outcome, False
-    if outcome in _HK_FAIL:
-        return outcome, True
-    return outcome, False
-
-
 def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> list[dict]:
     """Parse HardeningKitty Audit CSV. Failed rows only. Actual values redacted.
 
-    Official HK report columns: ID, Category, Name, Severity, Result,
-    Recommended, TestResult, SeverityFinding. Result is the measured
-    value; TestResult is Passed/Failed. Demo/KEEP CSVs that put
-    Failed/Passed in Result still parse. Never CIS Benchmark / CIS-CAT.
+    Official HK report (HardeningKitty.psm1 @ da0976073caa): Result is the
+    measured value; TestResult is Passed/Failed. TestResult is
+    authoritative — TestResult=Passed never becomes a finding.
+    Legacy/demo CSVs that put Passed|Failed in Result still parse.
+    Host comes from filename / sidecar / env / optional column — never
+    the invented default windows-host. Never CIS Benchmark / CIS-CAT.
     """
     records: list[dict] = []
     lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
@@ -252,20 +236,13 @@ def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> l
         except csv.Error:
             dialect = csv.excel
     reader = csv.DictReader(StringIO("\n".join(lines)), dialect=dialect)
-    host = "windows-host"
     seen_hosts: set[str] = set()
     for row in reader:
         if not row:
             continue
         lower = {str(k).strip().lower().replace(" ", ""): (v or "").strip() for k, v in row.items() if k}
-        host = (
-            lower.get("computername")
-            or lower.get("hostname")
-            or lower.get("computer")
-            or lower.get("system")
-            or host
-        )
-        outcome, failed = _hk_failed(lower)
+        host, host_source, unresolved = resolve_hk_host(path, lower)
+        outcome, failed = hk_row_failed(lower)
         if not failed:
             continue
         hid = lower.get("id") or lower.get("number") or lower.get("name") or "hk"
@@ -297,10 +274,18 @@ def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> l
                 "severity": sev,
                 "tool": "hardeningkitty",
                 "baseline": "msft_security_baseline",
+                "host_source": host_source,
+                "host_unresolved": unresolved,
             }
         )
+        labels = LABELS + ["hardeningkitty"]
+        if unresolved:
+            labels = labels + ["host-unresolved"]
         if host not in seen_hosts:
             seen_hosts.add(host)
+            asset_extra = {"asset_type": "PR", "tool": "hardeningkitty", "host_source": host_source}
+            if unresolved:
+                asset_extra["host_unresolved"] = True
             records.append(
                 make_record(
                     kind="asset",
@@ -310,9 +295,9 @@ def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> l
                     description=f"Windows host {host}",
                     category="host",
                     assets=[host],
-                    labels=LABELS + ["windows", "hardeningkitty"],
+                    labels=LABELS + ["windows", "hardeningkitty"] + (["host-unresolved"] if unresolved else []),
                     collected_at=now,
-                    extra={"asset_type": "PR", "tool": "hardeningkitty"},
+                    extra=asset_extra,
                 )
             )
         records.append(
@@ -328,7 +313,7 @@ def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> l
                 severity=sev,
                 category="identity-gap",
                 assets=[host],
-                labels=LABELS + ["hardeningkitty"],
+                labels=labels,
                 collected_at=now,
                 extra=extra,
             )
@@ -467,6 +452,8 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
 
 def parse_file(path: Path) -> list[dict]:
     if path.name in SKIP_INPUT_NAMES:
+        return []
+    if path.suffix.lower() == ".host" or path.name.endswith(".csv.host"):
         return []
     text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
     payload: Any = {}
