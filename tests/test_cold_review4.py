@@ -322,6 +322,13 @@ def test_jenkins_user_host_principal_stay_distinct() -> None:
         assets=["jenkins@corp.local"],
     )
     assert len({asset_uid(user), asset_uid(host), asset_uid(principal)}) == 3
+    ledger = AssetLedger()
+    u1 = ledger.observe(user, now=NOW)
+    u2 = ledger.observe(host, now=NOW)
+    u3 = ledger.observe(principal, now=NOW)
+    ledger.late_merge_pass(now=NOW)
+    keep = {ledger.assets[u].get("merged_into") or u for u in (u1, u2, u3)}
+    assert len(keep) == 3
 
 
 def test_placeholder_id_helper() -> None:
