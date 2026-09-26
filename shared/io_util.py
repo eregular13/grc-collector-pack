@@ -100,6 +100,9 @@ SKIP_INPUT_NAMES = frozenset(
         "MANIFEST",
         "poam-ledger.json",
         "asset-ledger.json",
+        "AUTHORIZATION.txt",
+        "AUTHORIZATION.md",
+        "AUTH.txt",
     }
 )
 DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})

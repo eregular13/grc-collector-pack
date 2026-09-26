@@ -40,6 +40,9 @@ def _prep(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, label: str | None)
     monkeypatch.setenv("FIXTURES_DIR", str(DEMO))
     monkeypatch.delenv("DROPBOX_DEMO", raising=False)
     monkeypatch.delenv("GRC_CLIENT_NAME", raising=False)
+    monkeypatch.delenv("GRC_AUTHORIZER", raising=False)
+    monkeypatch.delenv("GRC_AUTH_DATE", raising=False)
+    monkeypatch.delenv("GRC_SCOPE_REF", raising=False)
     if label:
         monkeypatch.setenv("GRC_ESTATE_LABEL", label)
     else:
@@ -91,7 +94,15 @@ def _run_loader_records(
     monkeypatch.setenv("OUT_DIR", str(out))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
     monkeypatch.setenv("FIXTURES_DIR", str(DEMO))
-    for key in ("GRC_ESTATE_LABEL", "DROPBOX_DEMO", "GRC_CLIENT_NAME", "GRC_HIDE_ESTATE"):
+    for key in (
+        "GRC_ESTATE_LABEL",
+        "DROPBOX_DEMO",
+        "GRC_CLIENT_NAME",
+        "GRC_HIDE_ESTATE",
+        "GRC_AUTHORIZER",
+        "GRC_AUTH_DATE",
+        "GRC_SCOPE_REF",
+    ):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
         monkeypatch.setenv(key, value)
@@ -119,7 +130,12 @@ def _issue(status: dict, name: str) -> dict:
         ("LAB", {"GRC_ESTATE_LABEL": "LAB"}, ["nmap"]),
         (
             "CLIENT",
-            {"GRC_ESTATE_LABEL": "CLIENT", "GRC_CLIENT_NAME": "Acme Corp"},
+            {
+                "GRC_ESTATE_LABEL": "CLIENT",
+                "GRC_CLIENT_NAME": "Acme Corp",
+                "GRC_AUTHORIZER": "Jane Roe",
+                "GRC_AUTH_DATE": "2026-09-20",
+            },
             ["nmap"],
         ),
     ],
