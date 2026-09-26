@@ -8,8 +8,11 @@
   `severity_info` rows keep canonical `severity=info` on excluded.csv — they
   are not labeled `low`. Exec summary counts info as its own bucket, not as
   dropped Lows. CISO `findings.csv` still maps info→low for the importer.
-  Farm identity unchanged (findings=174 / poam=106 / excluded=68). Not a
-  12th compose service. No POST `/api/risks`. Does not touch `product-lab/drop`.
+  Farm identity unchanged (findings=174 / poam=106 / excluded=68, of which
+  60 severity_info now labeled `info`). Host lab measured assets=79
+  findings=107 poam=125 excluded=4 (3 honeypot + 1 superseded_by_specific).
+  MIN_ gates unchanged. Not a 12th compose service. No POST `/api/risks`.
+  Does not touch `product-lab/drop`.
 - PORT_ONLY_FOLD: when a specific finding (nuclei / Nessus / testssl / NSE / CVE)
   already names a host+port, the bare nmap-style "port open" row is folded into
   that finding as evidence (source + `nmap` label/tools) and listed in
