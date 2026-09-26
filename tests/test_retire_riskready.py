@@ -22,17 +22,18 @@ from shared.ciso_shape import POAM_HEADER, assert_count_consistency
 
 
 def _finding(ref: str, sev: str = "high") -> dict:
+    port = "21" if ref == "f1" else "22"
     return {
         "kind": "finding",
         "source": "inventory-nmap",
         "ref_id": ref,
         "name": f"FTP exposed {ref}",
-        "description": f"{ref} has open TCP/21 (ftp).",
+        "description": f"{ref} has open TCP/{port} (ftp).",
         "severity": sev,
         "category": "exposure",
         "assets": ["host-a"],
         "labels": ["nmap"],
-        "extra": {"port": "21", "service": "ftp", "ip": "10.0.0.5"},
+        "extra": {"port": port, "service": "ftp", "ip": "10.0.0.5", "check_id": f"test-{ref}"},
     }
 
 
@@ -86,7 +87,8 @@ def test_loader_writes_no_riskready_files(tmp_path: Path, monkeypatch: pytest.Mo
     assert "risks_proposed" not in summary
     shape = assert_count_consistency(out, summary)
     assert summary["open_risks"] == summary["poam"] == shape["poam"]
-    assert summary["risk_scenarios"] == summary["weaknesses"] == shape["weaknesses"]
+    merged = int(shape.get("merged_aliases") or 0)
+    assert summary["risk_scenarios"] == summary["weaknesses"] - merged == shape["risk_scenarios"]
 
 
 def test_simplerisk_poam_csv_has_estate_banner_and_column(
@@ -165,7 +167,8 @@ def test_console_counts_match_count_identity(
     assert summary["poam"] == shape["poam"] == disk["poam"]
     assert summary["open_risks"] == shape["open_risks"] == disk["open_risks"]
     assert summary["open_risks"] == summary["poam"]
-    assert summary["risk_scenarios"] == summary["weaknesses"]
+    merged = int(shape.get("merged_aliases") or 0)
+    assert summary["risk_scenarios"] == summary["weaknesses"] - merged
     assert summary["weaknesses"] == summary["findings"] + summary["vulnerabilities"]
     proposed = payload("proposed")
     assert len(proposed) == summary["open_risks"] == summary["poam"]
