@@ -13,9 +13,12 @@ IP_RE = re.compile(r"\d{1,3}(?:\.\d{1,3}){3}")
 TARGET_RE = re.compile(r"Target\s+\.+\s+(\S+)", re.I)
 GROUP_RE = re.compile(r"group:\[([^\]]+)\]", re.I)
 SHARE_MAP_RE = re.compile(
-    r"//\S+/(\S+)\s+Mapping:\s+(OK|DENIED|N/A|FAIL)(?:,\s*Listing:\s+(OK|DENIED|N/A|FAIL))?",
+    r"//\S+/(\S+)\s+Mapping:\s+(OK|DENIED|N/A|FAIL)"
+    r"(?:,\s*Listing:\s+(OK|DENIED|N/A|FAIL))?"
+    r"(?:,\s*Writ(?:e|ing):\s+(OK|DENIED|N/A|FAIL))?",
     re.I,
 )
+_WRITE_OK = frozenset({"OK", "TRUE", "YES", "WRITE", "WRITABLE", "READ/WRITE", "READWRITE"})
 NULL_RE = re.compile(r"null\s+session|sessions?\s+using username\s+['\"]['\"]", re.I)
 _BANNERS = (
     "enum4linux",
@@ -121,14 +124,33 @@ def _iter_named(raw: Any) -> list[tuple[str, dict[str, Any]]]:
     return out
 
 
+def _explicit_write(row: dict[str, Any]) -> bool:
+    """listing OK is READ only. WRITE only when the export says write."""
+    if row.get("writable") is True or str(row.get("writable") or "").strip().upper() in _WRITE_OK:
+        return True
+    access = row.get("access") or row.get("permissions") or row.get("perm") or ""
+    if isinstance(access, dict):
+        for key in ("writing", "write", "writable"):
+            if str(access.get(key) or "").strip().upper() in _WRITE_OK:
+                return True
+        return False
+    if isinstance(access, list):
+        blob = " ".join(str(x) for x in access).upper()
+        return bool(re.search(r"\bWRITE", blob))
+    return bool(re.search(r"\bWRITE", str(access).upper()))
+
+
 def _share_access(row: dict[str, Any]) -> str:
     access = row.get("access") or row.get("permissions") or row.get("perm") or ""
+    write = _explicit_write(row)
     if isinstance(access, dict):
         mapping = str(access.get("mapping") or "").strip().upper()
         listing = str(access.get("listing") or "").strip().upper()
-        if listing == "OK":
+        if write and (listing == "OK" or mapping == "OK"):
             return "READ, WRITE"
-        if mapping == "OK":
+        if write:
+            return "WRITE"
+        if listing == "OK" or mapping == "OK":
             return "READ"
         parts = []
         if mapping:
@@ -136,13 +158,18 @@ def _share_access(row: dict[str, Any]) -> str:
         if listing:
             parts.append(f"listing={listing}")
         return ", ".join(parts)
+    if write:
+        return "READ, WRITE" if isinstance(access, list) or str(access).strip() else "WRITE"
     if isinstance(access, list):
         return ", ".join(str(x) for x in access)
-    return str(access)
+    text = str(access)
+    if re.search(r"\bWRITE", text.upper()):
+        return text
+    return text
 
 
 def _writable(access: str) -> bool:
-    return "WRITE" in access.upper()
+    return bool(re.search(r"\bWRITE", access.upper()))
 
 
 def _target_host(payload: dict[str, Any]) -> str:
@@ -242,7 +269,15 @@ def _from_text(text: str) -> dict[str, Any] | None:
         share = match.group(1).rstrip("\\")
         mapping = (match.group(2) or "").upper()
         listing = (match.group(3) or "").upper()
-        access = "READ, WRITE" if listing == "OK" else ("READ" if mapping == "OK" else "NO ACCESS")
+        writing = (match.group(4) or "").upper()
+        if writing in _WRITE_OK and (listing == "OK" or mapping == "OK"):
+            access = "READ, WRITE"
+        elif writing in _WRITE_OK:
+            access = "WRITE"
+        elif listing == "OK" or mapping == "OK":
+            access = "READ"
+        else:
+            access = "NO ACCESS"
         shares.append({"name": share, "access": access})
     null_session = bool(NULL_RE.search(text))
     if not name and not addr and not groups and not shares and not null_session:

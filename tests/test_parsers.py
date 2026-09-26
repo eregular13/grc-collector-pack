@@ -997,7 +997,8 @@ def test_enum4linux_text_maps_highs(tmp_path) -> None:
     assert any(r["kind"] == "asset" and r["name"] == "DC01.CORP.LOCAL" for r in recs)
     assert any("null session" in n.lower() for n in names)
     assert any("Domain Admins" in n for n in names)
-    assert any("NETLOGON" in n for n in names)
+    assert not any("NETLOGON" in n for n in names)
+    assert not any("Writable SMB share" in n for n in names)
     assert not any("IPC$" in n for n in names)
 
 

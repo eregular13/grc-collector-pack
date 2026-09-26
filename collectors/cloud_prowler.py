@@ -13,7 +13,20 @@ from shared.schema import make_record, make_ref
 
 SOURCE = "cloud-prowler"
 LABELS = ["cloud", "prowler"]
-_FAIL_STATUSES = {"", "FAIL", "FAILED", "MANUAL"}
+_FAIL_STATUSES = {"", "FAIL", "FAILED"}
+_MUTED_TRUTHY = frozenset({"true", "yes", "1", "muted"})
+
+
+def _is_muted(item: dict[str, Any]) -> bool:
+    for key in ("Muted", "muted", "MUTED"):
+        val = item.get(key)
+        if val is True or str(val).strip().lower() in _MUTED_TRUTHY:
+            return True
+    unmapped = item.get("unmapped") if isinstance(item.get("unmapped"), dict) else {}
+    val = unmapped.get("muted")
+    if val is True or str(val).strip().lower() in _MUTED_TRUTHY:
+        return True
+    return str(item.get("Status") or item.get("status_code") or "").upper() == "MUTED"
 
 
 def _asff_severity(item: dict[str, Any]) -> str:
@@ -61,6 +74,8 @@ def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         "ResourceArn": res0.get("Id") or "",
         "Description": item.get("Description") or item.get("Title") or "",
         "ServiceName": service,
+        "AccountId": str(item.get("AwsAccountId") or ""),
+        "Muted": _is_muted(item),
     }
 
 
@@ -103,6 +118,7 @@ def _ocsf_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
     )
     arn = str(res_meta.get("arn") or rid)
     service = str(group.get("name") or (types[0] if types else "") or "cloud")
+    account_uid = str(account.get("uid") or item.get("account_uid") or "").strip()
     return {
         "CheckID": check_id,
         "CheckTitle": title,
@@ -112,6 +128,8 @@ def _ocsf_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         "ResourceArn": arn,
         "Description": item.get("status_detail") or item.get("message") or title,
         "ServiceName": service,
+        "AccountId": account_uid,
+        "Muted": _is_muted(item),
     }
 
 
@@ -177,6 +195,7 @@ def _read_prowler_csv(path: Path) -> list[dict[str, Any]]:
             continue
         status = str(keys.get("STATUS") or "").strip().upper()
         rid = str(keys.get("RESOURCE_UID") or keys.get("RESOURCE_NAME") or check).strip()
+        muted = str(keys.get("MUTED") or "").strip()
         out.append(
             {
                 "CheckID": check,
@@ -189,6 +208,8 @@ def _read_prowler_csv(path: Path) -> list[dict[str, Any]]:
                     keys.get("STATUS_EXTENDED") or keys.get("DESCRIPTION") or check
                 ).strip(),
                 "ServiceName": str(keys.get("SERVICE_NAME") or "cloud").strip(),
+                "AccountId": str(keys.get("ACCOUNT_UID") or keys.get("ACCOUNT_ID") or "").strip(),
+                "Muted": muted.lower() in _MUTED_TRUTHY,
             }
         )
     return out
@@ -299,6 +320,8 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     seen_assets: set[str] = set()
     for item in _iter_findings(payload):
+        if _is_muted(item):
+            continue
         check = str(item.get("CheckID") or item.get("CheckId") or item.get("check_id") or "check")
         title = str(item.get("CheckTitle") or item.get("title") or check)
         status = str(item.get("Status") or item.get("status_code") or item.get("status") or "").upper()
@@ -313,10 +336,20 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
         arn = str(item.get("ResourceArn") or item.get("arn") or rid)
         desc = str(item.get("Description") or item.get("StatusExtended") or title)
         service = str(item.get("ServiceName") or item.get("service") or "cloud")
+        account = str(
+            item.get("AccountId")
+            or item.get("account_uid")
+            or item.get("ACCOUNT_UID")
+            or item.get("AwsAccountId")
+            or ""
+        ).strip()
         asset_type = "SP" if service.lower() in {"iam", "identity", "aad"} else "PR"
         asset_key = rid.lower()
         if asset_key not in seen_assets:
             seen_assets.add(asset_key)
+            extra_asset = {"asset_type": asset_type, "arn": arn, "service": service}
+            if account:
+                extra_asset["account_id"] = account
             records.append(
                 make_record(
                     kind="asset",
@@ -329,15 +362,24 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     assets=[rid],
                     labels=LABELS + [service],
                     collected_at=now,
-                    extra={"asset_type": asset_type, "arn": arn, "service": service},
+                    extra=extra_asset,
                 )
             )
         if status in _FAIL_STATUSES:
+            ident = f"{check}-{account}-{rid}" if account else f"{check}-{rid}"
+            extra = {
+                "check_id": check,
+                "arn": arn,
+                "status": status or "FAIL",
+                "service": service,
+            }
+            if account:
+                extra["account_id"] = account
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, f"{check}-{rid}"),
+                    ref_id=make_ref(SOURCE, ident),
                     name=title,
                     description=desc,
                     severity=sev,
@@ -345,12 +387,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     assets=[rid],
                     labels=LABELS + [service],
                     collected_at=now,
-                    extra={
-                        "check_id": check,
-                        "arn": arn,
-                        "status": status or "FAIL",
-                        "service": service,
-                    },
+                    extra=extra,
                 )
             )
     return records

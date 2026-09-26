@@ -6,7 +6,9 @@ Parse-only. Does not run Wazuh, osquery, Fleet, or a live agent query.
 
 from __future__ import annotations
 
+import os
 import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +24,26 @@ from shared.schema import make_record, make_ref
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
+UNKNOWN_AGENT = "unknown-agent"
+_SCA_PATH_SKIP = frozenset(
+    {
+        "wazuh",
+        "host-wazuh",
+        "host_wazuh",
+        "in",
+        "samples",
+        "fixtures",
+        "demo",
+        "lab-drop",
+        "keep-samples",
+    }
+)
+_SCA_SEV_PATTERNS = (
+    (re.compile(r"\bcritical\b", re.I), "critical"),
+    (re.compile(r"\bhigh\b", re.I), "high"),
+    (re.compile(r"\bmedium\b|\bmoderate\b", re.I), "medium"),
+    (re.compile(r"\blow\b", re.I), "low"),
+)
 
 
 def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
@@ -70,15 +92,21 @@ def _is_alert_row(row: dict[str, Any]) -> bool:
     return isinstance(rule, dict) or "full_log" in row
 
 
+def _alert_level(rule: dict[str, Any]) -> int:
+    try:
+        return int(rule.get("level") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> str:
-    """Wazuh rule levels: 0-6 low, 7-11 medium, 12-14 high, 15+ critical."""
+    """Wazuh rule levels: 0-3 info (never POA&M), 4-6 low, 7-11 medium, 12-14 high, 15+ critical."""
+    level = _alert_level(rule)
+    if level <= 3:
+        return "info"
     raw = alert.get("severity")
     if raw not in (None, ""):
         return str(raw)
-    try:
-        level = int(rule.get("level") or 0)
-    except (TypeError, ValueError):
-        level = 0
     if level >= 15:
         return "critical"
     if level >= 12:
@@ -86,6 +114,42 @@ def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> str:
     if level >= 7:
         return "medium"
     return "low"
+
+
+def _alert_agent(alert: dict[str, Any]) -> str:
+    agent = alert.get("agent") if isinstance(alert.get("agent"), dict) else {}
+    return str(agent.get("name") or agent.get("id") or "unknown")
+
+
+def _alert_time(alert: dict[str, Any]) -> str:
+    return str(alert.get("timestamp") or alert.get("time") or alert.get("@timestamp") or "")
+
+
+def _aggregate_alerts(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One finding per (rule.id, agent) with count and first/last seen."""
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for alert in alerts:
+        rule = alert.get("rule") if isinstance(alert.get("rule"), dict) else {}
+        rid = str(rule.get("id") or alert.get("id") or "alert")
+        groups[(rid, _alert_agent(alert))].append(alert)
+    out: list[dict[str, Any]] = []
+    for (rid, agent), rows in groups.items():
+        rule = rows[0].get("rule") if isinstance(rows[0].get("rule"), dict) else {}
+        times = [t for t in (_alert_time(a) for a in rows) if t]
+        times.sort()
+        out.append(
+            {
+                "rule_id": rid,
+                "agent": agent,
+                "title": str(rule.get("description") or rows[0].get("id") or "wazuh alert"),
+                "severity": _alert_severity(rows[0], rule),
+                "level": rule.get("level"),
+                "count": len(rows),
+                "first_seen": times[0] if times else "",
+                "last_seen": times[-1] if times else "",
+            }
+        )
+    return out
 
 
 def _extract_alerts(payload: Any) -> list[dict[str, Any]]:
@@ -136,18 +200,67 @@ def _sca_failures(payload: Any) -> list[dict[str, Any]]:
     return [row for row in _affected_items(payload) if _is_sca_item(row) and str(row.get("result") or "").lower() == "failed"]
 
 
-def _sca_host(payload: Any, row: dict[str, Any]) -> str:
+def _agent_from_obj(obj: Any) -> str:
+    if isinstance(obj, dict):
+        return str(obj.get("name") or obj.get("id") or obj.get("agent_name") or "").strip()
+    if obj not in (None, ""):
+        return str(obj).strip()
+    return ""
+
+
+def _sca_agent(payload: Any, path: Path, row: dict[str, Any] | None = None) -> tuple[str, str]:
+    """Agent from the check, enclosing export, path, or operator hint. Never invent a host."""
+    if isinstance(row, dict):
+        named = _agent_from_obj(row.get("agent")) or str(
+            row.get("agent_name") or row.get("agent_id") or ""
+        ).strip()
+        if named:
+            return named, "row"
     data = payload.get("data") if isinstance(payload, dict) else {}
-    if not isinstance(data, dict):
-        data = {}
-    return str(
-        row.get("agent_name")
-        or row.get("agent")
-        or data.get("agent_name")
-        or data.get("agent_id")
-        or row.get("agent_id")
-        or "wazuh-host"
-    )
+    if isinstance(data, dict):
+        named = _agent_from_obj(data.get("agent")) or str(
+            data.get("agent_name") or data.get("agent_id") or ""
+        ).strip()
+        if named:
+            return named, "export"
+    if isinstance(payload, dict):
+        named = _agent_from_obj(payload.get("agent")) or str(
+            payload.get("agent_name") or payload.get("agent_id") or ""
+        ).strip()
+        if named:
+            return named, "export"
+    hint = str(os.environ.get("WAZUH_SCA_AGENT") or os.environ.get("GRC_WAZUH_AGENT") or "").strip()
+    if hint:
+        return hint, "hint"
+    parent = path.parent.name if path else ""
+    if parent and parent.lower() not in _SCA_PATH_SKIP:
+        return parent, "path"
+    stem = path.stem if path else ""
+    match = re.match(r"(?:sca[-_])(.+)|(.+)[-_]sca(?:[-_].+)?$", stem, re.I)
+    if match:
+        token = str(match.group(1) or match.group(2) or "").strip()
+        if token and token.lower() not in {"checks", "check", "results", "export", "policy"}:
+            return token, "path"
+    return UNKNOWN_AGENT, "unknown"
+
+
+def _sca_severity(row: dict[str, Any]) -> tuple[str, str]:
+    raw = row.get("severity")
+    if raw not in (None, ""):
+        return str(raw).strip().lower(), "field"
+    parts: list[str] = []
+    for key in ("rationale", "compliance", "description", "title", "reason", "remediation"):
+        val = row.get(key)
+        if isinstance(val, (list, dict)):
+            parts.append(str(val))
+        elif val not in (None, ""):
+            parts.append(str(val))
+    blob = " ".join(parts)
+    for pat, sev in _SCA_SEV_PATTERNS:
+        if pat.search(blob):
+            source = "rationale" if row.get("rationale") and pat.search(str(row.get("rationale"))) else "compliance"
+            return sev, source
+    return "medium", "default"
 
 
 def _agents(payload: Any) -> list[dict[str, Any]]:
@@ -398,6 +511,12 @@ def _emit_check_rows(
                     extra={"asset_type": "PR"},
                 )
             )
+        extra = {"id": hid, "name": title, "check_id": hid}
+        for key in ("severity_source", "agent_source"):
+            if row.get(key):
+                extra[key] = row[key]
+        if host == UNKNOWN_AGENT:
+            extra["agent_unknown"] = True
         records.append(
             make_record(
                 kind="finding",
@@ -410,7 +529,7 @@ def _emit_check_rows(
                 assets=[host],
                 labels=LABELS + labels,
                 collected_at=now,
-                extra={"id": hid, "name": title, "check_id": hid},
+                extra=extra,
             )
         )
     return records
@@ -586,14 +705,17 @@ def parse_file(path: Path) -> list[dict]:
         for row in _sca_failures(payload):
             hid = str(row.get("id") or row.get("policy_id") or "sca")
             title = str(row.get("title") or hid)
-            host = _sca_host(payload, row)
+            host, agent_source = _sca_agent(payload, path, row)
+            sev, sev_source = _sca_severity(row)
             sca_rows.append(
                 {
                     "id": hid,
                     "title": title,
                     "host": host,
                     "result": "fail",
-                    "severity": str(row.get("severity") or "high"),
+                    "severity": sev,
+                    "severity_source": sev_source,
+                    "agent_source": agent_source,
                 }
             )
         return _emit_check_rows(
@@ -696,17 +818,22 @@ def parse_file(path: Path) -> list[dict]:
                 extra={"policy": pname, "name": pname},
             )
         )
-    for alert in _extract_alerts(payload):
-        rule = alert.get("rule") if isinstance(alert.get("rule"), dict) else {}
-        agent = alert.get("agent") if isinstance(alert.get("agent"), dict) else {}
-        aname = str(agent.get("name") or "unknown")
-        title = str(rule.get("description") or alert.get("id") or "wazuh alert")
-        sev = _alert_severity(alert, rule)
+    for alert in _aggregate_alerts(_extract_alerts(payload)):
+        aname = str(alert["agent"])
+        title = str(alert["title"])
+        sev = str(alert["severity"])
+        extra = {
+            "rule_id": alert["rule_id"],
+            "rule_level": alert["level"],
+            "count": alert["count"],
+            "first_seen": alert["first_seen"],
+            "last_seen": alert["last_seen"],
+        }
         records.append(
             make_record(
                 kind="incident",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"inc-{alert.get('id', title)}"),
+                ref_id=make_ref(SOURCE, f"inc-{alert['rule_id']}-{aname}"),
                 name=title,
                 description=title,
                 severity=sev,
@@ -714,14 +841,14 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[aname],
                 labels=LABELS + ["alert"],
                 collected_at=now,
-                extra={"rule_id": rule.get("id"), "rule_level": rule.get("level")},
+                extra=extra,
             )
         )
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"alert-{alert.get('id', title)}"),
+                ref_id=make_ref(SOURCE, f"alert-{alert['rule_id']}-{aname}"),
                 name=title,
                 description=title,
                 severity=sev,
@@ -729,7 +856,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[aname],
                 labels=LABELS + ["alert"],
                 collected_at=now,
-                extra={"rule_id": rule.get("id"), "rule_level": rule.get("level")},
+                extra=extra,
             )
         )
     records.extend(
