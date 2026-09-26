@@ -20,6 +20,7 @@ from shared.control_map import (
     iter_poam_decisions,
     map_finding,
     poam_breakdown,
+    poam_decision,
     poam_lighter_requested,
     weakness_name_for,
 )
@@ -235,6 +236,7 @@ def load() -> dict:
         asset_ledger.apply_overrides(overrides)
     raw = attach_asset_uids(_load_canonical(), asset_ledger)
     records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw)))
+    findings_in = sum(1 for r in raw if r.get("kind") == "finding")
     merged_n = max(0, len(raw) - len(records))
     now = iso_now()
     try:
@@ -386,7 +388,10 @@ def load() -> dict:
     lighter = poam_lighter_requested()
     weaknesses = other_findings + vuln_findings
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-    poam_ledger = run_ledger(findings, kev_catalog)
+    included_for_ledger = [
+        rec for rec in findings if poam_decision(rec, lighter=lighter).get("include")
+    ]
+    poam_ledger = run_ledger(included_for_ledger, kev_catalog)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
         if mapped:
@@ -407,6 +412,7 @@ def load() -> dict:
             ledger_by_fp[fp] = item
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
+    export_decisions: list[dict] = []
     ranked = sorted(
         weaknesses,
         key=lambda rec: (
@@ -453,6 +459,16 @@ def load() -> dict:
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
             status = str(item.get("status") or "open")
+        export_decisions.append(
+            {
+                "rec": rec,
+                "item": item or {},
+                "mapped": mapped,
+                "weakness": weakness,
+                "fields": fields,
+                "assets_s": assets_s,
+            }
+        )
         poam_rows.append(
             [
                 weakness,
@@ -501,10 +517,22 @@ def load() -> dict:
         fields["original_detection_date"] = str(item.get("original_detection_date") or "")
         fields["status_date"] = str(item.get("status_date") or "")
         fields["original_risk_rating"] = str(item.get("original_risk_rating") or "")
+        weakness = str(item.get("name") or item.get("weakness_key") or "")
+        assets_s = str(item.get("display_asset") or item.get("asset_key") or "")
+        export_decisions.append(
+            {
+                "rec": {},
+                "item": item,
+                "mapped": {},
+                "weakness": weakness,
+                "fields": fields,
+                "assets_s": assets_s,
+            }
+        )
         poam_rows.append(
             [
-                str(item.get("name") or item.get("weakness_key") or ""),
-                str(item.get("display_asset") or item.get("asset_key") or ""),
+                weakness,
+                assets_s,
                 str(item.get("severity") or item.get("current_scanner_rating") or ""),
                 "",
                 "",
@@ -575,7 +603,7 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_fedramp_poam(out_poam, poam_ledger)
+    write_fedramp_poam(out_poam, poam_ledger, decisions=export_decisions)
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
     write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
     write_estate_sidecar(
@@ -635,6 +663,16 @@ def load() -> dict:
     excluded_poam = max(
         0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
     )
+    excluded_by_reason = dict(breakdown["excluded_by_reason"] or {})
+    if merged_n:
+        excluded_by_reason["DUPLICATE_INSTANCE"] = int(excluded_by_reason.get("DUPLICATE_INSTANCE") or 0) + merged_n
+    flood_guard = {
+        "findings_in": findings_in,
+        "poam_rows": len(poam_rows),
+        "excluded_rows": len(excluded_rows),
+        "pending_carried": pending_carried,
+        "identity": "findings_in + pending_carried == poam_rows + excluded_rows",
+    }
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
@@ -649,7 +687,8 @@ def load() -> dict:
         "poam_included": int(breakdown["poam_included"]) + pending_carried,
         "pending_carried": pending_carried,
         "excluded": len(excluded_rows),
-        "excluded_by_reason": breakdown["excluded_by_reason"],
+        "excluded_by_reason": excluded_by_reason,
+        "flood_guard": flood_guard,
         "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
         "poam_plan_note": (
             "Lows and non-key Mediums excluded at operator request"
@@ -671,7 +710,8 @@ def load() -> dict:
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
-            "weaknesses_total == poam_included + excluded == weaknesses + pending_carried; "
+            "weaknesses_total == weaknesses + pending_carried (deduped); "
+            "flood_guard: findings_in + pending_carried == poam_rows + excluded_rows; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),
