@@ -140,12 +140,21 @@ def _iter_xml_failures(text: str) -> list[dict[str, str]]:
     except ET.ParseError:
         return []
     host = "cis-host"
+    fqdn = ""
+    hostname = ""
+    target = ""
     for el in root.iter():
-        if _local(el.tag) in {"target", "target-facts", "hostname"}:
-            val = (el.text or el.attrib.get("name") or "").strip()
-            if val:
-                host = val
-                break
+        loc = _local(el.tag)
+        val = (el.text or el.attrib.get("name") or "").strip()
+        if not val:
+            continue
+        if loc == "fqdn" and not fqdn:
+            fqdn = val
+        elif loc == "target" and not target:
+            target = val
+        elif loc == "hostname" and not hostname:
+            hostname = val
+    host = fqdn or target or hostname or host
     out: list[dict[str, str]] = []
     for el in root.iter():
         if _local(el.tag) not in {"rule-result", "ruleresult"}:

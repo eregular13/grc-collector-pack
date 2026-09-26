@@ -1,10 +1,9 @@
-"""Fingerprint asset identity: ASSET ID + PORT (not the display name).
+"""Fingerprint asset identity: EGA- asset UID + PORT (not the display name).
 
-This is the swap point for Themis's EGA- asset ledger
-(``urn:evergreen:asset`` / ``EGA-`` + 10 hex). Until that ledger is wired,
-derive the ID from ``normalize_asset_id`` on the finding's primary asset
-(ARN leaf / sAMAccount / host), then append ``:<port>/<proto>`` when
-``extra.port`` is present (FedRAMP H7 / Completion Guide Col G).
+Swap point for the EGA- asset ledger (``urn:evergreen:asset`` /
+``EGA-`` + 10 hex). The body of ``asset_key`` resolves
+``extra.asset_uid`` / ``asset_uid()`` and keeps the ``:<port>/<PROTO>``
+suffix (FedRAMP H7 / Completion Guide Col G).
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ def _port_proto(rec: dict[str, Any]) -> str:
 
 
 def asset_id(rec: dict[str, Any]) -> str:
-    """Normalized asset id only (no port). Derived from normalize_asset_id today."""
+    """Normalized pre-EGA asset id (no port). Kept for the #131 migration map."""
     got = primary_asset(rec)
     if got:
         return got
@@ -41,20 +40,56 @@ def asset_id(rec: dict[str, Any]) -> str:
     )
 
 
-def asset_key(finding: dict[str, Any]) -> str:
-    """Stable fingerprint asset key: ``<asset_id>:<port>/<PROTO>``.
+def ega_asset_id(finding: dict[str, Any]) -> str:
+    """``EGA-`` + 10 hex from ``extra.asset_uid`` or ``asset_uid()``.
 
-    Swap point for Themis's EGA- asset ledger. Do not key on the lower-cased
-    display name. Callers that later resolve ``EGA-*`` should replace the
-    body of this function (and keep the port/proto suffix).
+    Identity-only: the finding/weakness name is never an anchor. #131 keyed
+    on the primary asset (+ port); this keeps that host, not the plugin title.
     """
+    extra = extra_dict(finding)
+    uid = str(extra.get("asset_uid") or "").strip()
+    if uid.startswith("EGA-"):
+        return uid
+    from shared.asset_ledger import asset_uid
+
+    assets = [a for a in (finding.get("assets") or []) if str(a).strip()]
+    identity = {
+        "kind": "asset",
+        "name": assets[0] if assets else extra.get("host") or extra.get("arn") or extra.get("fqdn") or "",
+        "assets": assets,
+        "extra": {
+            k: v
+            for k, v in extra.items()
+            if k in {"ids", "ip", "mac", "fqdn", "hostname", "arn", "uuid", "bios_uuid", "agent", "netbios", "host"}
+        },
+    }
+    uid = str(asset_uid(identity, None, observe=False) or "").strip()
+    if uid.startswith("EGA-"):
+        extra = finding.setdefault("extra", extra)
+        if isinstance(extra, dict) and not str(extra.get("asset_uid") or "").startswith("EGA-"):
+            extra["asset_uid"] = uid
+    return uid
+
+
+def legacy_asset_id_port_key(finding: dict[str, Any]) -> str:
+    """#131 key: ``normalize_asset_id`` + port/proto. Migration source only."""
     base = asset_id(finding)
+    return f"{base}{_port_proto(finding)}" if base else _port_proto(finding).lstrip(":")
+
+
+def asset_key(finding: dict[str, Any]) -> str:
+    """Stable fingerprint asset key: ``EGA-<hex>:<port>/<PROTO>``.
+
+    Resolves Themis's EGA- asset ledger. Do not key on the lower-cased
+    display name. Port/proto suffix is unchanged from #131.
+    """
+    base = ega_asset_id(finding)
     return f"{base}{_port_proto(finding)}" if base else _port_proto(finding).lstrip(":")
 
 
 def asset_host(finding: dict[str, Any]) -> str:
     """Asset id without port — used for coverage (same host, any port)."""
-    return asset_id(finding)
+    return ega_asset_id(finding) or asset_id(finding)
 
 
 def legacy_name_asset_key(finding: dict[str, Any]) -> str:
@@ -81,6 +116,37 @@ def display_asset(finding: dict[str, Any]) -> str:
     if raw and port and port != "0":
         return f"{raw} ({port}/{proto.upper()})"
     return raw
+
+
+def alias_display_names(finding: dict[str, Any]) -> list[str]:
+    """Display names / IPs that a prior run may have keyed on."""
+    extra = extra_dict(finding)
+    ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
+    names: list[str] = []
+    for raw in (finding.get("assets") or []):
+        names.append(str(raw).strip())
+    names.append(str(finding.get("name") or "").strip())
+    names.append(str(extra.get("host") or "").strip())
+    for key in ("fqdn", "hostname", "arn"):
+        names.append(str(ids.get(key) or extra.get(key) or "").strip())
+    raw_ips = ids.get("ip") or extra.get("ip") or []
+    if isinstance(raw_ips, str):
+        raw_ips = [raw_ips]
+    for ip in raw_ips:
+        names.append(str(ip).strip())
+    for other in extra.get("also_names") or []:
+        names.append(str(other).strip())
+    out: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        if not name:
+            continue
+        token = name.lower()
+        if token in seen:
+            continue
+        seen.add(token)
+        out.append(name)
+    return out
 
 
 def normalize_weakness_name(name: str) -> str:

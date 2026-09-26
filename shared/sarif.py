@@ -111,14 +111,26 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
         driver = ((run.get("tool") or {}).get("driver") or {}) if isinstance(run.get("tool"), dict) else {}
         tool = str(driver.get("name") or "sarif")
         catalog = _rule_index(driver if isinstance(driver, dict) else {})
+        run_ids: dict[str, Any] = {}
         scan_time = ""
+        props = run.get("properties") if isinstance(run.get("properties"), dict) else {}
+        if props.get("imageID") or props.get("imageId") or props.get("repoDigests") or props.get("repoTags"):
+            run_ids = {
+                "image_id": str(props.get("imageID") or props.get("imageId") or "").strip(),
+                "image_digest": props.get("repoDigests") or [],
+                "image_ref": "",
+            }
+            tags = props.get("repoTags") if isinstance(props.get("repoTags"), list) else []
+            if tags:
+                run_ids["image_ref"] = str(tags[0])
         for inv in run.get("invocations") or []:
             if not isinstance(inv, dict):
                 continue
+            if inv.get("machine"):
+                run_ids["hostname"] = str(inv.get("machine"))
             raw = inv.get("startTimeUtc") or inv.get("endTimeUtc")
             if raw:
                 scan_time = str(raw)
-                break
         for hit in run.get("results") or []:
             if not isinstance(hit, dict):
                 continue
@@ -137,6 +149,7 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "severity": _severity(hit, rule),
                 "tool": tool,
                 "level": str(hit.get("level") or ""),
+                "ids": dict(run_ids),
             }
             if scan_time:
                 row["scan_time"] = scan_time

@@ -12,6 +12,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from shared.asset_ids import stamp_ids
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, lynis_control
@@ -56,6 +57,11 @@ def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
     if status in {"offline", "mia"}:
         status = "disconnected"
     mdm = row.get("mdm") if isinstance(row.get("mdm"), dict) else {}
+    manager = str(row.get("manager") or row.get("manager_name") or row.get("node_name") or "default")
+    agent_id = row.get("id")
+    agent = ""
+    if agent_id not in (None, ""):
+        agent = f"wazuh:{manager}:{agent_id}"
     return {
         "name": name,
         "status": status,
@@ -63,6 +69,11 @@ def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
         "disk_encryption_enabled": row.get("disk_encryption_enabled"),
         "mdm": mdm,
         "platform": row.get("platform") or "",
+        "agent_id": agent_id,
+        "manager": manager,
+        "agent": agent,
+        "uuid": row.get("uuid") or row.get("board_serial") or "",
+        "register_ip": row.get("registerIP") or row.get("register_ip") or "",
     }
 
 
@@ -342,7 +353,14 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
             cols = row.get("columns") if isinstance(row.get("columns"), dict) else row
             name = cols.get("hostname") or cols.get("name") or row.get("hostname")
             if name:
-                out.append({"name": name, "status": row.get("status") or "active", "ip": cols.get("local_hostname") or ""})
+                out.append(
+                    {
+                        "name": name,
+                        "status": row.get("status") or "active",
+                        "ip": cols.get("local_hostname") or "",
+                        "uuid": cols.get("uuid") or row.get("uuid") or "",
+                    }
+                )
         return out
     if isinstance(data, dict) and (data.get("hosts") is not None):
         rows = _host_rows(data.get("hosts"))
@@ -512,7 +530,14 @@ def _emit_openscap_rows(rows: list[dict], now: str, path: Path | None = None) ->
                     assets=[host],
                     labels=LABELS + ["openscap", "ssg"],
                     collected_at=now,
-                    extra={"asset_type": "PR", "tool": "openscap"},
+                    extra=stamp_ids(
+                        {"asset_type": "PR", "tool": "openscap"},
+                        **{
+                            **(row.get("ids") if isinstance(row.get("ids"), dict) else {}),
+                            "fqdn": host,
+                            "hostname": host,
+                        },
+                    ),
                 )
             )
         extra = dict(row.get("extra") or {})
@@ -788,6 +813,17 @@ def parse_file(path: Path) -> list[dict]:
         name = str(agent.get("name") or agent.get("id") or "agent")
         status = str(agent.get("status") or "unknown").lower()
         ip = str(agent.get("ip") or "")
+        agent_key = str(agent.get("agent") or "")
+        if not agent_key and agent.get("id") not in (None, ""):
+            mgr = str(agent.get("manager") or agent.get("manager_name") or "default")
+            agent_key = f"wazuh:{mgr}:{agent.get('id')}"
+        extra = stamp_ids(
+            {"asset_type": "PR", "agent_status": status, "ip": ip},
+            ip=ip,
+            agent=agent_key,
+            uuid=str(agent.get("uuid") or ""),
+            hostname=name,
+        )
         records.append(
             make_record(
                 kind="asset",
@@ -799,7 +835,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[name],
                 labels=LABELS,
                 collected_at=now,
-                extra={"asset_type": "PR", "agent_status": status, "ip": ip},
+                extra=extra,
             )
         )
         if status in {"disconnected", "never_connected", "pending"}:

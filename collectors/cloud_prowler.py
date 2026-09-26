@@ -8,6 +8,7 @@ import io
 from pathlib import Path
 from typing import Any
 
+from shared.asset_ids import stamp_ids
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.schema import make_record, make_ref, map_severity
 
@@ -363,7 +364,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     assets=[rid],
                     labels=LABELS + [service],
                     collected_at=now,
-                    extra=extra_asset,
+                    extra=stamp_ids(extra_asset, arn=arn),
                 )
             )
         if status in _FAIL_STATUSES:

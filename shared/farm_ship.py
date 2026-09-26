@@ -33,6 +33,7 @@ FARM_SHIP_PATHS: tuple[str, ...] = (
     "scripts/ci/farm_drop_wipe_clone_ship.sh",
     "scripts/ci/farm_ship_surface.py",
     "shared/ciso_shape.py",
+    "shared/estate_pages.py",
     "shared/farm_ship.py",
     "collectors/grc_loader.py",
     "docs/FARM_SHIP_GATE.md",
@@ -269,6 +270,12 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError(
             f"FARM_SHIP_FAIL excluded.csv missing honeypot: {sorted(reasons)}"
         )
+    try:
+        from shared.estate_pages import assert_client_export_honesty
+
+        assert_client_export_honesty(dest / "out")
+    except AssertionError as exc:
+        raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
     return {
         "ok": True,
         "sample": True,

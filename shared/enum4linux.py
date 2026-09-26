@@ -199,21 +199,21 @@ def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
     target = _target_host(payload)
     addr = ""
     raw_target = payload.get("target")
+    smb = payload.get("smb_domain_info") if isinstance(payload.get("smb_domain_info"), dict) else {}
+    fqdn = str(smb.get("FQDN") or smb.get("fqdn") or "").strip()
+    netbios_name = str(
+        smb.get("NetBIOS computer name") or smb.get("netbios_computer") or ""
+    ).strip()
+    domain = str(
+        smb.get("NetBIOS domain name") or smb.get("DNS domain") or smb.get("domain") or ""
+    ).strip()
     if isinstance(raw_target, dict):
         addr = str(raw_target.get("ip") or "").strip()
         if not addr and IP_RE.fullmatch(str(raw_target.get("host") or "").strip()):
             addr = str(raw_target.get("host")).strip()
     if IP_RE.fullmatch(target):
         addr = target
-        netbios = payload.get("smb_domain_info")
-        if isinstance(netbios, dict):
-            target = str(
-                netbios.get("NetBIOS computer name")
-                or netbios.get("hostname")
-                or target
-            )
-        else:
-            target = addr
+        target = netbios_name or str(smb.get("hostname") or "") or target
     elif not addr:
         blob = target if not isinstance(raw_target, dict) else str(raw_target.get("host") or "")
         found = IP_RE.search(blob)
@@ -249,6 +249,9 @@ def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
         "groups": groups,
         "users": users,
         "shares": shares,
+        "fqdn": fqdn,
+        "netbios": netbios_name,
+        "domain": domain,
     }
 
 
