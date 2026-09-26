@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -358,7 +359,7 @@ def _sensor_rollup(
 
 
 def _malformed_reason(path: Path) -> str | None:
-    """Name truncated/invalid JSON even when a parser swallows the exception."""
+    """Name truncated/invalid JSON or XML even when a parser swallows the exception."""
     try:
         raw = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff").strip()
     except OSError as exc:
@@ -371,6 +372,11 @@ def _malformed_reason(path: Path) -> str | None:
             json.loads(raw)
         except json.JSONDecodeError as exc:
             return f"JSONDecodeError: {exc}"
+    if suffix in {".xml", ".xccdf"}:
+        try:
+            ET.fromstring(raw)
+        except ET.ParseError as exc:
+            return f"ParseError: {exc}"
     return None
 
 

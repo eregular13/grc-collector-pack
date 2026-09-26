@@ -5,7 +5,8 @@
     {
       "id": "5.2.10",
       "title": "Ensure SSH PermitRootLogin is no",
-      "result": "fail"
+      "result": "fail",
+      "severity": "high"
     },
     {
       "id": "3.5.1",

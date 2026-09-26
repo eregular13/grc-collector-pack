@@ -72,7 +72,7 @@ def test_header_keeps_legacy_prefix_and_appends_fedramp_fields() -> None:
 def test_row_fields_from_existing_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rows = _load(tmp_path, monkeypatch, [_rec("NMAP-10-0-0-5-21-nse-ftp-anon", "high")])
     row = rows[0]
-    assert row["poam_id"] == "POAM-NMAP-10-0-0-5-21-nse-ftp-anon"
+    assert row["poam_id"].startswith("EGP-")
     assert row["finding_ref_id"] == "NMAP-10-0-0-5-21-nse-ftp-anon"
     assert {"AC-3", "CM-7"} <= {c.strip() for c in row["controls"].split(",")}
     assert row["weakness_description"].startswith("NMAP-10-0-0-5-21-nse-ftp-anon accepts anonymous FTP")
@@ -149,7 +149,7 @@ def test_poam_md_says_dates_are_defaults(tmp_path: Path, monkeypatch: pytest.Mon
     assert "evergreen default" in low
     assert "point of contact" in low and "blank" in low
     assert "Moderate" in md
-    assert "POAM-R1" in md
+    assert "EGP-" in md
 
 
 def test_lab_misconfig_fixture_end_to_end(tmp_path: Path) -> None:
@@ -173,5 +173,5 @@ def test_lab_misconfig_fixture_end_to_end(tmp_path: Path) -> None:
     assert anon["original_detection_date"] == "2026-09-25"  # nmap host starttime (UTC)
     assert anon["scheduled_completion_date"] == "2026-10-25"
     assert anon["estate"] == "LAB: TEST ENVIRONMENT"
-    assert all(r["poam_id"].startswith("POAM-") for r in rows)
+    assert all(r["poam_id"].startswith("EGP-") for r in rows)
     assert all(len([m for m in r["milestones"].split(";") if m.strip()]) >= 2 for r in rows)

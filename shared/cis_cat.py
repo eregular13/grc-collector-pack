@@ -117,7 +117,16 @@ def iter_cis_failures(payload: Any = None, *, text: str = "") -> list[dict[str, 
             or row.get("name")
             or hid
         )
-        out.append({"id": hid, "title": title, "host": _row_host(row, host), "result": "fail"})
+        sev = str(row.get("severity") or row.get("Severity") or "").strip().lower()
+        out.append(
+            {
+                "id": hid,
+                "title": title,
+                "host": _row_host(row, host),
+                "result": "fail",
+                "severity": sev,
+            }
+        )
     return out
 
 
@@ -170,5 +179,14 @@ def _iter_xml_failures(text: str) -> list[dict[str, str]]:
             or el.findtext("description")
             or hid
         )
-        out.append({"id": hid, "title": title, "host": host, "result": "fail"})
+        sev = str(el.attrib.get("severity") or "").strip().lower()
+        out.append(
+            {
+                "id": hid,
+                "title": title,
+                "host": host,
+                "result": "fail",
+                "severity": sev,
+            }
+        )
     return out

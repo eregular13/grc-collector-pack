@@ -1,5 +1,88 @@
 # CYCLE log
 
+## cycle 202 — merge master #147 ledger lifecycle; keep Wazuh telemetry (2026-09-26)
+
+Merge `origin/master` `9aeb229` without rebase. #147 multi-run POA&M
+ledger lifecycle and this branch's Wazuh rule.level telemetry exclude
+both kept. pytest **1235**. Host-lab `assets=78` `findings=104`
+`poam=124` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
+excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+## cycle 201 — merge master #140 discovery/web; keep Wazuh telemetry (2026-09-26)
+
+Merge `origin/master` `76f5e86` without rebase. #140 Metis §11
+discovery/web parsers and this branch's Wazuh rule.level telemetry
+exclude both kept. pytest **1232**. Host-lab `assets=78` `findings=104`
+`poam=124` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
+excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+## cycle 200 — merge master #144 port-fold; keep Wazuh telemetry (2026-09-26)
+
+Merge `origin/master` `ec61cde` without rebase. #144
+`superseded_by_specific` and this branch's Wazuh rule.level telemetry
+exclude both kept. pytest **1213**. Host-lab `assets=78` `findings=103`
+`poam=123` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
+excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+## cycle 199 — merge master #138/#142/#146; keep Wazuh level table (2026-09-26)
+
+Merge `origin/master` `2818608` without rebase. #138 asset_uid ledger,
+#142 unread sensors, #146 SCOPE_AND_TRUST coverage all kept. Wazuh
+rule.level table + telemetry exclude still stand. pytest **1204**.
+Host-lab `assets=78` `findings=103` `poam=124` `excluded=1`. SAMPLE→SoR
+6/8/2. farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 198 — Wazuh rule.level table + telemetry flood off the plan (2026-09-26)
+
+Map Wazuh by rule.level (0-3 info, 4-7 low, 8-11 medium, 12+ high);
+missing level is info, never High. Aggregated alerts excluded as
+telemetry unless level ≥ 12 or a known compromise indicator. 300
+level-5 alerts → one excluded row, 0 High. DEMO 5710 brute-force left
+the plan (`excluded=1` telemetry). pytest **1162**. Host-lab
+`assets=84` `findings=103` `poam=124`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 197 — merge master #135/#137; canon_severity + telemetry_info (2026-09-26)
+
+Merge `origin/master` `1f8d347` without rebase. #135 excluded.csv /
+telemetry flood guard / Lows on the plan and #137 host-scoped ref_id /
+canon_severity both kept. Wazuh 0-3 info alerts are `telemetry_info` in
+excluded.csv. SCA ref_id host-scoped; Prowler account-scoped. pytest
+**1159**. Host-lab `assets=84` `findings=103` `vulnerabilities=22`
+`poam=125`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0 excluded=68.
+MIN_FARM_POAM=100 MIN_FARM_EXCLUDED=20 not loosened. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
+## cycle 196 — enum4linux write / Wazuh alert+SCA / Prowler mute+account (2026-09-26)
+
+listing OK is READ; writable SMB finding only on explicit write.
+Wazuh alerts aggregate by (rule.id, agent) with count and first/last
+seen; levels 0-3 are info (never POA&M). SCA agent from path/export/
+hint or unknown-agent, never wazuh-host; severity from the check or
+medium default. Prowler skips muted and MANUAL; account ID in
+identity. pytest **1089**. Host-lab / SAMPLE / farm_drop counts
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+## cycle 195 — merge master #132/#139/#136 into real-sample parsers (2026-09-26)
+
+Merge `origin/master` `5adc8b7` (PR #132 estate banner + exact-header
+CSVs, PR #139 PingCastle/Greenbone/Scuba/testssl/Nikto, PR #136 retire
+RiskReady JSON) into `cursor/real-sample-parsers-ea49`. Both sample
+tables and every test kept. #133 parse_error / no demo fill on
+LAB/CLIENT stands. #132 import CSVs start with the exact header;
+LAB estate banner is `LAB: TEST ENVIRONMENT`. No force-push. PR #134
+stays open. pytest **1084**. Host-lab `assets=81` `findings=104`
+`poam=109`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/48/0. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 
 Merged master `f3db646` (#132 estate pages + #139 real parsers) into the
@@ -62,6 +145,34 @@ One-page exec summary and SCOPE_AND_TRUST.md generated from the run; missing
 values print "not recorded"; reviewer slots stay placeholders. Catalog
 **unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
+## cycle 192 — merge master #133 DEMO fallback into real-sample parsers (2026-09-26)
+
+Merge `origin/master` `036aff8` (PR #133 no demo fixture fill on
+LAB/operator parse failures) into `cursor/real-sample-parsers-ea49`.
+Both behaviors kept: `run_collector` reports `parse_error` / `no_records`
+and never substitutes `fixtures/demo` on LAB/CLIENT/operator drops,
+and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
+severity, SARIF Trivy critical, enum4linux-ng). Malformed
+Prowler/Wazuh/XCCDF/SARIF/enum4linux on a LAB run is `parse_error`,
+not demo fill. No force-push. PR #134 stays open. pytest **1056**.
+Host-lab `assets=81` `findings=104` `poam=109`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/48/0. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 191 — merge master #130 HK into real-sample parsers (2026-09-26)
+
+Merge `origin/master` `05a29fd` (PR #130 HardeningKitty TestResult +
+filename host) into `cursor/real-sample-parsers-ea49`. Both behaviors
+kept: HK official Audit CSV (`TestResult` authoritative; host from
+filename/sidecar/env; LAB dest_in under `fixtures/lab-drop/identity/`)
+and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
+`rule-result@severity`, SARIF Trivy critical, enum4linux-ng
+`target.host` / `sessions.null` / listing). No force-push. PR #134
+stays open. pytest **1046**. Host-lab `assets=81` `findings=104`
+`poam=109`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/48/0. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
 
 Merge master `05a29fd` (#130 HardeningKitty) into the DEMO fallback
@@ -103,6 +214,20 @@ schema fixture (not an observed scan). Every row LAB. LAB cannot enter
 KEEP / keep_real. CIS Controls v8 IDs stay INTERNAL-ONLY and never appear
 in CISO / POA&M / client exports. Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
+
+## cycle 189 — real-sample parser fidelity (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF/SARIF, enum4linux-ng) (2026-09-26)
+
+Parsers now read real tool shapes instead of invented fixtures: Prowler v4/v5
+OCSF (`status_code`, `resources[].uid`) + semicolon CSV; Wazuh alerts.json
+JSONL + rule-level severity + SCA failed checks (not fake agents);
+CIS/XCCDF `rule-result@severity`; SARIF `rules[].properties.security-severity`
+(Trivy CRITICAL stays critical); enum4linux-ng `target.host`, `sessions.null`,
+share `access.listing`. Trimmed real samples under `fixtures/samples/`
+(SOURCES.md). Demo enum4linux fixture replaced with real keys (same findings).
+Host-lab after merge follows #130 weakness-dedupe baseline (assets=81
+findings=104 poam=109) unless re-lab changes it. SAMPLE→SoR and
+farm_drop→SoR counts unchanged vs this branch. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 

@@ -340,6 +340,8 @@ def test_exec_and_trust_generated_from_run_counts(
         GRC_ESTATE_LABEL="LAB",
     )
     exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    assert "Changed since last run:" in exec_text
+    assert "new=" in exec_text
     assert "| Critical |" in exec_text
     assert "| High |" in exec_text
     assert "`f1`" in exec_text or "f1" in exec_text

@@ -1,0 +1,9 @@
+Currently scanning: 10.0.0.0/24   |   Screen View: Unique Hosts
+
+ 3 Captured ARP Req/Rep packets, from 3 hosts.   Total size: 180
+ _____________________________________________________________________________
+   IP            At MAC Address     Count     Len  MAC Vendor / Hostname
+ -----------------------------------------------------------------------------
+ 10.0.0.51       50:c7:bf:11:22:33      1      60  TP-LINK TECHNOLOGIES CO.,LTD.
+ 10.0.0.52       00:e0:fc:44:55:66      1      60  Huawei Technologies Co.,Ltd
+ 10.0.0.50       00:11:22:33:44:55      1      60  Dell Inc.

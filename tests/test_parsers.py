@@ -84,10 +84,10 @@ def test_cis_cat_xml_identity(tmp_path) -> None:
         <Benchmark>
           <TestResult>
             <target>jump-unmanaged</target>
-            <rule-result idref="5.2.10" title="Ensure SSH PermitRootLogin is no">
+            <rule-result idref="5.2.10" title="Ensure SSH PermitRootLogin is no" severity="medium">
               <result>fail</result>
             </rule-result>
-            <rule-result idref="1.1.1" title="Ensure cramfs is disabled">
+            <rule-result idref="1.1.1" title="Ensure cramfs is disabled" severity="high">
               <result>pass</result>
             </rule-result>
           </TestResult>
@@ -98,6 +98,7 @@ def test_cis_cat_xml_identity(tmp_path) -> None:
     findings = [r for r in recs if r["kind"] == "finding"]
     assert len(findings) == 1
     assert "PermitRootLogin" in findings[0]["name"]
+    assert findings[0]["severity"] == "medium"
 
 
 def test_empty_cis_osquery_invents_nothing(tmp_path) -> None:
@@ -432,14 +433,16 @@ def test_arp_scan_demo_attaches_asset_only() -> None:
     assets = [r for r in recs if r["kind"] == "asset"]
     findings = [r for r in recs if r["kind"] == "finding"]
     names = [r["name"] for r in assets]
-    assert "filesrv.corp.local" in names
-    assert "10.0.0.50" not in names
+    assert "10.0.0.50" in names
+    assert "filesrv.corp.local" not in names
+    assert "Ltd" not in names
     assert findings == []
-    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    host = next(r for r in assets if r["name"] == "10.0.0.50")
     extra = host.get("extra") or {}
     assert extra.get("mac") == "00:11:22:33:44:55"
     assert "Dell" in str(extra.get("vendor") or "")
     assert extra.get("ip") == "10.0.0.50"
+    assert extra.get("hostname") in {"", None}
     assert "arp" in (host.get("labels") or [])
 
 
@@ -547,14 +550,16 @@ def test_netdiscover_demo_attaches_asset_only() -> None:
     assets = [r for r in recs if r["kind"] == "asset"]
     findings = [r for r in recs if r["kind"] == "finding"]
     names = [r["name"] for r in assets]
-    assert "filesrv.corp.local" in names
-    assert "10.0.0.50" not in names
+    assert "10.0.0.50" in names
+    assert "filesrv.corp.local" not in names
+    assert "Ltd" not in names
     assert findings == []
-    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    host = next(r for r in assets if r["name"] == "10.0.0.50")
     extra = host.get("extra") or {}
     assert extra.get("mac") == "00:11:22:33:44:55"
     assert "Dell" in str(extra.get("vendor") or "")
     assert extra.get("ip") == "10.0.0.50"
+    assert extra.get("hostname") in {"", None}
     assert "netdiscover" in (host.get("labels") or [])
     assert "arp" not in (host.get("labels") or [])
 
@@ -566,7 +571,7 @@ def test_arp_scan_does_not_claim_netdiscover(tmp_path) -> None:
     table = (
         "Currently scanning: 10.0.0.0/24   |   Screen View: Unique Hosts\n"
         "   IP            At MAC Address     Count     Len  MAC Vendor / Hostname\n"
-        " 10.0.0.50       00:11:22:33:44:55      1      60  Dell Inc.  filesrv.corp.local\n"
+        " 10.0.0.50       00:11:22:33:44:55      1      60  Dell Inc.\n"
     )
     dest = tmp_path / "lan.txt"
     dest.write_text(table, encoding="utf-8")
@@ -575,7 +580,7 @@ def test_arp_scan_does_not_claim_netdiscover(tmp_path) -> None:
     assert parse_arp_scan(dest, raw) is None
     recs = inventory_nmap.parse_file(dest)
     host = next(r for r in recs if r["kind"] == "asset")
-    assert host["name"] == "filesrv.corp.local"
+    assert host["name"] == "10.0.0.50"
     assert "netdiscover" in (host.get("labels") or [])
     assert "arp" not in (host.get("labels") or [])
     assert parse_netdiscover(DEMO / "nmap" / "arp-scan.txt") is None
@@ -612,10 +617,11 @@ def test_nbtscan_demo_attaches_asset_only() -> None:
     assets = [r for r in recs if r["kind"] == "asset"]
     findings = [r for r in recs if r["kind"] == "finding"]
     names = [r["name"] for r in assets]
-    assert "filesrv.corp.local" in names
-    assert "10.0.0.50" not in names
+    assert "10.0.0.50" in names
+    assert "filesrv.corp.local" not in names
+    assert "<unknown>" not in names
     assert findings == []
-    host = next(r for r in assets if r["name"] == "filesrv.corp.local")
+    host = next(r for r in assets if r["name"] == "10.0.0.50")
     extra = host.get("extra") or {}
     assert extra.get("mac") == "00:11:22:33:44:55"
     assert extra.get("netbios") == "FILESRV"
@@ -996,7 +1002,8 @@ def test_enum4linux_text_maps_highs(tmp_path) -> None:
     assert any(r["kind"] == "asset" and r["name"] == "DC01.CORP.LOCAL" for r in recs)
     assert any("null session" in n.lower() for n in names)
     assert any("Domain Admins" in n for n in names)
-    assert any("NETLOGON" in n for n in names)
+    assert not any("NETLOGON" in n for n in names)
+    assert not any("Writable SMB share" in n for n in names)
     assert not any("IPC$" in n for n in names)
 
 
