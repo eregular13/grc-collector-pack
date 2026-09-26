@@ -85,6 +85,8 @@ def test_internal_external_scripts_leave_demo_artifacts(
         assert row.get("owner") == ""
         assert row.get("due") == ""
         refs = row.get("framework_refs") or ""
-        assert "cpg_" in refs and "csf_" in refs
+        assert "csf_" in refs
+        assert ":" not in refs
+    assert any("cpg_2_W" in (r.get("framework_refs") or "") for r in rows)
     assert (out / "ciso-assistant" / "findings.csv").is_file()
     assert not (ROOT / "in" / "nmap" / "dropbox-inventory.gnmap").exists()

@@ -89,8 +89,7 @@ def assert_lab() -> None:
         assert labels.strip() == labels
         assert " ," not in labels and ", " != labels
         assert not any(part == "" or part.isspace() for part in labels.split(",") if labels)
-        assert "cpg_2_W" in labels
-        assert ":" not in labels.split("cpg_2_W")[0] or "cpg_2_W" in labels
+        assert ":" not in labels, labels
     for row in findings:
         assert row["severity"] in FIND_SEV, row
     for row in vulns:
@@ -113,6 +112,18 @@ def assert_lab() -> None:
     assert ctrls and scen
     assert poam, "poam.csv empty"
     assert (OUT / "poam" / "poam.md").is_file()
+    excluded_path = OUT / "poam" / "excluded.csv"
+    assert excluded_path.is_file(), "poam/excluded.csv missing"
+    excluded = _csv_rows(
+        excluded_path, "finding_ref_id,weakness,asset,severity,excluded_reason"
+    )
+    assert int(summary.get("excluded") or 0) == len(excluded)
+    assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
+    md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
+    assert "Pentera" not in md
+    assert "excluded.csv" in md.lower() or "excluded" in md.lower()
+    assert "15" in md and "30" in md and "90" in md and "180" in md
+    assert "Evergreen default" in md
     exec_sum = OUT / "EXECUTIVE_SUMMARY.md"
     trust = OUT / "SCOPE_AND_TRUST.md"
     if exec_sum.is_file() and trust.is_file():
@@ -171,12 +182,25 @@ def assert_lab() -> None:
     assert telnet, "Telnet/23 exposure must map into POA&M"
     for row in smb + rdp + tls + shares:
         refs = row.get("framework_refs") or ""
-        assert "cpg_" in refs and "csf_" in refs
+        assert "csf_" in refs
         assert "CVE-" not in (row.get("recommended_fix") or "")
         assert (row.get("owner") or "") == ""
         assert (row.get("due") or "") == ""
-    for row in smb:
+    for row in rdp + shares:
         assert "cpg_2_W" in (row.get("framework_refs") or "")
+    exposure_smb = [
+        r
+        for r in smb
+        if "null" not in (r.get("weakness") or "").lower()
+        and (
+            "445" in (r.get("recommended_fix") or "")
+            or "file sharing" in (r.get("weakness") or "").lower()
+        )
+    ]
+    assert exposure_smb, "open-port SMB exposure must remain on the POA&M"
+    for row in exposure_smb:
+        assert "cpg_2_W" in (row.get("framework_refs") or "")
+    for row in smb:
         assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
         fix = (row.get("recommended_fix") or "").lower()
         weak = (row.get("weakness") or "").lower()
@@ -193,7 +217,8 @@ def assert_lab() -> None:
         assert row.get("severity") in FIND_SEV
         refs = row.get("framework_refs") or ""
         assert ":" not in refs
-        assert "cpg_" in refs and "csf_" in refs
+        assert "csf_" in refs
+        # CPG is derived from 800-53 (CM-7/SC-7 → 2_W, CM-8 → 1_E) or omitted.
     high_findings = [r for r in findings if r["severity"] in {"high", "critical"}]
     for row in high_findings:
         labels = row.get("filtering_labels") or ""

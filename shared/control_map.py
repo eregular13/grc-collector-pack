@@ -5,10 +5,13 @@ Wizard-safe labels only (no colons). Honest: port-open is not a CVE.
 
 from __future__ import annotations
 
+import os
+import re
 from typing import Any
 
-from shared.finding_types import type_remediation
+from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
 from shared.schema import canon_severity
+from shared.poam_fields import _CVE_RE
 
 # CISA CPG 2.x-style stamps already used on the CISO wire (underscore, not colon).
 # 2_W = known-weak / unnecessary service posture. 1_E = asset/exposure inventory.
@@ -28,6 +31,147 @@ CSF_STAMP = {
 # Schema-valid fallback when no 800-53 / CIS / topic maps. Identify = found, not classified.
 CSF_UNMAPPED_FUNCTION = "identify"
 CSF_UNMAPPED_STAMP = "csf_unmapped"
+
+# Honest CPG only from 800-53 ids that sit in that CPG's scope.
+# 2_W = known-weak / unnecessary service posture. 1_E = asset/exposure inventory.
+# Do not stamp either from severity. Drop CPG when no control maps.
+N53_CPG = {
+    "CM-7": CPG_WEAK_SERVICE,
+    "SC-7": CPG_WEAK_SERVICE,
+    "CM-8": CPG_EXPOSURE,
+}
+CVE_N53 = ["SI-2", "RA-5"]
+CVE_CIS = ["cis_7_3", "cis_7_4", "cis_7_7"]
+# Specific remediations where the CVE + package/title make a playbook derivable.
+KNOWN_CVE_REMEDIATION: dict[str, dict[str, str]] = {
+    "CVE-2024-3094": {
+        "weakness_name": "xz-utils supply chain backdoor (CVE-2024-3094)",
+        "control_name": "Remove the xz-utils/liblzma backdoor",
+        "fix": (
+            "Replace xz-utils/liblzma 5.6.0/5.6.1 (the backdoored builds) with a clean "
+            "package (5.4.x or a later rebuilt release). Rotate credentials or keys that "
+            "may have been exposed on hosts that ran the backdoored library. This is a "
+            "supply-chain CVE, not a config-drift finding."
+        ),
+    },
+    "CVE-2023-38545": {
+        "weakness_name": "curl SOCKS heap overflow (CVE-2023-38545)",
+        "control_name": "Patch curl SOCKS heap overflow",
+        "fix": (
+            "Upgrade curl/libcurl to 8.4.0 or later so CVE-2023-38545 (SOCKS5 heap "
+            "buffer overflow) is not present."
+        ),
+    },
+    "CVE-2023-44487": {
+        "weakness_name": "HTTP/2 Rapid Reset (CVE-2023-44487)",
+        "control_name": "Mitigate HTTP/2 Rapid Reset",
+        "fix": (
+            "Upgrade the HTTP/2 stack (nginx, Envoy, load balancer, or language runtime) "
+            "to a release that limits or rejects Rapid Reset; disable HTTP/2 only if a "
+            "patch is not available."
+        ),
+    },
+    "CVE-2021-44228": {
+        "weakness_name": "Log4Shell (CVE-2021-44228) is present",
+        "control_name": "Patch Log4Shell-vulnerable services",
+        "fix": (
+            "Upgrade Log4j to a fixed release and block JNDI lookups. "
+            "This is a dropped Nuclei finding, not a live scan."
+        ),
+    },
+    "CVE-2014-0160": {
+        "weakness_name": "Heartbleed (CVE-2014-0160) is present",
+        "control_name": "Remediate Heartbleed-vulnerable TLS",
+        "fix": (
+            "Upgrade the TLS stack so Heartbleed is not offered. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+    },
+}
+
+# Scanner check titles that read as a pass when used as the weakness name.
+CHECK_TITLE_FAILURE: dict[str, str] = {
+    "root account mfa enabled": "Root account has no MFA",
+    "s3 bucket prohibits public access": "S3 bucket allows public access",
+    "rds instance not publicly accessible": "RDS instance is publicly accessible",
+    "default security group restricts all traffic": "Default security group allows inbound traffic",
+    "cloudtrail multi-region trail exists": "CloudTrail multi-region trail is missing",
+    "iam user does not have administratoraccess": "IAM user has standing AdministratorAccess",
+    "s3 bucket server-side encryption": "S3 bucket default encryption is not enabled",
+    "legacy authentication protocols disabled": "Legacy authentication protocols are enabled",
+    "external sharing restricted": "External sharing is not restricted",
+}
+
+# Action-oriented control names → failure statement for the weakness column.
+CONTROL_WEAKNESS: dict[str, str] = {
+    "Require MFA on the cloud root account": "Root account has no MFA",
+    "Block public object-storage access": "S3 bucket allows public access",
+    "Block public object-storage ACL and policy": "S3 bucket allows public access",
+    "Remove standing IAM AdministratorAccess": "IAM user has standing AdministratorAccess",
+    "Restrict security-group ingress from the internet": (
+        "Security group allows inbound traffic from the internet"
+    ),
+    "Disable public accessibility on RDS": "RDS instance is publicly accessible",
+    "Enable multi-region CloudTrail logging": "CloudTrail multi-region trail is missing",
+    "Enable S3 default encryption (SSE-S3 or SSE-KMS)": (
+        "S3 bucket default encryption is not enabled"
+    ),
+    "Enable encryption at rest on cloud storage": "Cloud storage is not encrypted at rest",
+    "Enable EBS volume encryption": "EBS volume is not encrypted",
+    "Require MFA on IAM users": "IAM user has no MFA",
+    "Harden or restrict SMB file sharing": "SMB file sharing is exposed",
+    "Restrict Windows admin shares": "Windows admin shares are reachable",
+    "Disable Telnet; require encrypted remote admin": "Telnet is exposed",
+    "Disable or lock down cleartext FTP": "Cleartext FTP is exposed",
+    "Restrict RDP to approved paths": "RDP is exposed beyond approved paths",
+    "Disable TLS 1.0": "TLS 1.0 is offered",
+    "Harden TLS on the exposed service": "TLS on the exposed service is weak",
+    "Remediate Heartbleed-vulnerable TLS": "Heartbleed-vulnerable TLS is offered",
+    "Publish a DMARC policy": "DMARC policy is missing",
+    "Tighten DMARC beyond p=none": "DMARC is monitor-only (p=none)",
+    "Restrict SPF +all": "SPF allows +all",
+    "Publish an SPF record": "SPF record is missing",
+    "Tighten SPF softfail (~all)": "SPF is softfail-only (~all)",
+    "Publish DKIM for the listed selector": "DKIM is missing for the listed selector",
+    "Rotate and revoke exposed credentials": "Hardcoded or leaked credential is present",
+    "Review privileged directory role": "Privileged directory role is assigned (unspecified)",
+    "Remove standing Global Administrator assignment": "Standing Global Administrator is assigned",
+    "Remove standing privileged role assignment": "Standing privileged role is assigned",
+    "Disable legacy authentication protocols": "Legacy authentication protocols are enabled",
+    "Restrict external sharing": "External sharing is not restricted",
+    "Review SSH brute-force activity": "SSH brute-force activity was observed",
+    "Enforce password policy": "Password policy is not enforced",
+    "Enforce Windows password history": "Password history is shorter than required",
+    "Disable LM hash storage": "LM hashes are stored",
+    "Enforce account lockout": "Account lockout is not enforced",
+    "Enforce session lock": "Session lock after inactivity is not enforced",
+    "Enable audit logging": "Audit logging is not enabled",
+    "Enable malware protection": "Malware real-time protection is disabled",
+    "Require encryption in transit": "Remote session encryption is not required",
+    "Enable a host firewall": "Host firewall is disabled",
+    "Disable SSH root login": "SSH root login is enabled",
+    "Disable SSH empty passwords": "SSH empty passwords are allowed",
+    "Apply security updates": "Security updates are not applied",
+    "Enable time synchronization": "Time synchronization is not enabled",
+}
+
+# Host-hardening control_keys (Lynis / OpenSCAP / HardeningKitty). Check
+# titles are policy names; the weakness column must state the failure.
+HARDENING_CONTROL_KEYS = frozenset(
+    {
+        "password_policy",
+        "account_lockout",
+        "session_lock",
+        "audit_logging",
+        "malware_protection",
+        "encryption_in_transit",
+        "host_firewall",
+        "ssh_root_login",
+        "ssh_empty_passwords",
+        "patching",
+        "time_sync",
+    }
+)
 
 # SP 800-53 Rev. 5 family → CSF 2.0 function (NIST CSF 2.0 Informative References).
 N53_FAMILY_CSF = {
@@ -310,6 +454,10 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Stop writes under container binary directories": ["SI-7", "CM-6", "AC-3"],
     "Restrict exposed admin interfaces": ["AC-17", "SC-7"],
     "Lock down sensitive perimeter hostnames": ["CM-8"],
+    "Remove standing privileged role assignment": ["AC-2", "AC-6"],
+    "Disable legacy authentication protocols": ["IA-2", "IA-5"],
+    "Restrict external sharing": ["AC-3", "AC-6"],
+    "Review SSH brute-force activity": ["SI-4", "AC-17", "SC-7"],
 }
 
 # Backward-compatible alias used by older tests/docs.
@@ -327,6 +475,21 @@ CONTROL_CIS: dict[str, list[str]] = {
     "Enable time synchronization": ["cis_8_4"],
     "Lock down sensitive perimeter hostnames": ["cis_1_1"],
     "Rotate and revoke exposed credentials": ["cis_3_3"],
+}
+
+
+MISCONFIG_WEAKNESS: dict[str, str] = {
+    "nse-ftp-anon": "Anonymous FTP login is allowed",
+    "nse-redis-noauth": "Redis accepts unauthenticated access",
+    "nse-http-dirlist": "Web server directory listing is enabled",
+    "nse-tls-deprecated-protocol": "Deprecated TLS protocols are offered",
+    "nse-tls-weak-cipher": "Weak TLS cipher suites are offered",
+    "nse-tls-self-signed": "TLS certificate is self-signed",
+    "nse-tls-weak-key": "TLS certificate uses a weak key",
+    "nse-smb-signing-not-required": "SMB message signing is not required",
+    "nse-smb-guest": "SMB guest access is allowed",
+    "nse-db-empty-password": "Database account has an empty password",
+    "nse-default-credentials": "Vendor default credentials are accepted",
 }
 
 
@@ -398,8 +561,18 @@ def _lookup_control_ids(control_name: str) -> tuple[list[str], list[str]]:
     return [], []
 
 
+def _derive_cpg(n53: list[str]) -> list[str]:
+    """CPG from 800-53 only. Empty when no control honestly maps to a CPG."""
+    out: list[str] = []
+    for cid in n53:
+        tag = N53_CPG.get(_n53_base(cid))
+        if tag and tag not in out:
+            out.append(tag)
+    return out
+
+
 def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
-    """Attach CSF 2.0 function stamps from 800-53 / CIS / topic. Never from severity."""
+    """Attach CSF 2.0 + CPG stamps from 800-53 / CIS / topic. Never from severity."""
     n53 = list(mapped.get("nist_800_53") or [])
     cis = list(mapped.get("cis") or [])
     name = str(mapped.get("control_name") or "")
@@ -425,32 +598,155 @@ def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
     mapped["csf"] = stamps
     mapped["csf_function"] = primary
     mapped["csf_functions"] = [fn for fn in CSF_FUNCTIONS if fn in found]
-    cpg = list(mapped.get("cpg") or [])
-    refs = cpg + stamps + _n53_tokens(n53) + list(cis)
+    mapped["cpg"] = _derive_cpg(n53)
+    refs = list(mapped["cpg"]) + stamps + _n53_tokens(n53) + list(cis)
     mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
     return mapped
 
 
+def _cves_in(rec: dict[str, Any]) -> list[str]:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    found: list[str] = []
+    for raw in (extra.get("cve"), rec.get("ref_id"), rec.get("name"), rec.get("description")):
+        for match in _CVE_RE.findall(str(raw or "")):
+            up = match.upper()
+            if up not in found:
+                found.append(up)
+    return found
+
+
+def _is_vuln_finding(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    cat = str(rec.get("category") or "").lower()
+    if cat == "vulnerability":
+        return True
+    if _cves_in(rec):
+        return True
+    cve = str(extra.get("cve") or "")
+    return bool(_CVE_RE.search(cve))
+
+
+def _vuln_playbook(rec: dict[str, Any]) -> dict[str, Any]:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    cves = _cves_in(rec)
+    cve = cves[0] if cves else ""
+    pkg = str(extra.get("pkg") or extra.get("package") or "").strip()
+    known = KNOWN_CVE_REMEDIATION.get(cve) or {}
+    raw_name = str(rec.get("name") or "").strip()
+    if known:
+        weakness = known["weakness_name"]
+        control = known["control_name"]
+        fix = known["fix"]
+    elif cve and pkg:
+        weakness = raw_name if raw_name and not _looks_like_pass_title(raw_name) else (
+            f"{cve} is present in {pkg}"
+        )
+        control = f"Patch {pkg} for {cve}"
+        fix = (
+            f"Upgrade {pkg} to a release that remediates {cve}. "
+            "This is a vulnerability finding, not a config-drift playbook."
+        )
+    elif cve:
+        weakness = raw_name if raw_name and not _looks_like_pass_title(raw_name) else (
+            f"{cve} is present"
+        )
+        control = f"Patch {cve}"
+        fix = (
+            f"Upgrade the affected component to a release that remediates {cve}. "
+            "This is a vulnerability finding, not a config-drift playbook."
+        )
+    else:
+        weakness = raw_name or "Unpatched vulnerability is present"
+        control = "Apply vulnerability remediation"
+        fix = (
+            "Identify the affected package or service and upgrade or isolate it "
+            "so the reported vulnerability is not present. "
+            "This is a vulnerability finding, not a config-drift playbook."
+        )
+    return {
+        "control_name": control,
+        "recommended_fix": fix,
+        "nist_800_53": list(CVE_N53),
+        "cis": list(CVE_CIS),
+        "generic": False,
+        "finding_type": cve.lower() or "vulnerability",
+        "weakness_name": weakness,
+        "include_poam": canon_severity(rec.get("severity")) != "info",
+    }
+
+
+def _looks_like_pass_title(name: str) -> bool:
+    key = re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+    if key in CHECK_TITLE_FAILURE:
+        return True
+    compact = key.replace(" ", "")
+    if compact in {k.replace(" ", "") for k in CHECK_TITLE_FAILURE}:
+        return True
+    needles = (
+        " mfa enabled",
+        "prohibits public",
+        "not publicly accessible",
+        "restricts all traffic",
+        "trail exists",
+        "does not have administrator",
+    )
+    return any(n in f" {key} " or n in key for n in needles)
+
+
+def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
+    """Weakness column must state the failure, not the pass-style check title."""
+    raw = str(rec.get("name") or "").strip()
+    key = raw.lower()
+    compact = re.sub(r"[^a-z0-9]+", "", key)
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    control = str(mapped.get("control_name") or extra.get("control_name") or "")
+    for title, failure in CHECK_TITLE_FAILURE.items():
+        if key == title or compact == title.replace(" ", ""):
+            return failure
+    # HK / Lynis / oscap check titles are policy names ("EnableFirewall",
+    # "Length of password history maintained"), not the failure.
+    hardening = str(extra.get("control_key") or "") in HARDENING_CONTROL_KEYS
+    if hardening or key.startswith("hardeningkitty"):
+        if control in CONTROL_WEAKNESS:
+            return CONTROL_WEAKNESS[control]
+    if raw and _looks_like_pass_title(raw):
+        pass
+    elif raw and not hardening:
+        return raw
+    explicit = str(mapped.get("weakness_name") or "").strip()
+    if explicit:
+        return explicit
+    ftype = str(mapped.get("finding_type") or "")
+    if ftype in TYPE_WEAKNESS_NAME:
+        return TYPE_WEAKNESS_NAME[ftype]
+    check = str(extra.get("check_id") or "")
+    if check in MISCONFIG_WEAKNESS:
+        return MISCONFIG_WEAKNESS[check]
+    if control in CONTROL_WEAKNESS:
+        return CONTROL_WEAKNESS[control]
+    return explicit or control or raw or str(rec.get("ref_id") or "finding")
+
+
 def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
-    """Type-specific remediations; CSF from 800-53 family/topic, not severity."""
+    """Type-specific remediations; CSF/CPG from 800-53, not severity."""
     sev = canon_severity(rec.get("severity"))
-    cpg = [CPG_WEAK_SERVICE]
-    if sev in {"high", "critical"}:
-        cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE]
     n53 = list(typed.get("nist_800_53") or [])
-    include = sev in {"high", "critical"} or bool(typed.get("key_medium"))
-    return _stamp_csf(
+    mapped = _stamp_csf(
         {
             "control_name": typed["control_name"],
             "recommended_fix": typed["recommended_fix"],
-            "cpg": cpg,
-            "include_poam": include,
+            "cpg": [],
+            "include_poam": sev != "info",
             "nist_800_53": n53,
-            "cis": [],
+            "cis": list(typed.get("cis") or []),
             "generic": bool(typed.get("generic")),
             "finding_type": typed.get("finding_type") or "",
+            "weakness_name": str(typed.get("weakness_name") or ""),
+            "key_medium": bool(typed.get("key_medium")),
         }
     )
+    mapped["weakness_name"] = weakness_name_for(rec, mapped)
+    return mapped
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
@@ -459,25 +755,46 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     check = str(extra.get("check_id") or "")
     rule = MISCONFIG_RULES.get(check)
     if rule:
-        sev = canon_severity(rec.get("severity"))
-        cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE] if sev in {"high", "critical"} else [CPG_WEAK_SERVICE]
-        return _stamp_csf(
+        mapped = _stamp_csf(
             {
                 "control_name": rule["name"],
                 "recommended_fix": rule["fix"],
-                "cpg": cpg,
+                "cpg": [],
                 "include_poam": True,
                 "nist_800_53": list(rule["nist_800_53"]),
                 "cis": list(rule["cis"]),
                 "generic": False,
                 "finding_type": check,
+                "weakness_name": MISCONFIG_WEAKNESS.get(check, ""),
             }
         )
+        mapped["weakness_name"] = weakness_name_for(rec, mapped)
+        return mapped
     typed = type_remediation(rec)
-    if typed:
+    if typed and not typed.get("generic"):
+        return _typed_map(rec, typed)
+    if typed and typed.get("generic") and _is_vuln_finding(rec):
+        play = _vuln_playbook(rec)
+        mapped = _stamp_csf(
+            {
+                **play,
+                "cpg": [],
+            }
+        )
+        mapped["weakness_name"] = weakness_name_for(rec, mapped)
+        return mapped
+    if typed and not (
+        typed.get("generic")
+        and str(extra.get("control_key") or "") in HARDENING_CONTROL_KEYS
+    ):
         return _typed_map(rec, typed)
     mapped = _map_finding_legacy(rec)
+    if mapped.get("generic") and _is_vuln_finding(rec):
+        play = _vuln_playbook(rec)
+        mapped.update(play)
     n53, cis = _lookup_control_ids(mapped["control_name"])
+    if mapped.get("nist_800_53"):
+        n53 = list(mapped["nist_800_53"])
     extra_n53 = extra.get("nist_800_53") or []
     if isinstance(extra_n53, list):
         for cid in extra_n53:
@@ -485,10 +802,14 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
                 n53.append(str(cid))
     mapped["nist_800_53"] = n53
     # Never copy extra.cis_v8_internal (INTERNAL-ONLY) into client outputs.
+    if mapped.get("cis"):
+        cis = list(mapped["cis"])
     mapped["cis"] = cis
     mapped.setdefault("generic", False)
     mapped.setdefault("finding_type", "")
-    return _stamp_csf(mapped)
+    mapped = _stamp_csf(mapped)
+    mapped["weakness_name"] = weakness_name_for(rec, mapped)
+    return mapped
 
 
 def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
@@ -497,7 +818,6 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     port = str(extra.get("port") or "")
     text = _blob(rec)
     sev = canon_severity(rec.get("severity"))
-    cpg = [CPG_WEAK_SERVICE]
     key_medium = False
     generic = False
     source = str(rec.get("source") or "").lower()
@@ -516,10 +836,11 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
                 "the network is compromised. Review the trap session; do not open a "
                 "compromise incident from the stage hit alone."
             ),
-            "cpg": [CPG_EXPOSURE],
+            "cpg": [],
             "include_poam": False,
             "generic": False,
             "finding_type": "honeypot",
+            "weakness_name": "Deception-sensor hit (not a client weakness)",
         }
 
     if (
@@ -790,7 +1111,8 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         category == "secrets"
         or "gitleaks" in text
         or "trufflehog" in text
-        or (source == "code-secrets" and ("secret" in text or "api key" in text))
+        or (source == "code-secrets" and ("secret" in text or "api key" in text or "hardcoded" in text or "credential" in text))
+        or ("hardcoded" in text and ("password" in text or "credential" in text or "secret" in text))
     ):
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."
@@ -833,6 +1155,26 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "isAdmin means any admin role, not Global Administrator. "
             "This is not a Graph or Okta API call."
         )
+    elif "standing privileged" in text or (
+        "standing" in text and "role" in text and "administrator" not in text
+    ):
+        name = "Remove standing privileged role assignment"
+        fix = (
+            "Replace the standing privileged role with an eligible/JIT assignment. "
+            "This is a dropped IdP export finding, not a live directory call."
+        )
+    elif "legacy authentication" in text or "legacy auth" in text:
+        name = "Disable legacy authentication protocols"
+        fix = (
+            "Disable IMAP/SMTP basic auth and other legacy authentication protocols. "
+            "This is a dropped Scuba/IdP export finding, not a Graph API call."
+        )
+    elif "external sharing" in text:
+        name = "Restrict external sharing"
+        fix = (
+            "Disable Anyone links and restrict external sharing to approved domains. "
+            "This is a dropped Scuba/SharePoint export finding, not a live API call."
+        )
     elif extra.get("control_key") == "account_lockout" or "lockout" in text:
         name = "Enforce account lockout"
         fix = (
@@ -865,16 +1207,33 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Require encrypted remote sessions. "
             "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
+    elif "brute force" in text:
+        name = "Review SSH brute-force activity"
+        fix = (
+            "Confirm the attempts failed, restrict SSH to the admin network or VPN, "
+            "and keep host alerting on repeated input_userauth failures. "
+            "This is a Wazuh file-drop alert, not a live SSH probe."
+        )
     elif "password history" in text:
         name = "Enforce Windows password history"
         fix = (
             "Set password history to the recommended length. "
             "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
-    elif "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", "").replace("-", ""):
+    elif (
+        "lm hash" in text
+        or "lan manager hash" in text
+        or "lmhash" in text.replace(" ", "").replace("_", "").replace("-", "")
+    ):
         name = "Disable LM hash storage"
         fix = (
             "Disable storage of LAN Manager hashes. Prefer NTLMv2. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "password_policy":
+        name = "Enforce password policy"
+        fix = (
+            "Set a minimum password length and aging policy. "
             "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
     elif "firewall" in text and (
@@ -984,25 +1343,47 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         )
         generic = True
 
-    if sev in {"high", "critical"}:
-        cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE]
-    include = sev in {"high", "critical"} or key_medium or (sev == "medium" and key_medium)
+    include = sev != "info"
     return {
         "control_name": name,
         "recommended_fix": fix,
-        "cpg": cpg,
-        "include_poam": include or sev in {"high", "critical"},
+        "cpg": [],
+        "include_poam": include,
         "generic": generic,
         "finding_type": "",
+        "key_medium": key_medium,
     }
 
 
 # Named reasons for POA&M include/exclude. Every weakness gets exactly one.
-# Gate is include_poam from map_finding — status / accepted are not consulted.
-POAM_INCLUDE_REASONS = frozenset({"nse_misconfig", "severity_high_critical", "key_medium"})
-POAM_EXCLUDE_REASONS = frozenset(
-    {"honeypot", "severity_info", "severity_low", "severity_medium_not_key"}
+# Default plan puts Lows and non-key Mediums on the POA&M. Infos and honeypot
+# stay off. Info-level telemetry is telemetry_info (not one 180-day row per
+# alert). Repeated telemetry lows that share (rule/check id, asset) collapse
+# to one included row; the extras are telemetry_duplicate. A lighter plan
+# (GRC_POAM_LIGHTER) restores the old exclude set.
+POAM_INCLUDE_REASONS = frozenset(
+    {
+        "nse_misconfig",
+        "severity_high_critical",
+        "key_medium",
+        "severity_low",
+        "severity_medium",
+    }
 )
+POAM_EXCLUDE_REASONS = frozenset(
+    {
+        "honeypot",
+        "severity_info",
+        "severity_low",
+        "severity_medium_not_key",
+        "telemetry_info",
+        "telemetry_duplicate",
+    }
+)
+LIGHTER_ENV = "GRC_POAM_LIGHTER"
+TELEMETRY_SOURCES = frozenset({"host-wazuh", "wazuh"})
+TELEMETRY_CATEGORIES = frozenset({"incident", "alert", "telemetry", "siem-alert"})
+TELEMETRY_LABELS = frozenset({"alert", "telemetry"})
 
 
 def _is_honeypot(rec: dict[str, Any]) -> bool:
@@ -1018,46 +1399,128 @@ def _is_honeypot(rec: dict[str, Any]) -> bool:
     )
 
 
-def poam_decision(rec: dict[str, Any]) -> dict[str, Any]:
+def is_telemetry_finding(rec: dict[str, Any]) -> bool:
+    """Wazuh alerts and other telemetry-only rows — not hardening/posture checks."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("telemetry") is True:
+        return True
+    source = str(rec.get("source") or "").lower()
+    category = str(rec.get("category") or "").lower()
+    labels = {str(item).lower() for item in (rec.get("labels") or [])}
+    if source in TELEMETRY_SOURCES and (
+        category in TELEMETRY_CATEGORIES or bool(labels & TELEMETRY_LABELS)
+    ):
+        return True
+    return category in TELEMETRY_CATEGORIES and bool(labels & TELEMETRY_LABELS)
+
+
+def telemetry_collapse_key(rec: dict[str, Any]) -> tuple[str, str]:
+    """(rule/check id or title, asset). Empty rule falls back to the alert name."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    rule = ""
+    for key in ("rule_id", "check_id", "rule", "plugin_id", "id"):
+        rule = str(extra.get(key) or "").strip().lower()
+        if rule:
+            break
+    if not rule:
+        rule = str(rec.get("name") or rec.get("ref_id") or "").strip().lower()
+    assets = rec.get("assets") or []
+    asset = "|".join(str(item) for item in assets if item).strip().lower()
+    if not asset:
+        extra_asset = str(extra.get("agent") or extra.get("hostname") or "").strip().lower()
+        asset = extra_asset
+    return (rule, asset)
+
+
+def poam_lighter_requested() -> bool:
+    raw = str(os.environ.get(LIGHTER_ENV) or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[str, Any]:
     """Why this weakness is on or off the POA&M. Never a silent drop.
 
-    include_poam is true when any of:
-    - extra.check_id is an NSE misconfig rule (always)
-    - severity is high or critical (except honeypot)
-    - key_medium topic (SMB/445, RDP/3389, admin shares, TLS/443, missing
-      DMARC/SPF/DKIM, SPF +all, or a typed key_medium playbook)
-    Honeypot / deception-sensor is always excluded. Status is not a gate.
-    Informational maps to info and is below threshold unless key_medium/NSE.
+    Default (full) plan includes every non-info, non-honeypot weakness.
+    NSE misconfig is always included. Honeypot / deception-sensor is always
+    excluded. Informational is excluded (telemetry_info for telemetry-only
+    rows). Status is not a gate. Repeated telemetry lows are collapsed by
+    iter_poam_decisions, not here.
+
+    GRC_POAM_LIGHTER=1 restores the lighter plan: Lows and non-key Mediums
+    are excluded (severity_low / severity_medium_not_key) and recorded.
     """
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
     sev = canon_severity(rec.get("severity"))
-    included = bool(map_finding(rec).get("include_poam"))
+    mapped = map_finding(rec)
+    key_medium = bool(mapped.get("key_medium"))
+    if lighter is None:
+        lighter = poam_lighter_requested()
     if check in MISCONFIG_RULES:
-        reason = "nse_misconfig"
-    elif _is_honeypot(rec):
-        reason = "honeypot"
-    elif included and sev in {"high", "critical"}:
-        reason = "severity_high_critical"
-    elif included:
-        reason = "key_medium"
-    elif sev == "info":
-        reason = "severity_info"
-    elif sev == "low":
-        reason = "severity_low"
-    elif sev == "medium":
-        reason = "severity_medium_not_key"
-    else:
-        reason = "unexplained"
-    return {"include": included, "reason": reason, "severity": sev}
+        return {"include": True, "reason": "nse_misconfig", "severity": sev}
+    if _is_honeypot(rec):
+        return {"include": False, "reason": "honeypot", "severity": sev}
+    if sev == "info":
+        if is_telemetry_finding(rec):
+            return {"include": False, "reason": "telemetry_info", "severity": sev}
+        return {"include": False, "reason": "severity_info", "severity": sev}
+    if sev in {"high", "critical"}:
+        return {"include": True, "reason": "severity_high_critical", "severity": sev}
+    if key_medium:
+        return {"include": True, "reason": "key_medium", "severity": sev}
+    if sev == "low":
+        if lighter:
+            return {"include": False, "reason": "severity_low", "severity": sev}
+        return {"include": True, "reason": "severity_low", "severity": sev}
+    if sev == "medium":
+        if lighter:
+            return {"include": False, "reason": "severity_medium_not_key", "severity": sev}
+        return {"include": True, "reason": "severity_medium", "severity": sev}
+    included = bool(mapped.get("include_poam"))
+    return {
+        "include": included,
+        "reason": "severity_high_critical" if included else "unexplained",
+        "severity": sev,
+    }
 
 
-def poam_breakdown(findings: list[dict[str, Any]]) -> dict[str, Any]:
+def iter_poam_decisions(
+    findings: list[dict[str, Any]], *, lighter: bool | None = None
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Per-finding POA&M decisions with telemetry flood-guard collapse.
+
+    Multiple low telemetry rows that share (rule/check id, asset) become one
+    included row. The extras are excluded as telemetry_duplicate so
+    weaknesses_total == poam_included + sum(excluded_by_reason).
+    """
+    if lighter is None:
+        lighter = poam_lighter_requested()
+    seen: set[tuple[str, str]] = set()
+    out: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for rec in findings:
+        decision = dict(poam_decision(rec, lighter=lighter))
+        if (
+            decision.get("include")
+            and decision.get("severity") == "low"
+            and is_telemetry_finding(rec)
+        ):
+            key = telemetry_collapse_key(rec)
+            if key[0] and key in seen:
+                decision["include"] = False
+                decision["reason"] = "telemetry_duplicate"
+            elif key[0]:
+                seen.add(key)
+        out.append((rec, decision))
+    return out
+
+
+def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = None) -> dict[str, Any]:
     """weaknesses_total == poam_included + sum(excluded_by_reason)."""
+    if lighter is None:
+        lighter = poam_lighter_requested()
     excluded: dict[str, int] = {}
     included = 0
-    for rec in findings:
-        decision = poam_decision(rec)
+    for _rec, decision in iter_poam_decisions(findings, lighter=lighter):
         if decision["include"]:
             included += 1
             continue
@@ -1067,16 +1530,26 @@ def poam_breakdown(findings: list[dict[str, Any]]) -> dict[str, Any]:
         "weaknesses_total": len(findings),
         "poam_included": included,
         "excluded_by_reason": excluded,
+        "poam_plan": "lighter" if lighter else "full",
     }
 
 
 def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
-    """Wizard-safe CPG + CSF stamps. No colons on the CISO wire."""
-    stamps = [CPG_WEAK_SERVICE, CPG_EXPOSURE, "csf_PR", "nist_csf", "cisa_cpg"]
-    if rec:
+    """Wizard-safe CPG + CSF stamps. No colons on the CISO wire.
+
+    With no record, return the known stamp vocabulary. With a finding,
+    stamp only what the 800-53 / CIS map actually produced — do not force
+    cpg_2_W onto every row.
+    """
+    if rec and rec.get("kind") == "finding":
         mapped = map_finding(rec)
-        stamps.extend(mapped["cpg"])
-        stamps.extend(mapped["csf"])
+        stamps = list(mapped.get("cpg") or []) + list(mapped.get("csf") or [])
+        if mapped.get("cpg"):
+            stamps.append("cisa_cpg")
+        if mapped.get("csf"):
+            stamps.append("nist_csf")
+    else:
+        stamps = [CPG_WEAK_SERVICE, CPG_EXPOSURE, "csf_PR", "nist_csf", "cisa_cpg"]
     out: list[str] = []
     for stamp in stamps:
         if stamp and ":" not in stamp and stamp not in out:
