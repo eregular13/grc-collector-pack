@@ -94,7 +94,9 @@ def is_greenbone_csv(text: str, name: str = "") -> bool:
 
 
 def _cves_from_nvt(nvt: ET.Element) -> str:
-    refs = _child(nvt, "refs") or _child(nvt, "references")
+    refs = _child(nvt, "refs")
+    if refs is None:
+        refs = _child(nvt, "references")
     if refs is None:
         return ""
     found: list[str] = []

@@ -36,13 +36,13 @@ _HIGH = (
     "default credential",
     "remote code",
     "directory traversal",
-)
-_MEDIUM = (
     "admin",
     "login",
     "manager",
     "phpmyadmin",
     "wp-admin",
+)
+_MEDIUM = (
     ".git",
     ".env",
     "phpinfo",
