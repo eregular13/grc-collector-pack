@@ -568,7 +568,7 @@ def load() -> dict:
         + "\n\n# SimpleRisk leave-behind\n\n"
         "Copy of POA&M rows under `out/` only. No SimpleRisk API. No push.\n"
         "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n"
-        "RiskReady JSON is not generated. Count identity is CISO register + POA&M.\n",
+        "Count identity is CISO register + POA&M. Never POST /api/risks.\n",
     )
     write_estate_sidecar(out_sr, stamp)
 
@@ -688,7 +688,7 @@ def load() -> dict:
         + "Excluded Infos/honeypot/telemetry (and lighter-plan Lows/non-key Mediums) "
         + "are in out/poam/excluded.csv.\n"
         + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n"
-        + "RiskReady JSON is not generated. Never POST /api/risks.\n",
+        + "Never POST /api/risks.\n",
     )
     write_export_manifest(out_dir(), stamp)
     return summary
