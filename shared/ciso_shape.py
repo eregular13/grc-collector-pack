@@ -8,11 +8,11 @@ Dest_in LAB.txt / DEMO-adapter fail-closed lives in scripts/prove_ciso.py
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from typing import Any
 
 from shared.control_map import POAM_EXCLUDE_REASONS
+from shared.estate_pages import first_data_line, csv_rows_skip_comments
 from shared.poam_fields import POAM_EXTRA_FIELDS
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
@@ -36,20 +36,20 @@ ROW_REQUIRED_WHEN_FINDINGS = (
 CISO_HEADERS = {
     "assets.csv": (
         "ref_id,name,description,domain,type,reference_link,observation,"
-        "filtering_labels,parent_assets"
+        "filtering_labels,parent_assets,estate"
     ),
     "applied_controls.csv": (
-        "ref_id,name,description,domain,status,category,priority,csf_function"
+        "ref_id,name,description,domain,status,category,priority,csf_function,estate"
     ),
-    "evidences.csv": "name,description",
-    "findings.csv": "ref_id,name,description,severity,status,filtering_labels",
+    "evidences.csv": "name,description,estate",
+    "findings.csv": "ref_id,name,description,severity,status,filtering_labels,estate",
     "vulnerabilities.csv": (
-        "ref_id,name,description,status,severity,assets,applied_controls"
+        "ref_id,name,description,status,severity,assets,applied_controls,estate"
     ),
     "risk_scenarios.csv": (
         "ref_id;assets;threats;name;description;existing_controls;"
         "current_impact;current_proba;current_risk;additional_controls;"
-        "residual_impact;residual_proba;residual_risk;treatment"
+        "residual_impact;residual_proba;residual_risk;treatment;estate"
     ),
 }
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
@@ -163,17 +163,12 @@ class RegisterShapeError(ValueError):
 
 
 def first_nonempty_line(path: Path) -> str:
-    if not path.is_file():
-        return ""
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            return line.strip()
-    return ""
+    """First non-comment data line (estate banner comments are skipped)."""
+    return first_data_line(path)
 
 
 def csv_rows(path: Path, *, delimiter: str = ",") -> list[dict[str, str]]:
-    with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delimiter))
+    return csv_rows_skip_comments(path, delimiter=delimiter)
 
 
 def resolve_out_dir(ciso_or_out: Path) -> Path:
@@ -335,27 +330,40 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
     """Schema-shaped SAMPLE stub (honesty tests). Not a client estate."""
     folder = Path(ciso)
     folder.mkdir(parents=True, exist_ok=True)
+    banner = (
+        "# **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled "
+        "example files. None describes any real organization.\n"
+        "# Run `not recorded` · generated not recorded · pack `not recorded`\n"
+    )
+    estate = "SAMPLE DATA: NOT A CLIENT"
     payloads = {
         "assets.csv": (
-            CISO_HEADERS["assets.csv"]
-            + "\nDEMO-A,sample-asset,SAMPLE stub,Global,PR,,,demo,\n"
+            banner
+            + CISO_HEADERS["assets.csv"]
+            + f"\nDEMO-A,sample-asset,SAMPLE stub,Global,PR,,,demo,,{estate}\n"
         ),
         "findings.csv": (
-            CISO_HEADERS["findings.csv"]
-            + "\nDEMO-F,sample-finding,SAMPLE stub,high,identified,demo\n"
+            banner
+            + CISO_HEADERS["findings.csv"]
+            + f"\nDEMO-F,sample-finding,SAMPLE stub,high,identified,demo,{estate}\n"
         ),
         "vulnerabilities.csv": (
-            CISO_HEADERS["vulnerabilities.csv"]
-            + "\nDEMO-V,sample-vuln,SAMPLE stub,Exploitable,High,sample-asset,\n"
+            banner
+            + CISO_HEADERS["vulnerabilities.csv"]
+            + f"\nDEMO-V,sample-vuln,SAMPLE stub,Exploitable,High,sample-asset,,{estate}\n"
         ),
         "applied_controls.csv": (
-            CISO_HEADERS["applied_controls.csv"]
-            + "\nDEMO-C,sample-control,SAMPLE stub,Global,to_do,technical,1,protect\n"
+            banner
+            + CISO_HEADERS["applied_controls.csv"]
+            + f"\nDEMO-C,sample-control,SAMPLE stub,Global,to_do,technical,1,protect,{estate}\n"
         ),
-        "evidences.csv": CISO_HEADERS["evidences.csv"] + "\nSAMPLE evidence,not a client\n",
+        "evidences.csv": (
+            banner + CISO_HEADERS["evidences.csv"] + f"\nSAMPLE evidence,not a client,{estate}\n"
+        ),
         "risk_scenarios.csv": (
-            CISO_HEADERS["risk_scenarios.csv"]
-            + "\nDEMO-S;sample-asset;;sample-scenario;SAMPLE stub;;High;High;High;;Moderate;Moderate;Low;mitigate\n"
+            banner
+            + CISO_HEADERS["risk_scenarios.csv"]
+            + f"\nDEMO-S;sample-asset;;sample-scenario;SAMPLE stub;;High;High;High;;Moderate;Moderate;Low;mitigate;{estate}\n"
         ),
     }
     for name, text in payloads.items():
@@ -364,13 +372,18 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         poam = folder.parent / "poam" / "poam.csv"
         poam.parent.mkdir(parents=True, exist_ok=True)
         poam.write_text(
-            POAM_HEADER
-            + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open,SAMPLE,"
+            banner
+            + POAM_HEADER
+            + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open,"
+            + f"{estate},"
             + "POAM-DEMO-F,DEMO-F,SC-7,SAMPLE stub,sample,,2026-01-01,2026-01-31,2026-01-01,"
             + "M1 2026-01-08 Validate; M2 2026-01-24 Apply fix; M3 2026-01-31 Rescan,High,,\n",
             encoding="utf-8",
         )
         (folder.parent / "poam" / "poam.md").write_text(
+            "> **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled "
+            "example files. None describes any real organization.\n"
+            "> Run `not recorded` · generated not recorded · pack `not recorded`\n\n"
             "# POA&M (operator draft)\nSAMPLE stub. Not a client.\n",
             encoding="utf-8",
         )

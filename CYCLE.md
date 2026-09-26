@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 191 — estate banner + exec summary + SCOPE_AND_TRUST (2026-09-26)
+
+Argus Part 0 banner on every named export (exec summary, SCOPE_AND_TRUST.md,
+poam.csv/poam.md, CISO CSVs, OpenGRC, Probo) plus an `estate` column on every
+CSV row. Exactly one allowed label; fail closed; SAMPLE/DEMO/LAB and
+product-lab/drop fallback cannot become CLIENT and cannot be suppressed.
+One-page exec summary and SCOPE_AND_TRUST.md generated from the run; missing
+values print "not recorded"; reviewer slots stay placeholders. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 190 — HK TestResult authority + filename host (2026-09-26)
 
 Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV

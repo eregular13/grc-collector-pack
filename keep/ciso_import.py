@@ -11,6 +11,7 @@ from shared.ciso_shape import (
     MUST_EXIST_CSVS,
     RegisterShapeError,
     assert_risk_register_and_poam,
+    first_nonempty_line,
 )
 from shared.io_util import write_json
 
@@ -59,11 +60,7 @@ def header_mismatch(out: Path) -> dict[str, str]:
         path = folder / name
         if not path.is_file():
             continue
-        first = ""
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                first = line.strip()
-                break
+        first = first_nonempty_line(path)
         if first != expected:
             bad[name] = first
     return bad

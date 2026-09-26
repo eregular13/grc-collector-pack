@@ -13,12 +13,12 @@ OUT = Path(__file__).resolve().parents[1] / "out"
 if (ROOT / "out").exists() and not str(OUT).endswith("out"):
     OUT = ROOT / "out"
 
-ASSETS_H = "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets"
-CONTROLS_H = "ref_id,name,description,domain,status,category,priority,csf_function"
-EVID_H = "name,description"
-FIND_H = "ref_id,name,description,severity,status,filtering_labels"
-VULN_H = "ref_id,name,description,status,severity,assets,applied_controls"
-SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment"
+ASSETS_H = "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets,estate"
+CONTROLS_H = "ref_id,name,description,domain,status,category,priority,csf_function,estate"
+EVID_H = "name,description,estate"
+FIND_H = "ref_id,name,description,severity,status,filtering_labels,estate"
+VULN_H = "ref_id,name,description,status,severity,assets,applied_controls,estate"
+SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment;estate"
 
 FIND_SEV = {"low", "medium", "high", "critical"}
 VULN_SEV = {"Information", "Low", "Medium", "High", "Critical"}
@@ -33,11 +33,14 @@ def _read(path: Path) -> str:
 
 
 def _csv_rows(path: Path, expected_header: str, delim: str = ",") -> list[dict]:
+    from shared.ciso_shape import first_nonempty_line
+    from shared.estate_pages import csv_rows_skip_comments
+
     text = _read(path)
-    first = text.splitlines()[0].strip()
+    first = first_nonempty_line(path)
     assert first == expected_header, f"{path.name} header {first!r} != {expected_header!r}"
-    with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delim))
+    assert text.lstrip().startswith("#") or first == text.splitlines()[0].strip()
+    return csv_rows_skip_comments(path, delimiter=delim)
 
 
 def _json(path: Path):
@@ -119,6 +122,15 @@ def assert_lab() -> None:
     assert ctrls and scen
     assert poam, "poam.csv empty"
     assert (OUT / "poam" / "poam.md").is_file()
+    exec_sum = OUT / "EXECUTIVE_SUMMARY.md"
+    trust = OUT / "SCOPE_AND_TRUST.md"
+    if exec_sum.is_file() and trust.is_file():
+        exec_text = exec_sum.read_text(encoding="utf-8")
+        trust_text = trust.read_text(encoding="utf-8")
+        assert exec_text.startswith("> **")
+        assert trust_text.startswith("> **")
+        assert "not recorded" in trust_text or "Authorization" in trust_text
+        assert "CoS #" not in exec_text and "CoS #" not in trust_text
     smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
     assert smb, "SMB/445 exposure must map into POA&M"
     rdp = [r for r in poam if "RDP" in (r.get("weakness") or "") or "3389" in (r.get("recommended_fix") or "")]

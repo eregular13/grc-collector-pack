@@ -10,6 +10,7 @@ from pathlib import Path
 from exporters.model import HONESTY_BANNER, load_pack_estate
 from exporters.opengrc import ASSETS_HEADER, RISKS_HEADER, write_opengrc
 from exporters.probo import build_probo_preview, write_probo
+from shared.estate_pages import LABEL_FOR_KIND, csv_rows_skip_comments
 
 ROOT = Path(__file__).resolve().parents[1]
 DROP_CISO = ROOT / "product-lab" / "drop"
@@ -68,15 +69,16 @@ def test_opengrc_writes_wizard_csvs(tmp_path: Path) -> None:
     assert stamp["demo"] is True
     assert stamp["paying_day"] == "FAIL"
     dest = Path(stamp["dir"])
-    with (dest / "risks.csv").open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = csv_rows_skip_comments(dest / "risks.csv")
     assert list(rows[0].keys()) == RISKS_HEADER
     assert rows[0]["status"] == "Not Assessed"
     assert rows[0]["code"] == "RSK-x-1"
     assert int(rows[0]["inherent_likelihood"]) == 5
-    assert HONESTY_BANNER.split("—")[0].strip() in (dest / "README.md").read_text(encoding="utf-8")
-    with (dest / "assets.csv").open(encoding="utf-8", newline="") as fh:
-        assets = list(csv.DictReader(fh))
+    assert rows[0]["estate"] == LABEL_FOR_KIND["SAMPLE"]
+    readme = (dest / "README.md").read_text(encoding="utf-8")
+    assert LABEL_FOR_KIND["SAMPLE"] in readme
+    assert HONESTY_BANNER.split(":")[0] in readme
+    assets = csv_rows_skip_comments(dest / "assets.csv")
     assert list(assets[0].keys()) == ASSETS_HEADER
     assert assets[0]["asset_tag"] == "A-1"
     assert assets[0]["hostname"] == "filesrv.corp.local"
@@ -235,15 +237,14 @@ def test_lab_ciso_intermediate_writes_opengrc_probo_posted_false(tmp_path: Path)
     assert stamp["paying_day"] == "FAIL"
     dest = Path(stamp["dir"])
     readme = (dest / "README.md").read_text(encoding="utf-8")
-    assert "LAB/DEMO" in readme
-    assert "SAMPLE/DEMO" not in readme
+    assert "LAB: TEST ENVIRONMENT" in readme
+    assert "SAMPLE DATA: NOT A CLIENT" not in readme
     assert "/api/risks" not in readme
-    with (dest / "risks.csv").open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = csv_rows_skip_comments(dest / "risks.csv")
     assert list(rows[0].keys()) == RISKS_HEADER
     assert rows[0]["status"] == "Not Assessed"
-    assert "LAB/DEMO" in rows[0]["description"]
-    assert "SAMPLE/DEMO" not in rows[0]["description"]
+    assert "LAB: TEST ENVIRONMENT" in rows[0]["description"]
+    assert "SAMPLE DATA: NOT A CLIENT" not in rows[0]["description"]
     manifest = json.loads((dest / "MANIFEST.json").read_text(encoding="utf-8"))
     assert manifest["posted"] is False
     assert manifest["http"] is False
@@ -264,6 +265,6 @@ def test_lab_ciso_intermediate_writes_opengrc_probo_posted_false(tmp_path: Path)
     assert payload["sample"] is False
     assert payload.get("lab") is True
     probo_readme = (out / "probo" / "README.md").read_text(encoding="utf-8")
-    assert "LAB/DEMO" in probo_readme
-    assert "SAMPLE/DEMO" not in probo_readme
+    assert "LAB: TEST ENVIRONMENT" in probo_readme
+    assert "SAMPLE DATA: NOT A CLIENT" not in probo_readme
     assert "posted=false" in probo_readme.lower() or "posted=false" in probo_readme

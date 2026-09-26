@@ -23,6 +23,7 @@ from exporters.model import (
     score_scenario_level,
     score_severity,
 )
+from shared.estate_pages import write_csv_with_estate
 
 # OpenGRC Risk fillable (app/Models/Risk.php) + import-by-code upsert.
 RISKS_HEADER = [
@@ -37,6 +38,7 @@ RISKS_HEADER = [
     "residual_impact",
     "residual_risk",
     "is_active",
+    "estate",
 ]
 # OpenGRC Asset fillable minus FK / financial fields we cannot invent.
 ASSETS_HEADER = [
@@ -47,17 +49,21 @@ ASSETS_HEADER = [
     "notes",
     "is_active",
     "alternative_name",
+    "estate",
 ]
 # Implementation create fields the wizard can map without FKs.
-IMPLEMENTATIONS_HEADER = ["title", "details", "notes"]
+IMPLEMENTATIONS_HEADER = ["title", "details", "notes", "estate"]
 
 
-def _write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(header)
-        writer.writerows(rows)
+def _write_csv(path: Path, header: list[str], rows: list[list[Any]], stamp=None) -> None:
+    if stamp is None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(header)
+            writer.writerows(rows)
+        return
+    write_csv_with_estate(path, header, rows, stamp)
 
 
 def _risk_row_from_scenario(scenario, estate: PackEstate) -> list[Any]:
@@ -169,10 +175,11 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
     dest_root = out_dir(out)
     dest = dest_root / "opengrc"
     rows = build_opengrc_rows(estate)
-    _write_csv(dest / "risks.csv", RISKS_HEADER, rows["risks"])
-    _write_csv(dest / "assets.csv", ASSETS_HEADER, rows["assets"])
-    _write_csv(dest / "implementations.csv", IMPLEMENTATIONS_HEADER, rows["implementations"])
-    stamp = {
+    estate_stamp = estate.estate_stamp()
+    _write_csv(dest / "risks.csv", RISKS_HEADER, rows["risks"], stamp=estate_stamp)
+    _write_csv(dest / "assets.csv", ASSETS_HEADER, rows["assets"], stamp=estate_stamp)
+    _write_csv(dest / "implementations.csv", IMPLEMENTATIONS_HEADER, rows["implementations"], stamp=estate_stamp)
+    report = {
         "product": "grc-collector-pack",
         "sink": "opengrc",
         "posted": False,
@@ -194,9 +201,10 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
         ),
         **estate.honesty(),
     }
-    (dest / "MANIFEST.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    (dest / "MANIFEST.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     (dest / "README.md").write_text(
-        "# OpenGRC import drop (file-only)\n\n"
+        estate_stamp.banner_md()
+        + "\n\n# OpenGRC import drop (file-only)\n\n"
         f"{estate.banner}\n\n"
         "These CSVs match the OpenGRC Data Manager import wizard "
         "(https://docs.opengrc.com/data-manager/import/).\n\n"
@@ -215,5 +223,5 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
         "posted=false. No REST. RiskReady is stay-out. This is not a paying-day PASS.\n",
         encoding="utf-8",
     )
-    stamp["dir"] = str(dest)
-    return stamp
+    report["dir"] = str(dest)
+    return report

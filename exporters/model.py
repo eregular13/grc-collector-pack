@@ -15,18 +15,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from shared.estate_pages import EstateStamp, classify_estate
 from shared.schema import canon_severity, ciso_finding_severity
 
 ROOT = Path(__file__).resolve().parents[1]
 CISO_DIR_NAMES = ("ciso-assistant", "ciso_drop", "ciso")
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+
 HONESTY_BANNER = (
-    "SAMPLE/DEMO — not a client estate. File-drop parse only. "
-    "posted=false. Not a paying-day stamp."
+    "SAMPLE DATA: NOT A CLIENT: Every finding below comes from bundled "
+    "example files. None describes any real organization."
 )
 LAB_HONESTY_BANNER = (
-    "LAB/DEMO — not a client estate. File-drop parse only. "
-    "posted=false. Not a paying-day stamp."
+    "LAB: TEST ENVIRONMENT: From scans of an Evergreen-controlled test "
+    "environment. It does not describe your organization."
 )
 
 # OpenGRC 1–5 likelihood/impact. Residual is one step down (never invented 0).
@@ -189,6 +191,23 @@ class PackEstate:
     def all_findings(self) -> list[PackFinding]:
         return list(self.findings) + list(self.vulnerabilities)
 
+    def estate_stamp(self) -> EstateStamp:
+        fallback = []
+        origin = f"{self.source} {self.origin}"
+        if "product-lab/drop" in origin.replace("\\", "/"):
+            fallback.append("product-lab/drop")
+        env: dict[str, str] = {}
+        if self.lab and not self.sample:
+            env["GRC_ESTATE_LABEL"] = "LAB"
+        elif self.sample:
+            env["GRC_ESTATE_LABEL"] = "SAMPLE"
+        elif self.demo:
+            env["GRC_ESTATE_LABEL"] = "DEMO"
+        records = []
+        if self.sample and not self.lab:
+            records = [{"labels": ["sample"], "source": self.source or "fixtures/demo"}]
+        return classify_estate(records, fallback_files=fallback, env=env)
+
     @property
     def banner(self) -> str:
         if self.lab and not self.sample:
@@ -197,6 +216,7 @@ class PackEstate:
 
     def honesty(self) -> dict[str, Any]:
         lab = bool(self.lab) and not bool(self.sample)
+        stamp = self.estate_stamp()
         return {
             "sample": False if lab else True if self.sample else False,
             "lab": lab,
@@ -206,7 +226,8 @@ class PackEstate:
             "posted": False,
             "http": False,
             "paying_day": "FAIL",
-            "estate": self.banner,
+            "estate": stamp.label,
+            "estate_banner": stamp.banner_oneline(),
             "riskready": "stay-out — review-only; never a build target here",
             "source": self.source,
             "origin": self.origin,
@@ -216,8 +237,12 @@ class PackEstate:
 def _read_csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
     if not path.is_file():
         return []
-    with path.open(encoding="utf-8", newline="") as fh:
-        return [{str(k): ("" if v is None else str(v)) for k, v in row.items()} for row in csv.DictReader(fh, delimiter=delimiter)]
+    from shared.estate_pages import csv_rows_skip_comments
+
+    return [
+        {str(k): ("" if v is None else str(v)) for k, v in row.items()}
+        for row in csv_rows_skip_comments(path, delimiter=delimiter)
+    ]
 
 
 def load_pack_estate(out: Path | None = None) -> PackEstate:
@@ -348,6 +373,8 @@ def load_pack_estate(out: Path | None = None) -> PackEstate:
         except json.JSONDecodeError:
             summary = {}
     demo = bool(summary.get("demo")) or sample
+    dest_s = str(dest).replace("\\", "/")
+    from_drop = "product-lab/drop" in dest_s
     # File-drop default: never claim a client estate from this pack.
     # SAMPLE/DEMO KEEP is enough — do not wait for denser KEEP.
     return PackEstate(
@@ -361,6 +388,6 @@ def load_pack_estate(out: Path | None = None) -> PackEstate:
         demo=True if demo or sample else True,
         client=False,
         posted=False,
-        source="ciso-assistant",
-        origin="keep-lab" if "keep" in str(dest).replace("\\", "/") else "ciso-assistant",
+        source="product-lab/drop" if from_drop else "ciso-assistant",
+        origin="keep-lab" if "keep" in dest_s else ("product-lab/drop" if from_drop else "ciso-assistant"),
     )

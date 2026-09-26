@@ -10,11 +10,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.control_map import extra_labels, map_finding, poam_breakdown
+from shared.estate_pages import (
+    PageContext,
+    classify_estate,
+    write_client_pages,
+    write_csv_with_estate,
+    write_export_manifest,
+)
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.hardening_dedup import dedupe_hardening
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
-from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
+from shared.io_util import (
+    in_dir,
+    iso_now,
+    out_dir,
+    read_jsonl,
+    redact,
+    stable_hash as _stable_hash,
+    write_json,
+    write_text,
+)
 from shared.schema import (
     ASSET_TYPES,
     ciso_finding_severity,
@@ -36,6 +52,7 @@ ASSETS_HEADER = [
     "observation",
     "filtering_labels",
     "parent_assets",
+    "estate",
 ]
 CONTROLS_HEADER = [
     "ref_id",
@@ -46,10 +63,11 @@ CONTROLS_HEADER = [
     "category",
     "priority",
     "csf_function",
+    "estate",
 ]
-EVIDENCE_HEADER = ["name", "description"]
-FINDINGS_HEADER = ["ref_id", "name", "description", "severity", "status", "filtering_labels"]
-VULN_HEADER = ["ref_id", "name", "description", "status", "severity", "assets", "applied_controls"]
+EVIDENCE_HEADER = ["name", "description", "estate"]
+FINDINGS_HEADER = ["ref_id", "name", "description", "severity", "status", "filtering_labels", "estate"]
+VULN_HEADER = ["ref_id", "name", "description", "status", "severity", "assets", "applied_controls", "estate"]
 SCENARIO_HEADER = [
     "ref_id",
     "assets",
@@ -65,6 +83,7 @@ SCENARIO_HEADER = [
     "residual_proba",
     "residual_risk",
     "treatment",
+    "estate",
 ]
 
 VULN_CATEGORIES = {"vulnerability", "secrets", "sast"}
@@ -130,37 +149,17 @@ def _dedupe(records: list[dict]) -> list[dict]:
     return list(assets.values()) + list(others.values()) + leftover
 
 
-ESTATE_LABELS = ("LAB", "SAMPLE", "DEMO", "UNLABELED")
-
-
 def estate_label(records: list[dict]) -> str:
-    """Run estate watermark for exports. Never CLIENT.
-
-    Explicit GRC_ESTATE_LABEL (LAB/SAMPLE/DEMO only) wins; then a LAB.txt in
-    IN_DIR; then SAMPLE.txt / DROPBOX_DEMO=1; then demo-labeled records.
-    Anything else is UNLABELED (not verified as a client estate).
-    """
-    raw = str(os.environ.get("GRC_ESTATE_LABEL") or "").strip().upper()
-    if raw in {"LAB", "SAMPLE", "DEMO"}:
-        return raw
-    in_raw = os.environ.get("IN_DIR") or ""
-    in_dir = Path(in_raw) if in_raw else None
-    if in_dir is not None and in_dir.is_dir():
-        if (in_dir / "LAB.txt").is_file() or any(in_dir.rglob("LAB.txt")):
-            return "LAB"
-        if (in_dir / "SAMPLE.txt").is_file() or any(in_dir.rglob("SAMPLE.txt")):
-            return "SAMPLE"
-    if os.environ.get("DROPBOX_DEMO") == "1":
-        return "SAMPLE"
-    if any("demo" in (r.get("labels") or []) for r in records):
-        return "DEMO"
-    return "UNLABELED"
+    """Allowed estate label. SAMPLE/DEMO/LAB/fallback never become CLIENT."""
+    return classify_estate(records).label
 
 
 def estate_banner(label: str) -> str:
-    if label == "UNLABELED":
-        return "ESTATE: UNLABELED — not verified as a client estate. Review before any client use."
-    return f"ESTATE: {label} — not a client estate. {label} output is never client KEEP."
+    """One-line banner for a known label (tests + leave-behind stamps)."""
+    stamp = classify_estate([], env={"GRC_ESTATE_LABEL": label.split(":")[0].split()[0]})
+    if label in {stamp.label, stamp.kind}:
+        return stamp.banner_oneline()
+    return f"{label}: not a client estate. SAMPLE/DEMO/LAB output is never client KEEP."
 
 
 def _labels(rec: dict, estate: str | None = None) -> str:
@@ -186,21 +185,33 @@ def _is_vuln(rec: dict) -> bool:
     return cat in VULN_CATEGORIES or ref.upper().startswith("CVE") or cve.upper().startswith("CVE") or ref.upper().startswith("VULN-CVE")
 
 
-def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str = ",") -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter=delimiter, lineterminator="\n")
-        writer.writerow(header)
-        for row in rows:
-            writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
+def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str = ",", stamp=None) -> None:
+    cleaned = [[redact(c) if isinstance(c, str) else c for c in row] for row in rows]
+    if stamp is None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.writer(fh, delimiter=delimiter, lineterminator="\n")
+            writer.writerow(header)
+            for row in cleaned:
+                writer.writerow(row)
+        return
+    write_csv_with_estate(path, header, cleaned, stamp, delimiter=delimiter)
 
 
 def load() -> dict:
     # ref_id collapse, then same-issue-same-asset, then HK/Lynis/oscap keys.
-    records = dedupe_hardening(dedupe_weaknesses(_dedupe(_load_canonical())))
+    raw_records = _load_canonical()
+    records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw_records)))
+    merged_n = max(0, len(raw_records) - len(records))
     now = iso_now()
     domain = _domain()
-    estate = estate_label(records)
+    try:
+        dest_in = in_dir()
+    except Exception:
+        dest_in = Path(os.environ["IN_DIR"]) if os.environ.get("IN_DIR") else None
+    stamp = classify_estate(records, in_dir=dest_in, generated_at=now)
+    estate = stamp.label
+    estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
     incidents = [r for r in records if r.get("kind") == "incident"]
@@ -221,7 +232,7 @@ def load() -> dict:
                 atype,
                 extra.get("arn") or extra.get("reference_link") or "",
                 extra.get("observation") or "",
-                _labels(rec, estate),
+                _labels(rec, estate_kind),
                 extra.get("parent_assets") or "",
             ]
         )
@@ -238,7 +249,7 @@ def load() -> dict:
                 rec.get("description"),
                 ciso_finding_severity(rec.get("severity")),
                 rec.get("status") or "identified",
-                _labels(rec, estate),
+                _labels(rec, estate_kind),
             ]
         )
 
@@ -354,24 +365,25 @@ def load() -> dict:
         )
 
     out_ciso = out_dir() / "ciso-assistant"
-    _write_csv(out_ciso / "assets.csv", ASSETS_HEADER, ciso_assets)
-    _write_csv(out_ciso / "applied_controls.csv", CONTROLS_HEADER, uniq_controls)
-    _write_csv(out_ciso / "evidences.csv", EVIDENCE_HEADER, evidence_rows)
-    _write_csv(out_ciso / "findings.csv", FINDINGS_HEADER, ciso_findings)
-    _write_csv(out_ciso / "vulnerabilities.csv", VULN_HEADER, ciso_vulns)
-    _write_csv(out_ciso / "risk_scenarios.csv", SCENARIO_HEADER, scenarios, delimiter=";")
+    _write_csv(out_ciso / "assets.csv", ASSETS_HEADER, ciso_assets, stamp=stamp)
+    _write_csv(out_ciso / "applied_controls.csv", CONTROLS_HEADER, uniq_controls, stamp=stamp)
+    _write_csv(out_ciso / "evidences.csv", EVIDENCE_HEADER, evidence_rows, stamp=stamp)
+    _write_csv(out_ciso / "findings.csv", FINDINGS_HEADER, ciso_findings, stamp=stamp)
+    _write_csv(out_ciso / "vulnerabilities.csv", VULN_HEADER, ciso_vulns, stamp=stamp)
+    _write_csv(out_ciso / "risk_scenarios.csv", SCENARIO_HEADER, scenarios, delimiter=";", stamp=stamp)
     write_text(
         out_ciso / "ESTATE.txt",
-        estate_banner(estate)
-        + "\nfindings.csv / assets.csv carry filtering_labels token "
-        + f"estate_{estate.lower()}. CISO import headers are unchanged.\n",
+        stamp.banner_md()
+        + "\n\nCISO CSVs carry an `estate` column and the banner as `#` comments. "
+        + f"filtering_labels also include {stamp.token()}. "
+        + "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.\n",
     )
     out_poam = out_dir() / "poam"
-    _write_csv(out_poam / "poam.csv", poam_header, poam_rows)
+    _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     lines = [
-        "# POA&M (operator draft)",
+        stamp.banner_md(),
         "",
-        f"> {estate_banner(estate)}",
+        "# POA&M (operator draft)",
         "",
         "Pentera (or any scanner) finds it. Evergreen maps it.",
         "Owner and due are blank — a human fills them. No invented owners.",
@@ -391,7 +403,7 @@ def load() -> dict:
         )
     write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
     out_sr = out_dir() / "simplerisk"
-    _write_csv(out_sr / "poam.csv", poam_header, poam_rows)
+    _write_csv(out_sr / "poam.csv", poam_header, poam_rows, stamp=stamp)
     write_text(
         out_sr / "README.md",
         "# SimpleRisk leave-behind\n\n"
@@ -499,6 +511,7 @@ def load() -> dict:
     write_json(out_rr / "risks_proposed.json", proposed)
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
 
+    excluded_poam = max(0, len(other_findings) + len(vuln_findings) - len(poam_rows))
     summary = {
         "assets": len(ciso_assets),
         "findings": len(ciso_findings),
@@ -518,6 +531,9 @@ def load() -> dict:
         "canonical": len(records),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
+        "estate_kind": estate_kind,
+        "client": False if estate_kind != "CLIENT" else True,
+        "duplicates_merged": merged_n,
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
@@ -527,6 +543,31 @@ def load() -> dict:
         "generated_at": now,
     }
     write_json(out_dir() / "summary.json", summary)
+    poam_dicts = [
+        {
+            "severity": str(row[2] or "").lower(),
+            "weakness": row[0],
+            "asset": row[1],
+            "ref_id": row[idx["finding_ref_id"]] if "finding_ref_id" in idx else "",
+        }
+        for row in poam_rows
+    ]
+    ctx = PageContext(
+        stamp=stamp,
+        records=records,
+        findings=other_findings + vuln_findings,
+        poam_rows=poam_dicts,
+        mapped_by_ref=mapped_by_ref,
+        findings_csv_n=len(ciso_findings),
+        vuln_n=len(ciso_vulns),
+        risk_n=len(scenarios),
+        poam_n=len(poam_rows),
+        merged=str(merged_n),
+        excluded_poam=excluded_poam,
+        in_dir=dest_in,
+        generated_at=now,
+    )
+    write_client_pages(out_dir(), ctx)
     write_text(
         out_dir() / "evidence" / "lab-report.md",
         "# Lab report\n\n"
@@ -535,6 +576,7 @@ def load() -> dict:
         + "POA&M: out/poam/poam.csv — owner/due blank for a human.\n"
         + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n",
     )
+    write_export_manifest(out_dir(), stamp)
     return summary
 
 

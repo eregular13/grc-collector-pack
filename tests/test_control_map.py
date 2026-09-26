@@ -507,9 +507,10 @@ def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) ->
     write_canonical("inventory-nmap", [rec])
     summary = load()
     assert summary.get("poam", 0) >= 1
+    from shared.estate_pages import csv_rows_skip_comments
+
     poam = out_dir() / "poam" / "poam.csv"
-    with poam.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = csv_rows_skip_comments(poam)
     assert rows
     assert any("SMB" in (r.get("weakness") or "") for r in rows)
     for row in rows:

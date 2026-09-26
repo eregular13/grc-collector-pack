@@ -58,9 +58,10 @@ def _load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[dict]) 
 
     importlib.reload(loader)
     loader.load()
+    from shared.estate_pages import csv_rows_skip_comments
+
     assert_risk_register_and_poam(out)
-    with (out / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh))
+    return csv_rows_skip_comments(out / "poam" / "poam.csv")
 
 
 def test_header_keeps_legacy_prefix_and_appends_fedramp_fields() -> None:
@@ -83,7 +84,7 @@ def test_row_fields_from_existing_data(tmp_path: Path, monkeypatch: pytest.Monke
     assert row["status_date"] == date.today().isoformat() or len(row["status_date"]) == 10
     assert row["original_risk_rating"] == "High"
     assert row["owner"] == "" and row["point_of_contact"] == "" and row["due"] == ""
-    assert row["status"] == "open" and row["estate"] == "LAB"
+    assert row["status"] == "open" and row["estate"] == "LAB: TEST ENVIRONMENT"
     ms = [m.strip() for m in row["milestones"].split(";") if m.strip()]
     assert len(ms) >= 3
     assert "validate" in ms[0].lower() and "2026-09-08" in ms[0]
@@ -163,11 +164,12 @@ def test_lab_misconfig_fixture_end_to_end(tmp_path: Path) -> None:
     proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "prove_ciso.py"), "--work", str(work), "--use-existing-in"],
                           cwd=str(ROOT), env=env, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stdout[-600:] + proc.stderr[-600:]
-    with (work / "out" / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    from shared.estate_pages import csv_rows_skip_comments
+
+    rows = csv_rows_skip_comments(work / "out" / "poam" / "poam.csv")
     anon = next(r for r in rows if r["weakness"] == "Anonymous FTP login allowed")
     assert anon["original_detection_date"] == "2026-09-25"  # nmap host starttime (UTC)
     assert anon["scheduled_completion_date"] == "2026-10-25"
-    assert anon["estate"] == "LAB"
+    assert anon["estate"] == "LAB: TEST ENVIRONMENT"
     assert all(r["poam_id"].startswith("POAM-") for r in rows)
     assert all(len([m for m in r["milestones"].split(";") if m.strip()]) >= 2 for r in rows)

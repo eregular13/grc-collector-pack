@@ -323,12 +323,12 @@ def test_lab_dest_in_prove_writes_opengrc_probo_file_true(tmp_path: Path) -> Non
     assert manifest["client"] is False
     assert manifest["paying_day"] == "FAIL"
     readme = (og / "README.md").read_text(encoding="utf-8")
-    assert "LAB/DEMO" in readme
-    assert "SAMPLE/DEMO" not in readme
+    assert "LAB: TEST ENVIRONMENT" in readme
+    assert "SAMPLE DATA: NOT A CLIENT" not in readme
     assert "/api/risks" not in readme
     risks = (og / "risks.csv").read_text(encoding="utf-8")
-    assert "LAB/DEMO" in risks
-    assert "SAMPLE/DEMO" not in risks
+    assert "LAB: TEST ENVIRONMENT" in risks
+    assert "SAMPLE DATA: NOT A CLIENT" not in risks
     probo_path = out / "import_preview" / "probo.json"
     assert probo_path.is_file()
     payload = json.loads(probo_path.read_text(encoding="utf-8"))
