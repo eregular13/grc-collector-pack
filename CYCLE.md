@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 189 — DEMO fallback honesty (2026-09-26)
+
+Parse failure / empty sensor on LAB, CLIENT, or a live operator drop
+never substitutes `fixtures/demo`. Per-sensor `parse_error` /
+`no_records` land in `summary.json` and `/api/coverage` sensors.
+DEMO/SAMPLE empty-in still loads fixtures and stays labeled. No POST
+`/api/risks`. RiskReady stay-out. Catalog **unchanged**. paying_day
+**FAIL**.
+
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 
 Wire Lynis (GPLv3) + OpenSCAP/SSG (LGPL/BSD) into the LAB dest_in

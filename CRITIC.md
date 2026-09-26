@@ -1,3 +1,13 @@
+# CRITIC — cycle 189 (DEMO_FALLBACK_HONESTY)
+
+Honesty brick: `run_collector` no longer loads `fixtures/demo` when
+live files fail or a LAB/CLIENT/operator sensor is empty. Per-sensor
+`parse_error` / `no_records` (file + reason) in `out/coverage/sensors/`
+and `summary.json` / `/api/coverage`. DEMO/SAMPLE empty-in still works
+and stays labeled. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 
 Lab this brick: pytest **932** passed, 1 skipped. Ten collectors +

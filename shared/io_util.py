@@ -87,10 +87,19 @@ def redact(value: Any) -> Any:
     return text
 
 
+# Banner / bookkeeping files are not scanner drops. LAB.txt in a sensor
+# folder must not count as a live parse target or trigger demo fallback.
+SKIP_INPUT_NAMES = frozenset(
+    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
+)
+DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})
+NEVER_DEMO_LABELS = frozenset({"LAB", "CLIENT"})
+
+
 def _is_input_file(path: Path) -> bool:
     if not path.is_file():
         return False
-    if path.name in {".gitkeep", ".DS_Store"}:
+    if path.name in SKIP_INPUT_NAMES:
         return False
     return True
 
@@ -115,14 +124,66 @@ def _sensor_folders(source: str) -> list[str]:
     return [sensor, *[e for e in extras if e != sensor]]
 
 
+def estate_hint() -> str:
+    """Collector-side estate for demo-fallback policy. Never a client KEEP stamp.
+
+    Mirrors grc_loader.estate_label without reading records. CLIENT is accepted
+    only as a refuse-demo signal; exports still watermark UNLABELED.
+    """
+    raw = str(os.environ.get("GRC_ESTATE_LABEL") or "").strip().upper()
+    if raw in {"LAB", "SAMPLE", "DEMO", "CLIENT"}:
+        return raw
+    try:
+        folder = in_dir()
+    except Exception:
+        folder = None
+    if folder is not None and folder.is_dir():
+        if (folder / "LAB.txt").is_file() or any(folder.rglob("LAB.txt")):
+            return "LAB"
+        if (folder / "SAMPLE.txt").is_file() or any(folder.rglob("SAMPLE.txt")):
+            return "SAMPLE"
+    if os.environ.get("DROPBOX_DEMO") == "1":
+        return "SAMPLE"
+    return "UNLABELED"
+
+
+def in_dir_has_live_inputs() -> bool:
+    """True when IN_DIR holds any real drop (operator / LAB / live)."""
+    folder = in_dir()
+    if not folder.is_dir():
+        return False
+    for path in folder.rglob("*"):
+        if _is_input_file(path):
+            return True
+    return False
+
+
+def allow_demo_fallback(*, had_live_files: bool) -> bool:
+    """DEMO/SAMPLE may load fixtures/demo. LAB / CLIENT / operator drops may not.
+
+    Once in/<sensor> has files, never substitute fixtures — parse failure
+    stays empty. Classic empty-in lab (UNLABELED, no drops) is DEMO.
+    """
+    if had_live_files:
+        return False
+    label = estate_hint()
+    if label in NEVER_DEMO_LABELS:
+        return False
+    if label in DEMO_FALLBACK_LABELS:
+        return True
+    return not in_dir_has_live_inputs()
+
+
 def load_inputs(source: str, suffixes: Iterable[str] | None = None) -> tuple[list[Path], bool]:
-    """Return (files, used_demo). Empty in/ → fixtures/demo/<sensor> (+ extras)."""
+    """Return (files, used_demo). Demo fixtures only when fallback is allowed."""
     folders = _sensor_folders(source)
     live: list[Path] = []
     for folder in folders:
         live.extend(list_files(in_dir() / folder, suffixes))
     if live:
         return live, False
+    if not allow_demo_fallback(had_live_files=False):
+        return [], False
     demo: list[Path] = []
     for folder in folders:
         demo.extend(list_files(fixtures_dir() / folder, suffixes))
@@ -198,39 +259,129 @@ def mark_demo(records: list[dict[str, Any]], used_demo: bool) -> list[dict[str, 
     return records
 
 
+def sensor_status_path(source: str) -> Path:
+    return out_dir() / "coverage" / "sensors" / f"{slug(source, 64)}.json"
+
+
+def write_sensor_status(status: dict[str, Any]) -> Path:
+    dest = sensor_status_path(str(status.get("source") or "sensor"))
+    write_json(dest, status)
+    return dest
+
+
+def load_sensor_coverage(out: Path | None = None) -> list[dict[str, Any]]:
+    root = (out if out is not None else out_dir()) / "coverage" / "sensors"
+    rows: list[dict[str, Any]] = []
+    if not root.is_dir():
+        return rows
+    for path in sorted(root.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict) and data.get("source"):
+            rows.append(data)
+    return rows
+
+
+def _sensor_rollup(
+    source: str,
+    *,
+    used_demo: bool,
+    files: list[Path],
+    records: list[dict[str, Any]],
+    issues: list[dict[str, str]],
+) -> dict[str, Any]:
+    n_rec = len(records)
+    n_files = len(files)
+    if used_demo and n_rec:
+        status = "demo"
+    elif any(item.get("status") == "parse_error" for item in issues) and n_rec == 0:
+        status = "parse_error"
+    elif n_files == 0:
+        status = "empty" if not issues else "no_records"
+    elif n_rec == 0:
+        status = "no_records"
+    elif issues:
+        status = "partial"
+    else:
+        status = "ok"
+    return {
+        "source": source,
+        "status": status,
+        "demo": bool(used_demo),
+        "files": n_files,
+        "records": n_rec,
+        "issues": issues,
+    }
+
+
+def _malformed_reason(path: Path) -> str | None:
+    """Name truncated/invalid JSON even when a parser swallows the exception."""
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff").strip()
+    except OSError as exc:
+        return f"OSError: {exc}"
+    if not raw:
+        return None
+    suffix = path.suffix.lower()
+    if suffix in {".json", ".sarif"} or raw[0] in "{[":
+        try:
+            json.loads(raw)
+        except json.JSONDecodeError as exc:
+            return f"JSONDecodeError: {exc}"
+    return None
+
+
 def run_collector(
     source: str,
     suffixes: Iterable[str],
     parse_file,
     finalize=None,
 ) -> list[dict[str, Any]]:
-    files, demo = load_inputs(source, suffixes)
+    files, used_demo = load_inputs(source, suffixes)
     records: list[dict[str, Any]] = []
-    parsed_any = False
+    issues: list[dict[str, str]] = []
     for path in files:
+        error: str | None = None
         try:
             recs = list(parse_file(path) or [])
-        except Exception:
+        except Exception as exc:
             recs = []
+            error = f"{type(exc).__name__}: {exc}"
         if recs:
-            parsed_any = True
             records.extend(recs)
             write_raw_copy(source, path, recs)
-        else:
-            write_raw_copy(source, path, {"error": "parse-failed", "file": path.name})
-    if not parsed_any:
-        demo = True
-        for folder in _sensor_folders(source):
-            for path in list_files(fixtures_dir() / folder, suffixes):
-                try:
-                    recs = list(parse_file(path) or [])
-                except Exception:
-                    recs = []
-                if recs:
-                    records.extend(recs)
-                    write_raw_copy(source, path, recs)
+            continue
+        malformed = error or _malformed_reason(path)
+        status = "parse_error" if malformed else "no_records"
+        reason = malformed or "parser yielded no records"
+        issues.append({"status": status, "file": path.name, "reason": reason})
+        write_raw_copy(source, path, {"error": status, "file": path.name, "reason": reason})
+    # Honesty: live files that fail or yield nothing never pull fixtures/demo.
+    if not files and not used_demo:
+        issues.append(
+            {
+                "status": "no_records",
+                "file": "",
+                "reason": "empty sensor; demo substitution refused",
+            }
+        )
     if callable(finalize):
         records = list(finalize(records) or records)
-    records = mark_demo(records, demo)
+    # SAMPLE/DEMO copies of fixtures into in/ stay labeled. Substitution above
+    # is separate: live parse failure never pulls fixtures/demo.
+    estate = estate_hint()
+    label_demo = bool(used_demo or (records and estate in DEMO_FALLBACK_LABELS))
+    records = mark_demo(records, label_demo)
     write_canonical(source, records)
+    write_sensor_status(
+        _sensor_rollup(
+            source,
+            used_demo=label_demo,
+            files=files,
+            records=records,
+            issues=issues,
+        )
+    )
     return records

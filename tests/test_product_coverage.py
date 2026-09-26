@@ -332,6 +332,7 @@ def test_ui_hooks_controls_scenarios_coverage() -> None:
     assert ">Coverage<" in html
     assert 'id="coverage-kpis"' in html
     assert 'id="coverage-heat"' in html
+    assert 'id="coverage-sensors"' in html
     assert "framework_refs" in html
     assert "applied_controls.csv" in html
     assert "risk_scenarios.csv" in html
@@ -341,6 +342,7 @@ def test_ui_hooks_controls_scenarios_coverage() -> None:
     assert '"/api/coverage"' in js
     assert "renderCoverageKpis" in js
     assert "renderCoverageHeat" in js
+    assert "renderCoverageSensors" in js
     assert "heatClass" in js
     assert '["csf_function", "CSF"]' in js
     assert '["current_risk", "Risk"]' in js

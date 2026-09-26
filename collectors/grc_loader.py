@@ -13,7 +13,16 @@ from shared.control_map import extra_labels, map_finding, poam_breakdown
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
-from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
+from shared.io_util import (
+    iso_now,
+    load_sensor_coverage,
+    out_dir,
+    read_jsonl,
+    redact,
+    stable_hash as _stable_hash,
+    write_json,
+    write_text,
+)
 from shared.schema import (
     ASSET_TYPES,
     ciso_finding_severity,
@@ -498,6 +507,7 @@ def load() -> dict:
     write_json(out_rr / "risks_proposed.json", proposed)
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
 
+    sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
         "findings": len(ciso_findings),
@@ -517,6 +527,8 @@ def load() -> dict:
         "canonical": len(records),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
+        "sensors": {row["source"]: row for row in sensor_rows},
+        "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
