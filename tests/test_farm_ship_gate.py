@@ -65,6 +65,27 @@ def _honest_farm_work(folder: Path) -> None:
         CISO_HEADERS["vulnerabilities.csv"] + "\n",
         encoding="utf-8",
     )
+    out = folder / "out"
+    label = "SAMPLE DATA: NOT A CLIENT"
+    (out / "SCOPE_AND_TRUST.md").write_text(
+        f"> **{label}**: Every finding below comes from bundled example files.\n"
+        "> Run `not recorded` · generated not recorded · pack `not recorded`\n\n"
+        "### Authorization\n"
+        "- No client authorization applies. No client systems were touched.\n\n"
+        "### What was in scope\n"
+        "| Area | Targets / source | Scanner or export used | Version | Collected (date/time) | Records |\n"
+        "|---|---|---|---|---|---|\n"
+        "| Host / network exposure | bundled sample / fixture | inventory-nmap | not recorded | not recorded | 1 |\n\n"
+        "Out of scope, or no data supplied: none.\n",
+        encoding="utf-8",
+    )
+    (out / "EXECUTIVE_SUMMARY.md").write_text(
+        f"> **{label}**: Every finding below comes from bundled example files. None describes any real organization.\n",
+        encoding="utf-8",
+    )
+    from shared.estate_pages import write_export_manifest
+
+    write_export_manifest(out)
     (folder / "prove-ciso.json").write_text(
         json.dumps(
             {
@@ -155,6 +176,7 @@ def test_ship_surface_lists_head_and_assertion_paths() -> None:
     assert "scripts/farm_drop_to_sor.sh" in FARM_SHIP_PATHS
     assert "scripts/prove_ciso.py" in FARM_SHIP_PATHS
     assert "shared/ciso_shape.py" in FARM_SHIP_PATHS
+    assert "shared/estate_pages.py" in FARM_SHIP_PATHS
     assert "shared/farm_ship.py" in FARM_SHIP_PATHS
     assert "fixtures/pack_drop" in FARM_SHIP_TREES
     for rel in FARM_SHIP_PATHS:
