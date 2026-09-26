@@ -147,6 +147,15 @@ def test_3_5_4_port_distinguishes() -> None:
     assert {i["poam_id"] for i in ledger["items"].values()}.__len__() == 2
 
 
+def test_ledger_lost_clears_when_ledger_supplied() -> None:
+    """Argus B11: LEDGER_LOST is this-run only; a supplied ledger clears it."""
+    rec = _rec()
+    first = _apply([rec], when="2026-09-10T00:00:00Z", prior_existed=False)
+    assert LEDGER_LOST in first["warnings"]
+    second = _apply([rec], ledger=first, when="2026-09-11T00:00:00Z", prior_existed=True)
+    assert LEDGER_LOST not in second["warnings"]
+
+
 def test_3_5_5_lost_ledger() -> None:
     """§3.5.5 Lost ledger: run 2 without a ledger regenerates the same IDs; detection_date_basis flagged; original_detection_date resets (warning)."""
     rec = _rec(collected_at="2026-09-01T00:00:00Z")
@@ -433,14 +442,25 @@ def test_migration_nmap_title_to_check_id_keeps_id_and_date() -> None:
         "ref_id": "NMAP-10-11-1-22-161-udp",
         "extra": {**old["extra"], "check_id": "nmap-port-161/udp"},
     }
-    old_fp = fp_v1(old)
+    from shared.poam_ledger import legacy_title_weakness_key
+
+    old_fp = fp_v1(old, weakness_key_fn=legacy_title_weakness_key)
     new_fp = fp_v1(new)
     assert old_fp != new_fp
-    assert weakness_key(old).startswith("name:")
+    assert legacy_title_weakness_key(old).startswith("name:")
     assert weakness_key(new) == "nmap:nmap-port-161/udp"
 
-    seeded = _apply([old], when="2026-07-02T00:00:00Z")
-    item = next(iter(seeded["items"].values()))
+    seeded = empty_ledger()
+    first = _apply([old], when="2026-07-02T00:00:00Z")
+    item = next(iter(first["items"].values()))
+    seeded["items"] = {
+        old_fp: {
+            **item,
+            "fp": old_fp,
+            "weakness_key": legacy_title_weakness_key(old),
+        }
+    }
+    seeded["sha256"] = payload_sha256(seeded)
     pid = item["poam_id"]
     odd = item["original_detection_date"]
 

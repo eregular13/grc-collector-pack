@@ -86,6 +86,16 @@ def make_asset_uid(anchor_type: str, anchor_value: str, *, width: int = 10) -> s
     return f"{ASSET_UID_PREFIX}{digest[:width]}"
 
 
+def scoped_anchor(ids: dict[str, Any], skip: set[str] | None = None) -> tuple[str, str]:
+    """Strongest alias, with account/tenant scope on name-only / principal keys."""
+    typ, value = strongest_anchor(ids, skip=skip)
+    if typ in {"name", "principal"}:
+        scope = str(ids.get("scope") or "")
+        if scope:
+            value = f"{value}|{scope}"
+    return typ, value
+
+
 def _sha256_bytes(blob: bytes) -> str:
     return hashlib.sha256(blob).hexdigest()
 
@@ -274,6 +284,7 @@ class AssetLedger:
             "fqdn",
             "ip",
             "hostname",
+            "principal",
             "name",
             "serial",
         ):
@@ -429,6 +440,13 @@ class AssetLedger:
             cd = str(cand.get("domain") or "")
             if od and cd and od.lower() != cd.lower():
                 return False
+        elif key in {"name", "principal"}:
+            if left[0].lower() != right[0].lower():
+                return False
+            oscope = str(obs.get("scope") or "")
+            cscope = str(cand.get("scope") or "") or self._scope_of(asset, key, right[0])
+            if oscope != cscope:
+                return False
         else:
             if left[0].lower() != right[0].lower():
                 return False
@@ -455,6 +473,27 @@ class AssetLedger:
             for asset in self._active_assets():
                 if self._match_key(ids, asset, key, now):
                     return asset
+        hostnames = [x.lower() for x in id_values(ids, "hostname")]
+        fqdns = [x.lower() for x in id_values(ids, "fqdn")]
+        if hostnames and not fqdns:
+            label = hostnames[0]
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if cand.get("principal"):
+                    continue
+                for fq in id_values(cand, "fqdn"):
+                    if str(fq).split(".", 1)[0].lower() == label:
+                        if not self._stronger_conflict(ids, cand, "hostname"):
+                            return asset
+        if fqdns and not hostnames:
+            label = fqdns[0].split(".", 1)[0]
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if id_values(cand, "fqdn") or cand.get("principal"):
+                    continue
+                if label in {x.lower() for x in id_values(cand, "hostname")}:
+                    if not self._stronger_conflict(ids, cand, "fqdn"):
+                        return asset
         return None
 
     def _new_uid(self, ids: dict[str, Any]) -> tuple[str, dict[str, str]]:
@@ -463,7 +502,7 @@ class AssetLedger:
             skip.add("uuid")
         if ids.get("bios_uuid") and self._uuid_collided(str(ids.get("bios_uuid"))):
             skip.add("bios_uuid")
-        typ, value = strongest_anchor(ids, skip=skip)
+        typ, value = scoped_anchor(ids, skip=skip)
         width = 10
         uid = make_asset_uid(typ, value, width=width)
         while uid in self.assets:
@@ -727,6 +766,31 @@ class AssetLedger:
                         if not self._stronger_conflict(lids, rids, "ip"):
                             self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason="ip")
                             merged = True
+                    if not merged and not lids.get("principal") and not rids.get("principal"):
+                        lhost = {x.lower() for x in id_values(lids, "hostname")}
+                        rhost = {x.lower() for x in id_values(rids, "hostname")}
+                        lfqdn = {x.lower() for x in id_values(lids, "fqdn")}
+                        rfqdn = {x.lower() for x in id_values(rids, "fqdn")}
+                        rlabels = {f.split(".", 1)[0] for f in rfqdn if f}
+                        llabels = {f.split(".", 1)[0] for f in lfqdn if f}
+                        l_bare = bool(lhost and not lfqdn)
+                        r_bare = bool(rhost and not rfqdn)
+                        if l_bare and rlabels and lhost & rlabels:
+                            self.merge(
+                                str(left["asset_uid"]),
+                                str(right["asset_uid"]),
+                                now=now,
+                                reason="hostname_fqdn",
+                            )
+                            merged = True
+                        elif r_bare and llabels and rhost & llabels:
+                            self.merge(
+                                str(left["asset_uid"]),
+                                str(right["asset_uid"]),
+                                now=now,
+                                reason="hostname_fqdn",
+                            )
+                            merged = True
                     if merged:
                         changed = True
                         break
@@ -767,7 +831,7 @@ def asset_uid(
     """
     if ledger is None:
         ids = ids_from_record(record)
-        typ, value = strongest_anchor(ids)
+        typ, value = scoped_anchor(ids)
         uid = make_asset_uid(typ, value)
         extra = record.setdefault("extra", {})
         if isinstance(extra, dict):

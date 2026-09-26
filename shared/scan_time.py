@@ -38,6 +38,14 @@ _SCAN_KEYS = (
     "Timestamp",
     "TimestampZulu",
     "timestamp_zulu",
+    "time",
+    "time_dt",
+    "created_time",
+    "created_time_dt",
+    "scanTime",
+    "EventTime",
+    "CreationTime",
+    "creation_time",
     "start",
     "finished",
     "starttime",
@@ -195,6 +203,12 @@ def extra_scan_raw(rec: dict[str, Any]) -> Any:
     hit = _scan_value(extra)
     if hit not in (None, ""):
         return hit
+    for blob in (extra, rec):
+        info = blob.get("finding_info") if isinstance(blob, dict) else None
+        if isinstance(info, dict):
+            hit = _scan_value(info)
+            if hit not in (None, ""):
+                return hit
     return _scan_value(rec)
 
 

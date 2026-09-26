@@ -30,7 +30,7 @@ from shared.asset_key import (
     legacy_port_only_asset_key,
     normalize_weakness_name,
 )
-from shared.finding_types import extra_dict
+from shared.finding_types import extra_dict, finding_type
 from shared.io_util import in_dir, out_dir
 from shared.kev import (
     collect_cves,
@@ -64,6 +64,60 @@ TRACKED_FIELDS = (
 REOPEN_SUFFIX = re.compile(r"-R(\d+)$")
 LEDGER_CHAIN_BROKEN = "LEDGER_CHAIN_BROKEN"
 LEDGER_LOST = "LEDGER_LOST"
+_NMAP_PORT_REF = re.compile(r"^(NMAP-.+-)(\d+)$", re.I)
+_NMAP_PORT_PROTO_REF = re.compile(r"^(NMAP-.+-)(\d+)-(tcp|udp|sctp)$", re.I)
+_HOST_IN_TITLE = re.compile(
+    r"\s+on\s+([A-Za-z0-9_.:\[\]-]+|\d{1,3}(?:\.\d{1,3}){3})\s*$",
+    re.I,
+)
+_UUIDISH = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.I,
+)
+_HOST_PORT_SLUG = re.compile(r".+-\d+(-(tcp|udp|sctp))?$", re.I)
+_PLUGIN_PREFIX = re.compile(r"^(plugin|rule|check|nvt|oid|osvdb|cve|template)", re.I)
+_SERVICE_NAMES = frozenset(
+    {
+        "kerberos",
+        "kerberos-sec",
+        "msrpc",
+        "epmap",
+        "microsoft-ds",
+        "cifs",
+        "smb",
+        "ssh",
+        "http",
+        "https",
+        "ftp",
+        "telnet",
+        "rdp",
+        "ms-wbt-server",
+        "snmp",
+        "tftp",
+        "smtp",
+        "pop3",
+        "imap",
+        "dns",
+        "ldap",
+        "ldaps",
+        "mysql",
+        "ms-sql-s",
+        "postgresql",
+        "redis",
+        "mongodb",
+        "ntp",
+        "rpcbind",
+        "sunrpc",
+        "netbios-ssn",
+        "netbios-ns",
+        "netbios-dgm",
+        "ipp",
+        "vnc",
+        "nfs",
+        "sip",
+        "http-proxy",
+    }
+)
 
 
 def source_family(rec: dict[str, Any]) -> str:
@@ -104,29 +158,144 @@ def _tool_tag(rec: dict[str, Any]) -> str:
     }.get(source_family(rec), source_family(rec))
 
 
-def weakness_key(rec: dict[str, Any]) -> str:
-    """Scanner unique vulnerability reference, then CVE-as-id, then name."""
+def strip_asset_from_title(rec: dict[str, Any]) -> str:
+    """Drop the display host from a weakness title before any name fallback."""
+    name = str(rec.get("name") or rec.get("ref_id") or "finding")
     extra = extra_dict(rec)
-    scanner_id = ""
-    for key in ("id", "rule", "check_id"):
-        val = str(extra.get(key) or "").strip()
-        if val:
-            scanner_id = val
-            break
-    tool = _tool_tag(rec)
-    if scanner_id:
-        return f"{tool}:{scanner_id}"
-    cves = collect_cves(rec)
-    extra_cve = str(extra.get("cve") or "").strip()
-    if extra_cve and cves:
-        return f"cve:{cves[0]}"
+    hosts: list[str] = []
+    for raw in list(rec.get("assets") or []):
+        text = str(raw or "").strip()
+        if text:
+            hosts.append(text)
+            if "." in text:
+                hosts.append(text.split(".", 1)[0])
+    for key in ("ip", "hostname", "fqdn", "host", "netbios"):
+        val = extra.get(key)
+        if isinstance(val, (list, tuple)):
+            hosts.extend(str(x).strip() for x in val if str(x).strip())
+        elif val not in (None, ""):
+            hosts.append(str(val).strip())
+    ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
+    for key in ("ip", "hostname", "fqdn", "netbios"):
+        val = ids.get(key)
+        if isinstance(val, (list, tuple)):
+            hosts.extend(str(x).strip() for x in val if str(x).strip())
+        elif val not in (None, ""):
+            hosts.append(str(val).strip())
+    out = name
+    for host in hosts:
+        if not host:
+            continue
+        out = re.sub(rf"\s+on\s+{re.escape(host)}\b", "", out, flags=re.I)
+    out = _HOST_IN_TITLE.sub("", out).strip()
+    return out or name
+
+
+def legacy_title_weakness_key(rec: dict[str, Any]) -> str:
+    """Pre-check_id / title-derived key. Migration source only."""
     name = normalize_weakness_name(str(rec.get("name") or rec.get("ref_id") or "finding"))
     return f"name:{name}"
 
 
-def fp_v1(rec: dict[str, Any], *, asset_key_fn=asset_key) -> str:
-    payload = "v1|" + source_family(rec) + "|" + weakness_key(rec) + "|" + asset_key_fn(rec)
+def _is_scanner_identity(val: str) -> bool:
+    """True for plugin/check ids. False for service names and observation slugs."""
+    text = str(val or "").strip()
+    if not text or text.startswith("<") or text.endswith(">"):
+        return False
+    if _UUIDISH.match(text):
+        return False
+    lowered = text.lower()
+    if lowered in _SERVICE_NAMES:
+        return False
+    if lowered.startswith("obs-") or lowered.startswith("observation"):
+        return False
+    if text.isdigit():
+        return True
+    if _HOST_PORT_SLUG.match(text) and not _PLUGIN_PREFIX.match(text):
+        return False
+    if re.search(r"\d+\.\d+\.\d+\.\d+", text):
+        return False
+    return True
+
+
+def weakness_key(rec: dict[str, Any]) -> str:
+    """Stable weakness identity: check_id, then port/proto+class. Never title/service."""
+    extra = extra_dict(rec)
+    tool = _tool_tag(rec)
+    for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule"):
+        val = str(extra.get(key) or "").strip()
+        if val and _is_scanner_identity(val):
+            return f"{tool}:{val}"
+    scanner_id = str(extra.get("id") or "").strip()
+    if scanner_id and _is_scanner_identity(scanner_id):
+        return f"{tool}:{scanner_id}"
+    share = str(extra.get("share") or "").strip()
+    if share:
+        return f"{tool}:share:{share.lower()}"
+    port = str(extra.get("port") or "").strip()
+    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    if port and port != "0":
+        cls = finding_type(rec) or str(rec.get("category") or "exposure")
+        return f"port:{port}/{proto or 'tcp'}:{cls.lower()}"
+    cves = collect_cves(rec)
+    extra_cve = str(extra.get("cve") or "").strip()
+    if extra_cve and cves:
+        return f"cve:{cves[0]}"
+    ftype = finding_type(rec)
+    if ftype and ftype not in {"", "unknown"}:
+        return f"class:{ftype}"
+    name = normalize_weakness_name(strip_asset_from_title(rec))
+    return f"name:{name}"
+
+
+def fp_v1(
+    rec: dict[str, Any],
+    *,
+    asset_key_fn=asset_key,
+    weakness_key_fn=None,
+) -> str:
+    wk = (weakness_key_fn or weakness_key)(rec)
+    payload = "v1|" + source_family(rec) + "|" + wk + "|" + asset_key_fn(rec)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def migrate_finding_refs(ref: str) -> list[str]:
+    """Historically equivalent nmap ref slugs (``-445`` ↔ ``-445-tcp``)."""
+    text = str(ref or "").strip()
+    if not text:
+        return []
+    out = [text]
+    proto = _NMAP_PORT_PROTO_REF.match(text)
+    if proto:
+        out.append(f"{proto.group(1)}{proto.group(2)}")
+    bare = _NMAP_PORT_REF.match(text)
+    if bare:
+        out.append(f"{bare.group(1)}{bare.group(2)}-tcp")
+    return list(dict.fromkeys(out))
+
+
+def item_maps_to_current(
+    item: dict[str, Any],
+    *,
+    listed_ids: set[str],
+    observed_refs: set[str],
+    observed_fps: set[str],
+) -> bool:
+    """True when a carried ledger item is the same weakness as a current row."""
+    pid = str(item.get("poam_id") or "")
+    if pid and pid in listed_ids:
+        return True
+    fp = str(item.get("fp") or "")
+    if fp and fp in observed_fps:
+        return True
+    ref = str(item.get("ref_id") or "")
+    for cand in migrate_finding_refs(ref):
+        if cand in observed_refs:
+            return True
+        for obs in observed_refs:
+            if cand in migrate_finding_refs(obs):
+                return True
+    return False
 
 
 def assign_poam_id(fp: str, used: dict[str, str]) -> str:
@@ -482,10 +651,36 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
             (legacy_asset_id_port_key, "nmap_title_to_check_id"),
             (legacy_name_asset_key, "nmap_title_to_check_id"),
         ):
-            fp = fp_v1(fake, asset_key_fn=fn)
+            fp = fp_v1(fake, asset_key_fn=fn, weakness_key_fn=legacy_title_weakness_key)
             if fp and fp not in seen:
                 seen.add(fp)
                 out.append((fp, reason))
+    # Any current row may have been keyed on the display title (Argus #5).
+    for fn in (asset_key, legacy_asset_id_port_key, legacy_name_asset_key):
+        fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=legacy_title_weakness_key)
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append((fp, "title_to_check_id"))
+        stripped = dict(rec)
+        stripped["name"] = strip_asset_from_title(rec)
+        fp = fp_v1(stripped, asset_key_fn=fn, weakness_key_fn=legacy_title_weakness_key)
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append((fp, "title_host_stripped"))
+    extra = extra_dict(rec)
+    svc = str(extra.get("service") or "").strip()
+    if svc:
+        fake = dict(rec)
+        fake_extra = dict(extra)
+        fake_extra["id"] = svc
+        fake_extra.pop("check_id", None)
+        fake_extra.pop("rule", None)
+        fake["extra"] = fake_extra
+        for fn in (asset_key, legacy_asset_id_port_key, legacy_name_asset_key):
+            fp = fp_v1(fake, asset_key_fn=fn, weakness_key_fn=lambda r: f"{_tool_tag(r)}:{svc}")
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, "service_to_check_id"))
     return out
 
 
@@ -657,7 +852,8 @@ def apply_ledger(
     ledger.setdefault("events", [])
     ledger.setdefault("fp_migrations", [])
     prior_events_n = len(ledger["events"])
-    warnings = list(ledger.get("warnings") or [])
+    # Reset each run. Prior LEDGER_LOST must not stick once a ledger is supplied.
+    warnings: list[str] = []
     if not prior_existed:
         warnings.append(LEDGER_LOST)
     overrides = overrides or {}
@@ -733,6 +929,9 @@ def apply_ledger(
                 item["kev_comments"] = list(kev.get("comments") or [])
                 item["asset_key"] = asset_key(rec)
                 item["display_asset"] = display_asset(rec)
+                item["weakness_key"] = weakness_key(rec)
+                if rec.get("ref_id"):
+                    item["ref_id"] = str(rec.get("ref_id") or "")
                 item["name"] = str(rec.get("name") or item.get("name") or "")
                 item["description"] = str(rec.get("description") or item.get("description") or "")
                 incoming, incoming_basis = detection_time(rec)
@@ -828,8 +1027,6 @@ def apply_ledger(
             )
 
     ledger["warnings"] = sorted(set(warnings + list(catalog.warnings)))
-    if LEDGER_CHAIN_BROKEN in (ledger_in or {}).get("warnings", []):
-        ledger["warnings"] = sorted(set(ledger["warnings"] + [LEDGER_CHAIN_BROKEN]))
     ledger["run_at"] = run_iso
     ledger["prev_sha256"] = str((ledger_in or {}).get("sha256") or "")
     ledger["events_this_run"] = list(ledger["events"][prior_events_n:])
@@ -885,10 +1082,12 @@ def run_ledger(
     """Load in/poam/poam-ledger.json, apply, write out/poam/poam-ledger.json."""
     src = (in_root or in_dir()) / LEDGER_IN_REL
     existed = src.is_file()
-    prior, warnings = load_ledger_file(src)
-    if warnings:
-        prior.setdefault("warnings", [])
-        prior["warnings"] = sorted(set(list(prior["warnings"]) + warnings))
+    if not existed:
+        fallback = (out_root or out_dir()) / LEDGER_OUT_REL
+        if fallback.is_file():
+            src = fallback
+            existed = True
+    prior, load_warnings = load_ledger_file(src)
     overrides = load_overrides((in_root or in_dir()) / OVERRIDES_REL)
     ledger = apply_ledger(
         findings,
@@ -898,6 +1097,8 @@ def run_ledger(
         overrides=overrides,
         prior_existed=existed,
     )
+    if LEDGER_CHAIN_BROKEN in load_warnings:
+        ledger["warnings"] = sorted(set(list(ledger.get("warnings") or []) + [LEDGER_CHAIN_BROKEN]))
     dest = (out_root or out_dir()) / LEDGER_OUT_REL
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")

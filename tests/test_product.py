@@ -22,11 +22,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(autouse=True)
-def _isolate_out_dir(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("OUT_DIR", str(ROOT / "out"))
+def _isolate_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = tmp_path / "product-out"
+    out.mkdir()
+    monkeypatch.setenv("OUT_DIR", str(out))
 
 
-def test_estate_reads_out() -> None:
+def test_estate_reads_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = tmp_path / "estate-out"
+    out.mkdir()
+    monkeypatch.setenv("OUT_DIR", str(out))
     data = estate()
     assert data["product"] == "GRC Collector Pack"
     assert data["safety"]["posts_api_risks"] is False
@@ -36,9 +41,8 @@ def test_estate_reads_out() -> None:
     assert data["client"] is False
     assert data["refresh_mode"] in {"reload", "collectors"}
     assert "honesty_label" in data
-    if (ROOT / "out" / "summary.json").exists():
-        assert data["ready"] is True
-        assert data["summary"]["assets"] >= 20
+    assert data["out_dir"] == str(out)
+    assert data["ready"] is False
 
 
 def test_drop_zip_has_ciso_and_proposed() -> None:

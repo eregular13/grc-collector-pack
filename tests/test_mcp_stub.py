@@ -285,9 +285,13 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
 ) -> None:
     from dropbox.mcp_stub import handle_jsonrpc
 
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    monkeypatch.delenv("FARM_TOOL_BIN", raising=False)
+    monkeypatch.setenv("PATH", str(empty_bin))
 
     slots = handle_jsonrpc({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "farm_slots"}})
     result = slots["result"]
