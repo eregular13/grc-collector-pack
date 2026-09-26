@@ -227,6 +227,32 @@ def assert_lab() -> None:
     smb_ctrl = [r for r in ctrls if "SMB" in (r.get("name") or "") or "445" in (r.get("description") or "")]
     assert smb_ctrl, "applied_controls must include SMB hardening narrative"
 
+    redis = [
+        r
+        for r in vulns
+        if "Redis without auth" in (r.get("name") or "")
+        or "exposed-redis" in (r.get("ref_id") or "")
+    ]
+    assert len(redis) == 3, [r.get("assets") for r in redis]
+    redis_hosts = set()
+    for row in redis:
+        redis_hosts.update(part for part in str(row.get("assets") or "").split("|") if part)
+    assert redis_hosts >= {
+        "https://redis-a.lab.internal",
+        "https://redis-b.lab.internal",
+        "https://redis-c.lab.internal",
+    }
+
+    priv_findings = [r for r in findings if "privileged" in (r.get("name") or "").lower()]
+    assert priv_findings, "privileged weakness must remain on the register"
+    priv_labels = " ".join(r.get("filtering_labels") or "" for r in priv_findings)
+    assert "falco" in priv_labels, priv_labels
+    assert "kubescape" in priv_labels, priv_labels
+    priv_poam = [r for r in poam if "privileged" in (r.get("weakness") or "").lower()]
+    assert priv_poam
+    det = " ".join(r.get("detector_source") or "" for r in priv_poam)
+    assert "falco" in det and "kubescape" in det, det
+
     blob = ""
     for path in OUT.rglob("*"):
         if path.is_file() and path.suffix in {".csv", ".json", ".jsonl", ".md"}:
