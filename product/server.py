@@ -1111,7 +1111,7 @@ def build_drop_zip() -> bytes:
         files.extend(sorted((drop / "probo").glob("*")))
     readme = (
         "GRC Collector Pack drop\n"
-        "Pentera finds it; Evergreen maps it.\n"
+        "Evergreen maps it.\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
         "POA&M: poam/poam.csv — owner and due are blank for a human.\n"
         "OpenGRC Data Manager CSVs: opengrc/*.csv — file-true leave-behind, posted=false, not live import.\n"

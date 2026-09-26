@@ -382,3 +382,61 @@ def test_redis_remediation_is_specific() -> None:
     assert "config" in cmd_fix
     assert weakness_name_for(unauth, mapped["VULN-exposed-redis-a"])
     assert "pass" not in weakness_name_for(unauth, mapped["VULN-exposed-redis-a"]).lower() or "unauth" in weakness_name_for(unauth, mapped["VULN-exposed-redis-a"]).lower()
+
+
+def test_no_pentera_in_console_or_refresh_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Drift lock: refresh + console must not write the Pentera vendor line."""
+    import zipfile
+    from io import BytesIO
+
+    from product.server import build_drop_zip
+    import scripts.refresh_product_lab_drop_sinks as refresh
+
+    needle = "Pentera"
+    for rel in (
+        "product/static/index.html",
+        "product/static/app.js",
+        "product/static/app.css",
+        "product/server.py",
+        "scripts/refresh_product_lab_drop_sinks.py",
+    ):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert needle not in text, rel
+
+    out = tmp_path / "out"
+    out.mkdir()
+    monkeypatch.setenv("OUT_DIR", str(out))
+    blob = build_drop_zip()
+    with zipfile.ZipFile(BytesIO(blob)) as zf:
+        for name in zf.namelist():
+            if name.startswith("product-lab/drop"):
+                continue
+            data = zf.read(name)
+            assert needle.encode("utf-8") not in data, name
+
+    dest = tmp_path / "refresh-drop"
+    dest.mkdir()
+    monkeypatch.setattr(refresh, "DROP", dest)
+    hashes = {
+        "ciso/applied_controls.csv": "a" * 64,
+        "ciso/assets.csv": "b" * 64,
+        "ciso/evidences.csv": "c" * 64,
+        "ciso/findings.csv": "d" * 64,
+        "ciso/risk_scenarios.csv": "e" * 64,
+        "ciso/vulnerabilities.csv": "f" * 64,
+        "poam/poam.csv": "1" * 64,
+        "poam/poam.md": "2" * 64,
+        "opengrc/risks.csv": "3" * 64,
+        "opengrc/assets.csv": "4" * 64,
+        "opengrc/implementations.csv": "5" * 64,
+        "import_preview/probo.json": "6" * 64,
+    }
+    counts = {rel: 1 for rel in hashes}
+    refresh._write_manifest(counts, hashes)
+    refresh._write_readme(counts)
+    written = list(dest.rglob("*"))
+    assert written, "refresh writers produced nothing"
+    for path in written:
+        if path.is_file():
+            assert needle not in path.read_text(encoding="utf-8"), path.name
+    assert (ROOT / "product-lab" / "drop" / "README.md").is_file()

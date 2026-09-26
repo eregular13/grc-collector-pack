@@ -36,7 +36,7 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         "Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.",
         "Copied from out/ after host lab 2026-09-04T14:51:44Z (this Linux VM).",
         "OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).",
-        "Pentera finds it; Evergreen maps it.",
+        "Evergreen maps scanner findings to a POA&M draft.",
         "Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.",
         "OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.",
         "Probo `import_preview/probo.json` is documentation-only (posted=false). Not live GraphQL.",
@@ -79,7 +79,7 @@ def _write_readme(counts: dict[str, int]) -> None:
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
 
-**Pentera finds it; Evergreen maps it.** Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
+**Evergreen maps it.** Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 
 OpenGRC and Probo files are **file-true leave-behind, posted=false, not live import**. Do not POST `/api/risks`.
 
