@@ -945,6 +945,79 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Named reasons for POA&M include/exclude. Every weakness gets exactly one.
+# Gate is include_poam from map_finding — status / accepted are not consulted.
+POAM_INCLUDE_REASONS = frozenset({"nse_misconfig", "severity_high_critical", "key_medium"})
+POAM_EXCLUDE_REASONS = frozenset(
+    {"honeypot", "severity_info", "severity_low", "severity_medium_not_key"}
+)
+
+
+def _is_honeypot(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    source = str(rec.get("source") or "").lower()
+    category = str(rec.get("category") or "").lower()
+    text = _blob(rec)
+    return (
+        source in {"honeypot", "honeypot-sensor"}
+        or category in {"honeypot", "deception-sensor"}
+        or extra.get("honesty") == "deception-sensor"
+        or "deception-sensor" in text
+    )
+
+
+def poam_decision(rec: dict[str, Any]) -> dict[str, Any]:
+    """Why this weakness is on or off the POA&M. Never a silent drop.
+
+    include_poam is true when any of:
+    - extra.check_id is an NSE misconfig rule (always)
+    - severity is high or critical (except honeypot)
+    - key_medium topic (SMB/445, RDP/3389, admin shares, TLS/443, missing
+      DMARC/SPF/DKIM, SPF +all, or a typed key_medium playbook)
+    Honeypot / deception-sensor is always excluded. Status is not a gate.
+    Informational maps to info and is below threshold unless key_medium/NSE.
+    """
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    check = str(extra.get("check_id") or "")
+    sev = canon_severity(rec.get("severity"))
+    included = bool(map_finding(rec).get("include_poam"))
+    if check in MISCONFIG_RULES:
+        reason = "nse_misconfig"
+    elif _is_honeypot(rec):
+        reason = "honeypot"
+    elif included and sev in {"high", "critical"}:
+        reason = "severity_high_critical"
+    elif included:
+        reason = "key_medium"
+    elif sev == "info":
+        reason = "severity_info"
+    elif sev == "low":
+        reason = "severity_low"
+    elif sev == "medium":
+        reason = "severity_medium_not_key"
+    else:
+        reason = "unexplained"
+    return {"include": included, "reason": reason, "severity": sev}
+
+
+def poam_breakdown(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    """weaknesses_total == poam_included + sum(excluded_by_reason)."""
+    excluded: dict[str, int] = {}
+    included = 0
+    for rec in findings:
+        decision = poam_decision(rec)
+        if decision["include"]:
+            included += 1
+            continue
+        reason = str(decision["reason"] or "unexplained")
+        excluded[reason] = excluded.get(reason, 0) + 1
+    return {
+        "weaknesses_total": len(findings),
+        "poam_included": included,
+        "excluded_by_reason": excluded,
+    }
+
+
 def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
     """Wizard-safe CPG + CSF stamps. No colons on the CISO wire."""
     stamps = [CPG_WEAK_SERVICE, CPG_EXPOSURE, "csf_PR", "nist_csf", "cisa_cpg"]

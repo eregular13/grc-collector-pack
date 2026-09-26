@@ -12,6 +12,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
+from shared.control_map import POAM_EXCLUDE_REASONS
 from shared.poam_fields import POAM_EXTRA_FIELDS
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
@@ -107,6 +108,8 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
                 f"COUNT_CONSISTENCY_FAIL summary.weaknesses={summary.get('weaknesses')} "
                 f"!= findings+vulns={weaknesses}"
             )
+        if "weaknesses_total" in summary:
+            assert_poam_breakdown(summary)
     return {
         "ok": True,
         "findings": findings_n,
@@ -116,6 +119,42 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
         "poam": poam_n,
         "open_risks": poam_n,
         "relationship": "POA&M is 1:1 with open risks (include_poam); register is 1:1 with weaknesses",
+    }
+
+
+def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
+    """weaknesses_total == poam_included + sum(excluded_by_reason). No silent drops."""
+    total = int(summary.get("weaknesses_total") or 0)
+    included = int(summary.get("poam_included") or 0)
+    excluded = summary.get("excluded_by_reason") or {}
+    if not isinstance(excluded, dict):
+        raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded_by_reason must be a dict")
+    if any(not str(reason or "").strip() for reason in excluded):
+        raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded item missing named reason")
+    unknown = sorted(str(reason) for reason in excluded if reason not in POAM_EXCLUDE_REASONS)
+    if unknown:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
+        )
+    excluded_n = sum(int(count) for count in excluded.values())
+    if total != included + excluded_n:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
+            f"poam_included={included} + sum(excluded_by_reason)={excluded_n}"
+        )
+    if included != int(summary.get("poam") or 0):
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL poam_included={included} != poam={summary.get('poam')}"
+        )
+    if "weaknesses" in summary and total != int(summary.get("weaknesses") or 0):
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != weaknesses={summary.get('weaknesses')}"
+        )
+    return {
+        "ok": True,
+        "weaknesses_total": total,
+        "poam_included": included,
+        "excluded_by_reason": {str(k): int(v) for k, v in excluded.items()},
     }
 
 

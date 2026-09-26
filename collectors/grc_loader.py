@@ -9,7 +9,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.control_map import extra_labels, map_finding
+from shared.control_map import extra_labels, map_finding, poam_breakdown
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
@@ -329,6 +329,7 @@ def load() -> dict:
         *POAM_EXTRA_FIELDS,
     ]
     today = datetime.now(timezone.utc).date()
+    breakdown = poam_breakdown(other_findings + vuln_findings)
     poam_rows: list[list] = []
     for rec in other_findings + vuln_findings:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
@@ -506,6 +507,9 @@ def load() -> dict:
         "poam": len(poam_rows),
         "risk_scenarios": len(scenarios),
         "weaknesses": len(findings),
+        "weaknesses_total": breakdown["weaknesses_total"],
+        "poam_included": breakdown["poam_included"],
+        "excluded_by_reason": breakdown["excluded_by_reason"],
         "open_risks": len(poam_rows),
         "incidents": len(rr_incidents),
         "risks_proposed": len(proposed),
@@ -516,7 +520,8 @@ def load() -> dict:
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
-            "POA&M is 1:1 with open risks (include_poam)"
+            "POA&M is 1:1 with open risks (include_poam); "
+            "weaknesses_total == poam_included + sum(excluded_by_reason)"
         ),
         "generated_at": now,
     }
