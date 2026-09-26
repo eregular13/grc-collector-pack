@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 202 — merge master #147 ledger lifecycle; keep Wazuh telemetry (2026-09-26)
+
+Merge `origin/master` `9aeb229` without rebase. #147 multi-run POA&M
+ledger lifecycle and this branch's Wazuh rule.level telemetry exclude
+both kept. pytest **1235**. Host-lab `assets=78` `findings=104`
+`poam=124` `excluded=2`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
+excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 201 — merge master #140 discovery/web; keep Wazuh telemetry (2026-09-26)
 
 Merge `origin/master` `76f5e86` without rebase. #140 Metis §11
