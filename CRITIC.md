@@ -1,3 +1,17 @@
+# CRITIC — cycle 189 (REAL-OUTPUT-PARSERS)
+
+Lab this brick: pytest **1012** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
+Zero P0/P1. Real-output bricks: Custodian list, Intune enrollment,
+IdP isAdmin, Jamf results[], Powerpipe/Steampipe, Okta/Google detect,
+BloodHound CE v6, Trivy secrets/misconfig, osquery hostIdentifier,
+ScoutSuite danger→high, Maester default medium. Demo lab counts
+unchanged vs cycle 188 critic (findings 105 / poam 106). SAMPLE
+fixtures under `fixtures/samples/` do not enter KEEP. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 
 Lab this brick: pytest **932** passed, 1 skipped. Ten collectors +

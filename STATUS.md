@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 932
+pytest: 1012
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -16,7 +16,7 @@ farm_lab: pass
 farm_toolbin_e2e: pass
 keep_lab: pass
 e2e_assets: 81
-e2e_findings: 106
+e2e_findings: 105
 e2e_poam: 106
 demo: true
 estate: DEMO — not a client estate
