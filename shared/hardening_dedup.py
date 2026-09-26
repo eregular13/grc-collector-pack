@@ -1,4 +1,4 @@
-"""Deduplicate Lynis + OpenSCAP findings that flag the same gap on one host."""
+"""Deduplicate Lynis + OpenSCAP + HardeningKitty findings for the same gap."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def _tool(rec: dict[str, Any]) -> str:
     labels = rec.get("labels") or []
     if extra.get("tool"):
         return str(extra["tool"])
-    for name in ("lynis", "openscap"):
+    for name in ("lynis", "openscap", "hardeningkitty"):
         if name in labels:
             return name
     return str(rec.get("source") or "")

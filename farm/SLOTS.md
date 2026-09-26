@@ -141,9 +141,11 @@ enum4linux-ng stays `file_drop`. No new catalog slots.
 
 ## Endpoint file-drop (Layer C)
 
-Drop **HardeningKitty Audit CSV** under `in/identity/` (Failed/warning rows
-only; Passed and Guest-passed stay silent — the parser does not invent
-Windows findings). Drop a **Lynis** report or `report.dat` under `in/wazuh/`
+Drop **HardeningKitty Audit CSV** under `in/identity/` (Failed /
+`TestResult=Failed` only; Passed stays silent — the parser does not invent
+Windows findings). LAB dest_in uses Microsoft Security Baseline lists
+(`finding_list_msft_security_baseline_*`), never `finding_list_cis_*`.
+CIS Controls v8 IDs stay INTERNAL-ONLY (not client-facing). Drop a **Lynis** report or `report.dat` under `in/wazuh/`
 (`*.txt` / `*.log` / `*.dat`). Mapped warnings and suggestions only;
 hardening index is a score, not a finding. Drop **OpenSCAP** XCCDF
 `--results` XML (fail/error only; SSG/ANSSI/STIG — not a CIS benchmark).

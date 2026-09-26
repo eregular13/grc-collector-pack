@@ -1,0 +1,12 @@
+LAB dest_in identity drop — HardeningKitty MS Security Baseline CSV.
+SYNTHETIC schema fixture (not an observed scan). SHA256 of LF bytes.
+LAB != SAMPLE != client. Never POST /api/risks.
+Not a CIS benchmark / CIS-CAT deliverable. Never finding_list_cis_*.
+
+
+| File | SHA256 |
+|---|---|
+| LAB.txt | `ab890ffc7b7e65d321dc4f6cb759076ac57f709eb8ce7f8bd2fba40c6f74e02d` |
+| README.md | `0715bddd135a9d5570f3496a7f145063e162af9d12c652d1913eb7f30df417d7` |
+| hardeningkitty-lab-SYNTHETIC.csv | `c01bedec4337ae3d99c9bacb478c04a4550bf3dfaf4e825ecf70cb9efb13a38d` |
+

@@ -296,6 +296,12 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable SSH empty passwords": ["IA-5", "IA-2"],
     "Apply security updates": ["SI-2", "CM-6", "RA-5"],
     "Enable time synchronization": ["AU-8"],
+    "Enforce password policy": ["IA-5"],
+    "Enforce account lockout": ["AC-7"],
+    "Enforce session lock": ["AC-11"],
+    "Enable audit logging": ["AU-2", "AU-12"],
+    "Enable malware protection": ["SI-3"],
+    "Require encryption in transit": ["SC-8"],
     "Deny privileged Kubernetes containers": ["AC-6", "CM-7"],
     "Disable anonymous Kubernetes API access": ["AC-3", "IA-2"],
     "Block Kubernetes privilege escalation": ["AC-6"],
@@ -471,7 +477,13 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
         return _typed_map(rec, typed)
     mapped = _map_finding_legacy(rec)
     n53, cis = _lookup_control_ids(mapped["control_name"])
+    extra_n53 = extra.get("nist_800_53") or []
+    if isinstance(extra_n53, list):
+        for cid in extra_n53:
+            if cid and cid not in n53:
+                n53.append(str(cid))
     mapped["nist_800_53"] = n53
+    # Never copy extra.cis_v8_internal (INTERNAL-ONLY) into client outputs.
     mapped["cis"] = cis
     mapped.setdefault("generic", False)
     mapped.setdefault("finding_type", "")
@@ -813,17 +825,49 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Use PIM eligible assignments instead of standing Global Administrator. "
             "This is a dropped Scuba/Graph export finding, not a Graph API call."
         )
+    elif extra.get("control_key") == "account_lockout" or "lockout" in text:
+        name = "Enforce account lockout"
+        fix = (
+            "Set an account lockout threshold and duration. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "session_lock" or "inactivity limit" in text:
+        name = "Enforce session lock"
+        fix = (
+            "Lock the session after inactivity. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "audit_logging" or "advanced audit" in text:
+        name = "Enable audit logging"
+        fix = (
+            "Turn on advanced audit policy so security events are recorded. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "malware_protection" or "real-time protection" in text:
+        name = "Enable malware protection"
+        fix = (
+            "Keep Microsoft Defender real-time protection enabled. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
+    elif extra.get("control_key") == "encryption_in_transit" or (
+        "encryption level" in text and ("rdp" in text or "client connection" in text)
+    ):
+        name = "Require encryption in transit"
+        fix = (
+            "Require encrypted remote sessions. "
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
+        )
     elif "password history" in text:
         name = "Enforce Windows password history"
         fix = (
             "Set password history to the recommended length. "
-            "This is a HardeningKitty/CIS posture finding, not a CVE."
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
     elif "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", "").replace("-", ""):
         name = "Disable LM hash storage"
         fix = (
             "Disable storage of LAN Manager hashes. Prefer NTLMv2. "
-            "This is a HardeningKitty/CIS posture finding, not a CVE."
+            "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
     elif "firewall" in text and (
         "no firewall" in text or "not installed" in text or "inactive" in text

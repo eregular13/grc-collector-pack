@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
+
+Extend the existing HardeningKitty CSV parser (Failed/`TestResult=Failed`
+only; official HK report columns) and land a LAB dest_in under
+`fixtures/lab-drop/identity/` beside nmap + Lynis/oscap. MS Security
+Baseline lists only (`finding_list_msft_security_baseline_*`). Synthetic
+schema fixture (not an observed scan). Every row LAB. LAB cannot enter
+KEEP / keep_real. CIS Controls v8 IDs stay INTERNAL-ONLY and never appear
+in CISO / POA&M / client exports. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 
 Wire Lynis (GPLv3) + OpenSCAP/SSG (LGPL/BSD) into the LAB dest_in

@@ -1,3 +1,16 @@
+# CRITIC — cycle 189 (LAB_HARDENINGKITTY_WINDOWS)
+
+Lab this brick: pytest pending (run after commit). Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` expected PASS (host-lab demo
+counts unchanged). Zero P0/P1. HardeningKitty MS Security Baseline
+CSV lands on the existing LAB dest_in (`fixtures/lab-drop/identity/`
+beside nmap pack_drop + wazuh Lynis/oscap). Every row labeled LAB.
+LAB cannot enter KEEP. Failed-only. Not CIS Benchmark / CIS-CAT.
+CIS v8 IDs INTERNAL-ONLY. Synthetic fixture (not Seen). Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 
 Lab this brick: pytest **932** passed, 1 skipped. Ten collectors +
