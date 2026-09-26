@@ -102,7 +102,8 @@ def test_xz_backdoor_gets_si2_ra5_and_specific_fix() -> None:
     assert "csf_unmapped" not in mapped["csf"]
     assert "generic fallback" not in mapped["recommended_fix"].lower()
     assert "xz-utils" in mapped["recommended_fix"] or "liblzma" in mapped["recommended_fix"]
-    assert "cpg_2_W" not in mapped["cpg"]
+    assert mapped["cpg"] == ["cpg_2_B"]
+    assert mapped["csf_subcategory"] in {"ID.RA-01", "PR.PS-02"}
 
 
 def test_generic_cve_gets_patch_family_and_upgrade_fix() -> None:
@@ -134,7 +135,8 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"port": "445", "service": "microsoft-ds"},
         )
     )
-    assert "cpg_2_W" in smb["cpg"]
+    assert "cpg_3_S" in smb["cpg"]
+    assert smb["csf_subcategory"] == "PR.IR-01"
     mfa = map_finding(
         _finding(
             name="Root account MFA enabled",
@@ -142,9 +144,10 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"check_id": "iam_root_mfa_enabled"},
         )
     )
+    assert "cpg_3_F" in mfa["cpg"]
     assert "cpg_2_W" not in mfa["cpg"]
-    assert "cpg_1_E" not in mfa["cpg"]
     assert mfa["csf_function"] == "protect"
+    assert mfa["csf_subcategory"] == "PR.AA-03"
     enc = map_finding(
         _finding(
             name="S3 bucket server-side encryption",
@@ -152,8 +155,9 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"check_id": "s3_bucket_default_encryption"},
         )
     )
-    assert enc["cpg"] == []
+    assert "cpg_3_K" in enc["cpg"]
     assert enc["csf_function"] == "protect"
+    assert enc["csf_subcategory"] == "PR.DS-01"
 
 
 def test_critical_sla_is_shorter_than_high() -> None:

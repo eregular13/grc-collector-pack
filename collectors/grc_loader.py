@@ -380,6 +380,14 @@ def load() -> dict:
     weaknesses = other_findings + vuln_findings
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     poam_ledger = run_ledger(findings, kev_catalog)
+    for item in (poam_ledger.get("items") or {}).values():
+        mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
+        if mapped:
+            item["framework_refs"] = mapped.get("framework_refs") or ""
+    for item in poam_ledger.get("closed") or []:
+        mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
+        if mapped:
+            item["framework_refs"] = mapped.get("framework_refs") or ""
     ledger_by_ref = {
         str(item.get("ref_id") or ""): item for item in (poam_ledger.get("items") or {}).values()
     }

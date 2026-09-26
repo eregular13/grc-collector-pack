@@ -54,6 +54,9 @@ FEDRAMP_OPEN_HEADERS: tuple[str, ...] = (
 FEDRAMP_CSV_NAME = "poam_fedramp.csv"
 FEDRAMP_CLOSED_CSV_NAME = "poam_fedramp_closed.csv"
 KEV_PROV_NAME = "kev_provenance.json"
+# Extra columns sit after AB (CVE). B→AB stay FEDRAMP_OPEN_HEADERS.
+FEDRAMP_EXTRA_HEADERS: tuple[str, ...] = ("Framework Tags",)
+FEDRAMP_CSV_HEADERS: tuple[str, ...] = FEDRAMP_OPEN_HEADERS + FEDRAMP_EXTRA_HEADERS
 
 M_BLANK_NOTE = (
     "Scheduled Completion Date (col M) is blank in this CSV — the FedRAMP "
@@ -105,6 +108,7 @@ def item_to_row(item: dict[str, Any]) -> list[str]:
         str(item.get("kev_tracking") or ""),
         str(item.get("kev_due") or ""),
         format_cves(cves),
+        str(item.get("framework_refs") or ""),
     ]
 
 
@@ -112,7 +116,7 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, lineterminator="\n")
-        writer.writerow(list(FEDRAMP_OPEN_HEADERS))
+        writer.writerow(list(FEDRAMP_CSV_HEADERS))
         for row in rows:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
 
