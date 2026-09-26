@@ -21,7 +21,7 @@ from shared.hardening_map import extra_control_fields, hk_control
 from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
-from shared.schema import canon_severity, make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref, slug
 
 SOURCE = "identity-ad"
 LABELS = ["identity", "ad"]
@@ -47,6 +47,15 @@ _EDGE_FINDINGS = {
     "WRITEOWNER": ("high", "BloodHound WriteOwner", "WriteOwner can take the object."),
     "OWNS": ("high", "BloodHound Owns", "Owner can rewrite the DACL."),
     "ADDKEYCREDENTIALLINK": ("high", "BloodHound AddKeyCredentialLink", "Shadow-credentials / key-cred write."),
+}
+
+_BH_NODE_CHECK = {
+    "Backup Operators privileged group": "bh-backup-operators",
+    "Roastable SPN": "bh-roastable-spn",
+    "AS-REP roastable account": "bh-asrep-roastable",
+    "Entra GA without PIM": "bh-entra-ga-no-pim",
+    "Unconstrained delegation": "bh-unconstrained-delegation",
+    "High-value identity": "bh-high-value",
 }
 
 # Built-in admin / DC principals. Default ACLs from these are not exposures.
@@ -681,7 +690,12 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["enum4linux", "smb"],
                     collected_at=now,
-                    extra={"service": "smb", "port": "445", "access": "null-session"},
+                    extra={
+                        "service": "smb",
+                        "port": "445",
+                        "access": "null-session",
+                        "check_id": "smb-null-session",
+                    },
                 )
             )
         for group in host.get("groups") or []:
@@ -690,9 +704,11 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
             if "domain admins" in low:
                 title = "Domain Admins group listed"
                 desc = f"{name} export lists {label}."
+                cid = "ad-domain-admins"
             elif "backup operators" in low:
                 title = "Backup Operators privileged group"
                 desc = f"{name} export lists {label}."
+                cid = "ad-backup-operators"
             else:
                 continue
             records.append(
@@ -707,7 +723,7 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["enum4linux"],
                     collected_at=now,
-                    extra={"group": label},
+                    extra={"group": label, "check_id": cid},
                 )
             )
         for share in host.get("shares") or []:
@@ -731,7 +747,13 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["enum4linux", "smb"],
                     collected_at=now,
-                    extra={"port": "445", "service": "smb", "share": share_name, "access": access},
+                    extra={
+                        "port": "445",
+                        "service": "smb",
+                        "share": share_name,
+                        "access": access,
+                        "check_id": f"smb-writable-share-{slug(share_name, maxlen=None)}",
+                    },
                 )
             )
     return records
@@ -841,7 +863,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS,
                     collected_at=now,
-                    extra={"kind": kind},
+                    extra={
+                        "kind": kind,
+                        "check_id": _BH_NODE_CHECK.get(title, f"bh-{slug(title, maxlen=None)}"),
+                    },
                 )
             )
     group_counts: dict[str, int | None] = {}
@@ -970,7 +995,12 @@ def parse_file(path: Path) -> list[dict]:
         )
         hosts = edge.get("hosts") if isinstance(edge.get("hosts"), list) else []
         session_count = edge.get("session_count")
-        extra = {"edge": kind, "start": start, "end": end}
+        extra = {
+            "edge": kind,
+            "start": start,
+            "end": end,
+            "check_id": slug(kind, maxlen=None),
+        }
         assets = [x for x in (start, end) if x]
         ref_tail = f"{kind}-{start}-{end}"
         detail = f"{desc} {start} -> {end}".strip()

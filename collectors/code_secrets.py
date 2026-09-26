@@ -11,7 +11,7 @@ from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
 from shared.sarif import is_sarif, iter_sarif_results
-from shared.schema import make_record, make_ref
+from shared.schema import make_record, make_ref, slug
 
 SOURCE = "code-secrets"
 LABELS = ["code", "secrets"]
@@ -193,7 +193,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[fpath],
                     labels=LABELS + ["trufflehog"],
                     collected_at=now,
-                    extra={"verified": leak.get("Verified")},
+                    extra={
+                        "verified": leak.get("Verified"),
+                        "check_id": f"trufflehog-{slug(detector, maxlen=None)}",
+                    },
                 )
             )
         return records
@@ -215,7 +218,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[fpath],
                     labels=LABELS + ["gitleaks"],
                     collected_at=now,
-                    extra={"line": leak.get("StartLine")},
+                    extra={
+                        "line": leak.get("StartLine"),
+                        "check_id": f"gitleaks-{slug(str(leak.get('RuleID') or 'secret'), maxlen=None)}",
+                    },
                 )
             )
         return records

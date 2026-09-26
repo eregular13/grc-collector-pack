@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- B8_STABLE_CHECK_ID: title-keyed DEMO families (secrets, easm, wazuh
+  posture, identity) stamp a stable `extra.check_id` so percentages and
+  hostnames in the display title cannot remint EGP IDs. Intune
+  encryption compliance uses `enc-compliance-{provider}`; 33.3%→50.0%
+  keeps the same fingerprint. Pre-B8 title-keyed ledger rows migrate.
+  Vendor fields stay out of `fp_v1`. Host-lab counts unchanged. MIN_
+  gates unchanged. No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - POAM_GAP2_VENDOR_DEPENDENCY: FedRAMP R3.0 Open O/P/Q. Vendor
   Dependency defaults to No (`vd_source=default`); never invents Yes.
   Last Vendor Check-in Date and Vendor Dependent Product Name are blank

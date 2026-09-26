@@ -889,6 +889,16 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
         if fp and fp not in seen:
             seen.add(fp)
             out.append((fp, "title_host_stripped"))
+    # Current weakness_key before extra.check_id was stamped (B8 / Argus #5).
+    extra_now = extra_dict(rec)
+    if str(extra_now.get("check_id") or "").strip():
+        pre = dict(rec)
+        pre["extra"] = {k: v for k, v in extra_now.items() if k != "check_id"}
+        for fn in (asset_key, legacy_asset_id_port_key, legacy_name_asset_key, legacy_master_asset_key):
+            fp = fp_v1(pre, asset_key_fn=fn)
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, "title_to_check_id"))
     extra = extra_dict(rec)
     svc = str(extra.get("service") or "").strip()
     if svc:
