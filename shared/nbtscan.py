@@ -16,12 +16,22 @@ LINE_RE = re.compile(
     r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s+(\S+)(?:\s+(.*))?$"
 )
 HOST_RE = re.compile(r"NetBIOS Name Table for Host\s+(\d{1,3}(?:\.\d{1,3}){3})", re.I)
+ADAPTER_RE = re.compile(r"Adapter address:\s*((?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2})", re.I)
+# -v name table: NAME <00> UNIQUE / NAME <03> UNIQUE / NAME <20> UNIQUE
+V_ROW_RE = re.compile(
+    r"^\s*(\S+)\s+<([0-9a-fA-F]{2})>\s+(UNIQUE|GROUP)\s*$",
+    re.I,
+)
+# -s sep: ip<sep>name<sep>server<sep>user<sep>mac  (MAC may contain the separator)
+SEP_RE = re.compile(r"^(\d{1,3}(?:\.\d{1,3}){3})([:|,;])(.+)$")
 NBT_MARK = re.compile(r"<(?:server|unknown|00|20|1[bcde])>", re.I)
+_UNKNOWN = frozenset({"<unknown>", "unknown", "-", ""})
 _BANNERS = (
     "doing nbt name scan",
     "nbt name scan",
     "netbios name",
     "nbtscan",
+    "adapter address:",
 )
 _SKIP_HEAD = (
     "ip address",
@@ -29,6 +39,7 @@ _SKIP_HEAD = (
     "doing nbt",
     "incomplete packet",
     "name             service",
+    "name             ",
 )
 
 
@@ -40,17 +51,8 @@ def _is_mac(token: str) -> bool:
     return bool(MAC_RE.fullmatch(token.strip()))
 
 
-def _maybe_hostname(token: str) -> str:
-    raw = token.strip().strip(",")
-    if not raw or _is_mac(raw) or IP_RE.match(raw):
-        return ""
-    if raw.startswith("<") and raw.endswith(">"):
-        return ""
-    if not any(c.isalpha() for c in raw):
-        return ""
-    if "." in raw:
-        return raw
-    return ""
+def _is_unknown(token: str) -> bool:
+    return token.strip().lower() in _UNKNOWN
 
 
 def _banner(text: str) -> bool:
@@ -76,9 +78,43 @@ def looks_like_nbtscan(text: str, name: str = "") -> bool:
     if _banner(text):
         return True
     for line in text.splitlines():
-        if _row_from_line(line) is not None:
+        if _sep_row(line) is not None or _row_from_line(line) is not None:
+            return True
+        if HOST_RE.search(line) or ADAPTER_RE.search(line):
             return True
     return False
+
+
+def _sep_row(line: str) -> dict[str, Any] | None:
+    """Separated output: split from the left four times; remainder is the MAC."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    match = SEP_RE.match(stripped)
+    if not match:
+        return None
+    addr, sep, rest = match.group(1), match.group(2), match.group(3)
+    if " " in rest.split(sep)[0] and sep == ":":
+        return None
+    parts = rest.split(sep)
+    if len(parts) < 4:
+        return None
+    netbios, _server, user = parts[0], parts[1], parts[2]
+    mac = sep.join(parts[3:]).strip()
+    if mac and not MAC_RE.search(mac):
+        return None
+    if _is_unknown(netbios):
+        netbios = ""
+    name = addr
+    return {
+        "name": name,
+        "addr": addr,
+        "hostname": "",
+        "netbios": netbios,
+        "mac": mac,
+        "user": "" if _is_unknown(user) else user,
+        "ports": [],
+    }
 
 
 def _row_from_line(line: str) -> dict[str, Any] | None:
@@ -92,6 +128,9 @@ def _row_from_line(line: str) -> dict[str, Any] | None:
         return None
     if " is alive" in low or " is unreachable" in low:
         return None
+    sep_row = _sep_row(stripped)
+    if sep_row is not None:
+        return sep_row
     match = LINE_RE.match(stripped)
     if not match:
         return None
@@ -100,33 +139,30 @@ def _row_from_line(line: str) -> dict[str, Any] | None:
         return None
     tokens = rest.split() if rest else []
     blob = f"{second} {rest}"
-    if not (NBT_MARK.search(blob) or MAC_RE.search(rest) or _maybe_hostname(tokens[-1] if tokens else "")):
+    if not (NBT_MARK.search(blob) or MAC_RE.search(rest) or second):
         return None
-    netbios = second
+    netbios = "" if _is_unknown(second) else second
     mac = ""
-    hostname = ""
     user = ""
     leftover: list[str] = []
     for tok in tokens:
         if _is_mac(tok):
             mac = tok
             continue
-        hostish = _maybe_hostname(tok)
-        if hostish:
-            hostname = hostish
-            continue
         if tok.startswith("<") and tok.endswith(">"):
             continue
         leftover.append(tok)
-    if leftover and leftover[0].upper() not in {netbios.upper(), "<SERVER>", "<UNKNOWN>"}:
-        user = leftover[0]
-    name = hostname or netbios or addr
+    if leftover and leftover[0].upper() not in {second.upper(), "<SERVER>", "<UNKNOWN>"}:
+        if not _is_unknown(leftover[0]):
+            user = leftover[0]
+    # Key by IP. Never name the asset <unknown> (that merged distinct hosts).
+    name = addr
     if not name:
         return None
     return {
         "name": name,
         "addr": addr,
-        "hostname": hostname,
+        "hostname": "",
         "netbios": netbios,
         "mac": mac,
         "user": user,
@@ -180,11 +216,15 @@ def _host_from_row(row: dict[str, Any]) -> dict[str, Any] | None:
         if not addr:
             addr = netbios
         netbios = ""
+    if _is_unknown(netbios):
+        netbios = ""
+    if hostname and _is_unknown(hostname):
+        hostname = ""
     mac = ""
     mac_m = MAC_RE.search(str(row.get("mac") or row.get("mac_address") or ""))
     if mac_m:
         mac = mac_m.group(0)
-    name = hostname or netbios or addr
+    name = hostname or addr
     if not name:
         return None
     return {
@@ -198,6 +238,19 @@ def _host_from_row(row: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _merge(grouped: dict[str, dict[str, Any]], row: dict[str, Any]) -> None:
+    key = str(row.get("addr") or row.get("name") or "").lower()
+    if not key:
+        return
+    slot = grouped.setdefault(key, row)
+    if row.get("mac") and not slot.get("mac"):
+        slot["mac"] = row["mac"]
+    if row.get("netbios") and not slot.get("netbios"):
+        slot["netbios"] = row["netbios"]
+    if row.get("user") and not slot.get("user"):
+        slot["user"] = row["user"]
+
+
 def _from_text(text: str) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     current_ip = ""
@@ -205,27 +258,60 @@ def _from_text(text: str) -> list[dict[str, Any]]:
         host_m = HOST_RE.search(line)
         if host_m:
             current_ip = host_m.group(1)
-            continue
-        row = _row_from_line(line)
-        if row is None and current_ip:
-            parts = line.split()
-            if parts and not IP_RE.match(parts[0]) and NBT_MARK.search(line) and "UNIQUE" in line.upper():
-                netbios = parts[0]
-                name = netbios
-                row = {
-                    "name": name,
+            grouped.setdefault(
+                current_ip.lower(),
+                {
+                    "name": current_ip,
                     "addr": current_ip,
                     "hostname": "",
-                    "netbios": netbios,
+                    "netbios": "",
                     "mac": "",
                     "user": "",
                     "ports": [],
-                }
+                },
+            )
+            continue
+        adapter = ADAPTER_RE.search(line)
+        if adapter and current_ip:
+            slot = grouped.setdefault(
+                current_ip.lower(),
+                {
+                    "name": current_ip,
+                    "addr": current_ip,
+                    "hostname": "",
+                    "netbios": "",
+                    "mac": "",
+                    "user": "",
+                    "ports": [],
+                },
+            )
+            slot["mac"] = adapter.group(1)
+            continue
+        v_row = V_ROW_RE.match(line.strip())
+        if v_row and current_ip:
+            netbios, service, kind = v_row.group(1), v_row.group(2).lower(), v_row.group(3).upper()
+            # Workstation service <00> UNIQUE is the computer name. User <03> is not a host.
+            if service == "00" and kind == "UNIQUE" and not _is_unknown(netbios):
+                slot = grouped.setdefault(
+                    current_ip.lower(),
+                    {
+                        "name": current_ip,
+                        "addr": current_ip,
+                        "hostname": "",
+                        "netbios": "",
+                        "mac": "",
+                        "user": "",
+                        "ports": [],
+                    },
+                )
+                if not slot.get("netbios"):
+                    slot["netbios"] = netbios
+            continue
+        row = _row_from_line(line)
         if row is None:
             continue
-        key = str(row["name"]).lower()
-        grouped.setdefault(key, row)
-    return list(grouped.values())
+        _merge(grouped, row)
+    return [row for row in grouped.values() if row.get("addr") or row.get("netbios")]
 
 
 def parse_nbtscan(path: Path, raw: str | None = None) -> list[dict[str, Any]] | None:

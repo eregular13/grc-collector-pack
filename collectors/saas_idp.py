@@ -12,6 +12,7 @@ from typing import Any, Iterator
 
 from shared.idp_inventory import parse_idp_file
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
+from shared.scan_time import extra_scan_raw
 from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "saas-idp"
@@ -98,6 +99,22 @@ def _strip_html(text: str) -> str:
 _GUID = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
+
+
+def _scuba_scan_time(*sources: Any) -> str:
+    """ScubaGear TimestampZulu (Argus B4: case-insensitive)."""
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        hit = extra_scan_raw({"extra": src})
+        if hit not in (None, ""):
+            return str(hit)
+        lower = {str(k).lower(): v for k, v in src.items() if v not in (None, "")}
+        for key in ("timestampzulu", "timestamp_zulu", "timestamp", "scan_time"):
+            val = lower.get(key)
+            if val not in (None, ""):
+                return str(val)
+    return ""
 
 
 def _tenant_from(*sources: Any) -> str:
@@ -364,19 +381,8 @@ def parse_file(path: Path) -> list[dict]:
                         "criticality": row.get("Criticality") or row.get("criticality") or "",
                         "result": row.get("Result") or row.get("result") or "",
                         **(
-                            {
-                                "scan_time": str(
-                                    meta.get("TimestampZulu")
-                                    or meta.get("timestamp_zulu")
-                                    or payload.get("TimestampZulu")
-                                    or ""
-                                )
-                            }
-                            if (
-                                meta.get("TimestampZulu")
-                                or meta.get("timestamp_zulu")
-                                or payload.get("TimestampZulu")
-                            )
+                            {"scan_time": stamp}
+                            if (stamp := _scuba_scan_time(meta, payload, row))
                             else {}
                         ),
                     },

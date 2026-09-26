@@ -11,11 +11,13 @@ from shared.io_util import read_text
 
 IP_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 ALIVE_RE = re.compile(
-    r"^\s*(\S+)\s+is\s+(alive|unreachable|unreachable\s+\([^)]+\)|down)\s*$",
+    r"^\s*(\S+)\s+is\s+(alive|unreachable(?:\s+\([^)]+\))?|down)(?:\s+\([\d.]+\s*ms\))?\s*$",
     re.IGNORECASE,
 )
+# -c live replies look like: host : [0], 84 bytes, 0.12 ms (...). Timeouts do not.
 LOOP_RE = re.compile(
-    r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s*:\s*\[",
+    r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s*:\s*\[\d+\],\s*\d+\s+bytes,\s*",
+    re.IGNORECASE,
 )
 
 
@@ -30,6 +32,8 @@ def _has_banner(text: str) -> bool:
         or " is unreachable" in low
         or "fping statistics" in low
         or low.lstrip().startswith("# fping")
+        or '"resp"' in low
+        or bool(LOOP_RE.search(text))
     )
 
 
@@ -45,6 +49,9 @@ def _hostish(token: str) -> tuple[str, str]:
 
 
 def _looks_fping_json_row(row: dict[str, Any]) -> bool:
+    resp = row.get("resp")
+    if isinstance(resp, dict) and resp.get("host"):
+        return True
     if row.get("mac") or row.get("mac_address") or row.get("hwaddr"):
         return False
     if row.get("port") not in (None, ""):
@@ -120,6 +127,17 @@ def _rows_from_payload(payload: Any) -> list[dict[str, Any]]:
 def _host_from_row(row: dict[str, Any]) -> dict[str, Any] | None:
     if not _looks_fping_json_row(row):
         return None
+    resp = row.get("resp")
+    if isinstance(resp, dict) and resp.get("host"):
+        # -J reply object. A timeout has no size/rtt.
+        if resp.get("size") in (None, "", 0) and resp.get("rtt") in (None, ""):
+            return None
+        token = str(resp.get("host") or "").strip()
+        addr, hostname = _hostish(token)
+        name = hostname or addr
+        if not name:
+            return None
+        return {"name": name, "addr": addr, "hostname": hostname, "ports": []}
     flag = _alive_token(row)
     if flag is False:
         return None
@@ -158,6 +176,8 @@ def _host_from_line(line: str, named: bool) -> dict[str, Any] | None:
         if not name:
             return None
         return {"name": name, "addr": addr, "hostname": hostname, "ports": []}
+    if "timed out" in low:
+        return None
     loop = LOOP_RE.match(stripped)
     if loop:
         addr = loop.group(1)
@@ -221,5 +241,6 @@ def parse_fping(path: Path, raw: str | None = None) -> list[dict[str, Any]] | No
     if named or _has_banner(text):
         if "Host:" in text and "Ports:" in text and not named:
             return None
-        return _from_text(text, named)
+        # -a is a bare IP per line; parse those once the file is known to be fping.
+        return _from_text(text, True)
     return None

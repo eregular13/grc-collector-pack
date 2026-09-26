@@ -1,5 +1,23 @@
 # CYCLE log
 
+## cycle 199 — merge master 76f5e86 (#144+#140) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `76f5e86` (#144 port-fold + #140
+discovery/web; also #146/#142/#138). No rebase, no force-push.
+#139 follow-ups kept: Greenbone all CVEs + root detect + Timestamp/
+scan_start; Nikto 740001 kept / unmatched info; PingCastle 8 group
+rules honor member count + 0-point info; ScubaGear DomainName +
+TimestampZulu; testssl not-offered only OK/INFO; UTC status_date;
+fixture honesty. Argus B4: case-insensitive scan_time keys including
+Greenbone `Timestamp` and Scuba `TimestampZulu`. Host-lab after merge:
+assets **78** findings **104** vulnerabilities **22** weaknesses **126**
+poam **125** excluded **1** (`superseded_by_specific`). Vs prior #145
+stamp 84/103/125: assets 84→78 is #138 EGA- collapse; findings +1 is
+#140 second httpx URL; poam stays 125 because #144 folds one nmap
+port-only row (weaknesses 126 − 1). Not a MIN_ loosen. Pytest **1222**.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
 ## cycle 196 — #139 real-sample parser follow-ups (2026-09-26)
 
 Greenbone keeps all CVE refs (feeds #131 KEV) and detects GMP on the
@@ -20,6 +38,47 @@ Cold-review add-on: Greenbone `scan_start`/`Timestamp` and ScubaGear
 `TimestampZulu` feed `extra.scan_time` → #131 detection date (15/30/90/180).
 `status_date` is UTC YYYY-MM-DD on poam.csv / poam_fedramp.csv / ledger.
 PingCastle `A-MinPwdLen` gets a rule-specific password-length fix.
+
+## cycle 198 — merge master f8b7ff1 #138 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `f8b7ff1` (#138 EGA- asset ledger).
+No rebase. Discovery/web parsers + port-only → port/proto migration
+kept; EGA- identity/loader from master. Host-lab: pytest **1190**
+(1 skipped); assets **78** findings **104** vulnerabilities **22**
+poam **126**. Farm pack_drop: assets **48** findings **174** poam
+**106**. Asset drop vs cycle 197 (85 / 55) is #138 EGA- collapse of
+same-host IP/hostname aliases, not a parser loss. Findings/POA&M
+unchanged vs Metis §11. Vs master STATUS 78/103/111: +1 httpx URL,
+POA&M +15 (#135 full plan). Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 197 — Metis §11 review of #140 (2026-09-26)
+
+Ledger migration `host:22` → `host:22/tcp` keeps EGP- ID + earliest
+detection date (no `pending_verification`). httpx: 2xx/3xx (401/403
+only on admin paths) + soft-404; `admin.*` does not flag every URL.
+UDP `open|filtered` is info. smbmap NULL only when unauthenticated and
+shown (no Guest fixture). naabu CDN edge ports are not findings.
+vulners: one finding per CVE at CVSS ≥ 7 or KEV; lower CVEs roll up.
+Host-lab unchanged vs cycle 196: assets **85** findings **104**
+vulnerabilities **22** poam **126**. Farm pack_drop unchanged:
+assets **55** findings **174** poam **106**. pytest **1160**
+(+6 Metis tests). Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 196 — merge master 1f8d347 #137 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `1f8d347` (#137 same-rule per asset +
+vendor severities; also #135/#131). No rebase. Discovery/web parsers
+kept; loader/severity/dedupe from master. Recomputed host-lab: pytest
+**1154** (1 skipped); assets **85** findings **104** vulnerabilities
+**22** poam **126** (`applied_controls=126` `risk_scenarios=126`
+`severity_unmapped=0` `poam_plan=full` `demo=true`). Vs master STATUS
+84/103/111: +1 asset `10.0.0.50` (L2/NBT no invented hostname), +1
+httpx admin URL, POA&M +15 because default full plan includes the
+Lows/non-key Mediums #135 already put on the register (14) plus the
+new httpx row. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
 
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 
@@ -44,6 +103,18 @@ semgrep ERROR/WARNING/INFO. Lab `findings=103` `poam=108` `weaknesses=122`
 Kubescape C-0057 on `prod-cluster`). Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
 
+## cycle 195 — merge master 5adc8b7 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `5adc8b7` (#139 real-sample parsers,
+#136 retire `out/riskready`) into this branch. No rebase. Union
+`fixtures/samples/SOURCES.md` (PingCastle/Greenbone/Scuba/testssl/Nikto
++ discovery/web). Recomputed host-lab on the merged tree: pytest
+**1086** (1 skipped); assets **82** findings **105** poam **110**
+(`applied_controls=124` `risk_scenarios=124` `demo=true`). Same delta
+vs master STATUS 81/104/109 as pre-merge (L2/NBT `10.0.0.50` + second
+httpx admin URL). Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 
 §8 collectors that were silently empty or wrong on real tool output.
@@ -54,6 +125,19 @@ list-of-hosts; header/soft-404 denylist; no hardcoded high. Samples
 under `fixtures/samples/` + SOURCES.md. Host-lab **unchanged** 81 / 104
 / 109. pytest **1068** (+15 vs master 1053). Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 194 — discovery/web collectors stop inventing assets (2026-09-26)
+
+§9.2 / §8.2 bricks: arp-scan/netdiscover key by IP+MAC (vendor is an
+attribute; no Ltd collapse); fping ignores `-c` timeouts and parses
+`-e`/`-a`/`-J`; nbtscan keys by IP and parses `-s`/`-v`; httpx keeps
+each URL; smbmap Status/CSV/grepable/spaces/ANSI; naabu protocol+CDN;
+ffuf path-class severity; nmap vulners CVEs + UDP `open|filtered` + MAC.
+Real-shaped samples under `fixtures/samples/` (SOURCES.md). Host-lab:
+assets **82** (+1 `10.0.0.50` from L2/NBT, no longer a fake hostname),
+findings **105** (+1 second admin URL on the demo httpx pair), poam
+**110** (+1). Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
 
 ## cycle 193 — import CSVs start with exact header (2026-09-26)
 

@@ -27,6 +27,7 @@ from shared.asset_key import (
     display_asset,
     legacy_asset_id_port_key,
     legacy_name_asset_key,
+    legacy_port_only_asset_key,
     normalize_weakness_name,
 )
 from shared.finding_types import extra_dict
@@ -396,15 +397,25 @@ def _legacy_alias_records(rec: dict[str, Any]) -> list[dict[str, Any]]:
     return fakes
 
 
+def _legacy_port_only_allowed(rec: dict[str, Any]) -> bool:
+    """Port-only keys defaulted to TCP. Do not let UDP steal a TCP item."""
+    extra = extra_dict(rec)
+    proto = str(extra.get("protocol") or extra.get("proto") or "tcp").strip().lower()
+    return proto == "tcp"
+
+
 def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
-    """Prior fingerprint schemes (#131 asset-id+port and pre-#131 name)."""
+    """Prior fingerprint schemes (#131, pre-#140 port-only, pre-#131 name)."""
     seen: set[str] = set()
     out: list[tuple[str, str]] = []
+    schemes: list[tuple[Any, str]] = [
+        (legacy_name_asset_key, "name_to_ega"),
+        (legacy_asset_id_port_key, "asset_id_port_to_ega"),
+    ]
+    if _legacy_port_only_allowed(rec):
+        schemes.append((legacy_port_only_asset_key, "port_only_to_port_proto"))
     for fake in _legacy_alias_records(rec):
-        for fn, reason in (
-            (legacy_name_asset_key, "name_to_ega"),
-            (legacy_asset_id_port_key, "asset_id_port_to_ega"),
-        ):
+        for fn, reason in schemes:
             fp = fp_v1(fake, asset_key_fn=fn)
             if fp and fp not in seen:
                 seen.add(fp)
@@ -413,11 +424,13 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def _legacy_asset_keys_for(rec: dict[str, Any]) -> set[str]:
-    """#131 / pre-#131 asset_key strings a prior ledger item may still hold."""
+    """#131 / pre-#140 / pre-#131 asset_key strings a prior ledger item may still hold."""
     keys: set[str] = set()
     for fake in _legacy_alias_records(rec):
         keys.add(legacy_name_asset_key(fake))
         keys.add(legacy_asset_id_port_key(fake))
+        if _legacy_port_only_allowed(rec):
+            keys.add(legacy_port_only_asset_key(fake))
     return {k for k in keys if k}
 
 
@@ -453,7 +466,12 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
             continue
         stored = str(item.get("asset_key") or "")
         if stored and stored in alias_keys:
-            found[fp] = (item, "asset_id_port_to_ega")
+            reason = (
+                "port_only_to_port_proto"
+                if ":" in stored and "/" not in stored
+                else "asset_id_port_to_ega"
+            )
+            found[fp] = (item, reason)
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):
@@ -532,6 +550,7 @@ def build_coverage(instances: Iterable[dict[str, Any]]) -> dict[str, set[str]]:
             for key in (
                 legacy_asset_id_port_key(fake),
                 legacy_name_asset_key(fake),
+                legacy_port_only_asset_key(fake),
                 asset_id(fake),
             ):
                 if key:

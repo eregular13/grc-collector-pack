@@ -1,3 +1,18 @@
+# CRITIC — cycle 199 (MERGE_MASTER_144_140_INTO_145)
+
+Lab this brick: pytest **1222** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=125` `weaknesses=126` `excluded=1` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `origin/master` `76f5e86`
+(#144+#140+#146+#142+#138) with a normal merge commit. No rebase.
+#139 follow-ups + Argus B4 case-insensitive `Timestamp` /
+`TimestampZulu` / `scan_time` kept. Count shift vs prior #145 84/103/125
+is master's EGA- collapse + httpx URL + one `superseded_by_specific`
+fold, not a parser loss or MIN_ loosen. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 196 (PARSERS_139_FOLLOW_UPS)
 
 Lab this brick: pytest **1147** passed, 1 skipped. Ten collectors +
@@ -15,6 +30,46 @@ MIN_ loosen. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
 are unchanged. Cold-review add-on: artifact scan time → detection date
 (Greenbone/Scuba), UTC `status_date`, PingCastle rule-specific fix.
 Pytest **1151**.
+
+# CRITIC — cycle 198 (MERGE_138_DISCOVERY_WEB)
+
+Lab this brick: pytest **1190** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
+`assets=48` `findings=174` `poam=106`. Zero P0/P1. Merged master
+`f8b7ff1` (#138) with a normal merge commit. Asset delta vs cycle
+197 is EGA- same-host collapse (85→78 lab, 55→48 farm), not a
+dropped collector. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS
+#48 rails below are unchanged.
+
+# CRITIC — cycle 197 (METIS11_PR140)
+
+Lab this brick: pytest **1160** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
+`assets=55` `findings=174` `poam=106` (unchanged vs cycle 196).
+Zero P0/P1. Metis §11: port-only → port/proto ledger migration;
+httpx status/soft-404; UDP open|filtered info; smbmap NULL only
+unauthenticated; naabu CDN edge not findings; vulners rollup.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 196 (MERGE_137_DISCOVERY_WEB)
+
+Lab this brick: pytest **1154** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=126` `severity_unmapped=0` `demo=true`). Zero P0/P1. Merged
+master `1f8d347` (#137) with a normal merge commit. Count delta vs
+master STATUS: assets 84→85, findings 103→104, poam 111→126 — L2/NBT
+`10.0.0.50` + second httpx admin URL; POA&M is #135 full plan (Lows
+included) plus that extra finding. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 195 (MERGE_EVIDENCE_AND_MULTI_HOST_LAB)
 
@@ -40,6 +95,18 @@ unknown words are medium + flag. kube-bench/kubescape/checkov/semgrep
 blanket severities fixed. Catalog **unchanged** **111 / 32 / 30 / 81**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
 rails below are unchanged.
+
+# CRITIC — cycle 195 (MERGE_MASTER_DISCOVERY_WEB)
+
+Lab this brick: pytest **1086** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
+Zero P0/P1. Merged master `5adc8b7` (#139 / #136) with a normal merge
+commit. SOURCES.md is the union of both lists. Count delta vs master
+STATUS: assets 81→82, findings 104→105, poam 109→110 — same as the
+pre-merge discovery/web lab; #139 host-lab was unchanged. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
@@ -105,6 +172,19 @@ CIS v8 IDs INTERNAL-ONLY. Synthetic fixture (not Seen). Catalog
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
 No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
 unchanged.
+
+# CRITIC — cycle 194 (DISCOVERY_WEB_SAMPLES)
+
+Lab this brick: pytest **1066** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
+Zero P0/P1. Discovery/web parsers no longer invent `Ltd` hosts, merge
+`<unknown>` NetBIOS, count fping timeouts, drop httpx `.git/config`,
+or ignore smbmap NULL/Guest / spaced shares. Count delta vs master
+STATUS: assets 81→82, findings 104→105, poam 109→110 — explained in
+CYCLE 194. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 
