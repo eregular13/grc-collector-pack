@@ -11,6 +11,7 @@ import csv
 import importlib
 import io
 import json
+import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -30,6 +31,7 @@ from shared.estate_pages import (
     EstateStamp,
     PageContext,
     _FIXTURE_MANIFEST_NAME,
+    _LEGACY_SAMPLE_KEY,
     _engagement_window,
     _manifest_matches,
     _sha256_bytes,
@@ -885,9 +887,68 @@ def test_pack_fixture_manifest_matches_on_disk() -> None:
     expected = json.loads(dest.read_text(encoding="utf-8"))
     got = build_fixture_manifest(fixtures)
     assert got["files"] == expected["files"]
+    # files[] is the exact on-disk check; legacy hashes are preserved, not compared.
+    assert got.get(_LEGACY_SAMPLE_KEY) == expected.get(_LEGACY_SAMPLE_KEY)
+    legacy = expected.get(_LEGACY_SAMPLE_KEY) or []
+    assert isinstance(legacy, list)
+    assert len(legacy) >= 32
     catalog = fixture_content_hashes()
     assert catalog
     assert len(expected["files"]) >= 200
+    assert catalog.issuperset({str(h).lower() for h in legacy})
+
+
+_PRIOR_SAMPLE_REV = "5e6e591dd74014050795d849e449c10459b1900c"
+
+
+def _prior_restamped_fixture_rels() -> list[str]:
+    proc = subprocess.run(
+        ["git", "diff", "--name-only", _PRIOR_SAMPLE_REV, "HEAD", "--", "fixtures"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    rels: list[str] = []
+    for line in proc.stdout.splitlines():
+        if not line.startswith("fixtures/"):
+            continue
+        rel = line[len("fixtures/") :]
+        if rel == _FIXTURE_MANIFEST_NAME or Path(rel).name == "MANIFEST":
+            continue
+        rels.append(rel)
+    return rels
+
+
+def test_prior_release_restamped_fixtures_still_classify_sample(tmp_path: Path) -> None:
+    """5e6e591 bytes of restamped fixtures stay SAMPLE under CLIENT settings."""
+    import shared.estate_pages as ep
+
+    ep._FIXTURE_HASH_CACHE = None
+    rels = _prior_restamped_fixture_rels()
+    assert len(rels) == 32
+    kinds = {r.split("/", 1)[0] for r in rels}
+    assert {"demo", "lab-drop", "samples"} <= kinds
+    for rel in rels:
+        blob = subprocess.check_output(
+            ["git", "show", f"{_PRIOR_SAMPLE_REV}:fixtures/{rel}"],
+            cwd=ROOT,
+        )
+        dest_in = tmp_path / rel.replace("/", "_")
+        dest_in.mkdir()
+        dest_in.joinpath(Path(rel).name).write_bytes(blob)
+        hits, others = in_dir_fixture_hits(dest_in)
+        assert Path(rel).name in hits, rel
+        assert others == (), rel
+        stamp = classify_estate(
+            [_finding("f1")],
+            in_dir=dest_in,
+            env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+            client_name="AcmeHealth",
+        )
+        assert stamp.kind == "SAMPLE", (rel, stamp.kind, stamp.label)
+        assert stamp.kind not in {"CLIENT", "MIXED"}
+        assert not stamp.label.startswith("CLIENT:")
 
 
 def test_unreadable_fixture_in_catalog_fail_closed(

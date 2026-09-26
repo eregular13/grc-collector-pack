@@ -443,6 +443,7 @@ def test_demo_pack_run_detection_dates(tmp_path: Path, monkeypatch: pytest.Monke
     # Real-date count is this PR's claim. Total comes from the run so a
     # later master collapse (e.g. #192 121→119) cannot hard-fail the sum.
     assert real == 61
+    assert missing == total - real
     assert real + missing == total
     unknown = set(dates) - FIXTURE_DATES
     assert not unknown, f"POA&M dates not from fixtures: {sorted(unknown)}"
