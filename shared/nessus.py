@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any  # noqa: F401 — used by _ids_from_props / iter rows
@@ -9,6 +10,11 @@ from typing import Any  # noqa: F401 — used by _ids_from_props / iter rows
 from shared.asset_ids import stamp_ids
 from shared.io_util import read_text
 from shared.scan_time import format_detection_date, parse_scan_datetime
+
+# Same ^CVE-\d{4}-\d{4,7}$ semantics as shared/kev.py. Do not import kev here.
+# Lookarounds: reject XCVE- prefix and do not truncate overlong IDs.
+_CVE_RE = re.compile(r"(?<![A-Za-z0-9])CVE-\d{4}-\d{4,7}(?![0-9])", re.I)
+_CVE_STRICT = re.compile(r"^CVE-\d{4}-\d{4,7}$")
 
 
 def _tag(el: ET.Element) -> str:
@@ -64,6 +70,39 @@ def _keep_item(item: ET.Element, sev: str) -> bool:
     return sev in {"low", "medium", "high", "critical"}
 
 
+def _add_cves(blob: str, found: list[str], seen: set[str]) -> None:
+    for match in _CVE_RE.findall(blob or ""):
+        token = match.strip().upper()
+        if not _CVE_STRICT.fullmatch(token):
+            continue
+        if token not in seen:
+            seen.add(token)
+            found.append(token)
+
+
+def _cves_from_item(item: ET.Element) -> list[str]:
+    """CVE IDs from <cve> children only (spec §7.1). No attributes, no *-cve tags."""
+    found: list[str] = []
+    seen: set[str] = set()
+    for child in list(item):
+        if _tag(child).lower() == "cve":
+            _add_cves(child.text or "", found, seen)
+    return found
+
+
+def _cwes_from_item(item: ET.Element) -> list[str]:
+    found: list[str] = []
+    seen: set[str] = set()
+    for child in list(item):
+        if _tag(child).lower() != "cwe":
+            continue
+        token = (child.text or "").strip()
+        if token and token not in seen:
+            seen.add(token)
+            found.append(token)
+    return found
+
+
 def _host_scan_time(host_el: ET.Element) -> str:
     """HOST_START, else HOST_END, from ReportHost HostProperties tags."""
     start = ""
@@ -116,19 +155,16 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             title = str(item.attrib.get("pluginName") or item.attrib.get("pluginID") or "Nessus finding")
             plugin = str(item.attrib.get("pluginID") or "")
             port = str(item.attrib.get("port") or "")
-            proto = str(item.attrib.get("protocol") or "")
-            svc = str(item.attrib.get("svc_name") or "")
             proto = str(item.attrib.get("protocol") or "").strip()
+            svc = str(item.attrib.get("svc_name") or "")
+            family = str(item.attrib.get("pluginFamily") or "")
             desc = title
-            cves: list[str] = []
+            cves = _cves_from_item(item)
+            cwes = _cwes_from_item(item)
             for child in list(item):
                 tag = _tag(child)
                 if tag == "description" and (child.text or "").strip():
                     desc = (child.text or "").strip()
-                elif tag == "cve":
-                    raw = (child.text or "").strip()
-                    if raw and raw not in cves:
-                        cves.append(raw)
             row: dict[str, Any] = {
                 "host": host,
                 "name": title,
@@ -138,8 +174,10 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
                 "protocol": proto,
                 "service": svc,
                 "plugin_id": plugin,
+                "plugin_family": family,
                 "ids": ids,
                 "cves": cves,
+                "cwes": cwes,
                 "host_start": props.get("HOST_START") or "",
                 "id_quality": ids.get("id_quality") or "",
             }
