@@ -1,8 +1,8 @@
 # CRITIC — cycle 190 (HK_TESTRESULT_AND_HOST)
 
-Lab this brick: pytest **1012** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
-`poam=106` `demo=true`). Zero P0/P1.
+Lab this brick: pytest **1036** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`poam=109` `demo=true`; #129 weakness-dedupe counts). Zero P0/P1.
 HardeningKitty ingest now matches official Audit CSV: TestResult
 authoritative; host from filename/sidecar/env; two SYNTHETIC hosts;
 never `windows-host`. CIS v8 INTERNAL-ONLY. Catalog
