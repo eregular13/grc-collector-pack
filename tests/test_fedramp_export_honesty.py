@@ -77,6 +77,18 @@ def test_plan_by_poam_id_indexes_controls_fix_and_rating() -> None:
     assert got["EGP-1"]["original_risk_rating"] == "Critical"
 
 
+def test_duplicate_plan_ids_emit_one_open_row(tmp_path: Path) -> None:
+    item = _item("EGP-DUP")
+    write_fedramp_poam(
+        tmp_path,
+        {"items": {"a": item}, "closed": []},
+        plan_by_id={"EGP-DUP": {"controls": "IA-2", "recommended_fix": "Fix", "original_risk_rating": "High"}},
+    )
+    with (tmp_path / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [r["POAM ID"] for r in rows] == ["EGP-DUP"]
+
+
 def test_open_export_drops_ledger_items_not_on_plan(tmp_path: Path) -> None:
     on_plan = _item("EGP-ON")
     off_plan = _item("EGP-OFF", name="Excluded info")

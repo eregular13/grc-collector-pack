@@ -209,33 +209,50 @@ def write_fedramp_poam(
     open_rows: list[list[str]] = []
     closed_rows: list[list[str]] = []
     restrict_open = plan_by_id is not None
-    plan_ids = set(plan_by_id or {})
 
     def _plan_for(item: dict[str, Any]) -> Mapping[str, Any] | None:
         if plan_by_id is None:
             return None
         return plan_by_id.get(str(item.get("poam_id") or ""))
 
-    def _on_plan(item: dict[str, Any]) -> bool:
-        if not restrict_open:
-            return True
-        return str(item.get("poam_id") or "") in plan_ids
-
-    for item in (ledger.get("items") or {}).values():
-        row = item_to_row(item, _plan_for(item))
+    def _is_open(item: dict[str, Any]) -> bool:
         # Spec §2.2: don't put VDs on the Closed tab.
-        if _vendor_dependent(item) or str(item.get("status") or "") != "closed":
-            if _on_plan(item):
+        return _vendor_dependent(item) or str(item.get("status") or "") != "closed"
+
+    if restrict_open:
+        by_id: dict[str, dict[str, Any]] = {}
+        for item in (ledger.get("items") or {}).values():
+            pid = str(item.get("poam_id") or "")
+            if pid:
+                by_id[pid] = item
+        for item in ledger.get("closed") or []:
+            pid = str(item.get("poam_id") or "")
+            if pid and pid not in by_id:
+                by_id[pid] = item
+        for pid, plan in plan_by_id.items():
+            item = by_id.get(pid)
+            if item is None or not _is_open(item):
+                continue
+            open_rows.append(item_to_row(item, plan))
+        for item in (ledger.get("items") or {}).values():
+            if not _is_open(item):
+                closed_rows.append(item_to_row(item, _plan_for(item)))
+        for item in ledger.get("closed") or []:
+            if not _is_open(item):
+                closed_rows.append(item_to_row(item, _plan_for(item)))
+    else:
+        for item in (ledger.get("items") or {}).values():
+            row = item_to_row(item)
+            if _is_open(item):
                 open_rows.append(row)
-        else:
-            closed_rows.append(row)
-    for item in ledger.get("closed") or []:
-        row = item_to_row(item, _plan_for(item))
-        if _vendor_dependent(item):
-            if _on_plan(item):
+            else:
+                closed_rows.append(row)
+        for item in ledger.get("closed") or []:
+            row = item_to_row(item)
+            if _is_open(item):
                 open_rows.append(row)
-        else:
-            closed_rows.append(row)
+            else:
+                closed_rows.append(row)
     open_path = out_poam / FEDRAMP_CSV_NAME
     closed_path = out_poam / FEDRAMP_CLOSED_CSV_NAME
     _write_csv(open_path, open_rows)
