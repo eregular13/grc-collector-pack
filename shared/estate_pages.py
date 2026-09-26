@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import json
 import os
 import re
 import subprocess
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -74,6 +76,7 @@ _AUTH_PLACEHOLDERS = frozenset(
     {"", "not recorded", "none", "null", "unknown", "n/a", "na", "-"}
 )
 _FIXTURE_HASH_CACHE: frozenset[str] | None = None
+_FIXTURE_MANIFEST_NAME = "FINGERPRINTS.json"
 _PACK_DEMO_SCOPE = Path("dropbox") / "SCOPE.yaml"
 
 CLIENT_PAGE_FORBIDDEN = (
@@ -348,7 +351,25 @@ def _hashable_file(path: Path) -> bool:
         return False
     if path.name.startswith("."):
         return False
+    if path.name == _FIXTURE_MANIFEST_NAME:
+        return False
     return path.name not in _HASH_SKIP_NAMES
+
+
+def _json_dumps(obj: Any) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _canon_json_obj(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {str(k): _canon_json_obj(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        items = [_canon_json_obj(x) for x in obj]
+        try:
+            return sorted(items, key=_json_dumps)
+        except TypeError:
+            return items
+    return obj
 
 
 def _try_canonical_json(text: str) -> bytes | None:
@@ -359,102 +380,209 @@ def _try_canonical_json(text: str) -> bytes | None:
         obj = json.loads(text)
     except (json.JSONDecodeError, ValueError, TypeError):
         return None
-    return (
-        json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
-            "utf-8"
-        )
-        + b"\n"
-    )
+    return (_json_dumps(_canon_json_obj(obj)) + "\n").encode("utf-8")
 
 
 def _try_canonical_jsonl(text: str) -> bytes | None:
     rows = [ln.strip() for ln in text.split("\n") if ln.strip()]
     if len(rows) < 2:
         return None
-    objs: list[Any] = []
+    dumps: list[str] = []
     for ln in rows:
         if ln[0] not in "{[":
             return None
         try:
-            objs.append(json.loads(ln))
+            dumps.append(_json_dumps(_canon_json_obj(json.loads(ln))))
         except (json.JSONDecodeError, ValueError, TypeError):
             return None
-    out = bytearray()
-    for obj in objs:
-        out.extend(
-            json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
-                "utf-8"
-            )
-        )
-        out.extend(b"\n")
-    return bytes(out)
+    return ("\n".join(sorted(dumps)) + "\n").encode("utf-8")
+
+
+def _collapse_text(text: str) -> str:
+    lines: list[str] = []
+    for ln in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        collapsed = " ".join(ln.split())
+        if collapsed:
+            lines.append(collapsed)
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _try_canonical_xml(data: bytes) -> bytes | None:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return None
+
+    def walk(el: ET.Element) -> None:
+        items = sorted(el.attrib.items())
+        el.attrib.clear()
+        el.attrib.update(items)
+        if el.text is not None:
+            el.text = el.text.strip() or None
+        if el.tail is not None:
+            el.tail = el.tail.strip() or None
+        for child in el:
+            walk(child)
+
+    walk(root)
+    return ET.tostring(root, encoding="utf-8")
+
+
+def _try_canonical_csv(text: str) -> bytes | None:
+    if "," not in text or "\n" not in text:
+        return None
+    try:
+        rows = list(csv.reader(io.StringIO(text)))
+    except csv.Error:
+        return None
+    if len(rows) < 2 or all(len(r) <= 1 for r in rows):
+        return None
+    header = [" ".join(c.split()) for c in rows[0]]
+    body = sorted(tuple(" ".join(c.split()) for c in r) for r in rows[1:])
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(header)
+    for row in body:
+        writer.writerow(row)
+    return buf.getvalue().encode("utf-8")
 
 
 def normalize_fixture_bytes(data: bytes) -> bytes:
-    """Strip BOM / EOL / trailing blank lines; canonicalize JSON(L) when parseable.
+    """Best single canonical form: XML / JSON(L) / CSV, else collapsed text.
 
-    Binary (NUL) bytes stay raw. Decode failure returns the original bytes so
-    the raw hash still matches an exact fixture copy.
+    Binary (NUL) or non-UTF-8 bytes stay raw so an exact copy still matches.
     """
-    if b"\x00" in data[:8192]:
+    fps = list(_normalized_forms(data))
+    if not fps:
         return data
+    return fps[0]
+
+
+def _normalized_forms(data: bytes) -> list[bytes]:
+    """Structured canons first, then whitespace-collapsed text."""
+    if b"\x00" in data[:8192]:
+        return []
     body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    forms: list[bytes] = []
+    xml = _try_canonical_xml(body)
+    if xml is not None:
+        forms.append(xml)
     try:
         text = body.decode("utf-8")
     except UnicodeDecodeError:
-        return data
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    lines = [ln.rstrip(" \t") for ln in text.split("\n")]
-    while lines and lines[0] == "":
-        lines.pop(0)
-    while lines and lines[-1] == "":
-        lines.pop()
-    joined = "\n".join(lines)
-    canon = _try_canonical_json(joined)
-    if canon is not None:
-        return canon
-    canon_l = _try_canonical_jsonl(joined)
-    if canon_l is not None:
-        return canon_l
-    return (joined + ("\n" if joined else "")).encode("utf-8")
+        return forms
+    text_eol = text.replace("\r\n", "\n").replace("\r", "\n")
+    for fn in (_try_canonical_json, _try_canonical_jsonl, _try_canonical_csv):
+        canon = fn(text_eol)
+        if canon is not None:
+            forms.append(canon)
+    forms.append(_collapse_text(text_eol).encode("utf-8"))
+    return forms
 
 
 def file_content_fingerprints(path: Path) -> frozenset[str]:
-    """Raw SHA-256 plus normalized content hash. Empty if the file is unreadable."""
+    """Raw SHA-256 plus every normalized form. Empty if the file is unreadable."""
     try:
         data = path.read_bytes()
         raw = _sha256_file(path)
     except OSError:
         return frozenset()
-    return frozenset({raw, _sha256_bytes(normalize_fixture_bytes(data))})
+    fps = {raw, _sha256_bytes(data)}
+    for form in _normalized_forms(data):
+        fps.add(_sha256_bytes(form))
+    return frozenset(fps)
+
+
+def _fixtures_root(fixtures_root: Path | None = None) -> Path | None:
+    if fixtures_root is not None:
+        return fixtures_root
+    try:
+        from shared.io_util import root_dir
+
+        return root_dir() / "fixtures"
+    except Exception:
+        return None
+
+
+def _pack_root() -> Path | None:
+    try:
+        from shared.io_util import root_dir
+
+        return root_dir()
+    except Exception:
+        return None
+
+
+def build_fixture_manifest(fixtures_root: Path) -> dict[str, Any]:
+    files: dict[str, dict[str, str]] = {}
+    for path in sorted(fixtures_root.rglob("*")):
+        if not _hashable_file(path):
+            continue
+        data = path.read_bytes()
+        rel = str(path.relative_to(fixtures_root)).replace("\\", "/")
+        files[rel] = {
+            "raw": _sha256_bytes(data),
+            "norm": _sha256_bytes(normalize_fixture_bytes(data)),
+        }
+    return {"version": 1, "files": files}
+
+
+def _manifest_matches(root: Path, *, required: bool) -> bool:
+    """True when on-disk fixtures match FINGERPRINTS.json.
+
+    A missing manifest is allowed only for small custom test trees
+    (`required=False`). Pack fixtures and any copy that still ships
+    the manifest must match exactly or the catalog is untrusted.
+    """
+    dest = root / _FIXTURE_MANIFEST_NAME
+    if not dest.is_file():
+        return not required
+    try:
+        expected = json.loads(dest.read_text(encoding="utf-8"))
+        got = build_fixture_manifest(root)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return False
+    exp_files = expected.get("files") if isinstance(expected, dict) else None
+    got_files = got.get("files") if isinstance(got, dict) else None
+    return isinstance(exp_files, dict) and bool(exp_files) and exp_files == got_files
 
 
 def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
     """SHA-256 set of bundled fixture fingerprints. Cached for the process.
 
-    Catalog includes raw bytes and a whitespace/JSON-normalized hash so a
-    SAMPLE copy that only gained a trailing newline cannot claim CLIENT.
+    Unreadable fixtures or a pack-manifest mismatch fail closed (empty set)
+    so classify_estate cannot claim CLIENT.
     """
     global _FIXTURE_HASH_CACHE
-    if fixtures_root is None and _FIXTURE_HASH_CACHE is not None:
+    use_cache = fixtures_root is None
+    if use_cache and _FIXTURE_HASH_CACHE is not None:
         return _FIXTURE_HASH_CACHE
-    try:
-        from shared.io_util import root_dir
-
-        root = fixtures_root or (root_dir() / "fixtures")
-    except Exception:
-        root = fixtures_root
+    root = _fixtures_root(fixtures_root)
     found: set[str] = set()
-    if root is not None and root.is_dir():
+    trusted = True
+    if root is None or not root.is_dir():
+        trusted = False
+    else:
         try:
-            for path in root.rglob("*"):
-                if not _hashable_file(path):
-                    continue
-                found.update(file_content_fingerprints(path))
+            paths = [p for p in root.rglob("*") if _hashable_file(p)]
         except OSError:
-            pass
-    result = frozenset(found)
-    if fixtures_root is None:
+            paths = []
+            trusted = False
+        for path in paths:
+            fps = file_content_fingerprints(path)
+            if not fps:
+                trusted = False
+                break
+            found.update(fps)
+        pack = _pack_root()
+        pack_fixtures = pack / "fixtures" if pack is not None else None
+        is_pack = bool(
+            pack_fixtures is not None and root.resolve() == pack_fixtures.resolve()
+        )
+        if trusted and not _manifest_matches(root, required=is_pack):
+            trusted = False
+    result = frozenset(found) if trusted else frozenset()
+    if use_cache:
         _FIXTURE_HASH_CACHE = result
     return result
 
@@ -466,8 +594,9 @@ def in_dir_fixture_hits(
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """Return (fixture-matching relative paths, other input relative paths).
 
-    Unreadable inputs and an empty fixture catalog fail closed: every scanner
-    drop is treated as a fixture hit so classify_estate cannot claim CLIENT.
+    Unreadable inputs and an empty/untrusted fixture catalog fail closed:
+    every scanner drop is treated as a fixture hit so classify_estate
+    cannot claim CLIENT.
     """
     if in_path is None or not in_path.is_dir():
         return (), ()
