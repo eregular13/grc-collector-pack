@@ -1,3 +1,16 @@
+# CRITIC — cycle 191 (LOADER_IDENTITY_SEVERITY)
+
+Lab this brick: pytest **1049** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=103`
+`vulnerabilities=19` `applied_controls=122` `risk_scenarios=122`
+`poam=108` `severity_unmapped=0` `demo=true`). Zero P0/P1. Same-rule
+multi-host inputs stay separate; same-asset duplicates collapse.
+Vendor WARNING/WARN/ERROR/IMPORTANT/danger + CVSS map explicitly;
+unknown words are medium + flag. kube-bench/kubescape/checkov/semgrep
+blanket severities fixed. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
 # CRITIC — cycle 190 (HK_TESTRESULT_AND_HOST)
 
 Lab this brick: pytest **1036** passed, 1 skipped. Ten collectors +

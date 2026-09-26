@@ -9,17 +9,18 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 ```json
 {
   "assets": 81,
-  "findings": 105,
+  "findings": 103,
   "vulnerabilities": 19,
   "evidences": 33,
-  "applied_controls": 124,
-  "poam": 106,
-  "risk_scenarios": 124,
-  "incidents": 98,
-  "risks_proposed": 97,
-  "ocsf": 105,
-  "canonical": 210,
+  "applied_controls": 122,
+  "poam": 108,
+  "risk_scenarios": 122,
+  "incidents": 97,
+  "risks_proposed": 96,
+  "ocsf": 103,
+  "canonical": 208,
+  "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-08T15:35:20Z"
+  "generated_at": "2026-09-26T06:18:46Z"
 }
 ```
