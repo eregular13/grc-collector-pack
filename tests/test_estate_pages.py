@@ -31,6 +31,7 @@ from shared.estate_pages import (
     PageContext,
     _FIXTURE_MANIFEST_NAME,
     _engagement_window,
+    _manifest_matches,
     _sha256_bytes,
     assert_client_export_honesty,
     build_fixture_manifest,
@@ -796,6 +797,8 @@ def _assert_mutated_fixture_not_client(tmp_path: Path, src: Path, mutated: bytes
         ("samples/nmap-open-filtered.xml", _mut_xml_pretty),
         ("samples/nmap-vulners.xml", _mut_xml_oneline),
         ("samples/smbmap.csv", _mut_csv_quote_all),
+        ("lab-drop-out/ciso-assistant/risk_scenarios.csv", _mut_csv_quote_all),
+        ("lab-drop-out/ciso-assistant/applied_controls.csv", _mut_csv_quote_all),
         ("samples/fping-j.jsonl", _mut_jsonl_reorder),
         ("samples/cloud/s3-encryption-missing/resources.json", _mut_json_array_reorder),
         ("samples/prowler/example_output_aws.ocsf.json", _mut_json_array_reorder),
@@ -810,6 +813,8 @@ def _assert_mutated_fixture_not_client(tmp_path: Path, src: Path, mutated: bytes
         "xml-pretty",
         "xml-oneline",
         "csv-requote",
+        "csv-requote-semicolon",
+        "csv-requote-header-only",
         "jsonl-reorder",
         "json-array-s3",
         "json-array-prowler",
@@ -886,6 +891,90 @@ def test_corrupt_catalog_bytes_fail_closed(
     dest_in = tmp_path / "in"
     dest_in.mkdir()
     (dest_in / "fping-a.txt").write_bytes(src.read_bytes())
+    hits, others = in_dir_fixture_hits(dest_in, fixtures_root=fx)
+    assert hits
+    assert others == ()
+    real_hits = in_dir_fixture_hits
+    monkeypatch.setattr(
+        "shared.estate_pages.in_dir_fixture_hits",
+        lambda in_path, fixtures_root=None: real_hits(in_path, fixtures_root=fx),
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+
+
+def _mut_bytes_trailing_nl(data: bytes) -> bytes:
+    return data + b"\n"
+
+
+def _mut_bytes_crlf(data: bytes) -> bytes:
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n")
+
+
+def _mut_bytes_bom(data: bytes) -> bytes:
+    return b"\xef\xbb\xbf" + data
+
+
+def _mut_bytes_trailing_space(data: bytes) -> bytes:
+    return data + b"  "
+
+
+def _mut_bytes_leading_indent(data: bytes) -> bytes:
+    lines = data.split(b"\n")
+    return b"\n".join(b"    " + ln for ln in lines)
+
+
+def _mut_bytes_mid_blank(data: bytes) -> bytes:
+    lines = data.split(b"\n")
+    mid = max(1, len(lines) // 2)
+    lines.insert(mid, b"")
+    return b"\n".join(lines)
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        _mut_bytes_trailing_nl,
+        _mut_bytes_crlf,
+        _mut_bytes_bom,
+        _mut_bytes_trailing_space,
+        _mut_bytes_leading_indent,
+        _mut_bytes_mid_blank,
+    ],
+    ids=["bin-nl", "bin-crlf", "bin-bom", "bin-space", "bin-indent", "bin-blank"],
+)
+def test_binary_maester_whitespace_cannot_claim_client(tmp_path: Path, mutator) -> None:
+    src = ROOT / "fixtures" / "keep-stress" / "garbage-binary" / "saas" / "maester.json"
+    mutated = mutator(src.read_bytes())
+    _assert_mutated_fixture_not_client(tmp_path, src, mutated)
+
+
+def test_manifest_stat_permission_error_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fx = tmp_path / "fx"
+    fx.mkdir()
+    (fx / "keep.txt").write_text("keep-body\n", encoding="utf-8")
+    real_is_file = Path.is_file
+
+    def wrapped(self: Path) -> bool:
+        if self.name == _FIXTURE_MANIFEST_NAME:
+            raise PermissionError("chmod 000")
+        return real_is_file(self)
+
+    monkeypatch.setattr(Path, "is_file", wrapped)
+    assert _manifest_matches(fx, required=True) is False
+    dest_in = tmp_path / "in"
+    dest_in.mkdir()
+    (dest_in / "live.xml").write_text(
+        "<nmaprun unique='chmod-000-catalog'/>\n", encoding="utf-8"
+    )
     hits, others = in_dir_fixture_hits(dest_in, fixtures_root=fx)
     assert hits
     assert others == ()
