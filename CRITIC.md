@@ -1,3 +1,20 @@
+# CRITIC — cycle 195 (MERGE_MASTER_ESTATE_PLUS_BOTH_REAL_SAMPLES)
+
+Merge `origin/master` `5adc8b7` (after #132 estate banner / exact-header
+CSVs, #139 PingCastle/Greenbone/Scuba/testssl/Nikto, #136 retire
+RiskReady JSON) into this branch. Both sample sets kept: #134
+Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng unioned with #139 rows and
+tests. #133 still stands — LAB malformed real-sample files report
+`parse_error`, never `fixtures/demo`. #132 still stands — import CSVs
+start with the exact header; estate is `LAB: TEST ENVIRONMENT`. Lab
+this brick: pytest **1084** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`poam=109` `demo=true`). Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=48 vulns=0. Ship-gate skip
+(surface unchanged vs `5adc8b7`). Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
 Lab this brick: pytest **1068** passed, 1 skipped. Ten collectors +

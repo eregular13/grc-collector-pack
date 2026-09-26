@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 195 — merge master #132/#139/#136 into real-sample parsers (2026-09-26)
+
+Merge `origin/master` `5adc8b7` (PR #132 estate banner + exact-header
+CSVs, PR #139 PingCastle/Greenbone/Scuba/testssl/Nikto, PR #136 retire
+RiskReady JSON) into `cursor/real-sample-parsers-ea49`. Both sample
+tables and every test kept. #133 parse_error / no demo fill on
+LAB/CLIENT stands. #132 import CSVs start with the exact header;
+LAB estate banner is `LAB: TEST ENVIRONMENT`. No force-push. PR #134
+stays open. pytest **1084**. Host-lab `assets=81` `findings=104`
+`poam=109`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/48/0. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 
 §8 collectors that were silently empty or wrong on real tool output.

@@ -162,7 +162,8 @@ def test_lab_malformed_real_sample_families_parse_error_not_demo(tmp_path, monke
 
     summary = grc_loader.load()
     assert summary["demo"] is False
-    assert summary["estate"] == "LAB"
+    assert summary["estate"] == "LAB: TEST ENVIRONMENT"
+    assert summary["estate_kind"] == "LAB"
     assert summary["findings"] == 0
     for source in ("cloud-prowler", "host-wazuh", "identity-ad", "vuln-scan"):
         assert summary["sensors"][source]["status"] == "parse_error"
