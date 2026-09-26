@@ -386,7 +386,7 @@ def test_two_unknown_policies_on_200_resources_are_two_egr_rows(
 def test_demo_ledger_upgrade_keeps_e546_carried_ids(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Upgrade the frozen DEMO ledger: every prior ID is still present."""
+    """Upgrade the frozen DEMO ledger: every prior ID is still present or aliased."""
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -406,5 +406,7 @@ def test_demo_ledger_upgrade_keeps_e546_carried_ids(
         it for it in ledger["items"].values() if str(it.get("status") or "") != "closed"
     ]
     reseen = {it["poam_id"] for it in open_items}
-    ghosts = prior_ids - reseen
+    aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+    ghosts = prior_ids - reseen - aliases
     assert ghosts == set(), f"e546db1 carried IDs dropped: {sorted(ghosts)}"
+    assert prior_ids <= (reseen | aliases)

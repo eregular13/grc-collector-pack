@@ -11,6 +11,8 @@ provenance. Apply before risk-register and POA&M generation.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import re
 from typing import Any
 
@@ -677,6 +679,29 @@ def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
     return extra if isinstance(extra, dict) else {}
 
 
+def union_controls(*groups: Any) -> list[str]:
+    """De-duplicated controls, first-seen order (survivor, then merged-away)."""
+    out: list[str] = []
+    for group in groups:
+        if not group:
+            continue
+        for raw in group:
+            token = str(raw or "").strip()
+            if token and token not in out:
+                out.append(token)
+    return out
+
+
+def _mapped_nist_controls(rec: dict[str, Any]) -> list[str]:
+    """Controls already on the row plus the current map_finding stamp."""
+    extra = extra_dict(rec)
+    have = list(extra.get("nist_800_53") or [])
+    from shared.control_map import map_finding
+
+    mapped = map_finding(rec)
+    return union_controls(have, mapped.get("nist_800_53") or [])
+
+
 def is_custodian_policy_row(rec: dict[str, Any]) -> bool:
     """Cloud Custodian policy row (security / needs-review / named c7n title)."""
     name = str(rec.get("name") or "").strip().lower()
@@ -985,7 +1010,10 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "ad_smb_null_session"
     if "domain admins" in text:
         return "ad_domain_admins"
-    if "global administrator" in text and ("pim" in text or "standing" in text or "graph" in text):
+    if "not a global administrator" not in text and (
+        "global administrator" in text
+        and ("pim" in text or "standing" in text or "graph" in text)
+    ):
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
@@ -1074,7 +1102,9 @@ def finding_type(rec: dict[str, Any]) -> str:
     if _risk_id_only(rec) and source in {"identity-ad", ""}:
         return ""
     if guessed and (
-        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+        source in TYPED_SOURCES
+        or guessed.startswith(("tls_", "web_", "pc_"))
+        or guessed == "entra_ga_pim"
     ):
         return guessed
     if source not in TYPED_SOURCES:
@@ -1165,17 +1195,112 @@ _IDENTITY_LOCATION_KEYS = (
     "command",
 )
 
+# Secret-class identity is rule + file + secret_hash when material is
+# usable. Line remints when a leak slides in the file (Argus CR6-2) —
+# keep line when the value is empty or redacted so two leaks of one
+# rule in one file stay two IDs. Path/url/user stay so #170 httpx-admin
+# root vs /login and honeypot wget vs uname are untouched.
+SECRET_UNSTABLE_LOCATION_KEYS = frozenset(
+    {"line", "evidence", "evidence_ref", "cmd", "command"}
+)
+SECRET_UNSTABLE_WITHOUT_HASH = frozenset(
+    {"evidence", "evidence_ref", "cmd", "command"}
+)
+SECRET_HASH_LEN = 16
+# Pack-internal HMAC pepper. Not an estate secret; stops unsalted
+# sha256(secret)[:16] from being confirmed offline from a CSV.
+SECRET_HASH_PEPPER = b"grc-collector-pack/cr6-2/secret-identity/v1"
+_SECRET_HASH_IN_KEY = re.compile(r"(?:\|)?secret_hash:[0-9a-fA-F]+", re.I)
 
-def _identity_location(extra: dict[str, Any]) -> str:
-    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows."""
+
+def secret_material_usable(material: Any) -> bool:
+    """False when the scanner omitted the value or replaced it with REDACTED / *."""
+    text = str(material or "").strip()
+    if not text:
+        return False
+    if "redacted" in text.lower():
+        return False
+    if text.replace("*", "") == "":
+        return False
+    return True
+
+
+def secret_material_hash(material: Any) -> str:
+    """HMAC-SHA256 prefix of Secret/Match/Raw. Empty when omitted or redacted."""
+    if not secret_material_usable(material):
+        return ""
+    text = str(material).strip()
+    return hmac.new(
+        SECRET_HASH_PEPPER, text.encode("utf-8"), hashlib.sha256
+    ).hexdigest()[:SECRET_HASH_LEN]
+
+
+def secret_has_identity_hash(rec: dict[str, Any] | None, extra: dict[str, Any] | None = None) -> bool:
+    extra = extra if extra is not None else extra_dict(rec or {})
+    return bool(str(extra.get("secret_hash") or "").strip())
+
+
+def strip_secret_hash_from_key(key: str) -> str:
+    """Drop secret_hash tokens from a client-facing weakness_source_id."""
+    text = str(key or "")
+    if not text:
+        return ""
+    cleaned = _SECRET_HASH_IN_KEY.sub("", text)
+    cleaned = cleaned.replace("||", "|").strip("|")
+    return cleaned.rstrip(":")
+
+
+def is_secret_finding(
+    rec: dict[str, Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> bool:
+    """Gitleaks / TruffleHog / category secrets. Not Checkov, Semgrep, or httpx."""
+    rec = rec or {}
+    extra = extra if extra is not None else extra_dict(rec)
+    category = str(rec.get("category") or extra.get("category") or "").strip().lower()
+    if category in {"secrets", "secret"}:
+        return True
+    labels = {
+        str(x).strip().lower()
+        for x in (rec.get("labels") or extra.get("labels") or [])
+        if str(x).strip()
+    }
+    if labels & {"gitleaks", "trufflehog"}:
+        return True
+    check_id = str(extra.get("check_id") or extra.get("rule") or "").strip().lower()
+    return check_id.startswith(("gitleaks-", "trufflehog-"))
+
+
+def _identity_location(
+    extra: dict[str, Any], rec: dict[str, Any] | None = None
+) -> str:
+    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows.
+
+    Secret-class rows drop line/evidence/cmd and append ``secret_hash`` when
+    present. File stays so two leaks of the same rule in different files
+    stay two rows.
+    """
+    secret = is_secret_finding(rec, extra)
+    has_hash = secret_has_identity_hash(rec, extra)
+    skip = SECRET_UNSTABLE_LOCATION_KEYS if (secret and has_hash) else (
+        SECRET_UNSTABLE_WITHOUT_HASH if secret else frozenset()
+    )
     bits: list[str] = []
     seen: set[str] = set()
     for key in _IDENTITY_LOCATION_KEYS:
+        if key in skip:
+            continue
         val = str(extra.get(key) or "").strip().lower()
         if not val or val in seen:
             continue
         seen.add(val)
         bits.append(f"{key}:{val}")
+    if secret:
+        hashed = str(extra.get("secret_hash") or "").strip().lower()
+        if hashed:
+            token = f"secret_hash:{hashed}"
+            if token not in seen:
+                bits.append(token)
     return "|".join(bits)
 
 
@@ -1187,6 +1312,8 @@ def finding_identity(rec: dict[str, Any]) -> str:
     this key — two long IDs that share a prefix would otherwise collide.
     Repeating check_ids (httpx-admin / whatweb-admin / path-exposure) keep
     the #170 path/url discriminator so root vs /login do not collapse.
+    Secret-class rows key rule + file + secret_hash (CR6-2); line moves do
+    not remint.
     """
     extra = extra_dict(rec)
     for key in (
@@ -1204,19 +1331,48 @@ def finding_identity(rec: dict[str, Any]) -> str:
         if val:
             ident = val.lower()
             if key != "cve" and not ident.startswith("cve-"):
-                loc = _identity_location(extra)
+                loc = _identity_location(extra, rec)
                 if loc:
                     ident = f"{ident}:{loc}"
             return ident
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
 
 
+def register_asset_key(rec: dict[str, Any]) -> str:
+    """UPN leaf for standing Global Administrator so Scuba/Graph/BH share one row.
+
+    Other types keep ``primary_asset`` so port/path/FQDN identity stays on
+    #170/#177/#180.
+    """
+    if finding_type(rec) == "entra_ga_pim":
+        for raw in rec.get("assets") or []:
+            text = str(raw or "")
+            if "@" in text:
+                return normalize_asset_id(text)
+        return primary_asset(rec)
+    return primary_asset(rec)
+
+
 def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
     """(normalized asset, finding type or full identity). Asset is always in the key."""
     ftype = finding_type(rec)
+    if ftype == "entra_ga_pim":
+        return (register_asset_key(rec), ftype)
     if not ftype or ftype == "unknown":
         ftype = finding_identity(rec) or "finding"
     return (primary_asset(rec), ftype)
+
+
+def _prefer_upn_assets(rec: dict[str, Any]) -> None:
+    """Standing GA is the UPN. Tenant as a second asset fans out a second EGP."""
+    if finding_type(rec) != "entra_ga_pim":
+        return
+    assets = rec.get("assets")
+    if not isinstance(assets, list):
+        return
+    upns = [a for a in assets if a and "@" in str(a)]
+    if upns:
+        rec["assets"] = list(dict.fromkeys(upns))
 
 
 def _sev_rank(rec: dict[str, Any]) -> int:
@@ -1317,6 +1473,7 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     for asset in other.get("assets") or []:
         if asset and asset not in assets:
             assets.append(asset)
+    _prefer_upn_assets(kept)
     if _sev_rank(other) > _sev_rank(kept):
         kept["severity"] = other.get("severity")
     other_desc = str(other.get("description") or "").strip()
@@ -1327,6 +1484,10 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extra["also_descriptions"] = extras = []
         if other_desc not in extras:
             extras.append(other_desc)
+    extra["nist_800_53"] = union_controls(
+        _mapped_nist_controls(kept),
+        _mapped_nist_controls(other),
+    )
 
 
 def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1357,6 +1518,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     ],
                 )
                 _record_tools(extra, rec)
+            _prefer_upn_assets(rec)
             index[key] = rec
             out.append(rec)
             continue
