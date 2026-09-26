@@ -601,17 +601,22 @@ def test_parser_excluded_counts_in_flood_guard(
 ) -> None:
     """kind=excluded enters findings_in and excluded.csv, never FedRAMP Open."""
     finding = _finding()
-    skipped = make_record(
-        kind="excluded",
-        source="host-wazuh",
-        ref_id="WAZ-osquery-unmapped-pack_windows_sec-jumpvm",
-        name="osquery unmapped: pack_windows_sec",
-        description="unmapped query pack_windows_sec",
-        severity="info",
-        category="excluded",
-        assets=["jumpvm"],
-        extra={"exclude_reason": "unmapped", "check_id": "pack_windows_sec", "host": "jumpvm"},
-    )
+    skipped = {
+        "kind": "excluded",
+        "source": "host-wazuh",
+        "ref_id": "WAZ-osquery-unmapped-pack_windows_sec-jumpvm",
+        "name": "osquery unmapped: pack_windows_sec",
+        "description": "unmapped query pack_windows_sec",
+        "severity": "info",
+        "category": "excluded",
+        "assets": ["jumpvm"],
+        "labels": ["osquery", "unmapped"],
+        "extra": {
+            "exclude_reason": "unmapped",
+            "check_id": "pack_windows_sec",
+            "host": "jumpvm",
+        },
+    }
     out = _load(
         tmp_path,
         monkeypatch,
@@ -639,15 +644,15 @@ def test_parser_excluded_counts_in_flood_guard(
 def test_poam_decision_maps_unmapped_excluded() -> None:
     from shared.control_map import poam_decision
 
-    rec = make_record(
-        kind="excluded",
-        source="host-wazuh",
-        ref_id="WAZ-osquery-unmapped-x",
-        name="osquery unmapped: x",
-        severity="info",
-        category="excluded",
-        extra={"exclude_reason": "unmapped"},
-    )
+    rec = {
+        "kind": "excluded",
+        "source": "host-wazuh",
+        "ref_id": "WAZ-osquery-unmapped-x",
+        "name": "osquery unmapped: x",
+        "severity": "info",
+        "category": "excluded",
+        "extra": {"exclude_reason": "unmapped"},
+    }
     decision = poam_decision(rec)
     assert decision["include"] is False
     assert decision["reason"] == "NOT_A_WEAKNESS"
