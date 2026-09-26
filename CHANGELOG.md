@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- EXEC_COUNT_RECONCILE: executive page names kind-excluded and
+  merged-into aliases so POA&M + (excluded − merged) + kind-excluded
+  equals register. Printed sums are the computed totals; a mismatch
+  always warns. Headline `open=` / `Open POA&M (poam.csv)` is poam.csv
+  (FedRAMP Open #179). Ledger-open including excluded is secondary.
+  SAMPLE/DEMO/LAB never client KEEP. No POST `/api/risks`. Does not
+  touch `product-lab/drop`.
+- CR7_BH_HIGH_VALUE: `bh-high-value` (Administrators / Enterprise
+  Admins / Schema Admins) keeps the high-value group playbook and
+  AC-2/AC-6. Typed generic falls through to the legacy title map.
+  POA&M IDs unchanged (`bh-high-value`). Sample generic fix rows
+  return to the pre-#177 count (5). No POST `/api/risks`. Does not
+  touch `product-lab/drop`.
 - B8_STABLE_CHECK_ID: title-keyed DEMO families (secrets, easm, wazuh
   posture, identity) stamp a stable `extra.check_id` so percentages and
   hostnames in the display title cannot remint EGP IDs. Intune

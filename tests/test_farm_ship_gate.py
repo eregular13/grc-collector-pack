@@ -407,5 +407,10 @@ def test_wipe_clone_then_farm_drop_emits_register_shape(tmp_path: Path) -> None:
     shape = assert_farm_ship_sor(work)
     assert shape["findings"] >= 1
     assert shape["poam_rows"] >= 1
-    assert shape["risk_scenarios"] >= shape["findings"]
+    from shared.ciso_shape import register_treatment_counts
+
+    treats = register_treatment_counts(work / "out")
+    assert treats["mitigate"] == shape["poam_rows"]
+    assert treats["accept"] == treats["non_merged_excluded"]
+    assert shape["risk_scenarios"] == treats["mitigate"] + treats["accept"]
     blob.encode("cp1252")
