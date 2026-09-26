@@ -561,6 +561,7 @@ def test_samples_sources_credits_public_fixtures() -> None:
     assert "client KEEP" in text
     assert "DefectDojo" in text
     assert "ScubaGear" in text
+    assert "localpci-trim.nessus" in text
     assert "/api/risks" in text
     assert "RiskReady" in text
 
@@ -779,6 +780,34 @@ def test_parse_nikto_reads_list_of_hosts() -> None:
     assert rows[0]["host"] == "example.com"
 
 
+def test_nessus_localpci_cves_survive_into_findings_for_kev() -> None:
+    """Metis §7.1: localpci has 156 <cve> tags. Keep stays non-info; KEV can join."""
+    path = SAMPLES / "nessus" / "localpci-trim.nessus"
+    text = path.read_text(encoding="utf-8")
+    assert text.count("<cve>") == 156
+    assert "Not a client KEEP" in text
+    recs = vuln_scan.parse_file(path)
+    findings = _findings(recs)
+    assert len(findings) == 73
+    joined: list[str] = []
+    for rec in findings:
+        extra = rec.get("extra") or {}
+        assert extra.get("tool") == "nessus"
+        assert rec.get("client") is not True
+        assert extra.get("client_keep") is not True
+        joined.extend(collect_cves(rec))
+    unique = set(joined)
+    assert len(joined) == 155
+    assert len(unique) == 155
+    assert "CVE-1999-0632" not in unique  # info plugin 10223; keep not widened
+    assert any("CVE-2000-0666" in (r.get("extra") or {}).get("cve", "") for r in findings)
+    assert detect_family(path) is None
+    sources = (SAMPLES / "SOURCES.md").read_text(encoding="utf-8")
+    assert "localpci-trim.nessus" in sources
+    assert "156" in sources
+    assert "SAMPLE ≠ client KEEP" in sources or "SAMPLE/DEMO" in sources
+
+
 def test_greenbone_keeps_all_cves_and_detects_large_report(tmp_path: Path) -> None:
     recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
     hit = _findings(recs)[0]
@@ -923,6 +952,9 @@ def test_fixture_honesty_real_vs_synthetic() -> None:
     assert not (SAMPLES / "testssl" / "finos_robmoff.at_443_vulnerable.json").exists()
     assert (SAMPLES / "testssl" / "synthetic_pretty_sections.json").is_file()
     assert (SAMPLES / "testssl" / "synthetic_not_offered.json").is_file()
+    nessus = (SAMPLES / "nessus" / "localpci-trim.nessus").read_text(encoding="utf-8")
+    assert nessus.count("<cve>") == 156
+    assert "Not a client KEEP" in nessus
 
 
 def test_greenbone_scan_start_feeds_detection_date() -> None:
