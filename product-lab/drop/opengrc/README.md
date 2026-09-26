@@ -1,6 +1,9 @@
+> **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled example files. None describes any real organization.
+> Run `not recorded` · generated 2026-09-26 06:47 UTC · pack `1f8d347`
+
 # OpenGRC import drop (file-only)
 
-SAMPLE/DEMO — not a client estate. File-drop parse only. posted=false. Not a paying-day stamp.
+SAMPLE DATA: NOT A CLIENT: Every finding below comes from bundled example files. None describes any real organization.
 
 These CSVs match the OpenGRC Data Manager import wizard (https://docs.opengrc.com/data-manager/import/).
 

@@ -1,0 +1,4 @@
+> **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
+> Run `not recorded` · generated 2026-09-26 06:46 UTC · pack `1f8d347`
+
+CISO Assistant import CSVs start with the locked importer header (no # preamble). filtering_labels include estate_demo. SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.

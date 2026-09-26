@@ -1,0 +1,4 @@
+> **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled example files. None describes any real organization.
+> Run `not recorded` · generated 2026-09-26 06:47 UTC · pack `1f8d347`
+
+Machine-imported CSVs in this directory start with the importer header (no # preamble). SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.

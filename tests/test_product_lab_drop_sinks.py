@@ -49,11 +49,12 @@ def test_product_lab_drop_has_opengrc_wizard_csvs_posted_false() -> None:
     readme = (dest / "README.md").read_text(encoding="utf-8")
     assert "posted=false" in readme.lower()
     assert "/api/risks" not in readme
-    assert "SAMPLE/DEMO" in readme
+    assert "NOT A CLIENT" in readme
+    assert "SAMPLE" in readme or "DEMO" in readme
     assert "LAB/DEMO" not in readme
     risks_blob = (dest / "risks.csv").read_text(encoding="utf-8")
     assert "/api/risks" not in risks_blob
-    assert "SAMPLE/DEMO" in risks_blob
+    assert "NOT A CLIENT" in risks_blob
 
 
 def test_product_lab_drop_has_probo_drafts_posted_false() -> None:
