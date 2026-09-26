@@ -743,6 +743,8 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
             }
             if klass == "cost":
                 item["ExcludeReason"] = "not_a_weakness"
+            elif klass == "security":
+                item["Classification"] = "security"
             out.append(item)
     return out
 
@@ -1008,6 +1010,8 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             if item.get("NeedsReview"):
                 extra["needs_review"] = True
                 extra["classification"] = "needs-review"
+            elif item.get("Classification"):
+                extra["classification"] = str(item.get("Classification"))
             if rollup:
                 extra["rollup"] = True
                 extra["poam_prefix"] = "EGR-"
