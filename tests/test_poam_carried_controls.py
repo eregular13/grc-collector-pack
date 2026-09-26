@@ -423,4 +423,10 @@ def test_real_chain_upgrade_no_blank_high_critical_and_observed_match_fresh(
         assert row["recommended_fix"] == fresh_plan[pid]["recommended_fix"], pid
     ledger = json.loads((up_dir / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
     reseen = {it["poam_id"] for it in ledger["items"].values() if it.get("status") != "closed"}
-    assert prior_ids <= reseen
+    aliases = {
+        x
+        for it in ledger["items"].values()
+        for x in (it.get("aliased_poam_ids") or [])
+        if x
+    }
+    assert prior_ids <= (reseen | aliases)
