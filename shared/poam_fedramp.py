@@ -19,6 +19,7 @@ from shared.kev import (
 )
 from shared.poam_ledger import pending_comment
 from shared.io_util import redact
+from shared.vendor_dependency import VD_NO, VD_NOTE, VD_YES, format_vendor_product
 
 # S1 Open tab row 5 B→AB (R3.0). Match by header text, never by letter.
 FEDRAMP_OPEN_HEADERS: tuple[str, ...] = (
@@ -75,11 +76,17 @@ def _comments(item: dict[str, Any]) -> str:
         parts.append(pending_comment(item))
     if item.get("prior_poam_id"):
         parts.append(f"Reopened from {item['prior_poam_id']}; closed row remains on Closed.")
+    parts.extend(item.get("vd_comments") or [])
+    for flag in item.get("vd_flags") or []:
+        parts.append(str(flag))
     return "\n".join(parts)
 
 
 def item_to_row(item: dict[str, Any]) -> list[str]:
     cves = item.get("cves") or []
+    vd = str(item.get("vendor_dependency") or VD_NO)
+    if vd not in {VD_YES, VD_NO}:
+        vd = VD_NO
     return [
         str(item.get("poam_id") or ""),
         "",
@@ -94,9 +101,9 @@ def item_to_row(item: dict[str, Any]) -> list[str]:
         str(item.get("original_detection_date") or ""),
         "",  # M — template formula; never written
         str(item.get("status_date") or ""),
-        str(item.get("vendor_dependency") or ""),
-        str(item.get("last_vendor_checkin") or ""),
-        str(item.get("vendor_product") or ""),
+        vd,
+        str(item.get("last_vendor_checkin") or "") if vd == VD_YES else "",
+        format_vendor_product(item.get("vendor_product")) if vd == VD_YES else "",
         str(item.get("original_risk_rating") or ""),
         "",
         "",
@@ -168,6 +175,7 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
             lines.append(f"stale: {catalog.stale}")
     if ledger.get("warnings"):
         lines.append("ledger_warnings: " + ", ".join(ledger["warnings"]))
+    lines.append(VD_NOTE)
     lines.append("Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.")
     lines.append("FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).")
     lines.append(

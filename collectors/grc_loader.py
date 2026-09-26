@@ -41,6 +41,7 @@ from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import ledger_run_delta, run_ledger
+from shared.vendor_dependency import VD_NOTE
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -530,6 +531,8 @@ def load() -> dict:
         "Owner and due are blank — a human fills them. No invented owners.",
         "",
         SLA_NOTE,
+        "",
+        VD_NOTE,
         "",
         "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected (UTC / recorded zone) | Scheduled (default) | Recommended fix | Milestones | Status |",
         "|---|---|---|---|---|---|---|---|---|---|",

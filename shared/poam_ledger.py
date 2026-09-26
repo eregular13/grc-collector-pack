@@ -44,6 +44,7 @@ from shared.kev import (
 from shared.poam_fields import _to_date
 from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
+from shared.vendor_dependency import canon_yes_no, finalize_vendor_fields
 
 LEDGER_IN_REL = Path("poam") / "poam-ledger.json"
 LEDGER_OUT_REL = Path("poam") / "poam-ledger.json"
@@ -55,6 +56,7 @@ TRACKED_FIELDS = (
     "kev_cves",
     "kev_due",
     "vendor_dependency",
+    "vd_source",
     "last_vendor_checkin",
     "vendor_product",
     "point_of_contact",
@@ -311,10 +313,12 @@ def _new_item(
         "status_date": run_date.isoformat(),
         "closed_date": "",
         "closure_evidence": [],
-        "vendor_dependency": "",
-        "vd_source": "",
+        "vendor_dependency": "No",
+        "vd_source": "default",
         "last_vendor_checkin": "",
         "vendor_product": "",
+        "vd_comments": [],
+        "vd_flags": [],
         "point_of_contact": "",
         "remediation_plan": "",
         "prior_poam_id": "",
@@ -345,7 +349,14 @@ def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: da
     }
     for src, dest in mapping.items():
         if src in override and override[src] != "" and override[src] != item.get(dest):
-            item[dest] = override[src]
+            val = override[src]
+            if dest == "vendor_dependency":
+                canon = canon_yes_no(val)
+                if canon is None:
+                    continue
+                val = canon
+                item["vd_source"] = "operator"
+            item[dest] = val
             changed.append(dest)
     return changed
 
@@ -800,12 +811,16 @@ def apply_ledger(
                 ledger["events"].append(
                     _event(run_iso, fp, str(item["poam_id"]), "field_changed", {"override": changed})
                 )
+        for flag in finalize_vendor_fields(item, rec, run_date=run_date, override=ov or None):
+            warnings.append(f"{flag}:{item.get('poam_id')}")
 
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
             continue
         if str(item.get("status") or "") == "closed":
             continue
+        for flag in finalize_vendor_fields(item, None, run_date=run_date):
+            warnings.append(f"{flag}:{item.get('poam_id')}")
         if str(item.get("vendor_dependency") or "").strip().lower() == "yes":
             continue
         if str(item.get("operational_requirement") or "").strip().lower() in {"yes", "or"}:
