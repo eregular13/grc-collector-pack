@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import re
 from pathlib import Path
@@ -10,8 +12,9 @@ from typing import Any
 from shared.io_util import read_text
 
 IP_RE = re.compile(r"\d{1,3}(?:\.\d{1,3}){3}")
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*[mK]")
 HOST_RE = re.compile(
-    r"\[\+\]\s+(?:IP:\s*)?(\d{1,3}(?:\.\d{1,3}){3})(?::(\d+))?\s+Name:\s+(\S+)",
+    r"\[\+\]\s+(?:IP:\s*)?(\d{1,3}(?:\.\d{1,3}){3})(?::(\d+))?\s+Name:\s+(\S+)(?:\s+Status:\s+(.+))?",
     re.I,
 )
 HOST_ALT_RE = re.compile(
@@ -22,6 +25,11 @@ SHARE_RE = re.compile(
     r"^\s+(\S+)\s+(NO ACCESS|READ ONLY|READ,\s*WRITE|WRITE(?: ONLY)?|READ)\b\s*(.*)$",
     re.I,
 )
+GREP_RE = re.compile(
+    r"host:\s*([^,]+),\s*share:\s*([^,]+),\s*privs:\s*(\S+)",
+    re.I,
+)
+PRIV_RE = re.compile(r"NO ACCESS|READ(?:_|,)?\s*WRITE|READ[_\s]*ONLY|WRITE(?:_ONLY)?|READ", re.I)
 _BANNERS = (
     "[+] ip:",
     "finding open smb shares",
@@ -35,6 +43,23 @@ _SECRET = re.compile(r"(password|passwd|pass|hash|ntlm|secret)\s*[:=]", re.I)
 
 def _named(name: str) -> bool:
     return "smbmap" in name.lower()
+
+
+def _strip_ansi(text: str) -> str:
+    return ANSI_RE.sub("", text)
+
+
+def _norm_access(token: str) -> str:
+    raw = _strip_ansi(token or "").strip()
+    up = raw.upper().replace(" ", "_").replace(",", "_")
+    up = re.sub(r"_+", "_", up).strip("_")
+    if up in {"READ_WRITE", "READWRITE", "WRITE"}:
+        return "READ, WRITE"
+    if up in {"READ_ONLY", "READONLY", "READ"}:
+        return "READ ONLY"
+    if up in {"NO_ACCESS", "NOACCESS"}:
+        return "NO ACCESS"
+    return re.sub(r"\s+", " ", raw)
 
 
 def _looks_nmap(text: str) -> bool:
@@ -120,7 +145,46 @@ def _share_from_obj(row: dict[str, Any]) -> dict[str, str] | None:
 
 def _host_slot(addr: str, hostname: str) -> dict[str, Any]:
     name = hostname or addr
-    return {"name": name, "addr": addr, "hostname": hostname, "shares": []}
+    return {"name": name, "addr": addr, "hostname": hostname, "shares": [], "session": ""}
+
+
+def _anon_session(status: str) -> bool:
+    """smbmap 1.10.8 prints ``Status: NULL session`` for unauthenticated runs.
+
+    It never prints ``Guest session``. AUTHENTICATED (credentials used) is not NULL.
+    """
+    low = _strip_ansi(status or "").lower()
+    return "null session" in low and "authenticated" not in low
+
+
+_PRIV_TAIL = re.compile(
+    r"^(.*?)\s+(NO ACCESS|READ ONLY|READ,\s*WRITE|WRITE(?: ONLY)?|READ)\s*$",
+    re.I,
+)
+
+
+def _share_from_tab_line(line: str) -> dict[str, str] | None:
+    raw = _strip_ansi(line)
+    if not raw.startswith((" ", "\t")):
+        return None
+    cols = [c.strip() for c in raw.split("\t") if c.strip()]
+    if not cols:
+        return None
+    share_name = cols[0]
+    access = cols[1] if len(cols) > 1 else ""
+    comment = cols[2] if len(cols) > 2 else ""
+    if not PRIV_RE.search(access):
+        tail = _PRIV_TAIL.match(share_name)
+        if not tail:
+            return None
+        share_name, access = tail.group(1).strip(), tail.group(2)
+        if len(cols) > 1 and not comment:
+            comment = cols[1]
+    if share_name.lower() in _SKIP or set(share_name) <= set("-"):
+        return None
+    if _SECRET.search(comment):
+        comment = "[REDACTED]"
+    return {"name": share_name, "access": _norm_access(access), "comment": comment}
 
 
 def _from_json(text: str) -> list[dict[str, Any]]:
@@ -179,19 +243,74 @@ def _from_json(text: str) -> list[dict[str, Any]]:
     return list(grouped.values())
 
 
+def _from_csv(text: str) -> list[dict[str, Any]] | None:
+    sample = _strip_ansi(text).lstrip("\ufeff")
+    first = next((ln for ln in sample.splitlines() if ln.strip()), "")
+    header = first.lower()
+    if "host" not in header or "share" not in header:
+        return None
+    if "priv" not in header and "perm" not in header:
+        return None
+    reader = csv.DictReader(io.StringIO(sample))
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in reader:
+        if not row:
+            continue
+        folded = {str(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
+        host = folded.get("host") or folded.get("ip") or folded.get("address") or ""
+        share = folded.get("share") or folded.get("disk") or ""
+        access = folded.get("privs") or folded.get("permissions") or folded.get("access") or ""
+        comment = folded.get("comment") or folded.get("remark") or ""
+        addr = host if IP_RE.fullmatch(host) else ""
+        hostname = "" if addr else host
+        name = hostname or addr
+        if not name or not share:
+            continue
+        slot = grouped.setdefault(name.lower(), _host_slot(addr, hostname))
+        if _SECRET.search(comment):
+            comment = "[REDACTED]"
+        slot["shares"].append({"name": share, "access": _norm_access(access), "comment": comment})
+    return list(grouped.values())
+
+
+def _from_grepable(text: str) -> list[dict[str, Any]]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for line in text.splitlines():
+        match = GREP_RE.search(_strip_ansi(line))
+        if not match:
+            continue
+        host, share, access = match.group(1).strip(), match.group(2).strip(), match.group(3).strip()
+        addr = host if IP_RE.fullmatch(host) else ""
+        hostname = "" if addr else host
+        name = hostname or addr
+        if not name or not share:
+            continue
+        slot = grouped.setdefault(name.lower(), _host_slot(addr, hostname))
+        slot["shares"].append({"name": share, "access": _norm_access(access), "comment": ""})
+    return list(grouped.values())
+
+
 def _from_text(text: str) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     current: dict[str, Any] | None = None
-    for line in text.splitlines():
-        if _SECRET.search(line) and "permissions" not in line.lower():
+    for raw_line in text.splitlines():
+        line = _strip_ansi(raw_line)
+        if _SECRET.search(line) and "permissions" not in line.lower() and "status" not in line.lower():
             continue
         host_m = HOST_RE.search(line)
         if host_m:
-            addr, _port, hostname = host_m.group(1), host_m.group(2), host_m.group(3)
+            addr, _port, hostname, status = (
+                host_m.group(1),
+                host_m.group(2),
+                host_m.group(3),
+                (host_m.group(4) or "").strip(),
+            )
             if hostname.lower() in {"<unknown>", "unknown", "-"}:
                 hostname = ""
             name = hostname or addr
             current = grouped.setdefault(name.lower(), _host_slot(addr, hostname))
+            if status:
+                current["session"] = status
             continue
         alt = HOST_ALT_RE.search(line)
         if alt:
@@ -202,19 +321,31 @@ def _from_text(text: str) -> list[dict[str, Any]]:
             name = hostname or addr
             current = grouped.setdefault(name.lower(), _host_slot(addr, hostname))
             continue
-        share_m = SHARE_RE.match(line)
-        if not share_m:
+        grep = GREP_RE.search(line)
+        if grep:
+            host, share, access = grep.group(1).strip(), grep.group(2).strip(), grep.group(3).strip()
+            addr = host if IP_RE.fullmatch(host) else ""
+            hostname = "" if addr else host
+            name = hostname or addr
+            current = grouped.setdefault(name.lower(), _host_slot(addr, hostname))
+            current["shares"].append({"name": share, "access": _norm_access(access), "comment": ""})
             continue
-        share_name = share_m.group(1)
-        if share_name.lower() in _SKIP or set(share_name) <= set("-"):
-            continue
-        access = re.sub(r"\s+", " ", share_m.group(2).strip())
-        comment = share_m.group(3).strip()
-        if _SECRET.search(comment):
-            comment = "[REDACTED]"
+        parsed = _share_from_tab_line(line)
+        if parsed is None:
+            share_m = SHARE_RE.match(line)
+            if not share_m:
+                continue
+            share_name = share_m.group(1)
+            if share_name.lower() in _SKIP or set(share_name) <= set("-"):
+                continue
+            access = _norm_access(share_m.group(2))
+            comment = share_m.group(3).strip()
+            if _SECRET.search(comment):
+                comment = "[REDACTED]"
+            parsed = {"name": share_name, "access": access, "comment": comment}
         if current is None:
             continue
-        current["shares"].append({"name": share_name, "access": access, "comment": comment})
+        current["shares"].append(parsed)
     return list(grouped.values())
 
 
@@ -237,4 +368,14 @@ def parse_smbmap(path: Path, raw: str | None = None) -> list[dict[str, Any]] | N
     )
     if is_jsonish:
         return _from_json(text)
+    first = next((ln for ln in stripped.splitlines() if ln.strip()), "")
+    if path.suffix.lower() == ".csv" or (
+        "," in first and "share" in first.lower() and ("priv" in first.lower() or "perm" in first.lower())
+    ):
+        csv_hosts = _from_csv(text)
+        if csv_hosts:
+            return csv_hosts
+    grepable = _from_grepable(text)
+    if grepable and not HOST_RE.search(_strip_ansi(text)):
+        return grepable
     return _from_text(text)

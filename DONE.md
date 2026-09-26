@@ -8,19 +8,19 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 84,
-  "findings": 103,
+  "assets": 78,
+  "findings": 101,
   "vulnerabilities": 22,
   "evidences": 33,
-  "applied_controls": 125,
-  "poam": 111,
-  "risk_scenarios": 125,
-  "ocsf": 103,
-  "canonical": 214,
+  "applied_controls": 123,
+  "poam": 122,
+  "risk_scenarios": 123,
+  "ocsf": 101,
+  "canonical": 206,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:28:42Z"
+  "generated_at": "2026-09-26T07:11:25Z"
 }
 ```
 
-Cycle 195 restamp after merge-evidence + three-host nuclei fixture (pytest 1087; master #132+#139+#136). CoS #48 rails above stand.
+Cycle 199 register one truth (pytest 1219; host-lab 78 / 101 / 122; farm 48 / 134 / 85). Shift vs cycle 198 is unique (weakness, asset) merge, not a thinner estate. Cycle 198 merge `f8b7ff1` #138 into discovery/web stands as history. CoS #48 rails above stand.

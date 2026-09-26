@@ -8,7 +8,12 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.asset_key import asset_key, legacy_asset_id_port_key, legacy_name_asset_key
+from shared.asset_key import (
+    asset_key,
+    legacy_asset_id_port_key,
+    legacy_name_asset_key,
+    legacy_port_only_asset_key,
+)
 from shared.ciso_shape import POAM_HEADER
 from shared.kev import KevCatalog
 from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
@@ -399,6 +404,50 @@ def test_migration_map_name_to_asset_id_port_keeps_id_and_earliest_date() -> Non
     assert got["poam_id"] == pid
     assert got["original_detection_date"] == odd
     assert any(m["from"] == old_fp and m["to"] == new_fp for m in migrated["fp_migrations"])
+
+
+def test_migration_port_only_to_port_proto_keeps_id_and_date() -> None:
+    """Pre-#140 host:22 → host:22/tcp: same EGP- ID, earliest date, not pending_verification."""
+    old = _rec(
+        source="inventory-nmap",
+        ref_id="NMAP-host-22",
+        name="SSH exposed",
+        assets=["filesrv.corp.local"],
+        labels=["nmap"],
+        extra={"id": "port-22", "tool": "nmap", "port": "22"},
+    )
+    new = {
+        **old,
+        "extra": {"id": "port-22", "tool": "nmap", "port": "22", "protocol": "tcp"},
+    }
+    old_fp = fp_v1(old, asset_key_fn=legacy_port_only_asset_key)
+    new_fp = fp_v1(new)
+    assert old_fp != new_fp
+    assert legacy_port_only_asset_key(old) == "filesrv.corp.local:22"
+    assert legacy_asset_id_port_key(new) == "filesrv.corp.local:22/TCP"
+    assert asset_key(new).startswith("EGA-")
+    assert asset_key(new).endswith(":22/TCP")
+    assert legacy_port_only_asset_key(new) == "filesrv.corp.local:22"
+
+    seeded = _apply([old], when="2026-07-02T00:00:00Z")
+    item = next(iter(seeded["items"].values()))
+    seeded["items"] = {old_fp: {**item, "fp": old_fp, "asset_key": legacy_port_only_asset_key(old)}}
+    seeded["sha256"] = payload_sha256(seeded)
+    pid = item["poam_id"]
+    odd = item["original_detection_date"]
+
+    migrated = _apply([new], ledger=seeded, when="2026-09-01T00:00:00Z")
+    assert new_fp in migrated["items"]
+    assert old_fp not in migrated["items"]
+    got = migrated["items"][new_fp]
+    assert got["poam_id"] == pid
+    assert got["original_detection_date"] == odd
+    assert got["status"] != "pending_verification"
+    assert not any(i.get("status") == "pending_verification" for i in migrated["items"].values())
+    assert any(
+        m["from"] == old_fp and m["to"] == new_fp and m.get("reason") == "port_only_to_port_proto"
+        for m in migrated["fp_migrations"]
+    )
 
 
 def test_fp_v1_golden_vector() -> None:

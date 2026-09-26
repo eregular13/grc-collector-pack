@@ -23,15 +23,12 @@ NMAP = PACK / "nmap"
 # Brick 4 farm_drop SoR ballpark (thin one-host nmap leaf): 85 findings / 23 poam / 0 vulns.
 # Brick 5 floors are the denser dual-net SAMPLE leaf, still below inventing client KEEP.
 # Full POA&M plan (default) puts Lows + non-key Mediums on the plan. Measured
-# farm_drop after that change: findings=174 poam=106 excluded=68
-# (60 severity_info + 8 honeypot). Old MIN_FARM_POAM=35 was the lighter
-# High/key-Medium-only plan — do not revert.
-# After (weakness, EGA- asset) merge, unique included POA&M rows measure 85
-# (21 duplicate pairs collapsed; not a thinner unique estate). Findings and
-# excluded floors stay 110 / 20 — those MIN_ gates are not loosened.
-# MIN_FARM_POAM restamped to the unique included count (was 100 against the
-# duplicate-inflated 106). Same unique estate; 21 (weakness, asset) pairs
-# no longer counted twice.
+# farm_drop after port-only fold (unchanged vs 174/106): pack_drop has no
+# specific-on-port peer so no superseded_by_specific. After (weakness, EGA-
+# asset) merge, unique included POA&M rows measure 85 (21 duplicate pairs
+# collapsed; not a thinner unique estate). Findings and excluded floors stay
+# 110 / 20 — those MIN_ gates are not loosened. MIN_FARM_POAM restamped to
+# the unique included count (was 100 against the duplicate-inflated 106).
 BEFORE_FARM_FINDINGS = 85
 BEFORE_FARM_POAM = 23
 MIN_NMAP_HOSTS = 14

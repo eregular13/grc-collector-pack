@@ -54,6 +54,7 @@ def assert_lab() -> None:
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
     from shared.ciso_shape import (
+        EXCLUDED_HEADER,
         POAM_HEADER,
         assert_count_consistency,
         assert_poam_fedramp_identity,
@@ -122,9 +123,7 @@ def assert_lab() -> None:
     assert (OUT / "poam" / "poam.md").is_file()
     excluded_path = OUT / "poam" / "excluded.csv"
     assert excluded_path.is_file(), "poam/excluded.csv missing"
-    excluded = _csv_rows(
-        excluded_path, "finding_ref_id,weakness,asset,severity,excluded_reason"
-    )
+    excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
     assert int(summary.get("excluded") or 0) == len(excluded)
     assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
@@ -141,6 +140,10 @@ def assert_lab() -> None:
         assert trust_text.startswith("> **")
         assert "not recorded" in trust_text or "Authorization" in trust_text
         assert "CoS #" not in exec_text and "CoS #" not in trust_text
+        assert "### Coverage gaps" in exec_text and "### Coverage gaps" in trust_text
+        from shared.estate_pages import assert_client_export_honesty
+
+        assert_client_export_honesty(OUT)
     estate_txt = OUT / "ciso-assistant" / "ESTATE.txt"
     if estate_txt.is_file():
         assert (OUT / "poam" / "ESTATE.txt").is_file()
