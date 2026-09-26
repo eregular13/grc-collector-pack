@@ -1,3 +1,10 @@
+# CRITIC — cycle 208 (MERGE_MASTER_159_INTO_GAP2)
+
+Merge `origin/master` `1be65cf` (#159) with a normal merge commit. No
+rebase. Gap 2 vendor-dependency columns kept. Pytest **1305**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 207 (POAM_GAP2_VENDOR_DEPENDENCY)
 
 Lab this brick: pytest **1304** passed, 1 skipped. Ten collectors +

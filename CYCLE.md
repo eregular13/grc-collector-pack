@@ -1,5 +1,11 @@
 # CYCLE log
 
+## cycle 208 — merge master 1be65cf (#159) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `1be65cf` (#159 hermetic farm_which PATH).
+No rebase. Gap 2 O/P/Q kept. Pytest **1305**. Host-lab unchanged.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 207 — POA&M Gap 2 vendor dependency O/P/Q (2026-09-26)
 
 FedRAMP R3.0 Open O/P/Q: Vendor Dependency defaults to **No**
