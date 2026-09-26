@@ -48,7 +48,7 @@ def _assert_import_honesty(ciso: Path) -> dict:
     assert import_doc["posted"] is False
     shape = assert_risk_register_and_poam(ciso)
     assert shape["findings"] >= 1
-    assert shape["risk_scenarios"] >= shape["findings"]
+    assert shape["risk_scenarios"] >= shape["poam_rows"]
     assert shape["poam_rows"] >= 1
     assert shape["vulnerabilities"] >= 1, "SAMPLE keep-samples include testssl/prowler CVE-class rows"
     for row in csv_rows(ciso / "findings.csv"):
@@ -56,24 +56,38 @@ def _assert_import_honesty(ciso: Path) -> dict:
         assert row["ref_id"]
         assert row["name"]
     scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
-    assert len(scenarios) >= shape["findings"]
+    assert len(scenarios) >= shape["poam_rows"]
     excluded_path = ciso.parent / "poam" / "excluded.csv"
     excluded = csv_rows(excluded_path) if excluded_path.is_file() else []
+    from shared.ciso_shape import assert_register_no_double_treatment
+    from shared.egp_collapse import is_merged_into_reason
+
     accept_n = 0
+    mitigate_n = 0
     for row in scenarios:
         assert row["ref_id"]
         assert row["name"]
         assert row.get("current_risk") in SCENARIO_LEVELS, row
         treat = row.get("treatment")
         assert treat in {"mitigate", "accept"}, row
+        assert (row.get("existing_controls") or "") == "", row
         if treat == "accept":
             accept_n += 1
-            assert str(row.get("existing_controls") or "").startswith("excluded:"), row
             assert (row.get("additional_controls") or "") == ""
             assert row.get("residual_risk") == row.get("current_risk"), row
         else:
+            mitigate_n += 1
             assert str(row.get("additional_controls") or "").startswith("CTL-"), row
-    assert accept_n == len(excluded)
+    non_merged = [
+        row
+        for row in excluded
+        if not is_merged_into_reason(str(row.get("excluded_reason") or ""))
+    ]
+    assert mitigate_n == shape["poam_rows"]
+    assert accept_n == len(non_merged)
+    overlap = assert_register_no_double_treatment(ciso.parent)
+    assert not overlap["title_host_overlap"]
+    assert not overlap["egp_overlap"]
     poam = csv_rows(ciso.parent / "poam" / "poam.csv")
     assert poam
     for row in poam:

@@ -78,9 +78,16 @@ Semicolon-delimited:
 ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment
 ```
 
-treatment: `mitigate`
+treatment: `mitigate` | `accept`
 Severity → `Low|Moderate|High|Very High`
-One row per canonical finding. `findings.csv` rows > 0 requires `risk_scenarios.csv` rows > 0.
+One row per canonical finding that is on the register. `findings.csv` rows > 0 requires `risk_scenarios.csv` rows > 0.
+`existing_controls` is for real controls only and stays empty on export.
+CISO Community CSV import has no justification/comment column
+(`shared/ciso_shape.py` `CISO_HEADERS`). Accept / exclude reasons live in
+`out/poam/excluded.csv` `excluded_reason`. Pack_drop twins excluded as
+`merged_into:<survivor ledger EGP>` are aliases and are not register accept rows.
+The survivor ID is the live ledger `poam_id` (preserved on upgrade), not a
+fresh content hash. The same ID is written to `superseded_by`.
 
 ## POA&M (operator draft — not a CISO import)
 

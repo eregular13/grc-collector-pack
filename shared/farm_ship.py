@@ -226,8 +226,8 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
     if int(shape.get("findings") or 0) < 1:
         raise FarmShipError(f"FARM_SHIP_FAIL empty findings register: {shape}")
-    if int(shape.get("risk_scenarios") or 0) < int(shape["findings"]):
-        raise FarmShipError(f"FARM_SHIP_FAIL risk_scenarios < findings: {shape}")
+    if int(shape.get("findings") or 0) > 0 and int(shape.get("risk_scenarios") or 0) < 1:
+        raise FarmShipError(f"FARM_SHIP_FAIL empty risk_scenarios: {shape}")
     if int(shape.get("poam_rows") or 0) < 1:
         raise FarmShipError(f"FARM_SHIP_FAIL empty POA&M: {shape}")
     counts = stamp.get("counts") or {}

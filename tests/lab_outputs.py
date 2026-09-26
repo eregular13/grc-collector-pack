@@ -153,25 +153,30 @@ def assert_lab() -> None:
     from shared.schema import CISO_REF_MAX
 
     assert max(len(ref) for ref in scen_refs) <= CISO_REF_MAX
+    from shared.ciso_shape import assert_register_no_double_treatment
+    from shared.egp_collapse import is_merged_into_reason
+
     accept_n = 0
     for row in scen:
         treat = row.get("treatment")
         assert treat in {"mitigate", "accept"}, row
+        assert (row.get("existing_controls") or "") == "", row
         if treat == "accept":
             accept_n += 1
-            assert str(row.get("existing_controls") or "").startswith("excluded:"), row
             assert (row.get("additional_controls") or "") == ""
             assert row.get("residual_risk") == row.get("current_risk"), row
         else:
             assert str(row.get("additional_controls") or "").startswith("CTL-"), row
-    assert accept_n == len(excluded)
-    excluded_reasons = {str(row.get("excluded_reason") or "") for row in excluded}
-    accept_reasons = {
-        str(row.get("existing_controls") or "").removeprefix("excluded:")
-        for row in scen
-        if row.get("treatment") == "accept"
-    }
-    assert accept_reasons == excluded_reasons
+    non_merged = [
+        row
+        for row in excluded
+        if not is_merged_into_reason(str(row.get("excluded_reason") or ""))
+    ]
+    assert accept_n == len(non_merged)
+    overlap = assert_register_no_double_treatment(OUT)
+    assert overlap["ok"] is True
+    assert not overlap["title_host_overlap"]
+    assert not overlap["egp_overlap"]
     for row in excluded:
         assert row.get("severity") in EXCLUDED_SEV, row
         if row.get("excluded_reason") == "severity_info":

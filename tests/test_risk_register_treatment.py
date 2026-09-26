@@ -1,8 +1,9 @@
 """Risk register must not mark POA&M-excluded rows mitigate.
 
-Excluded findings (honeypot, not_a_weakness, telemetry, info, superseded)
-stay on the register 1:1 with weaknesses, but treatment=accept with the
-exclusion reason. No CTL- and residual stays current. SAMPLE/DEMO/LAB only.
+Genuine excluded findings (honeypot, not_a_weakness, telemetry, info,
+superseded) stay on the register as treatment=accept. Accept reason lives
+in excluded.csv, not existing_controls. Collapsed pack_drop twins
+(merged_into:<EGP>) stay off the register. SAMPLE/DEMO/LAB only.
 """
 
 from __future__ import annotations
@@ -52,6 +53,7 @@ def test_risk_register_treatment_helper_splits_include_and_exclude() -> None:
     assert included["treatment"] == INCLUDED_TREATMENT == "mitigate"
     assert included["existing_controls"] == ""
     assert included["attach_control"] is True
+    assert included["on_register"] is True
 
     for reason in (
         "honeypot",
@@ -64,8 +66,19 @@ def test_risk_register_treatment_helper_splits_include_and_exclude() -> None:
     ):
         stamp = risk_register_treatment({"include": False, "reason": reason})
         assert stamp["treatment"] == EXCLUDED_TREATMENT == "accept"
-        assert stamp["existing_controls"] == f"excluded:{reason}"
+        assert stamp["existing_controls"] == ""
+        assert stamp["justification"] == reason
         assert stamp["attach_control"] is False
+        assert stamp["on_register"] is True
+
+    merged = risk_register_treatment(
+        {"include": False, "reason": "merged_into:EGP-ABCDEF1234"}
+    )
+    assert merged["on_register"] is False
+    assert merged["treatment"] == ""
+    assert merged["existing_controls"] == ""
+    assert merged["attach_control"] is False
+    assert merged["justification"] == "merged_into:EGP-ABCDEF1234"
 
 
 def test_uncapped_identity_slug_keeps_long_custodian_refs_distinct() -> None:
@@ -164,7 +177,7 @@ def test_loader_excluded_scenarios_are_accept_not_mitigate(
         row = by_ref[rsk]
         assert excluded_reason[finding_ref] == reason
         assert row["treatment"] == "accept"
-        assert row["existing_controls"] == f"excluded:{reason}"
+        assert row["existing_controls"] == ""
         assert row["additional_controls"] == ""
         assert row["residual_impact"] == row["current_impact"]
         assert row["residual_proba"] == row["current_proba"]
@@ -216,7 +229,7 @@ def test_kind_excluded_row_is_accept_on_the_register(
     assert scenarios["RSK-cld-sec"]["treatment"] == "mitigate"
     waste = scenarios["RSK-cld-cpu-waste"]
     assert waste["treatment"] == "accept"
-    assert waste["existing_controls"] == "excluded:not_a_weakness"
+    assert waste["existing_controls"] == ""
     assert waste["additional_controls"] == ""
     assert waste["residual_risk"] == waste["current_risk"]
 
@@ -269,10 +282,126 @@ def test_real_custodian_register_is_36_not_8(
     mitigate = [row for row in scenarios if row.get("treatment") == "mitigate"]
     assert len(accept) == 28
     assert len(mitigate) == 8
-    reasons = {str(row.get("existing_controls") or "") for row in accept}
-    assert "excluded:not_a_weakness" in reasons
-    assert "excluded:unmapped" in reasons
-    assert all(str(row.get("existing_controls") or "").startswith("excluded:") for row in accept)
+    excluded = csv_rows(out_dir() / "poam" / "excluded.csv")
+    reasons = {str(row.get("excluded_reason") or "") for row in excluded}
+    assert "not_a_weakness" in reasons
+    assert "unmapped" in reasons
+    assert all((row.get("existing_controls") or "") == "" for row in accept)
     assert all((row.get("additional_controls") or "") == "" for row in accept)
     assert all(row.get("residual_risk") == row.get("current_risk") for row in accept)
     assert all(str(row.get("additional_controls") or "").startswith("CTL-") for row in mitigate)
+
+
+def test_pack_drop_twin_is_merged_into_not_accept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#180 twin shares one EGP; #181 must not accept the alias."""
+    from shared.egp_collapse import MERGED_INTO_PREFIX
+    from shared.poam_ledger import fp_v1
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir()
+    xml = _finding(
+        ref_id="NMAP-dc-445-tcp",
+        name="SMB 445 exposed",
+        description="dc.corp.local has open TCP/445 (microsoft-ds).",
+        severity="high",
+        assets=["dc.corp.local"],
+        extra={
+            "port": "445",
+            "protocol": "tcp",
+            "service": "microsoft-ds",
+            "ip": "10.0.0.10",
+            "check_id": "nmap-port-445/tcp",
+            "tool": "nmap",
+        },
+    )
+    twin = _finding(
+        ref_id="NMAP-nmap-10-microsoftds-445",
+        name="SMB 445 exposed",
+        description="dc.corp.local has open TCP/445 (microsoft-ds).",
+        severity="high",
+        assets=["dc.corp.local"],
+        extra={
+            "port": "445",
+            "protocol": "tcp",
+            "service": "microsoft-ds",
+            "ip": "10.0.0.10",
+            "id": "nmap-10-microsoftds-445",
+            "adapter": "nmap",
+            "pack_drop": "covey",
+        },
+    )
+    assert fp_v1(xml) == fp_v1(twin)
+    write_canonical("inventory-nmap", [xml, twin])
+    summary = load()
+    assert summary["poam"] == 1
+    assert summary["excluded"] == 1
+    assert summary["risk_scenarios"] == 1
+    excluded = csv_rows(out_dir() / "poam" / "excluded.csv")
+    assert len(excluded) == 1
+    assert str(excluded[0]["excluded_reason"]).startswith(MERGED_INTO_PREFIX)
+    assert str(excluded[0]["superseded_by"]).startswith("EGP-")
+    scenarios = csv_rows(out_dir() / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    assert len(scenarios) == 1
+    assert scenarios[0]["treatment"] == "mitigate"
+    assert scenarios[0]["existing_controls"] == ""
+    assert scenarios[0]["name"] == "SMB 445 exposed"
+    controls = csv_rows(out_dir() / "ciso-assistant" / "applied_controls.csv")
+    assert len(controls) == 1
+
+
+def test_same_egp_info_twin_is_merged_not_accept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Info + Low pack_drop twins share one EGP; info is an alias, not accept."""
+    from shared.egp_collapse import MERGED_INTO_PREFIX
+    from shared.poam_ledger import fp_v1
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir()
+    low = _finding(
+        ref_id="NMAP-naabu-c40-svc-22",
+        name="Open TCP/22 observed",
+        description="10.0.0.40 has open TCP/22.",
+        severity="low",
+        assets=["10.0.0.40"],
+        extra={
+            "port": "22",
+            "protocol": "tcp",
+            "id": "naabu-c40-svc-22",
+            "adapter": "naabu",
+            "pack_drop": "covey",
+        },
+    )
+    info = _finding(
+        ref_id="NMAP-naabu-c40-tcp-22",
+        name="Open TCP/22 observed",
+        description="10.0.0.40 has open TCP/22.",
+        severity="info",
+        assets=["10.0.0.40"],
+        extra={
+            "port": "22",
+            "protocol": "tcp",
+            "id": "naabu-c40-tcp-22",
+            "adapter": "naabu",
+            "pack_drop": "covey",
+        },
+    )
+    assert fp_v1(low) == fp_v1(info)
+    write_canonical("inventory-nmap", [low, info])
+    summary = load()
+    assert summary["poam"] == 1
+    assert summary["excluded"] == 1
+    assert summary["risk_scenarios"] == 1
+    excluded = csv_rows(out_dir() / "poam" / "excluded.csv")
+    assert len(excluded) == 1
+    assert str(excluded[0]["excluded_reason"]).startswith(MERGED_INTO_PREFIX)
+    scenarios = csv_rows(out_dir() / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    assert len(scenarios) == 1
+    assert scenarios[0]["treatment"] == "mitigate"
+    assert scenarios[0]["existing_controls"] == ""
