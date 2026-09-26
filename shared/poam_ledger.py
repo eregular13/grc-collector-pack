@@ -799,6 +799,30 @@ def item_maps_to_current(
     return False
 
 
+def excluded_reason_for(rec: dict[str, Any]) -> str:
+    """Why this finding is off the POA&M, or empty when it stays on."""
+    from shared.control_map import poam_decision
+
+    decision = poam_decision(rec)
+    if decision.get("include"):
+        return ""
+    return str(decision.get("reason") or "unexplained")
+
+
+def item_is_excluded(item: dict[str, Any]) -> bool:
+    """True when a ledger item was recorded as excluded, not an open weakness."""
+    return bool(str(item.get("excluded_reason") or "").strip())
+
+
+def persist_ledger(ledger: dict[str, Any], out_root: Path | None = None) -> Path:
+    """Rewrite out/poam/poam-ledger.json after in-memory stamps."""
+    ledger["sha256"] = payload_sha256(ledger)
+    dest = (out_root or out_dir()) / LEDGER_OUT_REL
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    return dest
+
+
 def egr_key(policy: str, account: str) -> str:
     """Stable digest for an EGR- rollup. Policy name + account, not resources."""
     acct = str(account or "").strip() or "unknown"
@@ -1005,6 +1029,7 @@ def _new_item(
         "current_scanner_rating": scanner,
         "scanner_critical": scanner == "critical",
         "status": "open",
+        "excluded_reason": "",
         "status_date": run_date.isoformat(),
         "closed_date": "",
         "closure_evidence": [],
@@ -1688,6 +1713,8 @@ def apply_ledger(
     instances = fan_out_instances(findings)
     coverage = build_coverage(instances)
     seen: set[str] = set()
+    included_fps: set[str] = set()
+    excluded_by_fp: dict[str, str] = {}
     catalog_sha = catalog.sha256 if catalog.kev_evaluated else ""
     legacy_cache: dict[int, list[tuple[str, str]]] = {}
 
@@ -1696,6 +1723,11 @@ def apply_ledger(
             rec, ledger, run_iso, instances=instances, legacy_cache=legacy_cache
         )
         seen.add(fp)
+        reason = excluded_reason_for(rec)
+        if reason:
+            excluded_by_fp.setdefault(fp, reason)
+        else:
+            included_fps.add(fp)
         cves = collect_cves(rec)
         kev = join_kev(cves, catalog)
         used = _used_ids(ledger)
@@ -1866,6 +1898,12 @@ def apply_ledger(
                 )
             )
 
+    for fp, item in ledger["items"].items():
+        if fp in included_fps:
+            item["excluded_reason"] = ""
+        elif fp in excluded_by_fp:
+            item["excluded_reason"] = excluded_by_fp[fp]
+
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
             continue
@@ -1980,7 +2018,5 @@ def run_ledger(
     )
     if LEDGER_CHAIN_BROKEN in load_warnings:
         ledger["warnings"] = sorted(set(list(ledger.get("warnings") or []) + [LEDGER_CHAIN_BROKEN]))
-    dest = (out_root or out_dir()) / LEDGER_OUT_REL
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    persist_ledger(ledger, out_root)
     return ledger
