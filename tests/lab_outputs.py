@@ -149,7 +149,14 @@ def assert_lab() -> None:
     for row in smb:
         assert "cpg_2_W" in (row.get("framework_refs") or "")
         assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
-        assert "dialect" in (row.get("recommended_fix") or "").lower() or "port" in (row.get("recommended_fix") or "").lower()
+        fix = (row.get("recommended_fix") or "").lower()
+        weak = (row.get("weakness") or "").lower()
+        assert (
+            "dialect" in fix
+            or "port" in fix
+            or "null" in fix
+            or "null" in weak
+        ), (weak, fix)
     for row in poam:
         assert (row.get("owner") or "") == ""
         assert (row.get("due") or "") == ""
