@@ -1,3 +1,22 @@
+# CRITIC — cycle 200 (MERGE_MASTER_144_PORT_FOLD)
+
+Merge `origin/master` `ec61cde` (#144 fold nmap port-only rows into
+specific host+port findings) into this branch. Both sides kept: Wazuh
+maps by `rule.level` only (never default High); aggregated alerts stay
+`excluded.csv` telemetry unless level ≥ 12 or a known compromise
+indicator; nmap port-only rows that share a host+port with a specific
+finding are `superseded_by_specific`. Lab this brick: pytest **1213**
+passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=78` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=123` `excluded=2` `severity_unmapped=0` `demo=true`). Excluded:
+`WAZ-alert-5710-web-01` telemetry + `NMAP-telnet-legacy-corp-local-80`
+superseded_by_specific. Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68. Zero
+P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 199 (MERGE_MASTER_138_142_146)
 
 Merge `origin/master` `2818608` (#138 EGA- asset identity ledger, #142

@@ -13,14 +13,14 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "vulnerabilities": 22,
   "evidences": 32,
   "applied_controls": 125,
-  "poam": 124,
+  "poam": 123,
   "risk_scenarios": 125,
   "ocsf": 103,
   "canonical": 208,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:04:24Z"
+  "generated_at": "2026-09-26T07:08:08Z"
 }
 ```
 
-Cycle 199 restamp after merging master `2818608` (pytest 1204; host-lab assets=78 poam=124 excluded=1). CoS #48 rails above stand.
+Cycle 200 restamp after merging master `ec61cde` (pytest 1213; host-lab assets=78 poam=123 excluded=2). CoS #48 rails above stand.
