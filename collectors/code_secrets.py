@@ -103,20 +103,46 @@ def _checkov_reports(payload: Any) -> list[dict[str, Any]]:
 
 def _checkov_failed(report: dict[str, Any]) -> list[dict[str, Any]]:
     results = report.get("results") or report.get("Results")
-    raw: Any = []
+    rows: Any = []
     if isinstance(results, dict):
-        raw = results.get("failed_checks") or results.get("failed") or []
+        rows = results.get("failed_checks") or results.get("failed") or []
     elif isinstance(report.get("failed_checks"), list):
-        raw = report["failed_checks"]
+        rows = report["failed_checks"]
     out: list[dict[str, Any]] = []
-    for row in raw if isinstance(raw, list) else []:
+    for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict):
             continue
-        sev = str(row.get("severity") or row.get("Severity") or "high").strip().lower()
-        if sev in {"info", "informational", "passed", "skip", "skipped"}:
+        raw_sev = row.get("severity")
+        if raw_sev in (None, ""):
+            raw_sev = row.get("Severity")
+        sev = str(raw_sev or "medium").strip().lower()
+        if sev in {"info", "informational", "passed", "skip", "skipped", "null"}:
             continue
         out.append(row)
     return out
+
+
+def _checkov_severity(hit: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Prisma fills severity; OSS often leaves it null. Default medium, not high."""
+    raw = hit.get("severity")
+    if raw in (None, ""):
+        raw = hit.get("Severity")
+    if raw in (None, "", "null"):
+        return "medium", {"severity_source": "default"}
+    return str(raw), {}
+
+
+def _semgrep_severity(raw: Any) -> str:
+    """OSS rules: ERROR/WARNING/INFO. Newer packs: LOW–CRITICAL."""
+    text = str(raw or "").strip()
+    up = text.upper()
+    if up == "ERROR":
+        return "high"
+    if up in {"WARNING", "WARN"}:
+        return "medium"
+    if up == "INFO":
+        return "low"
+    return text or "medium"
 
 
 def parse_file(path: Path) -> list[dict]:
@@ -209,7 +235,9 @@ def parse_file(path: Path) -> list[dict]:
                 cid = str(hit.get("check_id") or hit.get("bc_check_id") or "checkov")
                 title = str(hit.get("check_name") or hit.get("check_id") or "Checkov finding")
                 resource = str(hit.get("resource") or "")
-                sev = str(hit.get("severity") or hit.get("Severity") or "high")
+                sev, sev_extra = _checkov_severity(hit)
+                extra = {"check_id": cid, "rule": cid, "resource": resource}
+                extra.update(sev_extra)
                 records.append(
                     make_record(
                         kind="finding",
@@ -225,7 +253,7 @@ def parse_file(path: Path) -> list[dict]:
                         assets=[fpath],
                         labels=LABELS + ["checkov"],
                         collected_at=now,
-                        extra={"check_id": cid, "resource": resource},
+                        extra=extra,
                     )
                 )
         return records
@@ -239,7 +267,7 @@ def parse_file(path: Path) -> list[dict]:
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, rid),
+                    ref_id=make_ref(SOURCE, f"{rid}-{uri}"),
                     name=str(row.get("message") or rid),
                     description=str(row.get("message") or rid),
                     severity=row.get("severity") or "medium",
@@ -260,14 +288,13 @@ def parse_file(path: Path) -> list[dict]:
             fpath = str(hit.get("path") or "repo")
             extra = hit.get("extra") if isinstance(hit.get("extra"), dict) else {}
             add_asset(fpath)
-            sev = extra.get("severity") or hit.get("severity") or "high"
-            if str(sev).upper() == "ERROR":
-                sev = "high"
+            cid = str(hit.get("check_id") or "sast")
+            sev = _semgrep_severity(extra.get("severity") or hit.get("severity"))
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, str(hit.get("check_id") or "sast")),
+                    ref_id=make_ref(SOURCE, f"{cid}-{fpath}"),
                     name=str(extra.get("message") or hit.get("check_id") or "SAST finding"),
                     description=str(extra.get("message") or hit.get("check_id")),
                     severity=sev,
@@ -275,7 +302,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[fpath],
                     labels=LABELS + ["semgrep"],
                     collected_at=now,
-                    extra={"check_id": str(hit.get("check_id") or "sast")},
+                    extra={"check_id": cid, "rule": cid},
                 )
             )
         if records:
@@ -295,7 +322,7 @@ def parse_file(path: Path) -> list[dict]:
                     make_record(
                         kind="finding",
                         source=SOURCE,
-                        ref_id=make_ref(SOURCE, vid),
+                        ref_id=make_ref(SOURCE, f"{vid}-{target}"),
                         name=str(vuln.get("Title") or vid),
                         description=str(vuln.get("Description") or vid),
                         severity=vuln.get("Severity") or "medium",
