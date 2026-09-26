@@ -311,8 +311,50 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
     return ""
 
 
+def _wazuh_host_token(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent name — not a ledger-merged hostname."""
+    extra = extra_dict(rec)
+    assets = [str(a).strip().lower() for a in (rec.get("assets") or []) if str(a).strip()]
+    if assets:
+        return assets[0]
+    for key in ("agent", "hostname", "host"):
+        val = _extra_field(extra, key)
+        if val:
+            return val.lower()
+    ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
+    for key in ("agent", "hostname"):
+        val = str(ids.get(key) or "").strip()
+        if val:
+            return val.lower()
+    return ""
+
+
+def _attach_wazuh_host(rec: dict[str, Any], key: str) -> str:
+    """Keep host/agent on Wazuh coverage keys so IP-joined EGAs stay two EGPs."""
+    if _tool_tag(rec) != "wazuh":
+        return key
+    extra = extra_dict(rec)
+    if extra.get("agent_status") in (None, "") and extra.get("disk_encryption_enabled") in (
+        None,
+        "",
+    ):
+        return key
+    host = _wazuh_host_token(rec)
+    if not host:
+        return key
+    suffix = f":{host}"
+    if key.lower().endswith(suffix):
+        return key
+    return f"{key}{suffix}"
+
+
 def weakness_key(rec: dict[str, Any]) -> str:
     """Stable weakness identity: scanner id, share, port+class, then a discriminator."""
+    return _attach_wazuh_host(rec, _weakness_key_core(rec))
+
+
+def _weakness_key_core(rec: dict[str, Any]) -> str:
+    """Weakness key before the Wazuh host suffix. Migration source only."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id"):
@@ -922,6 +964,23 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
     if fp and fp not in seen:
         seen.add(fp)
         out.append((fp, "title_master_ega"))
+    extra = extra_dict(rec)
+    if _tool_tag(rec) == "wazuh" and (
+        extra.get("agent_status") not in (None, "")
+        or extra.get("disk_encryption_enabled") not in (None, "")
+    ):
+        hostless = _weakness_key_core(rec)
+        if hostless and hostless != weakness_key(rec):
+            for fn, reason in (
+                (asset_key, "wazuh_add_host"),
+                (legacy_master_asset_key, "wazuh_add_host"),
+                (legacy_asset_id_port_key, "wazuh_add_host"),
+                (legacy_name_asset_key, "wazuh_add_host"),
+            ):
+                fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=lambda _r, k=hostless: k)
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
     return out
 
 

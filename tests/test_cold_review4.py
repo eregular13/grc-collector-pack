@@ -8,9 +8,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.asset_ids import classify_name, is_placeholder_id
+from shared.asset_ids import classify_name, is_placeholder_id, stamp_ids
 from shared.asset_key import legacy_name_asset_key
-from shared.asset_ledger import AssetLedger, asset_uid
+from shared.asset_ledger import AssetLedger, asset_uid, attach_asset_uids
 from shared.kev import KevCatalog
 from shared.poam_ledger import (
     _is_scanner_identity,
@@ -926,3 +926,160 @@ def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
     assert len(fed_rows) == 126
     assert reseen_ids == prior_ids
     assert summary.get("demo") is True
+
+
+def _nmap_fqdn_asset(fqdn: str, ip: str) -> dict:
+    return make_record(
+        kind="asset",
+        source="inventory-nmap",
+        ref_id=make_ref("inventory-nmap", f"asset-{fqdn}"),
+        name=fqdn,
+        description=f"Host {fqdn}",
+        category="host",
+        assets=[fqdn],
+        labels=["nmap"],
+        collected_at=NOW,
+        extra=stamp_ids({}, fqdn=fqdn, ip=ip),
+    )
+
+
+def _fleet_short_asset(name: str) -> dict:
+    return make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", f"asset-{name}"),
+        name=name,
+        description=f"Fleet host {name}",
+        category="host",
+        assets=[name],
+        labels=["wazuh", "host"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname=name),
+    )
+
+
+def _wazuh_disconnected(host: str) -> dict:
+    return {
+        "kind": "finding",
+        "source": "host-wazuh",
+        "ref_id": make_ref("host-wazuh", f"coverage-{host}"),
+        "name": f"Wazuh agent disconnected: {host}",
+        "description": f"Endpoint {host} is disconnected; coverage gap.",
+        "severity": "high",
+        "category": "coverage-gap",
+        "assets": [host],
+        "labels": ["wazuh", "host", "coverage"],
+        "collected_at": NOW,
+        "extra": {"agent_status": "disconnected"},
+    }
+
+
+def _poam_open(records: list[dict]) -> list[dict]:
+    ledger = AssetLedger()
+    stamped = attach_asset_uids(records, ledger, now=NOW)
+    findings = [r for r in stamped if r.get("kind") == "finding"]
+    out = apply_ledger(
+        findings,
+        catalog=_unevaluated(),
+        run_at=_run(NOW),
+        ledger_in=empty_ledger(),
+        prior_existed=True,
+    )
+    return [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+
+
+def test_ambiguous_bare_web01_four_rows_both_orders() -> None:
+    """Bare web01 must not fold into web01.corp-a or web01.corp-b. 4 rows either order.
+
+    Two nmap hosts (port-22) plus the Fleet coverage row on the bare name, and
+    one FQDN coverage row so a fold would collapse a POA&M ID. Master keeps
+    four rows; both ledger orders must too.
+    """
+    pair = (
+        ("web01.corp-a.local", "10.1.0.10"),
+        ("web01.corp-b.local", "10.2.0.10"),
+    )
+    for order in (pair, tuple(reversed(pair))):
+        records = []
+        for fqdn, ip in order:
+            records.append(_nmap_fqdn_asset(fqdn, ip))
+            records.append(_nmap_port(fqdn, "22", service="ssh", extra={"ip": ip}))
+        records.append(_wazuh_disconnected(order[0][0]))
+        records.append(_fleet_short_asset("web01"))
+        records.append(_wazuh_disconnected("web01"))
+        ledger = AssetLedger()
+        stamped = attach_asset_uids(records, ledger, now=NOW)
+        uids = {
+            str((r.get("extra") or {}).get("asset_uid") or "")
+            for r in stamped
+            if r.get("kind") == "asset"
+        }
+        assert len(uids) == 3, f"order {order[0][0]} first folded to {uids}"
+        open_items = _poam_open(records)
+        assert len(open_items) == 4, (
+            f"order {order[0][0]} first → {len(open_items)} rows "
+            f"{[(it.get('name'), it.get('poam_id')) for it in open_items]}"
+        )
+
+
+def test_wazuh_ip_reuse_keeps_two_egps() -> None:
+    """hostb may join hosta's EGA by IP; Wazuh rows stay two distinct EGPs."""
+    hosta = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hosta"),
+        name="hosta",
+        category="host",
+        assets=["hosta"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hosta", ip="10.5.0.5"),
+    )
+    hostb = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hostb"),
+        name="hostb",
+        category="host",
+        assets=["hostb"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hostb", ip="10.5.0.5"),
+    )
+    fa = _wazuh_disconnected("hosta")
+    fb = _wazuh_disconnected("hostb")
+    assert weakness_key(fa) != weakness_key(fb)
+    assert weakness_key(fa).endswith(":hosta")
+    assert weakness_key(fb).endswith(":hostb")
+    hostless = {
+        **fa,
+        "assets": ["hosta"],
+        "extra": {"agent_status": "disconnected"},
+    }
+    from shared.poam_ledger import _legacy_fps_for, _weakness_key_core
+
+    assert _weakness_key_core(hostless) == "wazuh:agent_status:disconnected"
+    assert any(reason == "wazuh_add_host" for _fp, reason in _legacy_fps_for(fa))
+    assert fp_v1(fa, weakness_key_fn=_weakness_key_core) in fingerprints_for(fa)
+    ledger = AssetLedger()
+    stamped = attach_asset_uids([hosta, hostb, fa, fb], ledger, now=NOW)
+    findings = [r for r in stamped if r.get("kind") == "finding"]
+    assert len({str((r.get("extra") or {}).get("asset_uid") or "") for r in findings}) == 1
+    out = apply_ledger(
+        findings,
+        catalog=_unevaluated(),
+        run_at=_run(NOW),
+        ledger_in=empty_ledger(),
+        prior_existed=True,
+    )
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    assert len(open_items) == 2
+    assert {it["poam_id"] for it in open_items}.__len__() == 2
+    assert {it["weakness_key"] for it in open_items} == {
+        weakness_key(fa),
+        weakness_key(fb),
+    }
