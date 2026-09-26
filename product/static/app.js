@@ -1,4 +1,4 @@
-const state = { tab: "findings", rows: [], summary: null };
+const state = { tab: "findings", rows: [], summary: null, coverage: null };
 
 const COLS = {
   findings: [
@@ -154,6 +154,7 @@ function renderKpis(estate) {
     .join("");
     renderPoamKpis(estate.poam || {});
     renderCoverageKpis(estate.coverage || {});
+    renderCoverageSensors(estate.coverage || {});
     renderSinkKpis(estate);
 }
 
@@ -283,6 +284,33 @@ function heatClass(n, max) {
   return "heat-1";
 }
 
+function renderCoverageSensors(coverage) {
+  const el = $("coverage-sensors");
+  if (!el) return;
+  const rows = Array.isArray(coverage && coverage.sensors) ? coverage.sensors : [];
+  if (state.tab !== "coverage") {
+    el.classList.add("hidden");
+    return;
+  }
+  el.classList.remove("hidden");
+  if (!rows.length) {
+    el.innerHTML = "<p>No per-sensor parse status on this out/.</p>";
+    return;
+  }
+  el.innerHTML = rows
+    .map((row) => {
+      const source = escapeHtml(String(row.source || ""));
+      const status = escapeHtml(String(row.status || "empty"));
+      const issues = Array.isArray(row.issues) ? row.issues : [];
+      const first = issues[0] || {};
+      const file = first.file ? escapeHtml(String(first.file)) : "";
+      const reason = first.reason ? escapeHtml(String(first.reason)) : "";
+      const detail = file || reason ? `${file}${file && reason ? " — " : ""}${reason}` : `${row.records || 0} records`;
+      return `<div class="sensor-cell sensor-${status}"><b>${source}</b><span>${status}${detail ? " · " + detail : ""}</span></div>`;
+    })
+    .join("");
+}
+
 function renderCoverageHeat(tokens) {
   const el = $("coverage-heat");
   if (!el) return;
@@ -379,6 +407,7 @@ function renderTable() {
       state.tab !== "coverage" && state.tab !== "controls" && state.tab !== "scenarios"
     );
   }
+  renderCoverageSensors(state.coverage || (state.summary && state.summary.coverage) || {});
   renderCoverageHeat(state.tab === "coverage" ? state.rows : []);
   if (!rows.length) {
     $("table-wrap").innerHTML = "<p>No rows match.</p>";
@@ -400,6 +429,7 @@ async function loadTab() {
   if (state.tab === "coverage") {
     state.coverage = payload;
     state.rows = Array.isArray(payload.tokens) ? payload.tokens : [];
+    renderCoverageSensors(payload);
     renderTable();
     return;
   }

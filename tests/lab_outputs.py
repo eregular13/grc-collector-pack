@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import re
 from pathlib import Path
@@ -31,14 +30,14 @@ def _read(path: Path) -> str:
 
 
 def _csv_rows(path: Path, expected_header: str, delim: str = ",") -> list[dict]:
+    from shared.ciso_shape import csv_rows, first_nonempty_line
+
     text = _read(path)
-    data_lines = [
-        line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")
-    ]
-    assert data_lines, f"no csv data {path}"
-    first = data_lines[0].strip()
+    first = first_nonempty_line(path)
     assert first == expected_header, f"{path.name} header {first!r} != {expected_header!r}"
-    return list(csv.DictReader(data_lines, delimiter=delim))
+    assert not text.lstrip().startswith("#"), f"{path.name} import CSV must not start with #"
+    assert first == text.splitlines()[0].strip()
+    return csv_rows(path, delimiter=delim)
 
 
 def _json(path: Path):
@@ -67,7 +66,10 @@ def assert_lab() -> None:
         assert len(sr) == len(poam)
         estate_txt = OUT / "simplerisk" / "ESTATE.txt"
         assert estate_txt.is_file()
-        assert "ESTATE:" in estate_txt.read_text(encoding="utf-8")
+        sidecar = estate_txt.read_text(encoding="utf-8")
+        assert sidecar.lstrip().startswith("> **")
+        assert "CLIENT:" not in sidecar.splitlines()[0]
+        assert any(row.get("estate") for row in sr)
 
     rr_dir = OUT / "riskready"
     assert not rr_dir.exists(), "loader must not write out/riskready"
@@ -111,6 +113,21 @@ def assert_lab() -> None:
     assert ctrls and scen
     assert poam, "poam.csv empty"
     assert (OUT / "poam" / "poam.md").is_file()
+    exec_sum = OUT / "EXECUTIVE_SUMMARY.md"
+    trust = OUT / "SCOPE_AND_TRUST.md"
+    if exec_sum.is_file() and trust.is_file():
+        exec_text = exec_sum.read_text(encoding="utf-8")
+        trust_text = trust.read_text(encoding="utf-8")
+        assert exec_text.startswith("> **")
+        assert trust_text.startswith("> **")
+        assert "not recorded" in trust_text or "Authorization" in trust_text
+        assert "CoS #" not in exec_text and "CoS #" not in trust_text
+    estate_txt = OUT / "ciso-assistant" / "ESTATE.txt"
+    if estate_txt.is_file():
+        assert (OUT / "poam" / "ESTATE.txt").is_file()
+        assert not (OUT / "ciso-assistant" / "findings.csv").read_text(
+            encoding="utf-8"
+        ).lstrip().startswith("#")
     smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
     assert smb, "SMB/445 exposure must map into POA&M"
     rdp = [r for r in poam if "RDP" in (r.get("weakness") or "") or "3389" in (r.get("recommended_fix") or "")]

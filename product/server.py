@@ -7,7 +7,6 @@ Never proxies or POSTs /api/risks. Not an eleventh Compose service.
 
 from __future__ import annotations
 
-import csv
 import io
 import json
 import os
@@ -163,12 +162,9 @@ def assert_loopback_host(host: str) -> str:
 def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
-    with path.open(encoding="utf-8", newline="") as fh:
-        # Skip leftover `#` comment lines so a header row is never a banner.
-        lines = [ln for ln in fh if ln.strip() and not ln.lstrip().startswith("#")]
-    if not lines:
-        return []
-    return list(csv.DictReader(lines, delimiter=delim))
+    from shared.ciso_shape import csv_rows
+
+    return csv_rows(path, delimiter=delim)
 
 
 def _read_json(path: Path):
@@ -366,6 +362,26 @@ def _ingest_framework_source(
     return hit_rows
 
 
+def sensor_coverage(out: Path | None = None) -> list[dict]:
+    """Per-sensor parse status from the loader / collector coverage files."""
+    dest = out if out is not None else out_dir()
+    summary = _read_json(dest / "summary.json") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+    coverage = summary.get("coverage") if isinstance(summary.get("coverage"), dict) else {}
+    rows = coverage.get("sensors") if isinstance(coverage, dict) else None
+    if isinstance(rows, list):
+        return [row for row in rows if isinstance(row, dict)]
+    mapped = summary.get("sensors")
+    if isinstance(mapped, dict):
+        return [row for row in mapped.values() if isinstance(row, dict)]
+    try:
+        from shared.io_util import load_sensor_coverage
+    except ImportError:
+        return []
+    return load_sensor_coverage(dest)
+
+
 def framework_coverage(out: Path | None = None) -> dict:
     """Group framework_refs / labels / csf_function into NIST/CIS/ISO-ish counts."""
     dest = out if out is not None else out_dir()
@@ -390,6 +406,7 @@ def framework_coverage(out: Path | None = None) -> dict:
         tokens.values(),
         key=lambda row: (-int(row["total"]), str(row["family"]), str(row["token"])),
     )
+    sensors = sensor_coverage(dest)
     return {
         "families": families,
         "tokens": ranked,
@@ -402,6 +419,7 @@ def framework_coverage(out: Path | None = None) -> dict:
         "scenarios": len(scenarios),
         "poam_rows": len(poam),
         "findings_rows": len(findings),
+        "sensors": sensors,
         "client": False,
     }
 

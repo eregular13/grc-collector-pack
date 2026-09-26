@@ -1,5 +1,43 @@
 # CYCLE log
 
+## cycle 193 — import CSVs start with exact header (2026-09-26)
+
+CISO Assistant / OpenGRC / spreadsheet importers do not skip `#` comments.
+Machine-imported CSVs now start with the locked importer header (no preamble).
+CISO and OpenGRC omit the extra `estate` column; POA&M keeps it (operator
+draft). Banner lives in EXECUTIVE_SUMMARY.md, SCOPE_AND_TRUST.md, poam.md,
+and `out/<sink>/ESTATE.txt`. Fail-closed classify unchanged. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 192 — rebase estate pages onto master + CI (2026-09-26)
+
+Rebase `cursor/estate-exec-trust-pages-f8c2` onto master after #128/#129/#130.
+Keep weakness dedupe, count consistency, RiskReady JSON drop, HardeningKitty
+LAB feed, and the estate banner / exec / SCOPE_AND_TRUST wiring. CSF loader
+test skips `#` banner comments so DictReader is not poisoned. PR #132 ready,
+not draft. Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+## cycle 191 — estate banner + exec summary + SCOPE_AND_TRUST (2026-09-26)
+
+Argus Part 0 banner on every named export (exec summary, SCOPE_AND_TRUST.md,
+poam.csv/poam.md, CISO CSVs, OpenGRC, Probo) plus an `estate` column on every
+CSV row. Exactly one allowed label; fail closed; SAMPLE/DEMO/LAB and
+product-lab/drop fallback cannot become CLIENT and cannot be suppressed.
+One-page exec summary and SCOPE_AND_TRUST.md generated from the run; missing
+values print "not recorded"; reviewer slots stay placeholders. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
+
+Merge master `05a29fd` (#130 HardeningKitty) into the DEMO fallback
+honesty branch. Both behaviors stay: official Audit CSV TestResult +
+filename host on LAB dest_in identity, and `run_collector` never fills
+`fixtures/demo` on LAB/CLIENT/operator parse failure. HK lab-drop
+identity hosts stay `lab-win.lab.internal` / `lab-win-b.lab.internal`
+— never demo `win-dc01`. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`.
+
 ## cycle 190 — HK TestResult authority + filename host (2026-09-26)
 
 Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV
@@ -11,6 +49,15 @@ legacy Result=Failed still parses). Host from
 `HARDENINGKITTY_HOST` — never silent `windows-host`. Two SYNTHETIC
 fixtures, official header only. Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
+
+## cycle 189 — DEMO fallback honesty (2026-09-26)
+
+Parse failure / empty sensor on LAB, CLIENT, or a live operator drop
+never substitutes `fixtures/demo`. Per-sensor `parse_error` /
+`no_records` land in `summary.json` and `/api/coverage` sensors.
+DEMO/SAMPLE empty-in still loads fixtures and stays labeled. No POST
+`/api/risks`. RiskReady stay-out. Catalog **unchanged**. paying_day
+**FAIL**.
 
 ## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
 

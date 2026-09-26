@@ -105,6 +105,7 @@ CSV headers (exact):
 - findings: `ref_id,name,description,severity,status,filtering_labels` (`low|medium|high|critical`)
 - vulnerabilities: `ref_id,name,description,status,severity,assets,applied_controls` (`Information|Low|Medium|High|Critical`)
 - risk_scenarios: semicolon, `treatment=mitigate`
+- Estate banner is in `EXECUTIVE_SUMMARY.md`, `SCOPE_AND_TRUST.md`, `poam.md`, and `ciso-assistant/ESTATE.txt`. Import CSVs start with the exact header (no `#` preamble). `filtering_labels` include `estate_<kind>`. POA&M keeps a trailing `estate` column.
 
 CISO Assistant is Reid-side SoR. Prefer [clica](https://github.com/intuitem/ciso-assistant-community) or the UI CSV import. Do not invent FindingsAssessment UUIDs. `push_ciso.sh` defaults to dry-run; if `CISO_PUSH=1` and `DRY_RUN!=1` it may POST `/api/assets/` and `/api/evidences/` only.
 
@@ -142,7 +143,7 @@ Do not restore wrap POSTs to `/api/auth/login`, `/itsm/assets`, `/evidence`, `/i
 
 ## Drop real scanner output
 
-Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`, `wazuh`, `identity`, `easm`, `k8s`, `code`, `saas`, `dns_email`, `honeypot`). Empty `in/` uses `fixtures/demo/` and labels include `demo`. Parse failure falls back to fixtures.
+Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`, `wazuh`, `identity`, `easm`, `k8s`, `code`, `saas`, `dns_email`, `honeypot`). Empty `in/` on a DEMO/SAMPLE run uses `fixtures/demo/` and labels include `demo`. LAB / CLIENT / operator drops never substitute demo: parse failure or an empty sensor is recorded as `parse_error` / `no_records` and that collector stays empty.
 
 OSS / fair-use only (Prowler, Nmap, Nuclei, Trivy, Wazuh, BloodHound CE, Amass, Kubescape, Gitleaks, ScubaGear, official cloud APIs, …). No Wiz / Orca / Prisma / CrowdStrike / Qualys / Tenable / Vanta / Drata required.
 

@@ -94,8 +94,8 @@ def test_simplerisk_poam_csv_has_estate_banner_and_column(
 ) -> None:
     """Machine-imported CSV: exact header, no # preamble. Banner is ESTATE.txt.
 
-    PR #132 is being revised the same way. Estate label is the per-row
-    `estate` column (importer-tolerant) plus out/simplerisk/ESTATE.txt.
+    Estate label is the per-row `estate` column plus out/simplerisk/ESTATE.txt
+    (PR #132 stamp is the source of truth).
     """
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")])
     sr = out / "simplerisk" / "poam.csv"
@@ -107,10 +107,9 @@ def test_simplerisk_poam_csv_has_estate_banner_and_column(
     assert lines[0].split(",")[8] == "estate"
     rows = _csv_rows(sr)
     assert rows
-    assert {row["estate"] for row in rows} == {"LAB"}
+    assert {row["estate"] for row in rows} == {"LAB: TEST ENVIRONMENT"}
     estate_txt = (out / "simplerisk" / "ESTATE.txt").read_text(encoding="utf-8")
-    assert "ESTATE: LAB" in estate_txt
-    assert "not a client estate" in estate_txt
+    assert "LAB: TEST ENVIRONMENT" in estate_txt
 
 
 def test_console_works_without_riskready_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

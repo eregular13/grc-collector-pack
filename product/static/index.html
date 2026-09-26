@@ -86,10 +86,13 @@
     (<code>applied_controls.csv</code>, semicolon <code>risk_scenarios.csv</code>).
     Framework counts group wizard-safe <code>cpg_*</code> / <code>csf_*</code> /
     CIS / ISO-ish tokens from POA&amp;M <code>framework_refs</code> and finding labels.
+    Sensors list parse_error / no_records / empty / demo from this run — a failed
+    collector stays empty, never silent DEMO fill.
     Loopback only. Not a SaaS coverage product.
   </p>
 
   <main>
+    <div id="coverage-sensors" class="coverage-sensors hidden" aria-label="Sensor parse status"></div>
     <div id="coverage-heat" class="coverage-heat hidden" aria-label="Framework heatmap"></div>
     <div id="table-wrap"></div>
   </main>

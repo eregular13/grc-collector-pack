@@ -114,6 +114,31 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .coverage-kpis-wrap { padding: 0 0 0.2rem; }
 .coverage-kpis { padding-top: 0.45rem; }
 
+.coverage-sensors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.45rem;
+  padding: 0 1.6rem 0.6rem;
+}
+.sensor-cell {
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 0.45rem 0.6rem;
+}
+.sensor-cell b {
+  display: block;
+  font-size: 0.8rem;
+}
+.sensor-cell span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.sensor-cell.sensor-parse_error,
+.sensor-cell.sensor-no_records,
+.sensor-cell.sensor-empty { background: #f8e8e4; }
+.sensor-cell.sensor-demo { background: #f4efe6; }
+.sensor-cell.sensor-ok { background: #e4efe6; }
+
 .coverage-heat {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
