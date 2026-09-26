@@ -1,0 +1,2 @@
+# dropbox local inventory (ss/ip). Not Nmap.
+Host: 172.28.10.10 (DESKTOP-222GHQV)	Ports: 22/open/tcp//ssh///, 80/open/tcp//http///

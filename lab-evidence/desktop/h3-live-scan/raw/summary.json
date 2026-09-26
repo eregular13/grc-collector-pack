@@ -1,0 +1,88 @@
+{
+  "stamp": "20260926-165419",
+  "item": "h3-live-scan",
+  "pack_base": "ce67328",
+  "lab": true,
+  "sample": false,
+  "client": false,
+  "posted": false,
+  "paying_day": "FAIL",
+  "allowlist": [
+    "172.28.10.0/24",
+    "172.28.11.0/24"
+  ],
+  "refused_default_demo_scope_all_live": true,
+  "refused_default_demo_reason": "dropbox/SCOPE.yaml external hosts include vpn.example.com and staging.example.com; queue forbids internet targets. Ran the documented command against a lab-estate-only SCOPE instead.",
+  "host_tools": {
+    "nmap": null,
+    "ss": null,
+    "lynis": null,
+    "docker": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.EXE",
+    "python": "C:\\Python314\\python.exe"
+  },
+  "docker_ps_rc": 0,
+  "docker_ps_lines": 48,
+  "tcp_probes": [
+    {
+      "host": "172.28.10.10",
+      "port": 80,
+      "ok": false,
+      "error": "TimeoutError: timed out"
+    },
+    {
+      "host": "172.28.11.10",
+      "port": 80,
+      "ok": false,
+      "error": "TimeoutError: timed out"
+    }
+  ],
+  "any_172_28_tcp_ok": false,
+  "scope": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\scope\\SCOPE.yaml",
+  "default_scope_has_example_com": true,
+  "dropbox_run_live": {
+    "argv": [
+      "C:\\Python314\\python.exe",
+      "-m",
+      "dropbox",
+      "run",
+      "--profile",
+      "all",
+      "--live",
+      "--scope",
+      "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\scope\\SCOPE.yaml"
+    ],
+    "rc": 2,
+    "stdout_bytes": 0,
+    "stderr_bytes": 48,
+    "stderr": "SCOPE gate: external hosts/domains/IPs required\n",
+    "stdout_tail": ""
+  },
+  "dest_in_gnmap_exists": false,
+  "dest_in_files": [],
+  "lab_drop_to_sor": {
+    "argv": [
+      "powershell.exe",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\current\\scripts\\lab_drop_to_sor.ps1",
+      "-Work",
+      "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419"
+    ],
+    "rc": 1,
+    "stderr": "EXISTING_IN_FAIL dest_in is empty or missing; --use-existing-in / --no-seed will not seed fixtures/pack_drop. Populate C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\in first (LAB compose pack_drop or operator copy).\n",
+    "stdout_tail": "lab_drop_to_sor: python scripts/prove_ciso.py --use-existing-in (LAB dest_in -> CISO)\n"
+  },
+  "scan_to_sor_refuse_loopback": {
+    "rc": 0,
+    "stderr": ""
+  },
+  "scan_to_sor_live_lab": {
+    "rc": 0,
+    "stderr": ""
+  },
+  "nmap_spawned_in_dropbox_run": false,
+  "any_172_28_host_reached": false,
+  "verdict": "REFUTED: GRC_LIVE_SCAN=1 dropbox run --live / scan_to_sor did not reach 172.28.x from the Windows host (no host nmap, no bridge route, collectors are ss/lynis/curl not docker-network nmap)."
+}

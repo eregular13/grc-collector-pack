@@ -1,0 +1,50 @@
+{
+  "tool": "scan_to_sor",
+  "ok": false,
+  "refused": true,
+  "reason": "SCOPE gate: requested target(s) outside lab-estate networks: 127.0.0.1",
+  "error": "SCOPE gate: requested target(s) outside lab-estate networks: 127.0.0.1",
+  "stderr": "SCOPE gate: requested target(s) outside lab-estate networks: 127.0.0.1",
+  "fail_code": "LIVE_LAB_NET",
+  "live": true,
+  "scanned": false,
+  "wrote_out": false,
+  "lab": true,
+  "sample": false,
+  "client": false,
+  "client_keep": false,
+  "paying_day": "FAIL",
+  "posted": false,
+  "http": false,
+  "wrap": "review-only",
+  "targets": [
+    "127.0.0.1"
+  ],
+  "work": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\mcp-refuse",
+  "dest_in": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\mcp-refuse\\in",
+  "out": "C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\mcp-refuse\\out",
+  "risk_register": "",
+  "poam": "",
+  "pack_drop": "",
+  "cli_twin": {
+    "name": "scan_to_sor",
+    "kind": "scan_pack_sor_live",
+    "script": "./scripts/lab_drop_to_sor.sh",
+    "make": "",
+    "ps1": ".\\scripts\\lab_drop_to_sor.ps1",
+    "ps1_present": true,
+    "present": true,
+    "command": "GRC_LIVE_SCAN=1 python -m dropbox run --profile all --live && ./scripts/lab_drop_to_sor.sh --work DIR",
+    "note": "MCP scan_to_sor twin of the operator scan-and-sor path (DESKTOP EvergreenOps scan-to-console.ps1 against lab-estate). Live mode (GRC_LIVE_SCAN=1): existing dropbox run --profile all --live against gated lab-estate targets only, then lab_drop_to_sor / prove --use-existing-in. Compose existing CLIs \u2014 no new operator script: GRC_LIVE_SCAN=1 python -m dropbox run --profile all --live && ./scripts/lab_drop_to_sor.sh --work DIR (Windows: $env:GRC_LIVE_SCAN=1; python -m dropbox run --profile all --live; .\\scripts\\lab_drop_to_sor.ps1 -Work DIR). SCOPE gate first. Live mode also requires estate=lab and targets inside lab-estate networks (172.28.10.0/24 labnet, 172.28.11.0/24 labnet2, 172.31.250.0/24 misconfig overlay). Never writes pack in/. Never POSTs /api/risks. LAB\u2260SAMPLE\u2260client. paying_day FAIL.",
+    "posix": "GRC_LIVE_SCAN=1 python -m dropbox run --profile all --live && ./scripts/lab_drop_to_sor.sh --work DIR",
+    "windows": "$env:GRC_LIVE_SCAN=1; python -m dropbox run --profile all --live; .\\scripts\\lab_drop_to_sor.ps1 -Work DIR",
+    "live": true
+  },
+  "banners": [
+    "LAB\u2260SAMPLE",
+    "LAB\u2260client",
+    "SAMPLE\u2260client",
+    "DEMO\u2260client"
+  ],
+  "note": "scan_to_sor refused. SCOPE gate: requested target(s) outside lab-estate networks: 127.0.0.1. Nothing scanned. Nothing written to out/. LAB != SAMPLE != client. paying_day FAIL."
+}

@@ -1,0 +1,1 @@
+C:\Python314\python.exe -m dropbox run --profile all --live --scope C:\Users\R\Desktop\EvergreenOps\lab-estate\prove-work\h3-20260926-165419\scope\SCOPE.yaml

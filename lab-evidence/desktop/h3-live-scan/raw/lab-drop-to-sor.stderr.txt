@@ -1,0 +1,1 @@
+EXISTING_IN_FAIL dest_in is empty or missing; --use-existing-in / --no-seed will not seed fixtures/pack_drop. Populate C:\Users\R\Desktop\EvergreenOps\lab-estate\prove-work\h3-20260926-165419\in first (LAB compose pack_drop or operator copy).

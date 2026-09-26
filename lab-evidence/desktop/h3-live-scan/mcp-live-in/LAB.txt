@@ -1,0 +1,2 @@
+LAB/DEMO -- not a client estate.
+Operator live dest_in (GRC_LIVE_SCAN=1). Not SAMPLE. Not client KEEP.

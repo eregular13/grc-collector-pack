@@ -1,0 +1,10 @@
+SCOPE gate OK  client='LAB — not a client estate'
+  consent C:\Users\R\Desktop\EvergreenOps\lab-estate\prove-work\h3-20260926-165419\followup\scope\LAB-ESTATE-CONSENT.md sha256=524d5d33b734…
+  window 2026-09-01 .. 2026-12-31
+  internal cidrs=2 hosts=['172.28.10.10', '172.28.11.10']
+  external hosts=[] domains=[] ips=['192.0.2.10']
+  allow_tools=['lynis', 'ss', 'ip', 'curl', 'nmap']
+  orchestrator quiet→loud  discover=True deepen=False max_workers=2 batch=3 host_timeout_sec=30
+wrote:
+  C:\Users\R\Desktop\EvergreenOps\lab-estate\prove-work\h3-20260926-165419\followup\in-internal\nmap\dropbox-inventory.gnmap
+  C:\Users\R\Desktop\EvergreenOps\lab-estate\prove-work\h3-20260926-165419\followup\in-internal\wazuh\dropbox-lynis-host.json

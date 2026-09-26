@@ -1,0 +1,27 @@
+{
+  "note": "Dummy external 192.0.2.10 (RFC 5737 TEST-NET-1) only so load_scope succeeds. --profile all was NOT used (would curl). --profile internal --live and scan_to_sor run_live_collectors only.",
+  "dropbox_internal_live_rc": 0,
+  "dropbox_internal_stderr": "",
+  "dropbox_internal_stdout_tail": "SCOPE gate OK  client='LAB \u2014 not a client estate'\n  consent C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\followup\\scope\\LAB-ESTATE-CONSENT.md sha256=524d5d33b734\u2026\n  window 2026-09-01 .. 2026-12-31\n  internal cidrs=2 hosts=['172.28.10.10', '172.28.11.10']\n  external hosts=[] domains=[] ips=['192.0.2.10']\n  allow_tools=['lynis', 'ss', 'ip', 'curl', 'nmap']\n  orchestrator quiet\u2192loud  discover=True deepen=False max_workers=2 batch=3 host_timeout_sec=30\nwrote:\n  C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\followup\\in-internal\\nmap\\dropbox-inventory.gnmap\n  C:\\Users\\R\\Desktop\\EvergreenOps\\lab-estate\\prove-work\\h3-20260926-165419\\followup\\in-internal\\wazuh\\dropbox-lynis-host.json\n",
+  "dest_in_files": [
+    "nmap/dropbox-inventory.gnmap",
+    "wazuh/dropbox-lynis-host.json"
+  ],
+  "gnmap_has_172_28": true,
+  "gnmap_mentions_nmap_scan": false,
+  "gnmap_header_comment": [
+    "# dropbox local inventory (ss/ip). Not Nmap.",
+    "Host: 172.28.10.10 (DESKTOP-222GHQV)\tPorts: 22/open/tcp//ssh///, 80/open/tcp//http///"
+  ],
+  "scan_to_sor_rc": 0,
+  "scan_to_sor": {
+    "ok": true,
+    "refused": false,
+    "fail_code": "",
+    "scanned": true,
+    "live": true,
+    "posted": false,
+    "reason": "",
+    "error": ""
+  }
+}

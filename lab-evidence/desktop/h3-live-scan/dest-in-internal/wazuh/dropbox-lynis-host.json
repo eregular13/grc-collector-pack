@@ -1,0 +1,12 @@
+{
+  "osquery": [
+    {
+      "hostname": "DESKTOP-222GHQV",
+      "status": "active",
+      "source": "dropbox-lynis"
+    }
+  ],
+  "notes": "Lynis findings are not parsed (no Lynis collector). Host ingested via osquery shape.",
+  "demo": true,
+  "label": "host lynis"
+}

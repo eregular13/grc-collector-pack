@@ -1,0 +1,1 @@
+SCOPE gate: external hosts/domains/IPs required

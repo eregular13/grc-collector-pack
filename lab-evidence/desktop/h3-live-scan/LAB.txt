@@ -1,0 +1,4 @@
+LAB/DEMO -- not a client estate.
+H3 DESKTOP GRC_LIVE_SCAN=1 prove/refute. 172.28.10.0/24 + 172.28.11.0/24 only.
+Not SAMPLE. Not client KEEP. posted=false. No /api/risks.
+stamp=20260926-165419

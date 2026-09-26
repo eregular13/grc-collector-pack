@@ -1,0 +1,39 @@
+{
+  "status": "pass",
+  "demo": true,
+  "sample": false,
+  "lab": true,
+  "seeded": false,
+  "use_existing_in": true,
+  "client": false,
+  "client_keep": false,
+  "estate": "LAB/DEMO — not a client estate",
+  "paying_day": "FAIL",
+  "posted": false,
+  "http": false,
+  "wrap": "review-only",
+  "sor": "ciso-assistant",
+  "pack_in_used": false,
+  "pack_in_written": false,
+  "file_drop_read_only": true,
+  "live": false,
+  "hitl": true,
+  "sensors": [
+    "nmap",
+    "wazuh"
+  ],
+  "collectors": [
+    "inventory_nmap.py",
+    "host_wazuh.py",
+    "grc_loader.py"
+  ],
+  "counts": {
+    "assets": 1,
+    "findings": 2,
+    "poam": 2,
+    "demo": true,
+    "risk_scenarios": 3,
+    "vulnerabilities": 0
+  },
+  "note": "Copied from followup mcp-live prove-ciso.json. Synthetic dest_in, not a 172.28.x reach. LAB != SAMPLE != client. posted=false."
+}
