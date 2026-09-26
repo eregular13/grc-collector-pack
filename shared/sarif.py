@@ -27,24 +27,77 @@ def load_sarif(path: Path) -> dict[str, Any] | None:
     return payload if is_sarif(payload) else None
 
 
-def _severity(hit: dict[str, Any]) -> str:
-    props = hit.get("properties") if isinstance(hit.get("properties"), dict) else {}
-    raw = str(props.get("severity") or props.get("security-severity") or "").lower()
-    if raw in LEVEL_SEV:
-        return LEVEL_SEV[raw]
-    if raw in {"critical", "high", "medium", "low", "info"}:
-        return raw
+def _score_severity(raw: str) -> str | None:
+    token = str(raw or "").strip().lower()
+    if not token:
+        return None
+    if token in LEVEL_SEV:
+        return LEVEL_SEV[token]
+    if token in {"critical", "high", "medium", "low", "info"}:
+        return token
     try:
-        score = float(raw)
-        if score >= 9:
-            return "critical"
-        if score >= 7:
-            return "high"
-        if score >= 4:
-            return "medium"
-        return "low"
+        score = float(token)
     except ValueError:
-        pass
+        return None
+    if score >= 9:
+        return "critical"
+    if score >= 7:
+        return "high"
+    if score >= 4:
+        return "medium"
+    return "low"
+
+
+def _rule_index(driver: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """ruleId / ruleIndex → driver.rules[] for security-severity lookup."""
+    out: dict[str, dict[str, Any]] = {}
+    rules = driver.get("rules") if isinstance(driver.get("rules"), list) else []
+    for idx, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            continue
+        out[str(idx)] = rule
+        rid = str(rule.get("id") or "").strip()
+        if rid:
+            out[rid] = rule
+    return out
+
+
+def _rule_for_hit(hit: dict[str, Any], catalog: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    if "ruleIndex" in hit and hit.get("ruleIndex") is not None:
+        rule = catalog.get(str(hit.get("ruleIndex")))
+        if isinstance(rule, dict):
+            return rule
+    rid = str(hit.get("ruleId") or "").strip()
+    if rid:
+        rule = catalog.get(rid)
+        if isinstance(rule, dict):
+            return rule
+    return {}
+
+
+def _severity(hit: dict[str, Any], rule: dict[str, Any] | None = None) -> str:
+    """Prefer rule.properties.security-severity (Trivy CRITICAL) over result.level.
+
+    Trivy maps both CRITICAL and HIGH to SARIF level=error, so falling back to
+    level alone demotes critical to high.
+    """
+    props = hit.get("properties") if isinstance(hit.get("properties"), dict) else {}
+    rule = rule if isinstance(rule, dict) else {}
+    rule_props = rule.get("properties") if isinstance(rule.get("properties"), dict) else {}
+    for raw in (
+        props.get("severity"),
+        props.get("security-severity"),
+        rule_props.get("security-severity"),
+        rule_props.get("severity"),
+    ):
+        mapped = _score_severity(str(raw or ""))
+        if mapped:
+            return mapped
+    tags = rule_props.get("tags") if isinstance(rule_props.get("tags"), list) else []
+    for tag in tags:
+        mapped = _score_severity(str(tag or ""))
+        if mapped and mapped in {"critical", "high", "medium", "low"}:
+            return mapped
     level = str(hit.get("level") or "warning").lower()
     return LEVEL_SEV.get(level, "medium")
 
@@ -57,6 +110,7 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         driver = ((run.get("tool") or {}).get("driver") or {}) if isinstance(run.get("tool"), dict) else {}
         tool = str(driver.get("name") or "sarif")
+        catalog = _rule_index(driver if isinstance(driver, dict) else {})
         run_ids: dict[str, Any] = {}
         scan_time = ""
         props = run.get("properties") if isinstance(run.get("properties"), dict) else {}
@@ -87,11 +141,12 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 art = phys.get("artifactLocation") or {}
                 uri = str(art.get("uri") or uri)
             msg = hit.get("message") if isinstance(hit.get("message"), dict) else {}
+            rule = _rule_for_hit(hit, catalog)
             row = {
                 "rule_id": str(hit.get("ruleId") or "sarif"),
                 "message": str(msg.get("text") or hit.get("ruleId") or "SARIF finding"),
                 "uri": uri,
-                "severity": _severity(hit),
+                "severity": _severity(hit, rule),
                 "tool": tool,
                 "level": str(hit.get("level") or ""),
                 "ids": dict(run_ids),

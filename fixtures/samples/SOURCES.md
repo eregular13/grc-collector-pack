@@ -4,12 +4,18 @@ Provenance matches the research pack `samples/SOURCES.md` (fetched 2026-09-25 PT
 and DefectDojo / ScubaGear / testssl public fixtures used in the §8 audit.
 These files are **SAMPLE/DEMO fixtures**, not a client KEEP drop.
 
-PR #134 (not on master at this writing) owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng
-rows in this file. This table is the §8 collector set (PingCastle, Greenbone,
-ScubaGear, testssl, Nikto). Merge by appending, do not overwrite #134's rows.
+PR #134 owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng rows. PR #139 owns
+PingCastle, Greenbone, ScubaGear, testssl, and Nikto rows. Tables are unioned.
 
 | File | Source | What was trimmed |
 |---|---|---|
+| `prowler/example_output_aws.ocsf.json` | [prowler-cloud/prowler](https://github.com/prowler-cloud/prowler) `@ c2b80924618a` `examples/output/example_output_aws.ocsf.json` (v5 OCSF default) | First 3 findings (FAIL / MANUAL / FAIL). Compliance maps reduced; `risk_details` dropped. Keys unchanged (`status`, `status_code`, `resources[].uid`, `metadata.event_code`). |
+| `prowler/example_output_aws.csv` | Same repo `examples/output/example_output_aws.csv` (`;`-delimited v4/v5 CSV) | Header + first 3 data rows. |
+| `wazuh/alerts.jsonl` | [Evaluation-of-APT-Simulation-Tools-artifacts](https://github.com/xXPrXy-rAiJiNzXx/Evaluation-of-APT-Simulation-Tools-artifacts) `@ 1b01e9caa956` `Wazuh/ossec/logs/alerts/alerts.json` (first 3 lines; Wazuh 4.x JSONL) | Already 3 lines. |
+| `wazuh/sca-checks.json` | [wazuh/wazuh](https://github.com/wazuh/wazuh) `v4.9.0` API spec `/sca/{agent_id}/checks/{policy_id}` example (`spec.yaml` ~L14452) | Same `data.affected_items[]` shape. One row kept as spec `not applicable`; one `passed`; one `failed` (result value only — field set is the spec's). |
+| `sarif/trivy-critical.sarif` | Trivy SARIF writer [`pkg/report/sarif.go`](https://github.com/aquasecurity/trivy) `@ ae561f8cca36` (`toSarifErrorLevel`: CRITICAL and HIGH both → `error`; score in `rules[].properties.security-severity`). Alpine golden only has MEDIUM 5.3. | One CRITICAL (`9.8`, `level=error`) + one MEDIUM (`5.3`, `level=warning`) using that rule-property shape. Result objects have no `properties.severity`. |
+| `xccdf/rule-results.xml` | XCCDF 1.2 `rule-result@severity` + `@idref` as in OpenSCAP ARF (`openscap` `@ 6942b59` `test_xccdf_overrides.arf.xml` L3137). | Minimal Benchmark (no OpenSCAP/SSG markers) so the generic CIS/XCCDF path is exercised. Fail low / medium / high + one pass. |
+| `enum4linux/enum4linux-ng.json` | [cddmp/enum4linux-ng](https://github.com/cddmp/enum4linux-ng) `@ 288826fd9ee8` (`target:{host}` L404; `sessions.null` AUTH_NULL L275/L1175; share `access:{mapping,listing}` L2468) | One host, null session, Domain Admins, IPC$ + writable NETLOGON (`listing=ok`). |
 | `pingcastle/one.xml` | [DefectDojo/django-DefectDojo](https://github.com/DefectDojo/django-DefectDojo) `unittests/scans/pingcastle/one.xml` (Engine 3.2.0.1). Model: [PingCastle HealthcheckData](https://github.com/vletoux/pingcastle) `HealthcheckRiskRule` / `HealthCheckGroupData`. | Whole one-rule file. Added a `HealthCheckGroupData` (capital C) + `ListNoPreAuth` account so case-insensitive group/account tags are exercised. IPs stay documentation placeholders. |
 | `greenbone/one_vuln.xml` | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0 report XML) | One `result` kept (Firefox NVT, CVSS 10.0, CVE-2023-4573). Wrapper scan metadata dropped. |
 | `greenbone/one_vuln.csv` | DefectDojo `unittests/scans/openvas/one_vuln.csv` | Header + the one SSH weak-cipher row. |

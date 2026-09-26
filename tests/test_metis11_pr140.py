@@ -202,16 +202,20 @@ def test_real_udp_scan_no_tcp_rule_on_udp_snmp_two_hosts() -> None:
             assert rec["name"] not in _TCP_ONLY_TITLES
             assert "SMB 445" not in rec["name"]
             assert "Administrative share" not in rec["name"]
+            assert "TCP" not in rec["description"]
+            assert rec["ref_id"].endswith(f"-{extra.get('port')}-{extra.get('protocol')}")
     included = [r for r in findings if poam_decision(r)["include"]]
     excluded = [r for r in findings if not poam_decision(r)["include"]]
-    # Host-scoped per #137: one POA&M row per host (SNMP 161/udp on 2 hosts).
+    # Host-scoped per #137: SNMP 161/udp on 2 hosts → 2 rows; 135 excluded.
     assert len(included) == 2
     assert {a for r in included for a in r["assets"]} == {"10.11.1.22", "10.11.1.115"}
     assert all((r.get("extra") or {}).get("port") == "161" for r in included)
     assert all((r.get("extra") or {}).get("protocol") == "udp" for r in included)
     assert all((r.get("extra") or {}).get("state") in {None, "open"} for r in included)
-    assert all(r["severity"] == canon_severity("high") for r in included)
+    assert all(r["severity"] == canon_severity("medium") for r in included)
     assert all(r["ref_id"].startswith("NMAP-") for r in included)
+    assert all(r["ref_id"].endswith("-161-udp") for r in included)
+    assert all("UDP/161" in r["description"] for r in included)
     assert len(excluded) == 135
     of_rows = [r for r in findings if (r.get("extra") or {}).get("state") == "open|filtered"]
     assert len(of_rows) == 101

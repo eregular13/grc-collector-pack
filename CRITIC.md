@@ -1,52 +1,142 @@
-# CRITIC — cycle 199 (NMAP_UDP_PROTO_RISKY)
+# CRITIC — cycle 202 (MERGE_MASTER_147_LEDGER_LIFECYCLE)
 
-Lab this brick: pytest **1212** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
-`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
-`poam=125` `excluded=1` `superseded_by_specific` `demo=true`). Cold
-farm_drop `assets=48` `findings=174` `poam=106` unchanged. Zero P0/P1.
-Risky ports keyed by proto; UDP open|filtered excluded as
-`not_a_weakness`. Catalog **unchanged** **111 / 32 / 30 / 81**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS
-#48 rails below are unchanged.
+Merge `origin/master` `9aeb229` (#147 multi-run POA&M ledger
+lifecycle on client-facing exports) into this branch. Both sides
+kept: Wazuh maps by `rule.level` only (never default High);
+aggregated alerts stay `excluded.csv` telemetry unless level ≥ 12 or
+a known compromise indicator. Lab this brick: pytest **1235** passed,
+1 skipped. Ten collectors + `grc_loader` + `tests/lab_outputs.py`
+PASS (`assets=78` `findings=104` `vulnerabilities=22`
+`applied_controls=126` `risk_scenarios=126` `poam=124` `excluded=2`
+`severity_unmapped=0` `demo=true`). Excluded: `WAZ-alert-5710-web-01`
+telemetry + `NMAP-telnet-legacy-corp-local-80`
+superseded_by_specific. Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68. Zero
+P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
-# CRITIC — cycle 198 (MERGE_138_DISCOVERY_WEB)
+# CRITIC — cycle 201 (MERGE_MASTER_140_DISCOVERY_WEB)
 
-Lab this brick: pytest **1190** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
-`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
-`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
-`assets=48` `findings=174` `poam=106`. Zero P0/P1. Merged master
-`f8b7ff1` (#138) with a normal merge commit. Asset delta vs cycle
-197 is EGA- same-host collapse (85→78 lab, 55→48 farm), not a
-dropped collector. Catalog **unchanged** **111 / 32 / 30 / 81**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS
-#48 rails below are unchanged.
+Merge `origin/master` `76f5e86` (#140 discovery/web collectors that
+drop, merge, or invent assets; Metis §11) into this branch. Both
+sides kept: Wazuh maps by `rule.level` only (never default High);
+aggregated alerts stay `excluded.csv` telemetry unless level ≥ 12 or
+a known compromise indicator; #140 nmap/httpx/smbmap/nbtscan/fping
+fixes stay. Lab this brick: pytest **1232** passed, 1 skipped. Ten
+collectors + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=78`
+`findings=104` `vulnerabilities=22` `applied_controls=126`
+`risk_scenarios=126` `poam=124` `excluded=2` `severity_unmapped=0`
+`demo=true`). Excluded: `WAZ-alert-5710-web-01` telemetry +
+`NMAP-telnet-legacy-corp-local-80` superseded_by_specific. Cold
+SAMPLE→SoR findings=6 poam=8 vulns=2. Cold farm_drop→SoR
+findings=174 poam=106 vulns=0 excluded=68. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
-# CRITIC — cycle 197 (METIS11_PR140)
+# CRITIC — cycle 200 (MERGE_MASTER_144_PORT_FOLD)
 
-Lab this brick: pytest **1160** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
-`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
-`poam=126` `severity_unmapped=0` `demo=true`). Cold farm_drop
-`assets=55` `findings=174` `poam=106` (unchanged vs cycle 196).
-Zero P0/P1. Metis §11: port-only → port/proto ledger migration;
-httpx status/soft-404; UDP open|filtered info; smbmap NULL only
-unauthenticated; naabu CDN edge not findings; vulners rollup.
-Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
-No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
-unchanged.
+Merge `origin/master` `ec61cde` (#144 fold nmap port-only rows into
+specific host+port findings) into this branch. Both sides kept: Wazuh
+maps by `rule.level` only (never default High); aggregated alerts stay
+`excluded.csv` telemetry unless level ≥ 12 or a known compromise
+indicator; nmap port-only rows that share a host+port with a specific
+finding are `superseded_by_specific`. Lab this brick: pytest **1213**
+passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=78` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=123` `excluded=2` `severity_unmapped=0` `demo=true`). Excluded:
+`WAZ-alert-5710-web-01` telemetry + `NMAP-telnet-legacy-corp-local-80`
+superseded_by_specific. Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68. Zero
+P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
-# CRITIC — cycle 196 (MERGE_137_DISCOVERY_WEB)
+# CRITIC — cycle 199 (MERGE_MASTER_138_142_146)
 
-Lab this brick: pytest **1154** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=85` `findings=104`
-`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
-`poam=126` `severity_unmapped=0` `demo=true`). Zero P0/P1. Merged
-master `1f8d347` (#137) with a normal merge commit. Count delta vs
-master STATUS: assets 84→85, findings 103→104, poam 111→126 — L2/NBT
-`10.0.0.50` + second httpx admin URL; POA&M is #135 full plan (Lows
-included) plus that extra finding. Catalog **unchanged**
+Merge `origin/master` `2818608` (#138 EGA- asset identity ledger, #142
+unread sensor files + Coverage gaps, #146 SCOPE_AND_TRUST from one
+coverage source) into this branch. Both sides kept: Wazuh maps by
+`rule.level` only (never default High); aggregated alerts stay
+`excluded.csv` telemetry unless level ≥ 12 or a known compromise
+indicator; Prowler assets get `stamp_ids` plus account identity;
+enum4linux never stringifies `target` dict and still keeps
+FQDN/NetBIOS/domain; SARIF keeps rule catalog + run image/host ids.
+Lab this brick: pytest **1204** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=124` `excluded=1` `severity_unmapped=0` `demo=true`). Cold
+SAMPLE→SoR findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174
+poam=106 vulns=0 excluded=68. DEMO brute-force (5710 / level 10) is
+medium telemetry, not a High weakness. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 198 (WAZUH_LEVEL_TABLE_TELEMETRY)
+
+Lab this brick: pytest **1162** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=124` `excluded=1` `severity_unmapped=0` `demo=true`). Cold
+SAMPLE→SoR findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174
+poam=106 vulns=0 excluded=68. Wazuh alerts map by `rule.level` only
+(0-3 info, 4-7 low, 8-11 medium, 12+ high); missing level is info,
+never High. Aggregated alerts go to `excluded.csv` as telemetry unless
+level ≥ 12 or a known compromise indicator. 300 level-5 alerts → 0 High
+rows, one excluded row. DEMO brute-force (5710 / level 10) is medium
+telemetry, not a High weakness. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 197 (MERGE_MASTER_135_137_CANON_TELEMETRY)
+
+Merge `origin/master` `1f8d347` (#135 POA&M schedule / Lows on the plan /
+excluded.csv / telemetry flood guard; #137 host-scoped ref_id /
+canon_severity / multi-host redis) into this branch. Both sides kept:
+Wazuh/Prowler/enum4linux severities go through `canon_severity`; Wazuh
+0-3 info alerts land in `excluded.csv` as `telemetry_info`; SCA ref_id
+stays host-scoped; Prowler keeps account in identity. Gate floors
+unchanged (`MIN_FARM_POAM=100` `MIN_FARM_EXCLUDED=20`). Lab this brick:
+pytest **1159** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `severity_unmapped=0` `demo=true`). Cold SAMPLE→SoR
+findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174 poam=106
+vulns=0 excluded=68. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 196 (PARSER_WRITE_SCA_ALERT_PROWLER)
+
+Lab this brick: pytest **1089** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`poam=109` `demo=true`). Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=48 vulns=0. Host-lab / SAMPLE /
+farm_drop counts **unchanged**. enum4linux listing OK is READ; writable
+share only on explicit write. Wazuh alerts aggregate by (rule.id,
+agent) with count/first/last; levels 0-3 are info and stay off the
+POA&M. SCA agent from path/export/hint or `unknown-agent` (never
+`wazuh-host`); failed-check severity from rationale/compliance or
+medium + `severity_source=default`. Prowler skips muted and MANUAL;
+account ID stays in finding identity. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 195 (MERGE_MASTER_ESTATE_PLUS_BOTH_REAL_SAMPLES)
+
+Merge `origin/master` `5adc8b7` (after #132 estate banner / exact-header
+CSVs, #139 PingCastle/Greenbone/Scuba/testssl/Nikto, #136 retire
+RiskReady JSON) into this branch. Both sample sets kept: #134
+Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng unioned with #139 rows and
+tests. #133 still stands — LAB malformed real-sample files report
+`parse_error`, never `fixtures/demo`. #132 still stands — import CSVs
+start with the exact header; estate is `LAB: TEST ENVIRONMENT`. Lab
+this brick: pytest **1084** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`poam=109` `demo=true`). Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=48 vulns=0. Ship-gate skip
+(surface unchanged vs `5adc8b7`). Zero P0/P1. Catalog **unchanged**
 **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out. CoS #48 rails below are unchanged.
 
@@ -75,18 +165,6 @@ blanket severities fixed. Catalog **unchanged** **111 / 32 / 30 / 81**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
 rails below are unchanged.
 
-# CRITIC — cycle 195 (MERGE_MASTER_DISCOVERY_WEB)
-
-Lab this brick: pytest **1086** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
-`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
-Zero P0/P1. Merged master `5adc8b7` (#139 / #136) with a normal merge
-commit. SOURCES.md is the union of both lists. Count delta vs master
-STATUS: assets 81→82, findings 104→105, poam 109→110 — same as the
-pre-merge discovery/web lab; #139 host-lab was unchanged. Catalog
-**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
-`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
-
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
 Lab this brick: pytest **1068** passed, 1 skipped. Ten collectors +
@@ -97,6 +175,36 @@ New findings only when real-shaped files are dropped under
 `fixtures/samples/` (tests) or `in/`. Catalog **unchanged**
 **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 192 (MERGE_MASTER_DEMO_FALLBACK_PLUS_REAL_SAMPLE)
+
+Merge `origin/master` `036aff8` (PR #133) into this branch. Both
+behaviors kept: LAB/operator parse failure never fills `fixtures/demo`
+(`parse_error` / `no_records`), and real-sample parsers (Prowler
+OCSF/CSV, Wazuh JSONL/SCA, XCCDF severity, SARIF Trivy critical,
+enum4linux-ng). Malformed Prowler/Wazuh/XCCDF/SARIF/enum4linux on a
+LAB run is `parse_error`, not demo fill. Lab this brick: pytest
+**1056** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=104` `poam=109`
+`demo=true`). Cold SAMPLE→SoR findings=6 poam=8 vulns=2. Cold
+farm_drop→SoR findings=174 poam=48 vulns=0. Zero P0/P1.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 191 (MERGE_MASTER_HK_PLUS_REAL_SAMPLE)
+
+Merge `origin/master` `05a29fd` (PR #130) into this branch. Both
+behaviors kept: HardeningKitty TestResult + filename host, and
+real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
+severity, Trivy SARIF critical, enum4linux-ng). Lab this brick:
+pytest **1046** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=104` `poam=109`
+`demo=true`; #129 weakness-dedupe). Cold SAMPLE→SoR findings=6
+poam=8 vulns=2. Cold farm_drop→SoR findings=174 poam=48 vulns=0.
+Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
 # CRITIC — cycle 191 (MERGE_HK_AND_DEMO_FALLBACK)
 
@@ -152,18 +260,18 @@ CIS v8 IDs INTERNAL-ONLY. Synthetic fixture (not Seen). Catalog
 No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
 unchanged.
 
-# CRITIC — cycle 194 (DISCOVERY_WEB_SAMPLES)
+# CRITIC — cycle 189 (REAL_SAMPLE_PARSERS)
 
-Lab this brick: pytest **1066** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
-`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
-Zero P0/P1. Discovery/web parsers no longer invent `Ltd` hosts, merge
-`<unknown>` NetBIOS, count fping timeouts, drop httpx `.git/config`,
-or ignore smbmap NULL/Guest / spaced shares. Count delta vs master
-STATUS: assets 81→82, findings 104→105, poam 109→110 — explained in
-CYCLE 194. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
-**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
-below are unchanged.
+Lab this brick: pytest **1003** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
+Zero P0/P1. Real-shaped samples under `fixtures/samples/` catch Prowler
+OCSF/CSV, Wazuh JSONL + SCA, XCCDF severity, Trivy SARIF critical, and
+enum4linux-ng keys. Host-lab / SAMPLE→SoR / farm_drop→SoR expected
+counts **unchanged** vs this branch before the #130 merge (demo estate
+did not grow). Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
+are unchanged.
 
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 

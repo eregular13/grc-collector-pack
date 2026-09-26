@@ -31,21 +31,20 @@ SOURCE = "inventory-nmap"
 LABELS = ["nmap", "inventory"]
 _CDN_EDGE_PORTS = frozenset({"80", "443", "8080", "8443"})
 _VULNERS_SOLO_CVSS = 7.0
-# TCP-only exposure rules. udp/445 is not SMB.
-RISKY_TCP = {
-    "23": ("critical", "Telnet exposed"),
-    "21": ("high", "FTP exposed"),
-    "445": ("high", "SMB 445 exposed"),
-    "3389": ("medium", "RDP exposed"),
-    "22": ("low", "SSH exposed"),
-    "80": ("low", "HTTP exposed"),
+# Keyed by (port, proto). tcp/445 is SMB; udp/445 is not.
+RISKY = {
+    ("23", "tcp"): ("critical", "Telnet exposed"),
+    ("21", "tcp"): ("high", "FTP exposed"),
+    ("445", "tcp"): ("high", "SMB 445 exposed"),
+    ("3389", "tcp"): ("medium", "RDP exposed"),
+    ("22", "tcp"): ("low", "SSH exposed"),
+    ("80", "tcp"): ("low", "HTTP exposed"),
+    ("161", "udp"): ("medium", "SNMP 161/udp exposed"),
+    ("69", "udp"): ("high", "TFTP 69/udp exposed"),
 }
+RISKY_TCP = {port: val for (port, proto), val in RISKY.items() if proto == "tcp"}
 # Confirmed-open UDP only. open|filtered never uses this table.
-RISKY_UDP = {
-    "161": ("high", "SNMP 161/udp exposed"),
-    "69": ("high", "TFTP 69/udp exposed"),
-}
-RISKY = RISKY_TCP
+RISKY_UDP = {port: val for (port, proto), val in RISKY.items() if proto == "udp"}
 
 
 def _is_dropbox_demo(path: Path, raw: str) -> bool:
@@ -253,14 +252,21 @@ def _emit_host(
                 extra_find["cdn"] = True
             if extra.get("cdn_name"):
                 extra_find["cdn_name"] = extra["cdn_name"]
-        ref_port = f"{name}-{portid}" if proto == "tcp" else f"{name}-{portid}-{proto}"
+        ref_port = f"{name}-{portid}/{proto}"
+        if state == "open|filtered":
+            desc = (
+                f"{name} has {proto.upper()}/{portid} open|filtered "
+                f"({svc or 'unknown'}); not a confirmed open port."
+            )
+        else:
+            desc = f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'})."
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
                 ref_id=make_ref(SOURCE, ref_port),
                 name=title,
-                description=f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'}).",
+                description=desc,
                 severity=canon_severity(sev),
                 category="exposure",
                 assets=[name],

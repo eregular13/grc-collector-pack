@@ -1,11 +1,20 @@
-"""§8 real-shaped samples: PingCastle, Greenbone, ScubaGear, testssl, Nikto."""
+"""Parser tests against real-shaped tool output (fixtures/samples/).
+
+Invented demo wrappers hid these: Prowler OCSF status/asset, Wazuh JSONL +
+SCA, XCCDF rule-result severity, Trivy SARIF critical, enum4linux-ng keys,
+PingCastle RiskRules, Greenbone GMP, ScubaGear v1.8, testssl sections, Nikto 2.6.
+SAMPLE/DEMO ≠ client KEEP. No POST /api/risks.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from collectors import identity_ad, saas_idp, vuln_scan
+from collectors import cloud_prowler, host_wazuh, identity_ad, saas_idp, vuln_scan
+from keep.adapters import detect_family
+from shared.enum4linux import parse_enum4linux
 from shared.nikto import is_nikto_payload, parse_nikto
+from shared.sarif import iter_sarif_results, load_sarif
 from shared.testssl import iter_testssl_findings
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +24,528 @@ DEMO = ROOT / "fixtures" / "demo"
 
 def _findings(recs: list[dict]) -> list[dict]:
     return [r for r in recs if r["kind"] == "finding"]
+
+
+def test_prowler_ocsf_keeps_fail_and_resource_uid() -> None:
+    recs = cloud_prowler.parse_file(SAMPLES / "prowler" / "example_output_aws.ocsf.json")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert findings, "v4/v5 OCSF status=New / status_code=FAIL must not drop every finding"
+    assert "check" not in assets
+    assert "<resource_uid>" in assets
+    checks = {r["extra"].get("check_id") for r in findings}
+    assert "accessanalyzer_enabled" in checks
+    assert "account_maintain_current_contact_details" not in checks
+    analyzer = next(r for r in findings if r["extra"].get("check_id") == "accessanalyzer_enabled")
+    assert analyzer["severity"] == "low"
+    assert analyzer["assets"] == ["<resource_uid>"]
+    assert analyzer["extra"].get("account_id") == "<account_uid>"
+    assert all(r["extra"].get("status") == "FAIL" for r in findings)
+    assert detect_family(SAMPLES / "prowler" / "example_output_aws.ocsf.json") == "prowler"
+
+
+def test_prowler_csv_semicolon() -> None:
+    recs = cloud_prowler.parse_file(SAMPLES / "prowler" / "example_output_aws.csv")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert any(r["extra"].get("check_id") == "accessanalyzer_enabled" for r in findings)
+    assert not any(r["extra"].get("check_id") == "account_maintain_current_contact_details" for r in findings)
+    assert any(r["name"] == "<resource_uid>" for r in recs if r["kind"] == "asset")
+    assert all(r["extra"].get("account_id") == "<account_uid>" for r in findings)
+    assert detect_family(SAMPLES / "prowler" / "example_output_aws.csv") == "prowler"
+
+
+def test_wazuh_alerts_jsonl_maps_rule_level() -> None:
+    recs = host_wazuh.parse_file(SAMPLES / "wazuh" / "alerts.jsonl")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    incidents = [r for r in recs if r["kind"] == "incident"]
+    assert len(findings) == 3
+    assert len(incidents) == 3
+    by_name = {r["name"]: r for r in findings}
+    assert by_name["Wazuh server started."]["severity"] == "info"
+    assert by_name["PAM: Login session opened."]["severity"] == "info"
+    assert by_name["Systemd: Service exited due to a failure."]["severity"] == "low"
+    assert {r["severity"] for r in incidents} == {"info", "low"}
+    assert all("student-virtual-machine" in r["assets"] for r in findings)
+    names = {r["name"] for r in findings}
+    assert "Wazuh server started." in names
+    assert "Systemd: Service exited due to a failure." in names
+
+
+def test_wazuh_alerts_json_suffix_is_jsonl(tmp_path) -> None:
+    dest = tmp_path / "alerts.json"
+    dest.write_text(
+        (SAMPLES / "wazuh" / "alerts.jsonl").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    assert [r for r in recs if r["kind"] == "finding"]
+
+
+def test_wazuh_alert_rule_level_bands(tmp_path) -> None:
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"rule":{"level":3,"description":"info band","id":"3"},'
+        '"agent":{"name":"web-01"},"id":"a3"}\n'
+        '{"rule":{"level":5,"description":"low band","id":"5"},'
+        '"agent":{"name":"web-01"},"severity":"high","id":"a5"}\n'
+        '{"rule":{"level":7,"description":"low-telemetry band","id":"7"},'
+        '"agent":{"name":"web-01"},"id":"a7"}\n'
+        '{"rule":{"level":8,"description":"medium band","id":"8"},'
+        '"agent":{"name":"web-01"},"id":"a8"}\n'
+        '{"rule":{"level":12,"description":"high band","id":"12"},'
+        '"agent":{"name":"web-01"},"id":"a12"}\n'
+        '{"rule":{"level":15,"description":"critical band","id":"15"},'
+        '"agent":{"name":"web-01"},"id":"a15"}\n'
+        '{"rule":{"description":"no level","id":"99"},'
+        '"agent":{"name":"web-01"},"id":"a99"}\n',
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    by_name = {r["name"]: r["severity"] for r in recs if r["kind"] == "finding"}
+    assert by_name["info band"] == "info"
+    assert by_name["low band"] == "low"
+    assert by_name["low-telemetry band"] == "low"
+    assert by_name["medium band"] == "medium"
+    assert by_name["high band"] == "high"
+    assert by_name["critical band"] == "critical"
+    assert by_name["no level"] == "info"
+    assert "high" not in {by_name["low band"], by_name["no level"]}
+
+
+def test_wazuh_sca_failed_checks_not_fake_agents() -> None:
+    recs = host_wazuh.parse_file(SAMPLES / "wazuh" / "sca-checks.json")
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert "19000" not in assets
+    assert "19002" not in assets
+    assert "wazuh-host" not in assets
+    assert "unknown-agent" in assets
+    assert len(findings) == 1
+    assert "PermitRootLogin" in findings[0]["name"]
+    assert "sca" in findings[0]["labels"]
+    assert findings[0]["severity"] == "medium"
+    assert findings[0]["extra"].get("severity_source") == "default"
+    assert findings[0]["extra"].get("agent_source") == "unknown"
+    assert findings[0]["extra"].get("agent_unknown") is True
+    assert not any("cramfs" in r["name"].lower() for r in findings)
+    assert not any("freevxfs" in r["name"].lower() for r in findings)
+
+
+def test_xccdf_rule_result_severity_not_hardcoded_high() -> None:
+    recs = host_wazuh.parse_file(SAMPLES / "xccdf" / "rule-results.xml")
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 3
+    by_id = {r["extra"].get("id"): r["severity"] for r in findings}
+    assert by_id["xccdf_sample_rule_prelink"] == "low"
+    assert by_id["xccdf_sample_rule_ssh_permitroot"] == "medium"
+    assert by_id["xccdf_sample_rule_firewall"] == "high"
+    assert not any("cramfs" in r["name"].lower() for r in findings)
+
+
+def test_trivy_sarif_preserves_critical() -> None:
+    path = SAMPLES / "sarif" / "trivy-critical.sarif"
+    payload = load_sarif(path)
+    assert payload
+    rows = iter_sarif_results(payload)
+    by_rule = {r["rule_id"]: r["severity"] for r in rows}
+    assert by_rule["CVE-2023-0001"] == "critical"
+    assert by_rule["CVE-2019-1549"] == "medium"
+    recs = vuln_scan.parse_file(path)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any(r["extra"].get("rule") == "CVE-2023-0001" and r["severity"] == "critical" for r in findings)
+    assert any(r["extra"].get("rule") == "CVE-2019-1549" and r["severity"] == "medium" for r in findings)
+
+
+def test_enum4linux_ng_real_keys() -> None:
+    path = SAMPLES / "enum4linux" / "enum4linux-ng.json"
+    hosts = parse_enum4linux(path)
+    assert hosts
+    host = hosts[0]
+    assert host["name"] != "{'host': '10.0.0.5'}"
+    assert "{" not in host["name"]
+    assert host["name"] == "DC01"
+    assert host["addr"] == "10.0.0.5"
+    assert host["null_session"] is True
+    share_names = {s["name"] for s in host["shares"]}
+    assert "NETLOGON" in share_names
+    netlogon = next(s for s in host["shares"] if s["name"] == "NETLOGON")
+    assert netlogon["access"].upper() == "READ"
+    assert "WRITE" not in netlogon["access"].upper()
+    recs = identity_ad.parse_file(path)
+    names = [r["name"] for r in recs if r["kind"] == "finding"]
+    assert any("null session" in n.lower() for n in names)
+    assert not any("NETLOGON" in n for n in names)
+    assert not any("Writable SMB share" in n for n in names)
+    assert not any("IPC$" in n for n in names)
+    assert any(r["kind"] == "asset" and r["name"] == "DC01" for r in recs)
+
+
+def test_enum4linux_demo_fixture_is_real_shaped() -> None:
+    text = (DEMO / "identity" / "enum4linux-ng.txt").read_text(encoding="utf-8")
+    assert '"null":' in text
+    assert "null_session" not in text
+    assert '"host":' in text
+    recs = identity_ad.parse_file(DEMO / "identity" / "enum4linux-ng.txt")
+    assert any(r["kind"] == "finding" and "null session" in r["name"].lower() for r in recs)
+    assert any(r["kind"] == "asset" and r["name"] == "DC01.CORP.LOCAL" for r in recs)
+
+
+def test_enum4linux_listing_ok_is_read_write_needs_explicit() -> None:
+    """listing OK is READ. Writable finding only on an explicit write result."""
+    from shared.enum4linux import parse_enum4linux
+
+    path = SAMPLES / "enum4linux" / "enum4linux-ng.json"
+    hosts = parse_enum4linux(path)
+    netlogon = next(s for s in hosts[0]["shares"] if s["name"] == "NETLOGON")
+    assert netlogon["access"] == "READ"
+    recs = identity_ad.parse_file(path)
+    assert not any("Writable SMB share NETLOGON" in r["name"] for r in recs if r["kind"] == "finding")
+
+
+def test_enum4linux_explicit_write_emits_writable_share(tmp_path: Path) -> None:
+    dest = tmp_path / "enum4linux-ng.json"
+    dest.write_text(
+        """{
+  "target": {"host": "10.0.0.8"},
+  "smb_domain_info": {"NetBIOS computer name": "FS01"},
+  "sessions": {"null": false},
+  "shares": {
+    "DATA": {"access": {"mapping": "ok", "listing": "ok", "writing": "ok"}},
+    "NETLOGON": {"access": {"mapping": "ok", "listing": "ok"}}
+  }
+}
+""",
+        encoding="utf-8",
+    )
+    from shared.enum4linux import parse_enum4linux
+
+    host = parse_enum4linux(dest)[0]
+    by_share = {s["name"]: s["access"] for s in host["shares"]}
+    assert by_share["DATA"] == "READ, WRITE"
+    assert by_share["NETLOGON"] == "READ"
+    names = [r["name"] for r in identity_ad.parse_file(dest) if r["kind"] == "finding"]
+    assert any("Writable SMB share DATA" in n for n in names)
+    assert not any("NETLOGON" in n for n in names)
+
+
+def test_wazuh_alerts_aggregate_by_rule_and_agent(tmp_path: Path) -> None:
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"timestamp":"2025-09-15T15:48:20.217+0200","rule":{"level":5,"description":"sshd failed","id":"5710"},'
+        '"agent":{"name":"web-01"},"id":"a1"}\n'
+        '{"timestamp":"2025-09-15T15:49:20.217+0200","rule":{"level":5,"description":"sshd failed","id":"5710"},'
+        '"agent":{"name":"web-01"},"id":"a2"}\n'
+        '{"timestamp":"2025-09-15T15:50:20.217+0200","rule":{"level":5,"description":"sshd failed","id":"5710"},'
+        '"agent":{"name":"db-01"},"id":"a3"}\n'
+        '{"timestamp":"2025-09-15T15:51:20.217+0200","rule":{"level":3,"description":"Wazuh server started.","id":"502"},'
+        '"agent":{"name":"web-01"},"id":"a4"}\n',
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 3
+    ssh_web = next(r for r in findings if r["extra"].get("rule_id") == "5710" and "web-01" in r["assets"])
+    ssh_db = next(r for r in findings if r["extra"].get("rule_id") == "5710" and "db-01" in r["assets"])
+    started = next(r for r in findings if r["name"] == "Wazuh server started.")
+    assert ssh_web["extra"]["count"] == 2
+    assert ssh_web["extra"]["first_seen"].startswith("2025-09-15T15:48:20")
+    assert ssh_web["extra"]["last_seen"].startswith("2025-09-15T15:49:20")
+    assert ssh_db["extra"]["count"] == 1
+    assert started["severity"] == "info"
+    assert started["extra"].get("telemetry") is True
+    from shared.control_map import poam_decision
+
+    assert poam_decision(started)["include"] is False
+    assert poam_decision(started)["reason"] == "telemetry_info"
+    assert poam_decision(ssh_web)["include"] is False
+    assert poam_decision(ssh_web)["reason"] == "telemetry"
+
+
+def test_wazuh_sca_agent_from_path_and_severity_from_rationale(tmp_path: Path) -> None:
+    dest = tmp_path / "web-01" / "sca-checks.json"
+    dest.parent.mkdir(parents=True)
+    dest.write_text(
+        """{
+  "data": {
+    "affected_items": [
+      {
+        "id": 19002,
+        "title": "Ensure SSH PermitRootLogin is no.",
+        "result": "failed",
+        "policy_id": "cis_ubuntu20-04",
+        "rationale": "PermitRootLogin high risk if enabled."
+      },
+      {
+        "id": 19003,
+        "title": "Ensure a banner is set.",
+        "result": "failed",
+        "policy_id": "cis_ubuntu20-04"
+      }
+    ]
+  }
+}
+""",
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    assets = {r["name"] for r in recs if r["kind"] == "asset"}
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert "web-01" in assets
+    assert "wazuh-host" not in assets
+    assert "unknown-agent" not in assets
+    by_id = {r["extra"].get("id"): r for r in findings}
+    assert by_id["19002"]["severity"] == "high"
+    assert by_id["19002"]["extra"].get("severity_source") == "rationale"
+    assert by_id["19002"]["extra"].get("agent_source") == "path"
+    assert "web-01" in by_id["19002"]["ref_id"]
+    assert "web-01" in by_id["19003"]["ref_id"]
+    assert by_id["19003"]["severity"] == "medium"
+    assert by_id["19003"]["extra"].get("severity_source") == "default"
+
+
+def test_prowler_skips_muted_and_manual_keeps_account_identity(tmp_path: Path) -> None:
+    dest = tmp_path / "prowler.json"
+    dest.write_text(
+        """[
+  {
+    "CheckID": "s3_bucket_public_access",
+    "CheckTitle": "S3 public",
+    "Status": "FAIL",
+    "Severity": "high",
+    "ResourceId": "bucket-a",
+    "AccountId": "111111111111",
+    "ServiceName": "s3"
+  },
+  {
+    "CheckID": "s3_bucket_public_access",
+    "CheckTitle": "S3 public",
+    "Status": "FAIL",
+    "Severity": "high",
+    "ResourceId": "bucket-a",
+    "AccountId": "222222222222",
+    "ServiceName": "s3"
+  },
+  {
+    "CheckID": "iam_root_mfa_enabled",
+    "CheckTitle": "Root MFA",
+    "Status": "FAIL",
+    "Muted": true,
+    "Severity": "critical",
+    "ResourceId": "root",
+    "AccountId": "111111111111",
+    "ServiceName": "iam"
+  },
+  {
+    "CheckID": "account_maintain_current_contact_details",
+    "CheckTitle": "Contact details",
+    "Status": "MANUAL",
+    "Severity": "medium",
+    "ResourceId": "account",
+    "AccountId": "111111111111",
+    "ServiceName": "iam"
+  }
+]
+""",
+        encoding="utf-8",
+    )
+    recs = cloud_prowler.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 2
+    assert {r["extra"].get("account_id") for r in findings} == {"111111111111", "222222222222"}
+    assert {r["ref_id"] for r in findings} == {
+        findings[0]["ref_id"],
+        findings[1]["ref_id"],
+    }
+    assert findings[0]["ref_id"] != findings[1]["ref_id"]
+    assert any("111111111111" in r["ref_id"] for r in findings)
+    assert any("222222222222" in r["ref_id"] for r in findings)
+    assert all(r["extra"].get("check_id") == "s3_bucket_public_access" for r in findings)
+    assert not any(r["extra"].get("check_id") == "iam_root_mfa_enabled" for r in findings)
+    assert not any(r["extra"].get("status") == "MANUAL" for r in findings)
+
+
+def test_wazuh_info_alerts_land_in_excluded_as_telemetry_info(tmp_path, monkeypatch) -> None:
+    """Levels 0-3 are info telemetry — excluded.csv names them, never a silent drop."""
+    import csv
+
+    from collectors.grc_loader import load
+    from shared.control_map import poam_decision
+    from shared.io_util import out_dir, write_canonical
+    from shared.schema import canon_severity
+
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"timestamp":"2025-09-15T15:48:20.217+0200","rule":{"level":3,"description":"Wazuh server started.","id":"502"},'
+        '"agent":{"name":"web-01"},"id":"a1"}\n'
+        '{"timestamp":"2025-09-15T15:49:20.217+0200","rule":{"level":2,"description":"PAM: Login session opened.","id":"5501"},'
+        '"agent":{"name":"web-01"},"id":"a2"}\n',
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert all(r["severity"] == "info" for r in findings)
+    assert all(r["extra"].get("telemetry") is True for r in findings)
+    assert all(poam_decision(r)["reason"] == "telemetry_info" for r in findings)
+    assert all(canon_severity(r["severity"]) == "info" for r in findings)
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    write_canonical("host-wazuh", recs)
+    summary = load()
+    assert summary["excluded"] >= 2
+    assert summary["excluded_by_reason"].get("telemetry_info", 0) >= 2
+    with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    reasons = {row["finding_ref_id"]: row["excluded_reason"] for row in rows}
+    assert any(reason == "telemetry_info" for reason in reasons.values())
+    assert all(r["ref_id"] in reasons and reasons[r["ref_id"]] == "telemetry_info" for r in findings)
+
+
+def test_wazuh_300_level5_alerts_one_excluded_no_high(tmp_path, monkeypatch) -> None:
+    """300 synthetic level-5 alerts: 0 High rows, one aggregated excluded row."""
+    import csv
+    import json
+
+    from collectors.grc_loader import load
+    from shared.control_map import poam_decision
+    from shared.io_util import out_dir, write_canonical
+
+    dest = tmp_path / "alerts.jsonl"
+    lines = []
+    for i in range(300):
+        lines.append(
+            json.dumps(
+                {
+                    "timestamp": f"2025-09-15T15:{i // 60:02d}:{i % 60:02d}.000Z",
+                    "rule": {
+                        "level": 5,
+                        "description": "sshd: brute force trying to get access",
+                        "id": "5710",
+                    },
+                    "agent": {"name": "web-01"},
+                    "severity": "high" if i % 2 == 0 else None,
+                    "id": f"a{i}",
+                }
+            )
+        )
+    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    recs = host_wazuh.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    hit = findings[0]
+    assert hit["severity"] == "low"
+    assert hit["extra"]["count"] == 300
+    assert hit["extra"].get("telemetry") is True
+    assert not hit["extra"].get("compromise")
+    assert not any(r["severity"] == "high" for r in recs)
+    assert poam_decision(hit)["include"] is False
+    assert poam_decision(hit)["reason"] == "telemetry"
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    write_canonical("host-wazuh", recs)
+    summary = load()
+    assert summary["poam_included"] == 0
+    assert summary["excluded"] == 1
+    assert summary["excluded_by_reason"] == {"telemetry": 1}
+    with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam_rows = list(csv.DictReader(fh))
+    assert poam_rows == []
+    assert not any((row.get("severity") or "").lower() == "high" for row in poam_rows)
+    with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
+        excluded = list(csv.DictReader(fh))
+    assert len(excluded) == 1
+    assert excluded[0]["excluded_reason"] == "telemetry"
+    assert excluded[0]["severity"] == "low"
+
+
+def test_wazuh_demo_brute_force_is_telemetry_not_high() -> None:
+    recs = host_wazuh.parse_file(DEMO / "wazuh" / "agents.json")
+    brute = [
+        r
+        for r in recs
+        if r["kind"] == "finding" and "brute force" in r["name"].lower()
+    ]
+    assert brute
+    assert all(r["severity"] != "high" for r in brute)
+    assert all(r["severity"] == "medium" for r in brute)
+    from shared.control_map import poam_decision
+
+    assert all(poam_decision(r)["include"] is False for r in brute)
+    assert all(poam_decision(r)["reason"] == "telemetry" for r in brute)
+
+
+def test_wazuh_level12_and_compromise_stay_on_plan(tmp_path: Path) -> None:
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"rule":{"level":12,"description":"integrity checksum changed","id":"550"},'
+        '"agent":{"name":"web-01"},"id":"a12"}\n'
+        '{"rule":{"level":8,"description":"Possible kernel level rootkit","id":"521",'
+        '"groups":["rootkit"]},"agent":{"name":"web-01"},"id":"a8"}\n',
+        encoding="utf-8",
+    )
+    recs = [r for r in host_wazuh.parse_file(dest) if r["kind"] == "finding"]
+    by_id = {r["extra"].get("rule_id"): r for r in recs}
+    from shared.control_map import poam_decision
+
+    assert by_id["550"]["severity"] == "high"
+    assert poam_decision(by_id["550"])["include"] is True
+    assert by_id["521"]["extra"].get("compromise") is True
+    assert poam_decision(by_id["521"])["include"] is True
+
+
+def test_wazuh_prowler_enum4linux_route_canon_severity(tmp_path: Path) -> None:
+    from shared.schema import canon_severity
+
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"rule":{"level":8,"description":"warn word","id":"80"},'
+        '"agent":{"name":"web-01"},"severity":"WARNING"}\n'
+        '{"rule":{"level":8,"description":"unknown word","id":"81"},'
+        '"agent":{"name":"web-01"},"severity":"purple-alert"}\n',
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    by_name = {r["name"]: r for r in recs if r["kind"] == "finding"}
+    assert by_name["warn word"]["severity"] == canon_severity("medium") == "medium"
+    assert not by_name["warn word"]["extra"].get("severity_unmapped")
+    assert by_name["unknown word"]["severity"] == canon_severity("medium") == "medium"
+    assert not by_name["unknown word"]["extra"].get("severity_unmapped")
+
+    prowler = tmp_path / "prowler.json"
+    prowler.write_text(
+        """[
+  {"CheckID": "s3_bucket_public_access", "CheckTitle": "S3 public", "Status": "FAIL",
+   "Severity": "IMPORTANT", "ResourceId": "bucket-a", "AccountId": "111111111111", "ServiceName": "s3"},
+  {"CheckID": "s3_bucket_versioning", "CheckTitle": "S3 versioning", "Status": "FAIL",
+   "Severity": "purple-alert", "ResourceId": "bucket-b", "AccountId": "111111111111", "ServiceName": "s3"}
+]
+""",
+        encoding="utf-8",
+    )
+    precs = [r for r in cloud_prowler.parse_file(prowler) if r["kind"] == "finding"]
+    by_check = {r["extra"].get("check_id"): r for r in precs}
+    assert by_check["s3_bucket_public_access"]["severity"] == canon_severity("IMPORTANT") == "high"
+    assert "111111111111" in by_check["s3_bucket_public_access"]["ref_id"]
+    assert by_check["s3_bucket_versioning"]["severity"] == canon_severity("purple-alert") == "medium"
+    assert by_check["s3_bucket_versioning"]["extra"].get("severity_unmapped") is True
+
+    enum_dest = tmp_path / "enum4linux-ng.json"
+    enum_dest.write_text(
+        """{
+  "target": {"host": "10.0.0.8"},
+  "smb_domain_info": {"NetBIOS computer name": "FS01"},
+  "sessions": {"null": true},
+  "shares": {"DATA": {"access": {"mapping": "ok", "listing": "ok", "writing": "ok"}}}
+}
+""",
+        encoding="utf-8",
+    )
+    erecs = [r for r in identity_ad.parse_file(enum_dest) if r["kind"] == "finding"]
+    assert erecs
+    assert all(r["severity"] == canon_severity(r["severity"]) == "high" for r in erecs)
 
 
 def test_samples_sources_credits_public_fixtures() -> None:

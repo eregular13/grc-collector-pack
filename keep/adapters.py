@@ -149,7 +149,11 @@ def _prowler(payload: Any) -> bool:
             "CheckID" in rows[0] or "CheckTitle" in rows[0]
         )
     if isinstance(payload, list) and payload and isinstance(payload[0], dict):
-        return "CheckID" in payload[0] or "CheckTitle" in payload[0]
+        row = payload[0]
+        if "CheckID" in row or "CheckTitle" in row:
+            return True
+        if row.get("status_code") and (row.get("finding_info") or row.get("metadata")):
+            return True
     return False
 
 
@@ -178,6 +182,10 @@ def detect_family(path: Path) -> str | None:
     suffix = path.suffix.lower()
     text = path.read_text(encoding="utf-8", errors="replace")
     if suffix == ".csv" or _hk_csv(text):
+        head = text.lstrip("\ufeff").splitlines()[0] if text.strip() else ""
+        up = head.upper()
+        if ";" in head and "CHECK_ID" in up and "STATUS" in up:
+            return "prowler"
         return "hardeningkitty" if _hk_csv(text) else None
     payload = _load_json(path)
     if payload is None:
