@@ -1,5 +1,19 @@
 # CYCLE log
 
+## cycle 196 — Metis §11 false/empty parser fixes (2026-09-26)
+
+Merged origin/master `1f8d347` (#137 host-scoped `ref_id`). Seven
+false/empty fixes on real tool output: osquery it-compliance pack
+(compliant host → 0 findings); Custodian detect only c7n keys or
+`resources.json`+`metadata.json`, default medium; ScoutSuite `.js`
+prefix; Trivy k8s `Resources[].Results[]` (not silent empty);
+Intune `ownerType=unknown` not unenrolled; BloodHound HasSession
+one finding per privileged principal with `session_count`; Jamf
+`ALL/BOOT/SOME/NOT_ENCRYPTED` + GENERAL `encryption not collected`.
+Host-lab `assets=84` `findings=103` `vulnerabilities=22` `poam=125`
+(full-plan inclusion, 0 excluded; 103+22=125). pytest **1162**.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 
 Merged master `f3db646` (#132 estate pages + #139 real parsers) into the

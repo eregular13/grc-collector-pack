@@ -1,3 +1,17 @@
+# CRITIC — cycle 196 (METIS_S11_PARSER_FALSE_FAILS)
+
+Lab this brick: pytest **1162** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `severity_unmapped=0` `demo=true`). Cold sample_to_sor +
+farm_drop_to_sor honesty PASS. Zero P0/P1. Metis §11: osquery
+it-compliance pack inventory-only; Custodian not Steampipe lists;
+ScoutSuite `.js`; Trivy k8s `Resources[].Results[]`; Intune owner
+unknown ≠ unenrolled; HasSession rolled up per privileged principal;
+Jamf FileVault2 enums + GENERAL coverage gap. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 195 (MERGE_EVIDENCE_AND_MULTI_HOST_LAB)
 
 Lab this brick: pytest **1087** passed, 1 skipped. Ten collectors +

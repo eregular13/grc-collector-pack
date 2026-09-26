@@ -1,4 +1,4 @@
-cycle: 195
+cycle: 196
 phase: DONE
 item: COS48-FARM-DROP-TO-SOR
 critic_score: 8/10
@@ -8,7 +8,7 @@ catalog_total: 111
 catalog_wired: 32
 catalog_invoke: 30
 catalog_file_drop: 81
-pytest: 1087
+pytest: 1162
 pytest_skipped: 1
 host_lab: pass
 dropbox_lab: pass
@@ -17,7 +17,7 @@ farm_toolbin_e2e: pass
 keep_lab: pass
 e2e_assets: 84
 e2e_findings: 103
-e2e_poam: 111
+e2e_poam: 125
 demo: true
 estate: DEMO — not a client estate
 compose_lab: pass_desktop
