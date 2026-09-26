@@ -11,8 +11,9 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from shared.control_map import map_finding
+from shared.control_map import extra_labels, map_finding
 from shared.framework_class_map import (
+    BLANKET_REGISTER_STAMPS,
     CPG20_GOALS,
     CSF20_FUNCTION_OF,
     CSF20_SUBCATEGORIES,
@@ -23,6 +24,7 @@ from shared.framework_class_map import (
     cpg_stamp,
     csf_cpg_tag_set,
     csf_stamp,
+    is_internet_facing,
     resolve_class_tags,
 )
 from shared.schema import make_record
@@ -106,7 +108,8 @@ def test_subcategory_sits_under_stamped_function() -> None:
     assert smb["csf_function"] == "protect"
     assert smb["csf_subcategory"] == "PR.IR-01"
     assert "csf_PR" not in smb["framework_refs"].split(",")
-    assert "cpg_3_S" in smb["cpg"]
+    assert "cpg_3_I" in smb["cpg"]
+    assert "cpg_3_S" not in smb["cpg"]
 
     honeypot = map_finding(
         _finding(
@@ -128,9 +131,9 @@ def test_subcategory_sits_under_stamped_function() -> None:
             source="easm",
         )
     )
-    assert perimeter["csf_function"] == "identify"
-    assert perimeter["csf_subcategory"] == "ID.AM-01"
-    assert "cpg_2_A" in perimeter["cpg"]
+    assert perimeter["csf_function"] == "protect"
+    assert perimeter["csf_subcategory"] == "PR.IR-01"
+    assert "cpg_3_S" in perimeter["cpg"]
 
 
 def test_vuln_reconciles_id_ra_or_pr_ps() -> None:
@@ -291,3 +294,359 @@ def test_classify_unknown_is_unmapped() -> None:
     )
     assert tagged["csf_subcategory"] == UNMAPPED
     assert "csf_PR" not in tagged["framework_refs"]
+
+
+def test_cpg_3_i_is_official() -> None:
+    assert CPG20_GOALS["3.I"] == "Implement Logical/Physical Network Segmentation"
+    assert cpg_stamp("3.I") == "cpg_3_I"
+
+
+def test_internet_facing_requires_evidence() -> None:
+    internal = _finding(
+        name="SMB 445 exposed",
+        description="dc.corp.local has open TCP/445 (microsoft-ds).",
+        assets=["dc.corp.local"],
+        extra={"port": "445", "service": "microsoft-ds", "ip": "10.0.0.10"},
+    )
+    assert is_internet_facing(internal) is False
+    public_ip = _finding(
+        name="SMB 445 exposed",
+        assets=["edge.example.net"],
+        extra={"port": "445", "ip": "203.0.113.10"},
+    )
+    # 203.0.113.0/24 is documentation — ipaddress treats it as not global.
+    assert is_internet_facing(public_ip) is False
+    real_public = _finding(
+        name="HTTPS exposed",
+        assets=["203.0.113.1"],
+        extra={"ip": "8.8.8.8"},
+    )
+    assert is_internet_facing(real_public) is True
+    easm = _finding(
+        name="Sensitive external hostname vpn.example.com",
+        source="easm",
+        assets=["vpn.example.com"],
+    )
+    assert is_internet_facing(easm) is True
+    rds = _finding(
+        source="cloud-prowler",
+        name="RDS instance is publicly accessible",
+        extra={"check_id": "rds_instance_no_public_access"},
+    )
+    assert is_internet_facing(rds, {"finding_type": "rds_public"}) is True
+    empty = _finding(name="mystery", description="no plane", assets=["unknown-host"])
+    assert is_internet_facing(empty) is False
+
+
+# Reviewer cold-review #4 §D4 21-row sample. OK stay; wrong get the
+# corrected tags; weak/arguable are the justified choices in this brick.
+_REVIEWER_21 = (
+    # OK (8)
+    (
+        "ok_rds_public",
+        dict(
+            source="cloud-prowler",
+            name="RDS instance is publicly accessible",
+            description="RDS instance PubliclyAccessible=true.",
+            extra={"check_id": "rds_instance_no_public_access"},
+        ),
+        {"cpg": "cpg_3_S"},
+    ),
+    (
+        "ok_s3_public",
+        dict(
+            source="cloud-prowler",
+            name="S3 bucket allows public access",
+            description="Bucket ACL AllUsers.",
+            extra={"check_id": "s3_bucket_public_access"},
+        ),
+        {"cpg": "cpg_3_S"},
+    ),
+    (
+        "ok_spf",
+        dict(
+            source="dns-email",
+            name="SPF missing",
+            description="No SPF TXT for example.com.",
+            category="email",
+        ),
+        {"cpg": "cpg_3_L", "csf": "csf_PR_DS_02"},
+    ),
+    (
+        "ok_dmarc",
+        dict(
+            source="dns-email",
+            name="DMARC missing",
+            description="No _dmarc TXT for example.com.",
+            category="email",
+        ),
+        {"cpg": "cpg_3_L", "csf": "csf_PR_DS_02"},
+    ),
+    (
+        "ok_heartbleed",
+        dict(
+            source="vuln-scan",
+            name="OpenSSL Heartbleed",
+            description="Heartbleed CVE-2014-0160 on the TLS stack.",
+            category="vulnerability",
+            extra={"cve": "CVE-2014-0160"},
+        ),
+        {"cpg": "cpg_2_B", "csf": "csf_PR_PS_02"},
+    ),
+    (
+        "ok_api_key",
+        dict(
+            source="code-secrets",
+            name="Generic API Key",
+            description="Generic API key in services/payments/config.py.",
+            category="secrets",
+        ),
+        {"cpg": "cpg_3_C", "csf": "csf_PR_AA_01"},
+    ),
+    (
+        "ok_domain_admins",
+        dict(
+            source="identity-ad",
+            name="Domain Admins standing members",
+            description="Domain Admins has standing members.",
+            extra={"edge": "Domain Admins"},
+        ),
+        {"cpg": "cpg_3_H"},
+    ),
+    (
+        "ok_cloudtrail",
+        dict(
+            source="cloud-prowler",
+            name="CloudTrail multi-region trail is missing",
+            description="No multi-region CloudTrail trail.",
+            extra={"check_id": "cloudtrail_multi_region_enabled"},
+        ),
+        {"cpg": "cpg_3_Q"},
+    ),
+    # Arguable (3) — justified choices
+    (
+        "arg_roastable_spn",
+        dict(
+            source="identity-ad",
+            name="Roastable SPN",
+            description="SVC-SQL@CORP.LOCAL has an SPN and is kerberoastable.",
+            extra={"edge": "kerberoast"},
+        ),
+        # Offline crack of the TGS (service account password) → 3.B, same as AS-REP.
+        {"cpg": "cpg_3_B", "csf": "csf_PR_AA_01"},
+    ),
+    (
+        "arg_mdm_enrollment",
+        dict(
+            source="host-wazuh",
+            name="Endpoint not enrolled in MDM",
+            description="fleet-laptop-07 MDM enrollment off.",
+        ),
+        # Stay 3.N / PR.PS-01: MDM enrollment is configuration management.
+        {"cpg": "cpg_3_N", "csf": "csf_PR_PS_01"},
+    ),
+    (
+        "arg_k8s_anonymous",
+        dict(
+            source="k8s-kubescape",
+            name="Anonymous Kubernetes API access",
+            description="anonymous-auth=true on kube-apiserver.",
+            extra={"check_id": "1_2_1"},
+            assets=["prod-cluster"],
+        ),
+        # No internet-facing evidence on prod-cluster → 3.I, not 3.S.
+        {"cpg": "cpg_3_I", "csf": "csf_PR_AA_05"},
+    ),
+    # Weak (3) — better honest fit
+    (
+        "weak_host_firewall",
+        dict(
+            source="host-wazuh",
+            name="Host firewall is disabled",
+            description="No firewall software installed.",
+            extra={"control_key": "host_firewall"},
+        ),
+        {"cpg": "cpg_3_I", "csf": "csf_PR_PS_01"},
+    ),
+    (
+        "weak_sensitive_hostname",
+        dict(
+            source="easm",
+            name="Sensitive external hostname vpn.example.com",
+            description="vpn.example.com is published on the public perimeter.",
+            assets=["vpn.example.com"],
+        ),
+        # EASM source is internet-facing evidence; lock down the listener → 3.S / PR.IR-01.
+        {"cpg": "cpg_3_S", "csf": "csf_PR_IR_01"},
+    ),
+    (
+        "weak_falco_binary_dir",
+        dict(
+            source="k8s-kubescape",
+            name="Falco WriteBelowBinaryDir",
+            description="Workload can write below binary directory.",
+            extra={"check_id": "write_below_binary_dir"},
+            labels=["falco"],
+        ),
+        # Runtime integrity / malicious-code detection, not change-management 3.N.
+        {"cpg": "cpg_4_A", "csf": "csf_DE_CM_09"},
+    ),
+    # Wrong (7) — corrected tags
+    (
+        "wrong_internal_telnet",
+        dict(
+            source="inventory-nmap",
+            name="Telnet exposed",
+            description="telnet-legacy.corp.local has open TCP/23.",
+            category="exposure",
+            extra={"port": "23", "service": "telnet"},
+            assets=["telnet-legacy.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S", "csf": "csf_PR_IR_01"},
+    ),
+    (
+        "wrong_smb_dc",
+        dict(
+            source="inventory-nmap",
+            name="SMB 445 exposed",
+            description="dc.corp.local has open TCP/445 (microsoft-ds).",
+            category="exposure",
+            extra={"port": "445", "service": "microsoft-ds", "ip": "10.0.0.20"},
+            assets=["dc.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S", "csf": "csf_PR_IR_01"},
+    ),
+    (
+        "wrong_msrpc_135",
+        dict(
+            source="inventory-nmap",
+            name="msrpc 135 exposed",
+            description="dc.corp.local has open TCP/135 (msrpc).",
+            category="exposure",
+            extra={"port": "135", "service": "msrpc"},
+            assets=["dc.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S"},
+    ),
+    (
+        "wrong_admin_share",
+        dict(
+            source="inventory-nmap",
+            name="Administrative share exposed on dc.corp.local (C$/ADMIN$)",
+            description="C$/ADMIN$ reachable off the admin network.",
+            category="exposure",
+            extra={"port": "445", "service": "microsoft-ds"},
+            assets=["dc.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S", "csf": "csf_PR_AA_05"},
+    ),
+    (
+        "wrong_legacy_auth",
+        dict(
+            source="saas-idp",
+            name="Legacy authentication protocols are enabled",
+            description="M365 legacy auth (IMAP/SMTP basic) still enabled.",
+        ),
+        {"cpg": "cpg_3_F", "not_cpg": "cpg_3_E", "csf": "csf_PR_AA_03"},
+    ),
+    (
+        "wrong_asrep",
+        dict(
+            source="identity-ad",
+            name="AS-REP roastable account",
+            description="SVC-KRBTGT-ROAST does not require Kerberos preauth.",
+            extra={"edge": "asrep"},
+        ),
+        {"cpg": "cpg_3_B", "not_cpg": "cpg_3_E", "csf": "csf_PR_AA_01"},
+    ),
+    (
+        "wrong_redis",
+        dict(
+            source="vuln-scan",
+            name="Redis without auth",
+            description="Unauthenticated Redis on a LAB host.",
+            category="vulnerability",
+            extra={"template_id": "exposed-redis", "rule": "exposed-redis"},
+            assets=["https://redis-a.lab.internal"],
+        ),
+        {
+            "cpg": "cpg_3_I",
+            "not_cpg": "cpg_2_B",
+            "csf": "csf_PR_AA_05",
+            "not_csf": "csf_PR_PS_02",
+            "control": "Require authentication on Redis",
+            "not_n53": ("SI-2", "RA-5"),
+        },
+    ),
+)
+
+
+def test_reviewer_21_row_sample_expectations() -> None:
+    assert len(_REVIEWER_21) == 21
+    for key, kwargs, expect in _REVIEWER_21:
+        rec = _finding(**kwargs)
+        mapped = map_finding(rec)
+        refs = mapped.get("framework_refs") or ""
+        cpg = mapped.get("cpg") or []
+        if want := expect.get("cpg"):
+            assert want in cpg or want in refs, (key, cpg, refs)
+        if not_cpg := expect.get("not_cpg"):
+            assert not_cpg not in cpg and not_cpg not in refs.split(","), (key, cpg, refs)
+        if want_csf := expect.get("csf"):
+            assert want_csf in refs or want_csf in (mapped.get("csf") or []), (key, refs)
+        if not_csf := expect.get("not_csf"):
+            assert not_csf not in refs.split(","), (key, refs)
+        if control := expect.get("control"):
+            assert mapped.get("control_name") == control, (key, mapped.get("control_name"))
+        if not_n53 := expect.get("not_n53"):
+            n53 = set(mapped.get("nist_800_53") or [])
+            assert not set(not_n53) <= n53 or "IA-2" in n53, (key, n53)
+            assert mapped.get("control_name") != "Apply vulnerability remediation"
+
+
+def test_register_never_blanket_csf_pr(tmp_path: Path, monkeypatch) -> None:
+    from collectors.grc_loader import load
+    from shared.io_util import out_dir, write_canonical
+
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    (tmp_path / "in").mkdir()
+    recs = [
+        _finding(
+            ref="NMAP-smb",
+            name="SMB 445 exposed",
+            description="filesrv has open TCP/445 (microsoft-ds).",
+            extra={"port": "445", "service": "microsoft-ds"},
+            assets=["filesrv.corp.local"],
+        ),
+        make_record(
+            kind="asset",
+            source="inventory-nmap",
+            ref_id="AST-filesrv",
+            name="filesrv.corp.local",
+            description="internal file server",
+            assets=["filesrv.corp.local"],
+        ),
+    ]
+    write_canonical("inventory-nmap", recs)
+    load()
+    findings = list(
+        csv.DictReader((out_dir() / "ciso-assistant" / "findings.csv").open(encoding="utf-8"))
+    )
+    assets = list(
+        csv.DictReader((out_dir() / "ciso-assistant" / "assets.csv").open(encoding="utf-8"))
+    )
+    assert findings
+    for row in findings:
+        labels = {t.strip() for t in (row.get("filtering_labels") or "").split(",") if t.strip()}
+        assert not (labels & BLANKET_REGISTER_STAMPS), (row.get("name"), labels)
+        assert "csf_PR_IR_01" in labels or "csf_PR_AA_05" in labels
+    for row in assets:
+        labels = {t.strip() for t in (row.get("filtering_labels") or "").split(",") if t.strip()}
+        assert "cpg_2_W" not in labels
+        assert "cpg_1_E" not in labels
+        assert "csf_PR" not in labels
+        assert "csf_protect" not in labels
+    # extra_labels vocabulary and finding path also stay clean.
+    assert not (set(extra_labels()) & BLANKET_REGISTER_STAMPS)
+    assert "csf_PR" not in extra_labels(recs[0])
