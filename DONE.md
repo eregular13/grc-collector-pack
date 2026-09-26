@@ -19,8 +19,8 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "canonical": 212,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T11:54:21Z"
+  "generated_at": "2026-09-26T12:07:14Z"
 }
 ```
 
-Cycle 213 merge origin/master `6a5ebd6` into register-one-truth (no rebase). Pytest 1460; host-lab 79 / 105 / 121 excluded 21 flood_guard 142=121+21; farm 48 / 134 / 85 excluded 89 flood_guard 174=85+89. Cycle 207 merge `1be65cf` stands as history. Cycle 201 flood_guard + FedRAMP Open stands as history. Cycle 200 no-Pentera console/refresh stands as history. Cycle 199 register one truth stands as history. CoS #48 rails above stand.
+Cycle 214 real-corpus 28 `kind=excluded` on `excluded.csv` (osquery 11+3 + Custodian 8+6; `UNEXPLAINED==0`). Pytest 1461; host-lab 79 / 105 / 121 excluded 21 flood_guard 142=121+21; farm 48 / 134 / 85 excluded 89 flood_guard 174=85+89. Cycle 213 merge origin/master `6a5ebd6` stands as history. Cycle 207 merge `1be65cf` stands as history. Cycle 201 flood_guard + FedRAMP Open stands as history. Cycle 200 no-Pentera console/refresh stands as history. Cycle 199 register one truth stands as history. CoS #48 rails above stand.

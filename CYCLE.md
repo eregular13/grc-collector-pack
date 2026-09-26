@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 214 — real-corpus 28 kind=excluded on excluded.csv (2026-09-26)
+
+Metis acceptance.json lock: osquery 11+3 and Custodian 8+6 parser
+`kind=excluded` records reach `excluded.csv` with `NOT_A_WEAKNESS`
+(osquery detail stays `unmapped query`). flood_guard stamps
+`UNEXPLAINED==0`. Master `6a80701` / `89b84db` already ancestors — no
+new merge. Pytest **1461**. Host-lab **79 / 105 / 121** excluded **21**;
+flood_guard 142 = 121 + 21 UNEXPLAINED=0. Farm drop **48 / 134 / 85**
+excluded **89**; flood_guard 174 = 85 + 89 UNEXPLAINED=0. Catalog
+unchanged. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 213 — merge origin/master 6a5ebd6 into register-one-truth (2026-09-26)
 
 Normal merge of `origin/master` `6a5ebd6` (#172 Wazuh host key, #178 CLIENT guard,

@@ -1,3 +1,17 @@
+# CRITIC — cycle 214 (REAL_CORPUS_28_EXCLUDED)
+
+Lab this brick: pytest **1461** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=105`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=127`
+`poam=121` `excluded=21` `duplicates_merged=15` `flood_guard`
+`findings_in=142` `UNEXPLAINED=0` `demo=true`). Farm drop `assets=48`
+`findings=134` `poam=85` `excluded=89` (`findings_in=174`
+`UNEXPLAINED=0`). Real-corpus Metis `acceptance.json`: 28 parser
+`kind=excluded` (osquery 11+3, Custodian 8+6) appear in `excluded.csv`
+as `NOT_A_WEAKNESS`. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 213 (MERGE_MASTER_172_INTO_149)
 
 Merge `origin/master` `6a5ebd6` (#172+#178+#169+#175+#165+#166+#161+#160) with
