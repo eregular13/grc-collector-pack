@@ -1,3 +1,13 @@
+# CRITIC — cycle 206 (MERGE_MASTER_150_INTO_145)
+
+Merge `origin/master` `dd360a2` (#150 UDP 445 not SMB) with a normal
+merge commit. No rebase. #139 follow-ups + Argus B4 + #141 filters
+kept. Lab this brick: pytest **1288** passed, 1 skipped. Host-lab
+`assets=79` `findings=107` `poam=124` `excluded=5` `demo=true`.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 205 (MERGE_MASTER_141_INTO_145)
 
 Merge `origin/master` `9f73537` (#141 collectors false/empty on real

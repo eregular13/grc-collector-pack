@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed
+risky ports so UDP 445 is not SMB). No rebase. #139 follow-ups +
+#141 computer-SPN / DC filters + PingCastle 0-member skip kept.
+Host-lab unchanged: assets **79** findings **107** poam **124**
+excluded **5**. Pytest **1288**. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 205 — merge master 9f73537 (#141) into #145 (2026-09-26)
 
 Normal merge of `origin/master` `9f73537` (#141 real-tool collector
