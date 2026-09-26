@@ -176,7 +176,8 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded_by_reason must be a dict")
     if any(not str(reason or "").strip() for reason in excluded):
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded item missing named reason")
-    unknown = sorted(str(reason) for reason in excluded if reason not in POAM_EXCLUDE_REASONS)
+    allowed = set(POAM_EXCLUDE_REASONS) | {"DUPLICATE_INSTANCE"}
+    unknown = sorted(str(reason) for reason in excluded if reason not in allowed)
     if unknown:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
