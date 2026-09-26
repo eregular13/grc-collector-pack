@@ -518,10 +518,11 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
     "pc_dsheuristics": {
         "control_name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
         "recommended_fix": (
-            "Turn on the KB5008383 dSHeuristics LDAP authorization checks "
-            "(CVE-2021-42291) so adding or renaming a computer object requires "
-            "Create Computer Objects. PingCastle A-DsHeuristicsLDAPSecurity from "
-            "a file-drop, not a live directory call."
+            "Set dSHeuristics characters 28 (LDAPAddAuthZVerifications) and 29 "
+            "(LDAPOwnerModify) to 1 for Enforcement after watching events "
+            "3044-3056 in audit mode. The 10th character must be 1 and the 20th "
+            "character must be 2 per KB5008383 (CVE-2021-42291). PingCastle "
+            "A-DsHeuristicsLDAPSecurity from a file-drop, not a live directory call."
         ),
         "nist_800_53": ["AC-3", "AC-6", "SI-2"],
         "key_medium": True,
