@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.control_map import POAM_EXCLUDE_REASONS
+from shared.poam_fedramp import FEDRAMP_CSV_NAME, FEDRAMP_OPEN_HEADERS
 from shared.poam_fields import POAM_EXTRA_FIELDS
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
@@ -316,6 +317,57 @@ def assert_poam_for_findings(
     }
 
 
+def assert_unique_weakness_asset(poam_rows: list[dict[str, str]]) -> None:
+    """No (weakness, asset) pair repeats on the POA&M register."""
+    seen: set[tuple[str, str]] = set()
+    dups: list[tuple[str, str]] = []
+    for row in poam_rows:
+        key = (
+            str(row.get("weakness") or "").strip().lower(),
+            str(row.get("asset") or "").strip().lower(),
+        )
+        if not key[0] and not key[1]:
+            continue
+        if key in seen:
+            dups.append(key)
+        seen.add(key)
+    if dups:
+        raise RegisterShapeError(f"DUPLICATE_WEAKNESS_ASSET {dups[:8]}")
+
+
+def assert_poam_fedramp_identity(ciso_or_out: Path) -> dict[str, Any]:
+    """poam.csv and poam_fedramp.csv are the same decision set (EGP-, title, controls)."""
+    out = resolve_out_dir(ciso_or_out)
+    poam_path = out / "poam" / "poam.csv"
+    fed_path = out / "poam" / FEDRAMP_CSV_NAME
+    if not poam_path.is_file() or not fed_path.is_file():
+        return {"ok": True, "skipped": True}
+    poam = csv_rows(poam_path)
+    fed = csv_rows(fed_path)
+    if len(poam) != len(fed):
+        raise RegisterShapeError(
+            f"EXPORT_IDENTITY_FAIL rows poam={len(poam)} fedramp={len(fed)}"
+        )
+    left = sorted(poam, key=lambda r: str(r.get("poam_id") or ""))
+    right = sorted(fed, key=lambda r: str(r.get("POAM ID") or ""))
+    for a, b in zip(left, right):
+        pid = str(a.get("poam_id") or "")
+        if pid != str(b.get("POAM ID") or ""):
+            raise RegisterShapeError(
+                f"EXPORT_IDENTITY_FAIL poam_id {pid!r} != {b.get('POAM ID')!r}"
+            )
+        if not pid.startswith("EGP-"):
+            raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL expected EGP- id, got {pid!r}")
+        if str(a.get("controls") or "") != str(b.get("Controls") or ""):
+            raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL controls {pid}")
+        if str(a.get("weakness") or "") != str(b.get("Weakness Name") or ""):
+            raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL title {pid}")
+    header = first_nonempty_line(fed_path)
+    if header != ",".join(FEDRAMP_OPEN_HEADERS):
+        raise RegisterShapeError("EXPORT_IDENTITY_FAIL FedRAMP header mismatch")
+    return {"ok": True, "rows": len(poam)}
+
+
 def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
     """Usable risk register + POA&M, not merely N CSV files exist."""
     register = assert_ciso_register(ciso_dir_of(ciso_or_out))
@@ -323,6 +375,10 @@ def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
         ciso_or_out,
         findings_count=int(register["counts"].get("findings.csv") or 0),
     )
+    poam_path = poam_path_of(ciso_or_out)
+    if poam_path.is_file():
+        assert_unique_weakness_asset(csv_rows(poam_path))
+        assert_poam_fedramp_identity(ciso_or_out)
     return {
         "ok": True,
         "ciso": register["ciso"],

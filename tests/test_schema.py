@@ -47,13 +47,17 @@ def test_unknown_severity_is_medium_and_flagged() -> None:
     assert rec["extra"]["severity_raw"] == "purple"
 
 
-def test_empty_severity_is_info_not_unmapped() -> None:
+def test_empty_severity_is_info_unmapped_not_high() -> None:
     sev, unmapped = map_severity(None)
     assert sev == "info"
-    assert unmapped is False
-    rec = make_record(kind="finding", source="x", ref_id="r", name="n")
+    assert unmapped is True
+    blank, blank_unmapped = map_severity("")
+    assert blank == "info"
+    assert blank_unmapped is True
+    assert canon_severity(None) != "high"
+    rec = make_record(kind="finding", source="x", ref_id="r", name="n", severity="")
     assert rec["severity"] == "info"
-    assert not rec["extra"].get("severity_unmapped")
+    assert rec["extra"].get("severity_unmapped") is True
 
 
 def test_ciso_alphabets() -> None:

@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from collectors.grc_loader import _dedupe, load
+from shared.asset_ledger import AssetLedger, attach_asset_uids
 from shared.ciso_shape import assert_poam_breakdown
 from shared.control_map import (
     POAM_EXCLUDE_REASONS,
@@ -18,6 +19,7 @@ from shared.control_map import (
     poam_decision,
 )
 from shared.finding_types import dedupe_weaknesses
+from shared.hardening_dedup import dedupe_hardening
 from shared.io_util import read_jsonl
 from shared.schema import make_record
 
@@ -146,7 +148,13 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     if folder.is_dir():
         for path in sorted(folder.glob("*.jsonl")):
             records.extend(row for row in read_jsonl(path) if isinstance(row, dict))
-    findings = [r for r in dedupe_weaknesses(_dedupe(records)) if r.get("kind") == "finding"]
+    findings = [
+        r
+        for r in dedupe_hardening(
+            dedupe_weaknesses(_dedupe(attach_asset_uids(records, AssetLedger())))
+        )
+        if r.get("kind") == "finding"
+    ]
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)

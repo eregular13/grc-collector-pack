@@ -705,7 +705,10 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
 
     rows = csv_rows(out_dir() / "ciso-assistant" / "applied_controls.csv")
     by_ref = {r["ref_id"]: r for r in rows}
-    assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
+    # Same weakness + same asset merge; keep the critical row's control.
+    assert "CTL-nmap-tls-a" in by_ref
+    assert "CTL-nmap-tls-b" not in by_ref
+    assert by_ref["CTL-nmap-tls-a"]["csf_function"] == "protect"
     assert by_ref["CTL-waz-time"]["csf_function"] == "detect"
     assert by_ref["CTL-hpot-1"]["csf_function"] == "detect"
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] != by_ref["CTL-waz-time"]["csf_function"]

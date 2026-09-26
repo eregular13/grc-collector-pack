@@ -132,10 +132,10 @@ def map_severity(raw: Any) -> tuple[str, bool]:
     loader can count extra.severity_unmapped instead of silently using info.
     """
     if raw is None:
-        return "info", False
+        return "info", True
     text = str(raw).strip()
     if not text:
-        return "info", False
+        return "info", True
     s = text.lower()
     if s in _SEV_ALIASES:
         return _SEV_ALIASES[s], False

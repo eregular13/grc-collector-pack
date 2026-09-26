@@ -8,13 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from collectors.grc_loader import load
+from collectors.grc_loader import _dedupe, load
+from shared.asset_ledger import AssetLedger, attach_asset_uids
 from shared.control_map import (
     map_finding,
     poam_breakdown,
     poam_decision,
     weakness_name_for,
 )
+from shared.finding_types import dedupe_weaknesses
+from shared.hardening_dedup import dedupe_hardening
 from shared.io_util import out_dir, write_canonical
 from shared.poam_fields import SLA_DAYS, SLA_NOTE, poam_fields
 from shared.schema import make_record
@@ -402,12 +405,14 @@ def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
     ]
     write_canonical("host-wazuh", recs)
     summary = load()
-    assert summary["weaknesses_total"] == 5
+    # Same rule + same EGA- asset merges to one weakness before POA&M
+    # decisions; web-01 keeps one Low row, db-01 stays a second host,
+    # info stays telemetry_info. No per-alert 180-day rows.
+    assert summary["weaknesses_total"] == 3
     assert summary["poam_included"] == 2
-    assert summary["excluded"] == 3
+    assert summary["excluded"] == 1
     assert summary["weaknesses_total"] == summary["poam_included"] + summary["excluded"]
     assert summary["excluded_by_reason"] == {
-        "telemetry_duplicate": 2,
         "telemetry_info": 1,
     }
     assert summary["weaknesses_total"] == summary["poam_included"] + sum(
@@ -426,12 +431,18 @@ def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
     with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
         ex = list(csv.DictReader(fh))
     by_ref = {row["finding_ref_id"]: row["excluded_reason"] for row in ex}
-    assert by_ref["WAZ-alert-17002"] == "telemetry_duplicate"
-    assert by_ref["WAZ-alert-17003"] == "telemetry_duplicate"
+    assert "WAZ-alert-17002" not in by_ref
+    assert "WAZ-alert-17003" not in by_ref
     assert by_ref["WAZ-alert-info"] == "telemetry_info"
-    walked = poam_breakdown(recs)
+    walked_recs = [
+        r
+        for r in dedupe_hardening(
+            dedupe_weaknesses(_dedupe(attach_asset_uids(recs, AssetLedger())))
+        )
+        if r.get("kind") == "finding"
+    ]
+    walked = poam_breakdown(walked_recs)
     assert walked["poam_included"] == 2
     assert walked["excluded_by_reason"] == {
-        "telemetry_duplicate": 2,
         "telemetry_info": 1,
     }

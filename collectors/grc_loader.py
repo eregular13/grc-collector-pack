@@ -271,25 +271,14 @@ def load() -> dict:
     vuln_findings = [r for r in findings if _is_vuln(r)]
     other_findings = [r for r in findings if not _is_vuln(r)]
 
-    ciso_findings = []
-    for rec in other_findings:
-        ciso_findings.append(
-            [
-                rec.get("ref_id"),
-                rec.get("name"),
-                rec.get("description"),
-                ciso_finding_severity(rec.get("severity")),
-                rec.get("status") or "identified",
-                _labels(rec, estate_kind),
-            ]
-        )
-
     controls = []
     control_ids_by_finding: dict[str, str] = {}
     mapped_by_ref: dict[str, dict] = {}
+    title_by_ref: dict[str, str] = {}
     for rec in other_findings + vuln_findings:
         mapped = map_finding(rec)
         mapped_by_ref[str(rec.get("ref_id"))] = mapped
+        title_by_ref[str(rec.get("ref_id"))] = weakness_name_for(rec, mapped)
         cid = f"CTL-{slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
         control_ids_by_finding[str(rec.get("ref_id"))] = cid
         controls.append(
@@ -302,6 +291,20 @@ def load() -> dict:
                 "technical",
                 control_priority(rec.get("severity")),
                 mapped["csf_function"],
+            ]
+        )
+
+    ciso_findings = []
+    for rec in other_findings:
+        ref = str(rec.get("ref_id") or "")
+        ciso_findings.append(
+            [
+                rec.get("ref_id"),
+                title_by_ref.get(ref) or rec.get("name"),
+                rec.get("description"),
+                ciso_finding_severity(rec.get("severity")),
+                rec.get("status") or "identified",
+                _labels(rec, estate_kind),
             ]
         )
     # unique controls by ref
@@ -319,7 +322,7 @@ def load() -> dict:
         ciso_vulns.append(
             [
                 rec.get("ref_id"),
-                rec.get("name"),
+                title_by_ref.get(str(rec.get("ref_id") or "")) or rec.get("name"),
                 rec.get("description"),
                 "Exploitable",
                 ciso_vuln_severity(rec.get("severity")),
@@ -338,7 +341,7 @@ def load() -> dict:
                 f"RSK-{slug(str(rec.get('ref_id') or rec.get('name')))}",
                 "|".join(rec.get("assets") or []),
                 rec.get("category") or rec.get("source"),
-                rec.get("name"),
+                title_by_ref.get(str(rec.get("ref_id") or "")) or rec.get("name"),
                 rec.get("description"),
                 "",
                 level,
@@ -381,6 +384,7 @@ def load() -> dict:
     }
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
+    export_decisions: list[dict] = []
     ranked = sorted(
         weaknesses,
         key=lambda rec: (
@@ -409,6 +413,16 @@ def load() -> dict:
         item = ledger_by_ref.get(str(rec.get("ref_id") or ""))
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
+        export_decisions.append(
+            {
+                "rec": rec,
+                "item": item or {},
+                "mapped": mapped,
+                "weakness": weakness,
+                "fields": fields,
+                "assets_s": assets_s,
+            }
+        )
         poam_rows.append(
             [
                 weakness,
@@ -479,7 +493,7 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_fedramp_poam(out_poam, poam_ledger)
+    write_fedramp_poam(out_poam, poam_ledger, decisions=export_decisions)
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
     write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
     write_estate_sidecar(
@@ -515,7 +529,7 @@ def load() -> dict:
                 "severity": ciso_finding_severity(rec.get("severity")),
                 "finding_info": {
                     "uid": rec.get("ref_id"),
-                    "title": rec.get("name"),
+                    "title": title_by_ref.get(str(rec.get("ref_id") or "")) or rec.get("name"),
                     "desc": rec.get("description"),
                 },
                 "compliance": {
@@ -604,6 +618,8 @@ def load() -> dict:
         excluded_poam=excluded_poam,
         in_dir=dest_in,
         generated_at=now,
+        kev_catalog=kev_catalog,
+        title_by_ref=title_by_ref,
     )
     write_client_pages(out_dir(), ctx)
     write_text(

@@ -26,13 +26,19 @@ NMAP = PACK / "nmap"
 # farm_drop after that change: findings=174 poam=106 excluded=68
 # (60 severity_info + 8 honeypot). Old MIN_FARM_POAM=35 was the lighter
 # High/key-Medium-only plan — do not revert.
+# After (weakness, EGA- asset) merge, unique included POA&M rows measure 85
+# (21 duplicate pairs collapsed; not a thinner unique estate). Findings and
+# excluded floors stay 110 / 20 — those MIN_ gates are not loosened.
+# MIN_FARM_POAM restamped to the unique included count (was 100 against the
+# duplicate-inflated 106). Same unique estate; 21 (weakness, asset) pairs
+# no longer counted twice.
 BEFORE_FARM_FINDINGS = 85
 BEFORE_FARM_POAM = 23
 MIN_NMAP_HOSTS = 14
 MIN_NMAP_PORTS = 30
 MIN_NMAP_FINDINGS = 30
 MIN_FARM_FINDINGS = 110
-MIN_FARM_POAM = 100
+MIN_FARM_POAM = 85
 MIN_FARM_EXCLUDED = 20
 CORP_PREFIX = "10.0.0."
 LAB_PREFIX = "172.16.10."

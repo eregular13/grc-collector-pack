@@ -253,6 +253,8 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError("FARM_SHIP_FAIL POA&M header mismatch")
     if not (dest / "out" / "poam" / "poam.md").is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing POA&M md")
+    # Uniqueness + poam.csv/poam_fedramp.csv identity run inside
+    # assert_risk_register_and_poam (same POA&M decision set).
     excluded_path = dest / "out" / "poam" / "excluded.csv"
     if not excluded_path.is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing poam/excluded.csv")
