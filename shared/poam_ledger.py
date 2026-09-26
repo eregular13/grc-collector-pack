@@ -260,12 +260,11 @@ def _title_discriminator(rec: dict[str, Any]) -> str:
 def _extra_identity_token(rec: dict[str, Any]) -> str:
     """Non-title token so two findings on one asset do not share a class-only key."""
     extra = extra_dict(rec)
-    for key in (
+    # Join record/stage/event so Palisade stage-1 hit ≠ same-stage session.
+    disc_keys = (
         "finding_id",
         "stage",
         "event",
-        "path",
-        "page_type",
         "record",
         "record_type",
         "selector",
@@ -273,6 +272,15 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
         "rule_id",
         "agent_status",
         "disk_encryption_enabled",
+    )
+    bits: list[str] = []
+    for key in disc_keys:
+        val = _extra_field(extra, key)
+        if val:
+            bits.append(f"{key}:{val}")
+    if bits:
+        return "|".join(bits)
+    for key in (
         "edge",
         "relationship",
         "objectid",
@@ -289,23 +297,7 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
         "result",
     ):
         val = _extra_field(extra, key)
-        if not val:
-            continue
-        # Record/stage/path tokens are discriminators, not scanner IDs.
-        if key in {
-            "finding_id",
-            "stage",
-            "event",
-            "path",
-            "page_type",
-            "record",
-            "record_type",
-            "selector",
-            "RuleID",
-            "rule_id",
-            "agent_status",
-            "disk_encryption_enabled",
-        } or _is_scanner_identity(val):
+        if val and _is_scanner_identity(val):
             return f"{key}:{val}"
     return ""
 

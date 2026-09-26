@@ -720,6 +720,20 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "extra": {"page_type": "hostname", "url": "https://legacy.corp.local/"},
     }
     assert weakness_key(easm_path) != weakness_key(easm_host)
+    # Same title, two URL shapes — do not mint a second row.
+    easm_a = {
+        "source": "easm",
+        "name": "Exposed admin interface on admin.example.com",
+        "assets": ["admin.example.com"],
+        "extra": {"path": "/login", "url": "https://admin.example.com/login"},
+    }
+    easm_b = {
+        "source": "easm",
+        "name": "Exposed admin interface on admin.example.com",
+        "assets": ["admin.example.com"],
+        "extra": {"path": "https://admin.example.com", "url": "https://admin.example.com"},
+    }
+    assert weakness_key(easm_a) == weakness_key(easm_b)
 
 
 def test_trivy_two_secrets_weakness_keys_stay_distinct() -> None:
