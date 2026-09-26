@@ -870,18 +870,26 @@ def test_netbios_ns_pod_reclass_keeps_uid() -> None:
     assert ledger.observe(new, now=NOW) == old_uid
 
 
-def test_demo_fedramp_open_stays_127(tmp_path: Path, monkeypatch) -> None:
+def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
     from tests.test_poam_breakdown import _run_lab
 
     _run_lab(tmp_path, monkeypatch)
+    poam = tmp_path / "poam" / "poam.csv"
     fed = tmp_path / "poam" / "poam_fedramp.csv"
     assert fed.is_file()
+    with poam.open(encoding="utf-8", newline="") as fh:
+        plan = list(csv.DictReader(fh))
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 127, f"DEMO FedRAMP Open={len(rows)} expected 127"
+    plan_ids = {r.get("poam_id") or "" for r in plan if r.get("poam_id")}
+    fed_ids = {r.get("POAM ID") or "" for r in rows if r.get("POAM ID")}
+    assert fed_ids == plan_ids
+    assert len(rows) == len(plan_ids)
+    # #177 fixed DEMO dup-row remints; Open is still unique poam.csv IDs.
+    assert len(plan_ids) <= len(plan)
 
 
-def test_farm_fedramp_open_stays_109(tmp_path: Path) -> None:
+def _farm_drop_out(tmp_path: Path) -> Path:
     import os
     import subprocess
 
@@ -905,11 +913,36 @@ def test_farm_fedramp_open_stays_109(tmp_path: Path) -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    fed = work / "out" / "poam" / "poam_fedramp.csv"
+    return work / "out"
+
+
+def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
+    out = _farm_drop_out(tmp_path)
+    poam = out / "poam" / "poam.csv"
+    fed = out / "poam" / "poam_fedramp.csv"
     assert fed.is_file()
+    with poam.open(encoding="utf-8", newline="") as fh:
+        plan = list(csv.DictReader(fh))
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 109, f"farm FedRAMP Open={len(rows)} expected 109"
+    plan_ids = {r.get("poam_id") or "" for r in plan if r.get("poam_id")}
+    fed_ids = {r.get("POAM ID") or "" for r in rows if r.get("POAM ID")}
+    assert fed_ids == plan_ids
+    assert len(rows) == len(plan_ids)
+
+
+def test_farm_fedramp_open_stays_109(tmp_path: Path) -> None:
+    """#180 farm lock: pack_drop fold leaves farm ledger Open at 109.
+
+    FedRAMP Open follows unique poam.csv IDs (#179), so this locks the
+    ledger, not a fat export dump.
+    """
+    out = _farm_drop_out(tmp_path)
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    open_items = [
+        it for it in (ledger.get("items") or {}).values() if str(it.get("status") or "") != "closed"
+    ]
+    assert len(open_items) == 109, f"farm ledger Open={len(open_items)} expected 109"
 
 
 def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
@@ -917,8 +950,9 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
 ) -> None:
     """master→this-branch: first Exposed-admin URL keeps its EGP; sibling is new.
 
-    Fresh DEMO FedRAMP Open is 127. Upgrade must not stay at 126 — the
-    newly discriminated /login (or apex) URL is tracked. 0 ghosts.
+    #170: upgrade must not stay at 126 — the newly discriminated /login
+    (or apex) URL is tracked. 0 ghosts. FedRAMP Open follows unique
+    poam.csv IDs, not the full ledger (#179).
     """
     from tests.test_poam_breakdown import _run_lab
 
@@ -943,14 +977,19 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     ]
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        plan_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
     ghosts = prior_ids - reseen_ids
+    plan_ids = {r.get("poam_id") or "" for r in plan_rows if r.get("poam_id")}
+    fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
     new_ids = reseen_ids - prior_ids
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
     assert len(created) == 1, [e.get("poam_id") for e in created]
     assert {e.get("poam_id") for e in created} == new_ids
     assert len(open_items) == 127
-    assert len(fed_rows) == 127
+    assert fed_ids == plan_ids
+    assert len(fed_rows) == len(plan_ids)
     assert prior_ids <= reseen_ids
     admin_rows = [
         it
@@ -993,14 +1032,19 @@ def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     ]
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        plan_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
     ghosts = prior_ids - reseen_ids
     new_ids = reseen_ids - prior_ids
+    plan_ids = {r.get("poam_id") or "" for r in plan_rows if r.get("poam_id")}
+    fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
     assert len(created) == 1, [e.get("poam_id") for e in created]
     assert {e.get("poam_id") for e in created} == new_ids
     assert len(open_items) == 127
-    assert len(fed_rows) == 127
+    assert fed_ids == plan_ids
+    assert len(fed_rows) == len(plan_ids)
     assert prior_ids <= reseen_ids
     assert len({it["poam_id"] for it in open_items}) == 127
     admin_rows = [
@@ -1080,33 +1124,39 @@ def test_ambiguous_bare_web01_four_rows_both_orders() -> None:
 
     Two nmap hosts (port-22) plus the Fleet coverage row on the bare name, and
     one FQDN coverage row so a fold would collapse a POA&M ID. Master keeps
-    four rows; both ledger orders must too.
+    four rows; FQDN-first and wazuh-first (grc_loader) must too.
     """
     pair = (
         ("web01.corp-a.local", "10.1.0.10"),
         ("web01.corp-b.local", "10.2.0.10"),
     )
     for order in (pair, tuple(reversed(pair))):
-        records = []
+        nmap_block = []
         for fqdn, ip in order:
-            records.append(_nmap_fqdn_asset(fqdn, ip))
-            records.append(_nmap_port(fqdn, "22", service="ssh", extra={"ip": ip}))
-        records.append(_wazuh_disconnected(order[0][0]))
-        records.append(_fleet_short_asset("web01"))
-        records.append(_wazuh_disconnected("web01"))
-        ledger = AssetLedger()
-        stamped = attach_asset_uids(records, ledger, now=NOW)
-        uids = {
-            str((r.get("extra") or {}).get("asset_uid") or "")
-            for r in stamped
-            if r.get("kind") == "asset"
-        }
-        assert len(uids) == 3, f"order {order[0][0]} first folded to {uids}"
-        open_items = _poam_open(records)
-        assert len(open_items) == 4, (
-            f"order {order[0][0]} first → {len(open_items)} rows "
-            f"{[(it.get('name'), it.get('poam_id')) for it in open_items]}"
-        )
+            nmap_block.append(_nmap_fqdn_asset(fqdn, ip))
+            nmap_block.append(_nmap_port(fqdn, "22", service="ssh", extra={"ip": ip}))
+        wazuh_block = [
+            _fleet_short_asset("web01"),
+            _wazuh_disconnected("web01"),
+        ]
+        fqdn_finding = [_wazuh_disconnected(order[0][0])]
+        for records, label in (
+            (nmap_block + fqdn_finding + wazuh_block, f"fqdn-first:{order[0][0]}"),
+            (wazuh_block + nmap_block + fqdn_finding, f"wazuh-first:{order[0][0]}"),
+        ):
+            ledger = AssetLedger()
+            stamped = attach_asset_uids(records, ledger, now=NOW)
+            uids = {
+                str((r.get("extra") or {}).get("asset_uid") or "")
+                for r in stamped
+                if r.get("kind") == "asset"
+            }
+            assert len(uids) == 3, f"{label} folded to {uids}"
+            open_items = _poam_open(records)
+            assert len(open_items) == 4, (
+                f"{label} → {len(open_items)} rows "
+                f"{[(it.get('name'), it.get('poam_id')) for it in open_items]}"
+            )
 
 
 def test_wazuh_ip_reuse_keeps_two_egps() -> None:

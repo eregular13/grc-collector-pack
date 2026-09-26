@@ -510,26 +510,30 @@ def test_grc_loader_no_longer_keys_assets_on_lowercased_name() -> None:
 
 
 def test_ambiguous_web01_fqdns_do_not_absorb_bare_name() -> None:
-    """Bare web01 stays its own EGA when corp-a and corp-b both claim the label."""
+    """Bare web01 stays its own EGA when corp-a and corp-b both claim the label.
+
+    Covers FQDN-first (#172) and wazuh-first (normal grc_loader order;
+    host-wazuh before inventory-nmap) plus both FQDN pair orders.
+    """
     from shared.asset_ledger import attach_asset_uids
 
     pair = (
         ("web01.corp-a.local", "10.1.0.10"),
         ("web01.corp-b.local", "10.2.0.10"),
     )
-    for order in (pair, tuple(reversed(pair))):
-        ledger = AssetLedger()
-        recs = [
-            _asset(fqdn, now=NOW1, fqdn=fqdn, ip=ip) for fqdn, ip in order
-        ]
-        recs.append(
-            _asset("web01", now=NOW1, source="host-wazuh", hostname="web01")
-        )
-        stamped = attach_asset_uids(recs, ledger, now=NOW1)
-        assets = [r for r in stamped if r.get("kind") == "asset"]
-        uids = {str((r.get("extra") or {}).get("asset_uid") or "") for r in assets}
-        assert len(assets) == 3, order[0][0]
-        assert len(uids) == 3, order[0][0]
+    wazuh = _asset("web01", now=NOW1, source="host-wazuh", hostname="web01")
+    for fqdn_order in (pair, tuple(reversed(pair))):
+        nmap = [_asset(fqdn, now=NOW1, fqdn=fqdn, ip=ip) for fqdn, ip in fqdn_order]
+        for recs, label in (
+            (nmap + [wazuh], f"fqdn-first:{fqdn_order[0][0]}"),
+            ([wazuh] + nmap, f"wazuh-first:{fqdn_order[0][0]}"),
+        ):
+            ledger = AssetLedger()
+            stamped = attach_asset_uids(recs, ledger, now=NOW1)
+            assets = [r for r in stamped if r.get("kind") == "asset"]
+            uids = {str((r.get("extra") or {}).get("asset_uid") or "") for r in assets}
+            assert len(assets) == 3, label
+            assert len(uids) == 3, label
 
 
 def test_hostname_and_ip_same_host_merge() -> None:
