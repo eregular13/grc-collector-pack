@@ -12,7 +12,7 @@ import pytest
 
 from shared.poam_fields import NOT_RECORDED, PENDING_DUE, _to_date, poam_fields
 from shared.poam_ledger import apply_ledger
-from shared.scan_time import calendar_date, format_detection_date, merge_detection
+from shared.scan_time import calendar_date, extra_scan_raw, format_detection_date, merge_detection
 from shared.kev import KevCatalog
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +52,20 @@ def test_scan_time_taken_from_artifact() -> None:
     fields = poam_fields(rec, _mapped(), date(2026, 9, 26))
     assert fields["original_detection_date"] == "2026-09-01"
     assert fields["scheduled_completion_date"] == "2026-10-01"
+
+
+def test_argus_b4_scan_time_keys_are_case_insensitive() -> None:
+    """Greenbone Timestamp / Scuba TimestampZulu / Scan_Time all feed #131."""
+    greenbone = _rec(extra={"id": "nvt-1", "tool": "greenbone", "Timestamp": "2023-09-28T14:48:02Z"})
+    scuba = _rec(extra={"id": "aad-1", "tool": "scuba", "timestampzulu": "2024-03-20T18:42:05.043Z"})
+    mixed = _rec(extra={"id": "p1", "tool": "nessus", "Scan_Time": "2026-09-01T12:00:00Z"})
+    assert extra_scan_raw(greenbone) == "2023-09-28T14:48:02Z"
+    assert extra_scan_raw(scuba) == "2024-03-20T18:42:05.043Z"
+    assert extra_scan_raw(mixed) == "2026-09-01T12:00:00Z"
+    assert poam_fields(greenbone, _mapped(), date(2026, 9, 26))["original_detection_date"] == "2023-09-28"
+    assert poam_fields(scuba, _mapped(), date(2026, 9, 26))["original_detection_date"] == "2024-03-20"
+    assert poam_fields(mixed, _mapped(), date(2026, 9, 26))["original_detection_date"] == "2026-09-01"
+    assert poam_fields(greenbone, _mapped(), date(2026, 9, 26))["scheduled_completion_date"] != PENDING_DUE
 
 
 def test_missing_scan_time_is_not_recorded_no_scheduled() -> None:

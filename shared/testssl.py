@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, Iterator
 
+from shared.schema import canon_severity
+
 # Raw testssl `id` → human failure title. Scanner IDs like
 # cert_expirationStatus must not become the POA&M weakness name.
 TESTSSL_TITLES: dict[str, str] = {
@@ -74,7 +76,11 @@ def _emit(row: dict[str, Any], host: str, ip: str = "") -> dict[str, Any] | None
     finding = str(row.get("finding") or row.get("Finding") or "")
     fid = str(row.get("id") or row.get("Id") or row.get("cve") or "testssl")
     blob = f"{fid} {finding} {sev}".lower()
-    if "not vulnerable" in blob or "not offered" in blob:
+    if "not vulnerable" in blob:
+        return None
+    # "not offered" is noise only when the row is already OK/INFO.
+    # TLS 1.2/1.3 not offered is a real CRITICAL/HIGH/MEDIUM/LOW finding.
+    if "not offered" in blob and sev in _SKIP_SEV:
         return None
     if sev in _SKIP_SEV:
         return None
@@ -86,6 +92,7 @@ def _emit(row: dict[str, Any], host: str, ip: str = "") -> dict[str, Any] | None
     if sev in _SCAN_ERROR:
         labels.append("scan-error")
         sev = "info"
+    sev = canon_severity(sev)
     return {
         "host": host,
         "ip": ip,

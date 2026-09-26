@@ -18,7 +18,7 @@ from shared.nikto import nikto_severity
 from shared.nikto import parse_nikto
 from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 from shared.testssl import human_title as testssl_human_title
 from shared.testssl import is_testssl, iter_testssl_findings
 
@@ -214,7 +214,7 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
         ref_id=make_ref(SOURCE, _testssl_ref(row, host)),
         name=testssl_human_title(str(row.get("id") or ""), str(row.get("finding") or vid)),
         description=str(row.get("finding") or row.get("cve") or vid),
-        severity=row.get("severity") or "high",
+        severity=canon_severity(row.get("severity") or "high"),
         category="vulnerability",
         assets=[host],
         labels=LABELS + ["testssl"] + extra_labels,
@@ -223,30 +223,41 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
     )
 
 
+def _greenbone_cves(row: dict[str, Any]) -> list[str]:
+    raw = row.get("cves")
+    if isinstance(raw, (list, tuple)):
+        return [str(c).strip() for c in raw if str(c).strip()]
+    joined = str(row.get("cve") or "").strip()
+    return [part for part in joined.replace(",", " ").split() if part.upper().startswith("CVE")]
+
+
 def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
     host = str(row.get("host") or "unknown")
     vid = str(row.get("oid") or row.get("name") or "openvas")
     port = str(row.get("port") or "")
+    cves = _greenbone_cves(row)
     return host, make_record(
         kind="finding",
         source=SOURCE,
         ref_id=make_ref(SOURCE, f"{vid}-{host}-{port}"),
         name=str(row.get("name") or vid),
         description=str(row.get("description") or vid),
-        severity=row.get("severity") or "medium",
+        severity=canon_severity(row.get("severity") or "medium"),
         category="vulnerability",
         assets=[host],
         labels=LABELS + ["greenbone"],
         collected_at=now,
-                extra={
-                    "cve": row.get("cve") or "",
-                    "id": vid,
-                    "rule": vid,
-                    "oid": vid,
-                    "port": port,
-                    "cvss": row.get("cvss") or "",
-                    "threat": row.get("threat") or "",
-                },
+        extra={
+            "cve": " ".join(cves),
+            "cves": cves,
+            "id": vid,
+            "rule": vid,
+            "oid": vid,
+            "port": port,
+            "cvss": row.get("cvss") or "",
+            "threat": row.get("threat") or "",
+            **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
+        },
     )
 
 
@@ -365,7 +376,7 @@ def parse_file(path: Path) -> list[dict]:
                     description=(
                         f"{msg} url={url} (Nikto file-drop; not a live HTTP probe)"
                     ),
-                    severity=nikto_severity(url, msg, rid),
+                    severity=canon_severity(nikto_severity(url, msg, rid)),
                     category="exposure",
                     assets=[host],
                     labels=LABELS + ["nikto"],
@@ -548,7 +559,13 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["greenbone"],
                 collected_at=now,
-                extra={"id": vid, "rule": vid, "oid": vid, "cve": row.get("cve") or ""},
+                extra={
+                    "id": vid,
+                    "rule": vid,
+                    "oid": vid,
+                    "cve": row.get("cve") or "",
+                    "cves": _greenbone_cves(row),
+                },
             )
         )
     return records
