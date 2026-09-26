@@ -48,6 +48,7 @@ from shared.poam_ledger import (
     migrate_finding_refs,
     run_ledger,
 )
+from shared.vendor_dependency import VD_NOTE
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -560,6 +561,8 @@ def load() -> dict:
         "Owner and due are blank — a human fills them. No invented owners.",
         "",
         SLA_NOTE,
+        "",
+        VD_NOTE,
         "",
         "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected (UTC / recorded zone) | Scheduled (default) | Recommended fix | Milestones | Status |",
         "|---|---|---|---|---|---|---|---|---|---|",
