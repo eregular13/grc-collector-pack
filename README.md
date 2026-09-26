@@ -89,7 +89,7 @@ Overnight improve ended 2026-09-02 (`LOOP.md`). Afternoon harden until 16:00 PT 
 - `out/canonical/*.jsonl` — `asset|finding|evidence|incident`
 - `out/ciso-assistant/` — `assets.csv` `applied_controls.csv` `evidences.csv` `findings.csv` `vulnerabilities.csv` `risk_scenarios.csv` (semicolon)
 - `out/poam/` — `poam.csv` `poam.md` (owner/due blank; human fills). Pentera finds it; Evergreen maps it.
-- `out/riskready/` — `assets.json` `incidents.json` `evidence.json` `risks_proposed.json`
+- `out/simplerisk/poam.csv` — leave-behind copy of the POA&M (estate banner + `estate` column). No SimpleRisk API.
 - `out/ocsf/compliance_findings.json` — OCSF-like Compliance Finding (`class_uid` 2003)
 - `out/summary.json` `out/evidence/lab-report.md`
 
@@ -125,25 +125,20 @@ RiskReady is **not** a build target here (LICENSE-LOCK stay-out).
 
 ## RiskReady — LICENSE-LOCK stay-out
 
-This pack **never wraps or runs RiskReady**. `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`: no login, no HTTP client, no POST. Humans review:
-
-- `out/riskready/assets.json`
-- `out/riskready/evidence.json`
-- `out/riskready/incidents.json`
-- `out/riskready/risks_proposed.json` — **never** auto-POST `/api/risks`
+This pack **never wraps or runs RiskReady** and **does not generate** `out/riskready/`. `push_riskready.sh` is review-only even if `RISKREADY_PUSH=1`: no login, no HTTP client, no POST. Count identity is CISO register + POA&M (`open_risks`). **Never** auto-POST `/api/risks`.
 
 Do not restore wrap POSTs to `/api/auth/login`, `/itsm/assets`, `/evidence`, `/incidents`, or `/api/risks`. Tests fail if those reappear.
 
 ## Mapping
 
-| Sensor | CISO Assistant | RiskReady |
+| Sensor | CISO Assistant | POA&M / open risks |
 |---|---|---|
-| Cloud / K8s / SaaS failed checks | findings + OCSF + applied_controls | incidents + proposed risks |
-| Nmap / Wazuh / EASM hosts | assets PR/SP + exposure findings | ITSM assets |
-| High/critical + key medium (SMB/RDP) | applied_controls + `out/poam/poam.csv` (CPG/CSF) | review-only if high/crit |
-| Nuclei / Trivy / Gitleaks | vulnerabilities | incidents if high/crit |
-| Coverage / identity gaps | findings | incidents |
-| Every run | evidences | evidence DRAFT |
+| Cloud / K8s / SaaS failed checks | findings + OCSF + applied_controls | POA&M when `include_poam` |
+| Nmap / Wazuh / EASM hosts | assets PR/SP + exposure findings | POA&M when `include_poam` |
+| High/critical + key medium (SMB/RDP) | applied_controls + `out/poam/poam.csv` (CPG/CSF) | 1:1 with `open_risks` |
+| Nuclei / Trivy / Gitleaks | vulnerabilities | POA&M when `include_poam` |
+| Coverage / identity gaps | findings | POA&M when `include_poam` |
+| Every run | evidences | CISO evidences (not RiskReady JSON) |
 
 ## Drop real scanner output
 
@@ -156,7 +151,7 @@ OSS / fair-use only (Prowler, Nmap, Nuclei, Trivy, Wazuh, BloodHound CE, Amass, 
 The console is localhost only (`127.0.0.1`). Non-loopback binds exit 2. Report vulnerabilities via a GitHub Security Advisory. Full policy: [SECURITY.md](SECURITY.md).
 
 - `CISO_PUSH=0` `RISKREADY_PUSH=0` `GRC_LIVE_SCAN=0` `DRY_RUN=1`
-- Never POST `/api/risks`. High/critical → `risks_proposed.json` only
+- Never POST `/api/risks`. Open risks are the POA&M (count identity). RiskReady JSON is not generated.
 - Never live-scan. Secrets redacted as `[REDACTED]`
 - MIT license
 

@@ -24,11 +24,11 @@ const COLS = {
   ],
   proposed: [
     ["severity", "Severity"],
-    ["ref_id", "Ref"],
-    ["name", "Name"],
-    ["likelihood", "Likelihood"],
-    ["impact", "Impact"],
-    ["source", "Source"],
+    ["weakness", "Weakness"],
+    ["asset", "Asset"],
+    ["framework_refs", "Framework"],
+    ["recommended_fix", "Recommended fix"],
+    ["status", "Status"],
   ],
   evidence: [
     ["name", "Name"],
@@ -144,7 +144,7 @@ function renderKpis(estate) {
     [sev.high, "High", "high"],
     [s.vulnerabilities, "Vulns", ""],
     [s.evidences, "Evidence", ""],
-    [s.risks_proposed, "Proposed", ""],
+    [s.open_risks != null ? s.open_risks : s.poam, "Open risks", ""],
   ];
   $("kpis").innerHTML = items
     .map(

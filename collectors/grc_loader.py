@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Normalize canonical JSONL into CISO Assistant + RiskReady + OCSF outputs."""
+"""Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
+
+RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
+is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +25,6 @@ from shared.schema import (
     ciso_vuln_severity,
     control_priority,
     residual_level,
-    rr_likelihood_impact,
     scenario_level,
     slug,
 )
@@ -186,9 +189,20 @@ def _is_vuln(rec: dict) -> bool:
     return cat in VULN_CATEGORIES or ref.upper().startswith("CVE") or cve.upper().startswith("CVE") or ref.upper().startswith("VULN-CVE")
 
 
-def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str = ",") -> None:
+def _write_csv(
+    path: Path,
+    header: list[str],
+    rows: list[list],
+    delimiter: str = ",",
+    comments: list[str] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
+        for line in comments or []:
+            text = str(line).rstrip()
+            if not text.startswith("#"):
+                text = f"# {text}"
+            fh.write(text + "\n")
         writer = csv.writer(fh, delimiter=delimiter, lineterminator="\n")
         writer.writerow(header)
         for row in rows:
@@ -203,7 +217,6 @@ def load() -> dict:
     estate = estate_label(records)
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
-    incidents = [r for r in records if r.get("kind") == "incident"]
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
 
     sources = sorted({str(r.get("source") or "sensor") for r in records})
@@ -391,81 +404,21 @@ def load() -> dict:
         )
     write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
     out_sr = out_dir() / "simplerisk"
-    _write_csv(out_sr / "poam.csv", poam_header, poam_rows)
+    banner = estate_banner(estate)
+    _write_csv(out_sr / "poam.csv", poam_header, poam_rows, comments=[banner])
+    write_text(
+        out_sr / "ESTATE.txt",
+        banner
+        + "\nSimpleRisk leave-behind of POA&M rows. No SimpleRisk API. No push.\n",
+    )
     write_text(
         out_sr / "README.md",
         "# SimpleRisk leave-behind\n\n"
+        f"> {banner}\n\n"
         "Copy of POA&M rows under `out/` only. No SimpleRisk API. No push.\n"
-        "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n",
+        "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n"
+        "RiskReady JSON is not generated. Count identity is CISO register + POA&M.\n",
     )
-
-    rr_assets = []
-    for rec in assets:
-        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-        atype = _asset_type(rec)
-        service = str(extra.get("service") or extra.get("cloudProvider") or "").lower()
-        cloud = "NONE"
-        if "aws" in service or str(extra.get("arn") or "").startswith("arn:aws"):
-            cloud = "AWS"
-        elif "azure" in service:
-            cloud = "AZURE"
-        elif "gcp" in service:
-            cloud = "GCP"
-        rr_type = "Identity" if atype == "SP" else ("Cloud" if cloud != "NONE" else "Server")
-        crit = "HIGH" if rec.get("severity") in {"high", "critical"} else "MEDIUM"
-        rr_assets.append(
-            {
-                "name": rec.get("name"),
-                "assetType": extra.get("assetType") or rr_type,
-                "status": "ACTIVE",
-                "businessCriticality": extra.get("businessCriticality") or crit,
-                "dataClassification": extra.get("dataClassification") or "INTERNAL",
-                "cloudProvider": extra.get("cloudProvider") or cloud,
-                "inIsmsScope": True,
-                "source": rec.get("source"),
-                "notes": rec.get("description") or "",
-            }
-        )
-
-    rr_incidents = []
-    for rec in incidents:
-        rr_incidents.append(_incident(rec))
-    for rec in findings:
-        if str(rec.get("severity")) in {"high", "critical"}:
-            rr_incidents.append(_incident(rec))
-
-    rr_evidence = []
-    for name, desc in evidence_rows:
-        src = str(name).split(" ")[0]
-        rr_evidence.append(
-            {
-                "title": name,
-                "description": desc,
-                "evidenceType": "TECHNICAL",
-                "sourceType": "SENSOR",
-                "status": "DRAFT",
-                "source": src,
-            }
-        )
-
-    proposed = []
-    for rec in findings:
-        if str(rec.get("severity")) not in {"high", "critical"}:
-            continue
-        like, impact = rr_likelihood_impact(rec.get("severity"))
-        proposed.append(
-            {
-                "ref_id": rec.get("ref_id"),
-                "name": rec.get("name"),
-                "description": rec.get("description"),
-                "likelihood": like,
-                "impact": impact,
-                "severity": rec.get("severity"),
-                "assets": rec.get("assets") or [],
-                "source": rec.get("source"),
-                "treatment": "mitigate",
-            }
-        )
 
     ocsf = []
     for rec in other_findings:
@@ -492,11 +445,6 @@ def load() -> dict:
             }
         )
 
-    out_rr = out_dir() / "riskready"
-    write_json(out_rr / "assets.json", rr_assets)
-    write_json(out_rr / "incidents.json", rr_incidents)
-    write_json(out_rr / "evidence.json", rr_evidence)
-    write_json(out_rr / "risks_proposed.json", proposed)
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
 
     summary = {
@@ -512,8 +460,6 @@ def load() -> dict:
         "poam_included": breakdown["poam_included"],
         "excluded_by_reason": breakdown["excluded_by_reason"],
         "open_risks": len(poam_rows),
-        "incidents": len(rr_incidents),
-        "risks_proposed": len(proposed),
         "ocsf": len(ocsf),
         "canonical": len(records),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
@@ -533,24 +479,14 @@ def load() -> dict:
         + json.dumps(summary, indent=2)
         + "\n\nGenerated by grc-loader. Demo mode. No live scan. No /api/risks POST.\n"
         + "POA&M: out/poam/poam.csv — owner/due blank for a human.\n"
-        + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n",
+        + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n"
+        + "RiskReady JSON is not generated. Never POST /api/risks.\n",
     )
     return summary
 
 
 def make_fallback_ref(rec: dict) -> str:
     return slug(str(rec.get("name") or "asset"))
-
-
-def _incident(rec: dict) -> dict:
-    return {
-        "title": rec.get("name"),
-        "description": rec.get("description"),
-        "severity": str(rec.get("severity") or "medium").upper(),
-        "status": "OPEN",
-        "source": rec.get("source"),
-        "relatedAssets": rec.get("assets") or [],
-    }
 
 
 def main() -> None:

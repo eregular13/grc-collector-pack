@@ -22,8 +22,6 @@ SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impac
 
 FIND_SEV = {"low", "medium", "high", "critical"}
 VULN_SEV = {"Information", "Low", "Medium", "High", "Critical"}
-RR_L = {"RARE", "UNLIKELY", "POSSIBLE", "LIKELY", "ALMOST_CERTAIN"}
-RR_I = {"NEGLIGIBLE", "MINOR", "MODERATE", "MAJOR", "SEVERE"}
 LIVE_KEY = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{20,}")
 
 
@@ -34,10 +32,13 @@ def _read(path: Path) -> str:
 
 def _csv_rows(path: Path, expected_header: str, delim: str = ",") -> list[dict]:
     text = _read(path)
-    first = text.splitlines()[0].strip()
+    data_lines = [
+        line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")
+    ]
+    assert data_lines, f"no csv data {path}"
+    first = data_lines[0].strip()
     assert first == expected_header, f"{path.name} header {first!r} != {expected_header!r}"
-    with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delim))
+    return list(csv.DictReader(data_lines, delimiter=delim))
 
 
 def _json(path: Path):
@@ -62,19 +63,16 @@ def assert_lab() -> None:
         sr = _csv_rows(sr_path, poam_h)
         assert len(sr) == len(poam)
 
-    rr_assets = _json(OUT / "riskready" / "assets.json")
-    rr_inc = _json(OUT / "riskready" / "incidents.json")
-    rr_ev = _json(OUT / "riskready" / "evidence.json")
-    proposed = _json(OUT / "riskready" / "risks_proposed.json")
+    rr_dir = OUT / "riskready"
+    assert not rr_dir.exists(), "loader must not write out/riskready"
+    assert not any(OUT.rglob("riskready/*")), "no RiskReady JSON leave-behind"
     ocsf = _json(OUT / "ocsf" / "compliance_findings.json")
     summary = _json(OUT / "summary.json")
 
-    assert isinstance(rr_assets, list) and rr_assets
-    assert isinstance(rr_inc, list) and rr_inc
-    assert isinstance(rr_ev, list) and rr_ev
-    assert isinstance(proposed, list) and proposed
     assert isinstance(ocsf, list) and ocsf
     assert isinstance(summary, dict)
+    assert "incidents" not in summary
+    assert "risks_proposed" not in summary
 
     types = {r["type"] for r in assets}
     assert types <= {"PR", "SP"}, types
@@ -89,18 +87,6 @@ def assert_lab() -> None:
         assert row["severity"] in FIND_SEV, row
     for row in vulns:
         assert row["severity"] in VULN_SEV, row
-    for row in proposed:
-        assert row.get("severity") in {"high", "critical"}, row
-        assert row.get("likelihood") in RR_L, row
-        assert row.get("impact") in RR_I, row
-    for row in rr_assets:
-        assert row.get("status") == "ACTIVE"
-        assert row.get("cloudProvider") in {"AWS", "AZURE", "GCP", "NONE"}
-        assert row.get("inIsmsScope") is True
-    for row in rr_ev:
-        assert row.get("evidenceType") == "TECHNICAL"
-        assert row.get("sourceType") == "SENSOR"
-        assert row.get("status") == "DRAFT"
     for row in ocsf:
         assert row.get("class_uid") == 2003
 

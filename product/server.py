@@ -164,7 +164,12 @@ def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
     with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delim))
+        # Skip estate-banner comments so PR #132 CSV banners (and SimpleRisk
+        # leave-behind comments) do not become a header row.
+        lines = [ln for ln in fh if ln.strip() and not ln.lstrip().startswith("#")]
+    if not lines:
+        return []
+    return list(csv.DictReader(lines, delimiter=delim))
 
 
 def _read_json(path: Path):
@@ -960,11 +965,37 @@ def leavebehind_sinks(out: Path | None = None) -> dict:
     }
 
 
+def _count_identity_summary(out: Path, summary: dict) -> dict:
+    """Console KPIs use register + POA&M counts, never RiskReady extras."""
+    data = dict(summary)
+    data.pop("incidents", None)
+    data.pop("risks_proposed", None)
+    poam_n = len(_read_csv(out / "poam" / "poam.csv"))
+    findings_n = len(_read_csv(out / "ciso-assistant" / "findings.csv"))
+    vulns_n = len(_read_csv(out / "ciso-assistant" / "vulnerabilities.csv"))
+    scen_n = len(_read_csv(out / "ciso-assistant" / "risk_scenarios.csv", ";"))
+    if findings_n:
+        data["findings"] = findings_n
+    if vulns_n or (out / "ciso-assistant" / "vulnerabilities.csv").is_file():
+        data["vulnerabilities"] = vulns_n
+    if scen_n:
+        data["risk_scenarios"] = scen_n
+    if poam_n or (out / "poam" / "poam.csv").is_file():
+        data["poam"] = poam_n
+        data["open_risks"] = poam_n
+    elif "open_risks" not in data and "poam" in data:
+        data["open_risks"] = data["poam"]
+    if "findings" in data or "vulnerabilities" in data:
+        data["weaknesses"] = int(data.get("findings") or 0) + int(data.get("vulnerabilities") or 0)
+    return data
+
+
 def estate() -> dict:
     out = out_dir()
     summary = _read_json(out / "summary.json") or {}
     if not isinstance(summary, dict):
         summary = {}
+    summary = _count_identity_summary(out, summary)
     findings = _read_csv(out / "ciso-assistant" / "findings.csv")
     sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for row in findings:
@@ -1022,11 +1053,11 @@ def payload(kind: str):
         "controls": out / "ciso-assistant" / "applied_controls.csv",
         "scenarios": out / "ciso-assistant" / "risk_scenarios.csv",
         "poam": out / "poam" / "poam.csv",
-        "incidents": out / "riskready" / "incidents.json",
-        "proposed": out / "riskready" / "risks_proposed.json",
-        "rr_assets": out / "riskready" / "assets.json",
-        "rr_evidence": out / "riskready" / "evidence.json",
     }
+    if kind in {"proposed", "incidents"}:
+        # Proposed risks are POA&M open risks (count identity). RiskReady
+        # JSON is not generated and is never read.
+        return poam_rows(out) if kind == "proposed" else []
     path = mapping.get(kind)
     if path is None:
         return None
