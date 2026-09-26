@@ -15,6 +15,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
 ASSET_UID_PREFIX = "EGA-"
 ASSET_NAMESPACE = "urn:evergreen:asset"
@@ -31,6 +32,10 @@ MATCH_ORDER = (
     "netbios",
     "fqdn",
     "ip",
+    # Last-resort collector-dupe keys (not Tenable). Same short name with a
+    # conflicting stronger id still splits (§5.7.10).
+    "hostname",
+    "name",
 )
 
 CONTAINER_ORDER = ("image_digest", "artifact_id", "image_id")
@@ -51,6 +56,7 @@ STRENGTH: dict[str, int] = {
     "fqdn": 40,
     "ip": 10,
     "hostname": 1,
+    "name": 0,
 }
 
 _UUID_RE = re.compile(
@@ -220,6 +226,7 @@ def ids_blank() -> dict[str, Any]:
         "scope": "",
         "domain": "",
         "id_quality": "",
+        "name": "",
     }
 
 
@@ -261,7 +268,7 @@ def merge_ids(*parts: dict[str, Any] | None) -> dict[str, Any]:
             norm = normalize_digest(digest)
             if norm and norm not in out["image_digest"]:
                 out["image_digest"].append(norm)
-        for key in ("artifact_id", "image_id", "image_ref", "agent", "serial", "scope", "domain", "id_quality"):
+        for key in ("artifact_id", "image_id", "image_ref", "agent", "serial", "scope", "domain", "id_quality", "name"):
             got = str(part.get(key) or "").strip()
             if got:
                 out[key] = got
@@ -271,27 +278,47 @@ def merge_ids(*parts: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
+def _host_from_url(text: str) -> str:
+    if "://" not in text:
+        return ""
+    try:
+        return str(urlparse(text).hostname or "").strip()
+    except ValueError:
+        return ""
+
+
 def classify_name(name: Any) -> dict[str, Any]:
     """Turn a display name into identifier fields without inventing strength."""
     text = str(name or "").strip()
     if not text:
         return {}
+    host = _host_from_url(text)
+    if host:
+        ip = normalize_ip(host)
+        if ip:
+            return {"ip": [ip]}
+        fqdn = normalize_fqdn(host)
+        if fqdn:
+            return {"fqdn": fqdn}
+        short = normalize_hostname(host)
+        if short:
+            return {"hostname": short}
     ip = normalize_ip(text)
     if ip:
         return {"ip": [ip]}
     fqdn = normalize_fqdn(text)
     if fqdn:
         return {"fqdn": fqdn}
-    host = normalize_hostname(text)
-    if host:
-        return {"hostname": host}
+    short = normalize_hostname(text)
+    if short:
+        return {"hostname": short}
     netbios = normalize_netbios(text)
     if netbios and text.upper() == netbios:
         return {"netbios": netbios}
     arn = normalize_arn(text)
     if arn:
         return {"arn": arn}
-    return {}
+    return {"name": text}
 
 
 def lift_extra_fields(extra: dict[str, Any]) -> dict[str, Any]:
@@ -387,7 +414,8 @@ def strongest_anchor(ids: dict[str, Any], *, skip: set[str] | None = None) -> tu
         vals = id_values(ids, key)
         if vals:
             return key, vals[0]
-    return "name", "unknown"
+    name = str(ids.get("name") or "").strip()
+    return "name", name or "unknown"
 
 
 def display_name_rank(name: Any) -> int:
@@ -395,14 +423,18 @@ def display_name_rank(name: Any) -> int:
     text = str(name or "").strip()
     if not text:
         return 0
-    if text.startswith("arn:") or "/" in text or text.startswith("sha256:"):
+    inner = _host_from_url(text) or text
+    if text.lower().startswith("arn:") or text.startswith("sha256:"):
         return 40
-    if normalize_fqdn(text):
+    # Image refs look like repo/app:tag — not http(s) URLs.
+    if "/" in text and "://" not in text:
+        return 40
+    if normalize_fqdn(inner) or normalize_fqdn(text):
         return 30
-    if normalize_ip(text):
-        return 10
-    if normalize_netbios(text) or normalize_hostname(text):
+    if normalize_netbios(inner) or normalize_hostname(inner):
         return 20
+    if normalize_ip(inner) or normalize_ip(text):
+        return 10
     return 5
 
 

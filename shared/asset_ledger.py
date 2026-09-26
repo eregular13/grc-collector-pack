@@ -274,6 +274,7 @@ class AssetLedger:
             "fqdn",
             "ip",
             "hostname",
+            "name",
             "serial",
         ):
             for value in id_values(ids, typ):

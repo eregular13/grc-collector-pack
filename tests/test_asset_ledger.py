@@ -519,6 +519,28 @@ def test_hostname_and_ip_same_host_merge() -> None:
     assert uid_n == uid_s
 
 
+def test_url_ip_matches_fqdn_and_keeps_fqdn_display() -> None:
+    """Nuclei http://10.0.0.20 is the nmap host on that IP, not a second row."""
+    from shared.asset_ledger import attach_asset_uids
+
+    ledger = AssetLedger()
+    nmap = _asset("telnet-legacy.corp.local", now=NOW1, fqdn="telnet-legacy.corp.local", ip="10.0.0.20")
+    nuclei = _asset("http://10.0.0.20", now=NOW1, source="vuln-scan")
+    recs = attach_asset_uids([nmap, nuclei], ledger)
+    assets = [r for r in recs if r.get("kind") == "asset"]
+    assert len(assets) == 1
+    assert assets[0]["name"] == "telnet-legacy.corp.local"
+    assert assets[0]["extra"]["uai"] == "telnet-legacy.corp.local"
+
+
+def test_identifierless_same_name_is_one_uid() -> None:
+    """Same path / cluster name with no host ids is a collector dupe, not two hosts."""
+    ledger = AssetLedger()
+    a = _asset("infra/terraform.tfvars", now=NOW1, source="code-secrets")
+    b = _asset("infra/terraform.tfvars", now=NOW1, source="code-secrets")
+    assert _observe(ledger, a, NOW1) == _observe(ledger, b, NOW1)
+
+
 def test_nessus_parser_puts_ids_in_extra(tmp_path: Path) -> None:
     from collectors import vuln_scan
 
