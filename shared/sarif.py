@@ -58,6 +58,7 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
         driver = ((run.get("tool") or {}).get("driver") or {}) if isinstance(run.get("tool"), dict) else {}
         tool = str(driver.get("name") or "sarif")
         run_ids: dict[str, Any] = {}
+        scan_time = ""
         props = run.get("properties") if isinstance(run.get("properties"), dict) else {}
         if props.get("imageID") or props.get("imageId") or props.get("repoDigests") or props.get("repoTags"):
             run_ids = {
@@ -69,9 +70,13 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
             if tags:
                 run_ids["image_ref"] = str(tags[0])
         for inv in run.get("invocations") or []:
-            if isinstance(inv, dict) and inv.get("machine"):
+            if not isinstance(inv, dict):
+                continue
+            if inv.get("machine"):
                 run_ids["hostname"] = str(inv.get("machine"))
-                break
+            raw = inv.get("startTimeUtc") or inv.get("endTimeUtc")
+            if raw:
+                scan_time = str(raw)
         for hit in run.get("results") or []:
             if not isinstance(hit, dict):
                 continue
@@ -82,15 +87,16 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 art = phys.get("artifactLocation") or {}
                 uri = str(art.get("uri") or uri)
             msg = hit.get("message") if isinstance(hit.get("message"), dict) else {}
-            rows.append(
-                {
-                    "rule_id": str(hit.get("ruleId") or "sarif"),
-                    "message": str(msg.get("text") or hit.get("ruleId") or "SARIF finding"),
-                    "uri": uri,
-                    "severity": _severity(hit),
-                    "tool": tool,
-                    "level": str(hit.get("level") or ""),
-                    "ids": dict(run_ids),
-                }
-            )
+            row = {
+                "rule_id": str(hit.get("ruleId") or "sarif"),
+                "message": str(msg.get("text") or hit.get("ruleId") or "SARIF finding"),
+                "uri": uri,
+                "severity": _severity(hit),
+                "tool": tool,
+                "level": str(hit.get("level") or ""),
+                "ids": dict(run_ids),
+            }
+            if scan_time:
+                row["scan_time"] = scan_time
+            rows.append(row)
     return rows

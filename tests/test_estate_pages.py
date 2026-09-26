@@ -92,6 +92,12 @@ IMPORT_CSVS = (
     "ciso-assistant/risk_scenarios.csv",
     "poam/poam.csv",
 )
+HEADER_FIRST_NEW = (
+    "poam/poam_fedramp.csv",
+    "poam/poam_fedramp_closed.csv",
+    "poam/poam-ledger.json",
+    "poam/kev_provenance.json",
+)
 
 
 def test_estate_stamp_has_no_csv_hash_banner() -> None:
@@ -191,6 +197,7 @@ def test_import_csvs_first_line_is_not_a_hash_comment(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from exporters.opengrc import write_opengrc
+    from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
 
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], GRC_ESTATE_LABEL="LAB")
     write_opengrc(out)
@@ -206,6 +213,18 @@ def test_import_csvs_first_line_is_not_a_hash_comment(
         first = path.read_text(encoding="utf-8").splitlines()[0]
         assert not first.lstrip().startswith("#"), rel
         assert first.strip() == first.splitlines()[0].strip()
+    for rel in HEADER_FIRST_NEW:
+        path = out / rel
+        assert path.is_file(), rel
+        text = path.read_text(encoding="utf-8")
+        first = text.splitlines()[0]
+        assert not first.lstrip().startswith("#"), rel
+        if rel.endswith(".csv"):
+            assert first == ",".join(FEDRAMP_OPEN_HEADERS), rel
+        else:
+            assert text.lstrip()[:1] in "{["
+    assert (out / "poam" / "ESTATE.txt").is_file()
+    assert LABEL_FOR_KIND["LAB"] in (out / "poam" / "ESTATE.txt").read_text(encoding="utf-8")
 
 
 def test_sample_cannot_claim_client_or_suppress_banner(
@@ -247,6 +266,40 @@ def test_lab_fallback_to_drop_is_mixed_and_stated() -> None:
     assert stamp.kind == "MIXED"
     assert "product-lab/drop" in stamp.sentence
     assert "CLIENT" not in stamp.label
+
+
+def test_estate_pages_and_detection_dates_agree_not_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pack collected_at is not a scan time. Estate pages and POA&M both print 'not recorded'."""
+    finding = _finding("f1")
+    finding["collected_at"] = "2026-09-26T06:00:00Z"
+    asset = _asset()
+    asset["collected_at"] = "2026-09-26T06:00:00Z"
+    out = _run_loader(tmp_path, monkeypatch, [asset, finding], GRC_ESTATE_LABEL="SAMPLE")
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
+    poam = csv_rows(out / "poam" / "poam.csv")
+    assert poam and poam[0]["original_detection_date"] == NOT_RECORDED
+    window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
+    assert "2026-09-26T06:00:00Z" not in window
+    assert "2026-09-26T06:00:00Z" not in trust
+    assert NOT_RECORDED in trust
+
+
+def test_estate_pages_use_artifact_scan_time_not_collected_at(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    finding = _finding("f1")
+    finding["collected_at"] = "2026-09-26T06:00:00Z"
+    finding["extra"] = {**finding["extra"], "scan_time": "2026-09-01T12:00:00Z"}
+    out = _run_loader(tmp_path, monkeypatch, [_asset(), finding], GRC_ESTATE_LABEL="LAB")
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    poam = csv_rows(out / "poam" / "poam.csv")
+    assert poam and poam[0]["original_detection_date"] == "2026-09-01"
+    window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
+    assert "2026-09-01" in window
+    assert "2026-09-26T06:00:00Z" not in window
 
 
 def test_missing_values_print_not_recorded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -28,6 +28,10 @@ from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
+from shared.kev import KevSnapshotError, load_kev_catalog
+from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields
+from shared.poam_ledger import run_ledger
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -39,7 +43,6 @@ from shared.io_util import (
     write_json,
     write_text,
 )
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.schema import (
     ASSET_TYPES,
     ciso_finding_severity,
@@ -210,14 +213,18 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 def load() -> dict:
     # Asset UIDs first (EGA- ledger), then ref_id collapse, weakness, HK keys.
-    ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
+    asset_ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
     overrides = in_dir() / "assets" / "assets-overrides.csv"
     if overrides.is_file():
-        ledger.apply_overrides(overrides)
-    raw = attach_asset_uids(_load_canonical(), ledger)
+        asset_ledger.apply_overrides(overrides)
+    raw = attach_asset_uids(_load_canonical(), asset_ledger)
     records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw)))
     merged_n = max(0, len(raw) - len(records))
     now = iso_now()
+    try:
+        kev_catalog = load_kev_catalog()
+    except KevSnapshotError as exc:
+        raise SystemExit(str(exc)) from exc
     domain = _domain()
     try:
         dest_in = in_dir()
@@ -355,6 +362,10 @@ def load() -> dict:
     ]
     today = datetime.now(timezone.utc).date()
     breakdown = poam_breakdown(other_findings + vuln_findings)
+    poam_ledger = run_ledger(findings, kev_catalog)
+    ledger_by_ref = {
+        str(item.get("ref_id") or ""): item for item in (poam_ledger.get("items") or {}).values()
+    }
     poam_rows: list[list] = []
     for rec in other_findings + vuln_findings:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
@@ -362,6 +373,9 @@ def load() -> dict:
             continue
         assets_s = "|".join(rec.get("assets") or [])
         fields = poam_fields(rec, mapped, today)
+        item = ledger_by_ref.get(str(rec.get("ref_id") or ""))
+        if item:
+            fields = apply_ledger_detection(fields, item, rec, mapped)
         poam_rows.append(
             [
                 rec.get("name") or rec.get("ref_id"),
@@ -405,7 +419,7 @@ def load() -> dict:
         "",
         SLA_NOTE,
         "",
-        "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected | Scheduled (default) | Recommended fix | Milestones | Status |",
+        "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected (UTC / recorded zone) | Scheduled (default) | Recommended fix | Milestones | Status |",
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     idx = {name: i for i, name in enumerate(poam_header)}
@@ -416,15 +430,19 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
+    write_fedramp_poam(out_poam, poam_ledger)
+    write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
+    write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
     write_estate_sidecar(
         out_poam,
         stamp,
         note=(
             "POA&M is an operator draft, not a CISO Assistant import. "
-            "poam.csv starts with the operator header (no # preamble) and "
-            "carries a per-row estate column. SAMPLE/DEMO/LAB cannot be "
-            "suppressed and is never client KEEP."
+            "poam.csv, poam_fedramp.csv, and poam_fedramp_closed.csv start "
+            "with the operator header (no # preamble). Banner lives in "
+            "ESTATE.txt. Ledger and kev_provenance.json are JSON (no # "
+            "banner). poam.csv carries a per-row estate column. "
+            "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
         ),
     )
     out_sr = out_dir() / "simplerisk"
@@ -503,9 +521,9 @@ def load() -> dict:
     }
     write_json(out_dir() / "summary.json", summary)
     families = {str(r.get("source") or "") for r in records if r.get("source")}
-    ledger.close_run(now=now, source_families=families)
-    ledger.save(out_dir() / "assets" / "asset-ledger.json")
-    write_iiw(ledger, dest_dir=out_dir() / "iiw", observed=set(ledger._observed))
+    asset_ledger.close_run(now=now, source_families=families)
+    asset_ledger.save(out_dir() / "assets" / "asset-ledger.json")
+    write_iiw(asset_ledger, dest_dir=out_dir() / "iiw", observed=set(asset_ledger._observed))
     poam_dicts = [
         {
             "severity": str(row[2] or "").lower(),

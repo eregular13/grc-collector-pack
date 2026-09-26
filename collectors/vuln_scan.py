@@ -191,6 +191,8 @@ def parse_file(path: Path) -> list[dict]:
                 {"rule": rid, "cve": rid if rid.upper().startswith("CVE") else ""},
                 **ids,
             )
+            if row.get("scan_time"):
+                extra["scan_time"] = row.get("scan_time")
             records.append(
                 make_record(
                     kind="finding",
@@ -285,6 +287,7 @@ def parse_file(path: Path) -> list[dict]:
             add_asset(host, ids)
             plugin = str(row.get("plugin_id") or "nessus")
             port = str(row.get("port") or "")
+            cves = [str(c).strip() for c in (row.get("cves") or []) if str(c).strip()]
             extra = stamp_ids(
                 {
                     "port": port,
@@ -292,9 +295,15 @@ def parse_file(path: Path) -> list[dict]:
                     "id": plugin,
                     "protocol": row.get("protocol") or "",
                     "id_quality": row.get("id_quality") or "",
+                    "tool": "nessus",
+                    "cves": cves,
                 },
                 **ids,
             )
+            if row.get("scan_time"):
+                extra["scan_time"] = row.get("scan_time")
+            if cves:
+                extra["cve"] = " ".join(cves)
             records.append(
                 make_record(
                     kind="finding",
@@ -362,6 +371,11 @@ def parse_file(path: Path) -> list[dict]:
                         "cve": tid if tid.upper().startswith("CVE") else "",
                         "rule": tid,
                         "template_id": tid,
+                        **(
+                            {"scan_time": str(row.get("timestamp") or row.get("time"))}
+                            if (row.get("timestamp") or row.get("time"))
+                            else {}
+                        ),
                     },
                 )
             )
@@ -374,12 +388,17 @@ def parse_file(path: Path) -> list[dict]:
 
     trivy = _trivy_rows(payload)
     if trivy:
+        trivy_created = ""
+        if isinstance(payload, dict):
+            trivy_created = str(payload.get("CreatedAt") or payload.get("created_at") or "")
         for vuln in trivy:
             vid = str(vuln.get("VulnerabilityID") or vuln.get("id") or "CVE-UNKNOWN")
             target = str(vuln.get("_target") or "image")
             ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
             add_asset(target, ids)
             extra = stamp_ids({"cve": vid, "pkg": vuln.get("PkgName")}, **ids)
+            if trivy_created:
+                extra["scan_time"] = trivy_created
             records.append(
                 make_record(
                     kind="finding",
