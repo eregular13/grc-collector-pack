@@ -36,6 +36,13 @@ TOOL_LABELS = frozenset(
         "scuba",
         "gitleaks",
         "trufflehog",
+        "nmap",
+        "nessus",
+        "testssl",
+        "nikto",
+        "sslscan",
+        "rustscan",
+        "naabu",
     }
 )
 

@@ -578,6 +578,9 @@ def prove_ciso(
         estate.origin = "lab-dest-in" if lab_sink else estate.origin
         opengrc = write_opengrc(dest_out, estate=estate)
         probo = write_probo(dest_out, estate=estate)
+        from shared.estate_pages import write_export_manifest
+
+        write_export_manifest(dest_out)
         stamp["opengrc"] = opengrc.get("dir")
         stamp["probo"] = str(probo)
         stamp["sinks_posted"] = False
