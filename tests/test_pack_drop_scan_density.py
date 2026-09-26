@@ -12,7 +12,7 @@ from pathlib import Path
 
 from collectors import inventory_nmap
 from scripts.prove_ciso import prove_ciso
-from shared.ciso_shape import assert_risk_register_and_poam
+from shared.ciso_shape import assert_flood_guard, assert_risk_register_and_poam
 from shared.control_map import map_finding
 from shared.farm_ship import assert_farm_ship_sor
 
@@ -23,17 +23,19 @@ NMAP = PACK / "nmap"
 # Brick 4 farm_drop SoR ballpark (thin one-host nmap leaf): 85 findings / 23 poam / 0 vulns.
 # Brick 5 floors are the denser dual-net SAMPLE leaf, still below inventing client KEEP.
 # Full POA&M plan (default) puts Lows + non-key Mediums on the plan. Measured
-# farm_drop after port-only fold (unchanged): findings=174 poam=106
-# excluded=68 (60 severity_info + 8 honeypot). No superseded_by_specific
-# on farm_drop — pack_drop has no specific-on-port peer. Old
-# MIN_FARM_POAM=35 was the lighter High/key-Medium-only plan — do not revert.
+# farm_drop after port-only fold (unchanged vs 174/106): pack_drop has no
+# specific-on-port peer so no superseded_by_specific. After (weakness, EGA-
+# asset) merge, unique included POA&M rows measure 85 (21 duplicate pairs
+# collapsed; not a thinner unique estate). Findings and excluded floors stay
+# 110 / 20 — those MIN_ gates are not loosened. MIN_FARM_POAM restamped to
+# the unique included count (was 100 against the duplicate-inflated 106).
 BEFORE_FARM_FINDINGS = 85
 BEFORE_FARM_POAM = 23
 MIN_NMAP_HOSTS = 14
 MIN_NMAP_PORTS = 30
 MIN_NMAP_FINDINGS = 30
 MIN_FARM_FINDINGS = 110
-MIN_FARM_POAM = 100
+MIN_FARM_POAM = 85
 MIN_FARM_EXCLUDED = 20
 CORP_PREFIX = "10.0.0."
 LAB_PREFIX = "172.16.10."
@@ -194,9 +196,7 @@ def test_farm_drop_prove_register_is_denser_and_exposure_only(tmp_path: Path) ->
     assert all(row.get("severity") != "low" for row in info_rows)
     summary = json.loads((Path(stamp["out_dir"]) / "summary.json").read_text(encoding="utf-8"))
     assert summary["poam_plan"] == "full"
-    assert int(summary["weaknesses_total"]) == int(summary["poam_included"]) + int(
-        summary["excluded"]
-    )
+    assert_flood_guard(summary)
     assert int(summary["excluded"]) == len(excluded)
     assert shape["vulnerabilities"] == 0
     assert shape["vulns_cve_class_only"] is True
