@@ -395,6 +395,7 @@ def parse_file(path: Path) -> list[dict]:
             plugin = str(row.get("plugin_id") or "nessus")
             port = str(row.get("port") or "")
             cves = [str(c).strip() for c in (row.get("cves") or []) if str(c).strip()]
+            cwes = [str(c).strip() for c in (row.get("cwes") or []) if str(c).strip()]
             extra = stamp_ids(
                 {
                     "port": port,
@@ -403,10 +404,14 @@ def parse_file(path: Path) -> list[dict]:
                     "protocol": row.get("protocol") or "",
                     "id_quality": row.get("id_quality") or "",
                     "tool": "nessus",
+                    "plugin_family": row.get("plugin_family") or "",
                     "cves": cves,
+                    "cwes": cwes,
                 },
                 **ids,
             )
+            if cwes:
+                extra["cwe"] = " ".join(cwes)
             if row.get("scan_time"):
                 extra["scan_time"] = row.get("scan_time")
             if cves:
