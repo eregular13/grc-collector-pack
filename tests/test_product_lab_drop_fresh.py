@@ -49,19 +49,28 @@ IDENTITY_COLS = {
 }
 
 
+def _hermetic_env(out: Path, inn: Path) -> dict[str, str]:
+    """Empty-in demo lab. Do not inherit a leaked LAB/FIXTURES_DIR from pytest."""
+    keep = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "SYSTEMROOT", "TMPDIR", "TMP", "TEMP")
+    env = {key: os.environ[key] for key in keep if os.environ.get(key)}
+    env["PYTHONPATH"] = str(ROOT)
+    env["OUT_DIR"] = str(out)
+    env["IN_DIR"] = str(inn)
+    env["FIXTURES_DIR"] = str(ROOT / "fixtures" / "demo")
+    env["DRY_RUN"] = "1"
+    env["GRC_LIVE_SCAN"] = "0"
+    env["CISO_PUSH"] = "0"
+    env["RISKREADY_PUSH"] = "0"
+    env["DROPBOX_LIVE"] = "0"
+    return env
+
+
 def _run_fresh_lab(tmp_path: Path) -> Path:
     out = tmp_path / "out"
     inn = tmp_path / "in"
     inn.mkdir()
     out.mkdir()
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(ROOT)
-    env["OUT_DIR"] = str(out)
-    env["IN_DIR"] = str(inn)
-    env["DRY_RUN"] = "1"
-    env["GRC_LIVE_SCAN"] = "0"
-    env["CISO_PUSH"] = "0"
-    env["RISKREADY_PUSH"] = "0"
+    env = _hermetic_env(out, inn)
     for name in COLLECTORS:
         subprocess.run(
             [sys.executable, str(ROOT / "collectors" / f"{name}.py")],
