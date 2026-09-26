@@ -150,3 +150,96 @@ def test_loader_excluded_scenarios_are_accept_not_mitigate(
     assert "CTL-waz-alert-5710" not in controls
     assert "CTL-nmap-open-udp" not in controls
     assert sum(1 for row in scenarios if row["treatment"] == "accept") == len(excluded)
+
+
+def test_kind_excluded_row_is_accept_on_the_register(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir()
+    recs = [
+        _finding(
+            ref_id="CLD-sec",
+            name="privileged pod",
+            description="security-context-pods FAIL",
+            severity="high",
+            category="cloud-misconfiguration",
+            extra={"check_id": "security-context-pods"},
+        ),
+        {
+            "kind": "excluded",
+            "source": "cloud-prowler",
+            "ref_id": "CLD-cpu-waste",
+            "name": "azure-vm-cpu-underutilized",
+            "description": "cost/ops, not a weakness",
+            "severity": "medium",
+            "category": "excluded",
+            "assets": ["vm-1"],
+            "labels": ["not-a-weakness"],
+            "extra": {"exclude_reason": "not_a_weakness", "check_id": "azure-vm-cpu-underutilized"},
+        },
+    ]
+    write_canonical("cloud-prowler", recs)
+    summary = load()
+    assert summary["poam"] == 1
+    assert summary["excluded"] == 1
+    assert summary["kind_excluded"] == 1
+    assert summary["risk_scenarios"] == 2
+    scenarios = {row["ref_id"]: row for row in csv_rows(out_dir() / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")}
+    assert scenarios["RSK-cld-sec"]["treatment"] == "mitigate"
+    waste = scenarios["RSK-cld-cpu-waste"]
+    assert waste["treatment"] == "accept"
+    assert waste["existing_controls"] == "excluded:not_a_weakness"
+    assert waste["additional_controls"] == ""
+    assert waste["residual_risk"] == waste["current_risk"]
+
+
+def test_real_custodian_register_is_36_not_8(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#173 kind:excluded + #181 accept: 8 POA&M / 28 excluded / 36 scenarios."""
+    from collectors import cloud_prowler, host_wazuh
+
+    root = Path(__file__).resolve().parents[1]
+    cloud: list[dict] = []
+    for rel in (
+        "fixtures/samples/cloud/security-context-pods/resources.json",
+        "fixtures/samples/cloud/stop-underutilized-azure-vms/resources.json",
+        "fixtures/samples/cloud/stop-underutilized-aws-instances/resources.json",
+        "fixtures/samples/cloud/check-ebs-snapshot-public/resources.json",
+        "fixtures/samples/cloud/s3-encryption-missing/resources.json",
+        "fixtures/samples/prowler/example_output_aws.ocsf.json",
+    ):
+        cloud.extend(cloud_prowler.parse_file(root / rel))
+    osquery: list[dict] = []
+    for name in (
+        "osqueryd.results.sample.log",
+        "osqueryd.results.darwin.log",
+        "msticpy.osqueryd.results.log",
+        "msticpy.osqueryd.snapshots.log",
+    ):
+        osquery.extend(host_wazuh.parse_file(root / "fixtures" / "samples" / "osquery" / name))
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir()
+    write_canonical("cloud-prowler", cloud)
+    write_canonical("host-wazuh", osquery)
+    summary = load()
+    assert summary["poam"] == 8, summary
+    assert summary["excluded"] == 28, summary.get("excluded_by_reason")
+    assert summary["kind_excluded"] == 28
+    assert summary["risk_scenarios"] == 36
+    assert summary["findings"] + summary["kind_excluded"] == 36
+    scenarios = csv_rows(out_dir() / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    accept = [row for row in scenarios if row.get("treatment") == "accept"]
+    mitigate = [row for row in scenarios if row.get("treatment") == "mitigate"]
+    assert len(accept) == 28
+    assert len(mitigate) == 8
+    reasons = {str(row.get("existing_controls") or "") for row in accept}
+    assert "excluded:not_a_weakness" in reasons
+    assert "excluded:unmapped" in reasons
+    assert all(str(row.get("existing_controls") or "").startswith("excluded:") for row in accept)
+    assert all((row.get("additional_controls") or "") == "" for row in accept)
+    assert all(row.get("residual_risk") == row.get("current_risk") for row in accept)
+    assert all(str(row.get("additional_controls") or "").startswith("CTL-") for row in mitigate)

@@ -284,7 +284,7 @@ def load() -> dict:
 
     vuln_findings = [r for r in findings if _is_vuln(r)]
     other_findings = [r for r in findings if not _is_vuln(r)]
-    weaknesses = other_findings + vuln_findings
+    weaknesses = other_findings + vuln_findings + pre_excluded
     lighter = poam_lighter_requested()
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     ranked = sorted(
@@ -365,7 +365,7 @@ def load() -> dict:
         )
 
     scenarios = []
-    for rec in findings:
+    for rec in weaknesses:
         level = scenario_level(rec.get("severity"))
         rec_ref = str(rec.get("ref_id") or "")
         decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
@@ -415,9 +415,6 @@ def load() -> dict:
         *POAM_EXTRA_FIELDS,
     ]
     today = utc_run_date()
-    lighter = poam_lighter_requested()
-    weaknesses = other_findings + vuln_findings + pre_excluded
-    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     poam_ledger = run_ledger(findings, kev_catalog)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
@@ -448,7 +445,7 @@ def load() -> dict:
         ),
     )
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    for rec, decision in iter_poam_decisions(ranked, lighter=lighter):
+    for rec, decision in poam_decisions:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
@@ -708,10 +705,11 @@ def load() -> dict:
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
-            "risk_scenarios == weaknesses == findings + vulnerabilities; "
+            "risk_scenarios == findings + vulnerabilities + kind_excluded; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
             "weaknesses_total == poam_included + excluded == "
             "weaknesses + kind_excluded + pending_carried; "
+            "kind:excluded rows stay on the register as treatment=accept; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),
