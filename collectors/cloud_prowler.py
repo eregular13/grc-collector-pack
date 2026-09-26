@@ -303,12 +303,12 @@ def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
         if name:
             return name
     if rtype.startswith("azure."):
-        name = str(res.get("name") or res.get("Name") or meta.get("name") or "")
-        if name:
-            return name
         rid = res.get("id") or res.get("Id")
         if rid:
             return str(rid)
+        name = str(res.get("name") or res.get("Name") or meta.get("name") or "")
+        if name:
+            return name
     return str(
         res.get("SnapshotId")
         or res.get("VolumeId")

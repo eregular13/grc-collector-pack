@@ -404,6 +404,62 @@ def _legacy_port_only_allowed(rec: dict[str, Any]) -> bool:
     return proto == "tcp"
 
 
+_NMAP_PORT_CHECK_RE = re.compile(r"^nmap-port-(\d+)/(tcp|udp|sctp)$", re.I)
+_NMAP_DISPLAY_TITLES = {
+    ("23", "tcp"): ("Telnet exposed",),
+    ("21", "tcp"): ("FTP exposed",),
+    ("445", "tcp"): ("SMB 445 exposed",),
+    ("3389", "tcp"): ("RDP exposed",),
+    ("22", "tcp"): ("SSH exposed",),
+    ("80", "tcp"): ("HTTP exposed",),
+    ("161", "udp"): ("SNMP 161/udp exposed", "Open port 161/snmp"),
+    ("69", "udp"): ("TFTP 69/udp exposed", "Open port 69/tftp"),
+}
+
+
+def _nmap_legacy_title_records(rec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pre-check_id nmap port rows keyed on display title (Metis §15 ID churn)."""
+    extra = extra_dict(rec)
+    if str(rec.get("source") or "") != "inventory-nmap":
+        return []
+    check = str(extra.get("check_id") or extra.get("id") or "").strip()
+    matched = _NMAP_PORT_CHECK_RE.match(check)
+    port = str(extra.get("port") or "").strip()
+    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    if matched:
+        port, proto = matched.group(1), matched.group(2).lower()
+    elif check and not check.startswith("nmap-port-"):
+        return []
+    if not port or proto not in {"tcp", "udp", "sctp"}:
+        return []
+    svc = str(extra.get("service") or proto or "unknown")
+    titles = [
+        str(rec.get("name") or ""),
+        f"Open port {port}/{svc}",
+        f"Open port {port}/{proto}",
+        f"Open port {port}/{svc or proto or 'unknown'}",
+        f"Open UDP port {port}/{svc}",
+        f"Open UDP port {port}/{proto}",
+        f"UDP {port} open|filtered (not confirmed open)",
+        *_NMAP_DISPLAY_TITLES.get((port, proto), ()),
+    ]
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for title in titles:
+        name = str(title or "").strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        fake = dict(rec)
+        fake["name"] = name
+        fake_extra = {
+            k: v for k, v in extra.items() if k not in {"id", "rule", "check_id"}
+        }
+        fake["extra"] = fake_extra
+        out.append(fake)
+    return out
+
+
 def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
     """Prior fingerprint schemes (#131, pre-#140 port-only, pre-#131 name)."""
     seen: set[str] = set()
@@ -416,6 +472,16 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
         schemes.append((legacy_port_only_asset_key, "port_only_to_port_proto"))
     for fake in _legacy_alias_records(rec):
         for fn, reason in schemes:
+            fp = fp_v1(fake, asset_key_fn=fn)
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, reason))
+    for fake in _nmap_legacy_title_records(rec):
+        for fn, reason in (
+            (asset_key, "nmap_title_to_check_id"),
+            (legacy_asset_id_port_key, "nmap_title_to_check_id"),
+            (legacy_name_asset_key, "nmap_title_to_check_id"),
+        ):
             fp = fp_v1(fake, asset_key_fn=fn)
             if fp and fp not in seen:
                 seen.add(fp)

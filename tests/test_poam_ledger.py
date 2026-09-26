@@ -411,6 +411,53 @@ def test_migration_map_name_to_asset_id_port_keeps_id_and_earliest_date() -> Non
     assert any(m["from"] == old_fp and m["to"] == new_fp for m in migrated["fp_migrations"])
 
 
+def test_migration_nmap_title_to_check_id_keeps_id_and_date() -> None:
+    """Old 'Open port 161/snmp' title → nmap-port-161/udp check_id keeps EGP- and date."""
+    old = _rec(
+        source="inventory-nmap",
+        ref_id="NMAP-10-11-1-22-161",
+        name="Open port 161/snmp",
+        assets=["10.11.1.22"],
+        labels=["nmap", "inventory"],
+        extra={
+            "port": "161",
+            "service": "snmp",
+            "protocol": "udp",
+            "ip": "10.11.1.22",
+            "tool": "nmap",
+        },
+    )
+    new = {
+        **old,
+        "name": "SNMP 161/udp exposed",
+        "ref_id": "NMAP-10-11-1-22-161-udp",
+        "extra": {**old["extra"], "check_id": "nmap-port-161/udp"},
+    }
+    old_fp = fp_v1(old)
+    new_fp = fp_v1(new)
+    assert old_fp != new_fp
+    assert weakness_key(old).startswith("name:")
+    assert weakness_key(new) == "nmap:nmap-port-161/udp"
+
+    seeded = _apply([old], when="2026-07-02T00:00:00Z")
+    item = next(iter(seeded["items"].values()))
+    pid = item["poam_id"]
+    odd = item["original_detection_date"]
+
+    migrated = _apply([new], ledger=seeded, when="2026-09-01T00:00:00Z")
+    assert new_fp in migrated["items"]
+    assert old_fp not in migrated["items"]
+    got = migrated["items"][new_fp]
+    assert got["poam_id"] == pid
+    assert got["original_detection_date"] == odd
+    assert got["status"] != "pending_verification"
+    assert not any(i.get("status") == "pending_verification" for i in migrated["items"].values())
+    assert any(
+        m["from"] == old_fp and m["to"] == new_fp and m.get("reason") == "nmap_title_to_check_id"
+        for m in migrated["fp_migrations"]
+    )
+
+
 def test_migration_port_only_to_port_proto_keeps_id_and_date() -> None:
     """Pre-#140 host:22 → host:22/tcp: same EGP- ID, earliest date, not pending_verification."""
     old = _rec(

@@ -130,7 +130,7 @@ def _host_from(row: dict[str, Any], default: str) -> str:
         or cols.get("hostname")
         or cols.get("hostIdentifier")
         or default
-        or "osquery-host"
+        or ""
     )
 
 
@@ -144,9 +144,36 @@ def _cell(row: dict[str, Any], cols: dict[str, Any], key: str) -> Any:
     return cols.get(key)
 
 
+def _entry_is_pack_sql(obj: Any) -> bool:
+    if not isinstance(obj, dict):
+        return False
+    query = obj.get("query")
+    if not isinstance(query, str) or "select" not in query.lower():
+        return False
+    if obj.get("hostIdentifier") or isinstance(obj.get("columns"), dict):
+        return False
+    if isinstance(obj.get("snapshot"), list) or isinstance(obj.get("diffResults"), dict):
+        return False
+    return True
+
+
+def is_osquery_pack_config(payload: Any) -> bool:
+    """Official pack CONFIG (SQL + interval), not osqueryd results."""
+    if not isinstance(payload, dict) or payload.get("hostIdentifier"):
+        return False
+    queries = payload.get("queries")
+    if isinstance(queries, dict) and queries:
+        vals = [v for v in queries.values() if isinstance(v, dict)]
+        return bool(vals) and all(_entry_is_pack_sql(v) for v in vals)
+    vals = [v for v in payload.values() if isinstance(v, dict)]
+    return bool(vals) and all(_entry_is_pack_sql(v) for v in vals)
+
+
 def looks_osquery_obj(obj: Any) -> bool:
     """True for an osquery result / snapshot / diff envelope."""
     if not isinstance(obj, dict):
+        return False
+    if is_osquery_pack_config(obj):
         return False
     if obj.get("hostIdentifier") and (obj.get("name") or obj.get("query") or obj.get("snapshot") or obj.get("diffResults")):
         return True
@@ -231,11 +258,16 @@ def is_osquery_results_payload(payload: Any) -> bool:
             isinstance(payload.get("data"), dict) and payload["data"].get("affected_items")
         ):
             return False
+        if is_osquery_pack_config(payload):
+            return False
         return bool(
             payload.get("hostIdentifier")
             or payload.get("snapshot")
             or payload.get("diffResults")
-            or isinstance(payload.get("queries"), (list, dict))
+            or (
+                isinstance(payload.get("queries"), (list, dict))
+                and not is_osquery_pack_config({"queries": payload.get("queries")})
+            )
         )
     return False
 
@@ -401,7 +433,20 @@ def classify_osquery_rows(payload: Any) -> list[dict[str, str]]:
         name = str(row.get("name") or row.get("query") or cols.get("name") or "osquery")
         key = _query_key(name)
         host = _host_from(row, host_default)
-        title = str(row.get("title") or row.get("description") or name.replace("_", " "))
+        display = _query_key(name)
+        titles = {
+            "alf": "Application firewall is disabled",
+            "disk_encryption": "Disk encryption is disabled",
+            "filevault": "Disk encryption is disabled",
+            "bitlocker": "Disk encryption is disabled",
+            "sip": "SIP is disabled or relaxed",
+            "sip_config": "SIP is disabled or relaxed",
+        }
+        title = titles.get(key) or str(
+            row.get("title") or row.get("description") or display.replace("_", " ")
+        )
+        if title.lower().startswith("pack "):
+            title = display.replace("_", " ")
         verdict = _check_column_verdict(row, cols)
         pred = _FAIL_PREDICATE.get(key)
 
@@ -425,16 +470,16 @@ def classify_osquery_rows(payload: Any) -> list[dict[str, str]]:
             if slot in seen:
                 continue
             seen.add(slot)
-            classified.append({"id": name, "title": title, "host": host, "result": "fail"})
+            classified.append({"id": display, "title": title, "host": host, "result": "fail"})
             continue
 
         if pred:
             if _predicate_fail(pred, row, cols):
-                slot = ("fail", name, host)
+                slot = ("fail", display, host)
                 if slot in seen:
                     continue
                 seen.add(slot)
-                classified.append({"id": name, "title": title, "host": host, "result": "fail"})
+                classified.append({"id": display, "title": title, "host": host, "result": "fail"})
             else:
                 inventory_count += 1
             continue
@@ -449,7 +494,7 @@ def classify_osquery_rows(payload: Any) -> list[dict[str, str]]:
         seen.add(slot)
         classified.append(
             {
-                "id": name,
+                "id": display,
                 "title": title,
                 "host": host,
                 "result": "unmapped",
@@ -490,7 +535,7 @@ def osquery_hosts(payload: Any) -> list[str]:
         seen.add(host_default)
     for row in rows:
         host = _host_from(row, host_default)
-        if host and host not in seen:
+        if host and host != "osquery-host" and host not in seen:
             seen.add(host)
             out.append(host)
     return out
