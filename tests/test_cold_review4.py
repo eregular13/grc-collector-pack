@@ -759,7 +759,7 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "extra": {"page_type": "hostname", "url": "https://legacy.corp.local/"},
     }
     assert weakness_key(easm_path) != weakness_key(easm_host)
-    # Same title, two URL shapes — do not mint a second row.
+    # Same title, two URL shapes — stay distinct (Metis #161 follow-up).
     easm_a = {
         "source": "easm",
         "name": "Exposed admin interface on admin.example.com",
@@ -772,7 +772,12 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "assets": ["admin.example.com"],
         "extra": {"path": "https://admin.example.com", "url": "https://admin.example.com"},
     }
-    assert weakness_key(easm_a) == weakness_key(easm_b)
+    assert weakness_key(easm_a) != weakness_key(easm_b)
+    from shared.poam_ledger import legacy_pre_location_weakness_key
+
+    assert legacy_pre_location_weakness_key(easm_a) == legacy_pre_location_weakness_key(
+        easm_b
+    )
 
 
 def test_trivy_two_secrets_weakness_keys_stay_distinct() -> None:
@@ -859,7 +864,7 @@ def test_netbios_ns_pod_reclass_keeps_uid() -> None:
     assert ledger.observe(new, now=NOW) == old_uid
 
 
-def test_demo_fedramp_open_stays_126(tmp_path: Path, monkeypatch) -> None:
+def test_demo_fedramp_open_stays_127(tmp_path: Path, monkeypatch) -> None:
     from tests.test_poam_breakdown import _run_lab
 
     _run_lab(tmp_path, monkeypatch)
@@ -867,10 +872,10 @@ def test_demo_fedramp_open_stays_126(tmp_path: Path, monkeypatch) -> None:
     assert fed.is_file()
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 126, f"DEMO FedRAMP Open={len(rows)} expected 126"
+    assert len(rows) == 127, f"DEMO FedRAMP Open={len(rows)} expected 127"
 
 
-def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
+def test_farm_fedramp_open_stays_174(tmp_path: Path) -> None:
     import os
     import subprocess
 
@@ -898,13 +903,17 @@ def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
     assert fed.is_file()
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 172, f"farm FedRAMP Open={len(rows)} expected 172"
+    assert len(rows) == 174, f"farm FedRAMP Open={len(rows)} expected 174"
 
 
-def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
+def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 932cf7c DEMO ledger: FedRAMP Open stays 126, 0 new, 0 ghosts."""
+    """master→this-branch: first Exposed-admin URL keeps its EGP; sibling is new.
+
+    Fresh DEMO FedRAMP Open is 127. Upgrade must not stay at 126 — the
+    newly discriminated /login (or apex) URL is tracked. 0 ghosts.
+    """
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -930,11 +939,20 @@ def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
         fed_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
     ghosts = prior_ids - reseen_ids
-    assert created == [], [e.get("poam_id") for e in created]
+    new_ids = reseen_ids - prior_ids
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
-    assert len(open_items) == 126
-    assert len(fed_rows) == 126
-    assert reseen_ids == prior_ids
+    assert len(created) == 1, [e.get("poam_id") for e in created]
+    assert {e.get("poam_id") for e in created} == new_ids
+    assert len(open_items) == 127
+    assert len(fed_rows) == 127
+    assert prior_ids <= reseen_ids
+    admin_rows = [
+        it
+        for it in open_items
+        if str(it.get("name") or "").startswith("Exposed admin interface on")
+    ]
+    assert len(admin_rows) == 2
+    assert len({it["poam_id"] for it in admin_rows}) == 2
     assert summary.get("demo") is True
 
 
