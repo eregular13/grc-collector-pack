@@ -20,7 +20,7 @@ from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
 from shared.osquery_checks import iter_osquery_failures
-from shared.schema import canon_severity, make_record, make_ref, map_severity
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
@@ -99,24 +99,75 @@ def _alert_level(rule: dict[str, Any]) -> int:
         return 0
 
 
-def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> tuple[str, bool]:
-    """Wazuh rule levels: 0-3 info (never POA&M), 4-6 low, 7-11 medium, 12-14 high, 15+ critical.
+# Wazuh's own rule.level table (docs.wazuh.com / ruleset). Vendor severity
+# words on the alert are ignored — a missing level is info, never High.
+_COMPROMISE_RULE_IDS = frozenset(
+    {
+        "510",
+        "511",
+        "520",
+        "521",
+        "550",
+        "551",
+        "591",
+        "592",
+    }
+)
+_COMPROMISE_GROUPS = frozenset(
+    {
+        "attack_success",
+        "malware",
+        "rootkit",
+        "trojan",
+        "virus",
+        "web_scan_success",
+    }
+)
+_COMPROMISE_TITLE = re.compile(
+    r"\b(rootkit|malware detected|attack successful|integrity checksum changed|"
+    r"trojan(?:ed)?|shell spawned)\b",
+    re.I,
+)
 
-    Vendor words go through map_severity / canon_severity (unknown → medium + unmapped).
+
+def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> tuple[str, bool]:
+    """Map Wazuh by rule.level only: 0-3 info, 4-7 low, 8-11 medium, 12-14 high, 15+ critical.
+
+    Missing / unparsable level is info — never default High. Vendor `severity`
+    on the alert is ignored so a fixture word cannot promote a level-5 flood.
     """
+    del alert  # level table only; vendor severity is not a band.
+    if rule.get("level") in (None, ""):
+        return "info", False
     level = _alert_level(rule)
     if level <= 3:
         return "info", False
-    raw = alert.get("severity")
-    if raw not in (None, ""):
-        return map_severity(raw)
+    if level <= 7:
+        return "low", False
+    if level <= 11:
+        return "medium", False
     if level >= 15:
         return "critical", False
-    if level >= 12:
-        return "high", False
-    if level >= 7:
-        return "medium", False
-    return "low", False
+    return "high", False
+
+
+def _alert_groups(rule: dict[str, Any]) -> list[str]:
+    raw = rule.get("groups") or rule.get("gdpr") or []
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.replace(",", " ").split() if part.strip()]
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if item]
+    return []
+
+
+def _is_compromise_rule(rule: dict[str, Any], title: str) -> bool:
+    rid = str(rule.get("id") or "").strip()
+    if rid in _COMPROMISE_RULE_IDS:
+        return True
+    groups = {g.lower() for g in _alert_groups(rule)}
+    if groups & _COMPROMISE_GROUPS:
+        return True
+    return bool(_COMPROMISE_TITLE.search(str(title or "")))
 
 
 def _alert_agent(alert: dict[str, Any]) -> str:
@@ -140,15 +191,17 @@ def _aggregate_alerts(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rule = rows[0].get("rule") if isinstance(rows[0].get("rule"), dict) else {}
         times = [t for t in (_alert_time(a) for a in rows) if t]
         times.sort()
+        title = str(rule.get("description") or rows[0].get("id") or "wazuh alert")
         sev, unmapped = _alert_severity(rows[0], rule)
         out.append(
             {
                 "rule_id": rid,
                 "agent": agent,
-                "title": str(rule.get("description") or rows[0].get("id") or "wazuh alert"),
+                "title": title,
                 "severity": sev,
                 "severity_unmapped": unmapped,
                 "level": rule.get("level"),
+                "compromise": _is_compromise_rule(rule, title),
                 "count": len(rows),
                 "first_seen": times[0] if times else "",
                 "last_seen": times[-1] if times else "",
@@ -836,6 +889,8 @@ def parse_file(path: Path) -> list[dict]:
             "last_seen": alert["last_seen"],
             "telemetry": True,
         }
+        if alert.get("compromise"):
+            extra["compromise"] = True
         if alert.get("severity_unmapped"):
             extra["severity_unmapped"] = True
             extra.setdefault("severity_raw", str(alert["severity"]))

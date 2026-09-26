@@ -87,20 +87,30 @@ def test_wazuh_alert_rule_level_bands(tmp_path) -> None:
     dest.write_text(
         '{"rule":{"level":3,"description":"info band","id":"3"},'
         '"agent":{"name":"web-01"},"id":"a3"}\n'
+        '{"rule":{"level":5,"description":"low band","id":"5"},'
+        '"agent":{"name":"web-01"},"severity":"high","id":"a5"}\n'
+        '{"rule":{"level":7,"description":"low-telemetry band","id":"7"},'
+        '"agent":{"name":"web-01"},"id":"a7"}\n'
         '{"rule":{"level":8,"description":"medium band","id":"8"},'
         '"agent":{"name":"web-01"},"id":"a8"}\n'
         '{"rule":{"level":12,"description":"high band","id":"12"},'
         '"agent":{"name":"web-01"},"id":"a12"}\n'
         '{"rule":{"level":15,"description":"critical band","id":"15"},'
-        '"agent":{"name":"web-01"},"id":"a15"}\n',
+        '"agent":{"name":"web-01"},"id":"a15"}\n'
+        '{"rule":{"description":"no level","id":"99"},'
+        '"agent":{"name":"web-01"},"id":"a99"}\n',
         encoding="utf-8",
     )
     recs = host_wazuh.parse_file(dest)
     by_name = {r["name"]: r["severity"] for r in recs if r["kind"] == "finding"}
     assert by_name["info band"] == "info"
+    assert by_name["low band"] == "low"
+    assert by_name["low-telemetry band"] == "low"
     assert by_name["medium band"] == "medium"
     assert by_name["high band"] == "high"
     assert by_name["critical band"] == "critical"
+    assert by_name["no level"] == "info"
+    assert "high" not in {by_name["low band"], by_name["no level"]}
 
 
 def test_wazuh_sca_failed_checks_not_fake_agents() -> None:
@@ -248,6 +258,8 @@ def test_wazuh_alerts_aggregate_by_rule_and_agent(tmp_path: Path) -> None:
 
     assert poam_decision(started)["include"] is False
     assert poam_decision(started)["reason"] == "telemetry_info"
+    assert poam_decision(ssh_web)["include"] is False
+    assert poam_decision(ssh_web)["reason"] == "telemetry"
 
 
 def test_wazuh_sca_agent_from_path_and_severity_from_rationale(tmp_path: Path) -> None:
@@ -391,6 +403,99 @@ def test_wazuh_info_alerts_land_in_excluded_as_telemetry_info(tmp_path, monkeypa
     assert all(r["ref_id"] in reasons and reasons[r["ref_id"]] == "telemetry_info" for r in findings)
 
 
+def test_wazuh_300_level5_alerts_one_excluded_no_high(tmp_path, monkeypatch) -> None:
+    """300 synthetic level-5 alerts: 0 High rows, one aggregated excluded row."""
+    import csv
+    import json
+
+    from collectors.grc_loader import load
+    from shared.control_map import poam_decision
+    from shared.io_util import out_dir, write_canonical
+
+    dest = tmp_path / "alerts.jsonl"
+    lines = []
+    for i in range(300):
+        lines.append(
+            json.dumps(
+                {
+                    "timestamp": f"2025-09-15T15:{i // 60:02d}:{i % 60:02d}.000Z",
+                    "rule": {
+                        "level": 5,
+                        "description": "sshd: brute force trying to get access",
+                        "id": "5710",
+                    },
+                    "agent": {"name": "web-01"},
+                    "severity": "high" if i % 2 == 0 else None,
+                    "id": f"a{i}",
+                }
+            )
+        )
+    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    recs = host_wazuh.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    hit = findings[0]
+    assert hit["severity"] == "low"
+    assert hit["extra"]["count"] == 300
+    assert hit["extra"].get("telemetry") is True
+    assert not hit["extra"].get("compromise")
+    assert not any(r["severity"] == "high" for r in recs)
+    assert poam_decision(hit)["include"] is False
+    assert poam_decision(hit)["reason"] == "telemetry"
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    write_canonical("host-wazuh", recs)
+    summary = load()
+    assert summary["poam_included"] == 0
+    assert summary["excluded"] == 1
+    assert summary["excluded_by_reason"] == {"telemetry": 1}
+    with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam_rows = list(csv.DictReader(fh))
+    assert poam_rows == []
+    assert not any((row.get("severity") or "").lower() == "high" for row in poam_rows)
+    with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
+        excluded = list(csv.DictReader(fh))
+    assert len(excluded) == 1
+    assert excluded[0]["excluded_reason"] == "telemetry"
+    assert excluded[0]["severity"] == "low"
+
+
+def test_wazuh_demo_brute_force_is_telemetry_not_high() -> None:
+    recs = host_wazuh.parse_file(DEMO / "wazuh" / "agents.json")
+    brute = [
+        r
+        for r in recs
+        if r["kind"] == "finding" and "brute force" in r["name"].lower()
+    ]
+    assert brute
+    assert all(r["severity"] != "high" for r in brute)
+    assert all(r["severity"] == "medium" for r in brute)
+    from shared.control_map import poam_decision
+
+    assert all(poam_decision(r)["include"] is False for r in brute)
+    assert all(poam_decision(r)["reason"] == "telemetry" for r in brute)
+
+
+def test_wazuh_level12_and_compromise_stay_on_plan(tmp_path: Path) -> None:
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"rule":{"level":12,"description":"integrity checksum changed","id":"550"},'
+        '"agent":{"name":"web-01"},"id":"a12"}\n'
+        '{"rule":{"level":8,"description":"Possible kernel level rootkit","id":"521",'
+        '"groups":["rootkit"]},"agent":{"name":"web-01"},"id":"a8"}\n',
+        encoding="utf-8",
+    )
+    recs = [r for r in host_wazuh.parse_file(dest) if r["kind"] == "finding"]
+    by_id = {r["extra"].get("rule_id"): r for r in recs}
+    from shared.control_map import poam_decision
+
+    assert by_id["550"]["severity"] == "high"
+    assert poam_decision(by_id["550"])["include"] is True
+    assert by_id["521"]["extra"].get("compromise") is True
+    assert poam_decision(by_id["521"])["include"] is True
+
+
 def test_wazuh_prowler_enum4linux_route_canon_severity(tmp_path: Path) -> None:
     from shared.schema import canon_severity
 
@@ -404,10 +509,10 @@ def test_wazuh_prowler_enum4linux_route_canon_severity(tmp_path: Path) -> None:
     )
     recs = host_wazuh.parse_file(dest)
     by_name = {r["name"]: r for r in recs if r["kind"] == "finding"}
-    assert by_name["warn word"]["severity"] == canon_severity("WARNING") == "medium"
+    assert by_name["warn word"]["severity"] == canon_severity("medium") == "medium"
     assert not by_name["warn word"]["extra"].get("severity_unmapped")
-    assert by_name["unknown word"]["severity"] == canon_severity("purple-alert") == "medium"
-    assert by_name["unknown word"]["extra"].get("severity_unmapped") is True
+    assert by_name["unknown word"]["severity"] == canon_severity("medium") == "medium"
+    assert not by_name["unknown word"]["extra"].get("severity_unmapped")
 
     prowler = tmp_path / "prowler.json"
     prowler.write_text(
