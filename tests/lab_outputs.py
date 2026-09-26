@@ -207,6 +207,25 @@ def assert_lab() -> None:
 
         fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
+        plan_ids = {r.get("poam_id") or "" for r in poam if r.get("poam_id")}
+        fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
+        assert fed_ids == plan_ids, (
+            f"FedRAMP Open IDs must match poam.csv; extra={sorted(fed_ids - plan_ids)} "
+            f"missing={sorted(plan_ids - fed_ids)}"
+        )
+        poam_by_id = {r.get("poam_id") or "": r for r in poam if r.get("poam_id")}
+        for row in fed_rows:
+            pid = row.get("POAM ID") or ""
+            prow = poam_by_id.get(pid) or {}
+            assert (row.get("Controls") or "") == (prow.get("controls") or ""), pid
+            assert (row.get("Overall Remediation Plan") or "") == (
+                prow.get("recommended_fix") or ""
+            ), pid
+            plan_risk = prow.get("original_risk_rating") or ""
+            if plan_risk:
+                assert (row.get("Original Risk Rating") or "") == plan_risk, pid
+            if plan_risk == "Critical":
+                assert (row.get("Original Risk Rating") or "") == "Critical", pid
         for row in fed_rows:
             vd = row.get("Vendor Dependency") or ""
             assert vd in {"Yes", "No"}, vd
