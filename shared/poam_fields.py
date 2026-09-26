@@ -1,6 +1,6 @@
 """FedRAMP R3.0-style POA&M fields derived from data the pack already has.
 
-No invented owners. Scheduled completion dates are *defaults* (30/90/180 days
+No invented owners. Scheduled completion dates are *defaults* (15/30/90/180 days
 from original detection by risk rating), clearly labeled as such; `due` stays
 the human-committed date and is left blank. Dates are UTC calendar dates.
 """
@@ -30,16 +30,20 @@ POAM_EXTRA_FIELDS = (
 )
 
 RISK_RATING = {"critical": "Critical", "high": "High", "medium": "Moderate", "low": "Low"}
-# FedRAMP POA&M Template R3.0 Instructions A9: High/Critical 30, Moderate 90, Low 180.
-SLA_DAYS = {"Critical": 30, "High": 30, "Moderate": 90, "Low": 180}
-FIRST_MILESTONE_DAYS = {30: 7, 90: 14, 180: 30}
+# High/Moderate/Low follow FedRAMP POA&M Template R3.0 Instructions A9 (30/90/180).
+# Critical is 15 days: a CISO-facing default shorter than A9, which groups
+# Critical with High at 30. Documented here so the clock is not silent.
+SLA_DAYS = {"Critical": 15, "High": 30, "Moderate": 90, "Low": 180}
+FIRST_MILESTONE_DAYS = {15: 3, 30: 7, 90: 14, 180: 30}
 KNOWN_CVE = (("heartbleed", "CVE-2014-0160"),)
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 SLA_NOTE = (
     "Scheduled completion dates are DEFAULTS computed from original detection date + risk rating "
-    "(Critical/High 30 days, Moderate 90, Low 180; FedRAMP POA&M R3.0 convention). They are not a "
-    "committed date: `due` stays blank until a human commits one. Owner and point of contact are "
-    "blank for a human to assign. Dates are UTC."
+    "(Critical 15 days, High 30, Moderate 90, Low 180). High/Moderate/Low follow FedRAMP POA&M "
+    "R3.0 Instructions A9. Critical is shorter than A9 (which groups Critical with High at 30) "
+    "so a Critical row is not on the same clock as High. They are not a committed date: `due` "
+    "stays blank until a human commits one. Owner and point of contact are blank for a human "
+    "to assign. Dates are UTC."
 )
 
 

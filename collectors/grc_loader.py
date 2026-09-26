@@ -9,7 +9,15 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.control_map import extra_labels, map_finding, poam_breakdown
+from shared.control_map import (
+    LIGHTER_ENV,
+    extra_labels,
+    map_finding,
+    poam_breakdown,
+    poam_decision,
+    poam_lighter_requested,
+    weakness_name_for,
+)
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
@@ -171,8 +179,6 @@ def _labels(rec: dict, estate: str | None = None) -> str:
     for stamp in extra_labels(rec):
         if stamp not in parts:
             parts.append(stamp)
-    if "cpg_2_W" not in parts:
-        parts.append("cpg_2_W")
     return ",".join(x for x in parts if ":" not in x)
 
 
@@ -329,17 +335,40 @@ def load() -> dict:
         *POAM_EXTRA_FIELDS,
     ]
     today = datetime.now(timezone.utc).date()
-    breakdown = poam_breakdown(other_findings + vuln_findings)
+    lighter = poam_lighter_requested()
+    weaknesses = other_findings + vuln_findings
+    breakdown = poam_breakdown(weaknesses, lighter=lighter)
+    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     poam_rows: list[list] = []
-    for rec in other_findings + vuln_findings:
+    excluded_rows: list[list] = []
+    ranked = sorted(
+        weaknesses,
+        key=lambda rec: (
+            sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            str(rec.get("name") or rec.get("ref_id") or ""),
+            str(rec.get("ref_id") or ""),
+        ),
+    )
+    for rec in ranked:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
-        if not mapped.get("include_poam"):
-            continue
+        decision = poam_decision(rec, lighter=lighter)
         assets_s = "|".join(rec.get("assets") or [])
+        weakness = weakness_name_for(rec, mapped)
+        if not decision.get("include"):
+            excluded_rows.append(
+                [
+                    rec.get("ref_id") or "",
+                    weakness,
+                    assets_s,
+                    ciso_finding_severity(rec.get("severity")),
+                    decision.get("reason") or "unexplained",
+                ]
+            )
+            continue
         fields = poam_fields(rec, mapped, today)
         poam_rows.append(
             [
-                rec.get("name") or rec.get("ref_id"),
+                weakness,
                 assets_s,
                 ciso_finding_severity(rec.get("severity")),
                 mapped["framework_refs"],
@@ -367,12 +396,26 @@ def load() -> dict:
     )
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows)
+    excluded_header = ["finding_ref_id", "weakness", "asset", "severity", "excluded_reason"]
+    _write_csv(out_poam / "excluded.csv", excluded_header, excluded_rows)
+    if lighter:
+        plan_line = (
+            "POA&M plan: lighter — Lows and non-key Mediums excluded at operator "
+            f"request ({LIGHTER_ENV}=1). Infos and honeypot hits stay off. "
+            "See poam/excluded.csv."
+        )
+    else:
+        plan_line = (
+            "POA&M plan: full — Lows (180-day default) and non-key Mediums (90-day) "
+            "are on the plan, sorted by risk. Infos and honeypot hits are listed in "
+            "poam/excluded.csv, not on the plan."
+        )
     lines = [
         "# POA&M (operator draft)",
         "",
         f"> {estate_banner(estate)}",
         "",
-        "Pentera (or any scanner) finds it. Evergreen maps it.",
+        plan_line,
         "Owner and due are blank — a human fills them. No invented owners.",
         "",
         SLA_NOTE,
@@ -509,7 +552,14 @@ def load() -> dict:
         "weaknesses": len(findings),
         "weaknesses_total": breakdown["weaknesses_total"],
         "poam_included": breakdown["poam_included"],
+        "excluded": len(excluded_rows),
         "excluded_by_reason": breakdown["excluded_by_reason"],
+        "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
+        "poam_plan_note": (
+            "Lows and non-key Mediums excluded at operator request"
+            if lighter
+            else "full plan; Lows and non-key Mediums included"
+        ),
         "open_risks": len(poam_rows),
         "incidents": len(rr_incidents),
         "risks_proposed": len(proposed),
@@ -520,8 +570,8 @@ def load() -> dict:
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
-            "POA&M is 1:1 with open risks (include_poam); "
-            "weaknesses_total == poam_included + sum(excluded_by_reason)"
+            "POA&M is 1:1 with open risks (poam_decision); "
+            "weaknesses_total == poam_included + excluded == poam_included + sum(excluded_by_reason)"
         ),
         "generated_at": now,
     }
@@ -531,7 +581,9 @@ def load() -> dict:
         "# Lab report\n\n"
         + json.dumps(summary, indent=2)
         + "\n\nGenerated by grc-loader. Demo mode. No live scan. No /api/risks POST.\n"
-        + "POA&M: out/poam/poam.csv — owner/due blank for a human.\n"
+        + "POA&M: out/poam/poam.csv — owner/due blank for a human. "
+        + "Excluded Infos/honeypot (and lighter-plan Lows/non-key Mediums) "
+        + "are in out/poam/excluded.csv.\n"
         + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n",
     )
     return summary

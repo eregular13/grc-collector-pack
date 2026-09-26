@@ -137,6 +137,11 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
             f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
         )
     excluded_n = sum(int(count) for count in excluded.values())
+    if "excluded" in summary and int(summary.get("excluded") or 0) != excluded_n:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL excluded={summary.get('excluded')} != "
+            f"sum(excluded_by_reason)={excluded_n}"
+        )
     if total != included + excluded_n:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "

@@ -54,10 +54,13 @@ def _finding(**kwargs):
 
 def test_poam_decision_names_low_exposure_and_honeypot() -> None:
     low = _finding()
-    decision = poam_decision(low)
-    assert decision["include"] is False
+    decision = poam_decision(low, lighter=False)
+    assert decision["include"] is True
     assert decision["reason"] == "severity_low"
-    assert map_finding(low)["include_poam"] is False
+    assert map_finding(low)["include_poam"] is True
+    lighter = poam_decision(low, lighter=True)
+    assert lighter["include"] is False
+    assert lighter["reason"] == "severity_low"
 
     honeypot = _finding(
         source="honeypot",
@@ -120,7 +123,7 @@ def test_poam_breakdown_identity_no_silent_drop() -> None:
             extra={"honesty": "deception-sensor"},
         ),
     ]
-    breakdown = poam_breakdown(rows)
+    breakdown = poam_breakdown(rows, lighter=False)
     assert_poam_breakdown(
         {
             **breakdown,
@@ -129,8 +132,11 @@ def test_poam_breakdown_identity_no_silent_drop() -> None:
         }
     )
     assert breakdown["weaknesses_total"] == 3
-    assert breakdown["poam_included"] == 1
-    assert breakdown["excluded_by_reason"] == {"severity_low": 1, "honeypot": 1}
+    assert breakdown["poam_included"] == 2
+    assert breakdown["excluded_by_reason"] == {"honeypot": 1}
+    light = poam_breakdown(rows, lighter=True)
+    assert light["poam_included"] == 1
+    assert light["excluded_by_reason"] == {"severity_low": 1, "honeypot": 1}
 
 
 def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
