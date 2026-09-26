@@ -117,10 +117,13 @@ def test_product_lab_drop_readme_documents_opengrc_probo() -> None:
 def test_drop_zip_includes_packaged_opengrc_when_out_lacks_sinks(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Offline packaged copy is in /export.zip even when OUT_DIR has no leave-behind."""
+    """LAB run: offline packaged copy rides in /export.zip under product-lab/drop/.
+
+    Non-LAB runs fail closed (tests/test_console_sink_failclosed.py).
+    """
     out = tmp_path / "empty-out"
     out.mkdir()
-    (out / "summary.json").write_text("{}", encoding="utf-8")
+    (out / "summary.json").write_text('{"lab": true}', encoding="utf-8")
     monkeypatch.setenv("OUT_DIR", str(out))
     blob = build_drop_zip()
     assert blob[:2] == b"PK"

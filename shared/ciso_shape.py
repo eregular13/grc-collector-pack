@@ -49,7 +49,7 @@ CISO_HEADERS = {
         "residual_impact;residual_proba;residual_risk;treatment"
     ),
 }
-POAM_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status"
+POAM_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
 FINDING_SEV = frozenset({"low", "medium", "high", "critical"})
@@ -267,7 +267,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         poam.parent.mkdir(parents=True, exist_ok=True)
         poam.write_text(
             POAM_HEADER
-            + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open\n",
+            + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open,SAMPLE\n",
             encoding="utf-8",
         )
         (folder.parent / "poam" / "poam.md").write_text(
