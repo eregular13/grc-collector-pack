@@ -107,8 +107,9 @@ def _load_loader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[
         for rec in records:
             fh.write(json.dumps(rec) + "\n")
     monkeypatch.setenv("OUT_DIR", str(out))
-    monkeypatch.setenv("IN_DIR", str(in_dir or (tmp_path / "in")))
-    (Path(monkeypatch.getenv("IN_DIR") or tmp_path / "in")).mkdir(parents=True, exist_ok=True)
+    dest_in = in_dir or (tmp_path / "in")
+    dest_in.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("IN_DIR", str(dest_in))
     monkeypatch.setenv("GRC_ESTATE_LABEL", "LAB")
     import collectors.grc_loader as loader
 
