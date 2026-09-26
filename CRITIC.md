@@ -1,7 +1,11 @@
 # CRITIC — cycle 189 (DEMO_FALLBACK_HONESTY)
 
-Honesty brick: `run_collector` no longer loads `fixtures/demo` when
-live files fail or a LAB/CLIENT/operator sensor is empty. Per-sensor
+Lab this brick: pytest **1030** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+farm_lab PASS demo=true. sample_to_sor + farm_drop_to_sor honesty PASS.
+Zero P0/P1. `run_collector` no longer loads `fixtures/demo` when live
+files fail or a LAB/CLIENT/operator sensor is empty. Per-sensor
 `parse_error` / `no_records` (file + reason) in `out/coverage/sensors/`
 and `summary.json` / `/api/coverage`. DEMO/SAMPLE empty-in still works
 and stays labeled. Catalog **unchanged** **111 / 32 / 30 / 81**.
