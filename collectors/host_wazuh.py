@@ -6,6 +6,7 @@ Parse-only. Does not run Wazuh, osquery, Fleet, or a live agent query.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from collections import defaultdict
@@ -16,11 +17,12 @@ from shared.asset_ids import stamp_ids
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, lynis_control
-from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.io_util import UnrecognizedShape, iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
 from shared.osquery_checks import (
+    is_osquery_pack_config,
     is_osquery_results_payload,
     iter_osquery_failures,
     iter_osquery_unmapped,
@@ -812,7 +814,9 @@ def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> l
             )
         )
     for row in iter_osquery_unmapped(payload):
-        host = row.get("host") or "osquery-host"
+        host = row.get("host") or ""
+        if not host:
+            continue
         hid = row.get("id") or "osquery"
         records.append(
             {
@@ -841,6 +845,15 @@ def parse_file(path: Path) -> list[dict]:
     if path.name in SKIP_INPUT_NAMES:
         return []
     text = read_text(path)
+    try:
+        maybe_osq = json.loads(text.lstrip("\ufeff"))
+    except Exception:
+        maybe_osq = None
+    if is_osquery_pack_config(maybe_osq):
+        raise UnrecognizedShape(
+            "unrecognized shape; osquery pack config is not results",
+            file=path.name,
+        )
     # osqueryd results logs are JSON lines — never Lynis, even when suffix is .log.
     if looks_osquery_text(text):
         osq_payload = load_osquery_payload(text)
