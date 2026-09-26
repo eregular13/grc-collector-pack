@@ -9,18 +9,24 @@ These files are **SAMPLE/DEMO fixtures**, not a client KEEP drop.
 **Synthetic** = constructed for a parser edge. Named `synthetic_*` (or documented
 here). Do not mix invented rows into a real filename.
 
-PR #134 (not on master at this writing) owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng
-rows in this file. This table is the §8 collector set (PingCastle, Greenbone,
-ScubaGear, testssl, Nikto). Merge by appending, do not overwrite #134's rows.
+PR #134 owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng rows. PR #139 / #145
+owns PingCastle, Greenbone, ScubaGear, testssl, and Nikto rows. Tables are unioned.
 
 | File | Kind | Source | Notes |
 |---|---|---|---|
+| `prowler/example_output_aws.ocsf.json` | trimmed real | [prowler-cloud/prowler](https://github.com/prowler-cloud/prowler) `@ c2b80924618a` `examples/output/example_output_aws.ocsf.json` (v5 OCSF default) | First 3 findings (FAIL / MANUAL / FAIL). Compliance maps reduced; `risk_details` dropped. Keys unchanged. |
+| `prowler/example_output_aws.csv` | trimmed real | Same repo `examples/output/example_output_aws.csv` (`;`-delimited v4/v5 CSV) | Header + first 3 data rows. |
+| `wazuh/alerts.jsonl` | trimmed real | [Evaluation-of-APT-Simulation-Tools-artifacts](https://github.com/xXPrXy-rAiJiNzXx/Evaluation-of-APT-Simulation-Tools-artifacts) `@ 1b01e9caa956` `Wazuh/ossec/logs/alerts/alerts.json` (first 3 lines; Wazuh 4.x JSONL) | Already 3 lines. |
+| `wazuh/sca-checks.json` | schema-shaped | [wazuh/wazuh](https://github.com/wazuh/wazuh) `v4.9.0` API spec `/sca/{agent_id}/checks/{policy_id}` | Same `data.affected_items[]` shape. One not-applicable, one passed, one failed. |
+| `sarif/trivy-critical.sarif` | synthetic | Trivy SARIF writer shape (`pkg/report/sarif.go`) | One CRITICAL + one MEDIUM using rule `security-severity`. |
+| `xccdf/rule-results.xml` | synthetic | XCCDF 1.2 `rule-result@severity` | Fail low / medium / high + one pass. |
+| `enum4linux/enum4linux-ng.json` | synthetic | enum4linux-ng key shape (`target.host`, `sessions.null`, share listing) | One host, null session, Domain Admins, IPC$ + NETLOGON. |
 | `pingcastle/one.xml` | byte-true | [DefectDojo/django-DefectDojo](https://github.com/DefectDojo/django-DefectDojo) `unittests/scans/pingcastle/one.xml` (Engine 3.2.0.1) | One `A-MinPwdLen` rule. No `ListNoPreAuth`, no extra `HealthCheckGroupData`. |
 | `pingcastle/synthetic_group_membership.xml` | synthetic | Pack-constructed | 8 group-membership RiskIds (`P-BackupOperators` … `P-Administrators`) + 0-point rule. 0-member groups must emit no finding. |
-| `greenbone/one_vuln.xml` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0) | One `result` kept (Firefox NVT, CVSS 10.0, **both** CVE-2023-4573 and CVE-2023-4574). Restored report `timestamp` / `scan_start` (`2023-09-28T14:48:02Z`) from the source so detection date is not `not recorded`. Other wrapper metadata dropped. |
+| `greenbone/one_vuln.xml` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0) | One `result` kept (Firefox NVT, CVSS 10.0, **both** CVE-2023-4573 and CVE-2023-4574). Restored report `timestamp` / `scan_start` (`2023-09-28T14:48:02Z`). |
 | `greenbone/one_vuln.csv` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.csv` | Header + the one SSH weak-cipher row. |
-| `scuba/ScubaResults_sample.json` | schema-shaped sample | [cisagov/ScubaGear](https://github.com/cisagov/ScubaGear) v1.8.0 `@ 8bbaf75` `docs/misc/tooloutputschema.md` | `MetaData.DomainName` + `DisplayName` / `TenantDisplayName`. **No `TenantName`** (not in the schema). TenantId stays a GUID and is not the label. Two AAD controls (Fail/Shall + Warning/Should) + one Pass. |
-| `testssl/synthetic_pretty_sections.json` | synthetic | Pack-constructed 3.x `--jsonfile-pretty` shape | Protocols + serverDefaults + vulnerabilities. **Not** the FINOS `robmoff.at` dump — that filename is reserved for a byte-true copy. |
+| `scuba/ScubaResults_sample.json` | schema-shaped sample | [cisagov/ScubaGear](https://github.com/cisagov/ScubaGear) v1.8.0 `@ 8bbaf75` `docs/misc/tooloutputschema.md` | `MetaData.DomainName` + `DisplayName` / `TenantDisplayName`. **No `TenantName`**. |
+| `testssl/synthetic_pretty_sections.json` | synthetic | Pack-constructed 3.x `--jsonfile-pretty` shape | Protocols + serverDefaults + vulnerabilities. **Not** the FINOS `robmoff.at` dump. |
 | `testssl/synthetic_not_offered.json` | synthetic | Pack-constructed | CRITICAL/MEDIUM/LOW `not offered` must stay; OK/INFO `not offered` drop. |
 | `testssl/server-defaults.json` | synthetic | Pack-constructed 3.x pretty-JSON, `serverDefaults` only | Certificate expiry HIGH + WARN OCSP row. |
 | `nikto/issue_9274.json` | byte-true | DefectDojo `unittests/scans/nikto/issue_9274.json` (Nikto 2.6.1 list-of-hosts JSON) | Untrimmed (already 8 rows). Header noise + BREACH. |

@@ -763,6 +763,15 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
+    mapped = _map_finding_body(rec)
+    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+        mapped = dict(mapped)
+        mapped["include_poam"] = False
+    return mapped
+
+
+def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
+    """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
     rule = MISCONFIG_RULES.get(check)
@@ -1456,11 +1465,13 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
 
 # Named reasons for POA&M include/exclude. Every weakness gets exactly one.
 # Default plan puts Lows and non-key Mediums on the POA&M. Infos and honeypot
-# stay off. Info-level telemetry is telemetry_info (not one 180-day row per
-# alert). Repeated telemetry lows that share (rule/check id, asset) collapse
-# to one included row; the extras are telemetry_duplicate. A bare nmap-style
-# port-open row on a host+port that already has a specific finding
-# (nuclei/Nessus/testssl/NSE/…) is superseded_by_specific. A lighter plan
+# stay off. Aggregated SIEM alerts are telemetry (excluded) unless rule.level
+# is >= 12 or the rule is a known compromise indicator. Info-level telemetry
+# is telemetry_info (not one 180-day row per alert). Repeated included
+# telemetry lows that share (rule/check id, asset) collapse; the extras are
+# telemetry_duplicate. A bare nmap-style port-open row on a host+port that
+# already has a specific finding (nuclei/Nessus/testssl/NSE/…) is
+# superseded_by_specific. A lighter plan
 # (GRC_POAM_LIGHTER) restores the old exclude set.
 POAM_INCLUDE_REASONS = frozenset(
     {
@@ -1477,6 +1488,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "severity_info",
         "severity_low",
         "severity_medium_not_key",
+        "telemetry",
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
@@ -1499,6 +1511,19 @@ def _is_honeypot(rec: dict[str, Any]) -> bool:
         or extra.get("honesty") == "deception-sensor"
         or "deception-sensor" in text
     )
+
+
+def keep_telemetry_on_plan(rec: dict[str, Any]) -> bool:
+    """High Wazuh levels and known compromise indicators stay on the POA&M."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("compromise") is True:
+        return True
+    raw = extra.get("rule_level")
+    try:
+        level = int(raw)
+    except (TypeError, ValueError):
+        level = 0
+    return level >= 12
 
 
 def is_telemetry_finding(rec: dict[str, Any]) -> bool:
@@ -1562,9 +1587,11 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):
         return {"include": False, "reason": "honeypot", "severity": sev}
-    if sev == "info":
-        if is_telemetry_finding(rec):
+    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+        if sev == "info":
             return {"include": False, "reason": "telemetry_info", "severity": sev}
+        return {"include": False, "reason": "telemetry", "severity": sev}
+    if sev == "info":
         return {"include": False, "reason": "severity_info", "severity": sev}
     if sev in {"high", "critical"}:
         return {"include": True, "reason": "severity_high_critical", "severity": sev}
