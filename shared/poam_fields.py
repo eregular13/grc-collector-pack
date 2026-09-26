@@ -11,7 +11,7 @@ the pack run date. The separate FedRAMP export keeps its own template values.
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from shared.scan_time import (  # noqa: F401 — re-exported for callers/tests
@@ -56,8 +56,18 @@ SLA_NOTE = (
     "23:00 PT scan stays that calendar day, not the next UTC day). The poam.csv column "
     "name is unchanged; this UTC / recorded-zone note lives here. When the artifact has "
     "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
-    "scheduled / milestone dates stay 'pending due date'."
+    "scheduled / milestone dates stay 'pending due date'. status_date is the UTC "
+    "calendar day (YYYY-MM-DD), not a local civil day — the same UTC date is written "
+    "on poam.csv, poam_fedramp.csv, and poam-ledger.json."
 )
+
+
+def utc_run_date(now: datetime | None = None) -> date:
+    """UTC calendar day for status_date. Naive datetimes are treated as UTC."""
+    clock = now or datetime.now(timezone.utc)
+    if clock.tzinfo is None:
+        clock = clock.replace(tzinfo=timezone.utc)
+    return clock.astimezone(timezone.utc).date()
 
 
 def _to_date(raw: Any) -> date | None:
@@ -162,7 +172,7 @@ def poam_fields(rec: dict[str, Any], mapped: dict[str, Any], today: date) -> dic
         "weakness_source_id": source_identifier(rec),
         "original_detection_date": odd,
         "scheduled_completion_date": scheduled_s,
-        "status_date": today.isoformat(),
+        "status_date": utc_run_date().isoformat() if today is None else today.isoformat(),
         "milestones": ms,
         "original_risk_rating": rating,
         "point_of_contact": "",

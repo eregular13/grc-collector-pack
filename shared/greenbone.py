@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import csv
+import re
 import xml.etree.ElementTree as ET
 from io import StringIO
 from pathlib import Path
 from typing import Any, Iterator
 
 from shared.io_util import read_text
+from shared.schema import canon_severity
 
 _THREAT_SEV = {
     "critical": "critical",
@@ -60,23 +62,59 @@ def cvss_band(raw: Any) -> str:
 def _severity(threat: str, cvss: str) -> str:
     band = cvss_band(cvss)
     if band:
-        return band
-    return _THREAT_SEV.get(str(threat or "").strip().lower(), "medium")
+        return canon_severity(band)
+    mapped = _THREAT_SEV.get(str(threat or "").strip().lower(), "")
+    if mapped:
+        return canon_severity(mapped)
+    return canon_severity(threat or "medium")
+
+
+_XML_PROLOG = re.compile(
+    r"^\s*(?:\ufeff)?(?:<\?xml\b[^?]*\?>\s*)?(?:<!--.*?-->\s*)*",
+    re.I | re.S,
+)
+_ROOT_TAG = re.compile(r"<([A-Za-z_][\w:.-]*)")
+_GMP_ROOTS = frozenset({"report", "get_reports_response"})
+_NOT_GMP_ROOTS = frozenset(
+    {"nessusclientdata_v2", "nessusclientdata", "niktoscan", "scandetails", "nmaprun"}
+)
+
+
+def _xml_root(text: str) -> str:
+    """Local name of the first element. Detection must not scan 12k of payload."""
+    head = _XML_PROLOG.sub("", (text or "")[:4000], count=1)
+    match = _ROOT_TAG.search(head)
+    if not match:
+        return ""
+    return match.group(1).split("}")[-1].split(":")[-1].lower()
 
 
 def is_greenbone_xml(text: str, name: str = "") -> bool:
+    """True for GMP report XML. Detect on root / report structure, not first 12k."""
     if not text or not text.strip():
         return False
-    low = text[:12000].lower()
-    if "nessusclientdata" in low or "<reporthost" in low:
+    root = _xml_root(text)
+    if root in _NOT_GMP_ROOTS:
         return False
-    if "<niktoscan" in low or "<scandetails" in low:
+    head = text[:4000].lower()
+    if "nessusclientdata" in head or "<reporthost" in head:
         return False
-    if "greenbone" in name.lower() or "openvas" in name.lower() or "gmp" in name.lower():
-        return "<result" in low and "<nvt" in low
-    return ("<nvt" in low and "<result" in low) and (
-        "gmp" in low or "openvas" in low or "greenbone" in low or 'oid="1.3.6.1.4.1.25623' in low
+    if "<niktoscan" in head or "<scandetails" in head:
+        return False
+    named = "greenbone" in name.lower() or "openvas" in name.lower() or "gmp" in name.lower()
+    gmp_shape = (
+        "<gmp" in head
+        or "format_id=" in head
+        or 'content_type="text/xml"' in head
+        or "greenbone" in head
+        or "openvas" in head
+        or 'oid="1.3.6.1.4.1.25623' in head
     )
+    if root in _GMP_ROOTS and (gmp_shape or named):
+        return True
+    if named and root in _GMP_ROOTS:
+        return True
+    return False
 
 
 def is_greenbone_csv(text: str, name: str = "") -> bool:
@@ -93,21 +131,35 @@ def is_greenbone_csv(text: str, name: str = "") -> bool:
     return False
 
 
-def _cves_from_nvt(nvt: ET.Element) -> str:
+def _cves_from_nvt(nvt: ET.Element) -> list[str]:
+    """Every CVE ref on the NVT. First-only drops KEV matches for the rest."""
     refs = _child(nvt, "refs")
     if refs is None:
         refs = _child(nvt, "references")
     if refs is None:
-        return ""
+        return []
     found: list[str] = []
+    seen: set[str] = set()
     for ref in list(refs):
         if _local(ref.tag) != "ref":
             continue
         rtype = (ref.attrib.get("type") or "").lower()
-        rid = ref.attrib.get("id") or (ref.text or "").strip()
+        rid = (ref.attrib.get("id") or (ref.text or "").strip()).strip()
         if rtype == "cve" and rid:
-            found.append(rid)
-    return found[0] if found else ""
+            key = rid.upper()
+            if key not in seen:
+                seen.add(key)
+                found.append(rid)
+    return found
+
+
+def _report_scan_time(root: ET.Element) -> str:
+    """GMP Timestamp / scan_start (report-level), else first result creation_time."""
+    for name in ("scan_start", "timestamp", "scan_end"):
+        for el in root.iter():
+            if _local(el.tag) == name and (el.text or "").strip():
+                return (el.text or "").strip()
+    return ""
 
 
 def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
@@ -115,6 +167,7 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
         root = ET.fromstring(text)
     except ET.ParseError:
         return
+    report_ts = _report_scan_time(root)
     for el in root.iter():
         if _local(el.tag) != "result":
             continue
@@ -131,6 +184,8 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
         threat = _child_text(el, "threat") or _child_text(el, "original_threat")
         cvss = _child_text(el, "severity") or _child_text(nvt, "cvss_base")
         desc = _child_text(el, "description") or name
+        cves = _cves_from_nvt(nvt)
+        scan_time = report_ts or _child_text(el, "creation_time")
         yield {
             "host": host or "unknown",
             "port": port,
@@ -139,8 +194,10 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
             "severity": _severity(threat, cvss),
             "threat": threat,
             "cvss": cvss,
-            "cve": _cves_from_nvt(nvt),
+            "cves": cves,
+            "cve": " ".join(cves),
             "description": desc,
+            "scan_time": scan_time,
         }
 
 
@@ -156,8 +213,11 @@ def iter_greenbone_csv(text: str) -> Iterator[dict[str, Any]]:
             continue
         name = lower.get("nvt name") or lower.get("name") or "openvas"
         oid = lower.get("nvt oid") or lower.get("oid") or name
-        cves = (lower.get("cves") or "").split(",")
-        cve = next((c.strip() for c in cves if c.strip().upper().startswith("CVE")), "")
+        cves = [
+            c.strip()
+            for c in (lower.get("cves") or "").split(",")
+            if c.strip().upper().startswith("CVE")
+        ]
         yield {
             "host": host,
             "port": lower.get("port") or "",
@@ -166,8 +226,10 @@ def iter_greenbone_csv(text: str) -> Iterator[dict[str, Any]]:
             "severity": _severity(lower.get("severity") or "", lower.get("cvss") or ""),
             "threat": lower.get("severity") or "",
             "cvss": lower.get("cvss") or "",
-            "cve": cve,
+            "cves": cves,
+            "cve": " ".join(cves),
             "description": lower.get("summary") or lower.get("specific result") or name,
+            "scan_time": lower.get("timestamp") or lower.get("scan_start") or "",
         }
 
 

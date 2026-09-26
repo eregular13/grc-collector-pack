@@ -11,7 +11,6 @@ import csv
 import json
 import os
 import shutil
-from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.asset_ledger import AssetLedger, attach_asset_uids
@@ -45,7 +44,7 @@ from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import item_from_poam_row, kev_md_footer, write_fedramp_poam
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import apply_rollups, ledger_run_delta, run_ledger, write_ledger
 from shared.io_util import (
     in_dir,
@@ -418,7 +417,7 @@ def load() -> dict:
         "estate",
         *POAM_EXTRA_FIELDS,
     ]
-    today = datetime.now(timezone.utc).date()
+    today = utc_run_date()
     lighter = poam_lighter_requested()
     weaknesses = other_findings + vuln_findings
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}

@@ -1,25 +1,82 @@
 # CYCLE log
 
-## cycle 204 — Metis flood-guard (2026-09-26)
+## cycle 207 — Metis flood-guard (2026-09-26)
 
 One POA&M decision set: `shared/poam_rollup.py` classify/build + E1
 telemetry + escalate budget; FedRAMP Open == poam.csv; UNEXPLAINED==0
-on lab/SAMPLE/farm. Merged current `origin/master` (#150+#156+#155);
-`not_a_weakness` maps to `NOT_A_WEAKNESS`. E4 late-only not implemented.
-pytest **1292**. Host-lab `assets=79` `findings=107` `poam=124`
-`excluded=5`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0 excluded=68.
+on lab/SAMPLE/farm. Merged current `origin/master` `ff6ffd7` (#145
+after #150+#156+#155); `not_a_weakness` maps to `NOT_A_WEAKNESS`.
+E4 late-only not implemented. pytest **1292**. Host-lab `assets=79`
+`findings=107` `poam=124` `excluded=5`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed
+risky ports so UDP 445 is not SMB). No rebase. #139 follow-ups +
+#141 computer-SPN / DC filters + PingCastle 0-member skip kept.
+Host-lab unchanged: assets **79** findings **107** poam **124**
+excluded **5**. Pytest **1288**. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 205 — merge master 9f73537 (#141) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `9f73537` (#141 real-tool collector
+honesty + #152 CSF tags + #151 honeypot exclude). No rebase. #139
+follow-ups + Argus B4 + empty-group PingCastle skip kept alongside
+#141 computer-SPN / DC-delegation filters. Host-lab: assets **79**
+findings **107** poam **124** excluded **5** (3 honeypot + 1 Wazuh
+telemetry + 1 superseded_by_specific). Pytest **1287**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 203 — merge master 51bba3c (#134) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux).
+No rebase. #139 follow-ups + Argus B4 + #144/#140/#147 kept. SOURCES.md is the union.
+Host-lab: assets **78** findings **104** poam **124** excluded **2**
+(telemetry + superseded_by_specific). Pytest **1246**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 199 — merge master 9aeb229 (#144+#140+#147) into #145 (2026-09-26)
+
+Normal merge of `origin/master` `9aeb229` (#144 port-fold + #140
+discovery/web + #147 ledger lifecycle; also #146/#142/#138). No rebase, no force-push.
+#139 follow-ups kept: Greenbone all CVEs + root detect + Timestamp/
+scan_start; Nikto 740001 kept / unmatched info; PingCastle 8 group
+rules honor member count + 0-point info; ScubaGear DomainName +
+TimestampZulu; testssl not-offered only OK/INFO; UTC status_date;
+fixture honesty. Argus B4: case-insensitive scan_time keys including
+Greenbone `Timestamp` and Scuba `TimestampZulu`. Host-lab after merge:
+assets **78** findings **104** vulnerabilities **22** weaknesses **126**
+poam **125** excluded **1** (`superseded_by_specific`). Vs prior #145
+stamp 84/103/125: assets 84→78 is #138 EGA- collapse; findings +1 is
+#140 second httpx URL; poam stays 125 because #144 folds one nmap
+port-only row (weaknesses 126 − 1). Not a MIN_ loosen. Also merged `9aeb229` (#147 ledger
+lifecycle) — host-lab counts unchanged. Pytest **1225**.
 Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
 RiskReady stay-out.
 
-## cycle 203 — merge master #134/#147/#140/#144; keep Metis §11 (2026-09-26)
+## cycle 196 — #139 real-sample parser follow-ups (2026-09-26)
 
-Merge `origin/master` `51bba3c` without rebase. #134 OCSF/CSV +
-Wazuh alert-row filter, #147 ledger lifecycle, #140 discovery/web,
-#144 port-fold, plus this branch's Metis §11 / `asset_uid` /
-`unrecognized_shape` all kept. pytest **1235**. Host-lab `assets=78`
-`findings=104` `poam=124` `excluded=2`. SAMPLE→SoR 6/8/2.
-farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
+Greenbone keeps all CVE refs (feeds #131 KEV) and detects GMP on the
+root `<report>` / `<gmp>` shape, not the first 12k chars. Nikto 740001
+backup/cert hits stay medium+; unmatched rows are info. PingCastle's 8
+group-membership RiskIds honor `NumberOfMember` (0 → no finding);
+0-point rules are info. ScubaGear tenant label is DomainName /
+TenantDisplayName, never the TenantId GUID. testssl drops `not offered`
+only when severity is OK/INFO. Invented PingCastle ListNoPreAuth,
+ScubaGear TenantName, and FINOS-named testssl rows moved to clearly
+named synthetic fixtures; `one.xml` is byte-true DefectDojo.
+Host-lab assets/findings **unchanged** 84 / 103. POA&M restamped
+111→125: this run's loader writes a full plan (`excluded=0`,
+`poam==weaknesses==125`). Pytest **1147** (+6 follow-up tests; prior
+STATUS 1087 was a stale stamp vs 1f8d347). Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+Cold-review add-on: Greenbone `scan_start`/`Timestamp` and ScubaGear
+`TimestampZulu` feed `extra.scan_time` → #131 detection date (15/30/90/180).
+`status_date` is UTC YYYY-MM-DD on poam.csv / poam_fedramp.csv / ledger.
+PingCastle `A-MinPwdLen` gets a rule-specific password-length fix.
 
 ## cycle 202 — merge master #147 ledger lifecycle; keep Wazuh telemetry (2026-09-26)
 

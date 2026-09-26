@@ -647,7 +647,9 @@ def apply_ledger(
     clock = run_at or datetime.now(timezone.utc)
     if clock.tzinfo is None:
         clock = clock.replace(tzinfo=timezone.utc)
-    run_date = clock.date()
+    from shared.poam_fields import utc_run_date
+
+    run_date = utc_run_date(clock)
     run_iso = clock.strftime("%Y-%m-%dT%H:%M:%SZ")
     ledger = deepcopy(ledger_in) if ledger_in is not None else empty_ledger()
     ledger.setdefault("items", {})
