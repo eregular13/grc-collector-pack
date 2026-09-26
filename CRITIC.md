@@ -1,3 +1,18 @@
+# CRITIC — cycle 191 (MERGE_HK_AND_DEMO_FALLBACK)
+
+Lab this brick: pytest **1045** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+farm_lab not required this tick. sample_to_sor + farm_drop_to_sor
+honesty PASS (cold work dirs). Zero P0/P1. Merged master #130
+HardeningKitty feed into DEMO fallback honesty: LAB dest_in identity
+still loads official Audit CSV (TestResult + filename host; two
+SYNTHETIC hosts) and `run_collector` never fills `fixtures/demo`
+(`win-dc01` stays out). Per-sensor `parse_error` / `no_records` still
+land in summary + `/api/coverage`. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 190 (HK_TESTRESULT_AND_HOST)
 
 Lab this brick: pytest **1036** passed, 1 skipped. Ten collectors +
@@ -8,6 +23,20 @@ authoritative; host from filename/sidecar/env; two SYNTHETIC hosts;
 never `windows-host`. CIS v8 INTERNAL-ONLY. Catalog
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
 No POST `/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 189 (DEMO_FALLBACK_HONESTY)
+
+Lab this brick: pytest **1030** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+farm_lab PASS demo=true. sample_to_sor + farm_drop_to_sor honesty PASS.
+Zero P0/P1. `run_collector` no longer loads `fixtures/demo` when live
+files fail or a LAB/CLIENT/operator sensor is empty. Per-sensor
+`parse_error` / `no_records` (file + reason) in `out/coverage/sensors/`
+and `summary.json` / `/api/coverage`. DEMO/SAMPLE empty-in still works
+and stays labeled. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
 
 # CRITIC — cycle 189 (LAB_HARDENINGKITTY_WINDOWS)
 
