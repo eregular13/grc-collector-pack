@@ -43,6 +43,17 @@ honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
 `/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
+# CRITIC — cycle 217 (POAM_CARRIED_CONTROLS_PLAN)
+
+Lab this brick: pytest **1510** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Carried-unobserved rows from an old ledger
+keep Controls and Plan; High/Critical blank-cell gate holds; upgrade
+== fresh for observed rows. IDs unchanged. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 
 Merge `origin/master` `d6ae8d0` (#163) with a normal merge commit. No

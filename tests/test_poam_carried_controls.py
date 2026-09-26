@@ -172,6 +172,7 @@ def test_old_ledger_loads_and_fills_on_next_observed_run() -> None:
     prior = empty_ledger()
     src = next(iter(fresh["items"].values()))
     old = _strip_map_fields(src)
+    old["status_date"] = "2026-09-01"
     prior["items"] = {old["fp"]: old}
     upgrade = _apply([rec], ledger=prior, when="2026-09-11T00:00:00Z")
     item = next(iter(upgrade["items"].values()))
