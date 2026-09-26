@@ -133,6 +133,82 @@ TYPE_ASSERTIONS: dict[str, dict[str, tuple[str, ...]]] = {
         "must": ("binary",),
         "must_not": ("rotate the secret", "acl"),
     },
+    "tls_breach": {
+        "must": ("compress", "breach", "brotli"),
+        "must_not": ("lucky13", "cbc", "rotate the secret"),
+    },
+    "tls_lucky13": {
+        "must": ("cbc", "lucky13", "encrypt-then-mac"),
+        "must_not": ("gzip", "breach", "rotate the secret"),
+    },
+    "tls_cert_expiration": {
+        "must": ("certificate", "expir"),
+        "must_not": ("gzip", "lucky13", "cbc"),
+    },
+    "tls_heartbleed": {
+        "must": ("heartbleed", "ta14-098a"),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_1_0": {
+        "must": ("tls 1.0",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_1_1": {
+        "must": ("tls 1.1",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_sslv3": {
+        "must": ("sslv3",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_sslv2": {
+        "must": ("sslv2",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "web_admin_path": {
+        "must": ("admin", "nikto"),
+        "must_not": ("easm", "gzip", "rotate the secret"),
+    },
+    "web_dir_listing": {
+        "must": ("directory listing", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_sensitive_file": {
+        "must": (".git", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_http_methods": {
+        "must": ("put", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_default_creds": {
+        "must": ("default", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_xss": {
+        "must": ("encode", "content-security-policy", "nikto"),
+        "must_not": ("innerhtml", "sast", "sarif"),
+    },
+    "web_lfi": {
+        "must": ("traversal", "nikto"),
+        "must_not": ("tls 1.2", "rdp", "innerhtml"),
+    },
+    "pc_min_pwd_len": {
+        "must": ("password", "a-minpwdlen", "800-63"),
+        "must_not": ("rotate the secret", "gzip"),
+    },
+    "pc_krbtgt": {
+        "must": ("krbtgt", "10 hour"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "pc_delegated": {
+        "must": ("protected users", "cannot be delegated"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "pc_dsheuristics": {
+        "must": ("cve-2021-42291", "kb5008383"),
+        "must_not": ("cve-2019-12345", "gzip"),
+    },
 }
 
 

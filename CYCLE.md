@@ -1,6 +1,17 @@
 # CYCLE log
 
+## cycle 213 — merge origin/master 6a5ebd6 into register-one-truth (2026-09-26)
+
+Normal merge of `origin/master` `6a5ebd6` (#172 Wazuh host key, #178 CLIENT guard,
+#169 Redis auth class, #175 console severity, #165 playbooks, #166 leave-behind,
+#161 follow-ups, plus #160 vendor columns). No rebase. Keep flood_guard +
+FedRAMP Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE. Parser
+`kind=excluded` now counts in findings_in and lands on excluded.csv; osquery
+unmapped → NOT_A_WEAKNESS (detail unmapped query). Catalog unchanged.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 207 — merge origin/master 1be65cf (#134+#159) (2026-09-26)
+
 
 Normal merge of `origin/master` `1be65cf` (#159 farm_which PATH
 isolate; also #134+#141+#145+#150+#151+#152+#155+#156). No rebase.

@@ -38,6 +38,12 @@ _SCAN_KEYS = (
     "Timestamp",
     "TimestampZulu",
     "timestamp_zulu",
+    "time",
+    "time_dt",
+    "created_time",
+    "created_time_dt",
+    "scanTime",
+    "EventTime",
     "start",
     "finished",
     "starttime",
@@ -87,7 +93,10 @@ def parse_scan_datetime(raw: Any) -> tuple[datetime, str] | None:
         return datetime(raw.year, raw.month, raw.day), "artifact-local"
     if isinstance(raw, (int, float)) or (isinstance(raw, str) and raw.strip().isdigit()):
         try:
-            dt = datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            epoch = int(raw)
+            if epoch >= 10**11:
+                epoch //= 1000
+            dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
         except (OverflowError, OSError, ValueError):
             return None
         return dt, "UTC"
@@ -195,6 +204,12 @@ def extra_scan_raw(rec: dict[str, Any]) -> Any:
     hit = _scan_value(extra)
     if hit not in (None, ""):
         return hit
+    for blob in (extra, rec):
+        info = blob.get("finding_info") if isinstance(blob, dict) else None
+        if isinstance(info, dict):
+            hit = _scan_value(info)
+            if hit not in (None, ""):
+                return hit
     return _scan_value(rec)
 
 

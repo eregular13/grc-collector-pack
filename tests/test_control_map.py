@@ -23,7 +23,8 @@ def test_smb_445_maps_to_hardening_not_cve() -> None:
     )
     mapped = map_finding(rec)
     assert mapped["include_poam"] is True
-    assert "cpg_3_S" in mapped["cpg"]
+    assert "cpg_3_I" in mapped["cpg"]
+    assert "cpg_3_S" not in mapped["cpg"]
     assert mapped["csf_subcategory"] == "PR.IR-01"
     assert "csf_PR_IR_01" in mapped["csf"]
     assert "csf_PR" in mapped["csf"]  # function stamp from PR #128 stays
@@ -470,8 +471,10 @@ def test_honeypot_stage_hit_is_not_compromise_poam() -> None:
 
 def test_extra_labels_wizard_safe_no_colon() -> None:
     stamps = extra_labels()
-    assert "cpg_2_W" in stamps or "cpg_3_S" in stamps
-    assert "csf_PR" in stamps
+    assert "cpg_3_S" in stamps or "cpg_3_I" in stamps
+    assert "csf_PR" not in stamps
+    assert "csf_protect" not in stamps
+    assert "cpg_2_W" not in stamps
     assert all(":" not in s for s in stamps)
     rec = make_record(
         kind="finding",
@@ -483,7 +486,9 @@ def test_extra_labels_wizard_safe_no_colon() -> None:
         extra={"port": "445", "service": "microsoft-ds"},
     )
     mapped = extra_labels(rec)
-    assert "cpg_3_S" in mapped and "csf_PR" in mapped
+    assert "cpg_3_I" in mapped
+    assert "csf_PR" not in mapped
+    assert "csf_protect" not in mapped
     assert "csf_PR_IR_01" in mapped
     assert all(":" not in s for s in mapped)
 
@@ -594,9 +599,9 @@ def test_csf_stamp_follows_control_not_severity() -> None:
     assert smb_high["csf_function"] == "protect"
     assert honeypot_high["csf_function"] == "detect"
     assert time_high["csf_function"] == "detect"
-    assert perimeter_high["csf_function"] == "identify"
+    assert perimeter_high["csf_function"] == "protect"
+    assert "cpg_3_S" in perimeter_high["cpg"]
     assert tls_high["csf_function"] != honeypot_high["csf_function"]
-    assert tls_high["csf_function"] != perimeter_high["csf_function"]
     assert time_high["csf_function"] != smb_high["csf_function"]
 
     tls_low = map_finding(

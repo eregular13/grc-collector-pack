@@ -41,7 +41,15 @@ from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
-from shared.poam_ledger import ledger_run_delta, run_ledger
+from shared.poam_ledger import (
+    fingerprints_for,
+    fp_v1,
+    item_maps_to_current,
+    ledger_run_delta,
+    migrate_finding_refs,
+    run_ledger,
+)
+from shared.vendor_dependency import VD_NOTE
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -238,7 +246,9 @@ def load() -> dict:
         dedupe_weaknesses(_dedupe(raw, dedupe_drops), dedupe_drops),
         dedupe_drops,
     )
-    findings_in = sum(1 for r in raw if r.get("kind") == "finding")
+    findings_in = sum(
+        1 for r in raw if r.get("kind") in {"finding", "excluded"}
+    )
     merged_n = len(dedupe_drops)
     now = iso_now()
     try:
@@ -405,9 +415,16 @@ def load() -> dict:
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
         if mapped:
             item["framework_refs"] = mapped.get("framework_refs") or ""
-    ledger_by_ref = {
-        str(item.get("ref_id") or ""): item for item in (poam_ledger.get("items") or {}).values()
-    }
+    ledger_by_ref: dict[str, dict] = {}
+    ledger_by_fp: dict[str, dict] = {}
+    for item in (poam_ledger.get("items") or {}).values():
+        ref = str(item.get("ref_id") or "")
+        if ref:
+            for cand in migrate_finding_refs(ref):
+                ledger_by_ref[cand] = item
+        fp = str(item.get("fp") or "")
+        if fp:
+            ledger_by_fp[fp] = item
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
     export_decisions: list[dict] = []
@@ -444,7 +461,15 @@ def load() -> dict:
             )
             continue
         fields = poam_fields(rec, mapped, today)
-        item = ledger_by_ref.get(str(rec.get("ref_id") or ""))
+        rec_ref = str(rec.get("ref_id") or "")
+        item = ledger_by_ref.get(rec_ref)
+        if item is None:
+            for cand in migrate_finding_refs(rec_ref):
+                item = ledger_by_ref.get(cand)
+                if item:
+                    break
+        if item is None:
+            item = ledger_by_fp.get(fp_v1(rec))
         status = "open"
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
@@ -494,9 +519,37 @@ def load() -> dict:
                 survivor_id,
             ]
         )
+    parser_excluded_n = 0
+    parser_excluded_reasons: dict[str, int] = {}
+    for rec in raw:
+        if rec.get("kind") != "excluded":
+            continue
+        mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
+        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        raw_reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
+        decision = poam_decision(rec, lighter=lighter)
+        reason = str(decision.get("reason") or "NOT_A_WEAKNESS")
+        detail = str(extra.get("exclude_detail") or "")
+        if raw_reason.lower() in {"unmapped", "unmapped query"} or "unmapped" in raw_reason.lower():
+            detail = detail or "unmapped query"
+        excluded_rows.append(
+            [
+                rec.get("ref_id") or "",
+                weakness_name_for(rec, mapped),
+                "|".join(rec.get("assets") or []),
+                canon_severity(rec.get("severity")),
+                reason,
+                detail,
+            ]
+        )
+        parser_excluded_n += 1
+        parser_excluded_reasons[reason] = int(parser_excluded_reasons.get(reason) or 0) + 1
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
     observed_refs = {str(rec.get("ref_id") or "") for rec in weaknesses if rec.get("ref_id")}
+    observed_fps: set[str] = set()
+    for rec in weaknesses:
+        observed_fps.update(fingerprints_for(rec))
     pending_carried = 0
     for item in (poam_ledger.get("items") or {}).values():
         pid = str(item.get("poam_id") or "")
@@ -505,9 +558,14 @@ def load() -> dict:
             continue
         if status not in {"open", "pending_verification", "reopened"}:
             continue
-        # Present this scan but excluded / collapsed: stay off the plan.
-        # Only carry items the scanner did not observe (pending FLAP, etc.).
-        if str(item.get("ref_id") or "") in observed_refs:
+        # Present this scan but excluded / collapsed, or the same weakness
+        # under a migrated ref/fp (nmap ``-445`` → ``-445-tcp``): stay off.
+        if item_maps_to_current(
+            item,
+            listed_ids=listed_ids,
+            observed_refs=observed_refs,
+            observed_fps=observed_fps,
+        ):
             continue
         pending_carried += 1
         listed_ids.add(pid)
@@ -593,6 +651,8 @@ def load() -> dict:
         "",
         SLA_NOTE,
         "",
+        VD_NOTE,
+        "",
         "| POAM ID | Weakness | Asset | Risk | 800-53 controls | Detected (UTC / recorded zone) | Scheduled (default) | Recommended fix | Milestones | Status |",
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
@@ -667,11 +727,14 @@ def load() -> dict:
     excluded_by_reason = dict(breakdown["excluded_by_reason"] or {})
     if merged_n:
         excluded_by_reason["DUPLICATE_INSTANCE"] = int(excluded_by_reason.get("DUPLICATE_INSTANCE") or 0) + merged_n
+    for reason, count in parser_excluded_reasons.items():
+        excluded_by_reason[reason] = int(excluded_by_reason.get(reason) or 0) + int(count)
     flood_guard = {
         "findings_in": findings_in,
         "poam_rows": len(poam_rows),
         "excluded_rows": len(excluded_rows),
         "pending_carried": pending_carried,
+        "parser_excluded": parser_excluded_n,
         "identity": "findings_in + pending_carried == poam_rows + excluded_rows",
     }
     sensor_rows = load_sensor_coverage(out_dir())
@@ -689,6 +752,7 @@ def load() -> dict:
         "pending_carried": pending_carried,
         "excluded": len(excluded_rows),
         "excluded_by_reason": excluded_by_reason,
+        "parser_excluded": parser_excluded_n,
         "flood_guard": flood_guard,
         "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
         "poam_plan_note": (
@@ -712,7 +776,8 @@ def load() -> dict:
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
             "weaknesses_total == weaknesses + pending_carried (deduped); "
-            "flood_guard: findings_in + pending_carried == poam_rows + excluded_rows; "
+            "flood_guard: findings_in + pending_carried == poam_rows + excluded_rows "
+            "(findings_in counts kind=finding and kind=excluded); "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),

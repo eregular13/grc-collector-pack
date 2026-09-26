@@ -177,6 +177,8 @@ CLOSED_POAM_STATUSES = frozenset(
     {"closed", "complete", "completed", "remediated", "resolved", "done"}
 )
 POAM_SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+ESTATE_KINDS = ("MIXED", "SAMPLE", "DEMO", "LAB", "CLIENT")
+NON_CLIENT_KINDS = frozenset({"MIXED", "SAMPLE", "DEMO", "LAB"})
 
 
 def _cell_blank(value) -> bool:
@@ -216,6 +218,20 @@ def poam_rows(out: Path | None = None) -> list[dict]:
     dest = out if out is not None else out_dir()
     raw = _read_csv(dest / "poam" / "poam.csv")
     return sort_poam_rows([annotate_poam_row(row) for row in raw])
+
+
+def severity_from_open_poam(rows: list[dict] | None) -> dict[str, int]:
+    """Severity strip = open POA&M plan rows, not findings.csv."""
+    sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for row in rows or []:
+        if not (row.get("open") if "open" in row else _poam_is_open(row)):
+            continue
+        key = _poam_severity(row)
+        if key == "info":
+            key = "low"
+        if key in sev:
+            sev[key] += 1
+    return sev
 
 
 def poam_summary(out: Path | None = None, rows: list[dict] | None = None) -> dict:
@@ -529,11 +545,49 @@ def _prove_stamp(out: Path) -> dict:
     return {}
 
 
-def derive_honesty(out: Path | None = None, summary: dict | None = None) -> dict:
-    """LAB / SAMPLE / DEMO honesty from summary.json, prove stamp, and markers.
+def _kind_from_banner(banner: str) -> str:
+    text = str(banner or "").strip().upper()
+    if text.startswith("CLIENT"):
+        return "CLIENT"
+    if text.startswith("MIXED"):
+        return "MIXED"
+    if text.startswith("SAMPLE"):
+        return "SAMPLE"
+    if text.startswith("LAB"):
+        return "LAB"
+    if text.startswith("DEMO"):
+        return "DEMO"
+    return ""
 
-    Reads what prove/lab already writes (summary fields, prove-ciso.json,
-    LAB.txt / SAMPLE.txt). Never invents client=true.
+
+def _estate_kind_from_summary(summary: dict) -> str:
+    raw = str(summary.get("estate_kind") or "").strip().upper()
+    if raw in ESTATE_KINDS:
+        return raw
+    return _kind_from_banner(str(summary.get("estate") or ""))
+
+
+def _banner_for_kind(kind: str, summary: dict) -> str:
+    """Prefer the run's ESTATE banner verbatim. Fall back to the kind label."""
+    banner = str(summary.get("estate") or "").strip()
+    banner_kind = _kind_from_banner(banner) if banner else ""
+    if banner and not (kind in NON_CLIENT_KINDS and banner_kind == "CLIENT"):
+        return banner
+    if kind == "CLIENT":
+        return banner or "CLIENT"
+    try:
+        from shared.estate_pages import LABEL_FOR_KIND
+
+        return LABEL_FOR_KIND.get(kind, "")
+    except Exception:
+        return kind or "not a client estate"
+
+
+def derive_honesty(out: Path | None = None, summary: dict | None = None) -> dict:
+    """Honesty from summary.estate_kind / ESTATE banner, then flags/markers.
+
+    classify_estate's estate_kind is the source of truth when present.
+    LAB/SAMPLE/DEMO/MIXED cannot become CLIENT. Never invents client=true.
     """
     dest = out if out is not None else out_dir()
     summary = summary if summary is not None else (_read_json(dest / "summary.json") or {})
@@ -557,23 +611,52 @@ def derive_honesty(out: Path | None = None, summary: dict | None = None) -> dict
         or _as_bool(stamp.get("sample"))
         or sample_marker
     )
-    if lab:
-        sample = False
-        use_existing = True
     demo = _as_bool(summary.get("demo")) or _as_bool(stamp.get("demo"))
-    if lab or sample:
-        demo = True
     seeded = _as_bool(summary.get("seeded")) or _as_bool(stamp.get("seeded"))
+
+    kind = _estate_kind_from_summary(summary)
+    blocked_client = (
+        lab
+        or sample
+        or demo
+        or lab_marker
+        or sample_marker
+        or _as_bool(summary.get("demo"))
+        or _as_bool(stamp.get("demo"))
+    )
+    if kind == "CLIENT" and blocked_client:
+        kind = "SAMPLE" if (sample or sample_marker) else (
+            "LAB" if (lab or lab_marker) else "DEMO"
+        )
+    if kind in NON_CLIENT_KINDS:
+        lab = kind == "LAB"
+        sample = kind in {"SAMPLE", "MIXED"}
+        demo = True
+        if lab:
+            use_existing = True
+            sample = False
+    elif kind == "CLIENT":
+        lab = False
+        sample = False
+        demo = False
+    else:
+        if lab:
+            sample = False
+            use_existing = True
+        if lab or sample:
+            demo = True
+
     if lab or use_existing:
         seeded = False
     if lab:
-        label = "LAB/DEMO — not a client estate"
+        fallback = "LAB/DEMO — not a client estate"
     elif sample:
-        label = "SAMPLE/DEMO — not a client estate"
+        fallback = "SAMPLE/DEMO — not a client estate"
     elif demo:
-        label = "DEMO — not a client estate"
+        fallback = "DEMO — not a client estate"
     else:
-        label = "not a client estate"
+        fallback = "not a client estate"
+    label = _banner_for_kind(kind, summary) or fallback
     return {
         "lab": lab,
         "sample": sample,
@@ -582,6 +665,7 @@ def derive_honesty(out: Path | None = None, summary: dict | None = None) -> dict
         "seeded": seeded,
         "use_existing_in": use_existing,
         "honesty_label": label,
+        "estate_kind": kind or ("LAB" if lab else "SAMPLE" if sample else "DEMO" if demo else ""),
     }
 
 
@@ -742,6 +826,7 @@ def describe_run(path: Path, current: Path | None = None) -> dict:
         "stamp": stamp_name(dest),
         "out_dir": str(dest),
         "honesty_label": honesty["honesty_label"],
+        "estate_kind": honesty.get("estate_kind") or "",
         "lab": honesty["lab"],
         "sample": honesty["sample"],
         "demo": honesty["demo"],
@@ -1018,8 +1103,8 @@ def estate() -> dict:
     mode = refresh_mode_for(honesty, ready)
     poam = poam_rows(out)
     poam_kpi = poam_summary(out, poam)
-    # One severity count on screen, from the POA&M register (includes vulns).
-    sev = dict(poam_kpi.get("severity") or {"critical": 0, "high": 0, "medium": 0, "low": 0})
+    # One severity count on screen, from the open POA&M register (#175).
+    sev = severity_from_open_poam(poam)
     coverage = framework_coverage(out)
     sinks = leavebehind_sinks(out)
     return {
@@ -1037,6 +1122,7 @@ def estate() -> dict:
         "seeded": honesty["seeded"],
         "use_existing_in": honesty["use_existing_in"],
         "honesty_label": honesty["honesty_label"],
+        "estate_kind": honesty.get("estate_kind") or "",
         "refresh_mode": mode,
         "summary": summary,
         "severity": sev,
@@ -1150,6 +1236,7 @@ def _honesty_payload(data: dict) -> dict:
         "seeded": data["seeded"],
         "use_existing_in": data["use_existing_in"],
         "honesty_label": data["honesty_label"],
+        "estate_kind": data.get("estate_kind") or "",
         "refresh_mode": data["refresh_mode"],
     }
 

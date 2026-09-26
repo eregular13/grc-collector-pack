@@ -91,7 +91,19 @@ def redact(value: Any) -> Any:
 # Banner / bookkeeping files are not scanner drops. LAB.txt in a sensor
 # folder must not count as a live parse target or trigger demo fallback.
 SKIP_INPUT_NAMES = frozenset(
-    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
+    {
+        ".gitkeep",
+        ".DS_Store",
+        "SAMPLE.txt",
+        "LAB.txt",
+        "README.md",
+        "MANIFEST",
+        "poam-ledger.json",
+        "asset-ledger.json",
+        "AUTHORIZATION.txt",
+        "AUTHORIZATION.md",
+        "AUTH.txt",
+    }
 )
 DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})
 NEVER_DEMO_LABELS = frozenset({"LAB", "CLIENT"})
@@ -102,6 +114,15 @@ class UnrecognizedShape(ValueError):
     """Live drop is a known suffix but not a shape this sensor can parse."""
 
     def __init__(self, reason: str, *, file: str = "") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.file = file
+
+
+class SidecarSkip(Exception):
+    """Known sidecar next to a parsed sibling — not a coverage gap."""
+
+    def __init__(self, reason: str = "", *, file: str = "") -> None:
         super().__init__(reason)
         self.reason = reason
         self.file = file
@@ -402,14 +423,25 @@ def run_collector(
     for path in files:
         error: str | None = None
         unrecognized: str | None = None
+        sidecar = False
         try:
             recs = list(parse_file(path) or [])
+        except SidecarSkip as exc:
+            recs = []
+            sidecar = True
+            write_raw_copy(
+                source,
+                path,
+                {"sidecar": True, "file": path.name, "reason": exc.reason or str(exc)},
+            )
         except UnrecognizedShape as exc:
             recs = []
             unrecognized = exc.reason or str(exc)
         except Exception as exc:
             recs = []
             error = f"{type(exc).__name__}: {exc}"
+        if sidecar:
+            continue
         if recs:
             records.extend(recs)
             write_raw_copy(source, path, recs)

@@ -373,7 +373,7 @@ def test_redis_remediation_is_specific() -> None:
         extra={"check_id": "redis_dangerous_cmd"},
     )
     mapped = {r["ref_id"]: map_finding(r) for r in (unauth, bind, cmds)}
-    assert finding_type(unauth) == "redis_unauth"
+    assert finding_type(unauth) == "nse-redis-noauth"
     fix = mapped["VULN-exposed-redis-a"]["recommended_fix"].lower()
     assert "requirepass" in fix or "acl" in fix
     assert "bind" in fix or "protected-mode" in fix
@@ -594,3 +594,60 @@ def test_write_fedramp_without_decisions_does_not_dump_ledger(tmp_path: Path) ->
     )
     rows = csv_rows(tmp_path / FEDRAMP_CSV_NAME)
     assert [row["POAM ID"] for row in rows] == ["EGP-KEEP"]
+
+
+def test_parser_excluded_counts_in_flood_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """kind=excluded enters findings_in and excluded.csv, never FedRAMP Open."""
+    finding = _finding()
+    skipped = make_record(
+        kind="excluded",
+        source="host-wazuh",
+        ref_id="WAZ-osquery-unmapped-pack_windows_sec-jumpvm",
+        name="osquery unmapped: pack_windows_sec",
+        description="unmapped query pack_windows_sec",
+        severity="info",
+        category="excluded",
+        assets=["jumpvm"],
+        extra={"exclude_reason": "unmapped", "check_id": "pack_windows_sec", "host": "jumpvm"},
+    )
+    out = _load(
+        tmp_path,
+        monkeypatch,
+        [_asset("fleet-laptop-07", "EGA-LAPTOP007"), finding, skipped],
+    )
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert_flood_guard(summary)
+    assert summary["flood_guard"]["findings_in"] == 2
+    assert summary["flood_guard"]["poam_rows"] == 1
+    assert summary["flood_guard"]["excluded_rows"] == 1
+    assert summary["parser_excluded"] == 1
+    excluded = csv_rows(out / "poam" / "excluded.csv")
+    assert len(excluded) == 1
+    assert excluded[0]["finding_ref_id"] == skipped["ref_id"]
+    assert excluded[0]["excluded_reason"] == "NOT_A_WEAKNESS"
+    assert excluded[0]["superseded_by"] == "unmapped query"
+    poam = csv_rows(out / "poam" / "poam.csv")
+    fed = csv_rows(out / "poam" / "poam_fedramp.csv")
+    assert [row["poam_id"] for row in poam] == [row["POAM ID"] for row in fed]
+    assert skipped["ref_id"] not in {row.get("finding_ref_id") for row in poam}
+    assert skipped["name"] not in {row.get("Weakness Name") for row in fed}
+    assert_poam_fedramp_identity(out)
+
+
+def test_poam_decision_maps_unmapped_excluded() -> None:
+    from shared.control_map import poam_decision
+
+    rec = make_record(
+        kind="excluded",
+        source="host-wazuh",
+        ref_id="WAZ-osquery-unmapped-x",
+        name="osquery unmapped: x",
+        severity="info",
+        category="excluded",
+        extra={"exclude_reason": "unmapped"},
+    )
+    decision = poam_decision(rec)
+    assert decision["include"] is False
+    assert decision["reason"] == "NOT_A_WEAKNESS"

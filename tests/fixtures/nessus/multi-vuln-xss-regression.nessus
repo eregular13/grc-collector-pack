@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<NessusClientData_v2>
+<Report name="xss-multi-vuln-regression">
+  <ReportHost name="10.0.0.40">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.40</tag>
+      <tag name="HOST_START">Sat Sep 26 00:00:00 2026</tag>
+    </HostProperties>
+    <ReportItem port="80" svc_name="www" protocol="tcp" severity="3" pluginID="62284" pluginName="Apache 2.2 &lt; 2.2.23 Multiple Vulnerabilities" pluginFamily="Web Servers">
+      <risk_factor>High</risk_factor>
+      <cve>CVE-2012-0021</cve>
+      <cve>CVE-2012-0883</cve>
+      <cve>CVE-2012-2687</cve>
+      <description>The version of Apache 2.2.x installed on the remote host is earlier than 2.2.23 and is, therefore, affected by multiple vulnerabilities, including a cross-site scripting issue in mod_negotiation, a scoreboard issue, and an integer overflow. This is a file-drop Nessus export, not a live scan.</description>
+    </ReportItem>
+    <ReportItem port="445" svc_name="cifs" protocol="tcp" severity="3" pluginID="55732" pluginName="Samba 3.x &lt; 3.3.16 Multiple Vulnerabilities" pluginFamily="Misc.">
+      <risk_factor>High</risk_factor>
+      <cve>CVE-2011-2522</cve>
+      <cve>CVE-2011-2694</cve>
+      <description>The remote Samba 3.x server is earlier than 3.3.16 and is affected by multiple vulnerabilities, including a cross-site scripting flaw in SWAT (CVE-2011-2694) and an impersonation issue (CVE-2011-2522). This is a file-drop Nessus export, not a live scan.</description>
+    </ReportItem>
+    <ReportItem port="0" svc_name="general" protocol="tcp" severity="3" pluginID="96672" pluginName="Safari &lt; 10.0.2 Multiple Vulnerabilities" pluginFamily="MacOS X Local Security Checks">
+      <risk_factor>High</risk_factor>
+      <cve>CVE-2016-7656</cve>
+      <cve>CVE-2016-7632</cve>
+      <description>The version of Apple Safari installed on the remote host is prior to 10.0.2. It is, therefore, affected by multiple vulnerabilities, including several cross-site scripting and memory-corruption issues in WebKit. This is a file-drop Nessus export, not a live scan.</description>
+    </ReportItem>
+    <ReportItem port="0" svc_name="general" protocol="tcp" severity="3" pluginID="95813" pluginName="Firefox &lt; 50.1 Multiple Vulnerabilities" pluginFamily="Windows">
+      <risk_factor>High</risk_factor>
+      <cve>CVE-2016-9893</cve>
+      <cve>CVE-2016-9899</cve>
+      <description>The version of Mozilla Firefox installed on the remote host is prior to 50.1. It is, therefore, affected by multiple vulnerabilities, including a cross-site scripting issue and memory-safety bugs. This is a file-drop Nessus export, not a live scan.</description>
+    </ReportItem>
+  </ReportHost>
+</Report>
+</NessusClientData_v2>

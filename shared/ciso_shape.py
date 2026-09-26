@@ -188,9 +188,15 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
             f"COUNT_CONSISTENCY_FAIL excluded={summary.get('excluded')} != "
             f"sum(excluded_by_reason)={excluded_n}"
         )
-    # Merges are pre-dedupe; flood_guard owns them. Deduped identity strips them.
+    # Merges and parser kind=excluded are pre-dedupe; flood_guard owns them.
+    # Deduped identity strips them (NOT_A_WEAKNESS from findings still counts).
     duplicate_n = int(excluded.get("DUPLICATE_INSTANCE") or 0)
-    named_after_dedupe = excluded_n - duplicate_n
+    parser_n = int(summary.get("parser_excluded") or 0)
+    if parser_n < 0 or parser_n > excluded_n:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL parser_excluded={parser_n} out of range"
+        )
+    named_after_dedupe = excluded_n - duplicate_n - parser_n
     if total != included + named_after_dedupe:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "

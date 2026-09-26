@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- POAM_GAP2_VENDOR_DEPENDENCY: FedRAMP R3.0 Open O/P/Q. Vendor
+  Dependency defaults to No (`vd_source=default`); never invents Yes.
+  Last Vendor Check-in Date and Vendor Dependent Product Name are blank
+  when O=No (never N/A). O=Yes only via `in/poam/overrides.csv`. Operator
+  Yes **and** No persist on the ledger across later runs without the
+  file (`vd_source=operator`). Any O/P/Q / `vd_source` change updates
+  `status_date` and writes a `field_changed` event (spec §3.4 step 3).
+  Invalid override tokens (e.g. `Maybe`) warn `VD_INVALID_OVERRIDE`.
+  Vendor-dependent Yes stays off the Closed tab (`VD_NOT_CLOSED`). Q
+  uses `Vendor – Product`. Scanner "no fix available" is
+  suggestion-only. KEV / BOD 22-01 due dates are not suspended.
+  `poam.md` states the No default is not a verified determination.
+  Vendor fields stay out of `fp_v1`; EGP IDs unchanged. Upgrading a
+  pre-#160 ledger backfills No/default as a schema baseline — no
+  `field_changed` event and no Status Date (col N) churn. Host-lab
+  unchanged (79 / 107 / poam 124 / excluded 5). MIN_ gates unchanged.
+  No POST `/api/risks`. Does not touch `product-lab/drop`.
+- B6_PLAYBOOKS: unmapped PingCastle RiskIds (A-ZeroPoint, P-SchemaAdmins,
+  group-operator rules) fall through to the #145 playbook instead of the
+  generic fallback. Mapped ids (SSLv2, P-Delegated, S-NoPreAuth*) stay typed.
+- B6_PLAYBOOKS: per-type remediations for Nikto web-app findings, TLS
+  side-channels (BREACH / LUCKY13), and PingCastle RiskIds. HOLD remap:
+  testssl exact `SSLv2`; PingCastle `P-Delegated` is Protected Users (not
+  unconstrained — that is `P-UnconstrainedDelegation`); AS-REP is
+  `S-NoPreAuth` / `S-NoPreAuthAdmin`; Nikto PUT/DELETE including 999995;
+  no substring TLS/RDP on NextGEN LFI; XSS is output-encoding/CSP;
+  `A-DsHeuristicsLDAPSecurity` cites CVE-2021-42291 / KB5008383. Each
+  class has a short `source` field. Paraphrase only (PingCastle NPOSL-3.0;
+  Nikto DBs All Rights Reserved). No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /
   `scripts/lab.ps1` / CI lab job) now run `collectors/honeypot.py` so DEMO
   `fixtures/demo/honeypot*` land in `poam/excluded.csv` (not header-only).

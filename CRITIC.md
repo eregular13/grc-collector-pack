@@ -1,4 +1,16 @@
+# CRITIC — cycle 213 (MERGE_MASTER_172_INTO_149)
+
+Merge `origin/master` `6a5ebd6` (#172+#178+#169+#175+#165+#166+#161+#160) with
+a normal merge commit. No rebase. Both sides kept: flood_guard + FedRAMP
+Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE + kind=excluded
+in findings_in; master ledger fingerprints, vendor-dependency columns,
+console `severity_from_open_poam`, nse-redis-noauth, playbook types.
+Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
+are unchanged.
+
 # CRITIC — cycle 207 (MERGE_MASTER_159_INTO_149)
+
 
 Merge `origin/master` `1be65cf` (#159; also #134+#141+#145+#150+#151+#152+#155+#156)
 with a normal merge commit. No rebase. Both sides kept: flood_guard +

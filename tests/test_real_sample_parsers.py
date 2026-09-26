@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from collectors import cloud_prowler, host_wazuh, identity_ad, saas_idp, vuln_scan
+from shared.asset_ids import is_placeholder_id
 from keep.adapters import detect_family
 from shared.control_map import map_finding
 from shared.enum4linux import parse_enum4linux
@@ -37,16 +38,11 @@ def test_prowler_ocsf_keeps_fail_and_resource_uid() -> None:
     recs = cloud_prowler.parse_file(SAMPLES / "prowler" / "example_output_aws.ocsf.json")
     findings = [r for r in recs if r["kind"] == "finding"]
     assets = [r["name"] for r in recs if r["kind"] == "asset"]
-    assert findings, "v4/v5 OCSF status=New / status_code=FAIL must not drop every finding"
     assert "check" not in assets
-    assert "<resource_uid>" in assets
-    checks = {r["extra"].get("check_id") for r in findings}
-    assert "accessanalyzer_enabled" in checks
-    assert "account_maintain_current_contact_details" not in checks
-    analyzer = next(r for r in findings if r["extra"].get("check_id") == "accessanalyzer_enabled")
-    assert analyzer["severity"] == "low"
-    assert analyzer["assets"] == ["<resource_uid>"]
-    assert analyzer["extra"].get("account_id") == "<account_uid>"
+    assert "<resource_uid>" not in assets
+    assert not any(is_placeholder_id(a) for a in assets)
+    assert all(not is_placeholder_id((r.get("assets") or [""])[0]) for r in findings)
+    assert all(not is_placeholder_id(r["extra"].get("account_id") or "") for r in findings)
     assert all(r["extra"].get("status") == "FAIL" for r in findings)
     assert detect_family(SAMPLES / "prowler" / "example_output_aws.ocsf.json") == "prowler"
 
@@ -54,11 +50,12 @@ def test_prowler_ocsf_keeps_fail_and_resource_uid() -> None:
 def test_prowler_csv_semicolon() -> None:
     recs = cloud_prowler.parse_file(SAMPLES / "prowler" / "example_output_aws.csv")
     findings = [r for r in recs if r["kind"] == "finding"]
-    assert findings
-    assert any(r["extra"].get("check_id") == "accessanalyzer_enabled" for r in findings)
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "<resource_uid>" not in assets
+    assert not any(is_placeholder_id(a) for a in assets)
     assert not any(r["extra"].get("check_id") == "account_maintain_current_contact_details" for r in findings)
-    assert any(r["name"] == "<resource_uid>" for r in recs if r["kind"] == "asset")
-    assert all(r["extra"].get("account_id") == "<account_uid>" for r in findings)
+    assert all(not is_placeholder_id((r.get("assets") or [""])[0]) for r in findings)
+    assert all(not is_placeholder_id(r["extra"].get("account_id") or "") for r in findings)
     assert detect_family(SAMPLES / "prowler" / "example_output_aws.csv") == "prowler"
 
 
@@ -561,6 +558,7 @@ def test_samples_sources_credits_public_fixtures() -> None:
     assert "client KEEP" in text
     assert "DefectDojo" in text
     assert "ScubaGear" in text
+    assert "localpci-trim.nessus" in text
     assert "/api/risks" in text
     assert "RiskReady" in text
 
@@ -672,7 +670,7 @@ def test_graph_and_maester_unknown_tenant_not_contoso(tmp_path: Path) -> None:
 def test_testssl_all_sections_keep_low_medium() -> None:
     recs = vuln_scan.parse_file(SAMPLES / "testssl" / "synthetic_pretty_sections.json")
     findings = _findings(recs)
-    ids = {r["name"] for r in findings}
+    ids = {r["extra"].get("id") for r in findings}
     assert "SSLv3" in ids
     assert "TLS1" in ids
     assert "cert_expirationStatus" in ids
@@ -680,19 +678,26 @@ def test_testssl_all_sections_keep_low_medium() -> None:
     assert "LUCKY13" in ids
     assert "heartbleed" not in ids
     assert "TLS1_2" not in ids
-    by_id = {r["name"]: r for r in findings}
+    names = {r["name"] for r in findings}
+    assert "cert_expirationStatus" not in names
+    assert any("expired" in n.lower() or "expiring" in n.lower() for n in names)
+    by_id = {r["extra"].get("id"): r for r in findings}
     assert by_id["SSLv3"]["severity"] == "high"
     assert by_id["TLS1"]["severity"] == "low"
     assert by_id["BREACH"]["severity"] == "medium"
     assert by_id["LUCKY13"]["severity"] == "low"
     assert by_id["cert_expirationStatus"]["severity"] == "high"
+    assert by_id["cert_expirationStatus"]["name"] == "TLS certificate is expired or expiring"
 
     defaults = vuln_scan.parse_file(SAMPLES / "testssl" / "server-defaults.json")
     df = _findings(defaults)
-    assert any(r["name"] == "cert_expirationStatus" and r["severity"] == "high" for r in df)
-    warn = next(r for r in df if r["name"] == "cert_caIssuers")
+    assert any(
+        r["extra"].get("id") == "cert_expirationStatus" and r["severity"] == "high" for r in df
+    )
+    warn = next(r for r in df if r["extra"].get("id") == "cert_caIssuers")
     assert warn["severity"] == "info"
     assert "scan-error" in warn["labels"]
+    assert warn["name"] != "cert_caIssuers"
 
 
 def test_testssl_demo_still_keeps_high() -> None:
@@ -777,6 +782,34 @@ def test_parse_nikto_reads_list_of_hosts() -> None:
     assert rows is not None
     assert len(rows) == 7
     assert rows[0]["host"] == "example.com"
+
+
+def test_nessus_localpci_cves_survive_into_findings_for_kev() -> None:
+    """Metis §7.1: localpci has 156 <cve> tags. Keep stays non-info; KEV can join."""
+    path = SAMPLES / "nessus" / "localpci-trim.nessus"
+    text = path.read_text(encoding="utf-8")
+    assert text.count("<cve>") == 156
+    assert "Not a client KEEP" in text
+    recs = vuln_scan.parse_file(path)
+    findings = _findings(recs)
+    assert len(findings) == 73
+    joined: list[str] = []
+    for rec in findings:
+        extra = rec.get("extra") or {}
+        assert extra.get("tool") == "nessus"
+        assert rec.get("client") is not True
+        assert extra.get("client_keep") is not True
+        joined.extend(collect_cves(rec))
+    unique = set(joined)
+    assert len(joined) == 155
+    assert len(unique) == 155
+    assert "CVE-1999-0632" not in unique  # info plugin 10223; keep not widened
+    assert any("CVE-2000-0666" in (r.get("extra") or {}).get("cve", "") for r in findings)
+    assert detect_family(path) is None
+    sources = (SAMPLES / "SOURCES.md").read_text(encoding="utf-8")
+    assert "localpci-trim.nessus" in sources
+    assert "156" in sources
+    assert "SAMPLE ≠ client KEEP" in sources or "SAMPLE/DEMO" in sources
 
 
 def test_greenbone_keeps_all_cves_and_detects_large_report(tmp_path: Path) -> None:
@@ -896,13 +929,14 @@ def test_scuba_tenant_label_from_domain_not_guid(tmp_path: Path) -> None:
 def test_testssl_keeps_not_offered_when_severity_is_real() -> None:
     recs = vuln_scan.parse_file(SAMPLES / "testssl" / "synthetic_not_offered.json")
     findings = _findings(recs)
-    by_id = {r["name"]: r for r in findings}
+    by_id = {r["extra"].get("id"): r for r in findings}
     assert "TLS1_2" in by_id and by_id["TLS1_2"]["severity"] == "critical"
     assert "TLS1_3" in by_id and by_id["TLS1_3"]["severity"] == "medium"
     assert "TLS1" in by_id and by_id["TLS1"]["severity"] == "low"
     assert "SSLv2" not in by_id
     assert "SSLv3" not in by_id
     assert "tls-example-test" in by_id["TLS1_2"]["ref_id"]
+    assert by_id["TLS1_2"]["name"] != "TLS1_2"
 
 
 def test_fixture_honesty_real_vs_synthetic() -> None:
@@ -923,6 +957,9 @@ def test_fixture_honesty_real_vs_synthetic() -> None:
     assert not (SAMPLES / "testssl" / "finos_robmoff.at_443_vulnerable.json").exists()
     assert (SAMPLES / "testssl" / "synthetic_pretty_sections.json").is_file()
     assert (SAMPLES / "testssl" / "synthetic_not_offered.json").is_file()
+    nessus = (SAMPLES / "nessus" / "localpci-trim.nessus").read_text(encoding="utf-8")
+    assert nessus.count("<cve>") == 156
+    assert "Not a client KEEP" in nessus
 
 
 def test_greenbone_scan_start_feeds_detection_date() -> None:

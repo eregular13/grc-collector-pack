@@ -547,7 +547,14 @@ def parse_file(path: Path) -> list[dict]:
                         assets=[name],
                         labels=LABELS + ["smbmap", "smb", "anonymous"],
                         collected_at=now,
-                        extra={"port": "445", "service": "smb", "session": session, "ip": addr},
+                        extra={
+                            "port": "445",
+                            "service": "smb",
+                            "session": session,
+                            "ip": addr,
+                            "check_id": "smb-null-session",
+                            "tool": "nmap",
+                        },
                     )
                 )
             for share in host.get("shares") or []:
@@ -576,6 +583,8 @@ def parse_file(path: Path) -> list[dict]:
                     "share": share_name,
                     "access": access,
                     "ip": addr,
+                    "check_id": f"smb-share-{share_name}",
+                    "tool": "nmap",
                 }
                 labels = LABELS + ["smbmap", "smb"]
                 if admin:

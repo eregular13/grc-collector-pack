@@ -57,10 +57,31 @@ def ega_asset_id(finding: dict[str, Any]) -> str:
         "kind": "asset",
         "name": assets[0] if assets else extra.get("host") or extra.get("arn") or extra.get("fqdn") or "",
         "assets": assets,
+        "source": finding.get("source") or extra.get("source") or "",
         "extra": {
             k: v
             for k, v in extra.items()
-            if k in {"ids", "ip", "mac", "fqdn", "hostname", "arn", "uuid", "bios_uuid", "agent", "netbios", "host"}
+            if k
+            in {
+                "ids",
+                "ip",
+                "mac",
+                "fqdn",
+                "hostname",
+                "arn",
+                "uuid",
+                "bios_uuid",
+                "agent",
+                "netbios",
+                "host",
+                "principal",
+                "account_id",
+                "tenant",
+                "tenant_id",
+                "region",
+                "scope",
+                "source",
+            }
         },
     }
     uid = str(asset_uid(identity, None, observe=False) or "").strip()

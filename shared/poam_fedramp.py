@@ -19,6 +19,7 @@ from shared.kev import (
 )
 from shared.poam_ledger import pending_comment
 from shared.io_util import redact
+from shared.vendor_dependency import VD_NO, VD_NOTE, VD_YES, format_vendor_product
 
 # S1 Open tab row 5 B→AB (R3.0). Match by header text, never by letter.
 FEDRAMP_OPEN_HEADERS: tuple[str, ...] = (
@@ -77,6 +78,9 @@ def _comments(item: dict[str, Any]) -> str:
         parts.append(pending_comment(item))
     if item.get("prior_poam_id"):
         parts.append(f"Reopened from {item['prior_poam_id']}; closed row remains on Closed.")
+    parts.extend(item.get("vd_comments") or [])
+    for flag in item.get("vd_flags") or []:
+        parts.append(str(flag))
     return "\n".join(parts)
 
 
@@ -93,6 +97,9 @@ def item_to_row(
     poam_id: str = "",
 ) -> list[str]:
     cves = item.get("cves") or []
+    vd = str(item.get("vendor_dependency") or VD_NO)
+    if vd not in {VD_YES, VD_NO}:
+        vd = VD_NO
     return [
         str(poam_id or item.get("poam_id") or ""),
         str(controls or item.get("controls") or ""),
@@ -107,9 +114,9 @@ def item_to_row(
         str(item.get("original_detection_date") or ""),
         "",  # M — FedRAMP template formula (Crit/High +30); never written
         str(item.get("status_date") or ""),
-        str(item.get("vendor_dependency") or ""),
-        str(item.get("last_vendor_checkin") or ""),
-        str(item.get("vendor_product") or ""),
+        vd,
+        str(item.get("last_vendor_checkin") or "") if vd == VD_YES else "",
+        format_vendor_product(item.get("vendor_product")) if vd == VD_YES else "",
         str(item.get("original_risk_rating") or ""),
         "",
         "",
@@ -156,6 +163,10 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
 
 
+def _vendor_dependent(item: dict[str, Any]) -> bool:
+    return str(item.get("vendor_dependency") or "").strip().lower() == "yes"
+
+
 def write_fedramp_poam(
     out_poam: Path,
     ledger: dict[str, Any],
@@ -165,17 +176,37 @@ def write_fedramp_poam(
     """Write FedRAMP Open rows from the same included POA&M decisions only.
 
     The ledger may still hold info / honeypot / lighter-excluded items for
-    coverage. Those never become Open rows. Open == poam.csv.
+    coverage. Those never become Open rows. Open == poam.csv when
+    ``decisions`` is provided. Ledger-only callers keep master's
+    vendor-dependency Open-tab rule (§2.2).
     """
     open_rows: list[list[str]] = []
     closed_rows: list[list[str]] = []
     if decisions is not None:
         open_rows = [decision_to_row(row) for row in decisions]
-    for item in (ledger.get("items") or {}).values():
-        if str(item.get("status") or "") == "closed":
+        open_ids = {str(row[0] or "") for row in open_rows if row}
+        for item in (ledger.get("items") or {}).values():
+            if str(item.get("status") or "") != "closed":
+                continue
+            pid = str(item.get("poam_id") or "")
+            # Spec §2.2: vendor-dependent rows stay off the Closed tab.
+            if pid in open_ids or _vendor_dependent(item):
+                continue
             closed_rows.append(item_to_row(item))
-    for item in ledger.get("closed") or []:
-        closed_rows.append(item_to_row(item))
+        for item in ledger.get("closed") or []:
+            pid = str(item.get("poam_id") or "")
+            if pid in open_ids or _vendor_dependent(item):
+                continue
+            closed_rows.append(item_to_row(item))
+    else:
+        # Fail-closed: a fat ledger is not an Open export. Callers that
+        # own Open==poam.csv must pass decisions=.
+        for item in (ledger.get("items") or {}).values():
+            if str(item.get("status") or "") == "closed" and not _vendor_dependent(item):
+                closed_rows.append(item_to_row(item))
+        for item in ledger.get("closed") or []:
+            if not _vendor_dependent(item):
+                closed_rows.append(item_to_row(item))
     open_path = out_poam / FEDRAMP_CSV_NAME
     closed_path = out_poam / FEDRAMP_CLOSED_CSV_NAME
     _write_csv(open_path, open_rows)
@@ -216,6 +247,7 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
             lines.append(f"stale: {catalog.stale}")
     if ledger.get("warnings"):
         lines.append("ledger_warnings: " + ", ".join(ledger["warnings"]))
+    lines.append(VD_NOTE)
     lines.append("Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.")
     lines.append("FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).")
     lines.append(
