@@ -12,7 +12,8 @@ from datetime import datetime
 from pathlib import Path
 
 from collectors import inventory_nmap
-from shared.control_map import iter_poam_decisions
+from shared.control_map import iter_poam_decisions, risk_register_treatment
+from shared.egp_collapse import MERGED_INTO_PREFIX, is_merged_into_reason
 from shared.estate_pages import _exec_top_findings
 from shared.kev import KevCatalog
 from shared.poam_ledger import (
@@ -298,11 +299,25 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
     assert "httpx:port:80/tcp" not in {weakness_key(git), weakness_key(panel)}
 
     rows = [xml, exposed, signing, smbv1, tls, rc4, git, panel]
+    decisions = list(iter_poam_decisions(rows))
     included = {
         str(rec.get("name")): decision
-        for rec, decision in iter_poam_decisions(rows)
+        for rec, decision in decisions
         if decision.get("include")
     }
+    twins = [
+        (rec, decision)
+        for rec, decision in decisions
+        if is_merged_into_reason(str(decision.get("reason") or ""))
+    ]
+    assert twins, "pack_drop SMB 445 extra.id twin must merge into nmap-port- survivor"
+    for rec, decision in twins:
+        assert str(decision.get("reason") or "").startswith(MERGED_INTO_PREFIX)
+        assert str(decision.get("superseded_by") or "").startswith("EGP-")
+        stamp = risk_register_treatment(decision)
+        assert stamp["on_register"] is False
+        assert stamp["treatment"] == ""
+        assert rec.get("name") == "SMB 445 exposed"
     for name in (
         "SMB 445 exposed",
         "SMB signing not required",

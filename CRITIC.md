@@ -1,3 +1,15 @@
+# CRITIC — cycle 218 (POAM_PACK_NAME_BACKFILL)
+
+Lab this brick: pytest **1525** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Rebased onto `ce67328`. Legacy osquery
+pack names (`pack_it-compliance_alf`) map to the current query class
+(`alf` / host_fw SC-7, CM-7). Real `EGP-8EC6F7CA09` row is tested,
+not a synthetic FTP item. IDs unchanged. No Status Date churn.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 217 (CR7_BH_HIGH_VALUE)
 
 Lab this brick: pytest **1505** passed, 1 skipped. Ten collectors +
@@ -42,6 +54,17 @@ honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
 33.3%→50.0% keeps the EGP. FedRAMP Open **126**. Catalog
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
 `/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 217 (POAM_CARRIED_CONTROLS_PLAN)
+
+Lab this brick: pytest **1510** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Carried-unobserved rows from an old ledger
+keep Controls and Plan; High/Critical blank-cell gate holds; upgrade
+== fresh for observed rows. IDs unchanged. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 
