@@ -234,7 +234,6 @@ _C7N_NOT_WEAKNESS = (
     "cpu-under",
     "stop",
     "stop-under",
-    "tag",
 )
 # Operator map: exact policy names (security vs cost/ops). Keyword-gate is fallback.
 _C7N_SECURITY_NAMES = frozenset(
@@ -251,6 +250,18 @@ _C7N_COST_NAMES = frozenset(
         "stop-underutilized-azure-vms",
         "stop-underutilized-aws-instances",
         "azure-vm-cpu-underutilized",
+        "ec2-underutilized-cpu",
+        "stop-idle-admin-workstations",
+    }
+)
+_C7N_GENERIC_ID_SKIP = frozenset(
+    {
+        "id",
+        "accountid",
+        "ownerid",
+        "vpcid",
+        "subnetid",
+        "kmskeyid",
     }
 )
 _C7N_TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -319,36 +330,56 @@ def _c7n_has_token(tokens: set[str], keyword: str) -> bool:
 
 
 def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
-    """Operator map first. Else whole-token keyword-gate. Cost/ops or no match → off."""
+    """Operator map first. Else whole-token on name / description / resource.
+
+    Filters (including tag values) are not gated. When both security and
+    cost/ops tokens match, ``_C7N_NOT_WEAKNESS`` wins — not a finding.
+    """
     low = pname.lower()
     if low in _C7N_SECURITY_NAMES:
         return True
     if low in _C7N_COST_NAMES:
         return False
-    tokens = _c7n_tokens(
-        pname,
-        pol.get("description"),
-        pol.get("resource"),
-        pol.get("filters"),
-    )
+    tokens = _c7n_tokens(pname, pol.get("description"), pol.get("resource"))
     blob = " ".join(
         (
             pname,
             str(pol.get("description") or ""),
             str(pol.get("resource") or ""),
-            _c7n_flatten(pol.get("filters")),
         )
     ).lower()
-    if any(special in blob for special in _C7N_SECURITY_SPECIALS):
-        return True
-    if any(_c7n_has_token(tokens, kw) for kw in _C7N_SECURITY):
-        return True
-    return False
+    has_special = any(special in blob for special in _C7N_SECURITY_SPECIALS)
+    has_security = has_special or any(_c7n_has_token(tokens, kw) for kw in _C7N_SECURITY)
+    has_cost = any(_c7n_has_token(tokens, kw) for kw in _C7N_NOT_WEAKNESS)
+    if has_cost:
+        return False
+    return has_security
+
+
+def _custodian_generic_id(res: dict[str, Any]) -> str:
+    """Guarded *Arn / *Id fallback. Skip KmsKeyId, OwnerId, VpcId, SubnetId, AccountId."""
+    candidates_arn: list[str] = []
+    candidates_id: list[str] = []
+    for key, val in res.items():
+        if val in (None, "", [], {}):
+            continue
+        if isinstance(val, (dict, list)):
+            continue
+        low = str(key).lower()
+        if low.startswith("c7n"):
+            continue
+        if low.endswith("arn"):
+            candidates_arn.append(str(val))
+            continue
+        if low.endswith("id") and low not in _C7N_GENERIC_ID_SKIP:
+            candidates_id.append(str(val))
+    return (candidates_arn or candidates_id or [""])[0]
 
 
 def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
-    """Identity is the cloud resource, keyed per resource type — not the first *Id."""
+    """Identity is the resource-type primary id — never the first *Id, never KmsKeyId."""
     rtype = str(resource or "").lower()
+    kind = rtype.rsplit(".", 1)[-1] if rtype else ""
     meta = res.get("metadata") if isinstance(res.get("metadata"), dict) else {}
     if rtype.startswith("k8s.") or rtype in {"k8s", "pod"}:
         ns = str(meta.get("namespace") or res.get("namespace") or "")
@@ -364,14 +395,47 @@ def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
         name = str(res.get("name") or res.get("Name") or meta.get("name") or "")
         if name:
             return name
+    if kind in {"security-group", "securitygroup", "sg"}:
+        gid = res.get("GroupId") or res.get("groupId")
+        if gid:
+            return str(gid)
+    if kind in {"lambda", "function"}:
+        far = res.get("FunctionArn") or res.get("FunctionName")
+        if far:
+            return str(far)
+    if kind in {"ami", "image"}:
+        image = res.get("ImageId")
+        if image:
+            return str(image)
+    if kind in {"elb", "elbv2", "app-elb", "application-elb", "network-elb", "loadbalancer"}:
+        lb = res.get("LoadBalancerArn") or res.get("LoadBalancerName")
+        if lb:
+            return str(lb)
+    if kind in {"iam-user", "user"}:
+        user = res.get("UserName")
+        if user:
+            return str(user)
+    if kind in {"iam-role", "role"}:
+        role = res.get("RoleName")
+        if role:
+            return str(role)
     return str(
         res.get("SnapshotId")
         or res.get("VolumeId")
         or res.get("DBInstanceIdentifier")
         or res.get("InstanceId")
+        or res.get("GroupId")
+        or res.get("FunctionArn")
+        or res.get("FunctionName")
+        or res.get("LoadBalancerArn")
+        or res.get("LoadBalancerName")
+        or res.get("UserName")
+        or res.get("RoleName")
+        or res.get("ImageId")
         or res.get("Arn")
         or res.get("arn")
         or res.get("Name")
+        or _custodian_generic_id(res)
         or ""
     )
 
@@ -544,10 +608,13 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
         security = _custodian_is_security(pname, pol)
         path = pol.get("_path")
         path_obj = path if isinstance(path, Path) else None
-        for res in rows:
+        n_res = sum(1 for r in rows if isinstance(r, dict))
+        for idx, res in enumerate(rows):
             if not isinstance(res, dict):
                 continue
-            rid = _custodian_resource_id(res, resource) or pname
+            rid = _custodian_resource_id(res, resource)
+            if not rid:
+                rid = pname if n_res <= 1 else f"{pname}-{idx + 1}"
             arn = str(res.get("Arn") or res.get("arn") or res.get("id") or res.get("Id") or rid)
             sev, sev_source = _custodian_severity(pname, pol, path_obj)
             item = {

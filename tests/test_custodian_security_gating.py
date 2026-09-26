@@ -173,6 +173,125 @@ def test_whole_token_gate_does_not_substring_match() -> None:
         "azure-vm-cpu-underutilized",
         {"description": "cpu", "resource": "azure.vm", "filters": []},
     ) is False
+    assert not cloud_prowler._custodian_is_security(
+        "publication-digest",
+        {"description": "tlsomething diameter", "resource": "aws.ec2", "filters": []},
+    )
+
+
+def test_cost_policy_tag_public_filter_is_not_a_weakness() -> None:
+    """Gate name/description/resource only — tag:Exposure=public must not flip cost."""
+    pol = {
+        "description": "Stop EC2 instances with low CPU",
+        "resource": "aws.ec2",
+        "filters": [{"tag:Exposure": "public"}, {"type": "metrics", "name": "CPUUtilization"}],
+    }
+    assert cloud_prowler._custodian_is_security("ec2-underutilized-cpu", pol) is False
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "ec2-underutilized-cpu",
+            **pol,
+            "resources": [{"InstanceId": "i-aaa111", "tag:Exposure": "public"}],
+        }
+    )
+    assert recs
+    assert all(r.get("ExcludeReason") == "NOT_A_WEAKNESS" for r in recs)
+    assert recs[0]["ResourceId"] == "i-aaa111"
+
+
+def test_stop_idle_admin_workstations_is_not_a_weakness() -> None:
+    """Cost tokens (stop/idle) win the tie against security token 'admin'."""
+    pol = {
+        "description": "Stop idle admin workstations after hours",
+        "resource": "aws.ec2",
+        "filters": [],
+    }
+    assert cloud_prowler._custodian_is_security("stop-idle-admin-workstations", pol) is False
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "stop-idle-admin-workstations",
+            **pol,
+            "resources": [{"InstanceId": "i-admin01"}],
+        }
+    )
+    assert recs
+    assert recs[0].get("ExcludeReason") == "NOT_A_WEAKNESS"
+    assert recs[0]["Status"] == "EXCLUDED"
+
+
+def test_n_security_groups_give_n_distinct_refs() -> None:
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "sg-public-ingress",
+            "resource": "aws.security-group",
+            "description": "security groups with public ingress",
+            "filters": [],
+            "resources": [
+                {"GroupId": "sg-0eee", "VpcId": "vpc-aaa", "OwnerId": "111122223333"},
+                {"GroupId": "sg-0fff", "VpcId": "vpc-aaa", "OwnerId": "111122223333"},
+            ],
+        }
+    )
+    assert [r["ResourceId"] for r in recs] == ["sg-0eee", "sg-0fff"]
+    refs = [make_ref("cloud-prowler", f"sg-public-ingress-{r['ResourceId']}") for r in recs]
+    assert len(set(refs)) == 2
+    assert all(r["ResourceId"] != "sg-public-ingress" for r in recs)
+
+
+def test_n_lambdas_give_n_distinct_refs() -> None:
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "lambda-public-access",
+            "resource": "aws.lambda",
+            "description": "lambdas with public access",
+            "filters": [],
+            "resources": [
+                {
+                    "FunctionArn": "arn:aws:lambda:us-east-1:1:function:alpha",
+                    "FunctionName": "alpha",
+                    "Role": "arn:aws:iam::1:role/lambda",
+                },
+                {
+                    "FunctionArn": "arn:aws:lambda:us-east-1:1:function:beta",
+                    "FunctionName": "beta",
+                    "Role": "arn:aws:iam::1:role/lambda",
+                },
+            ],
+        }
+    )
+    assert [r["ResourceId"] for r in recs] == [
+        "arn:aws:lambda:us-east-1:1:function:alpha",
+        "arn:aws:lambda:us-east-1:1:function:beta",
+    ]
+    refs = [make_ref("cloud-prowler", f"lambda-public-access-{r['ResourceId']}") for r in recs]
+    assert len(set(refs)) == 2
+
+
+def test_ami_image_id_is_primary() -> None:
+    assert (
+        cloud_prowler._custodian_resource_id(
+            {"ImageId": "ami-0abc", "OwnerId": "111122223333"}, "aws.ami"
+        )
+        == "ami-0abc"
+    )
+
+
+def test_multi_resource_never_falls_back_to_policy_name() -> None:
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "mystery-policy",
+            "resource": "aws.something",
+            "description": "security check",
+            "filters": [],
+            "resources": [
+                {"KmsKeyId": "arn:aws:kms:us-east-1:1:key/aaa", "OwnerId": "1"},
+                {"KmsKeyId": "arn:aws:kms:us-east-1:1:key/bbb", "OwnerId": "1"},
+            ],
+        }
+    )
+    ids = [r["ResourceId"] for r in recs]
+    assert ids == ["mystery-policy-1", "mystery-policy-2"]
+    assert len(set(ids)) == 2
 
 
 def test_asset_key_is_not_first_star_id() -> None:
