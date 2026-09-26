@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<nmaprun scanner="nmap" args="nmap -sU -sS" start="1700000000" version="7.95">
+  <host>
+    <status state="up"/>
+    <address addr="10.0.0.60" addrtype="ipv4"/>
+    <address addr="00:11:22:33:44:88" addrtype="mac" vendor="Dell Inc."/>
+    <hostnames/>
+    <ports>
+      <port protocol="udp" portid="161">
+        <state state="open|filtered"/>
+        <service name="snmp"/>
+      </port>
+      <port protocol="tcp" portid="445">
+        <state state="open|filtered"/>
+        <service name="microsoft-ds"/>
+      </port>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

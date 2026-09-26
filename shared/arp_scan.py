@@ -11,12 +11,15 @@ from shared.io_util import read_text
 from shared.netdiscover import looks_like_netdiscover
 
 MAC_RE = re.compile(r"(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}")
+IP_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 LINE_RE = re.compile(
     r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s+((?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2})\s*(.*)$"
 )
-_VENDOR_TAIL = frozenset(
-    {"inc.", "inc", "ltd.", "ltd", "llc", "llc.", "corp.", "corp", "co.", "gmbh", "sa", "ag", "plc"}
+# resolve flag replaces the IP with the DNS name (arp-scan.c).
+RESOLVE_RE = re.compile(
+    r"^\s*(\S+)\s+((?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2})\s*(.*)$"
 )
+_VENDOR_MARK = re.compile(r"\s*\((?:DUP:\s*\d+|802\.1Q VLAN=\d+|HdrMAC)\)\s*", re.I)
 
 
 def _named(name: str) -> bool:
@@ -29,15 +32,20 @@ def _has_banner(text: str) -> bool:
     return "starting arp-scan" in low or "ending arp-scan" in low
 
 
-def _maybe_hostname(token: str) -> str:
-    raw = token.strip().strip(",")
-    if not raw or raw.lower() in _VENDOR_TAIL:
-        return ""
-    if not any(c.isalpha() for c in raw):
-        return ""
-    if "." in raw or "-" in raw:
-        return raw
-    return ""
+def _clean_vendor(rest: str) -> str:
+    """Vendor column only. Never treat a vendor tail (Ltd, Co., Inc.) as a hostname."""
+    vendor = _VENDOR_MARK.sub(" ", rest or "")
+    return " ".join(vendor.split()).strip()
+
+
+def _asset_key(addr: str, mac: str, hostname: str = "") -> str:
+    if addr and mac:
+        return f"{addr.lower()}|{mac.lower()}"
+    if addr:
+        return addr.lower()
+    if mac:
+        return f"|{mac.lower()}"
+    return hostname.lower()
 
 
 def _looks_arp_json_row(row: dict[str, Any]) -> bool:
@@ -124,21 +132,37 @@ def _host_from_line(line: str) -> dict[str, Any] | None:
     if low.startswith("interface:") or low.startswith("host:"):
         return None
     match = LINE_RE.match(stripped)
-    if not match:
+    if match:
+        addr, mac, rest = match.group(1), match.group(2), match.group(3).strip()
+        vendor = _clean_vendor(rest)
+        return {"name": addr, "addr": addr, "hostname": "", "mac": mac, "vendor": vendor, "ports": []}
+    resolve = RESOLVE_RE.match(stripped)
+    if not resolve:
         return None
-    addr, mac, rest = match.group(1), match.group(2), match.group(3).strip()
-    hostname = ""
-    vendor = rest
-    if rest:
-        tokens = rest.split()
-        maybe = _maybe_hostname(tokens[-1]) if tokens else ""
-        if maybe:
-            hostname = maybe
-            vendor = " ".join(tokens[:-1]).strip()
-    name = hostname or addr
-    if not name:
+    token, mac, rest = resolve.group(1), resolve.group(2), resolve.group(3).strip()
+    if IP_RE.match(token) or MAC_RE.fullmatch(token):
         return None
-    return {"name": name, "addr": addr, "hostname": hostname, "mac": mac, "vendor": vendor, "ports": []}
+    if not any(c.isalpha() for c in token):
+        return None
+    vendor = _clean_vendor(rest)
+    return {"name": token, "addr": "", "hostname": token, "mac": mac, "vendor": vendor, "ports": []}
+
+
+def _merge_host(grouped: dict[str, dict[str, Any]], host: dict[str, Any]) -> None:
+    key = _asset_key(str(host.get("addr") or ""), str(host.get("mac") or ""), str(host.get("hostname") or ""))
+    slot = grouped.setdefault(key, host)
+    if host.get("mac") and not slot.get("mac"):
+        slot["mac"] = host["mac"]
+    if host.get("vendor") and not slot.get("vendor"):
+        slot["vendor"] = host["vendor"]
+    if host.get("hostname") and not slot.get("hostname"):
+        slot["hostname"] = host["hostname"]
+        if not slot.get("addr"):
+            slot["name"] = host["hostname"]
+    if host.get("addr") and not slot.get("addr"):
+        slot["addr"] = host["addr"]
+        if not slot.get("hostname"):
+            slot["name"] = host["addr"]
 
 
 def _from_text(text: str) -> list[dict[str, Any]]:
@@ -147,15 +171,7 @@ def _from_text(text: str) -> list[dict[str, Any]]:
         host = _host_from_line(line)
         if host is None:
             continue
-        key = str(host["name"]).lower()
-        slot = grouped.setdefault(key, host)
-        if host.get("mac") and not slot.get("mac"):
-            slot["mac"] = host["mac"]
-        if host.get("vendor") and not slot.get("vendor"):
-            slot["vendor"] = host["vendor"]
-        if host.get("hostname") and not slot.get("hostname"):
-            slot["hostname"] = host["hostname"]
-            slot["name"] = host["hostname"]
+        _merge_host(grouped, host)
     return list(grouped.values())
 
 
@@ -166,8 +182,7 @@ def _from_json(text: str) -> list[dict[str, Any]]:
         host = _host_from_row(row)
         if host is None:
             continue
-        key = str(host["name"]).lower()
-        grouped.setdefault(key, host)
+        _merge_host(grouped, host)
     return list(grouped.values())
 
 

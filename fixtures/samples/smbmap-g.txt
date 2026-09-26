@@ -1,0 +1,2 @@
+host:10.0.0.50, share:C$, privs:READ_WRITE
+host:10.0.0.50, share:Company Data, privs:READ_ONLY
