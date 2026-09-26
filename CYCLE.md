@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
+
+Merge master `05a29fd` (#130 HardeningKitty) into the DEMO fallback
+honesty branch. Both behaviors stay: official Audit CSV TestResult +
+filename host on LAB dest_in identity, and `run_collector` never fills
+`fixtures/demo` on LAB/CLIENT/operator parse failure. HK lab-drop
+identity hosts stay `lab-win.lab.internal` / `lab-win-b.lab.internal`
+— never demo `win-dc01`. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`.
+
 ## cycle 190 — HK TestResult authority + filename host (2026-09-26)
 
 Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV
@@ -11,6 +21,15 @@ legacy Result=Failed still parses). Host from
 `HARDENINGKITTY_HOST` — never silent `windows-host`. Two SYNTHETIC
 fixtures, official header only. Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
+
+## cycle 189 — DEMO fallback honesty (2026-09-26)
+
+Parse failure / empty sensor on LAB, CLIENT, or a live operator drop
+never substitutes `fixtures/demo`. Per-sensor `parse_error` /
+`no_records` land in `summary.json` and `/api/coverage` sensors.
+DEMO/SAMPLE empty-in still loads fixtures and stays labeled. No POST
+`/api/risks`. RiskReady stay-out. Catalog **unchanged**. paying_day
+**FAIL**.
 
 ## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
 

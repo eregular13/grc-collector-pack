@@ -8,16 +8,21 @@ from shared.io_util import write_canonical
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_truncated_json_falls_back(tmp_path, monkeypatch) -> None:
+def test_truncated_json_does_not_fill_demo(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
     (tmp_path / "in" / "cloud").mkdir(parents=True)
     (tmp_path / "in" / "cloud" / "bad.json").write_text('{"findings":[{"CheckID":', encoding="utf-8")
-    from shared.io_util import run_collector
+    from shared.io_util import load_sensor_coverage, run_collector
 
     recs = run_collector("cloud-prowler", (".json",), cloud_prowler.parse_file)
-    assert recs, "truncated JSON should fall back to fixtures"
+    assert recs == [], "truncated live JSON must not substitute fixtures/demo"
+    assert not any("demo" in (r.get("labels") or []) for r in recs)
+    status = next(row for row in load_sensor_coverage(tmp_path / "out") if row["source"] == "cloud-prowler")
+    assert status["status"] == "parse_error"
+    assert status["issues"][0]["file"] == "bad.json"
+    assert "JSON" in status["issues"][0]["reason"] or "json" in status["issues"][0]["reason"].lower()
 
 
 def test_nuclei_blank_line(tmp_path, monkeypatch) -> None:

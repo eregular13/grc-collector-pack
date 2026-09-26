@@ -10,7 +10,7 @@ The drop-box orchestrator is **brakes** (quiet discover → gated deepen). See `
 
 ## What this is
 
-A file emitter. Collectors parse scanner artifacts already on disk. Empty `in/<sensor>/` falls back to `fixtures/demo/` and labels records `demo`. That is **not** a client estate.
+A file emitter. Collectors parse scanner artifacts already on disk. Empty `in/<sensor>/` on a DEMO/SAMPLE run falls back to `fixtures/demo/` and labels records `demo`. LAB / CLIENT / operator drops never load demo for a failed or empty sensor. That is **not** a client estate.
 
 ## Stand up (Linux)
 
@@ -52,7 +52,7 @@ Copy tool JSON/XML/CSV/JSONL into the matching `in/` folder, then refresh (or re
 | `in/code/` | Gitleaks / TruffleHog / Semgrep / Checkov JSON or JSONL (wrappers OK; Checkov failed only; empty invents nothing; secrets redacted; no live tools), Trivy FS, SARIF |
 | `in/saas/` | ScubaGear JSON/JSONL (`Results` or `{data\|ScubaResults}` wrap; Fail/high only; empty invents nothing), Maester (Failed only), Graph `directoryRoles` export (file-drop; no Graph API), Okta org/policy JSON (`users`/`policies`; inactive MFA only; no Okta API), Entra/Okta/Google user-inventory JSON/CSV (explicit MFA gap / standing Global Administrator / stale guest as assessment findings; missing MFA fields invent nothing) |
 
-If a folder is empty, that collector uses `fixtures/demo/<sensor>/` and marks `demo`. Parse failure on one file does not invent hosts; fixture fallback only if the whole collector produced nothing.
+If a folder is empty on a DEMO/SAMPLE run, that collector uses `fixtures/demo/<sensor>/` and marks `demo`. LAB / CLIENT / a live operator drop never substitutes demo: parse failure or zero records is `parse_error` / `no_records` in `summary.json` and `/api/coverage` sensors, and that collector stays empty.
 
 ## Hand-off files
 
