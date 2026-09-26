@@ -149,8 +149,12 @@ def _host_slot(addr: str, hostname: str) -> dict[str, Any]:
 
 
 def _anon_session(status: str) -> bool:
+    """smbmap 1.10.8 prints ``Status: NULL session`` for unauthenticated runs.
+
+    It never prints ``Guest session``. AUTHENTICATED (credentials used) is not NULL.
+    """
     low = _strip_ansi(status or "").lower()
-    return "null session" in low or "guest session" in low
+    return "null session" in low and "authenticated" not in low
 
 
 _PRIV_TAIL = re.compile(

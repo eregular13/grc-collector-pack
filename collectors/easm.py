@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 from shared.sslscan import parse_sslscan
 from shared.testssl import is_testssl, iter_testssl_findings
 
@@ -24,6 +24,7 @@ _PATH_MEDIUM = ("admin", "login", "config")
 _PATH_LOW = ("backup", "server-status")
 _INTERESTING_PATH = _PATH_HIGH + _PATH_MEDIUM + _PATH_LOW
 _OK_STATUS = {200, 204, 301, 302, 401, 403}
+_AUTH_STATUS = {401, 403}
 _GOBUSTER_STATUS = re.compile(r"\(Status:\s*(\d+)\)", re.I)
 
 
@@ -72,15 +73,18 @@ def _rows_from_payload(payload: Any) -> list[dict[str, Any]]:
 
 
 def _interesting_httpx(meta: dict[str, Any], name: str) -> bool:
+    """Path/title/pageType only — an admin.* hostname must not flag every URL."""
+    del name
     title = str(meta.get("title") or "")
     url = str(meta.get("url") or "")
-    path = str(meta.get("path") or "")
-    blob = f"{title} {url} {path} {name}".lower()
+    path = str(meta.get("path") or _url_path(url) or "")
     kb = meta.get("knowledgebase") if isinstance(meta.get("knowledgebase"), dict) else {}
     page_type = str(kb.get("PageType") or kb.get("pageType") or "").lower()
     if page_type == "login":
         return True
-    if "admin" in blob or "login" in blob:
+    title_l = title.lower()
+    path_l = path.lower()
+    if "login" in title_l or "admin" in title_l or any(tok in path_l for tok in ("admin", "login")):
         return True
     return _interesting_path(url or path)
 
@@ -109,14 +113,59 @@ def _interesting_path(url: str) -> bool:
     return any(tok in blob for tok in _INTERESTING_PATH)
 
 
-def _status_ok(row: dict[str, Any]) -> bool:
+def _status_code(row: dict[str, Any]) -> int | None:
     raw = row.get("status")
     if raw is None:
         raw = row.get("status_code") or row.get("Status")
     try:
-        return int(raw) in _OK_STATUS
+        return int(raw)
     except (TypeError, ValueError):
+        return None
+
+
+def _status_ok(row: dict[str, Any]) -> bool:
+    code = _status_code(row)
+    return code in _OK_STATUS if code is not None else False
+
+
+def _is_admin_path(path: str) -> bool:
+    blob = path.lower()
+    return any(tok in blob for tok in ("admin", "login", "phpmyadmin", "wp-admin"))
+
+
+def _httpx_status_counts(row: dict[str, Any], path: str) -> bool:
+    """2xx/3xx count; 401/403 only on admin paths. Missing status does not count."""
+    code = _status_code(row)
+    if code is None:
         return False
+    if 200 <= code < 400:
+        return True
+    return code in _AUTH_STATUS and _is_admin_path(path)
+
+
+def _httpx_body_sig(row: dict[str, Any]) -> tuple[int | None, str]:
+    title = str(row.get("title") or "").strip().lower()
+    raw = row.get("content_length")
+    if raw is None:
+        raw = row.get("length")
+    try:
+        length = int(raw)
+    except (TypeError, ValueError):
+        length = None
+    return (length, title)
+
+
+def _httpx_soft404_sigs(rows: list[dict[str, Any]]) -> set[tuple[int | None, str]]:
+    """Known-miss signatures: 404 rows or a /nonesuch probe, same length+title."""
+    sigs: set[tuple[int | None, str]] = set()
+    for row in rows:
+        code = _status_code(row)
+        path = str(row.get("path") or _url_path(str(row.get("url") or "")) or "")
+        if code == 404 or path.rstrip("/").lower().endswith("nonesuch"):
+            sig = _httpx_body_sig(row)
+            if sig != (None, ""):
+                sigs.add(sig)
+    return sigs
 
 
 def _plugin_strings(plugins: dict[str, Any], name: str) -> list[str]:
@@ -531,7 +580,7 @@ def parse_file(path: Path) -> list[dict]:
                     ref_id=make_ref(SOURCE, name),
                     name=f"Sensitive external hostname {name}",
                     description=f"{name} is exposed on the public perimeter.",
-                    severity=sev,
+                    severity=canon_severity(sev),
                     category="exposure",
                     assets=[name],
                     labels=labels,
@@ -540,6 +589,7 @@ def parse_file(path: Path) -> list[dict]:
                 )
             )
         seen_urls: set[str] = set()
+        miss_sigs = _httpx_soft404_sigs(url_rows)
         for row in url_rows:
             url = str(row.get("url") or "")
             path_s = str(row.get("path") or _url_path(url) or url)
@@ -547,10 +597,14 @@ def parse_file(path: Path) -> list[dict]:
             url_key = (url or path_s).lower()
             if not url_key or url_key in seen_urls:
                 continue
+            if not _httpx_status_counts(row, path_s):
+                continue
+            if miss_sigs and _httpx_body_sig(row) in miss_sigs and _status_code(row) != 404:
+                continue
             if not _interesting_httpx(row, name):
                 continue
             seen_urls.add(url_key)
-            sev = _path_severity(path_s) if _interesting_path(url or path_s) else "high"
+            sev = canon_severity(_path_severity(path_s) if _interesting_path(url or path_s) else "high")
             kb = row.get("knowledgebase") if isinstance(row.get("knowledgebase"), dict) else {}
             page_type = str(kb.get("PageType") or kb.get("pageType") or "").lower()
             records.append(

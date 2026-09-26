@@ -24,6 +24,7 @@ from shared.asset_key import (
     asset_key,
     display_asset,
     legacy_name_asset_key,
+    legacy_port_only_asset_key,
     normalize_weakness_name,
 )
 from shared.finding_types import extra_dict
@@ -346,49 +347,91 @@ def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: da
     return changed
 
 
+def _candidate_legacy_fps(rec: dict[str, Any]) -> list[tuple[str, str]]:
+    """Old fingerprints that should map onto the current ``fp_v1(rec)``."""
+    new_fp = fp_v1(rec)
+    out: list[tuple[str, str]] = []
+    name_fp = fp_v1(rec, asset_key_fn=legacy_name_asset_key)
+    if name_fp != new_fp:
+        out.append((name_fp, "name_to_asset_id_port"))
+    extra = extra_dict(rec)
+    port = str(extra.get("port") or "").strip()
+    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    # Port-only → port/proto. Old records without a proto default to tcp.
+    if port and port != "0" and proto:
+        assumed = proto or "tcp"
+        if assumed == "tcp":
+            port_fp = fp_v1(rec, asset_key_fn=legacy_port_only_asset_key)
+            if port_fp != new_fp:
+                out.append((port_fp, "port_only_to_port_proto"))
+    return out
+
+
+def _apply_fp_migration(
+    rec: dict[str, Any],
+    ledger: dict[str, Any],
+    run_iso: str,
+    *,
+    mapped: str,
+    new_fp: str,
+    reason: str,
+) -> str:
+    items: dict[str, Any] = ledger["items"]
+    item = items.pop(mapped)
+    kept_id = item.get("poam_id")
+    kept_date = item.get("original_detection_date")
+    if new_fp in items:
+        other = items[new_fp]
+        d1 = _to_date(kept_date)
+        d2 = _to_date(other.get("original_detection_date"))
+        if d1 and (not d2 or d1 < d2):
+            other["original_detection_date"] = kept_date
+            other["poam_id"] = kept_id
+        item = other
+    else:
+        item["fp"] = new_fp
+        item["asset_key"] = asset_key(rec)
+        items[new_fp] = item
+    ledger["fp_migrations"].append(
+        {
+            "from": mapped,
+            "to": new_fp,
+            "poam_id": item.get("poam_id"),
+            "original_detection_date": item.get("original_detection_date"),
+            "reason": reason,
+        }
+    )
+    ledger["events"].append(
+        _event(run_iso, new_fp, str(item.get("poam_id") or ""), "migrated", {"from": mapped})
+    )
+    return new_fp
+
+
 def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str) -> str:
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
     if new_fp in items:
         return new_fp
-    old_fp = fp_v1(rec, asset_key_fn=legacy_name_asset_key)
-    mapped = None
-    if old_fp in items:
-        mapped = old_fp
-    else:
-        for row in ledger.get("fp_migrations") or []:
-            if row.get("from") == old_fp and row.get("to"):
-                mapped = old_fp
-                break
-    if mapped and mapped in items:
-        item = items.pop(mapped)
-        kept_id = item.get("poam_id")
-        kept_date = item.get("original_detection_date")
-        if new_fp in items:
-            other = items[new_fp]
-            d1 = _to_date(kept_date)
-            d2 = _to_date(other.get("original_detection_date"))
-            if d1 and (not d2 or d1 < d2):
-                other["original_detection_date"] = kept_date
-                other["poam_id"] = kept_id
-            item = other
+    for old_fp, reason in _candidate_legacy_fps(rec):
+        mapped = None
+        if old_fp in items:
+            mapped = old_fp
         else:
-            item["fp"] = new_fp
-            item["asset_key"] = asset_key(rec)
-            items[new_fp] = item
-        ledger["fp_migrations"].append(
-            {
-                "from": mapped,
-                "to": new_fp,
-                "poam_id": item.get("poam_id"),
-                "original_detection_date": item.get("original_detection_date"),
-                "reason": "name_to_asset_id_port",
-            }
-        )
-        ledger["events"].append(
-            _event(run_iso, new_fp, str(item.get("poam_id") or ""), "migrated", {"from": mapped})
-        )
-        return new_fp
+            for row in ledger.get("fp_migrations") or []:
+                if row.get("from") == old_fp and row.get("to"):
+                    mapped = old_fp
+                    break
+        if mapped and mapped in items:
+            old_ak = str(items[mapped].get("asset_key") or "")
+            if reason == "port_only_to_port_proto" and "/" in old_ak:
+                stored = old_ak.rsplit("/", 1)[-1].lower()
+                extra = extra_dict(rec)
+                proto = str(extra.get("protocol") or extra.get("proto") or "tcp").lower()
+                if stored and stored != proto:
+                    continue
+            return _apply_fp_migration(
+                rec, ledger, run_iso, mapped=mapped, new_fp=new_fp, reason=reason
+            )
     return new_fp
 
 

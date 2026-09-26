@@ -147,7 +147,8 @@ def test_smbmap_sample_anon_spaces_ansi_csv_grepable() -> None:
     findings = _findings(recs)
     shares = {(r.get("extra") or {}).get("share") for r in findings}
     assert "Company Data" in shares
-    assert any("Guest" in r["name"] or "NULL" in r["name"] or "anonymous" in r["name"].lower() for r in findings)
+    assert any("NULL" in r["name"] or "anonymous" in r["name"].lower() for r in findings)
+    assert not any("Guest session" in r["name"] for r in findings)
     assert not any("\x1b[" in str(r) for r in recs)
     csv_recs = inventory_nmap.parse_file(SAMPLES / "smbmap.csv")
     csv_shares = {(r.get("extra") or {}).get("share") for r in _findings(csv_recs)}
@@ -157,7 +158,7 @@ def test_smbmap_sample_anon_spaces_ansi_csv_grepable() -> None:
     g_shares = {(r.get("extra") or {}).get("share") for r in _findings(g_recs)}
     assert "Company Data" in g_shares
     hosts = parse_smbmap(SAMPLES / "smbmap.txt")
-    assert hosts and hosts[0].get("session", "").lower().startswith("guest")
+    assert hosts and "null session" in hosts[0].get("session", "").lower()
 
 
 def test_naabu_sample_keeps_protocol_and_cdn_flag() -> None:
@@ -167,21 +168,25 @@ def test_naabu_sample_keeps_protocol_and_cdn_flag() -> None:
     assert by_port["23"]["extra"]["protocol"] == "tcp"
     assert by_port["161"]["extra"]["protocol"] == "udp"
     assert "UDP/161" in by_port["161"]["description"]
-    cdn = next(r for r in findings if r["extra"].get("port") == "8080")
-    assert cdn["extra"].get("cdn") is True
-    assert "cloudflare" in str(cdn["extra"].get("cdn_name") or "")
+    assert not any((r.get("extra") or {}).get("port") == "8080" for r in findings)
+    assets = _assets(recs)
+    cdn_host = next(r for r in assets if (r.get("extra") or {}).get("cdn"))
+    assert "cloudflare" in str(cdn_host["extra"].get("cdn_name") or "")
     assert not any((r.get("extra") or {}).get("port") == "9999" for r in findings)
 
 
 def test_nmap_vulners_emits_cve_findings() -> None:
     recs = inventory_nmap.parse_file(SAMPLES / "nmap-vulners.xml")
     findings = _findings(recs)
-    cves = {r["extra"].get("cve") for r in findings if r["extra"].get("cve")}
-    assert "CVE-2018-15919" in cves
-    assert "CVE-2017-15906" in cves
-    vuln = next(r for r in findings if r["extra"].get("cve") == "CVE-2017-15906")
-    assert vuln["category"] == "vulnerability"
-    assert vuln["severity"] == "medium"
+    solo = [r for r in findings if r["extra"].get("cve")]
+    rolled = [r for r in findings if r["extra"].get("check_id") == "vulners-rollup"]
+    assert solo == []
+    assert rolled
+    listed = " ".join(str(r["extra"].get("cves")) for r in rolled)
+    assert "CVE-2018-15919" in listed
+    assert "CVE-2017-15906" in listed
+    assert rolled[0]["category"] == "vulnerability"
+    assert rolled[0]["severity"] == "medium"
     parsed = vulners_cves("", [("cvss", "5.0"), ("id", "CVE-2017-15906"), ("type", "cve")])
     assert parsed[0]["cve"] == "CVE-2017-15906"
 
@@ -195,5 +200,7 @@ def test_nmap_open_filtered_udp_and_mac() -> None:
     ports = {(r.get("extra") or {}).get("port"): r for r in findings}
     assert "161" in ports
     assert ports["161"]["extra"]["protocol"] == "udp"
+    assert ports["161"]["severity"] == "info"
+    assert ports["161"]["extra"].get("state") == "open|filtered"
     assert "22" in ports
     assert "445" not in ports

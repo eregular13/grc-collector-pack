@@ -21,12 +21,15 @@ from shared.nmap_nse import nse_findings, vulners_cves
 from shared.netdiscover import parse_netdiscover
 from shared.pack_drop import parse_pack_drop
 from shared.smbmap import parse_smbmap
-from shared.schema import make_record, make_ref
+from shared.kev import KevSnapshotError, load_kev_catalog
+from shared.schema import canon_severity, make_record, make_ref
 from shared.unicornscan import parse_unicornscan
 from shared.zmap import parse_zmap
 
 SOURCE = "inventory-nmap"
 LABELS = ["nmap", "inventory"]
+_CDN_EDGE_PORTS = frozenset({"80", "443", "8080", "8443"})
+_VULNERS_SOLO_CVSS = 7.0
 RISKY = {
     "23": ("critical", "Telnet exposed"),
     "21": ("high", "FTP exposed"),
@@ -51,6 +54,106 @@ def _stamp_demo(records: list[dict], demo: bool) -> None:
         labels = rec.setdefault("labels", [])
         if "demo" not in labels:
             labels.append("demo")
+
+
+def _cvss_value(hit: dict[str, Any]) -> float:
+    try:
+        return float(hit.get("cvss") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _kev_cve_ids() -> set[str]:
+    try:
+        catalog = load_kev_catalog()
+    except KevSnapshotError:
+        return set()
+    if not catalog.kev_evaluated:
+        return set()
+    return set(catalog.by_cve)
+
+
+def _vulners_solo(hit: dict[str, Any], kev_ids: set[str]) -> bool:
+    cve = str(hit.get("cve") or "").upper()
+    if cve and cve in kev_ids:
+        return True
+    return _cvss_value(hit) >= _VULNERS_SOLO_CVSS
+
+
+def _emit_vulners_hits(
+    records: list[dict],
+    now: str,
+    name: str,
+    addr: str,
+    portid: str,
+    svc: str,
+    hits: list[dict[str, Any]],
+    kev_ids: set[str],
+) -> None:
+    """One finding per CVE when CVSS >= 7 or KEV; others roll up per host/service."""
+    solo = [h for h in hits if _vulners_solo(h, kev_ids)]
+    rolled = [h for h in hits if h not in solo]
+    for hit in solo:
+        cve = hit["cve"]
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"{name}-{portid or 'host'}-{cve}"),
+                name=cve,
+                description=(
+                    f"{name} {svc or 'service'} on {portid or 'host'} matches {cve} "
+                    f"(nmap vulners, cvss={hit.get('cvss') or 'n/a'})."
+                ),
+                severity=canon_severity(hit.get("severity") or "medium"),
+                category="vulnerability",
+                assets=[name],
+                labels=LABELS + ["nse", "vulners", cve],
+                collected_at=now,
+                extra={
+                    "port": portid,
+                    "service": svc,
+                    "ip": addr,
+                    "cve": cve,
+                    "cvss": hit.get("cvss") or "",
+                    "nse_script": "vulners",
+                    "tool": "nmap",
+                    "check_id": cve,
+                },
+            )
+        )
+    if not rolled:
+        return
+    cves = [str(h.get("cve") or "") for h in rolled if h.get("cve")]
+    listed = ", ".join(cves)
+    top = max(rolled, key=_cvss_value)
+    records.append(
+        make_record(
+            kind="finding",
+            source=SOURCE,
+            ref_id=make_ref(SOURCE, f"{name}-{portid or 'host'}-vulners-rollup"),
+            name=f"Lower-severity vulners CVEs on {name} {portid or 'host'}",
+            description=(
+                f"{name} {svc or 'service'} on {portid or 'host'} matches "
+                f"{listed} (nmap vulners; CVSS < {_VULNERS_SOLO_CVSS:.0f}, not KEV)."
+            ),
+            severity=canon_severity(top.get("severity") or "medium"),
+            category="vulnerability",
+            assets=[name],
+            labels=LABELS + ["nse", "vulners"],
+            collected_at=now,
+            extra={
+                "port": portid,
+                "service": svc,
+                "ip": addr,
+                "cves": cves,
+                "cvss": top.get("cvss") or "",
+                "nse_script": "vulners",
+                "tool": "nmap",
+                "check_id": "vulners-rollup",
+            },
+        )
+    )
 
 
 def _emit_host(
@@ -93,13 +196,19 @@ def _emit_host(
             portid = str(item[0])
             svc = str(item[1]) if len(item) > 1 else ""
             proto = str(item[2]) if len(item) > 2 else ""
+            state = str(item[3]) if len(item) > 3 else "open"
         else:
-            portid, svc, proto = str(item), "", ""
+            portid, svc, proto, state = str(item), "", "", "open"
         proto = proto.lower()
         if proto not in {"tcp", "udp", "sctp"}:
             proto = svc.lower() if svc.lower() in {"tcp", "udp", "sctp"} else "tcp"
+        if extra and extra.get("cdn") and portid in _CDN_EDGE_PORTS:
+            continue
         sev, title = RISKY.get(portid, ("info", f"Open port {portid}/{svc or proto}"))
-        if sev == "info" and portid not in {"80", "443"}:
+        if proto == "udp" and state == "open|filtered":
+            sev = "info"
+            title = f"UDP {portid} open|filtered (not confirmed open)"
+        elif sev == "info" and portid not in {"80", "443"}:
             sev = "low"
             title = f"Open port {portid}/{svc or proto or 'unknown'}"
         if portid == "443" and proto == "tcp":
@@ -109,6 +218,8 @@ def _emit_host(
             if lab not in find_labels:
                 find_labels.append(lab)
         extra_find: dict[str, Any] = {"port": portid, "service": svc, "protocol": proto, "ip": addr}
+        if state and state != "open":
+            extra_find["state"] = state
         if extra:
             if extra.get("cdn"):
                 extra_find["cdn"] = True
@@ -122,7 +233,7 @@ def _emit_host(
                 ref_id=make_ref(SOURCE, ref_port),
                 name=title,
                 description=f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'}).",
-                severity=sev,
+                severity=canon_severity(sev),
                 category="exposure",
                 assets=[name],
                 labels=find_labels,
@@ -365,19 +476,20 @@ def parse_file(path: Path) -> list[dict]:
                 extra_labels=["smbmap"],
             )
             session = str(host.get("session") or "")
-            if "null session" in session.lower() or "guest session" in session.lower():
-                kind = "NULL" if "null" in session.lower() else "Guest"
+            sess_l = session.lower()
+            if "null session" in sess_l and "authenticated" not in sess_l:
                 records.append(
                     make_record(
                         kind="finding",
                         source=SOURCE,
                         ref_id=make_ref(SOURCE, f"{name}-smb-anon"),
-                        name=f"Anonymous SMB {kind} session on {name}",
+                        name=f"Anonymous SMB NULL session on {name}",
                         description=(
                             f"{name} smbmap export Status: {session}. "
-                            "NULL/Guest sessions allow unauthenticated share enumeration."
+                            "NULL session only when the run was unauthenticated "
+                            "and the export shows it."
                         ),
-                        severity="high",
+                        severity=canon_severity("high"),
                         category="exposure",
                         assets=[name],
                         labels=LABELS + ["smbmap", "smb", "anonymous"],
@@ -399,7 +511,7 @@ def parse_file(path: Path) -> list[dict]:
                     continue
                 writable = "WRITE" in up
                 admin = share_name.upper() in {"C$", "ADMIN$"}
-                sev = "high" if writable else "medium"
+                sev = canon_severity("high" if writable else "medium")
                 kind = "Writable" if writable else "Readable"
                 title = f"{kind} SMB share {share_name} on {name}"
                 desc = (
@@ -533,7 +645,7 @@ def parse_file(path: Path) -> list[dict]:
                     samba_ports.add(portid)
                 if portid in {"445", "139"} and not smb_port:
                     smb_port = portid
-                ports.append((portid, svc, proto))
+                ports.append((portid, svc, proto, state_name))
                 scripts = [
                     (sc.attrib.get("id", ""), sc.attrib.get("output", ""))
                     for sc in port.findall("script")
@@ -578,7 +690,7 @@ def parse_file(path: Path) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"{name}-{portid or 'host'}-{spec['check_id']}"),
                     name=spec["name"],
                     description=spec["description"],
-                    severity=spec["severity"],
+                    severity=canon_severity(spec["severity"]),
                     category="misconfiguration",
                     assets=[name],
                     labels=LABELS + ["nse", spec["nse_script"]],
@@ -594,34 +706,12 @@ def parse_file(path: Path) -> list[dict]:
                     },
                 )
             )
+        kev_ids = _kev_cve_ids()
+        grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
         for portid, svc, hit in vuln_specs:
-            cve = hit["cve"]
-            records.append(
-                make_record(
-                    kind="finding",
-                    source=SOURCE,
-                    ref_id=make_ref(SOURCE, f"{name}-{portid or 'host'}-{cve}"),
-                    name=cve,
-                    description=(
-                        f"{name} {svc or 'service'} on {portid or 'host'} matches {cve} "
-                        f"(nmap vulners, cvss={hit.get('cvss') or 'n/a'})."
-                    ),
-                    severity=hit.get("severity") or "medium",
-                    category="vulnerability",
-                    assets=[name],
-                    labels=LABELS + ["nse", "vulners", cve],
-                    collected_at=now,
-                    extra={
-                        "port": portid,
-                        "service": svc,
-                        "ip": addr,
-                        "cve": cve,
-                        "cvss": hit.get("cvss") or "",
-                        "nse_script": "vulners",
-                        "tool": "nmap",
-                    },
-                )
-            )
+            grouped.setdefault((portid, svc), []).append(hit)
+        for (portid, svc), hits in grouped.items():
+            _emit_vulners_hits(records, now, name, addr, portid, svc, hits, kev_ids)
         if scan_epoch:
             from datetime import datetime, timezone
 

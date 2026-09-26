@@ -57,6 +57,21 @@ def asset_host(finding: dict[str, Any]) -> str:
     return asset_id(finding)
 
 
+def legacy_port_only_asset_key(finding: dict[str, Any]) -> str:
+    """Pre-#140 key: asset id + ``:port`` with no ``/PROTO``.
+
+    Adding ``extra.protocol`` changed ``host:22`` → ``host:22/TCP``. Map the
+    old port-only fingerprint forward so EGP- IDs and detection dates stay.
+    Defaults to TCP when the old record did not store a protocol.
+    """
+    extra = extra_dict(finding)
+    port = str(extra.get("port") or "").strip()
+    base = asset_id(finding)
+    if not port or port == "0":
+        return base
+    return f"{base}:{port}" if base else port
+
+
 def legacy_name_asset_key(finding: dict[str, Any]) -> str:
     """Pre-migration key: lower-cased name (not asset id), plus port/proto.
 
