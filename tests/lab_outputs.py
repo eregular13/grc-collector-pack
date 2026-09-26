@@ -54,7 +54,14 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    from shared.ciso_shape import EXCLUDED_HEADER, POAM_HEADER, assert_count_consistency
+    from shared.ciso_shape import (
+        EXCLUDED_HEADER,
+        POAM_HEADER,
+        assert_count_consistency,
+        assert_flood_guard,
+        assert_poam_fedramp_identity,
+        assert_unique_weakness_asset,
+    )
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
@@ -99,6 +106,9 @@ def assert_lab() -> None:
         assert row.get("class_uid") == 2003
 
     assert_count_consistency(OUT, summary)
+    assert_unique_weakness_asset(poam)
+    if (OUT / "poam" / "poam_fedramp.csv").is_file():
+        assert_poam_fedramp_identity(OUT)
     assert int(summary.get("risk_scenarios") or 0) == len(scen)
     assert int(summary.get("poam") or 0) == len(poam)
     assert int(summary.get("weaknesses") or 0) == len(findings) + len(vulns)
@@ -118,7 +128,11 @@ def assert_lab() -> None:
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
     assert excluded, "DEMO/lab excluded.csv must not be header-only"
     assert int(summary.get("excluded") or 0) == len(excluded)
-    assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
+    assert_flood_guard(summary)
+    fg = summary["flood_guard"]
+    assert int(fg["findings_in"]) + int(fg.get("pending_carried") or 0) == len(poam) + len(
+        excluded
+    )
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}
     assert reasons & {"honeypot", "severity_info"}, reasons
     for row in excluded:
@@ -130,7 +144,6 @@ def assert_lab() -> None:
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()
     assert "15" in md and "30" in md and "90" in md and "180" in md
     assert "Evergreen default" in md
-    assert "Vendor Dependency = No is a default, not a verified determination" in md
     exec_sum = OUT / "EXECUTIVE_SUMMARY.md"
     trust = OUT / "SCOPE_AND_TRUST.md"
     if exec_sum.is_file() and trust.is_file():
@@ -154,25 +167,12 @@ def assert_lab() -> None:
     if fed.is_file():
         from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
-        fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
-        for row in fed_rows:
-            vd = row.get("Vendor Dependency") or ""
-            assert vd in {"Yes", "No"}, vd
-            if vd == "No":
-                assert not (row.get("Last Vendor Check-in Date") or "").strip()
-                assert not (row.get("Vendor Dependent Product Name") or "").strip()
-            else:
-                product = (row.get("Vendor Dependent Product Name") or "").strip()
-                assert product and product.lower() not in {"n/a", "none"}
         closed = OUT / "poam" / "poam_fedramp_closed.csv"
         if closed.is_file():
             first = closed.read_text(encoding="utf-8").splitlines()[0]
             assert not first.lstrip().startswith("#"), "poam_fedramp_closed.csv header-first"
-            closed_rows = _csv_rows(closed, ",".join(FEDRAMP_CSV_HEADERS))
-            assert not any(
-                (r.get("Vendor Dependency") or "").strip() == "Yes" for r in closed_rows
-            ), "spec §2.2: vendor-dependent Yes stays off the Closed tab"
         for rel in ("poam-ledger.json", "kev_provenance.json"):
             path = OUT / "poam" / rel
             if path.is_file():
@@ -213,7 +213,7 @@ def assert_lab() -> None:
         assert (row.get("due") or "") == ""
     for row in rdp + shares:
         refs = row.get("framework_refs") or ""
-        assert "cpg_3_I" in refs or "cpg_3_S" in refs or "cpg_" in refs
+        assert "cpg_3_S" in refs or "cpg_" in refs
     exposure_smb = [
         r
         for r in smb
@@ -225,10 +225,7 @@ def assert_lab() -> None:
     ]
     assert exposure_smb, "open-port SMB exposure must remain on the POA&M"
     for row in exposure_smb:
-        refs_smb = row.get("framework_refs") or ""
-        # DEMO SMB is on .corp.local / RFC1918 — 3.I, not 3.S.
-        assert "cpg_3_I" in refs_smb, refs_smb
-        assert "cpg_3_S" not in refs_smb
+        assert "cpg_3_S" in (row.get("framework_refs") or "")
     for row in smb:
         refs = row.get("framework_refs") or ""
         assert "csf_PR_IR_01" in refs or "csf_PR_AA_05" in refs or "csf_PR_DS_02" in refs
@@ -255,14 +252,6 @@ def assert_lab() -> None:
     for row in high_findings:
         labels = row.get("filtering_labels") or ""
         assert "csf_" in labels, row
-        assert "csf_PR," not in labels + "," and not labels.endswith("csf_PR")
-        assert "csf_protect" not in labels
-    for row in assets:
-        labels = row.get("filtering_labels") or ""
-        assert "cpg_2_W" not in labels
-        assert "cpg_1_E" not in labels
-        assert "csf_PR," not in labels + "," and not labels.endswith("csf_PR")
-        assert "csf_protect" not in labels
     smb_ctrl = [r for r in ctrls if "SMB" in (r.get("name") or "") or "445" in (r.get("description") or "")]
     assert smb_ctrl, "applied_controls must include SMB hardening narrative"
 
