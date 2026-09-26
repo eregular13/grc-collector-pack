@@ -852,18 +852,25 @@ def test_netbios_ns_pod_reclass_keeps_uid() -> None:
     assert ledger.observe(new, now=NOW) == old_uid
 
 
-def test_demo_fedramp_open_stays_126(tmp_path: Path, monkeypatch) -> None:
+def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
     from tests.test_poam_breakdown import _run_lab
 
     _run_lab(tmp_path, monkeypatch)
+    poam = tmp_path / "poam" / "poam.csv"
     fed = tmp_path / "poam" / "poam_fedramp.csv"
     assert fed.is_file()
+    with poam.open(encoding="utf-8", newline="") as fh:
+        plan = list(csv.DictReader(fh))
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 126, f"DEMO FedRAMP Open={len(rows)} expected 126"
+    plan_ids = {r.get("poam_id") or "" for r in plan}
+    fed_ids = {r.get("POAM ID") or "" for r in rows}
+    assert fed_ids == plan_ids
+    assert len(rows) == len(plan)
+    assert len(rows) == 123, f"DEMO FedRAMP Open={len(rows)} expected 123 on plan"
 
 
-def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
+def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     import os
     import subprocess
 
@@ -887,17 +894,27 @@ def test_farm_fedramp_open_stays_172(tmp_path: Path) -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
+    poam = work / "out" / "poam" / "poam.csv"
     fed = work / "out" / "poam" / "poam_fedramp.csv"
     assert fed.is_file()
+    with poam.open(encoding="utf-8", newline="") as fh:
+        plan = list(csv.DictReader(fh))
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 172, f"farm FedRAMP Open={len(rows)} expected 172"
+    plan_ids = {r.get("poam_id") or "" for r in plan}
+    fed_ids = {r.get("POAM ID") or "" for r in rows}
+    assert fed_ids == plan_ids
+    assert len(rows) == len(plan)
+    assert len(rows) == 106, f"farm FedRAMP Open={len(rows)} expected 106 on plan"
 
 
 def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 932cf7c DEMO ledger: FedRAMP Open stays 126, 0 new, 0 ghosts."""
+    """Upgrade a 932cf7c DEMO ledger: Open ledger stays 126, 0 new, 0 ghosts.
+
+    FedRAMP Open follows poam.csv (the plan), not the full ledger.
+    """
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -921,12 +938,18 @@ def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
     ]
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        plan_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
     ghosts = prior_ids - reseen_ids
+    plan_ids = {r.get("poam_id") or "" for r in plan_rows}
+    fed_ids = {r.get("POAM ID") or "" for r in fed_rows}
     assert created == [], [e.get("poam_id") for e in created]
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
     assert len(open_items) == 126
-    assert len(fed_rows) == 126
+    assert fed_ids == plan_ids
+    assert len(fed_rows) == len(plan_rows)
+    assert len(fed_rows) < 126
     assert reseen_ids == prior_ids
     assert summary.get("demo") is True
 

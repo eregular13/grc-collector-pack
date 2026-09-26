@@ -38,7 +38,7 @@ from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
-from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
+from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import (
     fingerprints_for,
@@ -575,7 +575,9 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_fedramp_poam(out_poam, poam_ledger)
+    write_fedramp_poam(
+        out_poam, poam_ledger, plan_by_id=plan_by_poam_id(poam_header, poam_rows)
+    )
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
     write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
     write_estate_sidecar(
