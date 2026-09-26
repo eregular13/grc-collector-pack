@@ -128,17 +128,26 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
 
 
+def _vendor_dependent(item: dict[str, Any]) -> bool:
+    return str(item.get("vendor_dependency") or "").strip().lower() == "yes"
+
+
 def write_fedramp_poam(out_poam: Path, ledger: dict[str, Any]) -> dict[str, Path]:
     open_rows: list[list[str]] = []
     closed_rows: list[list[str]] = []
     for item in (ledger.get("items") or {}).values():
         row = item_to_row(item)
-        if str(item.get("status") or "") == "closed":
-            closed_rows.append(row)
-        else:
+        # Spec §2.2: don't put VDs on the Closed tab.
+        if _vendor_dependent(item) or str(item.get("status") or "") != "closed":
             open_rows.append(row)
+        else:
+            closed_rows.append(row)
     for item in ledger.get("closed") or []:
-        closed_rows.append(item_to_row(item))
+        row = item_to_row(item)
+        if _vendor_dependent(item):
+            open_rows.append(row)
+        else:
+            closed_rows.append(row)
     open_path = out_poam / FEDRAMP_CSV_NAME
     closed_path = out_poam / FEDRAMP_CLOSED_CSV_NAME
     _write_csv(open_path, open_rows)
