@@ -19,9 +19,12 @@ from pathlib import Path
 import pytest
 
 from shared.control_map import map_finding
+from shared.finding_types import TYPE_REMEDIATIONS, finding_type
 from shared.kev import KevCatalog
+from shared.osquery_checks import normalize_osquery_pack_name
 from shared.poam_ledger import (
     apply_ledger,
+    check_id_from_weakness_key,
     empty_ledger,
     finding_from_ledger_item,
     persist_mapped_fields,
@@ -237,8 +240,91 @@ def test_upgrade_equals_fresh_for_observed_rows() -> None:
         assert got["check_id"] == fresh_item["check_id"]
 
 
+HOST_FW = TYPE_REMEDIATIONS["host_fw"]
+HOST_FW_CONTROLS = {"SC-7", "CM-7"}
+
+
+def _current_alf_finding() -> dict:
+    """Observed twin of EGP-8EC6F7CA09 (EGP-CC1D5A971D class): osquery alf."""
+    return {
+        "kind": "finding",
+        "source": "host-wazuh",
+        "ref_id": "WAZ-osquery-alf-192-168-0-4-rdsnet-ro",
+        "name": "osquery alf: Application firewall is disabled",
+        "description": "Application firewall is disabled",
+        "severity": "high",
+        "category": "host-posture",
+        "assets": ["192-168-0-4.rdsnet.ro"],
+        "labels": ["wazuh", "osquery"],
+        "extra": {"id": "alf", "name": "Application firewall is disabled", "check_id": "alf"},
+    }
+
+
+def _real_egp_8ec6f7ca09(*, with_pack_check_id: bool = True) -> dict:
+    """R_dd360a2 carried High: pre-#172 osquery pack name, no Controls/Plan.
+
+    Metis: name=osquery pack_it-compliance_alf: pack it-compliance alf,
+    backfilled check_id=pack_it-compliance_alf, host 192-168-0-4.rdsnet.ro.
+    """
+    item = {
+        "poam_id": "EGP-8EC6F7CA09",
+        "fp": "dd360a2-legacy-pack-it-compliance-alf-8ec6f7ca09",
+        "source_family": "host-wazuh",
+        "weakness_key": "wazuh:pack_it-compliance_alf",
+        "asset_key": "EGA-RDSNETALF01",
+        "display_asset": "192-168-0-4.rdsnet.ro",
+        "ref_id": "WAZ-osquery-pack-it-compliance-alf-192-168-0-4-rdsnet-ro",
+        "name": "osquery pack_it-compliance_alf: pack it-compliance alf",
+        "description": "pack it-compliance alf",
+        "original_detection_date": "2026-09-01",
+        "first_seen": "2026-09-01T00:00:00Z",
+        "status": "open",
+        "status_date": "2026-09-01",
+        "severity": "high",
+        "current_scanner_rating": "high",
+        "original_risk_rating": "High",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+        "cves": [],
+        "remediation_plan": "",
+        "controls": "",
+    }
+    if with_pack_check_id:
+        item["check_id"] = "pack_it-compliance_alf"
+    return item
+
+
+def test_normalize_osquery_pack_name_to_query() -> None:
+    assert normalize_osquery_pack_name("pack_it-compliance_alf") == "alf"
+    assert (
+        normalize_osquery_pack_name("osquery pack_it-compliance_alf: pack it-compliance alf")
+        == "alf"
+    )
+    assert normalize_osquery_pack_name("alf") == "alf"
+    assert check_id_from_weakness_key("wazuh:pack_it-compliance_alf") == "alf"
+
+
+def test_legacy_osquery_pack_row_maps_like_current_alf() -> None:
+    """EGP-8EC6F7CA09 pack spelling → same host_fw class as EGP-CC1D5A971D."""
+    item = _real_egp_8ec6f7ca09()
+    rebuilt = finding_from_ledger_item(item)
+    assert rebuilt["extra"]["check_id"] == "alf"
+    mapped = map_finding(rebuilt)
+    fresh = map_finding(_current_alf_finding())
+    assert finding_type(rebuilt) == finding_type(_current_alf_finding()) == "host_fw"
+    assert mapped["nist_800_53"] == fresh["nist_800_53"] == list(HOST_FW["nist_800_53"])
+    assert mapped["recommended_fix"] == fresh["recommended_fix"] == HOST_FW["recommended_fix"]
+    assert mapped.get("generic") is not True
+    persist_mapped_fields(item, overwrite_plan=False)
+    assert item["poam_id"] == "EGP-8EC6F7CA09"
+    assert item["status_date"] == "2026-09-01"
+    assert {"SC-7", "CM-7"} <= {c.strip() for c in item["controls"].split(",")}
+    assert item["remediation_plan"] == HOST_FW["recommended_fix"]
+    assert "generic fallback" not in item["remediation_plan"].lower()
+    assert item["check_id"] == "alf"
+
+
 def test_carried_row_on_poam_and_fedramp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ftp = _ftp()
     ssh = _ssh()
     ssh_asset = {
         "kind": "asset",
@@ -252,7 +338,7 @@ def test_carried_row_on_poam_and_fedramp(tmp_path: Path, monkeypatch: pytest.Mon
         "labels": ["nmap"],
         "extra": {"asset_type": "PR", "ip": "10.0.0.5"},
     }
-    old = _old_style_item(ftp, "EGP-8EC6F7CA09")
+    old = _real_egp_8ec6f7ca09()
     seeded = empty_ledger()
     seeded["items"] = {old["fp"]: old}
     incoming = tmp_path / "in"
@@ -281,16 +367,20 @@ def test_carried_row_on_poam_and_fedramp(tmp_path: Path, monkeypatch: pytest.Mon
     by_id = {r["poam_id"]: r for r in plan}
     assert "EGP-8EC6F7CA09" in by_id
     carried = by_id["EGP-8EC6F7CA09"]
-    assert carried["controls"]
-    assert carried["recommended_fix"]
+    assert HOST_FW_CONTROLS <= {c.strip() for c in carried["controls"].split(",")}
+    assert carried["recommended_fix"] == HOST_FW["recommended_fix"]
+    assert "generic fallback" not in carried["recommended_fix"].lower()
+    assert carried["status_date"] == "2026-09-01"
     fed_by = {r["POAM ID"]: r for r in fed}
     assert fed_by["EGP-8EC6F7CA09"]["Controls"] == carried["controls"]
     assert fed_by["EGP-8EC6F7CA09"]["Overall Remediation Plan"] == carried["recommended_fix"]
     written = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
     stored = next(it for it in written["items"].values() if it["poam_id"] == "EGP-8EC6F7CA09")
-    assert stored["controls"]
-    assert stored["remediation_plan"]
-    assert stored["check_id"] == "nse-ftp-anon"
+    assert stored["poam_id"] == "EGP-8EC6F7CA09"
+    assert HOST_FW_CONTROLS <= {c.strip() for c in stored["controls"].split(",")}
+    assert stored["remediation_plan"] == HOST_FW["recommended_fix"]
+    assert stored["check_id"] == "alf"
+    assert stored["status_date"] == "2026-09-01"
 
 
 @pytest.mark.parametrize("ledger_path", REAL_CHAIN_LEDGERS, ids=["master", "7ebc697"])

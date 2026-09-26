@@ -1024,7 +1024,10 @@ def check_id_from_weakness_key(wk: str) -> str:
         return parts[2] if len(parts) > 2 else ""
     if parts[1] in _LOC_WK_KEYS:
         return ""
-    return parts[1]
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    raw = parts[1]
+    return normalize_osquery_pack_name(raw) or raw
 
 
 def finding_from_ledger_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -1034,10 +1037,17 @@ def finding_from_ledger_item(item: dict[str, Any]) -> dict[str, Any]:
     source_family are enough for the same control_map path fresh rows use.
     """
     extra: dict[str, Any] = {}
-    check = str(item.get("check_id") or "").strip()
+    from shared.osquery_checks import normalize_osquery_pack_name
+
     wk = str(item.get("weakness_key") or "")
+    check = str(item.get("check_id") or "").strip()
     if not check:
         check = check_id_from_weakness_key(wk)
+    check = normalize_osquery_pack_name(check) or check
+    if not check or check.lower().startswith("pack_"):
+        from_name = normalize_osquery_pack_name(str(item.get("name") or ""))
+        if from_name:
+            check = from_name
     kind = str(item.get("finding_kind") or "").strip()
     if kind in {"finding", "asset", "evidence", "incident"}:
         kind = ""
@@ -1094,6 +1104,9 @@ def persist_mapped_fields(
             break
     if not check:
         check = check_id_from_weakness_key(str(item.get("weakness_key") or ""))
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    check = normalize_osquery_pack_name(check) or check
     kind = finding_type(rec) or str(mapped.get("finding_type") or "") or str(
         item.get("finding_kind") or ""
     )
