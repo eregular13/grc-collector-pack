@@ -342,8 +342,12 @@ def test_3_5_13_header_fidelity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     loader.load()
     poam_header = (out / "poam" / "poam.csv").read_text(encoding="utf-8").splitlines()[0].strip()
     assert poam_header == locked
+    from shared.poam_fedramp import FEDRAMP_CSV_HEADERS
+
     fed = (out / "poam" / "poam_fedramp.csv").read_text(encoding="utf-8").splitlines()[0]
-    assert tuple(fed.split(",")) == FEDRAMP_OPEN_HEADERS
+    cols = tuple(fed.split(","))
+    assert cols[: len(FEDRAMP_OPEN_HEADERS)] == FEDRAMP_OPEN_HEADERS
+    assert cols == FEDRAMP_CSV_HEADERS
 
 
 def test_3_5_14_integrity() -> None:
