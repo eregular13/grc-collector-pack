@@ -8,7 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from shared.ciso_shape import assert_poam_fedramp_identity, assert_unique_weakness_asset, csv_rows
+from shared.ciso_shape import (
+    assert_flood_guard,
+    assert_poam_fedramp_identity,
+    assert_unique_weakness_asset,
+    csv_rows,
+)
 from shared.control_map import map_finding, weakness_name_for
 from shared.estate_pages import rank_exec_findings
 from shared.finding_types import dedupe_key, dedupe_weaknesses, finding_type
@@ -440,3 +445,152 @@ def test_no_pentera_in_console_or_refresh_writes(tmp_path: Path, monkeypatch: py
         if path.is_file():
             assert needle not in path.read_text(encoding="utf-8"), path.name
     assert (ROOT / "product-lab" / "drop" / "README.md").is_file()
+
+
+def test_fedramp_open_excludes_info_honeypot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """FedRAMP Open rows are the poam.csv decision set — not every ledger item."""
+    keep = make_record(
+        kind="finding",
+        source="inventory-nmap",
+        ref_id="NMAP-smb",
+        name="SMB file sharing is exposed",
+        description="box has open TCP/445 (microsoft-ds).",
+        severity="high",
+        category="exposure",
+        assets=["filesrv"],
+        extra={"port": "445", "service": "microsoft-ds", "asset_uid": "EGA-FILESRV01"},
+    )
+    info = make_record(
+        kind="finding",
+        source="inventory-nmap",
+        ref_id="NMAP-info",
+        name="Host discovered",
+        description="banner only",
+        severity="info",
+        category="exposure",
+        assets=["filesrv"],
+        extra={"port": "80", "asset_uid": "EGA-FILESRV01"},
+    )
+    honeypot = make_record(
+        kind="finding",
+        source="honeypot",
+        ref_id="HPOT-1",
+        name="Deception-sensor stage-1 hit",
+        description="deception-sensor evidence / an agent-behavior signal.",
+        severity="high",
+        category="deception-sensor",
+        assets=["honeypot-1"],
+        extra={"honesty": "deception-sensor", "asset_uid": "EGA-HPOT00001"},
+    )
+    out = _load(
+        tmp_path,
+        monkeypatch,
+        [
+            _asset("filesrv", "EGA-FILESRV01", ip="10.0.0.10"),
+            _asset("honeypot-1", "EGA-HPOT00001", ip="10.0.0.11"),
+            keep,
+            info,
+            honeypot,
+        ],
+    )
+    poam = csv_rows(out / "poam" / "poam.csv")
+    fed = csv_rows(out / "poam" / "poam_fedramp.csv")
+    excluded = csv_rows(out / "poam" / "excluded.csv")
+    assert_poam_fedramp_identity(out)
+    assert [row["finding_ref_id"] for row in poam] == ["NMAP-smb"]
+    assert [row["POAM ID"] for row in fed] == [poam[0]["poam_id"]]
+    assert poam[0]["weakness"] == fed[0]["Weakness Name"]
+    reasons = {row["finding_ref_id"]: row["excluded_reason"] for row in excluded}
+    assert reasons["NMAP-info"] == "severity_info"
+    assert reasons["HPOT-1"] == "honeypot"
+    fed_names = {row["Weakness Name"] for row in fed}
+    assert "Host discovered" not in fed_names
+    assert "Deception-sensor stage-1 hit" not in fed_names
+    assert "NMAP-info" not in {row.get("Weakness Source Identifier") for row in fed}
+
+
+def test_duplicate_instance_and_flood_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Merged-away rows reach excluded.csv; flood_guard is the pre-dedupe identity."""
+    intune = _finding(
+        ref_id="WAZ-diskenc-intune-fleet-laptop-07",
+        extra={
+            "check_id": "disk_encryption",
+            "provider": "intune",
+            "asset_uid": "EGA-LAPTOP007",
+        },
+        labels=["intune", "mdm"],
+    )
+    jamf = _finding(
+        ref_id="WAZ-diskenc-jamf-fleet-laptop-07",
+        source="host-wazuh",
+        name="Disk encryption disabled on fleet-laptop-07",
+        extra={
+            "check_id": "disk_encryption",
+            "provider": "jamf",
+            "asset_uid": "EGA-LAPTOP007",
+        },
+        labels=["jamf", "mdm"],
+    )
+    out = _load(
+        tmp_path,
+        monkeypatch,
+        [_asset("fleet-laptop-07", "EGA-LAPTOP007"), intune, jamf],
+    )
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert_flood_guard(summary)
+    assert summary["duplicates_merged"] == 1
+    assert summary["flood_guard"]["findings_in"] == 2
+    assert summary["flood_guard"]["poam_rows"] == 1
+    assert summary["flood_guard"]["excluded_rows"] == 1
+    poam = csv_rows(out / "poam" / "poam.csv")
+    excluded = csv_rows(out / "poam" / "excluded.csv")
+    assert len(poam) == 1
+    assert poam[0]["poam_id"].startswith("EGP-")
+    assert len(excluded) == 1
+    assert excluded[0]["excluded_reason"] == "DUPLICATE_INSTANCE"
+    assert excluded[0]["finding_ref_id"] == "WAZ-diskenc-jamf-fleet-laptop-07"
+    assert excluded[0]["superseded_by"] == poam[0]["poam_id"]
+    fed = csv_rows(out / "poam" / "poam_fedramp.csv")
+    assert [row["POAM ID"] for row in fed] == [poam[0]["poam_id"]]
+
+
+def test_write_fedramp_without_decisions_does_not_dump_ledger(tmp_path: Path) -> None:
+    """Fail-closed: a fat ledger is not an Open export when decisions are omitted."""
+    from shared.poam_fedramp import FEDRAMP_CSV_NAME, write_fedramp_poam
+
+    ledger = {
+        "items": {
+            "EGP-INFO": {
+                "poam_id": "EGP-INFO",
+                "status": "open",
+                "name": "Host discovered",
+                "weakness_name": "Host discovered",
+            },
+            "EGP-KEEP": {
+                "poam_id": "EGP-KEEP",
+                "status": "open",
+                "name": "SMB file sharing is exposed",
+                "weakness_name": "SMB file sharing is exposed",
+            },
+        }
+    }
+    write_fedramp_poam(tmp_path, ledger)
+    assert csv_rows(tmp_path / FEDRAMP_CSV_NAME) == []
+    write_fedramp_poam(
+        tmp_path,
+        ledger,
+        decisions=[
+            {
+                "item": ledger["items"]["EGP-KEEP"],
+                "weakness": "SMB file sharing is exposed",
+                "fields": {"poam_id": "EGP-KEEP"},
+                "mapped": {},
+                "rec": {},
+                "assets_s": "filesrv",
+            }
+        ],
+    )
+    rows = csv_rows(tmp_path / FEDRAMP_CSV_NAME)
+    assert [row["POAM ID"] for row in rows] == ["EGP-KEEP"]
