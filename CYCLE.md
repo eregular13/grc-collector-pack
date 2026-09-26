@@ -1,5 +1,21 @@
 # CYCLE log
 
+## cycle 201 — FedRAMP Open = poam.csv; flood_guard (2026-09-26)
+
+FedRAMP Open rows are the included POA&M decision set only — info,
+honeypot, and lighter-excluded ledger items never export as Open.
+Loader dedupe writes each merged-away finding to excluded.csv as
+DUPLICATE_INSTANCE with the surviving EGP- id. summary.flood_guard
+is findings_in + pending_carried == poam_rows + excluded_rows,
+asserted in lab_outputs and the farm gate. No rollups or umbrellas.
+Host-lab unique counts **unchanged** 78 / 101 / 122; excluded 1→17
+(16 DUPLICATE_INSTANCE + 1 superseded). flood_guard 139 = 122 + 17.
+Farm 48 / 134 / 85; excluded 49→89 (40 DUPLICATE_INSTANCE);
+flood_guard 174 = 85 + 89. MIN_FARM_FINDINGS=110 and
+MIN_FARM_EXCLUDED=20 unchanged. pytest **1226**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
 ## cycle 200 — no Pentera in console or drop-refresh (2026-09-26)
 
 Removed the Pentera vendor line from the drop-refresh script writers
