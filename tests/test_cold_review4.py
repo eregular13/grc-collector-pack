@@ -322,6 +322,13 @@ def test_jenkins_user_host_principal_stay_distinct() -> None:
         assets=["jenkins@corp.local"],
     )
     assert len({asset_uid(user), asset_uid(host), asset_uid(principal)}) == 3
+    ledger = AssetLedger()
+    u1 = ledger.observe(user, now=NOW)
+    u2 = ledger.observe(host, now=NOW)
+    u3 = ledger.observe(principal, now=NOW)
+    ledger.late_merge_pass(now=NOW)
+    keep = {ledger.assets[u].get("merged_into") or u for u in (u1, u2, u3)}
+    assert len(keep) == 3
 
 
 def test_placeholder_id_helper() -> None:
@@ -959,6 +966,57 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     assert fed_ids == plan_ids
     assert len(fed_rows) == len(plan_ids)
     assert prior_ids <= reseen_ids
+    admin_rows = [
+        it
+        for it in open_items
+        if str(it.get("name") or "").startswith("Exposed admin interface on")
+    ]
+    assert len(admin_rows) == 2
+    assert len({it["poam_id"] for it in admin_rows}) == 2
+    assert summary.get("demo") is True
+
+
+def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Upgrade a 7ebc697 DEMO ledger: 0 duplicate opens, 1 new (#170 split), 127 open.
+
+    Pre-#172 title-keyed host-less Wazuh rows rematch. The #170 admin URL
+    sibling is the only mint. No ghosts.
+    """
+    from tests.test_poam_breakdown import _run_lab
+
+    prior = json.loads(
+        Path(__file__).resolve().parent.joinpath(
+            "fixtures", "demo-poam-ledger-7ebc697.json"
+        ).read_text(encoding="utf-8")
+    )
+    prior_ids = {it["poam_id"] for it in prior["items"].values()}
+    assert len(prior_ids) == 126
+    (tmp_path / "poam").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "poam" / "poam-ledger.json").write_text(
+        json.dumps(prior, indent=2) + "\n", encoding="utf-8"
+    )
+    summary = _run_lab(tmp_path, monkeypatch)
+    ledger = json.loads((tmp_path / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    created = [
+        e for e in (ledger.get("events_this_run") or []) if e.get("kind") == "created"
+    ]
+    open_items = [
+        it for it in ledger["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed_rows = list(csv.DictReader(fh))
+    reseen_ids = {it["poam_id"] for it in open_items}
+    ghosts = prior_ids - reseen_ids
+    new_ids = reseen_ids - prior_ids
+    assert ghosts == set(), f"ghosts {sorted(ghosts)}"
+    assert len(created) == 1, [e.get("poam_id") for e in created]
+    assert {e.get("poam_id") for e in created} == new_ids
+    assert len(open_items) == 127
+    assert len(fed_rows) == 127
+    assert prior_ids <= reseen_ids
+    assert len({it["poam_id"] for it in open_items}) == 127
     admin_rows = [
         it
         for it in open_items
