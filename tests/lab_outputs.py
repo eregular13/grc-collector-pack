@@ -130,6 +130,7 @@ def assert_lab() -> None:
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()
     assert "15" in md and "30" in md and "90" in md and "180" in md
     assert "Evergreen default" in md
+    assert "Vendor Dependency = No is a default, not a verified determination" in md
     exec_sum = OUT / "EXECUTIVE_SUMMARY.md"
     trust = OUT / "SCOPE_AND_TRUST.md"
     if exec_sum.is_file() and trust.is_file():
@@ -153,12 +154,25 @@ def assert_lab() -> None:
     if fed.is_file():
         from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
-        _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
+        for row in fed_rows:
+            vd = row.get("Vendor Dependency") or ""
+            assert vd in {"Yes", "No"}, vd
+            if vd == "No":
+                assert not (row.get("Last Vendor Check-in Date") or "").strip()
+                assert not (row.get("Vendor Dependent Product Name") or "").strip()
+            else:
+                product = (row.get("Vendor Dependent Product Name") or "").strip()
+                assert product and product.lower() not in {"n/a", "none"}
         closed = OUT / "poam" / "poam_fedramp_closed.csv"
         if closed.is_file():
             first = closed.read_text(encoding="utf-8").splitlines()[0]
             assert not first.lstrip().startswith("#"), "poam_fedramp_closed.csv header-first"
+            closed_rows = _csv_rows(closed, ",".join(FEDRAMP_CSV_HEADERS))
+            assert not any(
+                (r.get("Vendor Dependency") or "").strip() == "Yes" for r in closed_rows
+            ), "spec §2.2: vendor-dependent Yes stays off the Closed tab"
         for rel in ("poam-ledger.json", "kev_provenance.json"):
             path = OUT / "poam" / rel
             if path.is_file():
