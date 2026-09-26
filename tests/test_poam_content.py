@@ -407,16 +407,19 @@ def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
     summary = load()
     # Same rule + same EGA- asset merges to one weakness before POA&M
     # decisions; web-01 keeps one Low row, db-01 stays a second host,
-    # info stays telemetry_info. No per-alert 180-day rows.
+    # info stays telemetry_info. Merged-away alerts land on excluded.csv
+    # as DUPLICATE_INSTANCE (not silent count-only). No per-alert 180-day rows.
     assert summary["weaknesses_total"] == 3
     assert summary["poam_included"] == 2
-    assert summary["excluded"] == 1
-    assert summary["weaknesses_total"] == summary["poam_included"] + summary["excluded"]
+    assert summary["excluded"] == 3
     assert summary["excluded_by_reason"] == {
         "telemetry_info": 1,
+        "DUPLICATE_INSTANCE": 2,
     }
-    assert summary["weaknesses_total"] == summary["poam_included"] + sum(
-        summary["excluded_by_reason"].values()
+    fg = summary["flood_guard"]
+    assert fg["findings_in"] == 5
+    assert fg["findings_in"] + int(fg.get("pending_carried") or 0) == (
+        fg["poam_rows"] + fg["excluded_rows"]
     )
     with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
@@ -428,12 +431,15 @@ def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
     assert "WAZ-alert-info" not in refs
     assert len(rows) == 2
     assert {r["original_risk_rating"] for r in rows} == {"Low"}
+    survivor = next(r["poam_id"] for r in rows if r["finding_ref_id"] == "WAZ-alert-17001")
     with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
         ex = list(csv.DictReader(fh))
-    by_ref = {row["finding_ref_id"]: row["excluded_reason"] for row in ex}
-    assert "WAZ-alert-17002" not in by_ref
-    assert "WAZ-alert-17003" not in by_ref
-    assert by_ref["WAZ-alert-info"] == "telemetry_info"
+    by_ref = {row["finding_ref_id"]: row for row in ex}
+    assert by_ref["WAZ-alert-17002"]["excluded_reason"] == "DUPLICATE_INSTANCE"
+    assert by_ref["WAZ-alert-17003"]["excluded_reason"] == "DUPLICATE_INSTANCE"
+    assert by_ref["WAZ-alert-17002"]["superseded_by"] == survivor
+    assert by_ref["WAZ-alert-17003"]["superseded_by"] == survivor
+    assert by_ref["WAZ-alert-info"]["excluded_reason"] == "telemetry_info"
     walked_recs = [
         r
         for r in dedupe_hardening(
