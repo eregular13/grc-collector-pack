@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 192 — rebase estate pages onto master + CI (2026-09-26)
+
+Rebase `cursor/estate-exec-trust-pages-f8c2` onto master after #128/#129/#130.
+Keep weakness dedupe, count consistency, RiskReady JSON drop, HardeningKitty
+LAB feed, and the estate banner / exec / SCOPE_AND_TRUST wiring. CSF loader
+test skips `#` banner comments so DictReader is not poisoned. PR #132 ready,
+not draft. Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
 ## cycle 191 — estate banner + exec summary + SCOPE_AND_TRUST (2026-09-26)
 
 Argus Part 0 banner on every named export (exec summary, SCOPE_AND_TRUST.md,

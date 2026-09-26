@@ -486,8 +486,6 @@ def test_extra_labels_wizard_safe_no_colon() -> None:
 
 
 def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) -> None:
-    import csv
-
     from collectors.grc_loader import load
     from shared.io_util import out_dir, write_canonical
 
@@ -663,8 +661,6 @@ def test_csf_unmapped_fallback_is_deterministic_not_severity() -> None:
 
 
 def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypatch) -> None:
-    import csv
-
     from collectors.grc_loader import load
     from shared.io_util import out_dir, write_canonical
 
@@ -705,8 +701,9 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
     ]
     write_canonical("inventory-nmap", recs)
     load()
-    with (out_dir() / "ciso-assistant" / "applied_controls.csv").open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    from shared.estate_pages import csv_rows_skip_comments
+
+    rows = csv_rows_skip_comments(out_dir() / "ciso-assistant" / "applied_controls.csv")
     by_ref = {r["ref_id"]: r for r in rows}
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
     assert by_ref["CTL-waz-time"]["csf_function"] == "detect"
