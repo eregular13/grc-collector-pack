@@ -8,6 +8,7 @@ import pytest
 
 from dropbox.mcp_stub import OPERATOR_TOOLS, dispatch, refuse_attack_name
 from dropbox.scope import GateError
+from tests.hermetic_path import isolate_farm_path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
@@ -186,9 +187,11 @@ def test_cross_wire_cli_and_jsonrpc_fail_closed() -> None:
     assert names == list(OPERATOR_TOOLS)
 
 
-def test_mcp_cli_scope_status() -> None:
+def test_mcp_cli_scope_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
     import subprocess
 
+    isolate_farm_path(monkeypatch, tmp_path)
     proc = subprocess.run(
         ["python3", "-m", "dropbox", "mcp", "scope_status", "--scope", str(SCOPE)],
         cwd=str(ROOT),
@@ -199,18 +202,28 @@ def test_mcp_cli_scope_status() -> None:
     assert proc.returncode == 0, proc.stderr
     assert "scope_status" in proc.stdout
     assert "path_matrix" in proc.stdout
+    payload = json.loads(proc.stdout)
+    nmap = next(row for row in payload["path_matrix"] if row["tool"] == "nmap")
+    assert nmap["on_path"] is False
+    assert nmap["state"] == "missing"
 
 
-def test_scope_status_and_status_tools() -> None:
+def test_scope_status_and_status_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    isolate_farm_path(monkeypatch, tmp_path)
     st = dispatch("scope_status", scope_path=SCOPE)
     assert st["tool"] == "scope_status"
     assert "DEMO" in st["client"]
     assert st["max_workers"] == 2
     assert st["path_matrix"]
-    assert any(row["tool"] == "nmap" for row in st["path_matrix"])
+    nmap = next(row for row in st["path_matrix"] if row["tool"] == "nmap")
+    assert nmap["on_path"] is False
+    assert nmap["state"] == "missing"
     obs = dispatch("orchestrator_status", scope_path=SCOPE)
     assert "discover (quiet)" in obs["stage_graph"]
     assert obs["tool"] == "orchestrator_status"
+    obs_nmap = next(row for row in obs["path_matrix"] if row["tool"] == "nmap")
+    assert obs_nmap["on_path"] is False
+    assert obs_nmap["state"] == "missing"
 
 
 def test_stage_deepen_requires_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -288,6 +301,7 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    isolate_farm_path(monkeypatch, tmp_path)
 
     slots = handle_jsonrpc({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "farm_slots"}})
     result = slots["result"]
@@ -337,6 +351,8 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
     nuclei = next(row for row in matrix["result"]["matrix"] if row["slot"] == "nuclei")
     assert nuclei["invoke"] is False
     assert nuclei["state"] == "file_drop"
+    nmap_row = next(row for row in matrix["result"]["matrix"] if row["slot"] == "nmap")
+    assert nmap_row["on_path"] is False
     assert result["invoke_count"] >= 28
     assert result["wired_count"] >= 28
     discover = handle_jsonrpc(
@@ -510,6 +526,53 @@ def test_farm_toolbin_status_file_drop_only_never_live_ready(
     assert live["live_ready_count"] == 1
 
 
+def test_host_nmap_on_path_does_not_flip_isolated_toolbin_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Host nmap (or curl/lynis) on PATH must not change isolated will_run / present."""
+    from dropbox.mcp_stub import farm_toolbin_status_tool, handle_jsonrpc
+    from dropbox.orchestrator.byo import farm_which
+
+    host_bin = tmp_path / "host-bin"
+    host_bin.mkdir()
+    for name in ("nmap", "curl", "lynis", "nessus", "nessuscli", "testssl"):
+        fake = host_bin / name
+        fake.write_text(f"#!/bin/sh\necho host-{name}\n", encoding="utf-8")
+        fake.chmod(0o755)
+
+    monkeypatch.delenv("FARM_TOOL_BIN", raising=False)
+    monkeypatch.setenv("PATH", str(host_bin))
+    assert farm_which("nmap")
+    assert Path(farm_which("nmap")).name == "nmap"
+
+    isolate_farm_path(monkeypatch, tmp_path)
+    assert farm_which("nmap") is None
+    assert farm_which("curl") is None
+    assert farm_which("lynis") is None
+
+    st = dispatch("scope_status", scope_path=SCOPE)
+    nmap_row = next(row for row in st["path_matrix"] if row["tool"] == "nmap")
+    assert nmap_row["on_path"] is False
+    assert nmap_row["state"] == "missing"
+
+    data = farm_toolbin_status_tool(scope_path=SCOPE)
+    by_slot = {row["slot"]: row for row in data["slots"]}
+    assert by_slot["nmap"]["state"] == "missing"
+    assert by_slot["nmap"]["will_run"] is False
+    assert by_slot["nmap"]["live_ready"] is False
+    assert by_slot["nmap"]["path"] == ""
+    assert data["live_ready_count"] == 0
+    assert data["demo_stub"] == 0
+    assert data["present"] == 0
+
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    plan = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "orchestrator_plan"}}
+    )
+    assert plan["result"]["live"] is False
+    assert plan["result"]["will_run"]["discover"]["nmap"] is False
+
+
 def test_tools_call_is_plan_only_even_if_arguments_live(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -517,6 +580,7 @@ def test_tools_call_is_plan_only_even_if_arguments_live(
 
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    isolate_farm_path(monkeypatch, tmp_path)
     for name, tid in (("orchestrator_plan", 31), ("stage_discover", 32), ("stage_ingest", 33)):
         body = handle_jsonrpc(
             {
