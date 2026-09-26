@@ -245,6 +245,22 @@ def test_egp_stable_across_reruns(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert all(pid.startswith("EGP-") for pid in first)
 
 
+def test_g0_includes_poam_fallback_ids_not_in_ledger(tmp_path: Path) -> None:
+    from shared.poam_fedramp import item_from_poam_row, write_fedramp_poam
+
+    header = ["poam_id", "weakness", "asset", "weakness_description", "detector_source"]
+    rows = [
+        ["EGP-AAAAAAAAAA", "SMB", "box", "smb", "inventory-nmap"],
+        ["POAM-orphan", "Jamf diskenc", "laptop", "diskenc", "host-wazuh"],
+    ]
+    items = [item_from_poam_row(row, header) for row in rows]
+    dest = tmp_path / "poam"
+    write_fedramp_poam(dest, {"items": {}, "closed": []}, open_items=items)
+    with (dest / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        ids = [r["POAM ID"] for r in csv.DictReader(fh)]
+    assert ids == ["EGP-AAAAAAAAAA", "POAM-orphan"]
+
+
 def test_write_fedramp_respects_included_ids(tmp_path: Path) -> None:
     rec = _finding(ref_id="NMAP-keep", severity="high")
     other = _finding(ref_id="NMAP-drop", severity="info", extra={"port": "80"})

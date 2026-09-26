@@ -44,7 +44,7 @@ from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
-from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
+from shared.poam_fedramp import item_from_poam_row, kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields
 from shared.poam_ledger import apply_rollups, ledger_run_delta, run_ledger, write_ledger
 from shared.io_util import (
@@ -638,7 +638,18 @@ def load() -> dict:
         )
     apply_rollups(poam_ledger, decision_pairs, included_ids=listed_ids)
     write_ledger(poam_ledger)
-    write_fedramp_poam(out_poam, poam_ledger, included_ids=listed_ids)
+    ledger_by_id = {
+        str(item.get("poam_id") or ""): item
+        for item in (poam_ledger.get("items") or {}).values()
+        if item.get("poam_id")
+    }
+    open_items = []
+    for row in poam_rows:
+        pid = str(row[_pid_idx] or "") if len(row) > _pid_idx else ""
+        open_items.append(ledger_by_id.get(pid) or item_from_poam_row(row, poam_header))
+    write_fedramp_poam(
+        out_poam, poam_ledger, included_ids=listed_ids, open_items=open_items
+    )
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
     write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
     write_estate_sidecar(

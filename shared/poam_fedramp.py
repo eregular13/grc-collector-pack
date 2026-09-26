@@ -121,38 +121,73 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
 
 
+def item_from_poam_row(row: list, header: list[str]) -> dict[str, Any]:
+    """Ledger-shaped item from a poam.csv row (same decision set, G0)."""
+    idx = {name: i for i, name in enumerate(header)}
+
+    def get(key: str, default: str = "") -> str:
+        pos = idx.get(key)
+        if pos is None or pos >= len(row):
+            return default
+        return str(row[pos] if row[pos] is not None else default)
+
+    return {
+        "poam_id": get("poam_id"),
+        "name": get("weakness"),
+        "description": get("weakness_description") or get("weakness"),
+        "source_family": get("detector_source"),
+        "weakness_key": get("weakness_source_id"),
+        "display_asset": get("asset"),
+        "asset_key": get("asset"),
+        "point_of_contact": get("point_of_contact"),
+        "remediation_plan": get("recommended_fix"),
+        "original_detection_date": get("original_detection_date"),
+        "status_date": get("status_date"),
+        "original_risk_rating": get("original_risk_rating"),
+        "framework_refs": get("framework_refs"),
+        "status": get("status") or "open",
+        "cves": [get("cve")] if get("cve") else [],
+        "include": True,
+    }
+
+
 def write_fedramp_poam(
     out_poam: Path,
     ledger: dict[str, Any],
     *,
     included_ids: set[str] | None = None,
+    open_items: list[dict[str, Any]] | None = None,
 ) -> dict[str, Path]:
     """Export included rollup rows only (G0: Open rows == poam.csv rows)."""
-    if included_ids is not None:
-        keep = {str(x) for x in included_ids if x}
+    closed_rows: list[list[str]] = []
+    if open_items is not None:
+        open_rows = [item_to_row(item) for item in open_items]
     else:
-        keep = {
-            str(item.get("poam_id") or "")
-            for item in (ledger.get("items") or {}).values()
-            if item.get("include") is True
-        }
-        if not keep:
-            # apply_rollups not run — fail closed to included-or-open-unmarked
+        if included_ids is not None:
+            keep = {str(x) for x in included_ids if x}
+        else:
             keep = {
                 str(item.get("poam_id") or "")
                 for item in (ledger.get("items") or {}).values()
-                if item.get("include") is not False and str(item.get("status") or "") != "closed"
+                if item.get("include") is True
             }
-    open_rows: list[list[str]] = []
-    closed_rows: list[list[str]] = []
+            if not keep:
+                keep = {
+                    str(item.get("poam_id") or "")
+                    for item in (ledger.get("items") or {}).values()
+                    if item.get("include") is not False
+                    and str(item.get("status") or "") != "closed"
+                }
+        open_rows = []
+        for item in (ledger.get("items") or {}).values():
+            pid = str(item.get("poam_id") or "")
+            if str(item.get("status") or "") == "closed":
+                continue
+            if pid and pid in keep:
+                open_rows.append(item_to_row(item))
     for item in (ledger.get("items") or {}).values():
-        row = item_to_row(item)
-        pid = str(item.get("poam_id") or "")
         if str(item.get("status") or "") == "closed":
-            closed_rows.append(row)
-            continue
-        if pid and pid in keep:
-            open_rows.append(row)
+            closed_rows.append(item_to_row(item))
     for item in ledger.get("closed") or []:
         closed_rows.append(item_to_row(item))
     open_path = out_poam / FEDRAMP_CSV_NAME
