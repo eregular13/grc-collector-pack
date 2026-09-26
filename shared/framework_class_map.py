@@ -20,10 +20,22 @@ The subcategory is chosen under that function. When a class has two honest
 subcategories (vuln → ID.RA-01 or PR.PS-02), the stamped function picks.
 Anything that cannot be mapped is the explicit value ``unmapped`` — never
 ``csf_PR``.
+
+Internet-facing rule (CPG 3.S vs 3.I)
+-------------------------------------
+CPG 2.0 **3.S Secure Internet Facing Devices** is stamped only when
+``is_internet_facing`` finds evidence: a public unicast IP, collector
+source ``easm``, a cloud public flag (RDS/S3/SG 0.0.0.0/0), or an
+explicit extra flag. CPG 2.0 **3.I Implement Logical/Physical Network
+Segmentation** is the honest goal for internal exposure (Telnet, SMB
+445 on a DC, msrpc 135, admin shares, unauthenticated Redis on RFC1918).
+No evidence → do not claim internet-facing.
 """
 
 from __future__ import annotations
 
+import ipaddress
+import re
 from typing import Any
 
 # NIST CSF 2.0 subcategory IDs that this pack may stamp. Every id was checked
@@ -91,10 +103,51 @@ CPG20_GOALS: dict[str, str] = {
     "3.L": "Enable Email Security",
     "3.N": "Establish Change Management Processes",
     "3.Q": "Maintain Log Collection & Storage",
+    "3.I": "Implement Logical/Physical Network Segmentation",
     "3.S": "Secure Internet Facing Devices",
     "4.A": "Establish Malicious Code Detection",
     "4.B": "Identify Adverse Events",
 }
+
+# Function-level CSF stamps and retired CPG 1.0.1 ids. The register may carry
+# class-based subcategory/goal stamps (same as poam.csv) or none — never these.
+BLANKET_REGISTER_STAMPS = frozenset(
+    {
+        "csf_PR",
+        "csf_protect",
+        "csf_GV",
+        "csf_govern",
+        "csf_ID",
+        "csf_identify",
+        "csf_DE",
+        "csf_detect",
+        "csf_RS",
+        "csf_respond",
+        "csf_RC",
+        "csf_recover",
+        "cpg_2_W",
+        "cpg_1_E",
+    }
+)
+
+# Cloud / playbook rows that are internet-facing by evidence, not by guess.
+_INTERNET_FACING_TYPES = frozenset(
+    {
+        "rds_public",
+        "s3_public_access",
+        "sg_ingress_open",
+    }
+)
+_INTERNET_FACING_CONTROLS = frozenset(
+    {
+        "Disable public accessibility on RDS",
+        "Block public object-storage access",
+        "Block public object-storage ACL and policy",
+        "Restrict security-group ingress from the internet",
+    }
+)
+_EXTERNAL_SCAN_SOURCES = frozenset({"easm"})
+_EXPOSURE_CPG_CLASSES = frozenset({"exposure_network", "exposure_access"})
 
 UNMAPPED = "unmapped"
 CSF_UNMAPPED_STAMP = "csf_unmapped"
@@ -115,17 +168,30 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "by_function": {"protect": "PR.IR-01", "identify": "ID.AM-01"},
         "cpg": "3.S",
         "source_note": (
-            "NIST CSF 2.0 PR.IR-01 (unauthorized logical access to networks); "
-            "CISA CPG 2.0 3.S Secure Internet Facing Devices. Open service / "
-            "public listener / cloud ingress."
+            "NIST CSF 2.0 PR.IR-01 (unauthorized logical access to networks). "
+            "CISA CPG 2.0 3.S Secure Internet Facing Devices only when "
+            "is_internet_facing() has evidence (public IP, easm source, cloud "
+            "public flag). Otherwise CPG 2.0 3.I Implement Logical/Physical "
+            "Network Segmentation. No evidence → not internet-facing."
         ),
     },
     "exposure_access": {
         "by_function": {"protect": "PR.AA-05"},
         "cpg": "3.S",
         "source_note": (
-            "NIST CSF 2.0 PR.AA-05 (least privilege / entitlements); CISA CPG 2.0 "
-            "3.S. Guest, anonymous, admin-share, or public-ACL exposure."
+            "NIST CSF 2.0 PR.AA-05 (least privilege / entitlements). CPG 3.S "
+            "only with internet-facing evidence (public ACL / RDS / 0.0.0.0/0); "
+            "else CPG 3.I. Guest, anonymous, admin-share, Redis without auth, "
+            "or public-ACL exposure."
+        ),
+    },
+    "host_firewall": {
+        "by_function": {"protect": "PR.PS-01"},
+        "cpg": "3.I",
+        "source_note": (
+            "NIST CSF 2.0 PR.PS-01 (configuration management); CISA CPG 2.0 "
+            "3.I Implement Logical/Physical Network Segmentation. A disabled "
+            "host firewall is a missing segmentation control, not 3.S."
         ),
     },
     "tls_crypto": {
@@ -149,7 +215,8 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "cpg": "3.F",
         "source_note": (
             "NIST CSF 2.0 PR.AA-03 (authentication); CISA CPG 2.0 3.F "
-            "Implement Multi-factor Authentication."
+            "Implement Multi-factor Authentication. Legacy auth (IMAP/SMTP "
+            "basic) is here because those protocols cannot carry MFA."
         ),
     },
     "identity_privilege": {
@@ -173,7 +240,10 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "cpg": "3.B",
         "source_note": (
             "NIST CSF 2.0 PR.AA-01; CISA CPG 2.0 3.B Establish Minimum "
-            "Password Strength. Password policy / empty / LM hash."
+            "Password Strength. Password policy / empty / LM hash. AS-REP "
+            "roastable and Kerberoast/roastable SPN are offline cracks of "
+            "Kerberos material encrypted with the account password — 3.B, "
+            "not 3.E (failed-login monitoring) or only 3.C (unique creds)."
         ),
     },
     "identity_default": {
@@ -197,8 +267,9 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "source_note": (
             "NIST CSF 2.0 PR.AA-03 (authentication) or DE.CM-01 when the "
             "stamped function is detect; CISA CPG 2.0 3.E Monitor Unsuccessful "
-            "(Automated) Login Attempts. Lockout, session lock, brute-force, "
-            "Kerberos preauth, legacy auth."
+            "(Automated) Login Attempts. Lockout, session lock, brute-force. "
+            "Legacy auth is identity_mfa (3.F); AS-REP/Kerberoast is "
+            "identity_password (3.B)."
         ),
     },
     "config_benchmark": {
@@ -206,8 +277,9 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "cpg": "3.N",
         "source_note": (
             "NIST CSF 2.0 PR.PS-01 (configuration management); CISA CPG 2.0 "
-            "3.N Establish Change Management Processes. Benchmark / MDM / "
-            "directory listing / binary-dir writes."
+            "3.N Establish Change Management Processes. Benchmark / MDM "
+            "enrollment / directory listing. Falco binary-dir writes are "
+            "detect_endpoint (runtime), not this class."
         ),
     },
     "email_dns": {
@@ -224,7 +296,8 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "source_note": (
             "NIST CSF 2.0 DE.CM-09 (endpoint monitoring) or PR.PS-02 when the "
             "stamped function is protect (SI-3 malware protection); CISA CPG 2.0 "
-            "4.A Establish Malicious Code Detection. EDR / AV."
+            "4.A Establish Malicious Code Detection. EDR / AV / Falco "
+            "write-below-binary-dir (runtime integrity signal)."
         ),
     },
     "detect_telemetry": {
@@ -257,7 +330,8 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "source_note": (
             "NIST CSF 2.0 ID.AM-01 (hardware inventory) when Identify; PR.IR-01 "
             "when the stamp is Protect. CISA CPG 2.0 2.A Manage Organizational "
-            "Assets. Sensitive perimeter hostnames."
+            "Assets. Inventory-only rows. Sensitive perimeter hostnames from "
+            "EASM are exposure_network (lock down the listener), not this class."
         ),
     },
     "app_secure_dev": {
@@ -316,8 +390,8 @@ CONTROL_CLASS: dict[str, str] = {
     "Remove standing local-admin (AdminTo) rights": "identity_privilege",
     "Disable SMB null / anonymous sessions": "exposure_access",
     "Remove GenericAll on privileged objects": "identity_privilege",
-    "Require Kerberos preauthentication": "identity_auth",
-    "Harden kerberoastable service accounts": "identity_credential",
+    "Require Kerberos preauthentication": "identity_password",
+    "Harden kerberoastable service accounts": "identity_password",
     "Remove unconstrained Kerberos delegation": "identity_privilege",
     "Restrict Backup Operators membership": "identity_privilege",
     "Restrict Domain Admins membership": "identity_privilege",
@@ -332,7 +406,7 @@ CONTROL_CLASS: dict[str, str] = {
     "Remove standing Global Administrator assignment": "identity_privilege",
     "Enforce Windows password history": "identity_password",
     "Disable LM hash storage": "identity_password",
-    "Enable a host firewall": "exposure_network",
+    "Enable a host firewall": "host_firewall",
     "Disable SSH root login": "identity_privilege",
     "Disable SSH empty passwords": "identity_password",
     "Apply security updates": "vuln_patch",
@@ -348,11 +422,11 @@ CONTROL_CLASS: dict[str, str] = {
     "Disable anonymous Kubernetes API access": "exposure_access",
     "Block Kubernetes privilege escalation": "identity_privilege",
     "Avoid hostNetwork on Kubernetes workloads": "exposure_network",
-    "Stop writes under container binary directories": "config_benchmark",
+    "Stop writes under container binary directories": "detect_endpoint",
     "Restrict exposed admin interfaces": "exposure_network",
-    "Lock down sensitive perimeter hostnames": "asset_inventory",
+    "Lock down sensitive perimeter hostnames": "exposure_network",
     "Remove standing privileged role assignment": "identity_privilege",
-    "Disable legacy authentication protocols": "identity_auth",
+    "Disable legacy authentication protocols": "identity_mfa",
     "Restrict external sharing": "exposure_access",
     "Review SSH brute-force activity": "identity_auth",
     "Disable anonymous FTP access": "exposure_access",
@@ -382,8 +456,8 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "ad_genericall": "identity_privilege",
     "ad_adminto": "identity_privilege",
     "ad_backup_operators": "identity_privilege",
-    "ad_kerberoast": "identity_credential",
-    "ad_asrep": "identity_auth",
+    "ad_kerberoast": "identity_password",
+    "ad_asrep": "identity_password",
     "ad_domain_admins": "identity_privilege",
     "ad_unconstrained_delegation": "identity_privilege",
     "entra_ga_pim": "identity_privilege",
@@ -394,10 +468,11 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "k8s_anonymous_auth": "exposure_access",
     "k8s_privilege_escalation": "identity_privilege",
     "k8s_hostnetwork": "exposure_network",
-    "k8s_write_binary_dir": "config_benchmark",
+    "k8s_write_binary_dir": "detect_endpoint",
     "honeypot": "detect_telemetry",
     "nse-ftp-anon": "exposure_access",
     "nse-redis-noauth": "exposure_access",
+    "exposed-redis": "exposure_access",
     "nse-http-dirlist": "config_benchmark",
     "nse-tls-deprecated-protocol": "tls_crypto",
     "nse-tls-weak-cipher": "tls_crypto",
@@ -424,13 +499,56 @@ def cpg_stamp(cpg_id: str) -> str:
     return "cpg_" + cpg_id.replace(".", "_")
 
 
+def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    tid = str(
+        mapped.get("finding_type")
+        or extra.get("template_id")
+        or extra.get("rule")
+        or extra.get("check_id")
+        or ""
+    ).lower()
+    if tid in {"exposed-redis", "nse-redis-noauth"}:
+        return True
+    blob = " ".join(
+        str(x or "")
+        for x in (
+            mapped.get("control_name"),
+            mapped.get("weakness_name"),
+            rec.get("name"),
+            rec.get("description"),
+        )
+    ).lower()
+    if "redis" not in blob:
+        return False
+    return any(
+        tok in blob
+        for tok in (
+            "without auth",
+            "unauthenticated",
+            "noauth",
+            "no auth",
+            "requirepass",
+            "accessible without authentication",
+        )
+    )
+
+
 def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> str:
     """Pick one class from control name, finding type, then light heuristics."""
     rec = rec or {}
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    ftype = str(mapped.get("finding_type") or extra.get("check_id") or "")
+    ftype = str(
+        mapped.get("finding_type")
+        or extra.get("check_id")
+        or extra.get("template_id")
+        or extra.get("rule")
+        or ""
+    )
     if ftype in FINDING_TYPE_CLASS:
         return FINDING_TYPE_CLASS[ftype]
+    if _looks_unauth_redis(mapped, rec):
+        return "exposure_access"
     name = str(mapped.get("control_name") or "")
     if name in CONTROL_CLASS:
         return CONTROL_CLASS[name]
@@ -449,10 +567,117 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
     return UNMAPPED
 
 
-def resolve_class_tags(cls: str, csf_function: str) -> dict[str, str]:
+def _iter_candidate_hosts(rec: dict[str, Any] | None, mapped: dict[str, Any] | None) -> list[str]:
+    rec = rec or {}
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    out: list[str] = []
+    for raw in (
+        extra.get("ip"),
+        extra.get("address"),
+        extra.get("host"),
+        extra.get("matched_at"),
+        extra.get("public_ip"),
+        *(rec.get("assets") or []),
+    ):
+        text = str(raw or "").strip()
+        if text:
+            out.append(text)
+    return out
+
+
+def _host_token_is_public_ip(raw: str) -> bool:
+    """True only for a public unicast IP. RFC1918 / loopback / ULA never qualify."""
+    token = str(raw or "").strip()
+    if not token:
+        return False
+    token = token.split("%", 1)[0]
+    token = token.split("/", 1)[0]
+    if token.startswith("[") and "]" in token:
+        token = token[1 : token.index("]")]
+    if "://" in token:
+        token = token.split("://", 1)[1]
+    token = token.split("/", 1)[0]
+    token = token.split("?", 1)[0]
+    if token.count(":") == 1 and token.rsplit(":", 1)[-1].isdigit():
+        token = token.rsplit(":", 1)[0]
+    try:
+        addr = ipaddress.ip_address(token)
+    except ValueError:
+        return False
+    return bool(addr.is_global and not addr.is_multicast)
+
+
+_CLOUD_PUBLIC_RE = re.compile(
+    r"0\.0\.0\.0/0|::/0|publiclyaccessible|publicly.accessible|public_acl|public-acl",
+    re.I,
+)
+
+
+def is_internet_facing(
+    rec: dict[str, Any] | None = None, mapped: dict[str, Any] | None = None
+) -> bool:
+    """True only from evidence. No evidence → not internet-facing. Never guess.
+
+    Evidence accepted
+    -----------------
+    * Cloud public flag: finding type rds_public / s3_public_access /
+      sg_ingress_open, matching control names, extra.public /
+      extra.publicly_accessible / extra.internet_facing, or 0.0.0.0/0.
+    * Public unicast IP on the finding extra or assets (not RFC1918,
+      loopback, link-local, CGNAT, ULA, or documentation ranges).
+    * External scan source ``easm``.
+    * Explicit extra.exposure in {internet, public, external}.
+
+    Internal Telnet, SMB on dc, msrpc 135, admin shares, and Redis on
+    10/8 or *.lab.internal / *.corp.local therefore stay 3.I.
+    """
+    rec = rec or {}
+    mapped = mapped or {}
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    ftype = str(
+        mapped.get("finding_type")
+        or extra.get("check_id")
+        or extra.get("template_id")
+        or ""
+    )
+    if ftype in _INTERNET_FACING_TYPES:
+        return True
+    if str(mapped.get("control_name") or "") in _INTERNET_FACING_CONTROLS:
+        return True
+    source = str(rec.get("source") or "").lower()
+    if source in _EXTERNAL_SCAN_SOURCES:
+        return True
+    for key in ("internet_facing", "publicly_accessible", "public"):
+        val = extra.get(key)
+        if val is True or str(val).lower() in {"1", "true", "yes", "public"}:
+            return True
+    exposure = str(extra.get("exposure") or extra.get("exposure_plane") or "").lower()
+    if exposure in {"internet", "public", "external", "internet-facing"}:
+        return True
+    blob = " ".join(
+        str(x or "")
+        for x in (rec.get("name"), rec.get("description"), extra.get("cidr"), extra.get("ingress"))
+    )
+    if _CLOUD_PUBLIC_RE.search(blob):
+        return True
+    for host in _iter_candidate_hosts(rec, mapped):
+        if _host_token_is_public_ip(host):
+            return True
+    return False
+
+
+def resolve_class_tags(
+    cls: str,
+    csf_function: str,
+    rec: dict[str, Any] | None = None,
+    mapped: dict[str, Any] | None = None,
+) -> dict[str, str]:
     """Subcategory under the stamped function, or explicit unmapped.
 
     Never invent a subcategory. Never fall back to csf_PR.
+    Exposure classes stamp CPG 3.S only with internet-facing evidence;
+    otherwise 3.I (CISA CPG 2.0 Implement Logical/Physical Network
+    Segmentation).
     """
     row = WEAKNESS_CLASS_MAP.get(cls) or WEAKNESS_CLASS_MAP[UNMAPPED]
     by_fn = dict(row.get("by_function") or {})
@@ -462,6 +687,9 @@ def resolve_class_tags(cls: str, csf_function: str) -> dict[str, str]:
     if official and CSF20_FUNCTION_OF.get(official) != csf_function:
         official = ""
     cpg_id = str(row.get("cpg") or UNMAPPED)
+    if cls in _EXPOSURE_CPG_CLASSES and cpg_id == "3.S":
+        if not is_internet_facing(rec, mapped):
+            cpg_id = "3.I"
     if official:
         if cpg_id != UNMAPPED and cpg_id not in CPG20_GOALS:
             cpg_id = UNMAPPED
@@ -489,7 +717,7 @@ def apply_class_mapping(mapped: dict[str, Any], rec: dict[str, Any] | None = Non
     """Attach class + subcategory + CPG 2.0. Rewrites framework_refs CSF/CPG tags."""
     fn = str(mapped.get("csf_function") or "")
     cls = classify_weakness_class(mapped, rec)
-    tags = resolve_class_tags(cls, fn)
+    tags = resolve_class_tags(cls, fn, rec=rec, mapped=mapped)
     mapped["weakness_class"] = tags["weakness_class"]
     mapped["csf_subcategory"] = tags["csf_subcategory"]
     mapped["csf_subcategory_stamp"] = tags["csf_stamp"]
