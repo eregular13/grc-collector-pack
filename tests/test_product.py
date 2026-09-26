@@ -50,7 +50,8 @@ def test_drop_zip_has_ciso_and_proposed() -> None:
     if not (ROOT / "out" / "summary.json").exists():
         return
     assert "ciso-assistant/assets.csv" in names
-    assert "riskready/risks_proposed.json" in names
+    assert not any("riskready" in name.lower() for name in names)
+    assert not any(name.endswith("risks_proposed.json") for name in names)
     assert "summary.json" in names
     if (ROOT / "out" / "poam" / "poam.csv").exists():
         assert "poam/poam.csv" in names
