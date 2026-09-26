@@ -577,6 +577,9 @@ def test_ledger_files_do_not_count_as_live_inputs(tmp_path: Path, monkeypatch) -
     from shared.io_util import SKIP_INPUT_NAMES, in_dir_has_live_inputs
 
     assert "poam-ledger.json" in SKIP_INPUT_NAMES
+    assert "AUTHORIZATION.txt" in SKIP_INPUT_NAMES
+    assert "AUTHORIZATION.md" in SKIP_INPUT_NAMES
+    assert "AUTH.txt" in SKIP_INPUT_NAMES
     dest = tmp_path / "in"
     (dest / "poam").mkdir(parents=True)
     (dest / "poam" / "poam-ledger.json").write_text("{}", encoding="utf-8")

@@ -65,6 +65,25 @@ REVIEWER_NOT_REVIEWED = "not human-reviewed"
 
 SAMPLE_AUTH = "No client authorization applies. No client systems were touched."
 
+# Bookkeeping files are not scanner drops and are not hashed as fixtures.
+_AUTH_FILENAMES = ("AUTHORIZATION.txt", "AUTHORIZATION.md", "AUTH.txt")
+_HASH_SKIP_NAMES = frozenset(
+    {
+        ".gitkeep",
+        ".DS_Store",
+        "SAMPLE.txt",
+        "LAB.txt",
+        "README.md",
+        "MANIFEST",
+        *_AUTH_FILENAMES,
+    }
+)
+_AUTH_PLACEHOLDERS = frozenset(
+    {"", "not recorded", "none", "null", "unknown", "n/a", "na", "-"}
+)
+_FIXTURE_HASH_CACHE: frozenset[str] | None = None
+_PACK_DEMO_SCOPE = Path("dropbox") / "SCOPE.yaml"
+
 CLIENT_PAGE_FORBIDDEN = (
     "cycle ",
     "CoS #",
@@ -320,6 +339,164 @@ def _marker_in(folder: Path | None, name: str) -> bool:
         return False
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _hashable_file(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    if path.name.startswith("."):
+        return False
+    return path.name not in _HASH_SKIP_NAMES
+
+
+def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
+    """SHA-256 set of bundled files under fixtures/. Cached for the process."""
+    global _FIXTURE_HASH_CACHE
+    if fixtures_root is None and _FIXTURE_HASH_CACHE is not None:
+        return _FIXTURE_HASH_CACHE
+    try:
+        from shared.io_util import root_dir
+
+        root = fixtures_root or (root_dir() / "fixtures")
+    except Exception:
+        root = fixtures_root
+    found: set[str] = set()
+    if root is not None and root.is_dir():
+        try:
+            for path in root.rglob("*"):
+                if not _hashable_file(path):
+                    continue
+                try:
+                    found.add(_sha256_file(path))
+                except OSError:
+                    continue
+        except OSError:
+            pass
+    result = frozenset(found)
+    if fixtures_root is None:
+        _FIXTURE_HASH_CACHE = result
+    return result
+
+
+def in_dir_fixture_hits(
+    in_path: Path | None,
+    *,
+    fixtures_root: Path | None = None,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return (fixture-matching relative paths, other input relative paths)."""
+    if in_path is None or not in_path.is_dir():
+        return (), ()
+    catalog = fixture_content_hashes(fixtures_root)
+    if not catalog:
+        return (), ()
+    hits: list[str] = []
+    others: list[str] = []
+    try:
+        for path in in_path.rglob("*"):
+            if not _hashable_file(path):
+                continue
+            try:
+                digest = _sha256_file(path)
+                rel = str(path.relative_to(in_path)).replace("\\", "/")
+            except OSError:
+                continue
+            if digest in catalog:
+                hits.append(rel)
+            else:
+                others.append(rel)
+    except OSError:
+        return (), ()
+    return tuple(hits), tuple(others)
+
+
+def _looks_non_auth(value: str) -> bool:
+    blob = str(value or "").strip().lower()
+    if blob in _AUTH_PLACEHOLDERS:
+        return True
+    return any(
+        tok in blob
+        for tok in ("demo", "sample", "lab fixture", "not a client", "not recorded")
+    )
+
+
+def _parse_authorization_file(path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for raw in text.splitlines():
+        line = raw.strip()
+        if ":" not in line:
+            continue
+        key, val = line.split(":", 1)
+        key = key.strip().lower().lstrip("- ")
+        val = val.strip().strip("\"'")
+        if key in {"authorized by", "authorizer", "by"} and val:
+            out["authorizer"] = val
+        elif key in {"date", "authorized on", "on"} and val:
+            out["date"] = val
+        elif key in {"reference", "ref", "scope"} and val:
+            out["ref"] = val
+    return out
+
+
+def client_authorization_record(
+    env: dict[str, str] | None = None,
+    in_dir: Path | None = None,
+) -> dict[str, str] | None:
+    """A CLIENT label needs a real authorization record, not just a name.
+
+    Accepted evidence: GRC_AUTHORIZER + GRC_AUTH_DATE, or in/AUTHORIZATION.txt
+    (or AUTHORIZATION.md / AUTH.txt) with those fields. DEMO / sample wording
+    and the pack DEMO consent file never count.
+    """
+    src = env if env is not None else {k: str(v) for k, v in os.environ.items()}
+    authorizer = str(src.get("GRC_AUTHORIZER") or "").strip()
+    auth_date = str(src.get("GRC_AUTH_DATE") or "").strip()
+    scope_ref = str(src.get("GRC_SCOPE_REF") or "").strip()
+    if in_dir is not None and in_dir.is_dir():
+        for name in _AUTH_FILENAMES:
+            path = in_dir / name
+            if not path.is_file():
+                continue
+            parsed = _parse_authorization_file(path)
+            authorizer = authorizer or parsed.get("authorizer", "")
+            auth_date = auth_date or parsed.get("date", "")
+            scope_ref = scope_ref or parsed.get("ref", "")
+    if _looks_non_auth(authorizer) or _looks_non_auth(auth_date):
+        return None
+    return {
+        "authorizer": authorizer,
+        "date": auth_date,
+        "ref": scope_ref,
+    }
+
+
+def _is_pack_demo_scope(path: Path) -> bool:
+    """True for the committed DEMO dropbox/SCOPE.yaml (or a copy of it)."""
+    try:
+        from shared.io_util import root_dir
+
+        demo = (root_dir() / _PACK_DEMO_SCOPE).resolve()
+        if path.resolve() == demo:
+            return True
+    except Exception:
+        pass
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    blob = text.lower()
+    return "demo-written-consent" in blob or "demo — not a client estate" in blob
+
+
 def _fallback_from_records(records: list[dict]) -> list[str]:
     names: list[str] = []
     for rec in records:
@@ -419,6 +596,15 @@ def classify_estate(
     if dropbox_demo and raw_label not in {"LAB", "DEMO"} and not lab_marker:
         sample_marker = True
 
+    fixture_hits, fixture_others = in_dir_fixture_hits(in_path)
+    for rel in fixture_hits:
+        if rel not in fb:
+            fb.append(rel)
+    if fixture_hits and fixture_others:
+        signals.append("MIXED")
+    elif fixture_hits:
+        signals.append("SAMPLE")
+
     if drop_fb and (mixed_records or n_demo < n_records or lab_marker):
         signals.append("MIXED")
     elif drop_fb:
@@ -446,11 +632,17 @@ def classify_estate(
     if name and _looks_non_client_name(name):
         name = ""
 
+    auth = client_authorization_record(env, in_path)
+    has_client_artifacts = bool(n_records) or bool(fixture_others)
+
     kind = most_restrictive(*signals) if signals else "SAMPLE"
 
     client_ok = (
         raw_label == "CLIENT"
         and bool(name)
+        and auth is not None
+        and has_client_artifacts
+        and not fixture_hits
         and not drop_fb
         and n_demo == 0
         and not lab_marker
@@ -758,24 +950,53 @@ def _reconcile(
     return "counts not reconciled"
 
 
-def _engagement_window(records: list[dict]) -> tuple[str, str]:
-    start = _env(None, "GRC_SCAN_START")
-    end = _env(None, "GRC_SCAN_END")
+def _read_scope_window(path: Path) -> tuple[str, str]:
+    start = end = ""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return start, end
+    for line in text.splitlines():
+        if line.strip().startswith("start:"):
+            start = start or line.split(":", 1)[1].strip().strip("\"'")
+        if line.strip().startswith("end:"):
+            end = end or line.split(":", 1)[1].strip().strip("\"'")
+    return start, end
+
+
+def _engagement_window(
+    records: list[dict],
+    *,
+    kind: str | None = None,
+    env: dict[str, str] | None = None,
+) -> tuple[str, str]:
+    """Assessment window. Never inherit the DEMO SCOPE dates on non-DEMO runs."""
+    src = env if env is not None else None
+    start = _env(src, "GRC_SCAN_START")
+    end = _env(src, "GRC_SCAN_END")
     if start or end:
         return recorded(start), recorded(end)
-    try:
-        from shared.io_util import root_dir
+    scope_path = _env(src, "GRC_SCOPE_PATH")
+    candidates: list[Path] = []
+    if scope_path:
+        candidates.append(Path(scope_path))
+    if (kind or "").upper() == "DEMO":
+        try:
+            from shared.io_util import root_dir
 
-        scope = root_dir() / "dropbox" / "SCOPE.yaml"
-        if scope.is_file():
-            text = scope.read_text(encoding="utf-8")
-            for line in text.splitlines():
-                if line.strip().startswith("start:"):
-                    start = start or line.split(":", 1)[1].strip().strip("\"'")
-                if line.strip().startswith("end:"):
-                    end = end or line.split(":", 1)[1].strip().strip("\"'")
-    except OSError:
-        pass
+            candidates.append(root_dir() / _PACK_DEMO_SCOPE)
+        except Exception:
+            pass
+    for path in candidates:
+        if not path.is_file():
+            continue
+        if (kind or "").upper() != "DEMO" and _is_pack_demo_scope(path):
+            continue
+        s, e = _read_scope_window(path)
+        start = start or s
+        end = end or e
+        if start or end:
+            break
     times: list[str] = []
     for rec in records:
         stamp = _artifact_scan_stamp(rec)
@@ -870,7 +1091,7 @@ def build_executive_summary(ctx: PageContext) -> str:
         if stamp.kind == "CLIENT" and stamp.client_name != NOT_RECORDED
         else recorded(stamp.client_name if stamp.client_name != NOT_RECORDED else None)
     )
-    scan_start, scan_end = _engagement_window(ctx.records)
+    scan_start, scan_end = _engagement_window(ctx.records, kind=stamp.kind)
     dated_n, dated_total = _dated_counts(ctx.records)
     find_sev = _count_severities(ctx.findings)
     poam_sev = _count_severities(ctx.poam_rows)
@@ -1019,9 +1240,10 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     if stamp.kind in {"SAMPLE", "DEMO", "LAB", "MIXED"}:
         lines.append(f"- {SAMPLE_AUTH}")
     else:
-        authorizer = recorded(_env(None, "GRC_AUTHORIZER"))
-        auth_date = recorded(_env(None, "GRC_AUTH_DATE"))
-        scope_ref = recorded(_env(None, "GRC_SCOPE_REF"))
+        auth = client_authorization_record(None, ctx.in_dir)
+        authorizer = recorded((auth or {}).get("authorizer") or _env(None, "GRC_AUTHORIZER"))
+        auth_date = recorded((auth or {}).get("date") or _env(None, "GRC_AUTH_DATE"))
+        scope_ref = recorded((auth or {}).get("ref") or _env(None, "GRC_SCOPE_REF"))
         lines.append(
             f"- Authorized by: {authorizer} on {auth_date}. Reference: {scope_ref}."
         )
