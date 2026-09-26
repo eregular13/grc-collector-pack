@@ -1,8 +1,9 @@
 # CRITIC — cycle 189 (LAB_HARDENINGKITTY_WINDOWS)
 
-Lab this brick: pytest pending (run after commit). Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` expected PASS (host-lab demo
-counts unchanged). Zero P0/P1. HardeningKitty MS Security Baseline
+Lab this brick: pytest **1004** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
+Zero P0/P1. HardeningKitty MS Security Baseline
 CSV lands on the existing LAB dest_in (`fixtures/lab-drop/identity/`
 beside nmap pack_drop + wazuh Lynis/oscap). Every row labeled LAB.
 LAB cannot enter KEEP. Failed-only. Not CIS Benchmark / CIS-CAT.

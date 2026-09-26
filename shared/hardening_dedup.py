@@ -30,10 +30,11 @@ def _tool(rec: dict[str, Any]) -> str:
 
 
 def dedupe_hardening(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep one finding per (host, control_key). Merge tool ids into extra.
+    """Keep one finding per (host, control_key) when tools differ.
 
-    Assets and unmapped findings (no control_key) are left as-is so OpenSCAP
-    fail/error rows that lack a Lynis alias still land.
+    Two HardeningKitty Failed rows that share password_policy stay both
+    (history ≠ LM hash). Lynis + oscap + HK on the same host+key merge.
+    Assets and unmapped findings (no control_key) are left as-is.
     """
     out: list[dict[str, Any]] = []
     index: dict[tuple[str, str], dict[str, Any]] = {}
@@ -62,6 +63,11 @@ def dedupe_hardening(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if isinstance(extra, dict):
                 extra.setdefault("sources", [_tool(rec)])
             index[slot] = rec
+            out.append(rec)
+            continue
+        # Same tool, different check id: keep both (HK password history ≠ LM hash).
+        # Merge only when another tool flags the same (host, control_key).
+        if _tool(rec) and _tool(rec) == _tool(existing):
             out.append(rec)
             continue
         extra = existing.setdefault("extra", {})

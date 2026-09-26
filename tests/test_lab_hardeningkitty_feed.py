@@ -108,9 +108,8 @@ def test_synthetic_fixture_is_honest_ms_baseline_not_seen() -> None:
     assert "schema fixture" in note.lower()
     assert "not" in note.lower() and "seen" in note.lower()
     assert "finding_list_msft_security_baseline" in note
-    assert "CIS Benchmark" not in note
-    assert "CIS-CAT" not in note
-    assert "finding_list_cis_" not in note
+    assert "not a CIS" in note.lower() or "never cis" in note.lower()
+    assert "finding_list_cis_" not in HK_CSV.read_text(encoding="utf-8").split("ID,", 1)[-1]
     head = next(
         ln for ln in HK_CSV.read_text(encoding="utf-8").splitlines() if ln.startswith("ID,")
     )
@@ -172,13 +171,31 @@ def test_hk_control_map_and_800_53() -> None:
     assert CIS_V8_INTERNAL_FIELD not in lynis_extra
 
 
-def test_hk_lynis_dedupe_same_host_control() -> None:
-    merged = dedupe_hardening(identity_ad.parse_file(HK_CSV) + identity_ad.parse_file(HK_CSV))
+def test_hk_same_tool_keeps_distinct_checks() -> None:
+    merged = dedupe_hardening(identity_ad.parse_file(HK_CSV))
     findings = [r for r in merged if r["kind"] == "finding"]
     keys = [r["extra"].get("control_key") for r in findings]
     assert keys.count("host_firewall") == 1
-    assert keys.count("password_policy") == 1
+    assert keys.count("password_policy") == 3  # history, minlen, LM hash
     assert keys.count("account_lockout") == 1
+
+
+def test_hk_lynis_dedupe_cross_tool_same_host() -> None:
+    hk = identity_ad.parse_file(HK_CSV)
+    twin = {
+        "kind": "finding",
+        "source": "host-wazuh",
+        "name": "Lynis FIRE-4590: No firewall software installed",
+        "assets": ["lab-win.lab.internal"],
+        "labels": ["lynis"],
+        "extra": {"control_key": "host_firewall", "check_id": "FIRE-4590", "tool": "lynis"},
+    }
+    merged = dedupe_hardening(hk + [twin])
+    findings = [r for r in merged if r["kind"] == "finding"]
+    keys = [r["extra"].get("control_key") for r in findings]
+    assert keys.count("host_firewall") == 1
+    fw = next(r for r in findings if r["extra"].get("control_key") == "host_firewall")
+    assert set(fw["extra"].get("sources") or []) >= {"hardeningkitty", "lynis"}
 
 
 def test_lab_hk_ingest_e2e_and_cis_stays_internal(tmp_path: Path) -> None:
