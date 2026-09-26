@@ -20,6 +20,7 @@ from shared.estate_pages import (
     REVIEWER_NEXT_STEP,
     REVIEWER_WHAT_WE_FOUND,
     REVIEWER_WHY_IT_MATTERS,
+    EstateStamp,
     classify_estate,
 )
 
@@ -97,6 +98,17 @@ HEADER_FIRST_NEW = (
     "poam/poam-ledger.json",
     "poam/kev_provenance.json",
 )
+
+
+def test_estate_stamp_has_no_csv_hash_banner() -> None:
+    """Import CSVs must never grow a # preamble. Do not restore banner_csv_comments."""
+    assert not hasattr(EstateStamp, "banner_csv_comments")
+    stamp = classify_estate([], env={"GRC_ESTATE_LABEL": "LAB"})
+    assert not stamp.banner_md().lstrip().startswith("#")
+    assert stamp.banner_oneline()
+    src = (ROOT / "shared" / "estate_pages.py").read_text(encoding="utf-8")
+    assert "banner_csv_comments" not in src
+    assert "def banner_csv_comments" not in src
 
 
 def test_classify_fails_closed_and_refuses_client_on_sample() -> None:

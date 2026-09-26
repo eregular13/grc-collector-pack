@@ -1,0 +1,13 @@
+{
+  "scanResult": [
+    {
+      "targetHost": "expired.example.test",
+      "ip": "203.0.113.80",
+      "port": "443",
+      "serverDefaults": [
+        {"id": "cert_expirationStatus", "severity": "HIGH", "finding": "Certificate expired (2019-12-31)"},
+        {"id": "cert_caIssuers", "severity": "WARN", "finding": "Cannot check OCSP / AIA"}
+      ]
+    }
+  ]
+}
