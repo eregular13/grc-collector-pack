@@ -206,7 +206,14 @@ def is_specific_port_finding(rec: dict[str, Any]) -> bool:
     if not host_port_keys(rec):
         return False
     extra = extra_dict(rec)
-    if any(str(extra.get(key) or "").strip() for key in _SPECIFIC_EXTRA):
+    if any(
+        str(extra.get(key) or "").strip()
+        and not (
+            key == "check_id"
+            and str(extra.get(key) or "").startswith("nmap-port-")
+        )
+        for key in _SPECIFIC_EXTRA
+    ):
         return True
     if _has_cve(rec):
         return True
