@@ -25,6 +25,7 @@ from shared.poam_ledger import (
     empty_ledger,
     fan_out_instances,
     fp_v1,
+    ledger_run_delta,
     load_ledger_file,
     payload_sha256,
     weakness_key,
@@ -601,3 +602,50 @@ def test_ega_swap_rescan_is_idempotent_no_new_ids() -> None:
 
 def test_existing_poam_csv_header_constant_unchanged() -> None:
     assert POAM_HEADER.startswith("weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate")
+
+
+def test_ledger_run_delta_counts_this_run_only() -> None:
+    """EXECUTIVE one-liner: open includes pending; new/reopened/closed are this-run events."""
+    same_second = "2026-09-15T00:00:00Z"
+    ledger = {
+        "run_at": same_second,
+        "items": {
+            "a": {"status": "open", "poam_id": "EGP-A"},
+            "b": {"status": "pending_verification", "poam_id": "EGP-B"},
+            "c": {"status": "reopened", "poam_id": "EGP-C-R1"},
+            "d": {"status": "closed", "poam_id": "EGP-D"},
+        },
+        "events": [
+            {"at": same_second, "kind": "created"},
+            {"at": same_second, "kind": "created"},
+            {"at": same_second, "kind": "created"},
+            {"at": same_second, "kind": "created"},
+            {"at": same_second, "kind": "reopened"},
+        ],
+        "events_this_run": [
+            {"at": same_second, "kind": "created"},
+            {"at": same_second, "kind": "reopened"},
+        ],
+    }
+    delta = ledger_run_delta(ledger)
+    assert delta["open"] == 3
+    assert delta["new"] == 1
+    assert delta["pending_verification"] == 1
+    assert delta["reopened"] == 1
+    assert delta["closed"] == 0
+
+
+def test_ledger_run_delta_same_second_runs_do_not_inflate_new() -> None:
+    """Back-to-back apply_ledger calls with the same run_at must not recount prior created events."""
+    rec = _rec()
+    cover = _rec(
+        extra={"id": "B", "tool": "nessus", "port": "80", "protocol": "tcp"},
+        name="other",
+        ref_id="VULN-B",
+    )
+    first = _apply([rec], when="2026-09-10T00:00:00Z")
+    assert ledger_run_delta(first)["new"] == 1
+    second = _apply([rec, cover], ledger=first, when="2026-09-10T00:00:00Z")
+    delta = ledger_run_delta(second)
+    assert delta["new"] == 1
+    assert delta["open"] == 2
