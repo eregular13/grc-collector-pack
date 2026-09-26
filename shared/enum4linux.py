@@ -72,7 +72,9 @@ def looks_like_enum4linux(text: str, name: str = "", payload: Any = None) -> boo
             return True
         sessions = payload.get("sessions")
         if isinstance(sessions, dict) and (
-            "null_session" in sessions or "sessions_possible" in sessions
+            "null" in sessions
+            or "null_session" in sessions
+            or "sessions_possible" in sessions
         ):
             return True
         if payload.get("target") and (
@@ -121,6 +123,19 @@ def _iter_named(raw: Any) -> list[tuple[str, dict[str, Any]]]:
 
 def _share_access(row: dict[str, Any]) -> str:
     access = row.get("access") or row.get("permissions") or row.get("perm") or ""
+    if isinstance(access, dict):
+        mapping = str(access.get("mapping") or "").strip().upper()
+        listing = str(access.get("listing") or "").strip().upper()
+        if listing == "OK":
+            return "READ, WRITE"
+        if mapping == "OK":
+            return "READ"
+        parts = []
+        if mapping:
+            parts.append(f"mapping={mapping}")
+        if listing:
+            parts.append(f"listing={listing}")
+        return ", ".join(parts)
     if isinstance(access, list):
         return ", ".join(str(x) for x in access)
     return str(access)
@@ -130,15 +145,37 @@ def _writable(access: str) -> bool:
     return "WRITE" in access.upper()
 
 
-def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
-    target = str(
-        payload.get("hostname")
-        or payload.get("host")
-        or payload.get("name")
-        or payload.get("target")
-        or ""
+def _target_host(payload: dict[str, Any]) -> str:
+    """enum4linux-ng JSON uses target.host; never stringify the dict."""
+    raw = payload.get("target")
+    if isinstance(raw, dict):
+        return str(raw.get("host") or raw.get("ip") or raw.get("hostname") or "").strip()
+    if raw not in (None, ""):
+        return str(raw).strip()
+    return str(
+        payload.get("hostname") or payload.get("host") or payload.get("name") or ""
     ).strip()
+
+
+def _null_session(payload: dict[str, Any], sessions: dict[str, Any]) -> bool:
+    """Real ng key is sessions.null (AUTH_NULL). Keep sessions.null_session for old drops."""
+    if payload.get("null_session") is not None:
+        return bool(payload.get("null_session"))
+    if sessions.get("null") is not None:
+        return bool(sessions.get("null"))
+    if sessions.get("null_session") is not None:
+        return bool(sessions.get("null_session"))
+    return False
+
+
+def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
+    target = _target_host(payload)
     addr = ""
+    raw_target = payload.get("target")
+    if isinstance(raw_target, dict):
+        addr = str(raw_target.get("ip") or "").strip()
+        if not addr and IP_RE.fullmatch(str(raw_target.get("host") or "").strip()):
+            addr = str(raw_target.get("host")).strip()
     if IP_RE.fullmatch(target):
         addr = target
         netbios = payload.get("smb_domain_info")
@@ -150,14 +187,13 @@ def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
             )
         else:
             target = addr
-    elif IP_RE.search(str(payload.get("target") or "")):
-        addr = IP_RE.search(str(payload.get("target"))).group(0)
+    elif not addr:
+        blob = target if not isinstance(raw_target, dict) else str(raw_target.get("host") or "")
+        found = IP_RE.search(blob)
+        if found:
+            addr = found.group(0)
     sessions = payload.get("sessions") if isinstance(payload.get("sessions"), dict) else {}
-    null_session = bool(
-        payload.get("null_session")
-        if payload.get("null_session") is not None
-        else sessions.get("null_session")
-    )
+    null_session = _null_session(payload, sessions)
     groups = []
     for name, _row in _iter_named(payload.get("groups")):
         label = str(_row.get("groupname") or _row.get("name") or name).strip()

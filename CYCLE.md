@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 189 — real-sample parser fidelity (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF/SARIF, enum4linux-ng) (2026-09-26)
+
+Parsers now read real tool shapes instead of invented fixtures: Prowler v4/v5
+OCSF (`status_code`, `resources[].uid`) + semicolon CSV; Wazuh alerts.json
+JSONL + rule-level severity + SCA failed checks (not fake agents);
+CIS/XCCDF `rule-result@severity`; SARIF `rules[].properties.security-severity`
+(Trivy CRITICAL stays critical); enum4linux-ng `target.host`, `sessions.null`,
+share `access.listing`. Trimmed real samples under `fixtures/samples/`
+(SOURCES.md). Demo enum4linux fixture replaced with real keys (same findings).
+Lab counts unchanged (assets=81 findings=105 poam=106). SAMPLE→SoR and
+farm_drop→SoR counts unchanged. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. pytest **1003**.
+
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 
 Wire Lynis (GPLv3) + OpenSCAP/SSG (LGPL/BSD) into the LAB dest_in

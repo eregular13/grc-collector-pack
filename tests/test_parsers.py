@@ -84,10 +84,10 @@ def test_cis_cat_xml_identity(tmp_path) -> None:
         <Benchmark>
           <TestResult>
             <target>jump-unmanaged</target>
-            <rule-result idref="5.2.10" title="Ensure SSH PermitRootLogin is no">
+            <rule-result idref="5.2.10" title="Ensure SSH PermitRootLogin is no" severity="medium">
               <result>fail</result>
             </rule-result>
-            <rule-result idref="1.1.1" title="Ensure cramfs is disabled">
+            <rule-result idref="1.1.1" title="Ensure cramfs is disabled" severity="high">
               <result>pass</result>
             </rule-result>
           </TestResult>
@@ -98,6 +98,7 @@ def test_cis_cat_xml_identity(tmp_path) -> None:
     findings = [r for r in recs if r["kind"] == "finding"]
     assert len(findings) == 1
     assert "PermitRootLogin" in findings[0]["name"]
+    assert findings[0]["severity"] == "medium"
 
 
 def test_empty_cis_osquery_invents_nothing(tmp_path) -> None:

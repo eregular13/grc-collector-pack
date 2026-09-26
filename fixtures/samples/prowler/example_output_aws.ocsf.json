@@ -1,0 +1,294 @@
+[
+  {
+    "message": "IAM Access Analyzer in account <account_uid> is not enabled.",
+    "metadata": {
+      "event_code": "accessanalyzer_enabled",
+      "product": {
+        "name": "Prowler",
+        "uid": "prowler",
+        "vendor_name": "Prowler",
+        "version": "<prowler_version>"
+      },
+      "profiles": [
+        "cloud",
+        "datetime"
+      ],
+      "tenant_uid": "",
+      "version": "1.4.0"
+    },
+    "severity_id": 2,
+    "severity": "Low",
+    "status": "New",
+    "status_code": "FAIL",
+    "status_detail": "IAM Access Analyzer in account <account_uid> is not enabled.",
+    "status_id": 1,
+    "unmapped": {
+      "related_url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html",
+      "notes": "",
+      "compliance": {
+        "CIS-3.0": [
+          "1.20"
+        ]
+      }
+    },
+    "activity_name": "Create",
+    "activity_id": 1,
+    "finding_info": {
+      "created_time": 1739539623,
+      "created_time_dt": "2025-02-14T14:27:03.913874",
+      "desc": "Check if IAM Access Analyzer is enabled",
+      "product_uid": "prowler",
+      "title": "Check if IAM Access Analyzer is enabled",
+      "types": [
+        "IAM"
+      ],
+      "uid": "<finding_uid>"
+    },
+    "resources": [
+      {
+        "cloud_partition": "aws",
+        "region": "<region>",
+        "data": {
+          "details": "",
+          "metadata": {
+            "arn": "<resource_arn>",
+            "name": "<resource_name>",
+            "status": "NOT_AVAILABLE",
+            "findings": [],
+            "tags": [],
+            "type": "",
+            "region": "<region>"
+          }
+        },
+        "group": {
+          "name": "accessanalyzer"
+        },
+        "labels": [],
+        "name": "<resource_name>",
+        "type": "Other",
+        "uid": "<resource_uid>"
+      }
+    ],
+    "category_name": "Findings",
+    "category_uid": 2,
+    "class_name": "Detection Finding",
+    "class_uid": 2004,
+    "cloud": {
+      "account": {
+        "name": "",
+        "type": "AWS Account",
+        "type_id": 10,
+        "uid": "<account_uid>",
+        "labels": []
+      },
+      "org": {
+        "name": "",
+        "uid": ""
+      },
+      "provider": "aws",
+      "region": "<region>"
+    },
+    "remediation": {
+      "desc": "Enable IAM Access Analyzer for all accounts, create analyzer and take action over it is recommendations (IAM Access Analyzer is available at no additional cost).",
+      "references": [
+        "aws accessanalyzer create-analyzer --analyzer-name <NAME> --type <ACCOUNT|ORGANIZATION>"
+      ]
+    },
+    "time": 1739539623,
+    "time_dt": "2025-02-14T14:27:03.913874",
+    "type_uid": 200401,
+    "type_name": "Detection Finding: Create"
+  },
+  {
+    "message": "Login to the AWS Console. Choose your account name on the top right of the window -> My Account -> Contact Information.",
+    "metadata": {
+      "event_code": "account_maintain_current_contact_details",
+      "product": {
+        "name": "Prowler",
+        "uid": "prowler",
+        "vendor_name": "Prowler",
+        "version": "<prowler_version>"
+      },
+      "profiles": [
+        "cloud",
+        "datetime"
+      ],
+      "tenant_uid": "",
+      "version": "1.4.0"
+    },
+    "severity_id": 3,
+    "severity": "Medium",
+    "status": "New",
+    "status_code": "MANUAL",
+    "status_detail": "Login to the AWS Console. Choose your account name on the top right of the window -> My Account -> Contact Information.",
+    "status_id": 1,
+    "unmapped": {
+      "related_url": "",
+      "notes": "",
+      "compliance": {
+        "CIS-3.0": [
+          "1.1"
+        ]
+      }
+    },
+    "activity_name": "Create",
+    "activity_id": 1,
+    "finding_info": {
+      "created_time": 1739539623,
+      "created_time_dt": "2025-02-14T14:27:03.913874",
+      "desc": "Maintain current contact details.",
+      "product_uid": "prowler",
+      "title": "Maintain current contact details.",
+      "types": [
+        "IAM"
+      ],
+      "uid": "<finding_uid>"
+    },
+    "resources": [
+      {
+        "cloud_partition": "aws",
+        "region": "<region>",
+        "data": {
+          "details": "",
+          "metadata": {
+            "type": "PRIMARY",
+            "email": null,
+            "name": "<account_name>",
+            "phone_number": "<value>"
+          }
+        },
+        "group": {
+          "name": "account"
+        },
+        "labels": [],
+        "name": "<account_uid>",
+        "type": "Other",
+        "uid": "arn:aws:iam::<account_uid>:root"
+      }
+    ],
+    "category_name": "Findings",
+    "category_uid": 2,
+    "class_name": "Detection Finding",
+    "class_uid": 2004,
+    "cloud": {
+      "account": {
+        "name": "",
+        "type": "AWS Account",
+        "type_id": 10,
+        "uid": "<account_uid>",
+        "labels": []
+      },
+      "org": {
+        "name": "",
+        "uid": ""
+      },
+      "provider": "aws",
+      "region": "<region>"
+    },
+    "remediation": {
+      "desc": "Using the Billing and Cost Management console complete contact details.",
+      "references": [
+        "No command available."
+      ]
+    },
+    "time": 1739539623,
+    "time_dt": "2025-02-14T14:27:03.913874",
+    "type_uid": 200401,
+    "type_name": "Detection Finding: Create"
+  },
+  {
+    "message": "SECURITY, BILLING and OPERATIONS contacts not found or they are not different between each other and between ROOT contact.",
+    "metadata": {
+      "event_code": "account_maintain_different_contact_details_to_security_billing_and_operations",
+      "product": {
+        "name": "Prowler",
+        "uid": "prowler",
+        "vendor_name": "Prowler",
+        "version": "<prowler_version>"
+      },
+      "profiles": [
+        "cloud",
+        "datetime"
+      ],
+      "tenant_uid": "",
+      "version": "1.4.0"
+    },
+    "severity_id": 3,
+    "severity": "Medium",
+    "status": "New",
+    "status_code": "FAIL",
+    "status_detail": "SECURITY, BILLING and OPERATIONS contacts not found or they are not different between each other and between ROOT contact.",
+    "status_id": 1,
+    "unmapped": {
+      "related_url": "https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-update-contact.html",
+      "notes": "",
+      "compliance": {
+        "CIS-3.0": []
+      }
+    },
+    "activity_name": "Create",
+    "activity_id": 1,
+    "finding_info": {
+      "created_time": 1739539623,
+      "created_time_dt": "2025-02-14T14:27:03.913874",
+      "desc": "Maintain different contact details to security, billing and operations.",
+      "product_uid": "prowler",
+      "title": "Maintain different contact details to security, billing and operations.",
+      "types": [
+        "IAM"
+      ],
+      "uid": "<finding_uid>"
+    },
+    "resources": [
+      {
+        "cloud_partition": "aws",
+        "region": "<region>",
+        "data": {
+          "details": "",
+          "metadata": {
+            "type": "PRIMARY",
+            "email": null,
+            "name": "<account_name>",
+            "phone_number": "<value>"
+          }
+        },
+        "group": {
+          "name": "account"
+        },
+        "labels": [],
+        "name": "<account_uid>",
+        "type": "Other",
+        "uid": "arn:aws:iam::<account_uid>:root"
+      }
+    ],
+    "category_name": "Findings",
+    "category_uid": 2,
+    "class_name": "Detection Finding",
+    "class_uid": 2004,
+    "cloud": {
+      "account": {
+        "name": "",
+        "type": "AWS Account",
+        "type_id": 10,
+        "uid": "<account_uid>",
+        "labels": []
+      },
+      "org": {
+        "name": "",
+        "uid": ""
+      },
+      "provider": "aws",
+      "region": "<region>"
+    },
+    "remediation": {
+      "desc": "Using the Billing and Cost Management console complete contact details.",
+      "references": [
+        "https://docs.prowler.com/checks/aws/iam-policies/iam_18-maintain-contact-details#aws-console"
+      ]
+    },
+    "time": 1739539623,
+    "time_dt": "2025-02-14T14:27:03.913874",
+    "type_uid": 200401,
+    "type_name": "Detection Finding: Create"
+  }
+]

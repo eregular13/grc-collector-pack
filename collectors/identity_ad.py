@@ -312,7 +312,7 @@ def _emit_cis_cat(rows: list[dict[str, str]], now: str) -> list[dict]:
                 ref_id=make_ref(SOURCE, f"cis-{hid}-{host}"),
                 name=f"CIS-CAT {hid}: {title}",
                 description=title,
-                severity="high",
+                severity=str(row.get("severity") or "high"),
                 category="host-posture",
                 assets=[host],
                 labels=LABELS + ["cis-cat"],
