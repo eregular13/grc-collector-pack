@@ -42,7 +42,7 @@ base SHA (or `github.event.before` on push to master).
 
 - `scripts/farm_drop_to_sor.sh` / `.ps1`
 - `scripts/prove_ciso.py`
-- `shared/ciso_shape.py` / `shared/farm_ship.py`
+- `shared/ciso_shape.py` / `shared/estate_pages.py` / `shared/farm_ship.py`
 - `collectors/grc_loader.py` (POA&M emitter)
 - `fixtures/pack_drop/`
 - the gate itself (`.github/workflows/lab.yml`, `scripts/ci/*`, this doc,
@@ -71,10 +71,15 @@ printed as metadata. Changing HEAD without touching the surface is skip.
 - Full POA&M plan (Evergreen default schedule): Lows (180-day) and non-key
   Mediums (90-day) stay **on** the plan. Infos + honeypot hits go to
   `poam/excluded.csv`
-  (`finding_ref_id,weakness,asset,severity,excluded_reason`). Measured
-  farm_drop: findings=174, poam=106, excluded=68 (60 info + 8 honeypot).
+  (`finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by`).
+  Measured farm_drop after port-only fold: findings=174, poam=106,
+  excluded=68 (60 info + 8 honeypot). No `superseded_by_specific` rows —
+  pack_drop is exposure-only, so bare port-open rows have no specific
+  peer. Host-lab (demo collectors) measured weaknesses=125, poam=124,
+  excluded=1 (`superseded_by_specific` on `NMAP-telnet-legacy-corp-local-80`).
   Brick 5 floors: findings >= 110, poam_rows >= 100. The old 35-row floor
-  was the lighter High/key-Medium-only plan; do not revert.
+  was the lighter High/key-Medium-only plan; do not revert. MIN_ gates
+  unchanged.
 - `assert_farm_ship_sor` requires `excluded.csv` non-empty with both
   `severity_info` and `honeypot` reasons. Count identity:
   `weaknesses_total == poam_included + excluded`.
