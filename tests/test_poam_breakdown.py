@@ -11,7 +11,7 @@ import pytest
 
 from collectors.grc_loader import _dedupe, load
 from shared.asset_ledger import AssetLedger, attach_asset_uids
-from shared.ciso_shape import assert_poam_breakdown
+from shared.ciso_shape import assert_flood_guard, assert_poam_breakdown
 from shared.control_map import (
     POAM_EXCLUDE_REASONS,
     map_finding,
@@ -143,6 +143,8 @@ def test_poam_breakdown_identity_no_silent_drop() -> None:
 
 def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     assert_poam_breakdown(summary)
+    if summary.get("flood_guard") is not None:
+        assert_flood_guard(summary)
     records: list[dict] = []
     folder = out / "canonical"
     if folder.is_dir():
@@ -158,9 +160,18 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)
-    assert walked["weaknesses_total"] == summary["weaknesses_total"] == len(findings)
-    assert walked["poam_included"] == summary["poam_included"]
-    assert walked["excluded_by_reason"] == summary["excluded_by_reason"]
+    pending = int(summary.get("pending_carried") or 0)
+    # Walk is post-dedupe. Merges live on excluded.csv as DUPLICATE_INSTANCE
+    # and are owned by flood_guard, not the deduped weaknesses_total identity.
+    assert walked["weaknesses_total"] == int(summary.get("weaknesses") or 0) == len(findings)
+    assert walked["weaknesses_total"] + pending == int(summary["weaknesses_total"])
+    assert walked["poam_included"] + pending == int(summary["poam_included"])
+    walked_reasons = {
+        key: int(val)
+        for key, val in (summary.get("excluded_by_reason") or {}).items()
+        if key != "DUPLICATE_INSTANCE"
+    }
+    assert walked["excluded_by_reason"] == walked_reasons
     for rec in findings:
         decision = poam_decision(rec)
         included = bool(map_finding(rec).get("include_poam"))
