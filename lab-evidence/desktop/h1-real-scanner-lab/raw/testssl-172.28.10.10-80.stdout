@@ -1,0 +1,21 @@
+[0;35m
+'--fast' can have some undesired side effects thus it is not recommended to use anymore
+[m[1m
+#####################################################################[m
+  [1mtestssl.sh[m version [1m3.2.4[m from [1mhttps://testssl.sh/[m
+[1m
+  This program is free software. Distribution and modification under
+  GPLv2 permitted. USAGE w/o ANY WARRANTY. USE IT AT YOUR OWN RISK![m
+
+  Please file bugs @ [1mhttps://testssl.sh/bugs/[m
+[1m#####################################################################[m
+
+  Using [3mOpenSSL 1.0.2-bad (Mar 28 2025)[m  [~183 ciphers]
+  on a8517d5e500e:/home/testssl/bin/openssl.Linux.x86_64
+
+[7m Start 2026-09-26 19:04:20        -->> 172.28.10.10:80 (172.28.10.10) <<--[m
+
+ rDNS (172.28.10.10):    evergreen-lab-web-nginx-1.evergreen-lab_labnet.
+
+[1m 172.28.10.10:80 [m[1mdoesn't seem to be a TLS/SSL enabled server[m
+[0;35m The results might look ok but they could be nonsense. Really proceed ? ("yes" to continue) --> [m

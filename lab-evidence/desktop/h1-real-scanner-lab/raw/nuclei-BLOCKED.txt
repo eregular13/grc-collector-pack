@@ -1,0 +1,16 @@
+Nuclei blocked on this slice after three attempts. Exact commands + errors:
+
+1) -duc (no template update):
+docker run --rm --network evergreen-lab_labnet --network evergreen-lab_labnet2 -v C:\Users\R\Desktop\EvergreenOps\lab-estate\scans\h1-20260926-115811:/out projectdiscovery/nuclei:latest -l /out/web-urls.txt -severity low,medium,high,critical -etags intrusive,dos,fuzz -duc -ni -c 5 -bs 5 -rate-limit 20 -jsonl -o /out/nuclei-20260926-115811.jsonl
+error: [ERR] Could not find template '/root/nuclei-templates': could not find file
+[FTL] Could not run nuclei: no templates provided for scan
+exit via python runner (phase recorded)
+
+2) templates installed in ephemeral container, 6437 templates, 29 targets:
+same command without -duc
+hung ~22m at ~0.5% CPU, jsonl 0 bytes, docker stats 847MiB. Killed. docker rm keen_swartz.
+
+3) -timeout 5 -retries 0 -mhe 15 and -v h1-nuclei-home:/root
+stuck on "[INF] nuclei-templates are not installed, installing..." >4.5m. Killed. docker rm f79f090da1e5.
+
+Did not loop further. jsonl left empty (0 bytes). nmap/nikto/testssl/trivy evidence is complete.

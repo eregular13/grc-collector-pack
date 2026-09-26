@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<nmaprun scanner="nmap" args="H1 desktop real samba host"><host starttime="1790449091" endtime="1790449147"><status state="up" reason="arp-response" reason_ttl="0" />
+<address addr="172.28.10.50" addrtype="ipv4" />
+<address addr="F6:99:58:F9:B5:C5" addrtype="mac" />
+<hostnames>
+<hostname name="evergreen-lab-samba-1.evergreen-lab_labnet" type="PTR" />
+</hostnames>
+<ports><extraports state="closed" count="16">
+<extrareasons reason="conn-refused" count="16" proto="tcp" ports="21-22,25,80,110,143,443,1025,1433,2222,3306,5432,6379,8025,8080,27017" />
+</extraports>
+<port protocol="tcp" portid="139"><state state="open" reason="syn-ack" reason_ttl="0" /><service name="netbios-ssn" product="Samba smbd" version="4" method="probed" conf="10"><cpe>cpe:/a:samba:samba:4</cpe></service></port>
+<port protocol="tcp" portid="445"><state state="open" reason="syn-ack" reason_ttl="0" /><service name="netbios-ssn" product="Samba smbd" version="4" method="probed" conf="10"><cpe>cpe:/a:samba:samba:4</cpe></service></port>
+</ports>
+<hostscript><script id="smb2-security-mode" output="&#10;  3.1.1: &#10;    Message signing enabled but not required"><table key="3.1.1">
+<elem>Message signing enabled but not required</elem>
+</table>
+</script></hostscript><times srtt="547" rttvar="422" to="100000" />
+</host>
+</nmaprun>

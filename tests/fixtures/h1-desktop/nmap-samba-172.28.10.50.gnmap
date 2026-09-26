@@ -1,0 +1,2 @@
+Host: 172.28.10.50 (evergreen-lab-samba-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.50 (evergreen-lab-samba-1.evergreen-lab_labnet)	Ports: 139/open/tcp//netbios-ssn//Samba smbd 4/, 445/open/tcp//netbios-ssn//Samba smbd 4/	Ignored State: closed (16)

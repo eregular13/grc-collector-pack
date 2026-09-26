@@ -1,0 +1,4 @@
+Nuclei first attempt with -duc: no templates (see nuclei-20260926-115811.stdout).
+Second attempt installed v10.4.9 templates (6437), 29 targets, clustered 470.
+CPU dropped to ~0.5% after 21m with empty jsonl; process killed at ~22m (docker rm keen_swartz).
+Third attempt: -timeout 5 -retries 0 -mhe 15, templates persisted under lab-estate/scans/h1-nuclei-home (not committed).

@@ -1,0 +1,182 @@
+{
+  "stamp": "20260926-115811",
+  "prove_counts": {
+    "assets": 58,
+    "findings": 63,
+    "poam": 747,
+    "demo": false,
+    "risk_scenarios": 3410,
+    "vulnerabilities": 3347
+  },
+  "findings_rows": 63,
+  "poam_rows": 747,
+  "fedramp_open_rows": 747,
+  "fedramp_closed_rows": 0,
+  "count_diff": {
+    "findings_vs_poam": 684,
+    "poam_vs_fedramp_open": 0,
+    "vulnerabilities": 3347,
+    "note": "findings.csv Extra Import skips many info/CVE rows that still land on POA&M; trivy CVEs inflate vulnerabilities.csv"
+  },
+  "finding_name_top": [
+    [
+      "HTTP exposed",
+      28
+    ],
+    [
+      "Open port 6379/redis",
+      8
+    ],
+    [
+      "Redis accessible without authentication",
+      8
+    ],
+    [
+      "Open port 2222/ssh",
+      2
+    ],
+    [
+      "Open port 27017/mongodb",
+      2
+    ],
+    [
+      "Open port 3306/mysql",
+      2
+    ],
+    [
+      "Open port 139/netbios-ssn",
+      2
+    ],
+    [
+      "SMB 445 exposed",
+      2
+    ],
+    [
+      "Open port 5432/postgresql",
+      2
+    ],
+    [
+      "SMB message signing not required",
+      2
+    ],
+    [
+      "FTP exposed",
+      1
+    ],
+    [
+      "Open port 1025/smtp",
+      1
+    ],
+    [
+      "Open port 8025/http",
+      1
+    ],
+    [
+      "Administrative share exposed on evergreen-lab-samba-1.evergreen-lab_labnet (C$/A",
+      1
+    ],
+    [
+      "Administrative share exposed on evergreen-lab-samba2-1.evergreen-lab_labnet2 (C$",
+      1
+    ]
+  ],
+  "poam_name_top": [
+    [
+      "",
+      747
+    ]
+  ],
+  "ground_truth": [
+    {
+      "item": "redis no-auth",
+      "compose": "8 redis containers (queue said x7): 172.28.10.63-67 + 172.28.11.63-65, no requirepass",
+      "nmap_detected": "8/8 redis-info Version= ['172.28.10.63', '172.28.10.64', '172.28.10.65', '172.28.10.66', '172.28.10.67', '172.28.11.63', '172.28.11.64', '172.28.11.65']",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "mysql labpass (not empty)",
+      "compose": "mysql 172.28.10.33 + mysql2 172.28.11.33 MYSQL_ROOT_PASSWORD=labpass",
+      "nmap_detected": "mysql-empty-password absent (correct; not empty). port 3306 open x2",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "postgres labpass",
+      "compose": "postgres 172.28.10.54 + postgres2 172.28.11.54 POSTGRES_PASSWORD=labpass",
+      "nmap_detected": "port 5432 open x2; no empty-password NSE in #124 set",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "mongo no-auth",
+      "compose": "mongo 172.28.10.27 + mongo2 172.28.11.27 no auth env",
+      "nmap_detected": "port 27017 open x2; no mongo NSE in #124 set",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "ssh password auth",
+      "compose": "ssh 172.28.10.22 + ssh2 172.28.11.25 PASSWORD_ACCESS=true USER_PASSWORD=labpass; container listens 2222",
+      "nmap_detected": "port 2222 open x2 (not 22)",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "samba guest/writable",
+      "compose": "samba 10.50 + samba2 11.50 share guest=no users=lab (NOT guest). smb2-security-mode signing not required",
+      "nmap_detected": "smb2-security-mode ['172.28.10.50', '172.28.11.50']; ports 139/445 x2",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "anonymous ftp",
+      "compose": "ftp 172.28.10.21 Pure-FTPd FTP_USER_NAME=labftp (NOT anonymous)",
+      "nmap_detected": "port 21 open Pure-FTPd; ftp-anon script element ABSENT (correct)",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "mailhog open SMTP/UI",
+      "compose": "mailhog 172.28.10.25",
+      "nmap_detected": "1025 + 8025 open; http-title MailHog",
+      "on_findings": true,
+      "on_poam": true
+    },
+    {
+      "item": "published 8080",
+      "compose": "web-nginx host publish 8080:80; inside labnet the container is :80 not :8080",
+      "nmap_detected": "port 8080 count=0 (expected 0 on bridge); port 80 x28",
+      "on_findings": false,
+      "on_poam": false
+    }
+  ],
+  "nmap": {
+    "hosts_up": 48,
+    "open_ports": 51,
+    "ports": {
+      "80": 28,
+      "21": 1,
+      "2222": 2,
+      "1025": 1,
+      "8025": 1,
+      "27017": 2,
+      "3306": 2,
+      "139": 2,
+      "445": 2,
+      "5432": 2,
+      "6379": 8
+    },
+    "scripts": {
+      "http-server-header": 18,
+      "http-title": 29,
+      "ssl-enum-ciphers": 2,
+      "ssl-cert": 2,
+      "smb2-security-mode": 2,
+      "redis-info": 8,
+      "http-enum": 10,
+      "http-trane-info": 10,
+      "fingerprint-strings": 10
+    }
+  }
+}

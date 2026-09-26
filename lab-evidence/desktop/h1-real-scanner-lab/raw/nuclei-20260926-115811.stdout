@@ -1,0 +1,17 @@
+
+                     __     _
+   ____  __  _______/ /__  (_)
+  / __ \/ / / / ___/ / _ \/ /
+ / / / / /_/ / /__/ /  __/ /
+/_/ /_/\__,_/\___/_/\___/_/   v3.11.1
+
+		projectdiscovery.io
+
+[[31mERR[0m] Could not read nuclei-ignore file: open /root/.config/nuclei/.nuclei-ignore: no such file or directory
+[[31mERR[0m] Could not find template '/root/nuclei-templates': could not find file: open /root/nuclei-templates: no such file or directory
+[[31mERR[0m] Could not read nuclei-ignore file: open /root/.config/nuclei/.nuclei-ignore: no such file or directory
+[[34mINF[0m] Current nuclei version: v3.11.1 ([93munknown[0m) - remove '-duc' flag to enable update checks
+[[34mINF[0m] Current nuclei-templates version:  ([93munknown[0m) - remove '-duc' flag to enable update checks
+[[34mINF[0m] Targets loaded for current scan: 29
+[[34mINF[0m] Scan completed in 1.539559ms. No results found.
+[[1;31mFTL[0m] Could not run nuclei: no templates provided for scan
