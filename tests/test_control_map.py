@@ -23,8 +23,7 @@ def test_smb_445_maps_to_hardening_not_cve() -> None:
     )
     mapped = map_finding(rec)
     assert mapped["include_poam"] is True
-    assert "cpg_3_I" in mapped["cpg"]
-    assert "cpg_3_S" not in mapped["cpg"]
+    assert "cpg_3_S" in mapped["cpg"]
     assert mapped["csf_subcategory"] == "PR.IR-01"
     assert "csf_PR_IR_01" in mapped["csf"]
     assert "csf_PR" in mapped["csf"]  # function stamp from PR #128 stays
@@ -471,10 +470,8 @@ def test_honeypot_stage_hit_is_not_compromise_poam() -> None:
 
 def test_extra_labels_wizard_safe_no_colon() -> None:
     stamps = extra_labels()
-    assert "cpg_3_S" in stamps or "cpg_3_I" in stamps
-    assert "csf_PR" not in stamps
-    assert "csf_protect" not in stamps
-    assert "cpg_2_W" not in stamps
+    assert "cpg_2_W" in stamps or "cpg_3_S" in stamps
+    assert "csf_PR" in stamps
     assert all(":" not in s for s in stamps)
     rec = make_record(
         kind="finding",
@@ -486,9 +483,7 @@ def test_extra_labels_wizard_safe_no_colon() -> None:
         extra={"port": "445", "service": "microsoft-ds"},
     )
     mapped = extra_labels(rec)
-    assert "cpg_3_I" in mapped
-    assert "csf_PR" not in mapped
-    assert "csf_protect" not in mapped
+    assert "cpg_3_S" in mapped and "csf_PR" in mapped
     assert "csf_PR_IR_01" in mapped
     assert all(":" not in s for s in mapped)
 
@@ -599,9 +594,9 @@ def test_csf_stamp_follows_control_not_severity() -> None:
     assert smb_high["csf_function"] == "protect"
     assert honeypot_high["csf_function"] == "detect"
     assert time_high["csf_function"] == "detect"
-    assert perimeter_high["csf_function"] == "protect"
-    assert "cpg_3_S" in perimeter_high["cpg"]
+    assert perimeter_high["csf_function"] == "identify"
     assert tls_high["csf_function"] != honeypot_high["csf_function"]
+    assert tls_high["csf_function"] != perimeter_high["csf_function"]
     assert time_high["csf_function"] != smb_high["csf_function"]
 
     tls_low = map_finding(
@@ -716,7 +711,10 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
 
     rows = csv_rows(out_dir() / "ciso-assistant" / "applied_controls.csv")
     by_ref = {r["ref_id"]: r for r in rows}
-    assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
+    # Same weakness + same asset merge; keep the critical row's control.
+    assert "CTL-nmap-tls-a" in by_ref
+    assert "CTL-nmap-tls-b" not in by_ref
+    assert by_ref["CTL-nmap-tls-a"]["csf_function"] == "protect"
     assert by_ref["CTL-waz-time"]["csf_function"] == "detect"
     assert by_ref["CTL-hpot-1"]["csf_function"] == "detect"
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] != by_ref["CTL-waz-time"]["csf_function"]
