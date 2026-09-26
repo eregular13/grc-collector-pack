@@ -158,21 +158,18 @@ def write_fedramp_poam(
     *,
     decisions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Path]:
-    """Write FedRAMP CSV from the same included POA&M decisions when provided."""
+    """Write FedRAMP Open rows from the same included POA&M decisions only.
+
+    The ledger may still hold info / honeypot / lighter-excluded items for
+    coverage. Those never become Open rows. Open == poam.csv.
+    """
     open_rows: list[list[str]] = []
     closed_rows: list[list[str]] = []
     if decisions is not None:
         open_rows = [decision_to_row(row) for row in decisions]
-        for item in (ledger.get("items") or {}).values():
-            if str(item.get("status") or "") == "closed":
-                closed_rows.append(item_to_row(item))
-    else:
-        for item in (ledger.get("items") or {}).values():
-            row = item_to_row(item)
-            if str(item.get("status") or "") == "closed":
-                closed_rows.append(row)
-            else:
-                open_rows.append(row)
+    for item in (ledger.get("items") or {}).values():
+        if str(item.get("status") or "") == "closed":
+            closed_rows.append(item_to_row(item))
     for item in ledger.get("closed") or []:
         closed_rows.append(item_to_row(item))
     open_path = out_poam / FEDRAMP_CSV_NAME

@@ -801,7 +801,9 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extras.append(other_desc)
 
 
-def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def dedupe_weaknesses(
+    records: list[dict[str, Any]], drops: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     """Collapse same-issue-same-asset findings. Non-findings pass through in order."""
     out: list[dict[str, Any]] = []
     index: dict[tuple[str, str], dict[str, Any]] = {}
@@ -832,5 +834,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             index[key] = rec
             out.append(rec)
             continue
+        if drops is not None:
+            drops.append({"rec": rec, "survivor": existing})
         _merge_weakness(existing, rec)
     return out

@@ -1376,6 +1376,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
+        "DUPLICATE_INSTANCE",
     }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"

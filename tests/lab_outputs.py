@@ -57,6 +57,7 @@ def assert_lab() -> None:
         EXCLUDED_HEADER,
         POAM_HEADER,
         assert_count_consistency,
+        assert_flood_guard,
         assert_poam_fedramp_identity,
         assert_unique_weakness_asset,
     )
@@ -125,7 +126,11 @@ def assert_lab() -> None:
     assert excluded_path.is_file(), "poam/excluded.csv missing"
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
     assert int(summary.get("excluded") or 0) == len(excluded)
-    assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
+    assert_flood_guard(summary)
+    fg = summary["flood_guard"]
+    assert int(fg["findings_in"]) + int(fg.get("pending_carried") or 0) == len(poam) + len(
+        excluded
+    )
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()

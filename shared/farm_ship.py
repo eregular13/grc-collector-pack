@@ -19,6 +19,7 @@ from shared.ciso_shape import (
     CISO_HEADERS,
     POAM_HEADER,
     RegisterShapeError,
+    assert_flood_guard,
     assert_risk_register_and_poam,
     first_nonempty_line,
 )
@@ -222,6 +223,17 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError("FARM_SHIP_FAIL posted must be false")
     try:
         shape = assert_risk_register_and_poam(dest / "out")
+    except RegisterShapeError as exc:
+        raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
+    summary_path = dest / "out" / "summary.json"
+    if not summary_path.is_file():
+        raise FarmShipError("FARM_SHIP_FAIL missing summary.json")
+    try:
+        farm_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise FarmShipError(f"FARM_SHIP_FAIL summary.json garbage: {exc}") from exc
+    try:
+        assert_flood_guard(farm_summary)
     except RegisterShapeError as exc:
         raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
     if int(shape.get("findings") or 0) < 1:
