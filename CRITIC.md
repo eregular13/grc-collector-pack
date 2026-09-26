@@ -1,3 +1,14 @@
+# CRITIC — cycle 217 (CR7_BH_HIGH_VALUE)
+
+Lab this brick: pytest **1505** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. #177 `bh-high-value` keeps the group
+playbook + AC-2/AC-6; typed generic falls through to the title map.
+Sample generic count returns to 5. POA&M IDs unchanged. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 216 (B8_METIS_177_LOCATION_CHAIN)
 
 Lab this brick: pytest **1463** passed, 1 skipped. Ten collectors +
