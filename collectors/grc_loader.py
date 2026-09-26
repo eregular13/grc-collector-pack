@@ -11,7 +11,7 @@ from pathlib import Path
 
 from shared.control_map import extra_labels, map_finding
 from shared.evidence import build_evidence_rows
-from shared.finding_types import dedupe_weaknesses
+from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
@@ -98,8 +98,14 @@ def _asset_type(rec: dict) -> str:
 
 
 def _dedupe(records: list[dict]) -> list[dict]:
+    """Collapse exact dupes. Findings key on full identity + normalized asset.
+
+    SARIF/Trivy (and any source that stamps the same rule/CVE into ref_id via
+    ``slug(..., maxlen=48)``) must not drop a second host. Display slugs stay
+    truncated; this key uses the full extra.rule / extra.cve / check_id.
+    """
     assets: dict[str, dict] = {}
-    others: dict[tuple[str, str], dict] = {}
+    others: dict[tuple[str, ...], dict] = {}
     leftover: list[dict] = []
     for rec in records:
         kind = rec.get("kind")
@@ -110,6 +116,11 @@ def _dedupe(records: list[dict]) -> list[dict]:
                 assets[key] = rec
             continue
         ref = str(rec.get("ref_id") or "")
+        if kind == "finding" and (ref or finding_identity(rec)):
+            slot = (str(kind), finding_identity(rec) or ref.lower(), primary_asset(rec))
+            if slot not in others:
+                others[slot] = rec
+            continue
         if kind and ref:
             slot = (str(kind), ref.lower())
             if slot not in others:

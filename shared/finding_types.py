@@ -484,11 +484,36 @@ def primary_asset(rec: dict[str, Any]) -> str:
     return normalize_asset_id(extra.get("arn") or rec.get("name") or "")
 
 
+def finding_identity(rec: dict[str, Any]) -> str:
+    """Full rule/vuln/check id. Never a 48-char display slug.
+
+    Collectors store the raw SARIF rule, Trivy CVE, check_id, etc. in extra.
+    ``make_ref`` / ``slug(..., maxlen=48)`` is display-only and must not feed
+    this key — two long IDs that share a prefix would otherwise collide.
+    """
+    extra = extra_dict(rec)
+    for key in (
+        "check_id",
+        "rule",
+        "cve",
+        "template_id",
+        "plugin_id",
+        "nse_script",
+        "id",
+        "edge",
+        "control",
+    ):
+        val = str(extra.get(key) or "").strip()
+        if val:
+            return val.lower()
+    return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
+
+
 def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
-    """(normalized asset, finding type). Unknown types key on ref_id so they stay distinct."""
+    """(normalized asset, finding type or full identity). Asset is always in the key."""
     ftype = finding_type(rec)
     if not ftype or ftype == "unknown":
-        ftype = str(rec.get("ref_id") or rec.get("name") or "finding").lower()
+        ftype = finding_identity(rec) or "finding"
     return (primary_asset(rec), ftype)
 
 

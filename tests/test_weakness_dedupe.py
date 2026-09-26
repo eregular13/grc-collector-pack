@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
-from shared.finding_types import dedupe_key, dedupe_weaknesses, finding_type, normalize_asset_id
-from shared.schema import make_record
+from collectors.grc_loader import _dedupe, load
+from shared.finding_types import (
+    dedupe_key,
+    dedupe_weaknesses,
+    finding_identity,
+    finding_type,
+    normalize_asset_id,
+)
+from shared.io_util import write_canonical
+from shared.schema import make_record, make_ref, slug
 
 
 def _finding(**kwargs):
@@ -120,6 +128,203 @@ def test_dcsync_same_principal_merges() -> None:
     assert len(merged) == 1
     assert "ID-dcsync-2" in (merged[0]["extra"].get("also_ids") or [])
     assert "ace" in (merged[0].get("labels") or [])
+
+
+def test_sarif_same_rule_two_hosts_stay_two_weaknesses() -> None:
+    """SARIF ref_id is the rule slug only — second host must not be dropped."""
+    rule = "python.lang.security.audit.sql-injection"
+    a = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id=make_ref("code-secrets", rule),
+        name="Possible SQL injection via string format",
+        description="SARIF rule on payments/query.py",
+        severity="high",
+        category="sast",
+        assets=["services/payments/query.py"],
+        extra={"rule": rule},
+        labels=["sarif"],
+    )
+    b = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id=make_ref("code-secrets", rule),
+        name="Possible SQL injection via string format",
+        description="SARIF rule on auth/login.py",
+        severity="high",
+        category="sast",
+        assets=["services/auth/login.py"],
+        extra={"rule": rule},
+        labels=["sarif"],
+    )
+    assert a["ref_id"] == b["ref_id"]
+    kept = [r for r in _dedupe([a, b]) if r.get("kind") == "finding"]
+    assert len(kept) == 2
+    merged = [r for r in dedupe_weaknesses(_dedupe([a, b])) if r.get("kind") == "finding"]
+    assert len(merged) == 2
+    assert {normalize_asset_id(r["assets"][0]) for r in merged} == {
+        "services/payments/query.py",
+        "services/auth/login.py",
+    }
+
+
+def test_trivy_same_cve_two_images_stay_two_weaknesses() -> None:
+    cve = "CVE-2023-44270"
+    alpine = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id=make_ref("vuln-scan", cve),
+        name="postcss line return parsing",
+        description="Affected alpine image.",
+        severity="medium",
+        category="vulnerability",
+        assets=["alpine:3.19"],
+        extra={"cve": cve, "pkg": "postcss"},
+        labels=["trivy"],
+    )
+    debian = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id=make_ref("vuln-scan", cve),
+        name="postcss line return parsing",
+        description="Affected debian image.",
+        severity="medium",
+        category="vulnerability",
+        assets=["debian:12"],
+        extra={"cve": cve, "pkg": "postcss"},
+        labels=["trivy"],
+    )
+    assert alpine["ref_id"] == debian["ref_id"]
+    kept = [r for r in _dedupe([alpine, debian]) if r.get("kind") == "finding"]
+    assert len(kept) == 2
+    merged = [r for r in dedupe_weaknesses(_dedupe([alpine, debian])) if r.get("kind") == "finding"]
+    assert len(merged) == 2
+    assert {normalize_asset_id(r["assets"][0]) for r in merged} == {"alpine:3.19", "debian:12"}
+
+
+def test_long_ids_sharing_first_48_chars_do_not_collide() -> None:
+    prefix = "python.lang.security.audit.sql-injection-via-string-format-extra"
+    id_a = f"{prefix}-suffix-alpha"
+    id_b = f"{prefix}-suffix-bravo"
+    assert slug(id_a) == slug(id_b)
+    assert make_ref("code-secrets", id_a) == make_ref("code-secrets", id_b)
+    assert finding_identity({"extra": {"rule": id_a}}) != finding_identity({"extra": {"rule": id_b}})
+    a = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id=make_ref("code-secrets", id_a),
+        name="SQL injection A",
+        severity="high",
+        category="sast",
+        assets=["repo/a.py"],
+        extra={"rule": id_a},
+    )
+    b = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id=make_ref("code-secrets", id_b),
+        name="SQL injection B",
+        severity="high",
+        category="sast",
+        assets=["repo/a.py"],
+        extra={"rule": id_b},
+    )
+    assert a["ref_id"] == b["ref_id"]
+    kept = [r for r in _dedupe([a, b]) if r.get("kind") == "finding"]
+    assert len(kept) == 2
+    merged = [r for r in dedupe_weaknesses(_dedupe([a, b])) if r.get("kind") == "finding"]
+    assert len(merged) == 2
+
+
+def test_true_duplicate_same_id_same_asset_collapses() -> None:
+    rule = "python.lang.security.audit.sql-injection"
+    first = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id=make_ref("code-secrets", rule),
+        name="Possible SQL injection",
+        severity="high",
+        category="sast",
+        assets=["services/payments/query.py"],
+        extra={"rule": rule},
+        labels=["sarif"],
+    )
+    second = make_record(
+        kind="finding",
+        source="code-secrets",
+        ref_id=make_ref("code-secrets", rule),
+        name="Possible SQL injection",
+        severity="high",
+        category="sast",
+        assets=["services/payments/query.py"],
+        extra={"rule": rule},
+        labels=["sarif", "retry"],
+    )
+    kept = [r for r in _dedupe([first, second]) if r.get("kind") == "finding"]
+    assert len(kept) == 1
+    merged = [r for r in dedupe_weaknesses(_dedupe([first, second])) if r.get("kind") == "finding"]
+    assert len(merged) == 1
+
+
+def test_loader_sarif_two_hosts_and_trivy_two_images_count(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    rule = "python.lang.security.audit.sql-injection"
+    cve = "CVE-2023-44270"
+    write_canonical(
+        "code-secrets",
+        [
+            make_record(
+                kind="finding",
+                source="code-secrets",
+                ref_id=make_ref("code-secrets", rule),
+                name="Possible SQL injection",
+                severity="high",
+                category="sast",
+                assets=["services/payments/query.py"],
+                extra={"rule": rule},
+            ),
+            make_record(
+                kind="finding",
+                source="code-secrets",
+                ref_id=make_ref("code-secrets", rule),
+                name="Possible SQL injection",
+                severity="high",
+                category="sast",
+                assets=["services/auth/login.py"],
+                extra={"rule": rule},
+            ),
+        ],
+    )
+    write_canonical(
+        "vuln-scan",
+        [
+            make_record(
+                kind="finding",
+                source="vuln-scan",
+                ref_id=make_ref("vuln-scan", cve),
+                name="postcss",
+                severity="high",
+                category="vulnerability",
+                assets=["alpine:3.19"],
+                extra={"cve": cve},
+            ),
+            make_record(
+                kind="finding",
+                source="vuln-scan",
+                ref_id=make_ref("vuln-scan", cve),
+                name="postcss",
+                severity="high",
+                category="vulnerability",
+                assets=["debian:12"],
+                extra={"cve": cve},
+            ),
+        ],
+    )
+    summary = load()
+    assert summary["weaknesses"] == 4
+    assert summary["vulnerabilities"] == 4
+    assert summary["findings"] == 0
+    assert summary["risk_scenarios"] == 4
 
 
 def test_non_findings_pass_through() -> None:
