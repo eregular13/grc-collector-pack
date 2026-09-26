@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -338,6 +339,10 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_bytes(blob: bytes) -> str:
+    return hashlib.sha256(blob).hexdigest()
+
+
 def _hashable_file(path: Path) -> bool:
     if not path.is_file():
         return False
@@ -346,8 +351,90 @@ def _hashable_file(path: Path) -> bool:
     return path.name not in _HASH_SKIP_NAMES
 
 
+def _try_canonical_json(text: str) -> bytes | None:
+    stripped = text.lstrip()
+    if not stripped or stripped[0] not in "{[":
+        return None
+    try:
+        obj = json.loads(text)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+    return (
+        json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+            "utf-8"
+        )
+        + b"\n"
+    )
+
+
+def _try_canonical_jsonl(text: str) -> bytes | None:
+    rows = [ln.strip() for ln in text.split("\n") if ln.strip()]
+    if len(rows) < 2:
+        return None
+    objs: list[Any] = []
+    for ln in rows:
+        if ln[0] not in "{[":
+            return None
+        try:
+            objs.append(json.loads(ln))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+    out = bytearray()
+    for obj in objs:
+        out.extend(
+            json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+                "utf-8"
+            )
+        )
+        out.extend(b"\n")
+    return bytes(out)
+
+
+def normalize_fixture_bytes(data: bytes) -> bytes:
+    """Strip BOM / EOL / trailing blank lines; canonicalize JSON(L) when parseable.
+
+    Binary (NUL) bytes stay raw. Decode failure returns the original bytes so
+    the raw hash still matches an exact fixture copy.
+    """
+    if b"\x00" in data[:8192]:
+        return data
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ln.rstrip(" \t") for ln in text.split("\n")]
+    while lines and lines[0] == "":
+        lines.pop(0)
+    while lines and lines[-1] == "":
+        lines.pop()
+    joined = "\n".join(lines)
+    canon = _try_canonical_json(joined)
+    if canon is not None:
+        return canon
+    canon_l = _try_canonical_jsonl(joined)
+    if canon_l is not None:
+        return canon_l
+    return (joined + ("\n" if joined else "")).encode("utf-8")
+
+
+def file_content_fingerprints(path: Path) -> frozenset[str]:
+    """Raw SHA-256 plus normalized content hash. Empty if the file is unreadable."""
+    try:
+        data = path.read_bytes()
+        raw = _sha256_file(path)
+    except OSError:
+        return frozenset()
+    return frozenset({raw, _sha256_bytes(normalize_fixture_bytes(data))})
+
+
 def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
-    """SHA-256 set of bundled files under fixtures/. Cached for the process."""
+    """SHA-256 set of bundled fixture fingerprints. Cached for the process.
+
+    Catalog includes raw bytes and a whitespace/JSON-normalized hash so a
+    SAMPLE copy that only gained a trailing newline cannot claim CLIENT.
+    """
     global _FIXTURE_HASH_CACHE
     if fixtures_root is None and _FIXTURE_HASH_CACHE is not None:
         return _FIXTURE_HASH_CACHE
@@ -363,10 +450,7 @@ def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
             for path in root.rglob("*"):
                 if not _hashable_file(path):
                     continue
-                try:
-                    found.add(_sha256_file(path))
-                except OSError:
-                    continue
+                found.update(file_content_fingerprints(path))
         except OSError:
             pass
     result = frozenset(found)
@@ -380,29 +464,39 @@ def in_dir_fixture_hits(
     *,
     fixtures_root: Path | None = None,
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """Return (fixture-matching relative paths, other input relative paths)."""
+    """Return (fixture-matching relative paths, other input relative paths).
+
+    Unreadable inputs and an empty fixture catalog fail closed: every scanner
+    drop is treated as a fixture hit so classify_estate cannot claim CLIENT.
+    """
     if in_path is None or not in_path.is_dir():
         return (), ()
     catalog = fixture_content_hashes(fixtures_root)
-    if not catalog:
-        return (), ()
     hits: list[str] = []
     others: list[str] = []
     try:
-        for path in in_path.rglob("*"):
-            if not _hashable_file(path):
-                continue
-            try:
-                digest = _sha256_file(path)
-                rel = str(path.relative_to(in_path)).replace("\\", "/")
-            except OSError:
-                continue
-            if digest in catalog:
-                hits.append(rel)
-            else:
-                others.append(rel)
+        paths = [p for p in in_path.rglob("*") if _hashable_file(p)]
     except OSError:
-        return (), ()
+        return ("<unreadable>",), ()
+    if not catalog and paths:
+        rels = []
+        for path in paths:
+            try:
+                rels.append(str(path.relative_to(in_path)).replace("\\", "/"))
+            except OSError:
+                rels.append(path.name)
+        return tuple(rels), ()
+    for path in paths:
+        try:
+            rel = str(path.relative_to(in_path)).replace("\\", "/")
+        except OSError:
+            hits.append(path.name)
+            continue
+        fps = file_content_fingerprints(path)
+        if not fps or (fps & catalog):
+            hits.append(rel)
+        else:
+            others.append(rel)
     return tuple(hits), tuple(others)
 
 

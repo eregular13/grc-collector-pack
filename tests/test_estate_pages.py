@@ -27,8 +27,12 @@ from shared.estate_pages import (
     EstateStamp,
     PageContext,
     _engagement_window,
+    _sha256_bytes,
     assert_client_export_honesty,
     classify_estate,
+    file_content_fingerprints,
+    in_dir_fixture_hits,
+    normalize_fixture_bytes,
     parse_out_of_scope_names,
     parse_scope_table_areas,
     write_client_pages,
@@ -618,6 +622,101 @@ def test_fixtures_plus_client_label_is_sample_or_mixed(
         assert SENTENCE_FOR_KIND["CLIENT"] not in blob
     assert SAMPLE_AUTH in trust
     assert "Authorized by: not recorded" not in trust
+
+
+def test_newline_mutated_sample_fixtures_cannot_claim_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CR6-3: one extra newline per SAMPLE file must not print CLIENT: AcmeHealth."""
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "cloud").mkdir(parents=True)
+    txt = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    js = ROOT / "fixtures" / "samples" / "cloud" / "s3-encryption-missing" / "metadata.json"
+    (dest_in / "nmap" / "fping-a.txt").write_bytes(txt.read_bytes() + b"\n")
+    pretty = js.read_text(encoding="utf-8").replace("\n", "\r\n") + " \n"
+    (dest_in / "cloud" / "metadata.json").write_text(pretty, encoding="utf-8")
+    assert (dest_in / "nmap" / "fping-a.txt").read_bytes() != txt.read_bytes()
+
+    hits, others = in_dir_fixture_hits(dest_in)
+    assert "nmap/fping-a.txt" in hits
+    assert "cloud/metadata.json" in hits
+    assert others == ()
+
+    env = {
+        **_CLIENT_AUTH_ENV,
+        "GRC_CLIENT_NAME": "AcmeHealth",
+    }
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env=env,
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+    assert not stamp.label.startswith("CLIENT:")
+    assert stamp.label != "CLIENT: AcmeHealth"
+
+    out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], **env)
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert summary["estate_kind"] in {"SAMPLE", "MIXED"}
+    assert summary.get("client") is False
+    assert not exec_text.splitlines()[0].startswith("> **CLIENT:")
+    assert "CLIENT: AcmeHealth" not in exec_text
+
+
+def test_normalized_fingerprint_matches_trailing_whitespace() -> None:
+    src = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    raw = src.read_bytes()
+    mutated = raw.rstrip(b"\n") + b"\n\n"
+    assert normalize_fixture_bytes(raw) == normalize_fixture_bytes(mutated)
+    fps = file_content_fingerprints(src)
+    assert _sha256_bytes(normalize_fixture_bytes(mutated)) in fps
+
+
+def test_empty_fixture_catalog_fail_closed_not_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "nmap" / "live.xml").write_text(
+        "<nmaprun unique='unsure-catalog'/>\n", encoding="utf-8"
+    )
+    empty = tmp_path / "no-fixtures"
+    empty.mkdir()
+    hits, others = in_dir_fixture_hits(dest_in, fixtures_root=empty)
+    assert hits
+    assert others == ()
+    monkeypatch.setattr(
+        "shared.estate_pages.fixture_content_hashes", lambda *a, **k: frozenset()
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+    assert not stamp.label.startswith("CLIENT:")
+
+
+def test_unique_live_drop_with_auth_still_client(tmp_path: Path) -> None:
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "nmap" / "live.xml").write_text(
+        "<nmaprun unique='not-a-pack-fixture'/>\n", encoding="utf-8"
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind == "CLIENT"
+    assert stamp.label == "CLIENT: AcmeHealth"
 
 
 def test_empty_client_without_auth_does_not_claim_client_deliverable(
