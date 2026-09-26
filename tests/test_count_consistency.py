@@ -57,6 +57,9 @@ def test_lab_demo_fixture_counts_agree(tmp_path: Path, monkeypatch: pytest.Monke
     assert summary["risk_scenarios"] == summary["weaknesses"] == shape["weaknesses"]
     assert summary["poam"] == summary["open_risks"] == shape["poam"]
     assert summary["findings"] + summary["vulnerabilities"] == summary["weaknesses"]
+    assert "incidents" not in summary
+    assert "risks_proposed" not in summary
+    assert not (tmp_path / "riskready").exists()
     raw = [r for r in cloud + identity + k8s if r.get("kind") == "finding"]
     deduped = [r for r in dedupe_weaknesses(raw) if r.get("kind") == "finding"]
     assert summary["weaknesses"] == len(deduped)
@@ -79,6 +82,9 @@ def test_sample_keep_fixture_counts_agree(tmp_path: Path, monkeypatch: pytest.Mo
     assert summary["poam"] == summary["open_risks"] == shape["poam"]
     assert summary["risk_scenarios"] == summary["weaknesses"]
     assert summary["findings"] + summary["vulnerabilities"] == summary["weaknesses"]
+    assert "incidents" not in summary
+    assert "risks_proposed" not in summary
+    assert not (tmp_path / "riskready").exists()
 
 
 def test_farm_drop_nmap_counts_agree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -97,3 +103,6 @@ def test_farm_drop_nmap_counts_agree(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert summary["poam"] == summary["open_risks"] == shape["poam"]
     assert summary["risk_scenarios"] == summary["weaknesses"]
     assert summary["findings"] + summary["vulnerabilities"] == summary["weaknesses"]
+    assert "incidents" not in summary
+    assert "risks_proposed" not in summary
+    assert not (tmp_path / "riskready").exists()

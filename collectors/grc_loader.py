@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Normalize canonical JSONL into CISO Assistant + RiskReady + OCSF outputs."""
+"""Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
+
+RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
+is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+"""
 
 from __future__ import annotations
 
 import csv
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,7 +44,6 @@ from shared.schema import (
     ciso_vuln_severity,
     control_priority,
     residual_level,
-    rr_likelihood_impact,
     scenario_level,
     slug,
 )
@@ -213,7 +217,6 @@ def load() -> dict:
     estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
-    incidents = [r for r in records if r.get("kind") == "incident"]
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
     severity_unmapped = sum(
         1
@@ -425,77 +428,10 @@ def load() -> dict:
         stamp.banner_md()
         + "\n\n# SimpleRisk leave-behind\n\n"
         "Copy of POA&M rows under `out/` only. No SimpleRisk API. No push.\n"
-        "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n",
+        "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n"
+        "RiskReady JSON is not generated. Count identity is CISO register + POA&M.\n",
     )
     write_estate_sidecar(out_sr, stamp)
-
-    rr_assets = []
-    for rec in assets:
-        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-        atype = _asset_type(rec)
-        service = str(extra.get("service") or extra.get("cloudProvider") or "").lower()
-        cloud = "NONE"
-        if "aws" in service or str(extra.get("arn") or "").startswith("arn:aws"):
-            cloud = "AWS"
-        elif "azure" in service:
-            cloud = "AZURE"
-        elif "gcp" in service:
-            cloud = "GCP"
-        rr_type = "Identity" if atype == "SP" else ("Cloud" if cloud != "NONE" else "Server")
-        crit = "HIGH" if rec.get("severity") in {"high", "critical"} else "MEDIUM"
-        rr_assets.append(
-            {
-                "name": rec.get("name"),
-                "assetType": extra.get("assetType") or rr_type,
-                "status": "ACTIVE",
-                "businessCriticality": extra.get("businessCriticality") or crit,
-                "dataClassification": extra.get("dataClassification") or "INTERNAL",
-                "cloudProvider": extra.get("cloudProvider") or cloud,
-                "inIsmsScope": True,
-                "source": rec.get("source"),
-                "notes": rec.get("description") or "",
-            }
-        )
-
-    rr_incidents = []
-    for rec in incidents:
-        rr_incidents.append(_incident(rec))
-    for rec in findings:
-        if str(rec.get("severity")) in {"high", "critical"}:
-            rr_incidents.append(_incident(rec))
-
-    rr_evidence = []
-    for name, desc in evidence_rows:
-        src = str(name).split(" ")[0]
-        rr_evidence.append(
-            {
-                "title": name,
-                "description": desc,
-                "evidenceType": "TECHNICAL",
-                "sourceType": "SENSOR",
-                "status": "DRAFT",
-                "source": src,
-            }
-        )
-
-    proposed = []
-    for rec in findings:
-        if str(rec.get("severity")) not in {"high", "critical"}:
-            continue
-        like, impact = rr_likelihood_impact(rec.get("severity"))
-        proposed.append(
-            {
-                "ref_id": rec.get("ref_id"),
-                "name": rec.get("name"),
-                "description": rec.get("description"),
-                "likelihood": like,
-                "impact": impact,
-                "severity": rec.get("severity"),
-                "assets": rec.get("assets") or [],
-                "source": rec.get("source"),
-                "treatment": "mitigate",
-            }
-        )
 
     ocsf = []
     for rec in other_findings:
@@ -522,12 +458,10 @@ def load() -> dict:
             }
         )
 
-    out_rr = out_dir() / "riskready"
-    write_json(out_rr / "assets.json", rr_assets)
-    write_json(out_rr / "incidents.json", rr_incidents)
-    write_json(out_rr / "evidence.json", rr_evidence)
-    write_json(out_rr / "risks_proposed.json", proposed)
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
+    leftover_rr = out_dir() / "riskready"
+    if leftover_rr.exists():
+        shutil.rmtree(leftover_rr)
 
     excluded_poam = max(0, len(other_findings) + len(vuln_findings) - len(poam_rows))
     sensor_rows = load_sensor_coverage(out_dir())
@@ -544,8 +478,6 @@ def load() -> dict:
         "poam_included": breakdown["poam_included"],
         "excluded_by_reason": breakdown["excluded_by_reason"],
         "open_risks": len(poam_rows),
-        "incidents": len(rr_incidents),
-        "risks_proposed": len(proposed),
         "ocsf": len(ocsf),
         "canonical": len(records),
         "severity_unmapped": severity_unmapped,
@@ -596,7 +528,8 @@ def load() -> dict:
         + json.dumps(summary, indent=2)
         + "\n\nGenerated by grc-loader. Demo mode. No live scan. No /api/risks POST.\n"
         + "POA&M: out/poam/poam.csv — owner/due blank for a human.\n"
-        + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n",
+        + "SimpleRisk leave-behind: out/simplerisk/ — no API.\n"
+        + "RiskReady JSON is not generated. Never POST /api/risks.\n",
     )
     write_export_manifest(out_dir(), stamp)
     return summary
@@ -604,17 +537,6 @@ def load() -> dict:
 
 def make_fallback_ref(rec: dict) -> str:
     return slug(str(rec.get("name") or "asset"))
-
-
-def _incident(rec: dict) -> dict:
-    return {
-        "title": rec.get("name"),
-        "description": rec.get("description"),
-        "severity": str(rec.get("severity") or "medium").upper(),
-        "status": "OPEN",
-        "source": rec.get("source"),
-        "relatedAssets": rec.get("assets") or [],
-    }
 
 
 def main() -> None:
