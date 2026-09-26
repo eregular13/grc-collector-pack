@@ -7,7 +7,7 @@ Administrator as `entra_ga_pim`; merge Scuba/Graph/BloodHound on the
 UPN; alias merged-away EGP- IDs (`merged_away_alias`) before #184's
 excluded_reason loop. Exec names `Open POA&M (poam.csv): N`. No
 FedRAMP rewrite. No port/identity dedupe. AC-5 left as-is. Pytest
-**1510**. Host-lab 79 / 103 / poam 119 / excluded 6. Farm FedRAMP
+**1523**. Host-lab 79 / 103 / poam 119 / excluded 6. Farm FedRAMP
 Open == poam.csv. Farm ledger Open **109**. Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 

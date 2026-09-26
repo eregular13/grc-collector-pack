@@ -1,6 +1,6 @@
 # CRITIC — cycle 218 (SLIM_REGISTER_GA_UPN_ALIAS)
 
-Lab this brick: pytest **1510** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1523** passed, 1 skipped. Ten collectors +
 honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
 `findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
 `demo=true`). Zero P0/P1. Slim #192 rebased onto `ce67328` (#188):
