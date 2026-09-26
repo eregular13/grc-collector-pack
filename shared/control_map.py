@@ -2128,6 +2128,32 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     }
 
 
+INCLUDED_TREATMENT = "mitigate"
+EXCLUDED_TREATMENT = "accept"
+
+
+def risk_register_treatment(decision: dict[str, Any]) -> dict[str, Any]:
+    """How risk_scenarios.csv writes a row for this POA&M decision.
+
+    Included weaknesses stay mitigate + CTL- + residual step-down.
+    Excluded rows (honeypot, not_a_weakness, telemetry, info, superseded, …)
+    are accept with the exclusion reason. No CTL- and residual stays current —
+    the register must not invent a mitigation for something off the plan.
+    """
+    if decision.get("include"):
+        return {
+            "treatment": INCLUDED_TREATMENT,
+            "existing_controls": "",
+            "attach_control": True,
+        }
+    reason = str(decision.get("reason") or "unexplained")
+    return {
+        "treatment": EXCLUDED_TREATMENT,
+        "existing_controls": f"excluded:{reason}",
+        "attach_control": False,
+    }
+
+
 def iter_poam_decisions(
     findings: list[dict[str, Any]], *, lighter: bool | None = None
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:

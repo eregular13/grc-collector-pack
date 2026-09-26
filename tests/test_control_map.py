@@ -689,6 +689,7 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
             name="TLS expired on vpn.example.com",
             description="https listener presents an expired certificate.",
             severity="low",
+            assets=["host-b"],
             extra={"port": "443", "service": "https"},
         ),
         _finding(
@@ -718,5 +719,5 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
     by_ref = {r["ref_id"]: r for r in rows}
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
     assert by_ref["CTL-waz-time"]["csf_function"] == "detect"
-    assert by_ref["CTL-hpot-1"]["csf_function"] == "detect"
+    assert "CTL-hpot-1" not in by_ref
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] != by_ref["CTL-waz-time"]["csf_function"]
