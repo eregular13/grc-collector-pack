@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
+
+Wire Lynis (GPLv3) + OpenSCAP/SSG (LGPL/BSD) into the LAB dest_in
+drop beside nmap pack_drop. Mapped Lynis warnings/suggestions and
+oscap fail/error become findings (hardening index is a score). LAB
+label on every row; LAB cannot enter KEEP / keep_real. Not a CIS
+benchmark. Lab runner under `lab-estate/` (DESKTOP PowerShell).
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+
 ## cycle 187 — MCP_LAB_DROP_AUTO_HINT LAST_LAB_PROVE / console without hand OUT_DIR (2026-09-22)
 
 MCP `lab_drop` without `work`/`dest_in` auto-hints `LAST_LAB_PROVE` /

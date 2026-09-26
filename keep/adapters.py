@@ -22,6 +22,15 @@ SAMPLE_MARKERS = (
     "sample-scout-public",
 )
 
+LAB_MARKERS = (
+    "LAB/DEMO",
+    '"lab": true',
+    "LAB dest_in",
+    "Scan-shaped compose-lab",
+    "LAB != SAMPLE",
+    "LAB -- not a client",
+)
+
 # fixtures/demo KEEP-shaped files are a different estate. They must not
 # flip client_keep just because they lack the keep-samples banner.
 DEMO_MARKERS = (
@@ -63,17 +72,37 @@ def is_sample_text(text: str) -> bool:
     return any(marker in blob for marker in SAMPLE_MARKERS + DEMO_MARKERS)
 
 
+def is_lab_text(text: str) -> bool:
+    blob = text or ""
+    return any(marker in blob for marker in LAB_MARKERS)
+
+
+def pack_in_is_lab(folder: Path) -> bool:
+    """True when dest_in/pack in/ is a LAB tree. LAB never counts as KEEP."""
+    dest = Path(folder)
+    if (dest / "LAB.txt").is_file():
+        return True
+    for path in dest.rglob("LAB.txt"):
+        if path.is_file():
+            return True
+    return False
+
+
 def sample_as_client_reason(
     rows: list[dict[str, Any]],
     *,
     sample: bool,
     client_keep: bool,
 ) -> str | None:
-    """Fail-closed when SAMPLE/DEMO would stamp as a client KEEP drop."""
+    """Fail-closed when SAMPLE/DEMO/LAB would stamp as a client KEEP drop."""
     if client_keep and sample:
         return "SAMPLE/DEMO cannot stamp client_keep"
     if client_keep and any(row.get("sample") for row in rows):
         return "sample-marked KEEP file cannot stamp client_keep"
+    if client_keep and any(row.get("lab") for row in rows):
+        return "LAB cannot stamp client_keep"
+    if client_keep and any(is_lab_text(str(row.get("path") or "")) for row in rows):
+        return "LAB cannot stamp client_keep"
     return None
 
 

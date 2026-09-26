@@ -11,8 +11,12 @@ from pathlib import Path
 from typing import Any
 
 from shared.cis_cat import is_cis_cat, iter_cis_failures
+from shared.hardening_dedup import dedupe_hardening
+from shared.hardening_map import extra_control_fields, lynis_control
 from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
+from shared.openscap import is_openscap, iter_openscap_failures
 from shared.osquery_checks import iter_osquery_failures
 from shared.schema import make_record, make_ref
 
@@ -123,28 +127,69 @@ def _failing_policies(payload: Any) -> list[dict[str, Any]]:
 
 
 _LYNIS_BANG = re.compile(r"^!\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
-_LYNIS_DAT = re.compile(r"^warning\[\]=([^|]+)\|(.+)$", re.I)
+_LYNIS_STAR = re.compile(r"^\*\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
+_LYNIS_DAT = re.compile(r"^(warning|suggestion)\[\]=([^|]+)\|(.+)$", re.I)
 _LYNIS_HOST = re.compile(r"(?im)^(?:hostname\s*[:=]\s*|hostname\s+)(\S+)")
+_LYNIS_INDEX = re.compile(r"(?im)^hardening_index\s*[:=]\s*(\d+)")
 
 
-def parse_lynis_report(text: str, now: str) -> list[dict]:
-    """Parse a Lynis report or report.dat. Warnings only. No invented hosts."""
+def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[dict]:
+    """Parse a Lynis report or report.dat.
+
+    Warnings and suggestions become findings only when they have a clear
+    control mapping. Hardening index is a score on the asset, not a finding.
+    No invented hosts.
+    """
     host = "lynis-host"
     mhost = _LYNIS_HOST.search(text)
     if mhost:
         host = mhost.group(1).strip().strip("\"'")
-    warnings: list[tuple[str, str]] = []
+    index_match = _LYNIS_INDEX.search(text)
+    hardening_index = int(index_match.group(1)) if index_match else None
+    rows: list[tuple[str, str, str]] = []
     for line in text.splitlines():
         raw = line.strip()
         bang = _LYNIS_BANG.match(raw)
         if bang:
-            warnings.append((bang.group(2), bang.group(1)))
+            rows.append(("warning", bang.group(2), bang.group(1)))
+            continue
+        star = _LYNIS_STAR.match(raw)
+        if star:
+            rows.append(("suggestion", star.group(2), star.group(1)))
             continue
         dat = _LYNIS_DAT.match(raw)
         if dat:
-            warnings.append((dat.group(1).strip(), dat.group(2).strip()))
-    if not warnings:
+            title = dat.group(3).split("|", 1)[0].strip()
+            rows.append((dat.group(1).lower(), dat.group(2).strip(), title))
+    mapped: list[tuple[str, str, str, str]] = []
+    for kind, cid, title in rows:
+        control = lynis_control(cid, title)
+        if not control:
+            continue
+        mapped.append((kind, cid, title, control))
+    if not mapped and hardening_index is None:
         return []
+    if not mapped:
+        # Score-only report: asset with index, no invented findings.
+        extra = {"asset_type": "PR", "hardening_index": hardening_index, "tool": "lynis"}
+        records = [
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{host}"),
+                name=host,
+                description=f"Lynis-audited host {host} (hardening_index={hardening_index})",
+                category="host",
+                assets=[host],
+                labels=LABELS + ["lynis"],
+                collected_at=now,
+                extra=extra,
+            )
+        ]
+        return stamp_lab_labels(records, lab=path_is_lab(path))
+    extra_asset: dict = {"asset_type": "PR", "tool": "lynis"}
+    if hardening_index is not None:
+        extra_asset["hardening_index"] = hardening_index
     records = [
         make_record(
             kind="asset",
@@ -156,15 +201,17 @@ def parse_lynis_report(text: str, now: str) -> list[dict]:
             assets=[host],
             labels=LABELS + ["lynis"],
             collected_at=now,
-            extra={"asset_type": "PR"},
+            extra=extra_asset,
         )
     ]
     seen: set[str] = set()
-    for cid, title in warnings:
+    for kind, cid, title, control in mapped:
         key = f"{cid}-{host}"
         if key in seen:
             continue
         seen.add(key)
+        extra = extra_control_fields(control)
+        extra.update({"check_id": cid, "id": cid, "lynis_kind": kind, "tool": "lynis"})
         records.append(
             make_record(
                 kind="finding",
@@ -177,10 +224,57 @@ def parse_lynis_report(text: str, now: str) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["lynis"],
                 collected_at=now,
-                extra={"check_id": cid, "id": cid},
+                extra=extra,
             )
         )
-    return records
+    return stamp_lab_labels(records, lab=path_is_lab(path))
+
+
+def _emit_openscap_rows(rows: list[dict], now: str, path: Path | None = None) -> list[dict]:
+    records: list[dict] = []
+    seen_hosts: set[str] = set()
+    for row in rows:
+        host = str(row.get("host") or "openscap-host")
+        hid = str(row.get("id") or row.get("short_id") or "oscap")
+        title = str(row.get("title") or hid)
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"OpenSCAP-audited host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + ["openscap", "ssg"],
+                    collected_at=now,
+                    extra={"asset_type": "PR", "tool": "openscap"},
+                )
+            )
+        extra = dict(row.get("extra") or {})
+        extra.setdefault("rule_id", hid)
+        extra.setdefault("id", hid)
+        extra.setdefault("check_id", row.get("short_id") or hid)
+        extra.setdefault("ssg_references", row.get("references") or [])
+        extra.setdefault("tool", "openscap")
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"oscap-{hid}-{host}"),
+                name=f"OpenSCAP {row.get('short_id') or hid}: {title}",
+                description=title,
+                severity=str(row.get("severity") or "medium"),
+                category="host-posture",
+                assets=[host],
+                labels=LABELS + ["openscap", "ssg"],
+                collected_at=now,
+                extra=extra,
+            )
+        )
+    return stamp_lab_labels(records, lab=path_is_lab(path))
 
 
 def _emit_check_rows(
@@ -352,14 +446,18 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
 
 
 def parse_file(path: Path) -> list[dict]:
+    if path.name in SKIP_INPUT_NAMES:
+        return []
     if path.suffix.lower() in {".txt", ".log", ".dat"}:
-        return parse_lynis_report(read_text(path), iso_now())
+        return parse_lynis_report(read_text(path), iso_now(), path=path)
     text = read_text(path)
     now = iso_now()
     if path.suffix.lower() == ".csv":
         mdm = parse_mdm_file(path)
         return _emit_mdm_inventory(mdm, now) if mdm else []
     if path.suffix.lower() == ".xml" or text.lstrip().startswith("<"):
+        if is_openscap(name=path.name, text=text):
+            return _emit_openscap_rows(iter_openscap_failures(text), now, path=path)
         if is_cis_cat(name=path.name, text=text):
             return _emit_check_rows(
                 iter_cis_failures(text=text),
@@ -371,6 +469,8 @@ def parse_file(path: Path) -> list[dict]:
         return []
     payload = read_json(path)
     records: list[dict] = []
+    if is_openscap(payload, name=path.name, text=text):
+        return _emit_openscap_rows(iter_openscap_failures(text), now, path=path)
     if is_cis_cat(payload, name=path.name, text=text):
         records.extend(
             _emit_check_rows(
@@ -531,7 +631,12 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".xml", ".txt", ".log", ".dat", ".csv"), parse_file)
+    run_collector(
+        SOURCE,
+        (".json", ".xml", ".txt", ".log", ".dat", ".csv"),
+        parse_file,
+        finalize=dedupe_hardening,
+    )
 
 
 if __name__ == "__main__":

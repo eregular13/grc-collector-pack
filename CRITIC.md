@@ -1,3 +1,15 @@
+# CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
+
+Lab this brick: pytest **932** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
+Zero P0/P1. Lynis + OpenSCAP land on the existing LAB dest_in
+(`fixtures/lab-drop/wazuh/` beside nmap pack_drop). Every row labeled
+LAB. LAB cannot enter KEEP. Fail/error-only oscap. Not CIS-branded.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 186 (MCP_CONSOLE_TWIN)
 
 Lab this brick: pytest **892** passed, 1 skipped. Ten collectors +

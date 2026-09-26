@@ -144,10 +144,13 @@ enum4linux-ng stays `file_drop`. No new catalog slots.
 Drop **HardeningKitty Audit CSV** under `in/identity/` (Failed/warning rows
 only; Passed and Guest-passed stay silent — the parser does not invent
 Windows findings). Drop a **Lynis** report or `report.dat` under `in/wazuh/`
-(`*.txt` / `*.log` / `*.dat`). Parse-only — no AD/LDAP/WinRM and no live
-Lynis run. High rows map to CISO/POA&M when the title is obvious (password
-history, LM hash, host firewall missing, SSH PermitRootLogin). Empty `in/`
-still loads `fixtures/demo/identity/hardeningkitty.csv` and
+(`*.txt` / `*.log` / `*.dat`). Mapped warnings and suggestions only;
+hardening index is a score, not a finding. Drop **OpenSCAP** XCCDF
+`--results` XML (fail/error only; SSG/ANSSI/STIG — not a CIS benchmark).
+Parse-only — no AD/LDAP/WinRM and no live Lynis/oscap run. High rows map
+to CISO/POA&M when the title is obvious (password history, LM hash, host
+firewall missing, SSH PermitRootLogin). Empty `in/` still loads
+`fixtures/demo/identity/hardeningkitty.csv` and
 `fixtures/demo/wazuh/lynis-report.txt`. Lynis *invoke* is separate BYO
 (`allow_tools`) when the binary is on PATH; this path is file-drop ingest.
 

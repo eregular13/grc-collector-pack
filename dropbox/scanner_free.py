@@ -90,6 +90,10 @@ SCANNER_PKGS = tuple(
             "msfconsole",
             "hexstrike",
             "hexstrike-ai",
+            "openscap",
+            "oscap",
+            "libopenscap",
+            "scap-security-guide",
         }
         | {n for n in NEVER_EMBED if n not in {"riskready", "bro"}}
     )

@@ -1,0 +1,6 @@
+LAB/DEMO -- not a client estate.
+Lynis report.dat + OpenSCAP XCCDF results for compose-lab Linux hosts.
+Not a CIS benchmark / CIS-CAT deliverable. ANSSI/SSG profile only.
+Not SAMPLE fixtures/pack_drop. Not SAMPLE keep. Not a client export.
+Operator dest_in leaf beside nmap/pack_drop. File-drop ingest only.
+LAB != SAMPLE != client. paying_day FAIL.
