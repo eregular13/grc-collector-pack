@@ -9,8 +9,10 @@ filename/sidecar/env; LAB dest_in under `fixtures/lab-drop/identity/`)
 and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
 `rule-result@severity`, SARIF Trivy critical, enum4linux-ng
 `target.host` / `sessions.null` / listing). No force-push. PR #134
-stays open. Catalog **unchanged**. paying_day **FAIL**. No POST
-`/api/risks`. RiskReady stay-out.
+stays open. pytest **1046**. Host-lab `assets=81` `findings=104`
+`poam=109`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/48/0. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
 
 ## cycle 190 — HK TestResult authority + filename host (2026-09-26)
 

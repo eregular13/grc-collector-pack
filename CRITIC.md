@@ -3,11 +3,14 @@
 Merge `origin/master` `05a29fd` (PR #130) into this branch. Both
 behaviors kept: HardeningKitty TestResult + filename host, and
 real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
-severity, Trivy SARIF critical, enum4linux-ng). Host-lab baseline
-after #130 is `assets=81` `findings=104` `poam=109` (`demo=true`;
-#129 weakness-dedupe). Zero P0/P1. Catalog **unchanged**
-**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
-RiskReady stay-out. CoS #48 rails below are unchanged.
+severity, Trivy SARIF critical, enum4linux-ng). Lab this brick:
+pytest **1046** passed, 1 skipped. Ten collectors + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=81` `findings=104` `poam=109`
+`demo=true`; #129 weakness-dedupe). Cold SAMPLE→SoR findings=6
+poam=8 vulns=2. Cold farm_drop→SoR findings=174 poam=48 vulns=0.
+Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
 
 # CRITIC — cycle 190 (HK_TESTRESULT_AND_HOST)
 
