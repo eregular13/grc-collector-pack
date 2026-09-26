@@ -1,21 +1,69 @@
-# CRITIC — cycle 203 (MERGE_MASTER_134_147_140_144)
+# CRITIC — cycle 206 (MERGE_MASTER_150_INTO_145)
 
-Merge `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux
-real output, #147 ledger lifecycle, #140 discovery/web, #144 port-only
-fold) into this branch. Both sides kept: Metis §11 parser honesty
-(osquery content-detect + predicates, Custodian security-only /
-`NOT_A_WEAKNESS` / Medium default, ScoutSuite `.js`, Trivy k8s,
-Intune unknown owner, HasSession rollup, Jamf FileVault2);
-`asset_uid` / `unrecognized_shape`; #134 OCSF/CSV + Wazuh
-`_is_alert_row`. Lab this brick: pytest **1235** passed, 1 skipped.
-Ten collectors + `grc_loader` + `tests/lab_outputs.py` PASS
-(`assets=78` `findings=104` `vulnerabilities=22`
-`applied_controls=126` `risk_scenarios=126` `poam=124` `excluded=2`
-`severity_unmapped=0` `demo=true`). Cold SAMPLE→SoR findings=6 poam=8
-vulns=2. Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68.
-Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
-**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
-below are unchanged.
+Merge `origin/master` `dd360a2` (#150 UDP 445 not SMB) with a normal
+merge commit. No rebase. #139 follow-ups + Argus B4 + #141 filters
+kept. Lab this brick: pytest **1288** passed, 1 skipped. Host-lab
+`assets=79` `findings=107` `poam=124` `excluded=5` `demo=true`.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 205 (MERGE_MASTER_141_INTO_145)
+
+Merge `origin/master` `9f73537` (#141 collectors false/empty on real
+tool output, plus #152/#151 already on the PR tip). Both sides kept:
+#139 follow-ups + Argus B4 + PingCastle 0-member skip; #141 computer
+SPN / DC unconstrained-delegation filters. Lab this brick: pytest
+**1287** passed, 1 skipped. Ten collectors + honeypot + `grc_loader` +
+`tests/lab_outputs.py` PASS (`assets=79` `findings=107`
+`vulnerabilities=22` `poam=124` `weaknesses=129` `excluded=5`
+`severity_unmapped=0` `demo=true`). Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 203 (MERGE_MASTER_134_INTO_145)
+
+Lab this brick: pytest **1246** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `poam=124` `weaknesses=126` `excluded=2`
+`severity_unmapped=0` `demo=true`). Zero P0/P1. Merged `origin/master`
+`51bba3c` (#134) with a normal merge commit. No rebase. #139 follow-ups
++ Argus B4 kept. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
+# CRITIC — cycle 199 (MERGE_MASTER_144_140_INTO_145)
+
+Lab this brick: pytest **1225** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=125` `weaknesses=126` `excluded=1` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `origin/master` `76f5e86`
+(#144+#140+#147+#146+#142+#138) with a normal merge commit. No rebase.
+#139 follow-ups + Argus B4 case-insensitive `Timestamp` /
+`TimestampZulu` / `scan_time` kept. Count shift vs prior #145 84/103/125
+is master's EGA- collapse + httpx URL + one `superseded_by_specific`
+fold, not a parser loss or MIN_ loosen. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 196 (PARSERS_139_FOLLOW_UPS)
+
+Lab this brick: pytest **1147** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `weaknesses=125` `severity_unmapped=0` `demo=true`). Zero
+P0/P1. Six #139 follow-ups: all Greenbone CVEs + root-element detect;
+Nikto backup hits kept / unmatched info; PingCastle 8 group rules honor
+member count + 0-point info; ScubaGear DomainName label; testssl
+`not offered` only dropped for OK/INFO; fixture honesty (byte-true vs
+`synthetic_*`). Host-lab assets/findings unchanged vs STATUS 84 / 103.
+POA&M 111→125 is the current loader full plan (excluded=0), not a
+MIN_ loosen. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
+are unchanged. Cold-review add-on: artifact scan time → detection date
+(Greenbone/Scuba), UTC `status_date`, PingCastle rule-specific fix.
+Pytest **1151**.
 
 # CRITIC — cycle 202 (MERGE_MASTER_147_LEDGER_LIFECYCLE)
 

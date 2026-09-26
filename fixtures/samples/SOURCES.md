@@ -1,3 +1,5 @@
+# Parser samples — real vs synthetic
+
 # Sample provenance (fixtures/samples)
 
 Trimmed public shapes used to lock parsers against real tool output.
@@ -6,10 +8,36 @@ These files are **SAMPLE/DEMO fixtures**, not a client KEEP drop. No live scan.
 Provenance matches the research pack `samples/SOURCES.md` (fetched 2026-09-25 PT)
 and DefectDojo / ScubaGear / testssl public fixtures used in the §8 / §9 audit.
 
-PR #134 owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng rows. PR #139 owns
-PingCastle, Greenbone, ScubaGear, testssl, and Nikto rows. Tables are unioned.
+**Byte-true** = copied from the public source without invented rows.
+**Trimmed real** = subset of a public file; remaining bytes match the source.
+**Synthetic** = constructed for a parser edge. Named `synthetic_*` (or documented
+here). Do not mix invented rows into a real filename.
+
+PR #134 owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng rows. PR #139 / #145
+owns PingCastle, Greenbone, ScubaGear, testssl, and Nikto rows. Tables are unioned.
 This branch also documents Metis §11 / real-sample Cloud / MDM / IdP /
 BloodHound / Trivy / osquery fixtures below.
+
+| File | Kind | Source | Notes |
+|---|---|---|---|
+| `prowler/example_output_aws.ocsf.json` | trimmed real | [prowler-cloud/prowler](https://github.com/prowler-cloud/prowler) `@ c2b80924618a` `examples/output/example_output_aws.ocsf.json` (v5 OCSF default) | First 3 findings (FAIL / MANUAL / FAIL). Compliance maps reduced; `risk_details` dropped. Keys unchanged. |
+| `prowler/example_output_aws.csv` | trimmed real | Same repo `examples/output/example_output_aws.csv` (`;`-delimited v4/v5 CSV) | Header + first 3 data rows. |
+| `wazuh/alerts.jsonl` | trimmed real | [Evaluation-of-APT-Simulation-Tools-artifacts](https://github.com/xXPrXy-rAiJiNzXx/Evaluation-of-APT-Simulation-Tools-artifacts) `@ 1b01e9caa956` `Wazuh/ossec/logs/alerts/alerts.json` (first 3 lines; Wazuh 4.x JSONL) | Already 3 lines. |
+| `wazuh/sca-checks.json` | schema-shaped | [wazuh/wazuh](https://github.com/wazuh/wazuh) `v4.9.0` API spec `/sca/{agent_id}/checks/{policy_id}` | Same `data.affected_items[]` shape. One not-applicable, one passed, one failed. |
+| `sarif/trivy-critical.sarif` | synthetic | Trivy SARIF writer shape (`pkg/report/sarif.go`) | One CRITICAL + one MEDIUM using rule `security-severity`. |
+| `xccdf/rule-results.xml` | synthetic | XCCDF 1.2 `rule-result@severity` | Fail low / medium / high + one pass. |
+| `enum4linux/enum4linux-ng.json` | synthetic | enum4linux-ng key shape (`target.host`, `sessions.null`, share listing) | One host, null session, Domain Admins, IPC$ + NETLOGON. |
+| `pingcastle/one.xml` | byte-true | [DefectDojo/django-DefectDojo](https://github.com/DefectDojo/django-DefectDojo) `unittests/scans/pingcastle/one.xml` (Engine 3.2.0.1) | One `A-MinPwdLen` rule. No `ListNoPreAuth`, no extra `HealthCheckGroupData`. |
+| `pingcastle/synthetic_group_membership.xml` | synthetic | Pack-constructed | 8 group-membership RiskIds (`P-BackupOperators` … `P-Administrators`) + 0-point rule. 0-member groups must emit no finding. |
+| `greenbone/one_vuln.xml` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0) | One `result` kept (Firefox NVT, CVSS 10.0, **both** CVE-2023-4573 and CVE-2023-4574). Restored report `timestamp` / `scan_start` (`2023-09-28T14:48:02Z`). |
+| `greenbone/one_vuln.csv` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.csv` | Header + the one SSH weak-cipher row. |
+| `scuba/ScubaResults_sample.json` | schema-shaped sample | [cisagov/ScubaGear](https://github.com/cisagov/ScubaGear) v1.8.0 `@ 8bbaf75` `docs/misc/tooloutputschema.md` | `MetaData.DomainName` + `DisplayName` / `TenantDisplayName`. **No `TenantName`**. |
+| `testssl/synthetic_pretty_sections.json` | synthetic | Pack-constructed 3.x `--jsonfile-pretty` shape | Protocols + serverDefaults + vulnerabilities. **Not** the FINOS `robmoff.at` dump. |
+| `testssl/synthetic_not_offered.json` | synthetic | Pack-constructed | CRITICAL/MEDIUM/LOW `not offered` must stay; OK/INFO `not offered` drop. |
+| `testssl/server-defaults.json` | synthetic | Pack-constructed 3.x pretty-JSON, `serverDefaults` only | Certificate expiry HIGH + WARN OCSP row. |
+| `nikto/issue_9274.json` | byte-true | DefectDojo `unittests/scans/nikto/issue_9274.json` (Nikto 2.6.1 list-of-hosts JSON) | Untrimmed (already 8 rows). Header noise + BREACH. |
+| `nikto/juice-shop-trim.json` | trimmed real | DefectDojo `unittests/scans/nikto/juice-shop.json` | Header rows, **real** 740001 backup/cert hits, BREACH, `/public/`, NextGEN LFI. Backup hits are kept (medium+). |
+| `nikto/nikto-output-trim.xml` | trimmed real | DefectDojo `unittests/scans/nikto/nikto-output.xml` (Nikto 2.1.5) | X-Frame, PUT, Tomcat examples, XSS, Manager. |
 
 LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 
@@ -58,19 +86,6 @@ LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 - `cloud/check-ebs-snapshot-public/{metadata,resources}.json`: byte-identical [darshanpardeshi05/misconfig-dataset@73c227f](https://github.com/darshanpardeshi05/misconfig-dataset/tree/73c227f/custodian-results/04-ebs-snapshot-public/check-ebs-snapshot-public) public EBS snapshot (MIT; see `cloud/check-ebs-snapshot-public/LICENSE`). Asset is `snap-084bf49b944409f37` via `SnapshotId`. Annotates `c7n:CrossAccountViolations`.
 - `cloud/stop-underutilized-aws-instances/{metadata,resources}.json`: byte-identical [MShujat/basic-cloud-custodian-mcp@883b2bd](https://github.com/MShujat/basic-cloud-custodian-mcp/tree/883b2bd/output/stop-underutilized-aws-instances) `aws.ec2` cost policy (MIT; see `cloud/stop-underutilized-aws-instances/LICENSE`). 6 instances → excluded `NOT_A_WEAKNESS`. Annotates `c7n.metrics`.
 
-## PingCastle / Greenbone / ScubaGear / testssl / Nikto (§8 / #139)
-
-| File | Source | What was trimmed |
-|---|---|---|
-| `pingcastle/one.xml` | [DefectDojo/django-DefectDojo](https://github.com/DefectDojo/django-DefectDojo) `unittests/scans/pingcastle/one.xml` (Engine 3.2.0.1). Model: [PingCastle HealthcheckData](https://github.com/vletoux/pingcastle) `HealthcheckRiskRule` / `HealthCheckGroupData`. | Whole one-rule file. Added a `HealthCheckGroupData` (capital C) + `ListNoPreAuth` account so case-insensitive group/account tags are exercised. IPs stay documentation placeholders. |
-| `greenbone/one_vuln.xml` | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0 report XML) | One `result` kept (Firefox NVT, CVSS 10.0, CVE-2023-4573). Wrapper scan metadata dropped. |
-| `greenbone/one_vuln.csv` | DefectDojo `unittests/scans/openvas/one_vuln.csv` | Header + the one SSH weak-cipher row. |
-| `scuba/ScubaResults_sample.json` | [cisagov/ScubaGear](https://github.com/cisagov/ScubaGear) v1.8.0 `@ 8bbaf75` `ScubaResults` shape (`MetaData` + `Results{product:[group.Controls[]]}`). Keys from `docs/misc/tooloutputschema.md`. | Two AAD controls (Fail/Shall + Warning/Should) + one Pass. Tenant from MetaData only. |
-| `testssl/finos_robmoff.at_443_vulnerable.json` | testssl.sh 3.x `--jsonfile-pretty` (`scanResult[]` sections `protocols`, `serverDefaults`, `vulnerabilities`). Shape matches the FINOS `robmoff.at` pretty JSON cited in the §8 audit. | One host. SSLv3 HIGH, TLS1 LOW, expired cert HIGH, BREACH MEDIUM, LUCKY13 LOW, one WARN, OK rows. |
-| `testssl/server-defaults.json` | Same 3.x pretty-JSON shape, `serverDefaults` only. | Certificate expiry HIGH + WARN OCSP row. |
-| `nikto/issue_9274.json` | DefectDojo `unittests/scans/nikto/issue_9274.json` (Nikto 2.6.1 list-of-hosts JSON) | Untrimmed (already 8 rows). Header noise + BREACH. |
-| `nikto/juice-shop-trim.json` | DefectDojo `unittests/scans/nikto/juice-shop.json` (dict host + 740001 soft-404 noise) | 2 header rows, 2 backup-noise rows, BREACH, `/public/` interesting, NextGEN LFI. |
-| `nikto/nikto-output-trim.xml` | DefectDojo `unittests/scans/nikto/nikto-output.xml` (Nikto 2.1.5) | X-Frame, PUT, Tomcat examples, XSS, Manager. |
 LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 
 # Sample provenance (network discovery / web collectors)

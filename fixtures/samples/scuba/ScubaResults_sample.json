@@ -1,8 +1,11 @@
 {
   "MetaData": {
     "TenantId": "11111111-2222-3333-4444-555555555555",
-    "TenantName": "example.onmicrosoft.com",
+    "DisplayName": "Example Tenant",
+    "TenantDisplayName": "Example Tenant",
+    "DomainName": "example.onmicrosoft.com",
     "TimestampZulu": "2024-03-20T18:42:05.043Z",
+    "Tool": "ScubaGear",
     "ToolVersion": "1.8.0"
   },
   "Summary": {

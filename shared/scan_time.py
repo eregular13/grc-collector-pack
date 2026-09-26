@@ -17,6 +17,8 @@ NOT_RECORDED = "not recorded"
 PENDING_DUE = "pending due date"
 
 # Scanner / artifact keys that are real scan times (never collected_at / now).
+# Argus B4: lookup is case-insensitive so Greenbone Timestamp / Scuba
+# TimestampZulu / Scan_Time all feed #131 original_detection_date.
 _SCAN_KEYS = (
     "first_seen",
     "firstSeen",
@@ -33,6 +35,9 @@ _SCAN_KEYS = (
     "created_at",
     "generated_at",
     "timestamp",
+    "Timestamp",
+    "TimestampZulu",
+    "timestamp_zulu",
     "start",
     "finished",
     "starttime",
@@ -169,15 +174,28 @@ def zone_for(raw: Any) -> str:
     return parsed[1] if parsed else ""
 
 
+def _scan_value(src: dict[str, Any]) -> Any:
+    """First listed scan-time key, case-insensitive (Argus B4)."""
+    if not isinstance(src, dict):
+        return None
+    for key in _SCAN_KEYS:
+        val = src.get(key)
+        if val not in (None, ""):
+            return val
+    lower_map = {str(k).lower(): v for k, v in src.items() if v not in (None, "")}
+    for key in _SCAN_KEYS:
+        val = lower_map.get(key.lower())
+        if val not in (None, ""):
+            return val
+    return None
+
+
 def extra_scan_raw(rec: dict[str, Any]) -> Any:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    for key in _SCAN_KEYS:
-        if extra.get(key) not in (None, ""):
-            return extra.get(key)
-    for key in ("first_seen", "firstSeen", "scan_time", "scan_start"):
-        if rec.get(key) not in (None, ""):
-            return rec.get(key)
-    return None
+    hit = _scan_value(extra)
+    if hit not in (None, ""):
+        return hit
+    return _scan_value(rec)
 
 
 def artifact_detection(rec: dict[str, Any]) -> tuple[date | None, str, str]:
@@ -229,7 +247,7 @@ def sibling_meta_scan_time(path: Path | None) -> str:
 def pick_row_scan_time(row: dict[str, Any], fallback: str = "") -> str:
     extra = row.get("extra") if isinstance(row.get("extra"), dict) else {}
     for src in (extra, row):
-        for key in _SCAN_KEYS:
-            if src.get(key) not in (None, ""):
-                return str(src.get(key))
+        hit = _scan_value(src)
+        if hit not in (None, ""):
+            return str(hit)
     return fallback
