@@ -233,7 +233,7 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
         "3. In OpenGRC: Data Manager → Import Data → Risks, then Assets, then Implementations.\n"
         "4. Download the in-app CSV template if the wizard rejects a header; map columns.\n"
         "5. Status is **Not Assessed**. Owner / department / taxonomy FKs stay blank.\n\n"
-        "posted=false. No REST. RiskReady is stay-out. This is not a paying-day PASS.\n",
+        "posted=false. No REST. This is not a paying-day PASS.\n",
         encoding="utf-8",
     )
     report["dir"] = str(dest)
