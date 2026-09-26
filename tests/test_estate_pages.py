@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, csv_rows
 from shared.estate_pages import (
     LABEL_FOR_KIND,
     NOT_RECORDED,
@@ -20,7 +21,6 @@ from shared.estate_pages import (
     REVIEWER_WHAT_WE_FOUND,
     REVIEWER_WHY_IT_MATTERS,
     classify_estate,
-    csv_rows_skip_comments,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,17 +75,21 @@ def _run_loader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[d
     return out
 
 
-EXPORT_FILES = (
+HUMAN_FILES = (
     "EXECUTIVE_SUMMARY.md",
     "SCOPE_AND_TRUST.md",
-    "poam/poam.csv",
     "poam/poam.md",
+    "ciso-assistant/ESTATE.txt",
+    "poam/ESTATE.txt",
+)
+IMPORT_CSVS = (
     "ciso-assistant/assets.csv",
     "ciso-assistant/applied_controls.csv",
     "ciso-assistant/evidences.csv",
     "ciso-assistant/findings.csv",
     "ciso-assistant/vulnerabilities.csv",
     "ciso-assistant/risk_scenarios.csv",
+    "poam/poam.csv",
 )
 
 
@@ -133,23 +137,28 @@ def test_banner_and_estate_column_on_every_export(
         GRC_ESTATE_LABEL="SAMPLE",
     )
     label = LABEL_FOR_KIND["SAMPLE"]
-    for rel in EXPORT_FILES:
+    for rel in HUMAN_FILES:
         path = out / rel
         assert path.is_file(), rel
         text = path.read_text(encoding="utf-8")
         assert label in text, rel
         assert "Every finding below comes from bundled example files" in text, rel
-        if path.suffix == ".csv":
-            delim = ";" if "risk_scenarios" in rel else ","
-            rows = csv_rows_skip_comments(path, delimiter=delim)
-            header = next(
-                line
-                for line in text.splitlines()
-                if line.strip() and not line.lstrip().startswith("#")
-            )
-            assert "estate" in header.split(delim), rel
-            if rows:
-                assert {row["estate"] for row in rows} == {label}, rel
+
+    for rel in IMPORT_CSVS:
+        path = out / rel
+        assert path.is_file(), rel
+        first = path.read_text(encoding="utf-8").splitlines()[0].strip()
+        assert not first.startswith("#"), rel
+        if rel.startswith("ciso-assistant/"):
+            name = Path(rel).name
+            assert first == CISO_HEADERS[name], rel
+            delim = ";" if name == "risk_scenarios.csv" else ","
+            rows = csv_rows(path, delimiter=delim)
+            assert all("estate" not in row for row in rows), rel
+        else:
+            assert first == POAM_HEADER
+            rows = csv_rows(path)
+            assert rows and {row["estate"] for row in rows} == {label}
 
     exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
@@ -164,6 +173,27 @@ def test_banner_and_estate_column_on_every_export(
         assert "cycle " not in blob.lower() or "cycle " not in blob
         assert "E2E_PROVEN" not in blob
         assert "adapter list" not in blob.lower()
+
+
+def test_import_csvs_first_line_is_not_a_hash_comment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from exporters.opengrc import write_opengrc
+
+    out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], GRC_ESTATE_LABEL="LAB")
+    write_opengrc(out)
+    import_csvs = IMPORT_CSVS + (
+        "opengrc/risks.csv",
+        "opengrc/assets.csv",
+        "opengrc/implementations.csv",
+        "simplerisk/poam.csv",
+    )
+    for rel in import_csvs:
+        path = out / rel
+        assert path.is_file(), rel
+        first = path.read_text(encoding="utf-8").splitlines()[0]
+        assert not first.lstrip().startswith("#"), rel
+        assert first.strip() == first.splitlines()[0].strip()
 
 
 def test_sample_cannot_claim_client_or_suppress_banner(
@@ -189,7 +219,7 @@ def test_sample_cannot_claim_client_or_suppress_banner(
                 "MIXED: REVIEW BEFORE USE",
             )
         )
-    rows = csv_rows_skip_comments(out / "poam" / "poam.csv")
+    rows = csv_rows(out / "poam" / "poam.csv")
     assert all(not (row.get("estate") or "").startswith("CLIENT:") for row in rows)
 
 
@@ -257,9 +287,13 @@ def test_exporters_stamp_opengrc_and_probo(tmp_path: Path, monkeypatch: pytest.M
     dest = Path(stamp["dir"])
     risks = dest / "risks.csv"
     text = risks.read_text(encoding="utf-8")
+    assert not text.lstrip().startswith("#")
     assert LABEL_FOR_KIND["SAMPLE"] in text
-    rows = csv_rows_skip_comments(risks)
-    assert rows and rows[0]["estate"] == LABEL_FOR_KIND["SAMPLE"]
+    rows = csv_rows(risks)
+    assert "estate" not in rows[0]
+    sidecar = dest / "ESTATE.txt"
+    assert sidecar.is_file()
+    assert LABEL_FOR_KIND["SAMPLE"] in sidecar.read_text(encoding="utf-8")
     probo = write_probo(out)
     payload = json.loads(probo.read_text(encoding="utf-8"))
     assert payload["estate"] == LABEL_FOR_KIND["SAMPLE"]

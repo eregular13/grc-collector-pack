@@ -58,10 +58,10 @@ def _load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[dict]) 
 
     importlib.reload(loader)
     loader.load()
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
     assert_risk_register_and_poam(out)
-    return csv_rows_skip_comments(out / "poam" / "poam.csv")
+    return csv_rows(out / "poam" / "poam.csv")
 
 
 def test_header_keeps_legacy_prefix_and_appends_fedramp_fields() -> None:
@@ -164,9 +164,9 @@ def test_lab_misconfig_fixture_end_to_end(tmp_path: Path) -> None:
     proc = subprocess.run([sys.executable, str(ROOT / "scripts" / "prove_ciso.py"), "--work", str(work), "--use-existing-in"],
                           cwd=str(ROOT), env=env, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stdout[-600:] + proc.stderr[-600:]
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
-    rows = csv_rows_skip_comments(work / "out" / "poam" / "poam.csv")
+    rows = csv_rows(work / "out" / "poam" / "poam.csv")
     anon = next(r for r in rows if r["weakness"] == "Anonymous FTP login allowed")
     assert anon["original_detection_date"] == "2026-09-25"  # nmap host starttime (UTC)
     assert anon["scheduled_completion_date"] == "2026-10-25"

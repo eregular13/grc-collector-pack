@@ -99,12 +99,13 @@ Auth: `Authorization: Token <PAT>` — API `http://localhost:8000/api`
 
 CSV headers (exact):
 
-- assets: `ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets,estate` (`type` = `PR|SP`)
-- applied_controls: `ref_id,name,description,domain,status,category,priority,csf_function,estate`
-- evidences: `name,description,estate`
-- findings: `ref_id,name,description,severity,status,filtering_labels,estate` (`low|medium|high|critical`)
-- vulnerabilities: `ref_id,name,description,status,severity,assets,applied_controls,estate` (`Information|Low|Medium|High|Critical`)
-- risk_scenarios: semicolon, `treatment=mitigate`, trailing `estate`
+- assets: `ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets` (`type` = `PR|SP`)
+- applied_controls: `ref_id,name,description,domain,status,category,priority,csf_function`
+- evidences: `name,description`
+- findings: `ref_id,name,description,severity,status,filtering_labels` (`low|medium|high|critical`)
+- vulnerabilities: `ref_id,name,description,status,severity,assets,applied_controls` (`Information|Low|Medium|High|Critical`)
+- risk_scenarios: semicolon, `treatment=mitigate`
+- Estate banner is in `EXECUTIVE_SUMMARY.md`, `SCOPE_AND_TRUST.md`, `poam.md`, and `ciso-assistant/ESTATE.txt`. Import CSVs start with the exact header (no `#` preamble). `filtering_labels` include `estate_<kind>`. POA&M keeps a trailing `estate` column.
 
 CISO Assistant is Reid-side SoR. Prefer [clica](https://github.com/intuitem/ciso-assistant-community) or the UI CSV import. Do not invent FindingsAssessment UUIDs. `push_ciso.sh` defaults to dry-run; if `CISO_PUSH=1` and `DRY_RUN!=1` it may POST `/api/assets/` and `/api/evidences/` only.
 

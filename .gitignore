@@ -10,6 +10,8 @@ out/raw/*
 out/canonical/*
 out/ciso-assistant/*.csv
 out/ciso-assistant/ESTATE.txt
+out/opengrc/ESTATE.txt
+out/probo/ESTATE.txt
 out/poam/*
 out/EXECUTIVE_SUMMARY.md
 out/SCOPE_AND_TRUST.md

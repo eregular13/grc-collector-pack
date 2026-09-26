@@ -505,10 +505,10 @@ def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) ->
     write_canonical("inventory-nmap", [rec])
     summary = load()
     assert summary.get("poam", 0) >= 1
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
     poam = out_dir() / "poam" / "poam.csv"
-    rows = csv_rows_skip_comments(poam)
+    rows = csv_rows(poam)
     assert rows
     assert any("SMB" in (r.get("weakness") or "") for r in rows)
     for row in rows:
@@ -701,9 +701,9 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
     ]
     write_canonical("inventory-nmap", recs)
     load()
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
-    rows = csv_rows_skip_comments(out_dir() / "ciso-assistant" / "applied_controls.csv")
+    rows = csv_rows(out_dir() / "ciso-assistant" / "applied_controls.csv")
     by_ref = {r["ref_id"]: r for r in rows}
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
     assert by_ref["CTL-waz-time"]["csf_function"] == "detect"

@@ -10,7 +10,8 @@ from pathlib import Path
 from exporters.model import HONESTY_BANNER, load_pack_estate
 from exporters.opengrc import ASSETS_HEADER, RISKS_HEADER, write_opengrc
 from exporters.probo import build_probo_preview, write_probo
-from shared.estate_pages import LABEL_FOR_KIND, csv_rows_skip_comments
+from shared.ciso_shape import csv_rows
+from shared.estate_pages import LABEL_FOR_KIND
 
 ROOT = Path(__file__).resolve().parents[1]
 DROP_CISO = ROOT / "product-lab" / "drop"
@@ -69,16 +70,18 @@ def test_opengrc_writes_wizard_csvs(tmp_path: Path) -> None:
     assert stamp["demo"] is True
     assert stamp["paying_day"] == "FAIL"
     dest = Path(stamp["dir"])
-    rows = csv_rows_skip_comments(dest / "risks.csv")
+    rows = csv_rows(dest / "risks.csv")
     assert list(rows[0].keys()) == RISKS_HEADER
     assert rows[0]["status"] == "Not Assessed"
     assert rows[0]["code"] == "RSK-x-1"
     assert int(rows[0]["inherent_likelihood"]) == 5
-    assert rows[0]["estate"] == LABEL_FOR_KIND["SAMPLE"]
+    assert "estate" not in rows[0]
+    assert not (dest / "risks.csv").read_text(encoding="utf-8").lstrip().startswith("#")
+    assert LABEL_FOR_KIND["SAMPLE"] in (dest / "ESTATE.txt").read_text(encoding="utf-8")
     readme = (dest / "README.md").read_text(encoding="utf-8")
     assert LABEL_FOR_KIND["SAMPLE"] in readme
     assert HONESTY_BANNER.split(":")[0] in readme
-    assets = csv_rows_skip_comments(dest / "assets.csv")
+    assets = csv_rows(dest / "assets.csv")
     assert list(assets[0].keys()) == ASSETS_HEADER
     assert assets[0]["asset_tag"] == "A-1"
     assert assets[0]["hostname"] == "filesrv.corp.local"
@@ -240,7 +243,7 @@ def test_lab_ciso_intermediate_writes_opengrc_probo_posted_false(tmp_path: Path)
     assert "LAB: TEST ENVIRONMENT" in readme
     assert "SAMPLE DATA: NOT A CLIENT" not in readme
     assert "/api/risks" not in readme
-    rows = csv_rows_skip_comments(dest / "risks.csv")
+    rows = csv_rows(dest / "risks.csv")
     assert list(rows[0].keys()) == RISKS_HEADER
     assert rows[0]["status"] == "Not Assessed"
     assert "LAB: TEST ENVIRONMENT" in rows[0]["description"]

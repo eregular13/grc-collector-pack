@@ -56,18 +56,18 @@ def test_csv_header_strings() -> None:
     )
 
     assert ",".join(ASSETS_HEADER) == (
-        "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets,estate"
+        "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets"
     )
     assert ",".join(CONTROLS_HEADER) == (
-        "ref_id,name,description,domain,status,category,priority,csf_function,estate"
+        "ref_id,name,description,domain,status,category,priority,csf_function"
     )
-    assert ",".join(EVIDENCE_HEADER) == "name,description,estate"
-    assert ",".join(FINDINGS_HEADER) == "ref_id,name,description,severity,status,filtering_labels,estate"
-    assert ",".join(VULN_HEADER) == "ref_id,name,description,status,severity,assets,applied_controls,estate"
+    assert ",".join(EVIDENCE_HEADER) == "name,description"
+    assert ",".join(FINDINGS_HEADER) == "ref_id,name,description,severity,status,filtering_labels"
+    assert ",".join(VULN_HEADER) == "ref_id,name,description,status,severity,assets,applied_controls"
     assert ";".join(SCENARIO_HEADER) == (
         "ref_id;assets;threats;name;description;existing_controls;current_impact;"
         "current_proba;current_risk;additional_controls;residual_impact;residual_proba;"
-        "residual_risk;treatment;estate"
+        "residual_risk;treatment"
     )
 
 

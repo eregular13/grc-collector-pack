@@ -163,9 +163,9 @@ def assert_loopback_host(host: str) -> str:
 def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
-    return csv_rows_skip_comments(path, delimiter=delim)
+    return csv_rows(path, delimiter=delim)
 
 
 def _read_json(path: Path):

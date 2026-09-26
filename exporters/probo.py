@@ -239,7 +239,10 @@ def write_probo(out: Path | None = None, estate: PackEstate | None = None) -> Pa
     dest = dest_dir / "probo.json"
     dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     stamp = (estate or load_pack_estate(out)).estate_stamp()
+    from shared.estate_pages import write_estate_sidecar
+
     (dest_root / "probo" / "README.md").parent.mkdir(parents=True, exist_ok=True)
+    write_estate_sidecar(dest_root / "probo", stamp)
     (dest_root / "probo" / "README.md").write_text(
         stamp.banner_md()
         + "\n\n# Probo import preview (documentation only)\n\n"

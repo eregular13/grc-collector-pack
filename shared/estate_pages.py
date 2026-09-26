@@ -15,7 +15,6 @@ import os
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from io import StringIO
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -133,8 +132,11 @@ EXPORT_MD_REL = (
     "EXECUTIVE_SUMMARY.md",
     "SCOPE_AND_TRUST.md",
     "poam/poam.md",
+    "poam/ESTATE.txt",
     "ciso-assistant/ESTATE.txt",
+    "opengrc/ESTATE.txt",
     "opengrc/README.md",
+    "probo/ESTATE.txt",
     "probo/README.md",
 )
 EXPORT_OTHER_REL = (
@@ -447,35 +449,6 @@ def classify_estate(
     )
 
 
-def skip_csv_comments(text: str) -> str:
-    lines = [
-        line
-        for line in text.splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
-    return "\n".join(lines) + ("\n" if lines else "")
-
-
-def first_data_line(path: Path) -> str:
-    if not path.is_file():
-        return ""
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        return stripped
-    return ""
-
-
-def csv_rows_skip_comments(path: Path, *, delimiter: str = ",") -> list[dict[str, str]]:
-    if not path.is_file():
-        return []
-    text = skip_csv_comments(path.read_text(encoding="utf-8"))
-    if not text.strip():
-        return []
-    return list(csv.DictReader(StringIO(text), delimiter=delimiter))
-
-
 def write_csv_with_estate(
     path: Path,
     header: list[str],
@@ -484,14 +457,11 @@ def write_csv_with_estate(
     *,
     delimiter: str = ",",
 ) -> None:
-    """Banner comments at the top; `estate` column on every row. Not suppressible."""
+    """Exact importer header first. No # preamble. estate column only if listed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     cols = list(header)
-    if "estate" not in cols:
-        cols.append("estate")
-    estate_idx = cols.index("estate")
+    estate_idx = cols.index("estate") if "estate" in cols else None
     with path.open("w", encoding="utf-8", newline="") as fh:
-        fh.write(stamp.banner_csv_comments())
         writer = csv.writer(fh, delimiter=delimiter, lineterminator="\n")
         writer.writerow(cols)
         for row in rows:
@@ -500,8 +470,27 @@ def write_csv_with_estate(
                 cells.extend([""] * (len(cols) - len(cells)))
             elif len(cells) > len(cols):
                 cells = cells[: len(cols)]
-            cells[estate_idx] = stamp.label
+            if estate_idx is not None:
+                cells[estate_idx] = stamp.label
             writer.writerow(cells)
+
+
+def write_estate_sidecar(sink_dir: Path, stamp: EstateStamp, *, note: str = "") -> Path:
+    """Human-readable estate banner next to a CSV sink. Not suppressible."""
+    dest = Path(sink_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    extra = (
+        note.strip()
+        if note.strip()
+        else (
+            "Machine-imported CSVs in this directory start with the importer "
+            "header (no # preamble). SAMPLE/DEMO/LAB cannot be suppressed and "
+            "is never client KEEP."
+        )
+    )
+    path = dest / "ESTATE.txt"
+    path.write_text(stamp.banner_md() + "\n\n" + extra + "\n", encoding="utf-8")
+    return path
 
 
 def prepend_banner_md(body: str, stamp: EstateStamp) -> str:

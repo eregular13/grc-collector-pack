@@ -29,7 +29,7 @@ python3 scripts/prove_ciso.py        # SAMPLE/DEMO fixture prove → prove/work/
 ## assets.csv
 
 ```
-ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets,estate
+ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets
 ```
 
 `type` is `PR` (hosts/clusters/cloud) or `SP` (identities/SaaS).
@@ -37,7 +37,7 @@ ref_id,name,description,domain,type,reference_link,observation,filtering_labels,
 ## applied_controls.csv
 
 ```
-ref_id,name,description,domain,status,category,priority,csf_function,estate
+ref_id,name,description,domain,status,category,priority,csf_function
 ```
 
 - status: `to_do|in_progress|on_hold|active|deprecated`
@@ -48,13 +48,13 @@ ref_id,name,description,domain,status,category,priority,csf_function,estate
 ## evidences.csv
 
 ```
-name,description,estate
+name,description
 ```
 
 ## findings.csv
 
 ```
-ref_id,name,description,severity,status,filtering_labels,estate
+ref_id,name,description,severity,status,filtering_labels
 ```
 
 severity: `low|medium|high|critical` (canonical `info` maps to `low`).
@@ -62,7 +62,7 @@ severity: `low|medium|high|critical` (canonical `info` maps to `low`).
 ## vulnerabilities.csv
 
 ```
-ref_id,name,description,status,severity,assets,applied_controls,estate
+ref_id,name,description,status,severity,assets,applied_controls
 ```
 
 severity: `Information|Low|Medium|High|Critical`
@@ -75,7 +75,7 @@ Farm leave-behind pack_drop is observation/exposure — `vulnerabilities.csv` ma
 Semicolon-delimited:
 
 ```
-ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment;estate
+ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment
 ```
 
 treatment: `mitigate`
@@ -101,13 +101,15 @@ FedRAMP POA&M R3.0-style fields (appended; the first nine columns are unchanged)
 - `original_risk_rating` = Low/Moderate/High/Critical (`severity` keeps the legacy low/medium/high/critical vocabulary for existing readers).
 - `point_of_contact` is blank, like `owner`. `cve` = explicit CVE ids or known aliases (Heartbleed -> CVE-2014-0160), else blank.
 
-- `estate` is the allowed watermark label (`SAMPLE DATA: NOT A CLIENT`,
+- Estate label is fail-closed and not suppressible (`SAMPLE DATA: NOT A CLIENT`,
   `DEMO: NOT A CLIENT`, `LAB: TEST ENVIRONMENT`, `CLIENT: <name>`, or
-  `MIXED: REVIEW BEFORE USE`). Fail closed to the most restrictive when unsure.
-  SAMPLE/DEMO/LAB and any `product-lab/drop` fallback cannot become CLIENT and
-  cannot be suppressed. Every exported CSV starts with `#` banner comments and
-  carries an `estate` column. Markdown pages open with the Part 0 banner.
-  `filtering_labels` still include `estate_<kind>`.
+  `MIXED: REVIEW BEFORE USE`). CISO Assistant import CSVs start with the exact
+  locked header (no `#` preamble, no extra `estate` column — the importer and
+  spreadsheets do not skip comments). The banner lives in
+  `EXECUTIVE_SUMMARY.md`, `SCOPE_AND_TRUST.md`, `poam.md`, and
+  `ciso-assistant/ESTATE.txt`. `filtering_labels` still include `estate_<kind>`.
+  Operator POA&M (`poam.csv`) keeps a trailing `estate` column because it is
+  not a CISO import.
 
 - High/critical findings and key medium exposures (SMB 445, RDP 3389) are included.
 - `framework_refs` are wizard-safe `cpg_*` / `csf_*` stamps (no colons).

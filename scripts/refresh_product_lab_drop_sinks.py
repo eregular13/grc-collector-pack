@@ -24,9 +24,9 @@ def _sha256(path: Path) -> str:
 
 
 def _csv_rows(path: Path) -> int:
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
-    return len(csv_rows_skip_comments(path))
+    return len(csv_rows(path))
 
 
 def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:

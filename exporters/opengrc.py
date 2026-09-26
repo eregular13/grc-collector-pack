@@ -23,9 +23,10 @@ from exporters.model import (
     score_scenario_level,
     score_severity,
 )
-from shared.estate_pages import write_csv_with_estate
+from shared.estate_pages import write_csv_with_estate, write_estate_sidecar
 
 # OpenGRC Risk fillable (app/Models/Risk.php) + import-by-code upsert.
+# Wizard maps known field names; extra columns are omitted.
 RISKS_HEADER = [
     "code",
     "name",
@@ -38,7 +39,6 @@ RISKS_HEADER = [
     "residual_impact",
     "residual_risk",
     "is_active",
-    "estate",
 ]
 # OpenGRC Asset fillable minus FK / financial fields we cannot invent.
 ASSETS_HEADER = [
@@ -49,10 +49,9 @@ ASSETS_HEADER = [
     "notes",
     "is_active",
     "alternative_name",
-    "estate",
 ]
 # Implementation create fields the wizard can map without FKs.
-IMPLEMENTATIONS_HEADER = ["title", "details", "notes", "estate"]
+IMPLEMENTATIONS_HEADER = ["title", "details", "notes"]
 
 
 def _write_csv(path: Path, header: list[str], rows: list[list[Any]], stamp=None) -> None:
@@ -178,7 +177,21 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
     estate_stamp = estate.estate_stamp()
     _write_csv(dest / "risks.csv", RISKS_HEADER, rows["risks"], stamp=estate_stamp)
     _write_csv(dest / "assets.csv", ASSETS_HEADER, rows["assets"], stamp=estate_stamp)
-    _write_csv(dest / "implementations.csv", IMPLEMENTATIONS_HEADER, rows["implementations"], stamp=estate_stamp)
+    _write_csv(
+        dest / "implementations.csv",
+        IMPLEMENTATIONS_HEADER,
+        rows["implementations"],
+        stamp=estate_stamp,
+    )
+    write_estate_sidecar(
+        dest,
+        estate_stamp,
+        note=(
+            "OpenGRC Data Manager CSVs start with the wizard header (no # preamble). "
+            "Estate label is in ESTATE.txt and in description/notes text. "
+            "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
+        ),
+    )
     report = {
         "product": "grc-collector-pack",
         "sink": "opengrc",

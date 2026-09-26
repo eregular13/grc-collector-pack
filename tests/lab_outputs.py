@@ -13,12 +13,12 @@ OUT = Path(__file__).resolve().parents[1] / "out"
 if (ROOT / "out").exists() and not str(OUT).endswith("out"):
     OUT = ROOT / "out"
 
-ASSETS_H = "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets,estate"
-CONTROLS_H = "ref_id,name,description,domain,status,category,priority,csf_function,estate"
-EVID_H = "name,description,estate"
-FIND_H = "ref_id,name,description,severity,status,filtering_labels,estate"
-VULN_H = "ref_id,name,description,status,severity,assets,applied_controls,estate"
-SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment;estate"
+ASSETS_H = "ref_id,name,description,domain,type,reference_link,observation,filtering_labels,parent_assets"
+CONTROLS_H = "ref_id,name,description,domain,status,category,priority,csf_function"
+EVID_H = "name,description"
+FIND_H = "ref_id,name,description,severity,status,filtering_labels"
+VULN_H = "ref_id,name,description,status,severity,assets,applied_controls"
+SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment"
 
 FIND_SEV = {"low", "medium", "high", "critical"}
 VULN_SEV = {"Information", "Low", "Medium", "High", "Critical"}
@@ -33,14 +33,14 @@ def _read(path: Path) -> str:
 
 
 def _csv_rows(path: Path, expected_header: str, delim: str = ",") -> list[dict]:
-    from shared.ciso_shape import first_nonempty_line
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows, first_nonempty_line
 
     text = _read(path)
     first = first_nonempty_line(path)
     assert first == expected_header, f"{path.name} header {first!r} != {expected_header!r}"
-    assert text.lstrip().startswith("#") or first == text.splitlines()[0].strip()
-    return csv_rows_skip_comments(path, delimiter=delim)
+    assert not text.lstrip().startswith("#"), f"{path.name} import CSV must not start with #"
+    assert first == text.splitlines()[0].strip()
+    return csv_rows(path, delimiter=delim)
 
 
 def _json(path: Path):
@@ -131,6 +131,12 @@ def assert_lab() -> None:
         assert trust_text.startswith("> **")
         assert "not recorded" in trust_text or "Authorization" in trust_text
         assert "CoS #" not in exec_text and "CoS #" not in trust_text
+    estate_txt = OUT / "ciso-assistant" / "ESTATE.txt"
+    if estate_txt.is_file():
+        assert (OUT / "poam" / "ESTATE.txt").is_file()
+        assert not (OUT / "ciso-assistant" / "findings.csv").read_text(
+            encoding="utf-8"
+        ).lstrip().startswith("#")
     smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
     assert smb, "SMB/445 exposure must map into POA&M"
     rdp = [r for r in poam if "RDP" in (r.get("weakness") or "") or "3389" in (r.get("recommended_fix") or "")]

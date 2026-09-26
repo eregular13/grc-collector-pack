@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 193 — import CSVs start with exact header (2026-09-26)
+
+CISO Assistant / OpenGRC / spreadsheet importers do not skip `#` comments.
+Machine-imported CSVs now start with the locked importer header (no preamble).
+CISO and OpenGRC omit the extra `estate` column; POA&M keeps it (operator
+draft). Banner lives in EXECUTIVE_SUMMARY.md, SCOPE_AND_TRUST.md, poam.md,
+and `out/<sink>/ESTATE.txt`. Fail-closed classify unchanged. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 192 — rebase estate pages onto master + CI (2026-09-26)
 
 Rebase `cursor/estate-exec-trust-pages-f8c2` onto master after #128/#129/#130.

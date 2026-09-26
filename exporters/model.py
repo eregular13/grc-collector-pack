@@ -237,11 +237,11 @@ class PackEstate:
 def _read_csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
     if not path.is_file():
         return []
-    from shared.estate_pages import csv_rows_skip_comments
+    from shared.ciso_shape import csv_rows
 
     return [
         {str(k): ("" if v is None else str(v)) for k, v in row.items()}
-        for row in csv_rows_skip_comments(path, delimiter=delimiter)
+        for row in csv_rows(path, delimiter=delimiter)
     ]
 
 

@@ -15,6 +15,7 @@ from shared.estate_pages import (
     classify_estate,
     write_client_pages,
     write_csv_with_estate,
+    write_estate_sidecar,
     write_export_manifest,
 )
 from shared.evidence import build_evidence_rows
@@ -52,7 +53,6 @@ ASSETS_HEADER = [
     "observation",
     "filtering_labels",
     "parent_assets",
-    "estate",
 ]
 CONTROLS_HEADER = [
     "ref_id",
@@ -63,11 +63,10 @@ CONTROLS_HEADER = [
     "category",
     "priority",
     "csf_function",
-    "estate",
 ]
-EVIDENCE_HEADER = ["name", "description", "estate"]
-FINDINGS_HEADER = ["ref_id", "name", "description", "severity", "status", "filtering_labels", "estate"]
-VULN_HEADER = ["ref_id", "name", "description", "status", "severity", "assets", "applied_controls", "estate"]
+EVIDENCE_HEADER = ["name", "description"]
+FINDINGS_HEADER = ["ref_id", "name", "description", "severity", "status", "filtering_labels"]
+VULN_HEADER = ["ref_id", "name", "description", "status", "severity", "assets", "applied_controls"]
 SCENARIO_HEADER = [
     "ref_id",
     "assets",
@@ -83,7 +82,6 @@ SCENARIO_HEADER = [
     "residual_proba",
     "residual_risk",
     "treatment",
-    "estate",
 ]
 
 VULN_CATEGORIES = {"vulnerability", "secrets", "sast"}
@@ -371,12 +369,14 @@ def load() -> dict:
     _write_csv(out_ciso / "findings.csv", FINDINGS_HEADER, ciso_findings, stamp=stamp)
     _write_csv(out_ciso / "vulnerabilities.csv", VULN_HEADER, ciso_vulns, stamp=stamp)
     _write_csv(out_ciso / "risk_scenarios.csv", SCENARIO_HEADER, scenarios, delimiter=";", stamp=stamp)
-    write_text(
-        out_ciso / "ESTATE.txt",
-        stamp.banner_md()
-        + "\n\nCISO CSVs carry an `estate` column and the banner as `#` comments. "
-        + f"filtering_labels also include {stamp.token()}. "
-        + "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.\n",
+    write_estate_sidecar(
+        out_ciso,
+        stamp,
+        note=(
+            "CISO Assistant import CSVs start with the locked importer header "
+            f"(no # preamble). filtering_labels include {stamp.token()}. "
+            "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
+        ),
     )
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
@@ -402,14 +402,26 @@ def load() -> dict:
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
     write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
+    write_estate_sidecar(
+        out_poam,
+        stamp,
+        note=(
+            "POA&M is an operator draft, not a CISO Assistant import. "
+            "poam.csv starts with the operator header (no # preamble) and "
+            "carries a per-row estate column. SAMPLE/DEMO/LAB cannot be "
+            "suppressed and is never client KEEP."
+        ),
+    )
     out_sr = out_dir() / "simplerisk"
     _write_csv(out_sr / "poam.csv", poam_header, poam_rows, stamp=stamp)
     write_text(
         out_sr / "README.md",
-        "# SimpleRisk leave-behind\n\n"
+        stamp.banner_md()
+        + "\n\n# SimpleRisk leave-behind\n\n"
         "Copy of POA&M rows under `out/` only. No SimpleRisk API. No push.\n"
         "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n",
     )
+    write_estate_sidecar(out_sr, stamp)
 
     rr_assets = []
     for rec in assets:
