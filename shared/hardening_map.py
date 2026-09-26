@@ -216,6 +216,11 @@ HK_MAP: dict[str, str] = {
 OSCAP_MAP: dict[str, str] = {
     "sshd_disable_root_login": SSH_ROOT_LOGIN,
     "sshd_permit_root_login": SSH_ROOT_LOGIN,
+    "permitroot": SSH_ROOT_LOGIN,
+    "ssh_permitroot": SSH_ROOT_LOGIN,
+    "sample_rule_ssh_permitroot": SSH_ROOT_LOGIN,
+    "firewall": HOST_FIREWALL,
+    "sample_rule_firewall": HOST_FIREWALL,
     "sshd_disable_empty_passwords": SSH_EMPTY_PASSWORDS,
     "no_empty_passwords": SSH_EMPTY_PASSWORDS,
     "package_iptables_installed": HOST_FIREWALL,
@@ -272,7 +277,9 @@ def oscap_short_id(rule_id: str) -> str:
 def _keyword_control(text: str) -> str | None:
     blob = (text or "").lower().replace("_", " ").replace("-", " ")
     compact = blob.replace(" ", "")
-    if "permitrootlogin" in compact or ("ssh" in blob and "root login" in blob):
+    if "permitrootlogin" in compact or (
+        "permitroot" in compact and ("ssh" in blob or "sshd" in blob)
+    ) or ("ssh" in blob and "root login" in blob):
         return SSH_ROOT_LOGIN
     if "permitemptypasswords" in compact or ("empty password" in blob and "ssh" in blob):
         return SSH_EMPTY_PASSWORDS
@@ -285,6 +292,8 @@ def _keyword_control(text: str) -> str | None:
         or "ufw" in blob
         or "enablefirewall" in compact
         or "windows firewall" in blob
+        or "disabled" in blob
+        or "sample rule firewall" in blob
     ):
         return HOST_FIREWALL
     if (

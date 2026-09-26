@@ -162,6 +162,10 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Enable malware protection": "Malware real-time protection is disabled",
     "Require encryption in transit": "Remote session encryption is not required",
     "Enable a host firewall": "Host firewall is disabled",
+    "End privileged HasSession logons": "Privileged principal has a HasSession on a workstation",
+    "Run container images as a non-root USER": "Container image runs as root",
+    "Block public EBS snapshot sharing": "EBS snapshot is shared publicly",
+    "Disable weak SSH cryptographic algorithms": "SSH offers weak encryption or MAC algorithms",
     "Disable SSH root login": "SSH root login is enabled",
     "Disable SSH empty passwords": "SSH empty passwords are allowed",
     "Apply security updates": "Security updates are not applied",
@@ -460,6 +464,10 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable LM hash storage": ["IA-5", "CM-6"],
     "Enable a host firewall": ["SC-7", "CM-7"],
     "Disable SSH root login": ["IA-2", "AC-6"],
+    "End privileged HasSession logons": ["AC-6", "AC-2"],
+    "Run container images as a non-root USER": ["AC-6", "CM-7"],
+    "Block public EBS snapshot sharing": ["AC-3", "SC-7"],
+    "Disable weak SSH cryptographic algorithms": ["CM-6", "SC-13"],
     "Disable SSH empty passwords": ["IA-5", "IA-2"],
     "Apply security updates": ["SI-2", "CM-6", "RA-5"],
     "Enable time synchronization": ["AU-8"],
@@ -697,7 +705,47 @@ def _is_vuln_finding(rec: dict[str, Any]) -> bool:
     return bool(_CVE_RE.search(cve))
 
 
+def _is_ssh_weak_crypto(rec: dict[str, Any]) -> bool:
+    """Greenbone/Nessus SSH weak encryption or MAC — config, not a package CVE."""
+    blob = _blob(rec)
+    if "ssh" not in blob:
+        return False
+    return bool(
+        re.search(r"weak\s+encryption\s+algorithms", blob)
+        or re.search(r"weak\s+mac\s+algorithms", blob)
+    )
+
+
+def _ssh_weak_crypto_playbook(rec: dict[str, Any]) -> dict[str, Any]:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    solution = str(extra.get("solution") or "").strip()
+    blob = _blob(rec)
+    if re.search(r"weak\s+mac\s+algorithms", blob):
+        default = "Disable the weak MAC algorithms."
+        weakness = "SSH offers weak MAC algorithms"
+    else:
+        default = "Disable the weak encryption algorithms."
+        weakness = "SSH offers weak encryption algorithms"
+    fix = solution if solution else default
+    if fix and not fix.endswith("."):
+        fix += "."
+    return {
+        "control_name": "Disable weak SSH cryptographic algorithms",
+        "recommended_fix": (
+            f"{fix} This is a dropped scanner finding, not a live SSH probe."
+        ),
+        "nist_800_53": ["CM-6", "SC-13"],
+        "cis": [],
+        "generic": False,
+        "finding_type": "ssh_weak_crypto",
+        "weakness_name": weakness,
+        "include_poam": canon_severity(rec.get("severity")) != "info",
+    }
+
+
 def _vuln_playbook(rec: dict[str, Any]) -> dict[str, Any]:
+    if _is_ssh_weak_crypto(rec):
+        return _ssh_weak_crypto_playbook(rec)
     cves = _cves_in(rec)
     cve = cves[0] if cves else ""
     pkg = _pkg_from_rec(rec)
@@ -1716,7 +1764,10 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
     elif "firewall" in text and (
-        "no firewall" in text or "not installed" in text or "inactive" in text
+        "no firewall" in text
+        or "not installed" in text
+        or "inactive" in text
+        or "disabled" in text
     ):
         name = "Enable a host firewall"
         fix = (
