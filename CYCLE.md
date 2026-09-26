@@ -1,5 +1,56 @@
 # CYCLE log
 
+## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;
+after `22d085f` #157 and `befc7d0` #162). No rebase. Vendor
+persist/audit/backfill kept. Pytest **1333**. Host-lab unchanged
+(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 211 — merge master 22d085f (#157) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `22d085f` (#157 B6 playbooks; after
+`befc7d0` #162). No rebase. Vendor backfill baseline kept. Pytest
+**1331**. Host-lab unchanged (79 / 107 / poam 124 / excluded 5).
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+## cycle 210 — pre-#160 vendor backfill is not a field change (2026-09-26)
+
+Upgrade run over a ledger without O/P/Q fills No/default as a schema
+baseline: no `field_changed`, no Status Date churn. Merged
+`origin/master` `befc7d0` (#162) with a normal merge. Pytest **1314**.
+Host-lab unchanged (79 / 107 / poam 124 / excluded 5). Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
+## cycle 209 — persist operator No + O/P/Q audit (#160) (2026-09-26)
+
+Metis acceptance: operator Vendor Dependency=No persists across later
+runs without overrides.csv (`vd_source=operator`). Any O/P/Q /
+`vd_source` change updates `status_date` and writes `field_changed`.
+Invalid override tokens warn. Vendor-dependent Yes stays off Closed.
+Fingerprint / EGP IDs unchanged. Pytest **1309**. Host-lab unchanged
+(79 / 107 / poam 124 / excluded 5). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 208 — merge master 1be65cf (#159) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `1be65cf` (#159 hermetic farm_which PATH).
+No rebase. Gap 2 O/P/Q kept. Pytest **1305**. Host-lab unchanged.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 207 — POA&M Gap 2 vendor dependency O/P/Q (2026-09-26)
+
+FedRAMP R3.0 Open O/P/Q: Vendor Dependency defaults to **No**
+(`vd_source=default`), never invents Yes. Scanner no-fix is
+suggestion-only. Operator override persists on the ledger. P/Q blank
+when No; Q is `Vendor – Product` when Yes. KEV due dates are not
+suspended. Host-lab unchanged: assets **79** findings **107** poam
+**124** excluded **5**. Pytest **1304**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
 
 Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed

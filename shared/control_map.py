@@ -9,7 +9,7 @@ import os
 import re
 from typing import Any
 
-from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
+from shared.finding_types import TYPE_WEAKNESS_NAME, has_xss_signal, type_remediation
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
     apply_class_mapping,
@@ -1244,7 +1244,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Patch or isolate the service that Nuclei flagged as RCE. "
             "This is a dropped Nuclei finding, not a live scan."
         )
-    elif "xss" in text or "cross-site scripting" in text:
+    elif has_xss_signal(rec):
         name = "Stop cross-site scripting"
         fix = (
             "Encode untrusted output for the HTML context. Avoid raw innerHTML. "
