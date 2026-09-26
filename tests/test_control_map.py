@@ -689,6 +689,7 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
             name="TLS expired on vpn.example.com",
             description="https listener presents an expired certificate.",
             severity="low",
+            assets=["host-b"],
             extra={"port": "443", "service": "https"},
         ),
         _finding(
