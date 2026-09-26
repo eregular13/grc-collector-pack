@@ -17,6 +17,7 @@ from shared.kev import (
     KevCatalog,
     format_cves,
 )
+from shared.finding_types import strip_secret_hash_from_key
 from shared.poam_ledger import pending_comment
 from shared.io_util import redact
 from shared.vendor_dependency import (
@@ -170,7 +171,7 @@ def item_to_row(
         str(item.get("name") or ""),
         str(item.get("description") or ""),
         str(item.get("source_family") or ""),
-        str(item.get("weakness_key") or ""),
+        strip_secret_hash_from_key(str(item.get("weakness_key") or "")),
         str(item.get("display_asset") or item.get("asset_key") or ""),
         str(item.get("point_of_contact") or ""),
         "",

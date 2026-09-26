@@ -32,7 +32,14 @@ from shared.asset_key import (
     legacy_port_only_asset_key,
     normalize_weakness_name,
 )
-from shared.finding_types import extra_dict, finding_type
+from shared.finding_types import (
+    SECRET_UNSTABLE_LOCATION_KEYS,
+    SECRET_UNSTABLE_WITHOUT_HASH,
+    extra_dict,
+    finding_type,
+    is_secret_finding,
+    secret_has_identity_hash,
+)
 from shared.io_util import in_dir, out_dir
 from shared.kev import (
     collect_cves,
@@ -437,15 +444,31 @@ _LOCATION_KEYS = (
 )
 
 
-def _location_suffix(rec: dict[str, Any]) -> str:
+def _location_suffix(rec: dict[str, Any], *, secret_legacy: bool = False) -> str:
     """Path/url/file/line/user/evidence (and cmd/service) when present.
 
     Same-title fallback rows on one asset stay distinct. CVE keys omit this.
+    Secret-class rows drop line/evidence/cmd and append ``secret_hash``
+    when the value is usable (CR6-2). Empty or redacted material keeps
+    ``line`` so two leaks of one rule in one file stay two IDs.
+    Path/url/user stay so #170 admin URLs and honeypot cmds still
+    split. ``secret_legacy`` rebuilds the pre-CR6-2 suffix.
     """
     extra = extra_dict(rec)
+    secret = is_secret_finding(rec)
+    has_hash = secret_has_identity_hash(rec)
+    skip: frozenset[str] = frozenset()
+    if secret and not secret_legacy:
+        skip = (
+            SECRET_UNSTABLE_LOCATION_KEYS
+            if has_hash
+            else SECRET_UNSTABLE_WITHOUT_HASH
+        )
     bits: list[str] = []
     seen: set[str] = set()
     for key in _LOCATION_KEYS:
+        if key in skip:
+            continue
         val = _extra_field(extra, key)
         if not val:
             continue
@@ -453,6 +476,13 @@ def _location_suffix(rec: dict[str, Any]) -> str:
         if token not in seen:
             seen.add(token)
             bits.append(token)
+    if secret and not secret_legacy:
+        hashed = _extra_field(extra, "secret_hash")
+        if hashed:
+            token = f"secret_hash:{hashed.lower()}"
+            if token not in seen:
+                seen.add(token)
+                bits.append(token)
     port = _extra_field(extra, "port")
     has_plugin = False
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id", "id"):
@@ -467,6 +497,16 @@ def _location_suffix(rec: dict[str, Any]) -> str:
             if token not in seen:
                 bits.append(token)
     return "|".join(bits)
+
+
+def legacy_secret_line_weakness_key(rec: dict[str, Any]) -> str:
+    """Pre-CR6-2 secret key: line/evidence/cmd in location, no secret_hash."""
+    core = _weakness_key_core(rec)
+    if not core.startswith("cve:"):
+        loc = _location_suffix(rec, secret_legacy=True)
+        if loc:
+            core = f"{core}:{loc}"
+    return _attach_wazuh_host(rec, core)
 
 
 def _wazuh_host_segment(raw: str) -> str:
@@ -956,6 +996,10 @@ def _used_ids(ledger: dict[str, Any]) -> dict[str, str]:
         pid = str(item.get("poam_id") or "")
         if pid:
             used[pid] = fp
+        for alias in item.get("aliased_poam_ids") or []:
+            token = str(alias or "")
+            if token and token not in used:
+                used[token] = fp
     for item in ledger.get("closed") or []:
         pid = str(item.get("poam_id") or "")
         if pid:
@@ -1543,6 +1587,41 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
                 if fp and fp not in seen:
                     seen.add(fp)
                     out.append((fp, reason))
+    # CR6-2: pre-hash / line-keyed secret fps rematch. Strip newly stamped
+    # file+secret_hash so DEMO gitleaks ``:line:N`` and TruffleHog check_id-only
+    # rows keep their EGP. Do not drop path/url — that would undo #170.
+    if is_secret_finding(rec):
+        extra = extra_dict(rec)
+        secret_variants = [rec]
+        no_new = {k: v for k, v in extra.items() if k not in ("secret_hash", "file")}
+        if no_new != dict(extra):
+            fake = dict(rec)
+            fake["extra"] = no_new
+            secret_variants.append(fake)
+        no_hash = {k: v for k, v in extra.items() if k != "secret_hash"}
+        if no_hash != dict(extra) and no_hash != no_new:
+            fake = dict(rec)
+            fake["extra"] = no_hash
+            secret_variants.append(fake)
+        for variant in secret_variants:
+            for fn, reason in (
+                (asset_key, "secret_line_to_hash"),
+                (legacy_master_asset_key, "secret_line_to_hash"),
+                (legacy_asset_id_port_key, "secret_line_to_hash"),
+                (legacy_name_asset_key, "secret_line_to_hash"),
+            ):
+                fp = fp_v1(
+                    variant,
+                    asset_key_fn=fn,
+                    weakness_key_fn=legacy_secret_line_weakness_key,
+                )
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
+                fp = fp_v1(variant, asset_key_fn=fn)
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
     return out
 
 
@@ -1824,6 +1903,98 @@ def _migrate_if_needed(
     return new_fp
 
 
+def _merged_away_ref_ids(rec: dict[str, Any]) -> set[str]:
+    """ref_ids collapsed into this finding by weakness merge (also_ids / provenance)."""
+    extra = extra_dict(rec)
+    refs: set[str] = set()
+    keep = str(rec.get("ref_id") or "").strip()
+    for raw in extra.get("also_ids") or []:
+        token = str(raw or "").strip()
+        if token and token != keep:
+            refs.add(token)
+    for prov in extra.get("provenance") or []:
+        if not isinstance(prov, dict):
+            continue
+        token = str(prov.get("ref_id") or "").strip()
+        if token and token != keep:
+            refs.add(token)
+    return refs
+
+
+def _alias_merged_away_items(
+    ledger: dict[str, Any],
+    instances: list[dict[str, Any]],
+    seen: set[str],
+    run_iso: str,
+) -> None:
+    """Fold ledger rows whose ref_id was merged away. Do not orphan those EGP- IDs.
+
+    #180 already aliases same-fp pack_drop collapse. This pass covers
+    Global-Admin-by-UPN (and any other weakness merge that stamps also_ids)
+    so upgrade Open equals a fresh run.
+    """
+    items: dict[str, Any] = ledger["items"]
+    by_ref: dict[str, list[str]] = {}
+    for fp, item in items.items():
+        rid = str(item.get("ref_id") or "").strip()
+        if rid:
+            by_ref.setdefault(rid, []).append(fp)
+
+    for rec in instances:
+        refs = _merged_away_ref_ids(rec)
+        if not refs:
+            continue
+        surv_fp = fp_v1(rec)
+        if surv_fp not in items:
+            continue
+        survivor = items[surv_fp]
+        survivor_id = str(survivor.get("poam_id") or "")
+        aliases = [str(x) for x in (survivor.get("aliased_poam_ids") or []) if x]
+        for rid in refs:
+            for old_fp in list(by_ref.get(rid) or []):
+                if old_fp == surv_fp or old_fp in seen:
+                    continue
+                item = items.get(old_fp)
+                if not item:
+                    continue
+                if str(item.get("status") or "") == "closed":
+                    continue
+                alias_id = str(item.get("poam_id") or "")
+                odd = str(item.get("original_detection_date") or "")
+                d_alias = _to_date(odd)
+                d_keep = _to_date(survivor.get("original_detection_date"))
+                if d_alias and (not d_keep or d_alias < d_keep):
+                    survivor["original_detection_date"] = odd
+                for extra_alias in item.get("aliased_poam_ids") or []:
+                    token = str(extra_alias or "")
+                    if token and token != survivor_id and token not in aliases:
+                        aliases.append(token)
+                if alias_id and alias_id != survivor_id and alias_id not in aliases:
+                    aliases.append(alias_id)
+                items.pop(old_fp, None)
+                _record_fp_migration(
+                    ledger,
+                    src_fp=old_fp,
+                    dest_fp=surv_fp,
+                    poam_id=alias_id,
+                    odd=odd,
+                    reason="merged_away_alias",
+                    alias_of=survivor_id,
+                )
+                ledger["events"].append(
+                    _event(
+                        run_iso,
+                        surv_fp,
+                        survivor_id,
+                        "migrated_alias",
+                        {"from": old_fp, "alias_poam_id": alias_id},
+                    )
+                )
+                seen.add(old_fp)
+        if aliases:
+            survivor["aliased_poam_ids"] = aliases
+
+
 def build_coverage(instances: Iterable[dict[str, Any]]) -> dict[str, set[str]]:
     cov: dict[str, set[str]] = {}
     for rec in instances:
@@ -2077,6 +2248,8 @@ def apply_ledger(
                     {"before": before_vd, "after": after_vd},
                 )
             )
+
+    _alias_merged_away_items(ledger, instances, seen, run_iso)
 
     for fp, item in ledger["items"].items():
         if fp in included_fps:
