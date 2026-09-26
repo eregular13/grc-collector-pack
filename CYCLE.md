@@ -22,6 +22,14 @@ FedRAMP rewrite. No port/identity dedupe. AC-5 left as-is. Pytest
 Open == poam.csv. Farm ledger Open **109**. Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
+## cycle 218 — legacy osquery pack names map to current class (2026-09-26)
+
+Carried High `EGP-8EC6F7CA09` (`pack_it-compliance_alf`) now maps to
+`alf` / host_fw (SC-7, CM-7) like observed `EGP-CC1D5A971D`. Rebased
+onto `ce67328`. Pytest **1525**. Host-lab 79 / 105 / poam 121 /
+excluded 6. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 217 — CR7 bh-high-value playbook after #177 (2026-09-26)
 
 `bh-high-value` (Administrators / Enterprise Admins / Schema Admins)

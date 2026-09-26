@@ -38,17 +38,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _finding(ref: str, sev: str = "high", labels: list[str] | None = None) -> dict:
+    port = {"f-low": "22", "f-info": "23", "f1": "21", "f2": "445"}.get(ref, "21")
     return {
         "kind": "finding",
         "source": "inventory-nmap",
         "ref_id": ref,
         "name": f"FTP exposed {ref}",
-        "description": f"{ref} has open TCP/21 (ftp).",
+        "description": f"{ref} has open TCP/{port} (ftp).",
         "severity": sev,
         "category": "exposure",
         "assets": ["host-a"],
         "labels": labels or ["nmap"],
-        "extra": {"port": "21", "service": "ftp", "ip": "10.0.0.5"},
+        "extra": {"port": port, "service": "ftp", "ip": "10.0.0.5", "check_id": f"test-{ref}"},
     }
 
 

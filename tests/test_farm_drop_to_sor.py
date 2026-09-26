@@ -292,7 +292,7 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     ciso = work / "out" / "ciso-assistant"
     shape = assert_risk_register_and_poam(work / "out")
     assert shape["findings"] >= 1
-    assert shape["risk_scenarios"] >= shape["findings"]
+    assert shape["risk_scenarios"] >= shape["poam_rows"]
     assert shape["poam_rows"] >= 1
     assert stamp["counts"]["poam"] == shape["poam_rows"]
     assert stamp["counts"]["findings"] == shape["findings"]
@@ -322,25 +322,38 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
 
     assert max(len(ref) for ref in refs) <= CISO_REF_MAX
     excluded = csv_rows(work / "out" / "poam" / "excluded.csv")
+    from shared.ciso_shape import assert_register_no_double_treatment
+    from shared.egp_collapse import is_merged_into_reason
+
     accept_n = 0
+    mitigate_n = 0
     for row in scenarios:
         assert row["ref_id"]
         assert row["name"]
         assert row.get("current_risk") in SCENARIO_LEVELS, row
         treat = row.get("treatment")
         assert treat in {"mitigate", "accept"}, row
+        assert (row.get("existing_controls") or "") == "", row
         if treat == "accept":
             accept_n += 1
-            assert str(row.get("existing_controls") or "").startswith("excluded:"), row
             assert (row.get("additional_controls") or "") == ""
             assert row.get("residual_risk") == row.get("current_risk"), row
             assert row.get("residual_impact") == row.get("current_impact"), row
             assert row.get("residual_proba") == row.get("current_proba"), row
         else:
-            assert (row.get("existing_controls") or "") == ""
+            mitigate_n += 1
             assert str(row.get("additional_controls") or "").startswith("CTL-"), row
-    assert accept_n == len(excluded)
+    non_merged = [
+        row
+        for row in excluded
+        if not is_merged_into_reason(str(row.get("excluded_reason") or ""))
+    ]
+    assert mitigate_n == shape["poam_rows"]
+    assert accept_n == len(non_merged)
     assert accept_n >= 1
+    overlap = assert_register_no_double_treatment(work / "out")
+    assert not overlap["title_host_overlap"]
+    assert not overlap["egp_overlap"]
     for row in csv_rows(ciso / "findings.csv"):
         assert row["severity"] in FINDING_SEV, row
         assert row["ref_id"]
