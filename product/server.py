@@ -1102,6 +1102,8 @@ def estate() -> dict:
     ready = bool(summary)
     mode = refresh_mode_for(honesty, ready)
     poam = poam_rows(out)
+    poam_kpi = poam_summary(out, poam)
+    # One severity count on screen, from the open POA&M register (#175).
     sev = severity_from_open_poam(poam)
     coverage = framework_coverage(out)
     sinks = leavebehind_sinks(out)
@@ -1124,7 +1126,7 @@ def estate() -> dict:
         "refresh_mode": mode,
         "summary": summary,
         "severity": sev,
-        "poam": poam_summary(out, poam),
+        "poam": poam_kpi,
         "coverage": coverage,
         "opengrc": sinks["opengrc"],
         "probo": sinks["probo"],

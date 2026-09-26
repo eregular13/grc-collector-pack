@@ -378,7 +378,7 @@ def test_exec_counts_info_as_own_bucket_not_dropped_low(
         [
             _asset(),
             _finding("f-low", sev="low"),
-            _finding("f-info", sev="info"),
+            {**_finding("f-info", sev="info"), "extra": {"port": "22", "service": "ssh", "ip": "10.0.0.5"}},
         ],
         GRC_ESTATE_LABEL="LAB",
     )
@@ -553,6 +553,7 @@ def test_manifest_verifies_with_sha256sum_c(
     assert not manifest.lstrip().startswith(">")
     assert "| File |" not in manifest
     assert "MANIFEST" not in {line.split()[-1] for line in manifest.splitlines() if line.strip()}
+    assert "poam/poam_fedramp.csv" in manifest
     assert_client_export_honesty(out)
 
 

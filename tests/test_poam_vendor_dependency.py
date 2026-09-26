@@ -327,6 +327,16 @@ def test_vd_yes_not_listed_on_closed_csv(tmp_path: Path) -> None:
     write_fedramp_poam(
         tmp_path,
         {"items": {item["fp"]: leaked}, "closed": [leaked]},
+        decisions=[
+            {
+                "item": leaked,
+                "weakness": leaked.get("name") or "",
+                "fields": {"poam_id": pid},
+                "mapped": {},
+                "rec": {},
+                "assets_s": "",
+            }
+        ],
     )
     with (tmp_path / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         open_rows = list(csv.DictReader(fh))

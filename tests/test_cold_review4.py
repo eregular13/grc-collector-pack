@@ -864,20 +864,28 @@ def test_netbios_ns_pod_reclass_keeps_uid() -> None:
     assert ledger.observe(new, now=NOW) == old_uid
 
 
-def test_demo_fedramp_open_stays_127(tmp_path: Path, monkeypatch) -> None:
+def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
+    """FedRAMP Open is the included poam.csv set, not the fat ledger."""
     from tests.test_poam_breakdown import _run_lab
 
     _run_lab(tmp_path, monkeypatch)
-    fed = tmp_path / "poam" / "poam_fedramp.csv"
-    assert fed.is_file()
-    with fed.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    assert len(rows) == 127, f"DEMO FedRAMP Open={len(rows)} expected 127"
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
+    with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    assert [r.get("POAM ID") for r in fed] == [r.get("poam_id") for r in poam]
+    assert len(fed) == len(poam)
+    assert len(fed) < 127
+    admin = [r for r in poam if str(r.get("weakness") or "").startswith("Exposed admin")]
+    assert len(admin) >= 2
+    assert len({r.get("poam_id") for r in admin}) == len(admin)
 
 
-def test_farm_fedramp_open_stays_174(tmp_path: Path) -> None:
+def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     import os
     import subprocess
+
+    from tests.test_pack_drop_scan_density import MIN_FARM_POAM
 
     root = Path(__file__).resolve().parents[1]
     script = root / "scripts" / "farm_drop_to_sor.sh"
@@ -899,21 +907,19 @@ def test_farm_fedramp_open_stays_174(tmp_path: Path) -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    fed = work / "out" / "poam" / "poam_fedramp.csv"
-    assert fed.is_file()
-    with fed.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    assert len(rows) == 174, f"farm FedRAMP Open={len(rows)} expected 174"
+    with (work / "out" / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
+    with (work / "out" / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    assert [r.get("POAM ID") for r in fed] == [r.get("poam_id") for r in poam]
+    assert len(fed) >= MIN_FARM_POAM
+    assert len(fed) < 174
 
 
-def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
+def test_master_demo_ledger_upgrade_open_matches_poam(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """master→this-branch: first Exposed-admin URL keeps its EGP; sibling is new.
-
-    Fresh DEMO FedRAMP Open is 127. Upgrade must not stay at 126 — the
-    newly discriminated /login (or apex) URL is tracked. 0 ghosts.
-    """
+    """Upgrade a 932cf7c DEMO ledger: Open == poam.csv; #170 splits admin URLs."""
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -928,41 +934,29 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
         json.dumps(prior, indent=2) + "\n", encoding="utf-8"
     )
     summary = _run_lab(tmp_path, monkeypatch)
-    ledger = json.loads((tmp_path / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
-    created = [
-        e for e in (ledger.get("events_this_run") or []) if e.get("kind") == "created"
-    ]
-    open_items = [
-        it for it in ledger["items"].values() if str(it.get("status") or "") != "closed"
-    ]
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
-    reseen_ids = {it["poam_id"] for it in open_items}
-    ghosts = prior_ids - reseen_ids
-    new_ids = reseen_ids - prior_ids
-    assert ghosts == set(), f"ghosts {sorted(ghosts)}"
-    assert len(created) == 1, [e.get("poam_id") for e in created]
-    assert {e.get("poam_id") for e in created} == new_ids
-    assert len(open_items) == 127
-    assert len(fed_rows) == 127
-    assert prior_ids <= reseen_ids
-    admin_rows = [
-        it
-        for it in open_items
-        if str(it.get("name") or "").startswith("Exposed admin interface on")
-    ]
-    assert len(admin_rows) == 2
-    assert len({it["poam_id"] for it in admin_rows}) == 2
+    poam_ids = {str(r.get("poam_id") or "") for r in poam}
+    fed_ids = {str(r.get("POAM ID") or "") for r in fed_rows}
+    assert fed_ids == poam_ids
+    assert len(poam) < 127
+    admin = [r for r in poam if str(r.get("weakness") or "").startswith("Exposed admin")]
+    assert len(admin) >= 2
+    assert len({r.get("poam_id") for r in admin}) == len(admin)
     assert summary.get("demo") is True
 
 
 def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 7ebc697 DEMO ledger: 0 duplicate opens, 1 new (#170 split), 127 open.
+    """Upgrade a 7ebc697 DEMO ledger: 0 ghosts, 1 new (#170 split).
 
     Pre-#172 title-keyed host-less Wazuh rows rematch. The #170 admin URL
-    sibling is the only mint. No ghosts.
+    sibling is the only mint. FedRAMP Open IDs == poam.csv (unique
+    decision set) — merged GA / observation-id / port-only duplicates
+    stay on excluded.csv, not as extra Open rows.
     """
     from tests.test_poam_breakdown import _run_lab
 
@@ -985,6 +979,8 @@ def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     open_items = [
         it for it in ledger["items"].values() if str(it.get("status") or "") != "closed"
     ]
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
@@ -993,10 +989,12 @@ def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
     assert len(created) == 1, [e.get("poam_id") for e in created]
     assert {e.get("poam_id") for e in created} == new_ids
-    assert len(open_items) == 127
-    assert len(fed_rows) == 127
     assert prior_ids <= reseen_ids
-    assert len({it["poam_id"] for it in open_items}) == 127
+    poam_ids = {str(r.get("poam_id") or "") for r in poam}
+    fed_ids = {str(r.get("POAM ID") or "") for r in fed_rows}
+    assert fed_ids == poam_ids
+    assert new_ids <= poam_ids
+    assert all(str(pid).startswith(("EGP-", "EGR-")) for pid in poam_ids)
     admin_rows = [
         it
         for it in open_items

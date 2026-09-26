@@ -15,8 +15,9 @@ import re
 from typing import Any
 
 # Sources whose emitted types this catalog covers. Other collectors stay on
-# the legacy nmap/easm/code/dns/host map.
+# the legacy nmap/easm/code/dns/host map unless an alias or heuristic hits.
 TYPED_SOURCES = frozenset({"cloud-prowler", "identity-ad", "k8s-kubescape"})
+HEURISTIC_SOURCES = TYPED_SOURCES | frozenset({"host-wazuh"})
 
 SEV_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
@@ -91,6 +92,12 @@ TYPE_ALIASES: dict[str, str] = {
     "1_2_1": "k8s_anonymous_auth",
     "c_0034": "k8s_privilege_escalation",
     "c_0041": "k8s_hostnetwork",
+    # Host / vuln — disk encryption + Redis bind/dangerous-cmd.
+    "disk_encryption": "disk_encryption",
+    "disk_encryption_enabled": "disk_encryption",
+    "redis_bind": "redis_bind",
+    "redis_dangerous_cmd": "redis_dangerous_cmd",
+    "redis_info": "nse-redis-noauth",
     # testssl.sh exact ids (norm_type_key of SSLv2 → sslv2, not ssl2).
     "breach": "tls_breach",
     "lucky13": "tls_lucky13",
@@ -383,6 +390,35 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "nist_800_53": ["SI-7", "CM-6", "AC-3"],
         "key_medium": True,
     },
+    "disk_encryption": {
+        "control_name": "Enable full-disk encryption on the endpoint",
+        "recommended_fix": (
+            "Enable BitLocker or FileVault (or the MDM disk-encryption profile) "
+            "on the endpoint and confirm the device reports encrypted. Intune and "
+            "Jamf evidence on the same asset is one weakness, not two. This is an "
+            "MDM file-drop finding, not a live Graph/Jamf API call."
+        ),
+        "nist_800_53": ["SC-28", "MP-5"],
+        "key_medium": True,
+    },
+    "redis_bind": {
+        "control_name": "Bind Redis and enable protected-mode",
+        "recommended_fix": (
+            "Set protected-mode yes and bind Redis to localhost or a private "
+            "interface only; firewall TCP/6379. This is a bind/protected-mode "
+            "finding, not a password rotation."
+        ),
+        "nist_800_53": ["SC-7", "CM-6", "CM-7"],
+    },
+    "redis_dangerous_cmd": {
+        "control_name": "Rename or disable dangerous Redis commands",
+        "recommended_fix": (
+            "Rename or disable CONFIG, MODULE, and DEBUG for application users "
+            "(rename-command in redis.conf or an ACL that denies those commands). "
+            "This is a dangerous-command finding, not bind-only."
+        ),
+        "nist_800_53": ["AC-3", "CM-6", "CM-7"],
+    },
     # Playbook text is paraphrase-only. PingCastle reports are NPOSL-3.0;
     # Nikto plugin DBs are All Rights Reserved. Never copy vendor wording.
     "tls_breach": {
@@ -622,6 +658,9 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
     "k8s_hostnetwork": "Workload uses hostNetwork",
     "k8s_write_binary_dir": "Workload can write under container binary directories",
+    "disk_encryption": "Disk encryption is disabled",
+    "redis_bind": "Redis is bound beyond localhost without protected-mode",
+    "redis_dangerous_cmd": "Dangerous Redis commands are enabled",
     "tls_breach": "HTTPS response compression enables BREACH",
     "tls_lucky13": "TLS CBC ciphers enable LUCKY13",
     "tls_cert_expiration": "TLS certificate is expired or expiring",
@@ -860,7 +899,14 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "ad_smb_null_session"
     if "domain admins" in text:
         return "ad_domain_admins"
-    if "global administrator" in text and ("pim" in text or "standing" in text or "graph" in text):
+    if "not a global administrator" not in text and (
+        (
+            "global administrator" in text
+            or "entra ga" in text
+            or (" ga " in f" {text} " and "pim" in text)
+        )
+        and ("pim" in text or "standing" in text or "graph" in text)
+    ):
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
@@ -912,6 +958,22 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         "security group" in text or "security_group" in text or "securitygroup" in text
     ):
         return "sg_ingress_open"
+    if "disk encryption" in text or "filevault" in text or "bitlocker" in text:
+        return "disk_encryption"
+    if "redis" in text and (
+        "unauth" in text
+        or "noauth" in text
+        or "without auth" in text
+        or "requirepass" in text
+        or "no password" in text
+    ):
+        return "redis_unauth"
+    if "redis" in text and ("protected-mode" in text or "bind" in text):
+        return "redis_bind"
+    if "redis" in text and (
+        "rename-command" in text or "dangerous" in text or "config" in text and "debug" in text
+    ):
+        return "redis_dangerous_cmd"
     return ""
 
 
@@ -934,13 +996,15 @@ def finding_type(rec: dict[str, Any]) -> str:
     if _risk_id_only(rec) and source in {"identity-ad", ""}:
         return ""
     if guessed and (
-        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+        source in TYPED_SOURCES
+        or guessed.startswith(("tls_", "web_", "pc_"))
+        or guessed == "entra_ga_pim"
     ):
         return guessed
     if source not in TYPED_SOURCES:
         return ""
     # Typed collector with an explicit check/edge/control we do not know.
-    if keys:
+    if source in TYPED_SOURCES and keys:
         return "unknown"
     return ""
 
@@ -1056,7 +1120,6 @@ def finding_identity(rec: dict[str, Any]) -> str:
         "template_id",
         "plugin_id",
         "nse_script",
-        "id",
         "edge",
         "control",
     ):
@@ -1071,12 +1134,79 @@ def finding_identity(rec: dict[str, Any]) -> str:
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
 
 
-def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
-    """(normalized asset, finding type or full identity). Asset is always in the key."""
+def _norm_weakness_token(raw: str) -> str:
+    return " ".join(str(raw or "").strip().lower().split())
+
+
+def semantic_weakness_key(rec: dict[str, Any]) -> str:
+    """Stable weakness id for register merge: type, then CVE, then name.
+
+    Not ``tool:scanner_id`` — same issue from Intune+Jamf or nmap+rustscan
+    on one EGA- asset must collapse.
+    """
     ftype = finding_type(rec)
-    if not ftype or ftype == "unknown":
-        ftype = finding_identity(rec) or "finding"
-    return (primary_asset(rec), ftype)
+    if ftype and ftype != "unknown":
+        return f"type:{ftype}"
+    extra = extra_dict(rec)
+    cve = str(extra.get("cve") or "").strip().upper()
+    if cve.startswith("CVE-"):
+        return f"cve:{cve}"
+    for blob in (rec.get("ref_id"), rec.get("name"), rec.get("description")):
+        text = str(blob or "").upper()
+        idx = text.find("CVE-")
+        if idx >= 0:
+            token = text[idx : idx + 20].split()[0].rstrip(",;:)")
+            if token.startswith("CVE-"):
+                return f"cve:{token}"
+    return f"name:{_norm_weakness_token(rec.get('name') or rec.get('ref_id') or 'finding')}"
+
+
+def register_asset_key(rec: dict[str, Any]) -> str:
+    """EGA- asset UID when #138 stamped it; else the normalized display asset.
+
+    Standing Global Administrator / Graph / Scuba rows for the same UPN share
+    one key even when one copy also lists the tenant as a second asset.
+    """
+    extra = extra_dict(rec)
+    ftype = finding_type(rec)
+    if ftype == "entra_ga_pim":
+        for raw in rec.get("assets") or []:
+            text = str(raw or "")
+            if "@" in text:
+                return normalize_asset_id(text)
+        return primary_asset(rec)
+    uid = str(extra.get("asset_uid") or "").strip()
+    if uid.startswith("EGA-"):
+        return uid
+    return primary_asset(rec)
+
+
+def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
+    """(asset, port/proto or weakness class). Observation id is not a key.
+
+    Port-only inventory rows (nmap/rustscan/…) merge on asset + port/proto.
+    Named weaknesses (type, CVE, or title) keep their class so TLS 1.0 and
+    a bare 443/tcp open stay two rows.
+    """
+    ftype = finding_type(rec)
+    asset = register_asset_key(rec)
+    extra = extra_dict(rec)
+    loc = _identity_location(extra)
+    if ftype and ftype != "unknown":
+        return (asset, f"{ftype}:{loc}" if loc else ftype)
+    port = str(extra.get("port") or "").strip()
+    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    if port and port != "0":
+        from shared.port_fold import finding_port, finding_proto, is_port_only_finding
+
+        port = finding_port(rec) or port
+        proto = finding_proto(rec) or proto
+        if is_port_only_finding(rec):
+            return (asset, f"port:{port}/{proto or 'tcp'}")
+    base = semantic_weakness_key(rec)
+    if loc:
+        return (asset, f"{base}:{loc}")
+    return (asset, base)
 
 
 def _sev_rank(rec: dict[str, Any]) -> int:
@@ -1189,7 +1319,9 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extras.append(other_desc)
 
 
-def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def dedupe_weaknesses(
+    records: list[dict[str, Any]], drops: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     """Collapse same-issue-same-asset findings. Non-findings pass through in order."""
     out: list[dict[str, Any]] = []
     index: dict[tuple[str, str], dict[str, Any]] = {}
@@ -1220,5 +1352,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             index[key] = rec
             out.append(rec)
             continue
+        if drops is not None:
+            drops.append({"rec": rec, "survivor": existing})
         _merge_weakness(existing, rec)
     return out

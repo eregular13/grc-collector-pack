@@ -10,7 +10,8 @@ from pathlib import Path
 import pytest
 
 from collectors.grc_loader import _dedupe, load
-from shared.ciso_shape import assert_poam_breakdown
+from shared.asset_ledger import AssetLedger, attach_asset_uids
+from shared.ciso_shape import assert_flood_guard, assert_one_truth_counts, assert_poam_breakdown
 from shared.control_map import (
     POAM_EXCLUDE_REASONS,
     map_finding,
@@ -18,6 +19,7 @@ from shared.control_map import (
     poam_decision,
 )
 from shared.finding_types import dedupe_weaknesses
+from shared.hardening_dedup import dedupe_hardening
 from shared.io_util import read_jsonl
 from shared.schema import make_record
 
@@ -161,6 +163,8 @@ def test_poam_breakdown_identity_no_silent_drop() -> None:
 
 def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     assert_poam_breakdown(summary)
+    if summary.get("flood_guard") is not None:
+        assert_flood_guard(summary)
     records: list[dict] = []
     folder = out / "canonical"
     if folder.is_dir():
@@ -168,16 +172,26 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
             records.extend(row for row in read_jsonl(path) if isinstance(row, dict))
     findings = [
         r
-        for r in dedupe_weaknesses(_dedupe(records))
-        if r.get("kind") in {"finding", "excluded"}
+        for r in dedupe_hardening(
+            dedupe_weaknesses(_dedupe(attach_asset_uids(records, AssetLedger())))
+        )
+        if r.get("kind") == "finding"
     ]
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)
     pending = int(summary.get("pending_carried") or 0)
-    assert walked["weaknesses_total"] + pending == summary["weaknesses_total"] == len(findings) + pending
-    assert walked["poam_included"] + pending == summary["poam_included"]
-    assert walked["excluded_by_reason"] == summary["excluded_by_reason"]
+    # Walk is post-dedupe. Merges live on excluded.csv as DUPLICATE_INSTANCE
+    # and are owned by flood_guard, not the deduped weaknesses_total identity.
+    assert walked["weaknesses_total"] == int(summary.get("weaknesses") or 0) == len(findings)
+    assert walked["weaknesses_total"] + pending == int(summary["weaknesses_total"])
+    assert walked["poam_included"] + pending == int(summary["poam_included"])
+    walked_reasons = {
+        key: int(val)
+        for key, val in (summary.get("excluded_by_reason") or {}).items()
+        if key != "DUPLICATE_INSTANCE"
+    }
+    assert walked["excluded_by_reason"] == walked_reasons
     for rec in findings:
         decision = poam_decision(rec)
         included = bool(map_finding(rec).get("include_poam"))
@@ -206,6 +220,7 @@ def _run_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
 def test_poam_breakdown_identity_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     summary = _run_lab(tmp_path, monkeypatch)
     _assert_walk_matches_summary(tmp_path, summary)
+    assert_one_truth_counts(tmp_path)
 
 
 def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
@@ -228,6 +243,7 @@ def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
     )
     summary = json.loads((work / "out" / "summary.json").read_text(encoding="utf-8"))
     _assert_walk_matches_summary(work / "out", summary)
+    assert_one_truth_counts(work / "out")
 
 
 def test_poam_breakdown_identity_farm_drop(tmp_path: Path) -> None:
@@ -251,3 +267,4 @@ def test_poam_breakdown_identity_farm_drop(tmp_path: Path) -> None:
     )
     summary = json.loads((work / "out" / "summary.json").read_text(encoding="utf-8"))
     _assert_walk_matches_summary(work / "out", summary)
+    assert_one_truth_counts(work / "out")

@@ -169,6 +169,7 @@ COVERAGE_GAPS_HEADING = "### Coverage gaps"
 
 EXPORT_CSV_REL = (
     "poam/poam.csv",
+    "poam/poam_fedramp.csv",
     "poam/excluded.csv",
     "ciso-assistant/assets.csv",
     "ciso-assistant/applied_controls.csv",
@@ -747,11 +748,91 @@ def assert_banner_present(text: str, stamp: EstateStamp | None = None) -> None:
         raise AssertionError("no allowed estate banner label in file")
 
 
+_KEV_CLASS_NEEDLES = (
+    "log4j",
+    "log4shell",
+    "cve-2021-44228",
+    "xz",
+    "cve-2024-3094",
+)
+
+
 def _sev(rec: dict) -> str:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     raw = str(rec.get("severity") or "").strip().lower()
+    if extra.get("severity_unmapped"):
+        # No vendor severity — never inflate to High/Critical.
+        if raw in {"high", "critical"}:
+            return "medium"
+        if raw in SEV_RANK:
+            return "low" if raw == "info" else raw
+        return "medium"
     if raw in SEV_RANK:
         return raw
     return "low"
+
+
+def _is_kev(rec: dict, catalog: Any = None) -> bool:
+    blob = " ".join(
+        str(x or "")
+        for x in (
+            rec.get("name"),
+            rec.get("ref_id"),
+            rec.get("description"),
+            (rec.get("extra") or {}).get("cve") if isinstance(rec.get("extra"), dict) else "",
+        )
+    ).lower()
+    if any(n in blob for n in _KEV_CLASS_NEEDLES):
+        return True
+    if catalog is None:
+        return False
+    try:
+        from shared.kev import collect_cves, join_kev
+
+        hit = join_kev(collect_cves(rec), catalog)
+    except Exception:
+        return False
+    return bool(hit.get("kev_cves"))
+
+
+def _asset_criticality(rec: dict) -> int:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    raw = str(extra.get("criticality") or extra.get("asset_criticality") or "").lower()
+    if raw in {"critical", "tier0", "tier-0"}:
+        return 3
+    if raw in {"high", "tier1", "tier-1"}:
+        return 2
+    blob = " ".join(
+        str(x or "")
+        for x in (
+            rec.get("category"),
+            rec.get("source"),
+            rec.get("name"),
+            rec.get("description"),
+            " ".join(str(a) for a in (rec.get("assets") or [])),
+        )
+    ).lower()
+    if "dcsync" in blob or "domain controller" in blob or "domain-controller" in blob:
+        return 3
+    if "identity-ad" in blob or "identity-gap" in blob:
+        return 2
+    return 1
+
+
+def _weakness_title(rec: dict, mapped: dict | None, titles: dict[str, str] | None = None) -> str:
+    ref = str(rec.get("ref_id") or "")
+    if titles and titles.get(ref):
+        return str(titles[ref])
+    mapped = mapped or {}
+    explicit = str(mapped.get("weakness_name") or "").strip()
+    if explicit:
+        return explicit
+    try:
+        from shared.control_map import weakness_name_for
+
+        return weakness_name_for(rec, mapped)
+    except Exception:
+        return recorded(rec.get("name") or rec.get("ref_id"))
 
 
 def _area_for(rec: dict) -> str:
@@ -786,13 +867,50 @@ def _dedupe_merged(before: int | None, after: int) -> str:
     return str(merged)
 
 
-def _risk_key(rec: dict, mapped: dict | None) -> tuple[int, int, int, str]:
+def _risk_key(
+    rec: dict,
+    mapped: dict | None,
+    catalog: Any = None,
+) -> tuple[int, int, int, str]:
     sev = _sev(rec)
-    # Risk, not scanner severity alone: mapped POA&M inclusion + control refs.
-    mapped = mapped or {}
-    poam = 1 if mapped.get("include_poam") else 0
-    refs = 1 if mapped.get("framework_refs") else 0
-    return (SEV_RANK.get(sev, 9), -poam, -refs, str(rec.get("ref_id") or ""))
+    kev = 1 if _is_kev(rec, catalog) else 0
+    crit = _asset_criticality(rec)
+    return (SEV_RANK.get(sev, 9), -kev, -crit, str(rec.get("ref_id") or ""))
+
+
+def rank_exec_findings(
+    findings: list[dict],
+    mapped_by_ref: dict[str, dict] | None = None,
+    *,
+    catalog: Any = None,
+    titles: dict[str, str] | None = None,
+    limit: int = 5,
+) -> list[dict]:
+    """Severity, then KEV, then asset criticality. One row per weakness title."""
+    mapped_by_ref = mapped_by_ref or {}
+    ordered = sorted(
+        findings,
+        key=lambda rec: _risk_key(
+            rec, mapped_by_ref.get(str(rec.get("ref_id"))), catalog
+        ),
+    )
+    out: list[dict] = []
+    seen: set[str] = set()
+    for rec in ordered:
+        title = _norm_exec_title(
+            _weakness_title(rec, mapped_by_ref.get(str(rec.get("ref_id"))), titles)
+        )
+        if not title or title in seen:
+            continue
+        seen.add(title)
+        out.append(rec)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _norm_exec_title(raw: str) -> str:
+    return " ".join(str(raw or "").strip().lower().split())
 
 
 def _frameworks_used(mapped_by_ref: dict[str, dict]) -> str:
@@ -1074,6 +1192,8 @@ class PageContext:
     excluded_poam: int = 0
     in_dir: Path | None = None
     generated_at: str = ""
+    kev_catalog: Any = None
+    title_by_ref: dict[str, str] = field(default_factory=dict)
     run_delta: dict[str, int] = field(default_factory=dict)
     sensor_rows: list[dict] = field(default_factory=list)
 
@@ -1115,6 +1235,9 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(f"| {sev.title()} | {n_f} | {n_p} | {merged_by[sev]} |")
     lines.append(f"| **Total** | {tot_f} | {tot_p} | {merged_total} |")
     lines.append("")
+    plan_n = int(ctx.poam_n or tot_p)
+    lines.append(f"Open POA&M (poam.csv): {plan_n}")
+    lines.append("")
     if ctx.run_delta:
         lines.append(
             "Changed since last run: "
@@ -1137,20 +1260,25 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(recon)
         lines.append("")
 
-    ranked = sorted(
+    ranked = rank_exec_findings(
         ctx.findings,
-        key=lambda rec: _risk_key(rec, ctx.mapped_by_ref.get(str(rec.get("ref_id")))),
-    )[: MAX_EXEC_BODY_ROWS["top_n"]]
+        ctx.mapped_by_ref,
+        catalog=ctx.kev_catalog,
+        titles=ctx.title_by_ref,
+        limit=MAX_EXEC_BODY_ROWS["top_n"],
+    )
     lines.extend(
         [
-            "### Fix these first (top 5 by risk, not by scanner severity alone)",
+            "### Fix these first (top 5 by severity, then KEV, then asset criticality)",
             "| # | Weakness | Affected | Why it matters | Recommended action | Finding ref |",
             "|---|---|---|---|---|---|",
         ]
     )
     for i, rec in enumerate(ranked, 1):
         mapped = ctx.mapped_by_ref.get(str(rec.get("ref_id"))) or {}
-        weakness = recorded(rec.get("name") or rec.get("ref_id"))
+        weakness = recorded(
+            _weakness_title(rec, mapped, ctx.title_by_ref) or rec.get("name") or rec.get("ref_id")
+        )
         assets = rec.get("assets") or []
         affected = recorded("|".join(str(a) for a in assets) if assets else None)
         action = recorded(mapped.get("recommended_fix"))
@@ -1214,6 +1342,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     return _fit_one_page(
         "\n".join(lines),
         keep_tails=(
+            "Open POA&M (poam.csv):",
             "### What this does not tell you",
             COVERAGE_GAPS_HEADING,
             "### Next step",

@@ -1,0 +1,26 @@
+{
+  "label": "SAMPLE",
+  "client": false,
+  "paying_day": "FAIL",
+  "corpus": "fixtures/samples",
+  "note": "Metis real-corpus lock: parser kind=excluded must reach excluded.csv. SAMPLE ≠ client KEEP. Never POST /api/risks.",
+  "excluded": {
+    "total": 28,
+    "osquery": {
+      "msticpy.osqueryd.results.log": 11,
+      "msticpy.osqueryd.snapshots.log": 3
+    },
+    "custodian": {
+      "stop-underutilized-azure-vms": 8,
+      "stop-underutilized-aws-instances": 6
+    }
+  },
+  "flood_guard": {
+    "identity": "findings_in + pending_carried == poam_rows + excluded_rows",
+    "unexplained": 0
+  },
+  "unmapped_osquery": {
+    "reason_code": "NOT_A_WEAKNESS",
+    "reason_detail": "unmapped query"
+  }
+}

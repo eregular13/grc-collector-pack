@@ -164,6 +164,11 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Enable malware protection": "Malware real-time protection is disabled",
     "Require encryption in transit": "Remote session encryption is not required",
     "Enable a host firewall": "Host firewall is disabled",
+    "Enable full-disk encryption on the endpoint": "Disk encryption is disabled",
+    "Require authentication and bind Redis": "Redis accepts unauthenticated access",
+    "Require authentication on Redis": "Redis accepts unauthenticated access",
+    "Bind Redis and enable protected-mode": "Redis is bound beyond localhost without protected-mode",
+    "Rename or disable dangerous Redis commands": "Dangerous Redis commands are enabled",
     "End privileged HasSession logons": "Privileged principal has a HasSession on a workstation",
     "Run container images as a non-root USER": "Container image runs as root",
     "Block public EBS snapshot sharing": "EBS snapshot is shared publicly",
@@ -1989,6 +1994,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
+        "DUPLICATE_INSTANCE",
         "not_a_weakness",
         "unmapped",
     }
@@ -2086,11 +2092,13 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     if lighter is None:
         lighter = poam_lighter_requested()
     if rec.get("kind") == "excluded":
-        reason = _canon_exclude_reason(
-            extra.get("exclude_reason") or extra.get("poam_exclude") or "unmapped"
-        )
+        reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
+        if reason.lower() in {"unmapped", "unmapped query"} or "unmapped" in reason.lower():
+            reason = "NOT_A_WEAKNESS"
+        else:
+            reason = _canon_exclude_reason(reason or "unmapped")
         if reason not in POAM_EXCLUDE_REASONS:
-            reason = "unmapped"
+            reason = "NOT_A_WEAKNESS"
         return {"include": False, "reason": reason, "severity": sev}
     if _is_needs_review(rec):
         return {"include": True, "reason": "needs_review", "severity": sev}

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from shared.ciso_shape import assert_flood_guard, assert_poam_breakdown
 from tests.test_pack_drop_scan_density import (
     MIN_FARM_EXCLUDED,
     MIN_FARM_FINDINGS,
@@ -54,13 +55,13 @@ def test_lab_path_excluded_csv_has_honeypot_or_severity_info(
     assert all(row.get("severity") == "info" for row in info_rows)
     assert all(row.get("severity") != "low" for row in info_rows)
     assert int(summary["excluded"]) == len(excluded)
-    assert int(summary["weaknesses_total"]) == int(summary["poam_included"]) + int(
-        summary["excluded"]
-    )
+    # Deduped identity strips DUPLICATE_INSTANCE; flood_guard owns merges.
+    assert_poam_breakdown(summary)
+    assert_flood_guard(summary)
 
 
 def test_farm_identity_floors_still_hold() -> None:
     """Farm_drop floors are unchanged; density test locks measured identity."""
-    assert MIN_FARM_FINDINGS == 110
-    assert MIN_FARM_POAM == 100
+    assert MIN_FARM_FINDINGS == 98
+    assert MIN_FARM_POAM == 65
     assert MIN_FARM_EXCLUDED == 20

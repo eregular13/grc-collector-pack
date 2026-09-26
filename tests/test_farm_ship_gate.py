@@ -80,12 +80,32 @@ def _honest_farm_work(folder: Path) -> None:
         encoding="utf-8",
     )
     (out / "EXECUTIVE_SUMMARY.md").write_text(
-        f"> **{label}**: Every finding below comes from bundled example files. None describes any real organization.\n",
+        f"> **{label}**: Every finding below comes from bundled example files. None describes any real organization.\n"
+        "Open POA&M (poam.csv): 1\n",
         encoding="utf-8",
     )
     from shared.estate_pages import write_export_manifest
 
     write_export_manifest(out)
+    (out / "summary.json").write_text(
+        json.dumps(
+            {
+                "findings": 1,
+                "poam": 1,
+                "excluded": 2,
+                "pending_carried": 0,
+                "flood_guard": {
+                    "findings_in": 3,
+                    "poam_rows": 1,
+                    "excluded_rows": 2,
+                    "pending_carried": 0,
+                    "identity": "findings_in + pending_carried == poam_rows + excluded_rows",
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     (folder / "prove-ciso.json").write_text(
         json.dumps(
             {
@@ -298,6 +318,12 @@ def test_assert_farm_ship_sor_ok_and_fail_closed(tmp_path: Path) -> None:
     _honest_farm_work(work)
     (work / "out" / "poam" / "poam.csv").write_text(POAM_HEADER + "\n", encoding="utf-8")
     with pytest.raises(FarmShipError, match="POA"):
+        assert_farm_ship_sor(work)
+    _honest_farm_work(work)
+    broken = json.loads((work / "out" / "summary.json").read_text(encoding="utf-8"))
+    broken["flood_guard"]["findings_in"] = 99
+    (work / "out" / "summary.json").write_text(json.dumps(broken) + "\n", encoding="utf-8")
+    with pytest.raises(FarmShipError, match="flood_guard"):
         assert_farm_ship_sor(work)
 
 

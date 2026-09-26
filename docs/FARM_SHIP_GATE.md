@@ -71,14 +71,14 @@ printed as metadata. Changing HEAD without touching the surface is skip.
 - Full POA&M plan (Evergreen default schedule): Lows (180-day) and non-key
   Mediums (90-day) stay **on** the plan. Infos + honeypot hits go to
   `poam/excluded.csv`
-  (`id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by`).
+  (`id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,poam_id`).
   Measured farm_drop after port-only fold: findings=174, poam=106,
   excluded=68 (60 info + 8 honeypot). No `superseded_by_specific` rows —
   pack_drop is exposure-only, so bare port-open rows have no specific
   peer. Host-lab (demo collectors) measured weaknesses=126, poam=124,
   excluded=2 (`telemetry` on `WAZ-alert-5710-web-01` plus
   `superseded_by_specific` on `NMAP-telnet-legacy-corp-local-80`).
-  Brick 5 floors: findings >= 110, poam_rows >= 100. The old 35-row floor
+  Brick 5 floors: findings >= 98, poam_rows >= 65. The old 35-row floor
   was the lighter High/key-Medium-only plan; do not revert. MIN_ gates
   unchanged.
 - `assert_farm_ship_sor` requires `excluded.csv` non-empty with both

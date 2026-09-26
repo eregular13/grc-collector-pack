@@ -17,8 +17,11 @@ from typing import Any, Iterable
 
 from shared.ciso_shape import (
     CISO_HEADERS,
+    EXCLUDED_HEADER,
     POAM_HEADER,
     RegisterShapeError,
+    assert_flood_guard,
+    assert_one_truth_counts,
     assert_risk_register_and_poam,
     first_nonempty_line,
 )
@@ -222,6 +225,18 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError("FARM_SHIP_FAIL posted must be false")
     try:
         shape = assert_risk_register_and_poam(dest / "out")
+        assert_one_truth_counts(dest / "out")
+    except RegisterShapeError as exc:
+        raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
+    summary_path = dest / "out" / "summary.json"
+    if not summary_path.is_file():
+        raise FarmShipError("FARM_SHIP_FAIL missing summary.json")
+    try:
+        farm_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise FarmShipError(f"FARM_SHIP_FAIL summary.json garbage: {exc}") from exc
+    try:
+        assert_flood_guard(farm_summary)
     except RegisterShapeError as exc:
         raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
     if int(shape.get("findings") or 0) < 1:
@@ -256,9 +271,13 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError("FARM_SHIP_FAIL POA&M header mismatch")
     if not (dest / "out" / "poam" / "poam.md").is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing POA&M md")
+    # Uniqueness + poam.csv/poam_fedramp.csv identity run inside
+    # assert_risk_register_and_poam (same POA&M decision set).
     excluded_path = dest / "out" / "poam" / "excluded.csv"
     if not excluded_path.is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing poam/excluded.csv")
+    if first_nonempty_line(excluded_path) != EXCLUDED_HEADER:
+        raise FarmShipError("FARM_SHIP_FAIL excluded.csv header missing poam_id")
     with excluded_path.open(encoding="utf-8", newline="") as fh:
         excluded_rows = list(csv.DictReader(fh))
     if not excluded_rows:

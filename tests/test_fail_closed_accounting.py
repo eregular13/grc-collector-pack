@@ -106,7 +106,7 @@ def test_osquery_unmapped_is_same_class_and_lands_in_excluded_csv(
     assert missing == [], missing
     assert all(
         next(row for row in rows if row["id"] == rec["ref_id"])["excluded_reason"]
-        == "unmapped"
+        in {"unmapped", "NOT_A_WEAKNESS"}
         for rec in unmapped
     )
     assert summary["kind_excluded"] == 14
