@@ -85,6 +85,8 @@ _UUIDISH = re.compile(
 )
 _HOST_PORT_PROTO_SLUG = re.compile(r".+-\d+-(tcp|udp|sctp)$", re.I)
 _IPV4_PORT_SLUG = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}-\d+", re.I)
+_URL_IN_TEXT = re.compile(r"https?://[^\s<>()\[\]'\",;]+", re.I)
+_TRAILING_LOC = ").,;:\"'"
 _SERVICE_NAMES = frozenset(
     {
         "kerberos",
@@ -311,6 +313,51 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
     return ""
 
 
+_LOCATION_KEYS = (
+    "path",
+    "url",
+    "file",
+    "line",
+    "user",
+    "evidence",
+    "evidence_ref",
+    "cmd",
+    "command",
+)
+
+
+def _location_suffix(rec: dict[str, Any]) -> str:
+    """Path/url/file/line/user/evidence (and cmd/service) when present.
+
+    Same-title fallback rows on one asset stay distinct. CVE keys omit this.
+    """
+    extra = extra_dict(rec)
+    bits: list[str] = []
+    seen: set[str] = set()
+    for key in _LOCATION_KEYS:
+        val = _extra_field(extra, key)
+        if not val:
+            continue
+        token = f"{key}:{val.lower()}"
+        if token not in seen:
+            seen.add(token)
+            bits.append(token)
+    port = _extra_field(extra, "port")
+    has_plugin = False
+    for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id", "id"):
+        val = _extra_field(extra, key)
+        if val and _is_scanner_identity(val):
+            has_plugin = True
+            break
+    if (not port or port == "0") and not has_plugin:
+        svc = _extra_field(extra, "service")
+        if svc:
+            token = f"service:{svc.lower()}"
+            if token not in seen:
+                bits.append(token)
+    return "|".join(bits)
+
+
 def _wazuh_host_segment(raw: str) -> str:
     """First DNS label, lowercased. ``hosta.corp.local`` → ``hosta``. IPs stay whole."""
     text = str(raw or "").strip().lower().rstrip(".")
@@ -446,13 +493,8 @@ def _attach_wazuh_host(rec: dict[str, Any], key: str) -> str:
     return f"{key}{suffix}"
 
 
-def weakness_key(rec: dict[str, Any]) -> str:
-    """Stable weakness identity: scanner id, share, port+class, then a discriminator."""
-    return _attach_wazuh_host(rec, _weakness_key_core(rec))
-
-
 def _weakness_key_core(rec: dict[str, Any]) -> str:
-    """Weakness key before the Wazuh host suffix. Migration source only."""
+    """Pre-location / pre-host-suffix key. Migration source only."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id"):
@@ -507,6 +549,21 @@ def _weakness_key_core(rec: dict[str, Any]) -> str:
     if ref:
         return f"{tool}:ref:{ref}"
     return f"{tool}:unkeyed"
+
+
+def legacy_pre_location_weakness_key(rec: dict[str, Any]) -> str:
+    """#161 fallback key before path/url/file/line/user/evidence. Migration only."""
+    return _weakness_key_core(rec)
+
+
+def weakness_key(rec: dict[str, Any]) -> str:
+    """Stable weakness identity: scanner id, share, port+class, then location."""
+    core = _weakness_key_core(rec)
+    if not core.startswith("cve:"):
+        loc = _location_suffix(rec)
+        if loc:
+            core = f"{core}:{loc}"
+    return _attach_wazuh_host(rec, core)
 
 
 def fp_v1(
@@ -1079,6 +1136,19 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
                 if fp and fp not in seen:
                     seen.add(fp)
                     out.append((fp, reason))
+    # Pre-location fallback (#161): same title on one asset, no path/url/file.
+    # After wazuh_add_host so hosta's stored host-less fp is claimed before a
+    # same-title sibling (KR-B / EGP-946F27C7C3).
+    for fn, reason in (
+        (asset_key, "pre_location_to_location"),
+        (legacy_master_asset_key, "pre_location_master_ega"),
+        (legacy_asset_id_port_key, "pre_location_asset_id"),
+        (legacy_name_asset_key, "pre_location_name"),
+    ):
+        fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=legacy_pre_location_weakness_key)
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append((fp, reason))
     return out
 
 
@@ -1102,20 +1172,195 @@ def _item_sort_key(item: dict[str, Any]) -> tuple:
     return (detected is None, detected or date.max, first, pid)
 
 
-def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str) -> str:
+def _norm_loc_url(url: str) -> str:
+    """Lowercase URL, strip trailing slash/punctuation. Host-only ≠ /login."""
+    text = str(url or "").strip().lower().rstrip(_TRAILING_LOC)
+    if not text:
+        return ""
+    while text.endswith("/") and text.count("/") > 2:
+        text = text[:-1]
+    return text.rstrip(_TRAILING_LOC)
+
+
+def _urls_in_text(text: str) -> list[str]:
+    return [_norm_loc_url(m.group(0)) for m in _URL_IN_TEXT.finditer(text or "") if _norm_loc_url(m.group(0))]
+
+
+def _url_matches_hay(url: str, hay: str) -> bool:
+    target = _norm_loc_url(url)
+    if not target:
+        return False
+    return target in _urls_in_text(hay)
+
+
+def _path_in_hay(path: str, hay: str) -> bool:
+    raw = str(path or "").strip()
+    if not raw or raw in {".", "/"}:
+        return False
+    if "://" in raw:
+        return _url_matches_hay(raw, hay)
+    norm = raw if raw.startswith("/") else f"/{raw}"
+    norm = norm.rstrip("/") or "/"
+    if norm == "/":
+        return False
+    for url in _urls_in_text(hay):
+        rest = url.split("://", 1)[-1]
+        url_path = "/" + rest.split("/", 1)[-1] if "/" in rest else "/"
+        url_path = url_path.rstrip("/") or "/"
+        if url_path == norm.lower():
+            return True
+    hay_l = hay.lower()
+    needle = norm.lower()
+    idx = 0
+    while True:
+        idx = hay_l.find(needle, idx)
+        if idx < 0:
+            return False
+        after = hay_l[idx + len(needle) : idx + len(needle) + 1]
+        if after in {"", " ", ".", ",", ")", "'", '"', ";", ":", "\n", "\t"}:
+            return True
+        idx += len(needle)
+
+
+def _cmd_in_hay(cmd: str, hay: str) -> bool:
+    text = str(cmd or "").strip()
+    if len(text) < 3:
+        return False
+    if f"'{text}'" in hay or f'"{text}"' in hay:
+        return True
+    return text in hay
+
+
+def _item_location_haystack(item: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key in ("description", "url", "cmd", "command", "path", "file"):
+        val = item.get(key)
+        if val not in (None, ""):
+            parts.append(str(val))
+    return " ".join(parts)
+
+
+def _haystack_has_location(hay: str) -> bool:
+    if not str(hay or "").strip():
+        return False
+    if _urls_in_text(hay):
+        return True
+    lowered = hay.lower()
+    if "observed command" in lowered:
+        return True
+    if re.search(r"presents\s+\S+", hay, re.I):
+        return True
+    if re.search(r"(?:^|[\s'\"])(/[A-Za-z0-9._-]+)", hay):
+        return True
+    return False
+
+
+def _location_affinity(rec: dict[str, Any], item: dict[str, Any]) -> int:
+    """>0 this rec's path/url/file/line/cmd matches the stored row; <0 contradicts; 0 unknown."""
+    extra = extra_dict(rec)
+    url = _extra_field(extra, "url")
+    path = _extra_field(extra, "path")
+    cmd = _extra_field(extra, "cmd") or _extra_field(extra, "command")
+    file_name = _extra_field(extra, "file")
+    line = _extra_field(extra, "line")
+    user = _extra_field(extra, "user")
+    if not any((url, path, cmd, file_name, user)):
+        return 0
+    hay = _item_location_haystack(item)
+    hits = 0
+    if url and _url_matches_hay(url, hay):
+        hits += 1
+    if path:
+        if "://" in path:
+            if _url_matches_hay(path, hay):
+                hits += 1
+        elif _path_in_hay(path, hay):
+            hits += 1
+    if cmd and _cmd_in_hay(cmd, hay):
+        hits += 1
+    if file_name and file_name.lower() in hay.lower():
+        hits += 1
+        if line and line in hay:
+            hits += 1
+    if user and not cmd and user.lower() in hay.lower():
+        hits += 1
+    if hits > 0:
+        return hits
+    if _haystack_has_location(hay):
+        return -1
+    return 0
+
+
+def _legacy_fps_cached(
+    rec: dict[str, Any], cache: dict[int, list[tuple[str, str]]]
+) -> list[tuple[str, str]]:
+    key = id(rec)
+    hit = cache.get(key)
+    if hit is None:
+        hit = _legacy_fps_for(rec)
+        cache[key] = hit
+    return hit
+
+
+def _may_claim_legacy_fp(
+    rec: dict[str, Any],
+    item: dict[str, Any],
+    old_fp: str,
+    instances: list[dict[str, Any]],
+    legacy_cache: dict[int, list[tuple[str, str]]],
+) -> bool:
+    """Same-title siblings: location match wins; first in record order only if none match."""
+    siblings = []
+    for other in instances:
+        reasons = [
+            reason
+            for fp, reason in _legacy_fps_cached(other, legacy_cache)
+            if fp == old_fp
+        ]
+        if not reasons:
+            continue
+        if "wazuh_add_host" in reasons and not _wazuh_hostless_item_matches(other, item):
+            continue
+        siblings.append(other)
+    if len(siblings) <= 1:
+        return True
+    if _location_affinity(rec, item) > 0:
+        return True
+    if any(other is not rec and _location_affinity(other, item) > 0 for other in siblings):
+        return False
+    return siblings[0] is rec
+
+
+def _migrate_if_needed(
+    rec: dict[str, Any],
+    ledger: dict[str, Any],
+    run_iso: str,
+    *,
+    instances: list[dict[str, Any]] | None = None,
+    legacy_cache: dict[int, list[tuple[str, str]]] | None = None,
+) -> str:
     """Map prior fps onto the current EGA- key. Never remint a surviving EGP- ID.
 
     Same weakness + two old asset keys → keep the older EGP- ID and earliest
     Original Detection Date; the other EGP- ID is recorded on ``fp_migrations``
     as an alias (not deleted). Different weaknesses stay separate items.
+
+    Location split (Metis #170): when several current rows rematch the same
+    stored title/location-family item, the sibling whose path/url/file/line/cmd
+    matches the stored description/url/cmd keeps that EGP. Others mint new
+    EGPs. Fall back to the first sibling in record order only if none match.
     """
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
+    peers = instances or [rec]
+    cache = legacy_cache if legacy_cache is not None else {}
     found: dict[str, tuple[dict[str, Any], str]] = {}
-    for old_fp, reason in _legacy_fps_for(rec):
+    for old_fp, reason in _legacy_fps_cached(rec, cache):
         if old_fp != new_fp and old_fp in items:
             item = items[old_fp]
             if reason == "wazuh_add_host" and not _wazuh_hostless_item_matches(rec, item):
+                continue
+            if not _may_claim_legacy_fp(rec, item, old_fp, peers, cache):
                 continue
             found[old_fp] = (item, reason)
     if _tool_tag(rec) == "wazuh":
@@ -1254,9 +1499,12 @@ def apply_ledger(
     coverage = build_coverage(instances)
     seen: set[str] = set()
     catalog_sha = catalog.sha256 if catalog.kev_evaluated else ""
+    legacy_cache: dict[int, list[tuple[str, str]]] = {}
 
     for rec in instances:
-        fp = _migrate_if_needed(rec, ledger, run_iso)
+        fp = _migrate_if_needed(
+            rec, ledger, run_iso, instances=instances, legacy_cache=legacy_cache
+        )
         seen.add(fp)
         cves = collect_cves(rec)
         kev = join_kev(cves, catalog)

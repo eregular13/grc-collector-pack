@@ -752,7 +752,7 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "extra": {"page_type": "hostname", "url": "https://legacy.corp.local/"},
     }
     assert weakness_key(easm_path) != weakness_key(easm_host)
-    # Same title, two URL shapes — do not mint a second row.
+    # Same title, two URL shapes — stay distinct (Metis #161 follow-up).
     easm_a = {
         "source": "easm",
         "name": "Exposed admin interface on admin.example.com",
@@ -765,7 +765,12 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "assets": ["admin.example.com"],
         "extra": {"path": "https://admin.example.com", "url": "https://admin.example.com"},
     }
-    assert weakness_key(easm_a) == weakness_key(easm_b)
+    assert weakness_key(easm_a) != weakness_key(easm_b)
+    from shared.poam_ledger import legacy_pre_location_weakness_key
+
+    assert legacy_pre_location_weakness_key(easm_a) == legacy_pre_location_weakness_key(
+        easm_b
+    )
 
 
 def test_trivy_two_secrets_weakness_keys_stay_distinct() -> None:
@@ -853,7 +858,7 @@ def test_netbios_ns_pod_reclass_keeps_uid() -> None:
 
 
 def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
-    """FedRAMP Open is the included poam.csv set, not the fat 126-row ledger."""
+    """FedRAMP Open is the included poam.csv set, not the fat ledger."""
     from tests.test_poam_breakdown import _run_lab
 
     _run_lab(tmp_path, monkeypatch)
@@ -863,7 +868,10 @@ def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
         fed = list(csv.DictReader(fh))
     assert [r.get("POAM ID") for r in fed] == [r.get("poam_id") for r in poam]
     assert len(fed) == len(poam)
-    assert len(fed) < 126
+    assert len(fed) < 127
+    admin = [r for r in poam if str(r.get("weakness") or "").startswith("Exposed admin")]
+    assert len(admin) >= 2
+    assert len({r.get("poam_id") for r in admin}) == len(admin)
 
 
 def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
@@ -898,13 +906,13 @@ def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
         fed = list(csv.DictReader(fh))
     assert [r.get("POAM ID") for r in fed] == [r.get("poam_id") for r in poam]
     assert len(fed) >= MIN_FARM_POAM
-    assert len(fed) < 172
+    assert len(fed) < 174
 
 
 def test_master_demo_ledger_upgrade_open_matches_poam(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 932cf7c DEMO ledger: Open == poam.csv; excluded prior IDs may leave."""
+    """Upgrade a 932cf7c DEMO ledger: Open == poam.csv; #170 splits admin URLs."""
     from tests.test_poam_breakdown import _run_lab
 
     prior = json.loads(
@@ -926,10 +934,10 @@ def test_master_demo_ledger_upgrade_open_matches_poam(
     poam_ids = {str(r.get("poam_id") or "") for r in poam}
     fed_ids = {str(r.get("POAM ID") or "") for r in fed_rows}
     assert fed_ids == poam_ids
-    assert len(poam) < 126
-    # Prior 126-row ledger included excluded items and pre-#172 asset keys.
-    # Those IDs may leave; Open must still equal poam.csv.
-    assert prior_ids - poam_ids
+    assert len(poam) < 127
+    admin = [r for r in poam if str(r.get("weakness") or "").startswith("Exposed admin")]
+    assert len(admin) >= 2
+    assert len({r.get("poam_id") for r in admin}) == len(admin)
     assert summary.get("demo") is True
 
 
