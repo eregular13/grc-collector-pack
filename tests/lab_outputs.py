@@ -199,7 +199,7 @@ def assert_lab() -> None:
         assert (row.get("due") or "") == ""
     for row in rdp + shares:
         refs = row.get("framework_refs") or ""
-        assert "cpg_3_S" in refs or "cpg_" in refs
+        assert "cpg_3_I" in refs or "cpg_3_S" in refs or "cpg_" in refs
     exposure_smb = [
         r
         for r in smb
@@ -211,7 +211,10 @@ def assert_lab() -> None:
     ]
     assert exposure_smb, "open-port SMB exposure must remain on the POA&M"
     for row in exposure_smb:
-        assert "cpg_3_S" in (row.get("framework_refs") or "")
+        refs_smb = row.get("framework_refs") or ""
+        # DEMO SMB is on .corp.local / RFC1918 — 3.I, not 3.S.
+        assert "cpg_3_I" in refs_smb, refs_smb
+        assert "cpg_3_S" not in refs_smb
     for row in smb:
         refs = row.get("framework_refs") or ""
         assert "csf_PR_IR_01" in refs or "csf_PR_AA_05" in refs or "csf_PR_DS_02" in refs
@@ -238,6 +241,14 @@ def assert_lab() -> None:
     for row in high_findings:
         labels = row.get("filtering_labels") or ""
         assert "csf_" in labels, row
+        assert "csf_PR," not in labels + "," and not labels.endswith("csf_PR")
+        assert "csf_protect" not in labels
+    for row in assets:
+        labels = row.get("filtering_labels") or ""
+        assert "cpg_2_W" not in labels
+        assert "cpg_1_E" not in labels
+        assert "csf_PR," not in labels + "," and not labels.endswith("csf_PR")
+        assert "csf_protect" not in labels
     smb_ctrl = [r for r in ctrls if "SMB" in (r.get("name") or "") or "445" in (r.get("description") or "")]
     assert smb_ctrl, "applied_controls must include SMB hardening narrative"
 
