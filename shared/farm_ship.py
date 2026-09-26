@@ -7,6 +7,7 @@ SAMPLE/DEMO != client. paying_day FAIL. Not client KEEP.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
@@ -252,6 +253,22 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError("FARM_SHIP_FAIL POA&M header mismatch")
     if not (dest / "out" / "poam" / "poam.md").is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing POA&M md")
+    excluded_path = dest / "out" / "poam" / "excluded.csv"
+    if not excluded_path.is_file():
+        raise FarmShipError("FARM_SHIP_FAIL missing poam/excluded.csv")
+    with excluded_path.open(encoding="utf-8", newline="") as fh:
+        excluded_rows = list(csv.DictReader(fh))
+    if not excluded_rows:
+        raise FarmShipError("FARM_SHIP_FAIL farm_drop excluded.csv is empty")
+    reasons = {str(row.get("excluded_reason") or "") for row in excluded_rows}
+    if "severity_info" not in reasons:
+        raise FarmShipError(
+            f"FARM_SHIP_FAIL excluded.csv missing infos: {sorted(reasons)}"
+        )
+    if "honeypot" not in reasons:
+        raise FarmShipError(
+            f"FARM_SHIP_FAIL excluded.csv missing honeypot: {sorted(reasons)}"
+        )
     return {
         "ok": True,
         "sample": True,
