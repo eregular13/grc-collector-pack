@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 216 — #177 Metis: chain fps + keep admin URL split (2026-09-26)
+
+Merged `origin/master` `73ff785` (#170+#173). `_legacy_fps_for`
+chains title→check_id + #172 host-less + #170 `pre_location_*`
+(#172 first). Repeating admin `check_id`s keep the path/url
+discriminator. 7ebc697 DEMO upgrade: 0 duplicate opens, 1 new, 127
+Open. Pytest **1463**. Host-lab 79 / 105 / poam 121 / excluded 6.
+FedRAMP Open **127**. Catalog **unchanged**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 215 — merge master 6a5ebd6 (#172+#178) into B8 (2026-09-26)
 
 Normal merge of `origin/master` `6a5ebd6` (#172 short-name fold +

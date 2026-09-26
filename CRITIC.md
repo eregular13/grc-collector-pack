@@ -1,3 +1,13 @@
+# CRITIC — cycle 216 (B8_METIS_177_LOCATION_CHAIN)
+
+Lab this brick: pytest **1463** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `73ff785` (#170+#173). 7ebc697
+upgrade is 0 dups / 1 new / 127 Open. FedRAMP Open **127**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 215 (MERGE_MASTER_172_178_INTO_B8)
 
 Merge `origin/master` `6a5ebd6` (#172+#178) with a normal merge
