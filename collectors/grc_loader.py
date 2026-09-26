@@ -231,6 +231,11 @@ def load() -> dict:
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
+    severity_unmapped = sum(
+        1
+        for r in findings
+        if isinstance(r.get("extra"), dict) and r["extra"].get("severity_unmapped")
+    )
 
     sources = sorted({str(r.get("source") or "sensor") for r in records})
 
@@ -544,6 +549,7 @@ def load() -> dict:
         "open_risks": len(poam_rows),
         "ocsf": len(ocsf),
         "canonical": len(records),
+        "severity_unmapped": severity_unmapped,
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
         "estate_kind": estate_kind,
