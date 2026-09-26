@@ -1,3 +1,19 @@
+# CRITIC — cycle 198 (WAZUH_LEVEL_TABLE_TELEMETRY)
+
+Lab this brick: pytest **1162** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=124` `excluded=1` `severity_unmapped=0` `demo=true`). Cold
+SAMPLE→SoR findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174
+poam=106 vulns=0 excluded=68. Wazuh alerts map by `rule.level` only
+(0-3 info, 4-7 low, 8-11 medium, 12+ high); missing level is info,
+never High. Aggregated alerts go to `excluded.csv` as telemetry unless
+level ≥ 12 or a known compromise indicator. 300 level-5 alerts → 0 High
+rows, one excluded row. DEMO brute-force (5710 / level 10) is medium
+telemetry, not a High weakness. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 197 (MERGE_MASTER_135_137_CANON_TELEMETRY)
 
 Merge `origin/master` `1f8d347` (#135 POA&M schedule / Lows on the plan /

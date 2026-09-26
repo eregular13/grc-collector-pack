@@ -13,14 +13,14 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "vulnerabilities": 22,
   "evidences": 33,
   "applied_controls": 125,
-  "poam": 125,
+  "poam": 124,
   "risk_scenarios": 125,
   "ocsf": 103,
   "canonical": 214,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:51:28Z"
+  "generated_at": "2026-09-26T06:58:11Z"
 }
 ```
 
-Cycle 197 restamp after merging master `1f8d347` (#135+#137) into real-sample parsers (pytest 1159; host-lab poam=125). CoS #48 rails above stand.
+Cycle 198 restamp after Wazuh rule.level telemetry (pytest 1162; host-lab poam=124 excluded=1). CoS #48 rails above stand.

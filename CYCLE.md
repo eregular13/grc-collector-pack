@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 198 — Wazuh rule.level table + telemetry flood off the plan (2026-09-26)
+
+Map Wazuh by rule.level (0-3 info, 4-7 low, 8-11 medium, 12+ high);
+missing level is info, never High. Aggregated alerts excluded as
+telemetry unless level ≥ 12 or a known compromise indicator. 300
+level-5 alerts → one excluded row, 0 High. DEMO 5710 brute-force left
+the plan (`excluded=1` telemetry). pytest **1162**. Host-lab
+`assets=84` `findings=103` `poam=124`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 197 — merge master #135/#137; canon_severity + telemetry_info (2026-09-26)
 
 Merge `origin/master` `1f8d347` without rebase. #135 excluded.csv /
