@@ -982,6 +982,170 @@ def _iso_date(raw: Any) -> str:
     return got.isoformat() if got else ""
 
 
+_LOC_WK_KEYS = frozenset(
+    {
+        "path",
+        "url",
+        "file",
+        "line",
+        "user",
+        "evidence",
+        "evidence_ref",
+        "cmd",
+        "command",
+        "service",
+    }
+)
+
+
+def check_id_from_weakness_key(wk: str) -> str:
+    """Best-effort scanner id from a stored weakness_key. Empty when title-only."""
+    text = str(wk or "").strip()
+    if not text:
+        return ""
+    if text.startswith("cve:"):
+        return text.split(":", 1)[1].split(":")[0]
+    if text.startswith("name:"):
+        return ""
+    if text.startswith("port:"):
+        port_proto = text[5:].split(":")[0]
+        if "/" in port_proto:
+            return f"nmap-port-{port_proto}"
+        return ""
+    if text.startswith("class:"):
+        parts = text.split(":")
+        return parts[1] if len(parts) > 1 else ""
+    parts = text.split(":")
+    if len(parts) < 2:
+        return ""
+    if parts[1] in {"share", "unkeyed", "mfa_unregistered"}:
+        return ""
+    if parts[1] == "ref":
+        return parts[2] if len(parts) > 2 else ""
+    if parts[1] in _LOC_WK_KEYS:
+        return ""
+    return parts[1]
+
+
+def finding_from_ledger_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Rebuild a finding so ``map_finding`` can re-derive Controls / Plan.
+
+    Old ledgers lack check_id / kind / controls. Name, weakness_key, and
+    source_family are enough for the same control_map path fresh rows use.
+    """
+    extra: dict[str, Any] = {}
+    check = str(item.get("check_id") or "").strip()
+    wk = str(item.get("weakness_key") or "")
+    if not check:
+        check = check_id_from_weakness_key(wk)
+    kind = str(item.get("finding_kind") or "").strip()
+    if kind in {"finding", "asset", "evidence", "incident"}:
+        kind = ""
+    if check:
+        extra["check_id"] = check
+        extra["id"] = check
+    if kind and kind != check:
+        extra["finding_type"] = kind
+    cves = [str(c).strip() for c in (item.get("cves") or []) if str(c).strip()]
+    if cves:
+        extra["cve"] = cves[0]
+    elif wk.startswith("cve:"):
+        extra["cve"] = wk.split(":", 1)[1].split(":")[0]
+    if wk.startswith("port:"):
+        port_proto = wk[5:].split(":")[0]
+        if "/" in port_proto:
+            port, proto = port_proto.split("/", 1)
+            extra.setdefault("port", port)
+            extra.setdefault("protocol", proto)
+    display = str(item.get("display_asset") or "").strip()
+    return {
+        "kind": "finding",
+        "source": str(item.get("source_family") or ""),
+        "ref_id": str(item.get("ref_id") or ""),
+        "name": str(item.get("name") or item.get("weakness_key") or ""),
+        "description": str(item.get("description") or item.get("name") or ""),
+        "severity": str(item.get("severity") or item.get("current_scanner_rating") or ""),
+        "category": str(item.get("category") or ""),
+        "assets": [display] if display else [],
+        "extra": extra,
+    }
+
+
+def persist_mapped_fields(
+    item: dict[str, Any],
+    rec: dict[str, Any] | None = None,
+    *,
+    overwrite_plan: bool = True,
+) -> dict[str, str]:
+    """Stamp controls / plan / check_id / kind from control_map onto a ledger item.
+
+    Fills missing fields on old items. Refreshes derived stamps from the
+    current finding when one is supplied. Does not change poam_id or fp.
+    """
+    from shared.control_map import map_finding
+
+    rec = rec or finding_from_ledger_item(item)
+    mapped = map_finding(rec)
+    extra = extra_dict(rec)
+    check = ""
+    for key in ("check_id", "plugin_id", "id", "rule"):
+        check = str(extra.get(key) or "").strip()
+        if check:
+            break
+    if not check:
+        check = check_id_from_weakness_key(str(item.get("weakness_key") or ""))
+    kind = finding_type(rec) or str(mapped.get("finding_type") or "") or str(
+        item.get("finding_kind") or ""
+    )
+    controls = ", ".join(
+        str(cid).strip() for cid in (mapped.get("nist_800_53") or []) if str(cid).strip()
+    )
+    plan = str(mapped.get("recommended_fix") or "").strip()
+    refs = str(mapped.get("framework_refs") or "").strip()
+    category = str(rec.get("category") or item.get("category") or "").strip()
+    if check:
+        item["check_id"] = check
+    if kind:
+        item["finding_kind"] = kind
+    if category:
+        item["category"] = category
+    if controls:
+        item["controls"] = controls
+    if plan and (overwrite_plan or not str(item.get("remediation_plan") or "").strip()):
+        item["remediation_plan"] = plan
+    if refs:
+        item["framework_refs"] = refs
+    return {
+        "controls": str(item.get("controls") or ""),
+        "recommended_fix": str(item.get("remediation_plan") or ""),
+        "framework_refs": str(item.get("framework_refs") or ""),
+    }
+
+
+def plan_from_ledger_item(item: dict[str, Any]) -> dict[str, str]:
+    """Controls / Plan for a carried row: persisted stamps, else control_map."""
+    controls = str(item.get("controls") or "").strip()
+    plan = str(item.get("remediation_plan") or "").strip()
+    refs = str(item.get("framework_refs") or "").strip()
+    if controls and plan:
+        return {"controls": controls, "recommended_fix": plan, "framework_refs": refs}
+    return persist_mapped_fields(item, overwrite_plan=False)
+
+
+def _map_plan_is_schema_backfill(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    """Empty→filled remediation_plan on an old item is not a field change."""
+    if str(before.get("remediation_plan") or "").strip():
+        return False
+    if not str(after.get("remediation_plan") or "").strip():
+        return False
+    for key in TRACKED_FIELDS:
+        if key == "remediation_plan":
+            continue
+        if before.get(key) != after.get(key):
+            return False
+    return True
+
+
 def _new_item(
     rec: dict[str, Any],
     *,
@@ -1008,7 +1172,7 @@ def _new_item(
         effective_s = kev_due.isoformat() if kev_due else ""
         odd = NOT_RECORDED
         basis = "not_recorded"
-    return {
+    item = {
         "poam_id": poam_id,
         "fp": fp,
         "source_family": source_family(rec),
@@ -1052,6 +1216,8 @@ def _new_item(
         "ref_id": str(rec.get("ref_id") or ""),
         "severity": scanner,
     }
+    persist_mapped_fields(item, rec)
+    return item
 
 
 def _tracked_snapshot(item: dict[str, Any]) -> dict[str, Any]:
@@ -1832,8 +1998,9 @@ def apply_ledger(
                     ledger["events"].append(
                         _event(run_iso, fp, str(item.get("poam_id") or ""), "seen_from_pending")
                     )
+                persist_mapped_fields(item, rec)
                 after = _tracked_snapshot(item)
-                if after != before:
+                if after != before and not _map_plan_is_schema_backfill(before, after):
                     item["status_date"] = run_date.isoformat()
                     ledger["events"].append(
                         _event(
@@ -1909,6 +2076,7 @@ def apply_ledger(
             continue
         if str(item.get("status") or "") == "closed":
             continue
+        persist_mapped_fields(item, overwrite_plan=False)
         before_vd = _vd_snapshot(item)
         for flag in finalize_vendor_fields(item, None, run_date=run_date):
             warnings.append(f"{flag}:{item.get('poam_id')}")

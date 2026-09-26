@@ -50,6 +50,7 @@ from shared.poam_ledger import (
     ledger_run_delta,
     migrate_finding_refs,
     persist_ledger,
+    plan_from_ledger_item,
     run_ledger,
 )
 from shared.vendor_dependency import VD_NOTE
@@ -556,6 +557,7 @@ def load() -> dict:
             continue
         pending_carried += 1
         listed_ids.add(pid)
+        mapped = plan_from_ledger_item(item)
         fields = {key: "" for key in POAM_EXTRA_FIELDS}
         fields["poam_id"] = pid
         fields["finding_ref_id"] = str(item.get("ref_id") or "")
@@ -565,13 +567,14 @@ def load() -> dict:
         fields["original_detection_date"] = str(item.get("original_detection_date") or "")
         fields["status_date"] = str(item.get("status_date") or "")
         fields["original_risk_rating"] = str(item.get("original_risk_rating") or "")
+        fields["controls"] = mapped["controls"]
         poam_rows.append(
             [
                 str(item.get("name") or item.get("weakness_key") or ""),
                 str(item.get("display_asset") or item.get("asset_key") or ""),
                 str(item.get("severity") or item.get("current_scanner_rating") or ""),
-                "",
-                "",
+                mapped["framework_refs"],
+                mapped["recommended_fix"],
                 "",
                 "",
                 status,
