@@ -9,7 +9,7 @@ LAB/SAMPLE/DEMO ≠ client KEEP. No POST /api/risks.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from shared.kev import KevCatalog
