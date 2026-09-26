@@ -57,10 +57,23 @@ def _assert_import_honesty(ciso: Path) -> dict:
         assert row["name"]
     scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
     assert len(scenarios) >= shape["findings"]
+    excluded_path = ciso.parent / "poam" / "excluded.csv"
+    excluded = csv_rows(excluded_path) if excluded_path.is_file() else []
+    accept_n = 0
     for row in scenarios:
         assert row["ref_id"]
         assert row["name"]
         assert row.get("current_risk") in SCENARIO_LEVELS, row
+        treat = row.get("treatment")
+        assert treat in {"mitigate", "accept"}, row
+        if treat == "accept":
+            accept_n += 1
+            assert str(row.get("existing_controls") or "").startswith("excluded:"), row
+            assert (row.get("additional_controls") or "") == ""
+            assert row.get("residual_risk") == row.get("current_risk"), row
+        else:
+            assert str(row.get("additional_controls") or "").startswith("CTL-"), row
+    assert accept_n == len(excluded)
     poam = csv_rows(ciso.parent / "poam" / "poam.csv")
     assert poam
     for row in poam:

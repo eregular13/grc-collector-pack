@@ -401,6 +401,12 @@ def test_scanner_identity_denylist() -> None:
     assert not _is_scanner_identity("10.0.0.50-445")
     assert not _is_scanner_identity("filesrv-445-tcp")
     assert not _is_scanner_identity("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    # pack_drop lift keys are not plugin/check ids (Argus B5).
+    assert not _is_scanner_identity("nmap-10-microsoftds-445")
+    assert not _is_scanner_identity("nmap-l10-ssh-22")
+    assert not _is_scanner_identity("rustscan-7-tcp-80")
+    assert _is_scanner_identity("nmap-port-445/tcp")
+    assert _is_scanner_identity("AVD-AWS-0086")
 
 
 def test_distinct_findings_on_one_asset_do_not_share_id() -> None:
@@ -875,7 +881,7 @@ def test_demo_fedramp_open_stays_127(tmp_path: Path, monkeypatch) -> None:
     assert len(rows) == 127, f"DEMO FedRAMP Open={len(rows)} expected 127"
 
 
-def test_farm_fedramp_open_stays_174(tmp_path: Path) -> None:
+def test_farm_fedramp_open_stays_109(tmp_path: Path) -> None:
     import os
     import subprocess
 
@@ -903,7 +909,7 @@ def test_farm_fedramp_open_stays_174(tmp_path: Path) -> None:
     assert fed.is_file()
     with fed.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    assert len(rows) == 174, f"farm FedRAMP Open={len(rows)} expected 174"
+    assert len(rows) == 109, f"farm FedRAMP Open={len(rows)} expected 109"
 
 
 def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
