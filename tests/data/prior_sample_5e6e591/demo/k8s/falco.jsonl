@@ -1,0 +1,2 @@
+{"hostname":"prod-cluster","rule":"Write below binary dir","priority":"Warning","output":"File below a known binary directory opened for writing (user=root pod=payments-worker)","output_fields":{"k8s.ns.name":"prod","k8s.pod.name":"payments-worker"}}
+{"hostname":"prod-cluster","rule":"Launch Privileged Container","priority":"Critical","output":"Privileged container started","output_fields":{"k8s.ns.name":"prod","k8s.pod.name":"payments-worker"}}

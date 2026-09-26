@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<NessusClientData_v2>
+<Report name="demo-file-drop">
+  <ReportHost name="http://10.0.0.20">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.20</tag>
+    </HostProperties>
+    <ReportItem port="445" svc_name="cifs" protocol="tcp" severity="3" pluginID="42411" pluginName="Microsoft Windows SMB Shares Unprivileged Access">
+      <risk_factor>High</risk_factor>
+      <description>SMB file sharing is reachable without a privileged account. This is a dropped Nessus export, not a live scan.</description>
+    </ReportItem>
+    <ReportItem port="0" svc_name="general" protocol="tcp" severity="0" pluginID="19506" pluginName="Nessus Scan Information">
+      <risk_factor>None</risk_factor>
+      <description>Scan metadata only.</description>
+    </ReportItem>
+  </ReportHost>
+</Report>
+</NessusClientData_v2>

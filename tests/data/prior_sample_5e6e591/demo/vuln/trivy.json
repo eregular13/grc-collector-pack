@@ -1,0 +1,24 @@
+{
+  "Results": [
+    {
+      "Target": "app-server:latest",
+      "Class": "os-pkgs",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-3094",
+          "PkgName": "xz-utils",
+          "Severity": "CRITICAL",
+          "Title": "xz-utils supply chain backdoor",
+          "Description": "Malicious code in xz-utils liblzma."
+        },
+        {
+          "VulnerabilityID": "CVE-2023-38545",
+          "PkgName": "curl",
+          "Severity": "HIGH",
+          "Title": "curl SOCKS heap overflow",
+          "Description": "Heap buffer overflow in curl SOCKS handshake."
+        }
+      ]
+    }
+  ]
+}

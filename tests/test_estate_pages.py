@@ -11,7 +11,6 @@ import csv
 import importlib
 import io
 import json
-import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -898,47 +897,31 @@ def test_pack_fixture_manifest_matches_on_disk() -> None:
     assert catalog.issuperset({str(h).lower() for h in legacy})
 
 
-_PRIOR_SAMPLE_REV = "5e6e591dd74014050795d849e449c10459b1900c"
-
-
-def _prior_restamped_fixture_rels() -> list[str]:
-    proc = subprocess.run(
-        ["git", "diff", "--name-only", _PRIOR_SAMPLE_REV, "HEAD", "--", "fixtures"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    rels: list[str] = []
-    for line in proc.stdout.splitlines():
-        if not line.startswith("fixtures/"):
-            continue
-        rel = line[len("fixtures/") :]
-        if rel == _FIXTURE_MANIFEST_NAME or Path(rel).name == "MANIFEST":
-            continue
-        rels.append(rel)
-    return rels
+_PRIOR_SAMPLE_DIR = ROOT / "tests" / "data" / "prior_sample_5e6e591"
 
 
 def test_prior_release_restamped_fixtures_still_classify_sample(tmp_path: Path) -> None:
-    """5e6e591 bytes of restamped fixtures stay SAMPLE under CLIENT settings."""
+    """5e6e591 bytes of restamped fixtures stay SAMPLE under CLIENT settings.
+
+    Testdata is `git show 5e6e591:fixtures/<path>` for the 32 restamped
+    files. CI checkouts are shallow and do not have that commit.
+    """
     import shared.estate_pages as ep
 
     ep._FIXTURE_HASH_CACHE = None
-    rels = _prior_restamped_fixture_rels()
-    assert len(rels) == 32
-    kinds = {r.split("/", 1)[0] for r in rels}
+    paths = sorted(p for p in _PRIOR_SAMPLE_DIR.rglob("*") if p.is_file())
+    assert len(paths) == 32
+    kinds = {p.relative_to(_PRIOR_SAMPLE_DIR).parts[0] for p in paths}
     assert {"demo", "lab-drop", "samples"} <= kinds
-    for rel in rels:
-        blob = subprocess.check_output(
-            ["git", "show", f"{_PRIOR_SAMPLE_REV}:fixtures/{rel}"],
-            cwd=ROOT,
-        )
+    catalog = fixture_content_hashes()
+    for src in paths:
+        rel = str(src.relative_to(_PRIOR_SAMPLE_DIR)).replace("\\", "/")
+        blob = src.read_bytes()
         dest_in = tmp_path / rel.replace("/", "_")
         dest_in.mkdir()
-        dest_in.joinpath(Path(rel).name).write_bytes(blob)
+        dest_in.joinpath(src.name).write_bytes(blob)
         hits, others = in_dir_fixture_hits(dest_in)
-        assert Path(rel).name in hits, rel
+        assert src.name in hits, rel
         assert others == (), rel
         stamp = classify_estate(
             [_finding("f1")],
@@ -949,6 +932,8 @@ def test_prior_release_restamped_fixtures_still_classify_sample(tmp_path: Path) 
         assert stamp.kind == "SAMPLE", (rel, stamp.kind, stamp.label)
         assert stamp.kind not in {"CLIENT", "MIXED"}
         assert not stamp.label.startswith("CLIENT:")
+        fps = file_content_fingerprints(dest_in / src.name)
+        assert fps & catalog, rel
 
 
 def test_unreadable_fixture_in_catalog_fail_closed(
