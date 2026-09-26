@@ -19,6 +19,7 @@ from shared.nikto import parse_nikto
 from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import canon_severity, make_record, make_ref
+from shared.testssl import human_title as testssl_human_title
 from shared.testssl import is_testssl, iter_testssl_findings
 
 SOURCE = "vuln-scan"
@@ -211,7 +212,7 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
         kind="finding",
         source=SOURCE,
         ref_id=make_ref(SOURCE, _testssl_ref(row, host)),
-        name=str(row.get("id") or row.get("finding") or vid),
+        name=testssl_human_title(str(row.get("id") or ""), str(row.get("finding") or vid)),
         description=str(row.get("finding") or row.get("cve") or vid),
         severity=canon_severity(row.get("severity") or "high"),
         category="vulnerability",
