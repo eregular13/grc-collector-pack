@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from shared.io_util import SKIP_INPUT_NAMES
 from shared.scan_time import extra_scan_raw, format_detection_date
 
 NOT_RECORDED = "not recorded"
@@ -67,17 +68,7 @@ SAMPLE_AUTH = "No client authorization applies. No client systems were touched."
 
 # Bookkeeping files are not scanner drops and are not hashed as fixtures.
 _AUTH_FILENAMES = ("AUTHORIZATION.txt", "AUTHORIZATION.md", "AUTH.txt")
-_HASH_SKIP_NAMES = frozenset(
-    {
-        ".gitkeep",
-        ".DS_Store",
-        "SAMPLE.txt",
-        "LAB.txt",
-        "README.md",
-        "MANIFEST",
-        *_AUTH_FILENAMES,
-    }
-)
+_HASH_SKIP_NAMES = frozenset(SKIP_INPUT_NAMES)
 _AUTH_PLACEHOLDERS = frozenset(
     {"", "not recorded", "none", "null", "unknown", "n/a", "na", "-"}
 )
@@ -600,9 +591,12 @@ def classify_estate(
     for rel in fixture_hits:
         if rel not in fb:
             fb.append(rel)
+    # Fixture bytes forbid CLIENT (see client_ok). SAMPLE/MIXED only when the
+    # run is not an explicit LAB dest_in — fixtures/lab-* is copied into in/
+    # on the operator LAB path and must stay LAB, never a client KEEP.
     if fixture_hits and fixture_others:
         signals.append("MIXED")
-    elif fixture_hits:
+    elif fixture_hits and raw_label != "LAB" and not lab_marker:
         signals.append("SAMPLE")
 
     if drop_fb and (mixed_records or n_demo < n_records or lab_marker):
