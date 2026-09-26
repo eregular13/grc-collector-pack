@@ -51,7 +51,7 @@ def test_nuclei_exposed_redis_uses_redis_auth_playbook() -> None:
     ]
     assert redis_rows, "lab/demo nuclei-multi-host must emit exposed-redis"
     for row in redis_rows:
-        assert finding_type(row) == ""
+        assert finding_type(row) == "nse-redis-noauth"
         mapped = map_finding(row)
         assert mapped["control_name"] == "Require authentication on Redis"
         assert mapped.get("generic") is False

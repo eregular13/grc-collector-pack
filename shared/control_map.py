@@ -9,11 +9,13 @@ import os
 import re
 from typing import Any
 
-from shared.finding_types import TYPE_WEAKNESS_NAME, has_xss_signal, type_remediation
+from shared.finding_types import TYPE_WEAKNESS_NAME, finding_type, has_xss_signal, type_remediation
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
+    REDIS_AUTH_TEMPLATE_IDS,
     apply_class_mapping,
     csf_cpg_tag_set,
+    redis_auth_template_ids,
 )
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
@@ -267,6 +269,8 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("port"),
             extra.get("service"),
             extra.get("rule"),
+            extra.get("template_id"),
+            extra.get("template-id"),
             extra.get("cve"),
             extra.get("check_id"),
             extra.get("id"),
@@ -871,15 +875,7 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
 
 def _is_unauth_redis(rec: dict[str, Any]) -> bool:
     """Nuclei exposed-redis / nmap redis-info — auth gap, not a patch finding."""
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    tid = str(
-        extra.get("check_id")
-        or extra.get("template_id")
-        or extra.get("rule")
-        or extra.get("template-id")
-        or ""
-    ).lower()
-    if tid in {"exposed-redis", "nse-redis-noauth"}:
+    if any(tid in REDIS_AUTH_TEMPLATE_IDS for tid in redis_auth_template_ids(rec)):
         return True
     text = _blob(rec)
     if "redis" not in text:
@@ -893,6 +889,7 @@ def _is_unauth_redis(rec: dict[str, Any]) -> bool:
             "no auth",
             "requirepass",
             "accessible without authentication",
+            "unprotected by password",
         )
     )
 
@@ -943,7 +940,9 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
             rec,
         )
     check = str(extra.get("check_id") or "")
-    if _is_unauth_redis(rec):
+    # Nuclei extra.rule/template_id is exposed-redis; extra.check_id may be a
+    # CVE or matcher id. Alias + every extra id must still reach this class.
+    if _is_unauth_redis(rec) or finding_type(rec) in REDIS_AUTH_TEMPLATE_IDS:
         check = "nse-redis-noauth"
     rule = MISCONFIG_RULES.get(check)
     if rule:
