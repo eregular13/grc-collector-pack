@@ -1,3 +1,14 @@
+# CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
+
+Lab this brick: pytest **1068** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+Zero P0/P1. Host-lab counts **unchanged** vs current master 30e5910.
+New findings only when real-shaped files are dropped under
+`fixtures/samples/` (tests) or `in/`. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 192 (MERGE_MASTER_DEMO_FALLBACK_PLUS_REAL_SAMPLE)
 
 Merge `origin/master` `036aff8` (PR #133) into this branch. Both

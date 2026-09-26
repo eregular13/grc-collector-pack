@@ -1,0 +1,42 @@
+{
+  "MetaData": {
+    "TenantId": "11111111-2222-3333-4444-555555555555",
+    "TenantName": "example.onmicrosoft.com",
+    "TimestampZulu": "2024-03-20T18:42:05.043Z",
+    "ToolVersion": "1.8.0"
+  },
+  "Summary": {
+    "AAD": {"Errors": 1, "Warnings": 1, "Passes": 1}
+  },
+  "AnnotatedFailedPolicies": {},
+  "Results": {
+    "AAD": [
+      {
+        "GroupName": "Legacy Authentication",
+        "Controls": [
+          {
+            "Control ID": "MS.AAD.1.1v1",
+            "Requirement": "<p>Legacy authentication SHALL be blocked</p>",
+            "Result": "Fail",
+            "Criticality": "Shall",
+            "Details": "No Conditional Access policy blocks legacy authentication"
+          },
+          {
+            "Control ID": "MS.AAD.3.1v1",
+            "Requirement": "Privileged users SHOULD use phishing-resistant MFA",
+            "Result": "Warning",
+            "Criticality": "Should",
+            "Details": "Some admins lack phishing-resistant MFA"
+          },
+          {
+            "Control ID": "MS.AAD.2.1v1",
+            "Requirement": "Security defaults or CA policies",
+            "Result": "Pass",
+            "Criticality": "Shall",
+            "Details": "Conditional Access baseline present"
+          }
+        ]
+      }
+    ]
+  }
+}

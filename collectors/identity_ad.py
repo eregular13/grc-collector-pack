@@ -172,16 +172,72 @@ def _props(node: dict[str, Any]) -> dict[str, Any]:
     return _fold_props(node)
 
 
-def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
+def _xml_local(tag: str) -> str:
+    return (tag or "").split("}")[-1]
+
+
+def _child_text(el: ET.Element, *names: str) -> str:
+    want = {name.lower() for name in names}
+    for child in list(el):
+        if _xml_local(child.tag).lower() in want:
+            return (child.text or "").strip()
+    return ""
+
+
+def _points_severity(raw: str) -> str:
+    try:
+        points = int(float(str(raw or "0").strip() or "0"))
+    except (TypeError, ValueError):
+        points = 0
+    if points >= 50:
+        return "critical"
+    if points >= 30:
+        return "high"
+    if points >= 10:
+        return "medium"
+    return "low"
+
+
+def _parse_pingcastle_xml(path: Path) -> dict[str, Any]:
+    """Read PingCastle HealthcheckData: RiskRules + case-insensitive groups/accounts."""
     raw = read_text(path)
     root = ET.fromstring(raw)
+    parent = {child: node for node in root.iter() for child in list(node)}
+    domain = _child_text(root, "DomainFQDN", "ForestFQDN", "NetBIOSName")
     nodes: list[dict[str, Any]] = []
+    rules: list[dict[str, Any]] = []
+    if domain:
+        nodes.append(
+            {
+                "kind": "Domain",
+                "label": domain,
+                "properties": {
+                    "name": domain,
+                    "description": f"PingCastle domain {domain}",
+                },
+            }
+        )
     for el in root.iter():
-        tag = el.tag.split("}")[-1]
-        if tag in {"HealthcheckGroupData", "Group", "PrivilegedGroup"}:
+        tag = _xml_local(el.tag).lower()
+        if tag == "healthcheckriskrule":
+            risk_id = _child_text(el, "RiskId") or "pingcastle"
+            rationale = _child_text(el, "Rationale") or risk_id
+            points = _child_text(el, "Points") or "0"
+            rules.append(
+                {
+                    "risk_id": risk_id,
+                    "rationale": rationale,
+                    "points": points,
+                    "severity": _points_severity(points),
+                    "category": _child_text(el, "Category") or "",
+                    "model": _child_text(el, "Model") or "",
+                    "domain": domain or "unknown",
+                }
+            )
+            continue
+        if tag in {"healthcheckgroupdata", "group", "privilegedgroup"}:
             name = (
-                el.findtext("GroupName")
-                or el.findtext("Name")
+                _child_text(el, "GroupName", "Name")
                 or el.attrib.get("name")
                 or ""
             )
@@ -193,25 +249,44 @@ def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
                         "properties": {
                             "name": name,
                             "highvalue": "BACKUP" in name.upper() or "ADMIN" in name.upper(),
-                            "description": el.findtext("Description") or f"PingCastle group {name}",
+                            "description": _child_text(el, "Description") or f"PingCastle group {name}",
                         },
                     }
                 )
-        if tag in {"Account", "PrivilegedAccount", "User"}:
-            name = el.findtext("Name") or el.findtext("SamAccountName") or el.attrib.get("name") or ""
-            if name:
-                props = {
-                    "name": name,
-                    "hasspn": (el.findtext("HasSPN") or "").lower() in {"true", "1"},
-                    "dontreqpreauth": (el.findtext("DontReqPreAuth") or "").lower() in {"true", "1"},
-                    "description": el.findtext("Description") or "",
-                }
-                spn = el.findtext("SPN") or el.findtext("ServicePrincipalName")
-                if spn:
-                    props["serviceprincipalnames"] = [spn]
-                    props["hasspn"] = True
-                nodes.append({"kind": "User", "label": name, "properties": props})
-    return nodes
+            continue
+        if tag in {"account", "privilegedaccount", "user", "healthcheckaccountdetaildata"}:
+            name = (
+                _child_text(el, "Name", "SamAccountName", "SAMAccountName")
+                or el.attrib.get("name")
+                or ""
+            )
+            if not name:
+                continue
+            ancestor_tags = set()
+            cur: ET.Element | None = el
+            for _ in range(6):
+                cur = parent.get(cur) if cur is not None else None
+                if cur is None:
+                    break
+                ancestor_tags.add(_xml_local(cur.tag).lower())
+            preauth_parent = "listnopreauth" in ancestor_tags
+            dont = _child_text(el, "DontReqPreAuth").lower() in {"true", "1"} or preauth_parent
+            props = {
+                "name": name,
+                "hasspn": _child_text(el, "HasSPN").lower() in {"true", "1"},
+                "dontreqpreauth": dont,
+                "description": _child_text(el, "Description") or "",
+            }
+            spn = _child_text(el, "SPN", "ServicePrincipalName")
+            if spn:
+                props["serviceprincipalnames"] = [spn]
+                props["hasspn"] = True
+            nodes.append({"kind": "User", "label": name, "properties": props})
+    return {"nodes": nodes, "rules": rules, "domain": domain}
+
+
+def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
+    return list(_parse_pingcastle_xml(path).get("nodes") or [])
 
 
 def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> list[dict]:
@@ -471,8 +546,11 @@ def parse_file(path: Path) -> list[dict]:
             json_payload = None
     if is_cis_cat(json_payload, name=path.name, text=text):
         return _emit_cis_cat(iter_cis_failures(json_payload, text=text), iso_now())
+    pc_rules: list[dict[str, Any]] = []
     if path.suffix.lower() == ".xml" or text.startswith("<"):
-        nodes = _pingcastle_xml_nodes(path)
+        parsed_pc = _parse_pingcastle_xml(path)
+        nodes = list(parsed_pc.get("nodes") or [])
+        pc_rules = list(parsed_pc.get("rules") or [])
     else:
         payload = json_payload
         if payload is None:
@@ -540,6 +618,29 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"kind": kind},
                 )
             )
+    for rule in pc_rules:
+        risk_id = str(rule.get("risk_id") or "pingcastle")
+        domain = str(rule.get("domain") or "ad-domain")
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"pc-{risk_id}-{domain}"),
+                name=f"PingCastle {risk_id}",
+                description=str(rule.get("rationale") or risk_id),
+                severity=str(rule.get("severity") or "medium"),
+                category="identity-gap",
+                assets=[domain],
+                labels=LABELS + ["pingcastle", "risk-rule"],
+                collected_at=now,
+                extra={
+                    "risk_id": risk_id,
+                    "points": rule.get("points") or "0",
+                    "category": rule.get("category") or "",
+                    "model": rule.get("model") or "",
+                },
+            )
+        )
     for edge in _edges(payload):
         kind = str(
             edge.get("kind")

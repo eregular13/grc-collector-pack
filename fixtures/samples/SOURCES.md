@@ -1,7 +1,11 @@
 # Real-shaped parser samples (trimmed)
 
-Provenance matches the research pack `samples/SOURCES.md` (fetched 2026-09-25 PT).
+Provenance matches the research pack `samples/SOURCES.md` (fetched 2026-09-25 PT)
+and DefectDojo / ScubaGear / testssl public fixtures used in the §8 audit.
 These files are **SAMPLE/DEMO fixtures**, not a client KEEP drop.
+
+PR #134 owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng rows. PR #139 owns
+PingCastle, Greenbone, ScubaGear, testssl, and Nikto rows. Tables are unioned.
 
 | File | Source | What was trimmed |
 |---|---|---|
@@ -12,5 +16,14 @@ These files are **SAMPLE/DEMO fixtures**, not a client KEEP drop.
 | `sarif/trivy-critical.sarif` | Trivy SARIF writer [`pkg/report/sarif.go`](https://github.com/aquasecurity/trivy) `@ ae561f8cca36` (`toSarifErrorLevel`: CRITICAL and HIGH both → `error`; score in `rules[].properties.security-severity`). Alpine golden only has MEDIUM 5.3. | One CRITICAL (`9.8`, `level=error`) + one MEDIUM (`5.3`, `level=warning`) using that rule-property shape. Result objects have no `properties.severity`. |
 | `xccdf/rule-results.xml` | XCCDF 1.2 `rule-result@severity` + `@idref` as in OpenSCAP ARF (`openscap` `@ 6942b59` `test_xccdf_overrides.arf.xml` L3137). | Minimal Benchmark (no OpenSCAP/SSG markers) so the generic CIS/XCCDF path is exercised. Fail low / medium / high + one pass. |
 | `enum4linux/enum4linux-ng.json` | [cddmp/enum4linux-ng](https://github.com/cddmp/enum4linux-ng) `@ 288826fd9ee8` (`target:{host}` L404; `sessions.null` AUTH_NULL L275/L1175; share `access:{mapping,listing}` L2468) | One host, null session, Domain Admins, IPC$ + writable NETLOGON (`listing=ok`). |
+| `pingcastle/one.xml` | [DefectDojo/django-DefectDojo](https://github.com/DefectDojo/django-DefectDojo) `unittests/scans/pingcastle/one.xml` (Engine 3.2.0.1). Model: [PingCastle HealthcheckData](https://github.com/vletoux/pingcastle) `HealthcheckRiskRule` / `HealthCheckGroupData`. | Whole one-rule file. Added a `HealthCheckGroupData` (capital C) + `ListNoPreAuth` account so case-insensitive group/account tags are exercised. IPs stay documentation placeholders. |
+| `greenbone/one_vuln.xml` | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0 report XML) | One `result` kept (Firefox NVT, CVSS 10.0, CVE-2023-4573). Wrapper scan metadata dropped. |
+| `greenbone/one_vuln.csv` | DefectDojo `unittests/scans/openvas/one_vuln.csv` | Header + the one SSH weak-cipher row. |
+| `scuba/ScubaResults_sample.json` | [cisagov/ScubaGear](https://github.com/cisagov/ScubaGear) v1.8.0 `@ 8bbaf75` `ScubaResults` shape (`MetaData` + `Results{product:[group.Controls[]]}`). Keys from `docs/misc/tooloutputschema.md`. | Two AAD controls (Fail/Shall + Warning/Should) + one Pass. Tenant from MetaData only. |
+| `testssl/finos_robmoff.at_443_vulnerable.json` | testssl.sh 3.x `--jsonfile-pretty` (`scanResult[]` sections `protocols`, `serverDefaults`, `vulnerabilities`). Shape matches the FINOS `robmoff.at` pretty JSON cited in the §8 audit. | One host. SSLv3 HIGH, TLS1 LOW, expired cert HIGH, BREACH MEDIUM, LUCKY13 LOW, one WARN, OK rows. |
+| `testssl/server-defaults.json` | Same 3.x pretty-JSON shape, `serverDefaults` only. | Certificate expiry HIGH + WARN OCSP row. |
+| `nikto/issue_9274.json` | DefectDojo `unittests/scans/nikto/issue_9274.json` (Nikto 2.6.1 list-of-hosts JSON) | Untrimmed (already 8 rows). Header noise + BREACH. |
+| `nikto/juice-shop-trim.json` | DefectDojo `unittests/scans/nikto/juice-shop.json` (dict host + 740001 soft-404 noise) | 2 header rows, 2 backup-noise rows, BREACH, `/public/` interesting, NextGEN LFI. |
+| `nikto/nikto-output-trim.xml` | DefectDojo `unittests/scans/nikto/nikto-output.xml` (Nikto 2.1.5) | X-Frame, PUT, Tomcat examples, XSS, Manager. |
 
 LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.

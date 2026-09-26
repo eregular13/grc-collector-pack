@@ -79,7 +79,8 @@ def test_lab_malformed_sensors_zero_demo_named_parse_error(tmp_path, monkeypatch
     summary = grc_loader.load()
     assert summary["demo"] is False
     assert summary["findings"] == 0
-    assert summary["estate"] == "LAB"
+    assert summary["estate"] == "LAB: TEST ENVIRONMENT"
+    assert summary["estate_kind"] == "LAB"
     assert summary["sensors"]["cloud-prowler"]["status"] == "parse_error"
     assert summary["sensors"]["vuln-scan"]["status"] == "parse_error"
     assert summary["coverage"]["sensors"]
@@ -219,7 +220,8 @@ def test_explicit_demo_empty_in_still_loads_fixtures(tmp_path, monkeypatch) -> N
     assert status["records"] >= 1
     summary = grc_loader.load()
     assert summary["demo"] is True
-    assert summary["estate"] == "DEMO"
+    assert summary["estate"] == "DEMO: NOT A CLIENT"
+    assert summary["estate_kind"] == "DEMO"
     assert summary["findings"] >= 1
     assert (dest_in / "cloud").exists() or True
 

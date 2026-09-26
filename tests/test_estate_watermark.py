@@ -6,14 +6,19 @@ LAB / SAMPLE / DEMO output must be self-describing once it leaves the console
 
 from __future__ import annotations
 
-import csv
 import importlib
 import json
 from pathlib import Path
 
 import pytest
 
-from shared.ciso_shape import POAM_HEADER, assert_risk_register_and_poam
+from shared.ciso_shape import (
+    CISO_HEADERS,
+    POAM_HEADER,
+    assert_risk_register_and_poam,
+    csv_rows,
+    first_nonempty_line,
+)
 
 
 def _finding(ref: str, sev: str = "high", labels: list[str] | None = None) -> dict:
@@ -65,11 +70,6 @@ def _run_loader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[d
     return out
 
 
-def _poam(out: Path) -> list[dict[str, str]]:
-    with (out / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh))
-
-
 def test_poam_header_has_estate_column() -> None:
     # estate follows the legacy 8 columns; FedRAMP fields may be appended after it.
     assert POAM_HEADER.split(",")[8] == "estate"
@@ -79,29 +79,41 @@ def test_poam_header_has_estate_column() -> None:
 @pytest.mark.parametrize(
     ("env", "expected"),
     [
-        ({"GRC_ESTATE_LABEL": "LAB"}, "LAB"),
-        ({"GRC_ESTATE_LABEL": "SAMPLE"}, "SAMPLE"),
-        ({"DROPBOX_DEMO": "1"}, "SAMPLE"),
+        ({"GRC_ESTATE_LABEL": "LAB"}, "LAB: TEST ENVIRONMENT"),
+        ({"GRC_ESTATE_LABEL": "SAMPLE"}, "SAMPLE DATA: NOT A CLIENT"),
+        ({"DROPBOX_DEMO": "1"}, "SAMPLE DATA: NOT A CLIENT"),
     ],
 )
 def test_poam_csv_and_md_carry_estate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, env: dict, expected: str
 ) -> None:
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], **env)
-    rows = _poam(out)
+    poam = out / "poam" / "poam.csv"
+    assert not poam.read_text(encoding="utf-8").lstrip().startswith("#")
+    rows = csv_rows(poam)
     assert rows, "high finding must reach POA&M"
     assert {row["estate"] for row in rows} == {expected}
     md = (out / "poam" / "poam.md").read_text(encoding="utf-8")
-    banner = md.splitlines()[0:4]
-    assert any(f"ESTATE: {expected}" in line and "not a client estate" in line for line in banner), banner
-    sr = (out / "simplerisk" / "poam.csv").read_text(encoding="utf-8").splitlines()[0]
-    assert sr == POAM_HEADER
+    assert md.lstrip().startswith("> **")
+    assert expected in md.splitlines()[0]
+    sr = out / "simplerisk" / "poam.csv"
+    sr_text = sr.read_text(encoding="utf-8")
+    assert sr_text.splitlines()[0].strip() == POAM_HEADER
+    assert first_nonempty_line(sr) == POAM_HEADER
+    assert not any(line.lstrip().startswith("#") for line in sr_text.splitlines())
+    assert sr_text.splitlines()[0].split(",")[8] == "estate"
+    sr_rows = csv_rows(sr)
+    assert {row["estate"] for row in sr_rows} == {expected}
+    estate_txt = (out / "simplerisk" / "ESTATE.txt").read_text(encoding="utf-8")
+    assert expected in estate_txt
     assert_risk_register_and_poam(out)
 
 
 def test_demo_labeled_records_default_to_demo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1", labels=["nmap", "demo"])])
-    assert {row["estate"] for row in _poam(out)} == {"DEMO"}
+    assert {row["estate"] for row in csv_rows(out / "poam" / "poam.csv")} == {
+        "DEMO: NOT A CLIENT"
+    }
 
 
 def test_lab_txt_in_dest_in_means_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -109,37 +121,43 @@ def test_lab_txt_in_dest_in_means_lab(tmp_path: Path, monkeypatch: pytest.Monkey
     lab_in.mkdir(parents=True)
     (lab_in / "LAB.txt").write_text("LAB/DEMO -- not a client estate.\n", encoding="utf-8")
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")])
-    assert {row["estate"] for row in _poam(out)} == {"LAB"}
+    assert {row["estate"] for row in csv_rows(out / "poam" / "poam.csv")} == {
+        "LAB: TEST ENVIRONMENT"
+    }
 
 
 def test_unlabeled_run_never_claims_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")])
-    rows = _poam(out)
-    assert {row["estate"] for row in rows} == {"UNLABELED"}
-    md = (out / "poam" / "poam.md").read_text(encoding="utf-8").lower()
-    assert "client estate" not in md.replace("not verified as a client estate", "")
-    assert "estate: unlabeled" in md
+    rows = csv_rows(out / "poam" / "poam.csv")
+    assert {row["estate"] for row in rows} == {"SAMPLE DATA: NOT A CLIENT"}
+    md = (out / "poam" / "poam.md").read_text(encoding="utf-8")
+    assert "CLIENT:" not in md.splitlines()[0]
+    assert "SAMPLE DATA: NOT A CLIENT" in md
 
 
 def test_bogus_env_label_is_not_trusted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """GRC_ESTATE_LABEL=CLIENT (or anything off-list) must not flow into exports."""
+    """GRC_ESTATE_LABEL=CLIENT on unlabeled data must fail closed (never CLIENT)."""
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], GRC_ESTATE_LABEL="CLIENT")
-    assert {row["estate"] for row in _poam(out)} == {"UNLABELED"}
+    assert {row["estate"] for row in csv_rows(out / "poam" / "poam.csv")} == {
+        "SAMPLE DATA: NOT A CLIENT"
+    }
 
 
 def test_register_csvs_carry_estate_label_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """CISO import headers stay fixed; the watermark rides filtering_labels + ESTATE.txt."""
+    """CISO import CSVs keep locked headers; label lives in filtering_labels + ESTATE.txt."""
     out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], GRC_ESTATE_LABEL="LAB")
     ciso = out / "ciso-assistant"
     for name in ("findings.csv", "assets.csv"):
-        with (ciso / name).open(encoding="utf-8", newline="") as fh:
-            rows = list(csv.DictReader(fh))
+        text = (ciso / name).read_text(encoding="utf-8")
+        assert not text.lstrip().startswith("#")
+        assert text.splitlines()[0].strip() == CISO_HEADERS[name]
+        rows = csv_rows(ciso / name)
         assert rows
         for row in rows:
             assert "estate_lab" in row["filtering_labels"].split(","), (name, row)
+            assert "estate" not in row
     estate_txt = (ciso / "ESTATE.txt").read_text(encoding="utf-8")
-    assert "ESTATE: LAB" in estate_txt
-    assert "not a client estate" in estate_txt
+    assert "LAB: TEST ENVIRONMENT" in estate_txt
     summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
-    assert summary["estate"] == "LAB"
+    assert summary["estate"] == "LAB: TEST ENVIRONMENT"
     assert summary.get("client") in (None, False)

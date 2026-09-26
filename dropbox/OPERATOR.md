@@ -187,7 +187,7 @@ The ten-collector `bash scripts/lab.sh` path still falls back to `fixtures/demo/
 on empty sensors and labels `demo`. Hand `out/poam/poam.csv` as the POA&M draft —
 a human fills owner and due. Do not invent FindingsAssessment UUIDs.
 
-RiskReady JSON is LICENSE-LOCK stay-out — review on disk. `push_riskready.sh` never logs in or POSTs.
+RiskReady is LICENSE-LOCK stay-out — not generated. `push_riskready.sh` never logs in or POSTs.
 
 SimpleRisk: see `dropbox/SIMPLERISK.md` (leave-behind docs only). No SimpleRisk push.
 

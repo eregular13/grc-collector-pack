@@ -78,7 +78,7 @@ def test_riskready_push_1_is_review_only(tmp_path: Path) -> None:
     low = out.lower()
     assert "LICENSE-LOCK" in out
     assert "review-only" in low
-    assert "risks_proposed.json" in out
+    assert "no longer writes" in low or "not generated" in low
     assert "no login" in low
     assert "no http" in low
     assert "ignored" in low

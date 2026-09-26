@@ -24,8 +24,9 @@ def _sha256(path: Path) -> str:
 
 
 def _csv_rows(path: Path) -> int:
-    with path.open(encoding="utf-8", newline="") as fh:
-        return max(0, sum(1 for _ in csv.reader(fh)) - 1)
+    from shared.ciso_shape import csv_rows
+
+    return len(csv_rows(path))
 
 
 def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:

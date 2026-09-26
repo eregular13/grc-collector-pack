@@ -9,9 +9,15 @@ venv/
 out/raw/*
 out/canonical/*
 out/ciso-assistant/*.csv
+out/ciso-assistant/ESTATE.txt
+out/opengrc/ESTATE.txt
+out/probo/ESTATE.txt
 out/poam/*
+out/EXECUTIVE_SUMMARY.md
+out/SCOPE_AND_TRUST.md
+out/MANIFEST
 out/simplerisk/*
-out/riskready/*.json
+out/riskready/
 out/ocsf/*.json
 out/summary.json
 out/compose_lab.json
