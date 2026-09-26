@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from shared.finding_types import secret_material_hash
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
 from shared.sarif import is_sarif, iter_sarif_results
 from shared.schema import make_record, make_ref, slug
@@ -77,6 +78,27 @@ def _gitleaks(payload: Any) -> list[dict[str, Any]]:
                 if rows:
                     return rows
     return []
+
+
+def _secret_identity_extra(
+    *,
+    check_id: str,
+    fpath: str,
+    material: Any,
+    line: Any = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Rule + file + secret_hash. Never persist Secret/Match/Raw/Fingerprint."""
+    out = dict(extra or {})
+    out["check_id"] = check_id
+    if fpath:
+        out["file"] = fpath
+    if line not in (None, ""):
+        out["line"] = line
+    hashed = secret_material_hash(material)
+    if hashed:
+        out["secret_hash"] = hashed
+    return out
 
 
 def _is_checkov(payload: Any) -> bool:
@@ -181,6 +203,8 @@ def parse_file(path: Path) -> list[dict]:
             fpath = str(fs.get("file") or git.get("file") or leak.get("SourceID") or "repo")
             add_asset(fpath)
             detector = str(leak.get("DetectorName") or "secret")
+            line = fs.get("line") or git.get("line")
+            material = leak.get("Raw") or leak.get("RawV2") or ""
             records.append(
                 make_record(
                     kind="finding",
@@ -193,10 +217,13 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[fpath],
                     labels=LABELS + ["trufflehog"],
                     collected_at=now,
-                    extra={
-                        "verified": leak.get("Verified"),
-                        "check_id": f"trufflehog-{slug(detector, maxlen=None)}",
-                    },
+                    extra=_secret_identity_extra(
+                        check_id=f"trufflehog-{slug(detector, maxlen=None)}",
+                        fpath=fpath,
+                        material=material,
+                        line=line,
+                        extra={"verified": leak.get("Verified")},
+                    ),
                 )
             )
         return records
@@ -206,6 +233,7 @@ def parse_file(path: Path) -> list[dict]:
         for leak in leaks:
             fpath = str(leak.get("File") or leak.get("file") or "repo")
             add_asset(fpath)
+            material = leak.get("Secret") or leak.get("Match") or ""
             records.append(
                 make_record(
                     kind="finding",
@@ -218,10 +246,12 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[fpath],
                     labels=LABELS + ["gitleaks"],
                     collected_at=now,
-                    extra={
-                        "line": leak.get("StartLine"),
-                        "check_id": f"gitleaks-{slug(str(leak.get('RuleID') or 'secret'), maxlen=None)}",
-                    },
+                    extra=_secret_identity_extra(
+                        check_id=f"gitleaks-{slug(str(leak.get('RuleID') or 'secret'), maxlen=None)}",
+                        fpath=fpath,
+                        material=material,
+                        line=leak.get("StartLine"),
+                    ),
                 )
             )
         return records
@@ -355,7 +385,13 @@ def parse_file(path: Path) -> list[dict]:
                         assets=[target],
                         labels=LABELS + ["trivy", "secret"],
                         collected_at=now,
-                        extra={"rule": sid, "class": "secret"},
+                        extra=_secret_identity_extra(
+                            check_id=str(sid),
+                            fpath=target,
+                            material=secret.get("Match") or "",
+                            line=secret.get("StartLine"),
+                            extra={"rule": sid, "class": "secret"},
+                        ),
                     )
                 )
             for mis in result.get("Misconfigurations") or []:

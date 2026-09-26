@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- CR6_2_SECRET_LINE_STABLE: secret-class findings (gitleaks / TruffleHog /
+  category secrets) drop line/evidence/cmd from the weakness and
+  identity discriminator when Secret/Match/Raw is usable. They key
+  on rule + file + HMAC-SHA256 `secret_hash` (pack pepper; not
+  unsalted sha256). Raw material is never persisted. Empty or
+  redacted material (`REDACTED`, `*`) keeps `line` so two leaks of
+  one rule in one file stay two IDs. `secret_hash` is stripped from
+  client-facing CSVs (`poam_fedramp.csv` Weakness Source Identifier).
+  A gitleaks line move with usable material and the ledger carried
+  keeps the same EGP. Pre-CR6-2 `:line:N` fps rematch via
+  `secret_line_to_hash`. Upgrade plus a line move in the same run
+  still mints a new ID and a ghost (legacy fp needs the old line;
+  no worse than master). #170 path/url (httpx-admin root vs `/login`)
+  and honeypot cmd location stay. Vendor fields stay out of `fp_v1`.
+  MIN_ gates unchanged. No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - CR7_BH_HIGH_VALUE: `bh-high-value` (Administrators / Enterprise
   Admins / Schema Admins) keeps the high-value group playbook and
   AC-2/AC-6. Typed generic falls through to the legacy title map.
