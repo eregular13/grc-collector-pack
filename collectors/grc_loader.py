@@ -2,7 +2,8 @@
 """Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
 
 RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
-is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+is findings + vulnerabilities + kind_excluded == risk_scenarios; POA&M ==
+open_risks (poam.csv). kind:excluded rows stay on the register as accept.
 """
 
 from __future__ import annotations
@@ -777,9 +778,10 @@ def load() -> dict:
         poam_n=len(poam_rows),
         merged=str(merged_n),
         excluded_poam=excluded_poam,
+        kind_excluded=len(pre_excluded),
         in_dir=dest_in,
         generated_at=now,
-        run_delta=ledger_run_delta(poam_ledger),
+        run_delta=ledger_run_delta(poam_ledger, plan_ids=listed_ids),
         sensor_rows=sensor_rows,
     )
     write_client_pages(out_dir(), ctx)
