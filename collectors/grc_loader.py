@@ -13,7 +13,10 @@ from shared.control_map import extra_labels, map_finding, poam_breakdown
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.hardening_dedup import dedupe_hardening
+from shared.kev import KevSnapshotError, load_kev_catalog
+from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
+from shared.poam_ledger import run_ledger
 from shared.io_util import (
     iso_now,
     load_sensor_coverage,
@@ -208,6 +211,10 @@ def load() -> dict:
     # ref_id collapse, then same-issue-same-asset, then HK/Lynis/oscap keys.
     records = dedupe_hardening(dedupe_weaknesses(_dedupe(_load_canonical())))
     now = iso_now()
+    try:
+        kev_catalog = load_kev_catalog()
+    except KevSnapshotError as exc:
+        raise SystemExit(str(exc)) from exc
     domain = _domain()
     estate = estate_label(records)
     assets = [r for r in records if r.get("kind") == "asset"]
@@ -398,7 +405,10 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_text(out_poam / "poam.md", "\n".join(lines) + "\n")
+    ledger = run_ledger(findings, kev_catalog)
+    write_fedramp_poam(out_poam, ledger)
+    write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
+    write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, ledger))
     out_sr = out_dir() / "simplerisk"
     _write_csv(out_sr / "poam.csv", poam_header, poam_rows)
     write_text(

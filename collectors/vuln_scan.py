@@ -225,6 +225,17 @@ def parse_file(path: Path) -> list[dict]:
             add_asset(host)
             plugin = str(row.get("plugin_id") or "nessus")
             port = str(row.get("port") or "")
+            cves = [str(c).strip() for c in (row.get("cves") or []) if str(c).strip()]
+            extra: dict[str, Any] = {
+                "port": port,
+                "service": row.get("service") or "",
+                "protocol": row.get("protocol") or "",
+                "id": plugin,
+                "tool": "nessus",
+                "cves": cves,
+            }
+            if cves:
+                extra["cve"] = " ".join(cves)
             records.append(
                 make_record(
                     kind="finding",
@@ -240,11 +251,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[host],
                     labels=LABELS + ["nessus"],
                     collected_at=now,
-                    extra={
-                        "port": port,
-                        "service": row.get("service") or "",
-                        "id": plugin,
-                    },
+                    extra=extra,
                 )
             )
         return records

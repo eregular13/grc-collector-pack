@@ -122,11 +122,17 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             plugin = str(item.attrib.get("pluginID") or "")
             port = str(item.attrib.get("port") or "")
             svc = str(item.attrib.get("svc_name") or "")
+            proto = str(item.attrib.get("protocol") or "").strip()
             desc = title
+            cves: list[str] = []
             for child in list(item):
-                if _tag(child) == "description" and (child.text or "").strip():
+                tag = _tag(child)
+                if tag == "description" and (child.text or "").strip():
                     desc = (child.text or "").strip()
-                    break
+                elif tag == "cve":
+                    raw = (child.text or "").strip()
+                    if raw and raw not in cves:
+                        cves.append(raw)
             rows.append(
                 {
                     "host": host,
@@ -135,7 +141,9 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
                     "severity": sev,
                     "port": port,
                     "service": svc,
+                    "protocol": proto,
                     "plugin_id": plugin,
+                    "cves": cves,
                 }
             )
     return rows
