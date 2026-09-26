@@ -641,6 +641,33 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
     seen_assets: set[str] = set()
     for item in _iter_findings(payload, path=path):
         if _is_muted(item):
+            check = str(item.get("CheckID") or item.get("CheckId") or item.get("check_id") or "check")
+            title = str(item.get("CheckTitle") or item.get("title") or check)
+            rid = str(
+                item.get("ResourceId")
+                or item.get("ResourceName")
+                or item.get("resource")
+                or check
+            )
+            records.append(
+                {
+                    "kind": "excluded",
+                    "source": SOURCE,
+                    "ref_id": make_ref(SOURCE, f"muted-{check}-{rid}"),
+                    "name": title,
+                    "description": str(item.get("Description") or item.get("StatusExtended") or title),
+                    "severity": canon_severity(item.get("Severity") or item.get("severity") or "medium"),
+                    "category": "excluded",
+                    "assets": [rid],
+                    "labels": LABELS + ["muted"],
+                    "collected_at": now,
+                    "extra": {
+                        "exclude_reason": "MUTED",
+                        "check_id": check,
+                        "status": "MUTED",
+                    },
+                }
+            )
             continue
         check = str(item.get("CheckID") or item.get("CheckId") or item.get("check_id") or "check")
         title = str(item.get("CheckTitle") or item.get("title") or check)

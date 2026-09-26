@@ -151,9 +151,14 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)
-    assert walked["weaknesses_total"] == summary["weaknesses_total"] == len(findings)
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    merges = int(fg.get("duplicates_merged") or 0)
     assert walked["poam_included"] == summary["poam_included"]
-    assert walked["excluded_by_reason"] == summary["excluded_by_reason"]
+    assert walked["weaknesses_total"] + merges == summary["weaknesses_total"]
+    walk_ex = dict(walked["excluded_by_reason"])
+    if merges:
+        walk_ex["DUPLICATE_INSTANCE"] = int(walk_ex.get("DUPLICATE_INSTANCE") or 0) + merges
+    assert walk_ex == summary["excluded_by_reason"]
     for rec in findings:
         decision = poam_decision(rec)
         included = bool(map_finding(rec).get("include_poam"))

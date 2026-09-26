@@ -1,3 +1,48 @@
+# CRITIC — cycle 209 (DROP_FEDRAMP_WAIT_149)
+
+Dropped this PR's `write_fedramp_poam` rewrite (`item_from_poam_row`,
+`included_ids` / `open_items`, G0 Open==poam.csv asserts). Master's
+ledger-only export is back. Flood-guard / one decision-set stays.
+#149 still open (draft, dirty) and owns FedRAMP Open==poam.csv plus
+excluded counting. Stay draft. Do not merge #158 before #149. After
+#149: normal merge of master, take #149's FedRAMP path, then undraft.
+Lab this brick: pytest **1305** passed, 1 skipped. Host-lab 79/107/poam
+124 excluded 18 UNEXPLAINED=0. SAMPLE 6/8/2. farm 174/106/68. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 208 (METIS_FLOOD_GUARD_SPEC)
+
+Lab this brick: pytest **1307** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `vulnerabilities=22` `applied_controls=129`
+`risk_scenarios=129` `poam=124` `excluded=18` `severity_unmapped=0`
+`demo=true`). `flood_guard.findings_in=142` == members 124 + excluded
+18. `UNEXPLAINED==0`. FedRAMP Open IDs == `poam.csv` (G0). C5 adds 13
+`DUPLICATE_INSTANCE` rows to excluded.csv (poam rows unchanged).
+§12.5 T=40 / cap=12 report-only `exceeded`. Cold SAMPLE→SoR
+findings=6 poam=8 vulns=2 excluded=0. Cold farm_drop→SoR findings=174
+poam=106 vulns=0 excluded=68. §13 parser adjustments already on master.
+E4 late-only not implemented. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 207 (METIS_FLOOD_GUARD)
+
+Lab this brick: pytest **1303** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `vulnerabilities=22` `applied_controls=129`
+`risk_scenarios=129` `poam=124` `excluded=5` `severity_unmapped=0`
+`demo=true`). `flood_guard.UNEXPLAINED==0`. FedRAMP Open IDs ==
+`poam.csv` (G0). Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68.
+Merged current `origin/master` `ff6ffd7` (#145 parser follow-ups
+after #150+#156+#155); `not_a_weakness` stays a named reason
+(`NOT_A_WEAKNESS`). Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. E4 late-only not implemented. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 206 (MERGE_MASTER_150_INTO_145)
 
 Merge `origin/master` `dd360a2` (#150 UDP 445 not SMB) with a normal

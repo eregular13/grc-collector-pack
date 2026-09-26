@@ -1,5 +1,33 @@
 # CYCLE log
 
+## cycle 209 — drop FedRAMP rewrite; wait on #149 (2026-09-26)
+
+Restored master's `write_fedramp_poam(ledger)`. Removed G0 FedRAMP
+asserts from this PR. Flood-guard decision set kept. #149 not merged.
+Stay draft. pytest **1305**. Host-lab 79/107/124 excluded 18. Catalog
+**unchanged**. paying_day **FAIL**.
+
+## cycle 208 — Metis flood-guard spec §12.3/12.5/12.6 (2026-09-26)
+
+Complete reason-code vocabulary (`HONEYPOT`, `LIGHTER_*`, `ACCEPTED_RISK`,
+`UNVERIFIED_BANNER_CVE`; `NOT_YET_LATE` vocab-only). §12.5 T/cap
+report-only (never removes). C5 merges → `excluded.csv` as
+`DUPLICATE_INSTANCE`. Self-members on included rows. `flood_guard`
+`findings_in == members + excluded`. Host-lab 79/107/poam 124
+excluded 18 (13 C5). SAMPLE 6/8/2. farm 174/106/68. pytest **1307**.
+E4 not implemented. Catalog **unchanged**. paying_day **FAIL**.
+
+## cycle 207 — Metis flood-guard (2026-09-26)
+
+One POA&M decision set: `shared/poam_rollup.py` classify/build + E1
+telemetry + escalate budget; FedRAMP Open == poam.csv; UNEXPLAINED==0
+on lab/SAMPLE/farm. Merged current `origin/master` `ff6ffd7` (#145
+after #150+#156+#155); `not_a_weakness` maps to `NOT_A_WEAKNESS`.
+E4 late-only not implemented. pytest **1303**. Host-lab `assets=79`
+`findings=107` `poam=124` `excluded=5`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
 
 Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed

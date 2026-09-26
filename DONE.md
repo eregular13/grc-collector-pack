@@ -8,19 +8,29 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 78,
-  "findings": 104,
+  "assets": 79,
+  "findings": 107,
   "vulnerabilities": 22,
-  "evidences": 32,
-  "applied_controls": 126,
+  "evidences": 34,
+  "applied_controls": 129,
   "poam": 124,
-  "risk_scenarios": 126,
-  "ocsf": 104,
-  "canonical": 209,
+  "risk_scenarios": 129,
+  "ocsf": 107,
+  "canonical": 214,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:11:37Z"
+  "generated_at": "2026-09-26T07:50:17Z"
 }
 ```
+
+Cycle 209: dropped FedRAMP rewrite from #158; waiting on #149. Stay draft.
+pytest 1305. Host-lab 79/107/poam 124 excluded 18. CoS #48 rails stand.
+
+Cycle 208 Metis flood-guard spec: §12.3 vocab + report-only §12.5 T/cap +
+C5 excluded merges + §12.6 `findings_in == members + excluded`.
+Host-lab 79/107/poam 124 excluded 18 (UNEXPLAINED==0, G0). pytest 1307.
+SAMPLE 6/8/2. farm 174/106/68. E4 deferred. CoS #48 rails above stand.
+
+Cycle 207 Metis flood-guard: UNEXPLAINED==0; FedRAMP Open == poam.csv. pytest 1303. Merged origin/master ff6ffd7 (#145 after #150+#156+#155). CoS #48 rails above stand.
 
 Cycle 203 merge origin/master `51bba3c` (#134+#147+#140+#144) into parser-real-output; keep Metis §11 + asset_uid + unrecognized_shape (pytest 1235; host-lab assets=78 findings=104 poam=124 excluded=2). Cycle 202 restamp after merging master `9aeb229` stands as history. CoS #48 rails above stand.

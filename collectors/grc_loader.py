@@ -23,6 +23,12 @@ from shared.control_map import (
     poam_lighter_requested,
     weakness_name_for,
 )
+from shared.poam_rollup import (
+    POAM_MEMBERS_FIELDS,
+    collect_finding_merges,
+    flood_guard_summary,
+    reason_code_of,
+)
 from shared.estate_pages import (
     PageContext,
     classify_estate,
@@ -40,7 +46,7 @@ from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
-from shared.poam_ledger import ledger_run_delta, run_ledger
+from shared.poam_ledger import apply_rollups, ledger_run_delta, run_ledger, write_ledger
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -134,16 +140,26 @@ def _asset_type(rec: dict) -> str:
     return "PR"
 
 
+class _DedupeResult(list):
+    """List of kept records plus the merge audit trail."""
+
+    merges: list[dict]
+
+
 def _dedupe(records: list[dict]) -> list[dict]:
     """Collapse exact dupes. Findings key on full identity + normalized asset.
 
     SARIF/Trivy (and any source that stamps the same rule/CVE into ref_id via
     ``slug(..., maxlen=48)``) must not drop a second host. Display slugs stay
     truncated; this key uses the full extra.rule / extra.cve / check_id.
+
+    Returns a list. ``.merges`` is the dropped-finding audit
+    (DUPLICATE_INSTANCE → kept ref_id) for excluded/members.
     """
     assets: dict[str, dict] = {}
     others: dict[tuple[str, ...], dict] = {}
     leftover: list[dict] = []
+    merges: list[dict] = []
     for rec in records:
         kind = rec.get("kind")
         if kind == "asset":
@@ -162,14 +178,40 @@ def _dedupe(records: list[dict]) -> list[dict]:
             slot = (str(kind), finding_identity(rec) or ref.lower(), primary_asset(rec))
             if slot not in others:
                 others[slot] = rec
+            else:
+                kept = others[slot]
+                merges.append(
+                    {
+                        "rec": rec,
+                        "kept": kept,
+                        "reason_code": "DUPLICATE_INSTANCE",
+                        "rolled_into": str(kept.get("ref_id") or ""),
+                        "source": rec.get("source") or "",
+                        "detail": "same finding_identity + primary_asset",
+                    }
+                )
             continue
         if kind and ref:
             slot = (str(kind), ref.lower())
             if slot not in others:
                 others[slot] = rec
+            elif kind == "finding":
+                kept = others[slot]
+                merges.append(
+                    {
+                        "rec": rec,
+                        "kept": kept,
+                        "reason_code": "DUPLICATE_INSTANCE",
+                        "rolled_into": str(kept.get("ref_id") or ""),
+                        "source": rec.get("source") or "",
+                        "detail": "same kind + ref_id",
+                    }
+                )
             continue
         leftover.append(rec)
-    return list(assets.values()) + list(others.values()) + leftover
+    out = _DedupeResult(list(assets.values()) + list(others.values()) + leftover)
+    out.merges = merges
+    return out
 
 
 def estate_label(records: list[dict]) -> str:
@@ -226,7 +268,17 @@ def load() -> dict:
     if overrides.is_file():
         asset_ledger.apply_overrides(overrides)
     raw = attach_asset_uids(_load_canonical(), asset_ledger)
-    records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw)))
+    findings_in_n = sum(1 for rec in raw if rec.get("kind") == "finding")
+    deduped = _dedupe(raw)
+    merge_rows = list(getattr(deduped, "merges", []) or [])
+    after_weakness = dedupe_weaknesses(deduped)
+    merge_rows.extend(
+        collect_finding_merges(deduped, after_weakness, detail="dedupe_weaknesses")
+    )
+    records = dedupe_hardening(after_weakness)
+    merge_rows.extend(
+        collect_finding_merges(after_weakness, records, detail="dedupe_hardening")
+    )
     merged_n = max(0, len(raw) - len(records))
     now = iso_now()
     try:
@@ -401,26 +453,55 @@ def load() -> dict:
         ),
     )
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    for rec, decision in iter_poam_decisions(ranked, lighter=lighter):
+    if merge_rows:
+        reasons = dict(breakdown.get("excluded_by_reason") or {})
+        reasons["DUPLICATE_INSTANCE"] = int(reasons.get("DUPLICATE_INSTANCE") or 0) + len(
+            merge_rows
+        )
+        breakdown["excluded_by_reason"] = reasons
+        breakdown["weaknesses_total"] = int(breakdown.get("weaknesses_total") or 0) + len(
+            merge_rows
+        )
+    decision_pairs = iter_poam_decisions(
+        ranked, lighter=lighter, ledger=poam_ledger, assets_n=len(ciso_assets)
+    )
+    member_rows: list[list] = []
+    for rec, decision in decision_pairs:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
         if not decision.get("include"):
-            winner_ref = str(decision.get("superseded_by_ref") or "")
+            winner_ref = str(
+                decision.get("superseded_by_ref") or decision.get("rolled_into_ref") or ""
+            )
             winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
             superseded_by = ""
             if winner_item:
                 superseded_by = str(winner_item.get("poam_id") or "")
             if not superseded_by:
                 superseded_by = str(decision.get("superseded_by") or "")
+            reason = str(decision.get("reason") or "unexplained")
+            code = str(decision.get("reason_code") or reason_code_of(reason))
+            source = str(rec.get("source") or "")
+            detail = ""
+            if reason == "superseded_by_specific":
+                detail = f"folded into {winner_ref or superseded_by}"
+            elif reason == "telemetry_duplicate":
+                detail = f"E1 same rule+asset as {winner_ref}"
+            elif reason == "telemetry":
+                detail = "detection/telemetry; not a posture weakness"
             excluded_rows.append(
                 [
                     rec.get("ref_id") or "",
                     weakness,
                     assets_s,
                     canon_severity(rec.get("severity")),
-                    decision.get("reason") or "unexplained",
+                    reason,
                     superseded_by,
+                    code,
+                    superseded_by,
+                    source,
+                    detail,
                 ]
             )
             continue
@@ -442,6 +523,16 @@ def load() -> dict:
                 status,
                 estate,
                 *[fields[key] for key in POAM_EXTRA_FIELDS],
+            ]
+        )
+        pid = str(fields.get("poam_id") or "")
+        member_rows.append(
+            [
+                pid,
+                rec.get("ref_id") or "",
+                pid,
+                assets_s,
+                ciso_finding_severity(rec.get("severity")),
             ]
         )
     _pid_idx = poam_header.index("poam_id")
@@ -501,9 +592,32 @@ def load() -> dict:
             "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
         ),
     )
+    for merge in merge_rows:
+        rec = merge.get("rec") or {}
+        kept = merge.get("kept") or {}
+        kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "")
+        kept_item = ledger_by_ref.get(kept_ref) if kept_ref else None
+        parent_id = str((kept_item or {}).get("poam_id") or "")
+        mapped = mapped_by_ref.get(str(rec.get("ref_id") or "")) or map_finding(rec)
+        assets_s = "|".join(rec.get("assets") or [])
+        excluded_rows.append(
+            [
+                rec.get("ref_id") or "",
+                weakness_name_for(rec, mapped),
+                assets_s,
+                canon_severity(rec.get("severity")),
+                "DUPLICATE_INSTANCE",
+                parent_id,
+                "DUPLICATE_INSTANCE",
+                parent_id or kept_ref,
+                rec.get("source") or "",
+                str(merge.get("detail") or "dedupe"),
+            ]
+        )
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
+    _write_csv(out_poam / "poam_members.csv", list(POAM_MEMBERS_FIELDS), member_rows)
     if lighter:
         plan_line = (
             "POA&M plan: lighter — Lows and non-key Mediums excluded at operator "
@@ -542,6 +656,9 @@ def load() -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
+    apply_rollups(poam_ledger, decision_pairs, included_ids=listed_ids)
+    write_ledger(poam_ledger)
+    # FedRAMP Open==poam.csv is #149's write_fedramp_poam. Do not rewrite it here.
     write_fedramp_poam(out_poam, poam_ledger)
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
     write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
@@ -632,6 +749,17 @@ def load() -> dict:
         "estate_kind": estate_kind,
         "client": False if estate_kind != "CLIENT" else True,
         "duplicates_merged": merged_n,
+        "flood_guard": flood_guard_summary(
+            decision_pairs,
+            profile=str(breakdown.get("poam_plan") or ("lighter" if lighter else "full")),
+            assets_n=len(ciso_assets),
+            merges_n=len(merge_rows),
+            members_n=len(member_rows),
+            findings_in=findings_in_n,
+            poam_rows=len(poam_rows),
+            excluded_n=len(excluded_rows),
+            lighter=lighter,
+        ),
         "sensors": {row["source"]: row for row in sensor_rows},
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
