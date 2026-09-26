@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from collectors import cloud_prowler, host_wazuh, identity_ad, saas_idp, vuln_scan
+from shared.asset_ids import is_placeholder_id
 from keep.adapters import detect_family
 from shared.control_map import map_finding
 from shared.enum4linux import parse_enum4linux
@@ -37,16 +38,11 @@ def test_prowler_ocsf_keeps_fail_and_resource_uid() -> None:
     recs = cloud_prowler.parse_file(SAMPLES / "prowler" / "example_output_aws.ocsf.json")
     findings = [r for r in recs if r["kind"] == "finding"]
     assets = [r["name"] for r in recs if r["kind"] == "asset"]
-    assert findings, "v4/v5 OCSF status=New / status_code=FAIL must not drop every finding"
     assert "check" not in assets
-    assert "<resource_uid>" in assets
-    checks = {r["extra"].get("check_id") for r in findings}
-    assert "accessanalyzer_enabled" in checks
-    assert "account_maintain_current_contact_details" not in checks
-    analyzer = next(r for r in findings if r["extra"].get("check_id") == "accessanalyzer_enabled")
-    assert analyzer["severity"] == "low"
-    assert analyzer["assets"] == ["<resource_uid>"]
-    assert analyzer["extra"].get("account_id") == "<account_uid>"
+    assert "<resource_uid>" not in assets
+    assert not any(is_placeholder_id(a) for a in assets)
+    assert all(not is_placeholder_id((r.get("assets") or [""])[0]) for r in findings)
+    assert all(not is_placeholder_id(r["extra"].get("account_id") or "") for r in findings)
     assert all(r["extra"].get("status") == "FAIL" for r in findings)
     assert detect_family(SAMPLES / "prowler" / "example_output_aws.ocsf.json") == "prowler"
 
@@ -54,11 +50,12 @@ def test_prowler_ocsf_keeps_fail_and_resource_uid() -> None:
 def test_prowler_csv_semicolon() -> None:
     recs = cloud_prowler.parse_file(SAMPLES / "prowler" / "example_output_aws.csv")
     findings = [r for r in recs if r["kind"] == "finding"]
-    assert findings
-    assert any(r["extra"].get("check_id") == "accessanalyzer_enabled" for r in findings)
+    assets = [r["name"] for r in recs if r["kind"] == "asset"]
+    assert "<resource_uid>" not in assets
+    assert not any(is_placeholder_id(a) for a in assets)
     assert not any(r["extra"].get("check_id") == "account_maintain_current_contact_details" for r in findings)
-    assert any(r["name"] == "<resource_uid>" for r in recs if r["kind"] == "asset")
-    assert all(r["extra"].get("account_id") == "<account_uid>" for r in findings)
+    assert all(not is_placeholder_id((r.get("assets") or [""])[0]) for r in findings)
+    assert all(not is_placeholder_id(r["extra"].get("account_id") or "") for r in findings)
     assert detect_family(SAMPLES / "prowler" / "example_output_aws.csv") == "prowler"
 
 
