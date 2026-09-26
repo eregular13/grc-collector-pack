@@ -55,13 +55,4 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 |---|---|
 | `import_preview/probo.json` | 77 addFinding drafts |
 
-## `riskready/`
-
-LICENSE-LOCK stay-out. Review on disk. Never wrap, login, or POST.
-
-| File | Role |
-|---|---|
-| `assets.json` | inventory |
-| `incidents.json` | explicit + high/critical findings |
-| `evidence.json` | TECHNICAL / SENSOR / DRAFT |
-| `risks_proposed.json` | human review only — never POST `/api/risks` |
+RiskReady is out of scope. This drop does not include RiskReady JSON. Do not POST `/api/risks`.

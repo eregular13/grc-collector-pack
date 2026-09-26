@@ -16,6 +16,7 @@ SKIP_INPUT_NAMES = frozenset(
         "README.md",
         "MANIFEST",
         "MANIFEST.json",
+        "HARDENINGKITTY.host",
     }
 )
 

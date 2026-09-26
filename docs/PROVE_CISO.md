@@ -181,7 +181,12 @@ cd ..
 
 Lynis (GPLv3) mapped warnings/suggestions and OpenSCAP (LGPL) + SSG
 (BSD) `fail`/`error` rows land as LAB findings. Not a CIS benchmark.
-Windows checker is a follow-up (HardeningKitty CSV already parses).
+Windows HardeningKitty (MIT) Audit CSV under `in/identity/` uses
+`finding_list_msft_security_baseline_*` only (`lab-estate/scan-windows-hardening.ps1
+-AuthorizedLab` on the local Windows lab host; no Docker). CI uses the
+synthetic schema fixture under `fixtures/lab-drop/identity/` (not an
+observed scan). CIS Controls v8 IDs stay INTERNAL-ONLY and never appear
+in CISO / POA&M / client exports.
 
 Point the loopback console at a lab prove `out/` (no DEMO reseed):
 `OUT_DIR=/path/to/DIR/out python -m product` (example fixture:

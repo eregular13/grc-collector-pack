@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from shared.lab_stamp import path_is_lab
 from shared.testssl import is_testssl
 
 SAMPLE_MARKERS = (
@@ -167,8 +168,16 @@ def _scoutsuite(payload: Any) -> bool:
 
 
 def detect_family(path: Path) -> str | None:
-    """Return KEEP family id or None. File-drop detect only."""
-    if not path.is_file() or path.name in {".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md"}:
+    """Return KEEP family id or None. File-drop detect only.
+
+    LAB dest_in never enters the KEEP inventory (LAB != SAMPLE != client).
+    """
+    skip = {".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md", "LAB.txt", "MANIFEST", "MANIFEST.json", "HARDENINGKITTY.host"}
+    if not path.is_file() or path.name in skip:
+        return None
+    if path.suffix.lower() == ".host" or path.name.endswith(".csv.host"):
+        return None
+    if path_is_lab(path):
         return None
     suffix = path.suffix.lower()
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -208,6 +217,7 @@ def scan_keep_dir(folder: Path) -> list[dict[str, Any]]:
         if not family:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
+        lab = path_is_lab(path) or is_lab_text(text)
         rows.append(
             {
                 "path": str(path),
@@ -216,6 +226,7 @@ def scan_keep_dir(folder: Path) -> list[dict[str, Any]]:
                 "group": family_group(family),
                 "sensor": _SENSOR[family],
                 "sample": is_sample_text(text),
+                "lab": lab,
                 "adapter": f"keep.adapters.{family}",
                 "invoke": False,
             }
@@ -224,8 +235,12 @@ def scan_keep_dir(folder: Path) -> list[dict[str, Any]]:
 
 
 def client_keep_ready(rows: list[dict[str, Any]]) -> bool:
-    """True only when all four families are present and none are samples."""
-    groups = {str(row.get("group") or "") for row in rows if not row.get("sample")}
+    """True only when all four families are present and none are samples/LAB."""
+    groups = {
+        str(row.get("group") or "")
+        for row in rows
+        if not row.get("sample") and not row.get("lab")
+    }
     return set(KEEP_FAMILIES) <= groups
 
 

@@ -1,5 +1,40 @@
 # CYCLE log
 
+## cycle 191 — merge master #130 HK into real-sample parsers (2026-09-26)
+
+Merge `origin/master` `05a29fd` (PR #130 HardeningKitty TestResult +
+filename host) into `cursor/real-sample-parsers-ea49`. Both behaviors
+kept: HK official Audit CSV (`TestResult` authoritative; host from
+filename/sidecar/env; LAB dest_in under `fixtures/lab-drop/identity/`)
+and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
+`rule-result@severity`, SARIF Trivy critical, enum4linux-ng
+`target.host` / `sessions.null` / listing). No force-push. PR #134
+stays open. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+## cycle 190 — HK TestResult authority + filename host (2026-09-26)
+
+Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV
+(scipag/HardeningKitty.psm1 @ da0976073caa). `TestResult` is
+authoritative (Passed never a finding; Result is the measured value;
+legacy Result=Failed still parses). Host from
+`hardeningkitty-<HOSTNAME>-<timestamp>.csv` / upstream
+`hardeningkitty_report_<hostname>_<list>-<date>.csv` / `.host` sidecar /
+`HARDENINGKITTY_HOST` — never silent `windows-host`. Two SYNTHETIC
+fixtures, official header only. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
+## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
+
+Extend the existing HardeningKitty CSV parser (Failed/`TestResult=Failed`
+only; official HK report columns) and land a LAB dest_in under
+`fixtures/lab-drop/identity/` beside nmap + Lynis/oscap. MS Security
+Baseline lists only (`finding_list_msft_security_baseline_*`). Synthetic
+schema fixture (not an observed scan). Every row LAB. LAB cannot enter
+KEEP / keep_real. CIS Controls v8 IDs stay INTERNAL-ONLY and never appear
+in CISO / POA&M / client exports. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
 ## cycle 189 — real-sample parser fidelity (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF/SARIF, enum4linux-ng) (2026-09-26)
 
 Parsers now read real tool shapes instead of invented fixtures: Prowler v4/v5
@@ -9,9 +44,10 @@ CIS/XCCDF `rule-result@severity`; SARIF `rules[].properties.security-severity`
 (Trivy CRITICAL stays critical); enum4linux-ng `target.host`, `sessions.null`,
 share `access.listing`. Trimmed real samples under `fixtures/samples/`
 (SOURCES.md). Demo enum4linux fixture replaced with real keys (same findings).
-Lab counts unchanged (assets=81 findings=105 poam=106). SAMPLE→SoR and
-farm_drop→SoR counts unchanged. Catalog **unchanged**. paying_day **FAIL**.
-No POST `/api/risks`. RiskReady stay-out. pytest **1003**.
+Host-lab after merge follows #130 weakness-dedupe baseline (assets=81
+findings=104 poam=109) unless re-lab changes it. SAMPLE→SoR and
+farm_drop→SoR counts unchanged vs this branch. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 

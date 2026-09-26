@@ -53,7 +53,7 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    from shared.ciso_shape import POAM_HEADER
+    from shared.ciso_shape import POAM_HEADER, assert_count_consistency
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
@@ -104,6 +104,12 @@ def assert_lab() -> None:
     for row in ocsf:
         assert row.get("class_uid") == 2003
 
+    assert_count_consistency(OUT, summary)
+    assert int(summary.get("risk_scenarios") or 0) == len(scen)
+    assert int(summary.get("poam") or 0) == len(poam)
+    assert int(summary.get("weaknesses") or 0) == len(findings) + len(vulns)
+    assert int(summary.get("open_risks") or 0) == len(poam)
+
     assert len(assets) >= 20, len(assets)
     assert len(findings) >= 20, len(findings)
     assert len(evid) >= 18, len(evid)
@@ -143,7 +149,14 @@ def assert_lab() -> None:
     for row in smb:
         assert "cpg_2_W" in (row.get("framework_refs") or "")
         assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
-        assert "dialect" in (row.get("recommended_fix") or "").lower() or "port" in (row.get("recommended_fix") or "").lower()
+        fix = (row.get("recommended_fix") or "").lower()
+        weak = (row.get("weakness") or "").lower()
+        assert (
+            "dialect" in fix
+            or "port" in fix
+            or "null" in fix
+            or "null" in weak
+        ), (weak, fix)
     for row in poam:
         assert (row.get("owner") or "") == ""
         assert (row.get("due") or "") == ""

@@ -39,7 +39,7 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         "Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.",
         "OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.",
         "Probo `import_preview/probo.json` is documentation-only (posted=false). Not live GraphQL.",
-        "POA&M owner/due are blank for a human. RiskReady JSON is LICENSE-LOCK stay-out — review on disk, never wrap or POST.",
+        "POA&M owner/due are blank for a human. RiskReady is out of scope — this drop ships no RiskReady JSON. Do not POST /api/risks.",
         "",
         "| File | Rows | SHA256 |",
         "|---|---|---|",
@@ -61,20 +61,7 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
     for rel, count in table:
         lines.append(f"| {rel} | {count} | `{hashes[rel]}` |")
     lines.append("")
-    rr = DROP / "riskready" / "risks_proposed.json"
-    rr_count = 0
-    if rr.is_file():
-        try:
-            payload = json.loads(rr.read_text(encoding="utf-8"))
-            if isinstance(payload, list):
-                rr_count = len(payload)
-            elif isinstance(payload, dict):
-                rr_count = len(payload.get("risks") or payload.get("items") or [])
-        except json.JSONDecodeError:
-            rr_count = 0
-        lines.append(
-            f"riskready/risks_proposed.json: {rr_count} rows, SHA256 `{_sha256(rr)}` (review-only, never POST /api/risks)"
-        )
+    lines.append("No RiskReady JSON in this drop. RiskReady is out of scope. Do not POST /api/risks.")
     lines.append("")
     lines.append(
         "POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row."
@@ -141,16 +128,7 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 |---|---|
 | `import_preview/probo.json` | {counts["import_preview/probo.json"]} addFinding drafts |
 
-## `riskready/`
-
-LICENSE-LOCK stay-out. Review on disk. Never wrap, login, or POST.
-
-| File | Role |
-|---|---|
-| `assets.json` | inventory |
-| `incidents.json` | explicit + high/critical findings |
-| `evidence.json` | TECHNICAL / SENSOR / DRAFT |
-| `risks_proposed.json` | human review only — never POST `/api/risks` |
+RiskReady is out of scope. This drop does not include RiskReady JSON. Do not POST `/api/risks`.
 """
     (DROP / "README.md").write_text(text, encoding="utf-8")
 
