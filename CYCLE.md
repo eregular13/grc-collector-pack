@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 200 — no Pentera in console or drop-refresh (2026-09-26)
+
+Removed the Pentera vendor line from the drop-refresh script writers
+and the loopback console (HTML + export.zip IMPORT.md). Drift test
+asserts no `Pentera` in those sources or in temp-dir refresh writes.
+`product-lab/drop` is not regenerated in this brick. Merged
+`origin/master` `9aeb229` (#147) with a normal merge — carried
+pending ledger rows now export on both CSVs. Host-lab **unchanged**
+78 / 101 / 122. pytest **1223**. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 199 — register one truth (2026-09-26)
 
 One POA&M decision set across register, FedRAMP export, console, and

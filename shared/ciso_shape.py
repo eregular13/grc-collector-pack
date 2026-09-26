@@ -154,10 +154,15 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL poam_included={included} != poam={summary.get('poam')}"
         )
-    if "weaknesses" in summary and total != int(summary.get("weaknesses") or 0):
-        raise RegisterShapeError(
-            f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != weaknesses={summary.get('weaknesses')}"
-        )
+    pending_carried = int(summary.get("pending_carried") or 0)
+    if "weaknesses" in summary:
+        expected = int(summary.get("weaknesses") or 0) + pending_carried
+        if total != expected:
+            raise RegisterShapeError(
+                f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
+                f"weaknesses={summary.get('weaknesses')}"
+                + (f" + pending_carried={pending_carried}" if pending_carried else "")
+            )
     return {
         "ok": True,
         "weaknesses_total": total,

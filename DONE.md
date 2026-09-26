@@ -23,4 +23,4 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 }
 ```
 
-Cycle 199 register one truth (pytest 1219; host-lab 78 / 101 / 122; farm 48 / 134 / 85). Shift vs cycle 198 is unique (weakness, asset) merge, not a thinner estate. Cycle 198 merge `f8b7ff1` #138 into discovery/web stands as history. CoS #48 rails above stand.
+Cycle 200 no-Pentera console/refresh (pytest 1223; host-lab 78 / 101 / 122 unchanged). Cycle 199 register one truth stands as history. CoS #48 rails above stand.
