@@ -390,6 +390,35 @@ def strongest_anchor(ids: dict[str, Any], *, skip: set[str] | None = None) -> tu
     return "name", "unknown"
 
 
+def display_name_rank(name: Any) -> int:
+    """Higher is a better CISO/canonical display name. Casing is not ranked."""
+    text = str(name or "").strip()
+    if not text:
+        return 0
+    if text.startswith("arn:") or "/" in text or text.startswith("sha256:"):
+        return 40
+    if normalize_fqdn(text):
+        return 30
+    if normalize_ip(text):
+        return 10
+    if normalize_netbios(text) or normalize_hostname(text):
+        return 20
+    return 5
+
+
+def prefer_display_name(current: Any, candidate: Any) -> str:
+    """Keep original casing. Upgrade IP/empty names to FQDN/image-ref."""
+    cur = str(current or "").strip()
+    cand = str(candidate or "").strip()
+    if not cur:
+        return cand
+    if not cand:
+        return cur
+    if display_name_rank(cand) > display_name_rank(cur):
+        return cand
+    return cur
+
+
 def display_uai(ids: dict[str, Any]) -> str:
     """IIW Unique Asset Identifier. §5 display order, not match order.
 

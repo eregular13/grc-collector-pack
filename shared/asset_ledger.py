@@ -35,6 +35,7 @@ from shared.asset_ids import (
     ids_from_record,
     is_container,
     merge_ids,
+    prefer_display_name,
     stamp_ids,
     strongest_anchor,
     values_overlap,
@@ -835,7 +836,6 @@ def attach_asset_uids(
             kept = by_uid.get(uid)
             if kept is None:
                 by_uid[uid] = rec
-                rec["name"] = (ledger.assets.get(uid) or {}).get("uai") or rec.get("name")
                 extra = rec.setdefault("extra", {})
                 if isinstance(extra, dict):
                     extra["asset_uid"] = uid
@@ -864,6 +864,7 @@ def _merge_asset_records(kept: dict[str, Any], other: dict[str, Any], asset: dic
     }
     extra["asset_uid"] = asset.get("asset_uid") or extra.get("asset_uid")
     extra["uai"] = asset.get("uai") or extra.get("uai")
+    kept["name"] = prefer_display_name(kept.get("name"), other.get("name"))
     labels = kept.setdefault("labels", [])
     if not isinstance(labels, list):
         kept["labels"] = labels = []
