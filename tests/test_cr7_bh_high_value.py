@@ -19,9 +19,10 @@ from shared.schema import make_record
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLES = ROOT / "fixtures" / "samples"
 
-# Pre-#177 generic count on this sample walk (sensor dirs + BH/PingCastle).
-# The three high-value group rows are the #177 regression (5 → 8).
-PRE_177_SAMPLE_GENERIC = 5
+# Pre-#177 generic count on this sample walk was 5. #188 restored the
+# three high-value group playbooks (5 → 8 was the #177 regression).
+# CR6-4 maps security-context-pods, so one more sample row is typed.
+PRE_177_SAMPLE_GENERIC = 4
 
 _HIGH_VALUE_GROUPS = (
     ("Administrators", ("administrators", "domain admins")),

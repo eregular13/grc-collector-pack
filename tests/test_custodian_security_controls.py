@@ -1,8 +1,9 @@
 """CR6-4: Custodian security-policy / security-context → honest 800-53.
 
 security-context-pods is a Moderate finding (real c7n has no severity).
-High/Critical never ship blank Controls. Moderate blanks are the
-tested needs-review path, not a silent gap. SAMPLE ≠ client KEEP.
+Unmapped Custodian security (including High GuardDuty / KMS rotation)
+stays on the POA&M — never excluded as unmapped. Open RDP joins the
+public-SSH internet-facing SG class. SAMPLE ≠ client KEEP.
 No POST /api/risks. Does not rewrite FedRAMP export or pack_drop.
 """
 
@@ -14,6 +15,7 @@ from pathlib import Path
 from collectors import cloud_prowler
 from shared.control_map import map_finding, poam_decision
 from shared.finding_types import finding_type
+from shared.framework_class_map import is_internet_facing
 from shared.poam_fields import poam_fields
 from shared.schema import make_record
 
@@ -93,37 +95,51 @@ def test_high_custodian_security_context_keeps_controls() -> None:
     assert decision["severity"] == "high"
 
 
-def test_high_unmapped_custodian_security_is_excluded() -> None:
+def test_high_guardduty_disabled_stays_on_poam() -> None:
     rec = _custodian_finding(
-        name="Cloud Custodian lambda-env-plaintext",
-        description="Lambda environment variables in plaintext",
+        name="Cloud Custodian guardduty-disabled-high",
+        description="GuardDuty detector is disabled",
         severity="high",
-        extra={"check_id": "lambda-env-plaintext", "classification": "security"},
+        extra={
+            "check_id": "guardduty-disabled-high",
+            "needs_review": True,
+            "classification": "needs-review",
+        },
+    )
+    decision = poam_decision(rec)
+    assert decision["include"] is True
+    assert decision["reason"] == "needs_review"
+    assert decision["severity"] == "high"
+
+
+def test_high_kms_rotation_stays_on_poam() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian kms-secret-no-rotation",
+        description="KMS key rotation is disabled",
+        severity="high",
+        extra={
+            "check_id": "kms-secret-no-rotation",
+            "classification": "security",
+        },
+    )
+    decision = poam_decision(rec)
+    assert decision["include"] is True
+    assert decision["reason"] == "severity_high_critical"
+    assert decision["severity"] == "high"
+
+
+def test_high_classified_security_without_mapping_stays_on_poam() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian iam-admin-policy-attached",
+        description="IAM admin policy is attached",
+        severity="high",
+        extra={"check_id": "iam-admin-policy-attached", "classification": "security"},
     )
     mapped = map_finding(rec)
-    assert not (mapped.get("nist_800_53") or [])
-    assert mapped.get("include_poam") is False
-    assert mapped["control_name"] == "Unmapped Custodian security policy"
-    assert "unmapped" in mapped["recommended_fix"].lower()
     decision = poam_decision(rec)
-    assert decision["include"] is False
-    assert decision["reason"] == "unmapped"
-    assert decision["severity"] == "high"
-    assert poam_fields(rec, mapped, date(2026, 9, 26))["controls"] == ""
-
-
-def test_critical_unmapped_custodian_security_is_excluded() -> None:
-    rec = _custodian_finding(
-        name="Cloud Custodian lambda-env-plaintext",
-        description="Lambda environment variables in plaintext",
-        severity="critical",
-        extra={"check_id": "lambda-env-plaintext", "classification": "security"},
-    )
-    decision = poam_decision(rec)
-    assert decision["include"] is False
-    assert decision["reason"] == "unmapped"
-    assert decision["severity"] == "critical"
-    assert not (map_finding(rec).get("nist_800_53") or [])
+    assert decision["include"] is True
+    assert decision["reason"] == "severity_high_critical"
+    assert mapped.get("include_poam") is not False or mapped.get("nist_800_53")
 
 
 def test_moderate_needs_review_blank_controls_is_intentional() -> None:
@@ -145,40 +161,6 @@ def test_moderate_needs_review_blank_controls_is_intentional() -> None:
     decision = poam_decision(rec)
     assert decision["include"] is True
     assert decision["reason"] == "needs_review"
-
-
-def test_high_needs_review_blank_controls_is_excluded() -> None:
-    rec = _custodian_finding(
-        name="Cloud Custodian require-owner-tag",
-        description="stage label",
-        severity="high",
-        extra={
-            "check_id": "require-owner-tag",
-            "needs_review": True,
-            "classification": "needs-review",
-        },
-    )
-    mapped = map_finding(rec)
-    assert not (mapped.get("nist_800_53") or [])
-    decision = poam_decision(rec)
-    assert decision["include"] is False
-    assert decision["reason"] == "unmapped"
-    assert poam_fields(rec, mapped, date(2026, 9, 26))["controls"] == ""
-
-
-def test_moderate_unmapped_classified_security_is_excluded() -> None:
-    rec = _custodian_finding(
-        name="Cloud Custodian lambda-env-plaintext",
-        description="Lambda environment variables in plaintext",
-        severity="medium",
-        extra={"check_id": "lambda-env-plaintext", "classification": "security"},
-    )
-    mapped = map_finding(rec)
-    assert not (mapped.get("nist_800_53") or [])
-    assert mapped["control_name"] == "Unmapped Custodian security policy"
-    decision = poam_decision(rec)
-    assert decision["include"] is False
-    assert decision["reason"] == "unmapped"
 
 
 def test_public_ssh_custodian_stays_on_plan_with_controls() -> None:
@@ -206,6 +188,35 @@ def test_public_ssh_custodian_stays_on_plan_with_controls() -> None:
     mapped = map_finding(rec)
     assert mapped.get("nist_800_53")
     assert poam_decision(rec)["include"] is True
+    assert is_internet_facing(rec, mapped) is True
+
+
+def test_open_rdp_custodian_is_internet_facing_sg_ingress() -> None:
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "sg-open-rdp",
+            "resource": "aws.security-group",
+            "description": "RDP 3389 open to 0.0.0.0/0",
+            "filters": [{"type": "ingress", "CidrIp": "0.0.0.0/0", "FromPort": 3389}],
+            "resources": [{"GroupId": "sg-rdp01"}],
+        }
+    )
+    rec = make_record(
+        kind="finding",
+        source="cloud-prowler",
+        ref_id="CLD-rdp",
+        name=recs[0]["CheckTitle"],
+        description=recs[0]["Description"],
+        severity="medium",
+        category="cloud-misconfiguration",
+        assets=[recs[0]["ResourceId"]],
+        extra={"check_id": recs[0]["CheckID"], "classification": "security"},
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+    mapped = map_finding(rec)
+    assert "SC-7" in set(mapped.get("nist_800_53") or [])
+    assert poam_decision(rec)["include"] is True
+    assert is_internet_facing(rec, mapped) is True
 
 
 def test_prowler_non_custodian_high_is_not_forced_unmapped() -> None:

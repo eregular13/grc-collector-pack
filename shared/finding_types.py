@@ -705,8 +705,13 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
         or "sec_con" in blob
     ):
         return "k8s_security_context"
+    # Public / open SSH or RDP (EC2.13 / EC2.14) — internet-facing SG ingress.
+    exposed = any(tok in blob for tok in ("public", "open", "0_0_0_0", "3389"))
+    admin = any(tok in blob for tok in ("ssh", "rdp", "3389"))
+    if exposed and admin:
+        return "sg_ingress_open"
     if "public" in blob and any(
-        tok in blob for tok in ("ssh", "rdp", "ingress", "0_0_0_0", "security_group")
+        tok in blob for tok in ("ingress", "security_group")
     ):
         return "sg_ingress_open"
     return ""
