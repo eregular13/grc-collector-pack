@@ -118,6 +118,19 @@ def _load_loader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: list[
     return out
 
 
+def test_cve_regex_rejects_xcve_prefix_and_overlong_ids() -> None:
+    """^CVE-\\d{4}-\\d{4,7}$ — no XCVE-, no truncation of 8+ digit IDs."""
+    assert collect_cves(_finding("CVE-2021-44228")) == ["CVE-2021-44228"]
+    assert collect_cves(_finding("XCVE-2021-44228")) == []
+    assert collect_cves(_finding("CVE-2021-12345678")) == []
+    mixed = _finding(
+        ["XCVE-2014-0160", "CVE-2014-0160", "CVE-2021-12345678", "CVE-2024-11111"]
+    )
+    assert collect_cves(mixed) == ["CVE-2014-0160", "CVE-2024-11111"]
+    blob = _finding("see XCVE-2021-44228 and CVE-2014-0160 plus CVE-2021-12345678")
+    assert collect_cves(blob) == ["CVE-2014-0160"]
+
+
 def test_1_6_1_fixture_snapshot_cve_x_gets_z_yes_aa_due_ab_cve(tmp_path: Path) -> None:
     """§1.6.1 Given a fixture snapshot that contains CVE-X, extra.cve=CVE-X → Z=Yes, AA=dueDate, AB contains CVE-X."""
     catalog = _catalog(_entry("CVE-2024-11111", "2026-09-10"))

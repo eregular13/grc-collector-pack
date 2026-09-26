@@ -11,10 +11,10 @@ from shared.asset_ids import stamp_ids
 from shared.io_util import read_text
 from shared.scan_time import format_detection_date, parse_scan_datetime
 
-# Same pattern as shared/kev.py (KEV schema). Do not import kev here.
-_CVE_RE = re.compile(r"CVE-\d{4}-\d{4,19}", re.I)
-_CVE_FIELD_TAGS = frozenset({"cve", "cve_id", "cves", "compliance-cve"})
-_CVE_ATTRS = ("cve", "cve_id", "cves")
+# Same ^CVE-\d{4}-\d{4,7}$ semantics as shared/kev.py. Do not import kev here.
+# Lookarounds: reject XCVE- prefix and do not truncate overlong IDs.
+_CVE_RE = re.compile(r"(?<![A-Za-z0-9])CVE-\d{4}-\d{4,7}(?![0-9])", re.I)
+_CVE_STRICT = re.compile(r"^CVE-\d{4}-\d{4,7}$")
 
 
 def _tag(el: ET.Element) -> str:
@@ -73,21 +73,33 @@ def _keep_item(item: ET.Element, sev: str) -> bool:
 def _add_cves(blob: str, found: list[str], seen: set[str]) -> None:
     for match in _CVE_RE.findall(blob or ""):
         token = match.strip().upper()
-        if token and token not in seen:
+        if not _CVE_STRICT.fullmatch(token):
+            continue
+        if token not in seen:
             seen.add(token)
             found.append(token)
 
 
 def _cves_from_item(item: ET.Element) -> list[str]:
-    """CVE IDs from explicit Nessus CVE fields. Does not scrape plugin_output."""
+    """CVE IDs from <cve> children only (spec §7.1). No attributes, no *-cve tags."""
     found: list[str] = []
     seen: set[str] = set()
-    for key in _CVE_ATTRS:
-        _add_cves(str(item.attrib.get(key) or ""), found, seen)
     for child in list(item):
-        tag = _tag(child).lower()
-        if tag in _CVE_FIELD_TAGS or tag.endswith("-cve") or tag.endswith(":cve"):
+        if _tag(child).lower() == "cve":
             _add_cves(child.text or "", found, seen)
+    return found
+
+
+def _cwes_from_item(item: ET.Element) -> list[str]:
+    found: list[str] = []
+    seen: set[str] = set()
+    for child in list(item):
+        if _tag(child).lower() != "cwe":
+            continue
+        token = (child.text or "").strip()
+        if token and token not in seen:
+            seen.add(token)
+            found.append(token)
     return found
 
 
@@ -143,11 +155,12 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             title = str(item.attrib.get("pluginName") or item.attrib.get("pluginID") or "Nessus finding")
             plugin = str(item.attrib.get("pluginID") or "")
             port = str(item.attrib.get("port") or "")
-            proto = str(item.attrib.get("protocol") or "")
-            svc = str(item.attrib.get("svc_name") or "")
             proto = str(item.attrib.get("protocol") or "").strip()
+            svc = str(item.attrib.get("svc_name") or "")
+            family = str(item.attrib.get("pluginFamily") or "")
             desc = title
             cves = _cves_from_item(item)
+            cwes = _cwes_from_item(item)
             for child in list(item):
                 tag = _tag(child)
                 if tag == "description" and (child.text or "").strip():
@@ -161,8 +174,10 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
                 "protocol": proto,
                 "service": svc,
                 "plugin_id": plugin,
+                "plugin_family": family,
                 "ids": ids,
                 "cves": cves,
+                "cwes": cwes,
                 "host_start": props.get("HOST_START") or "",
                 "id_quality": ids.get("id_quality") or "",
             }
