@@ -8,8 +8,8 @@ on `prod-cluster` but `extra.tools` / sources / provenance / POA&M
 `detector_source` keep both scanners. Committed nuclei `exposed-redis`
 on three hosts so `lab_outputs` proves N hosts = N weaknesses.
 Host-lab `assets=84` `findings=103` `vulnerabilities=22` `poam=111`
-`weaknesses=125`. pytest **1082**. Catalog **unchanged**. paying_day
-**FAIL**. No POST `/api/risks`.
+`weaknesses=125`. Also merged #136 (no `out/riskready`). pytest **1087**.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
 
 ## cycle 191 — loader identity + vendor severity (2026-09-26)
 

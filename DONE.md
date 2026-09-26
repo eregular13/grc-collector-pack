@@ -15,8 +15,6 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "applied_controls": 125,
   "poam": 111,
   "risk_scenarios": 125,
-  "incidents": 100,
-  "risks_proposed": 99,
   "ocsf": 103,
   "canonical": 214,
   "severity_unmapped": 0,
@@ -25,4 +23,4 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 }
 ```
 
-Cycle 195 restamp after merge-evidence + three-host nuclei fixture (pytest 1082). CoS #48 rails above stand.
+Cycle 195 restamp after merge-evidence + three-host nuclei fixture (pytest 1087; master #132+#139+#136). CoS #48 rails above stand.
