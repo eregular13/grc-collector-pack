@@ -830,6 +830,17 @@ def test_reformat_mutations_of_sample_fixtures_cannot_claim_client(
     _assert_mutated_fixture_not_client(tmp_path, src, mutated)
 
 
+def test_pack_catalog_disk_cache_roundtrip() -> None:
+    import shared.estate_pages as ep
+
+    ep._FIXTURE_HASH_CACHE = None
+    first = fixture_content_hashes()
+    assert first
+    ep._FIXTURE_HASH_CACHE = None
+    second = fixture_content_hashes()
+    assert first == second
+
+
 def test_pack_fixture_manifest_matches_on_disk() -> None:
     fixtures = ROOT / "fixtures"
     dest = fixtures / _FIXTURE_MANIFEST_NAME

@@ -16,6 +16,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -76,7 +77,9 @@ _AUTH_PLACEHOLDERS = frozenset(
     {"", "not recorded", "none", "null", "unknown", "n/a", "na", "-"}
 )
 _FIXTURE_HASH_CACHE: frozenset[str] | None = None
+_BYTES_FP_CACHE: dict[str, frozenset[str]] = {}
 _FIXTURE_MANIFEST_NAME = "FINGERPRINTS.json"
+_CATALOG_DISK_DIR = Path(tempfile.gettempdir()) / "grc-estate-fp"
 _PACK_DEMO_SCOPE = Path("dropbox") / "SCOPE.yaml"
 
 CLIENT_PAGE_FORBIDDEN = (
@@ -576,10 +579,16 @@ def _normalized_forms(data: bytes) -> list[bytes]:
 
 
 def fingerprints_from_bytes(data: bytes) -> frozenset[str]:
-    fps = {_sha256_bytes(data)}
+    raw = _sha256_bytes(data)
+    hit = _BYTES_FP_CACHE.get(raw)
+    if hit is not None:
+        return hit
+    fps = {raw}
     for form in _normalized_forms(data):
         fps.add(_sha256_bytes(form))
-    return frozenset(fps)
+    frozen = frozenset(fps)
+    _BYTES_FP_CACHE[raw] = frozen
+    return frozen
 
 
 def file_content_fingerprints(path: Path) -> frozenset[str]:
@@ -668,6 +677,72 @@ def _manifest_matches(root: Path, *, required: bool) -> bool:
     return _manifest_files_match(expected, got.get("files") if isinstance(got, dict) else None)
 
 
+def _manifest_sha(root: Path) -> str | None:
+    dest = root / _FIXTURE_MANIFEST_NAME
+    try:
+        if not dest.is_file():
+            return None
+        return _sha256_bytes(dest.read_bytes())
+    except OSError:
+        return None
+
+
+def _disk_catalog_path(manifest_sha: str) -> Path:
+    return _CATALOG_DISK_DIR / f"{manifest_sha}.hashes"
+
+
+def _load_disk_catalog(manifest_sha: str) -> frozenset[str] | None:
+    path = _disk_catalog_path(manifest_sha)
+    try:
+        if not path.is_file():
+            return None
+        lines = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    except OSError:
+        return None
+    if len(lines) < 2:
+        return None
+    return frozenset(lines)
+
+
+def _store_disk_catalog(manifest_sha: str, hashes: frozenset[str]) -> None:
+    if not hashes:
+        return
+    path = _disk_catalog_path(manifest_sha)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text("\n".join(sorted(hashes)) + "\n", encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        return
+
+
+def _walk_hashable_bytes(root: Path) -> list[tuple[str, bytes]] | None:
+    try:
+        out: list[tuple[str, bytes]] = []
+        for path in root.rglob("*"):
+            if not _hashable_file(path):
+                continue
+            rel = str(path.relative_to(root)).replace("\\", "/")
+            out.append((rel, path.read_bytes()))
+        return out
+    except OSError:
+        return None
+
+
+def _raw_hashes_match(expected: Any, blobs: list[tuple[str, bytes]]) -> bool:
+    exp_files = expected.get("files") if isinstance(expected, dict) else None
+    if not isinstance(exp_files, dict) or not exp_files:
+        return False
+    got = {rel: _sha256_bytes(data) for rel, data in blobs}
+    if set(got) != set(exp_files):
+        return False
+    return all(
+        isinstance(exp_files[rel], dict) and got[rel] == exp_files[rel].get("raw")
+        for rel in got
+    )
+
+
 def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
     """SHA-256 set of bundled fixture fingerprints. Cached for the process.
 
@@ -685,28 +760,10 @@ def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
         trusted = False
     else:
         assert root is not None
-        on_disk: dict[str, dict[str, str]] = {}
-        try:
-            paths = [p for p in root.rglob("*") if _hashable_file(p)]
-        except OSError:
-            paths = []
+        blobs = _walk_hashable_bytes(root)
+        if blobs is None:
             trusted = False
-        for path in paths:
-            try:
-                data = path.read_bytes()
-                rel = str(path.relative_to(root)).replace("\\", "/")
-            except OSError:
-                trusted = False
-                break
-            fps = fingerprints_from_bytes(data)
-            if not fps:
-                trusted = False
-                break
-            found.update(fps)
-            on_disk[rel] = {
-                "raw": _sha256_bytes(data),
-                "norm": _sha256_bytes(normalize_fixture_bytes(data)),
-            }
+            blobs = []
         try:
             pack = _pack_root()
             pack_fixtures = pack / "fixtures" if pack is not None else None
@@ -717,6 +774,25 @@ def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
         except OSError:
             is_pack = True
         expected = _load_manifest(root)
+        manifest_sha = _manifest_sha(root) if is_pack else None
+        if trusted and expected is not None and _raw_hashes_match(expected, blobs):
+            if manifest_sha:
+                cached = _load_disk_catalog(manifest_sha)
+                if cached is not None:
+                    if use_cache:
+                        _FIXTURE_HASH_CACHE = cached
+                    return cached
+        on_disk: dict[str, dict[str, str]] = {}
+        for rel, data in blobs:
+            fps = fingerprints_from_bytes(data)
+            if not fps:
+                trusted = False
+                break
+            found.update(fps)
+            on_disk[rel] = {
+                "raw": _sha256_bytes(data),
+                "norm": _sha256_bytes(normalize_fixture_bytes(data)),
+            }
         if trusted:
             if expected is None:
                 if is_pack:
@@ -726,6 +802,12 @@ def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
     result = frozenset(found) if trusted else frozenset()
     if use_cache:
         _FIXTURE_HASH_CACHE = result
+        if trusted and result:
+            pack = _pack_root()
+            if pack is not None:
+                sha = _manifest_sha(pack / "fixtures")
+                if sha:
+                    _store_disk_catalog(sha, result)
     return result
 
 
