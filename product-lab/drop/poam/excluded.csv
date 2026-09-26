@@ -1,1 +1,6 @@
-finding_ref_id,weakness,asset,severity,excluded_reason
+finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by
+HPOT-ssh-canary-01-sess-canary-001-session,Deception-sensor session sess-canary-001 on ssh-canary-01,ssh-canary-01,medium,honeypot,
+HPOT-ssh-canary-01-sess-canary-001-s2-2026-09-08t00-01-08z-cat-etc-passwd,Deception-sensor stage-2 hit on ssh-canary-01,ssh-canary-01,medium,honeypot,
+WAZ-alert-5710-web-01,sshd: brute force trying to get access,web-01,medium,telemetry,
+HPOT-ssh-canary-01-sess-canary-001-s1-2026-09-08t00-01-00z-whoami,Deception-sensor stage-1 hit on ssh-canary-01,ssh-canary-01,low,honeypot,
+NMAP-telnet-legacy-corp-local-80-tcp,HTTP exposed,telnet-legacy.corp.local,low,superseded_by_specific,EGP-255265C16E

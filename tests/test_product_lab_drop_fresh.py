@@ -29,6 +29,7 @@ COLLECTORS = (
     "code_secrets",
     "saas_idp",
     "dns_email",
+    "honeypot",
     "grc_loader",
 )
 CISO_FILES = (
@@ -39,23 +40,25 @@ CISO_FILES = (
     "risk_scenarios.csv",
     "vulnerabilities.csv",
 )
-# Host-lab empty-in snapshot after #121/#126/#128/#129/#135/#136/#137.
-# Sep-4 drop was 62/62/15/61 — this lock fails that.
+# Host-lab empty-in snapshot after EGA- collapse + honeypot + #166.
+# Sep-4 drop was 62/62/15/61; pre-EGA lock was 84/103/22/33/125.
+# filesrv.corp.local is NMAP-asset-10-0-0-50 (alias collapsed).
 PACKAGED_COUNTS = {
-    "assets.csv": 84,
-    "findings.csv": 103,
+    "assets.csv": 79,
+    "findings.csv": 107,
     "vulnerabilities.csv": 22,
-    "evidences.csv": 33,
-    "applied_controls.csv": 125,
-    "risk_scenarios.csv": 125,
+    "evidences.csv": 34,
+    "applied_controls.csv": 129,
+    "risk_scenarios.csv": 129,
 }
-# Alias ref_ids can collapse by asset name; these survive that merge.
+# IDs that exist in both packaged drop and a fresh generator run.
 KEY_ASSET_IDS = {
-    "NMAP-asset-filesrv-corp-local",
+    "NMAP-asset-10-0-0-50",
     "NMAP-asset-dc-corp-local",
     "K8S-asset-prod-cluster",
     "CLD-asset-iam-admin-breakglass",
     "WAZ-asset-web-01",
+    "HPOT-asset-ssh-canary-01",
 }
 
 
@@ -130,8 +133,15 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     assert poam_fresh.read_text(encoding="utf-8").splitlines()[0].strip() == POAM_HEADER
     drop_poam = csv_rows(poam_drop)
     fresh_poam = csv_rows(poam_fresh)
-    assert len(drop_poam) == 125
+    drop_excluded = csv_rows(DROP / "poam" / "excluded.csv")
+    assert len(drop_poam) == 124
     assert len(fresh_poam) >= 100
+    assert len(drop_excluded) == 5
+    assert {str(r.get("excluded_reason") or "") for r in drop_excluded} >= {
+        "honeypot",
+        "telemetry",
+        "superseded_by_specific",
+    }
     assert "estate" in POAM_HEADER
     estates = {str(r.get("estate") or "") for r in drop_poam}
     assert estates
@@ -154,4 +164,7 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
         assert "CLIENT KEEP:" not in text.upper()
 
     assert not (DROP / "riskready").exists()
-    assert len(findings) + len(csv_rows(drop_ciso / "vulnerabilities.csv")) == len(drop_poam)
+    # findings + vulns == poam + excluded (honeypot/telemetry/superseded stay off the plan)
+    assert len(findings) + len(csv_rows(drop_ciso / "vulnerabilities.csv")) == len(
+        drop_poam
+    ) + len(drop_excluded)
