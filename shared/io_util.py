@@ -105,6 +105,15 @@ class UnrecognizedShape(ValueError):
         super().__init__(reason)
         self.reason = reason
         self.file = file
+
+
+class SidecarSkip(Exception):
+    """Known sidecar next to a parsed sibling — not a coverage gap."""
+
+    def __init__(self, reason: str = "", *, file: str = "") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.file = file
 SENSOR_GAP_STATUSES = frozenset(
     {"parse_error", "no_records", UNRECOGNIZED_STATUS, "empty", "partial"}
 )
@@ -402,14 +411,25 @@ def run_collector(
     for path in files:
         error: str | None = None
         unrecognized: str | None = None
+        sidecar = False
         try:
             recs = list(parse_file(path) or [])
+        except SidecarSkip as exc:
+            recs = []
+            sidecar = True
+            write_raw_copy(
+                source,
+                path,
+                {"sidecar": True, "file": path.name, "reason": exc.reason or str(exc)},
+            )
         except UnrecognizedShape as exc:
             recs = []
             unrecognized = exc.reason or str(exc)
         except Exception as exc:
             recs = []
             error = f"{type(exc).__name__}: {exc}"
+        if sidecar:
+            continue
         if recs:
             records.extend(recs)
             write_raw_copy(source, path, recs)
