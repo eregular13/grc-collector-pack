@@ -766,6 +766,7 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
             "finding_type": typed.get("finding_type") or "",
             "weakness_name": str(typed.get("weakness_name") or ""),
             "key_medium": bool(typed.get("key_medium")),
+            "source": str(typed.get("source") or ""),
         },
         rec,
     )
@@ -851,10 +852,53 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
     "A-MinPwdLen": {
         "name": "Raise domain minimum password length",
         "fix": (
-            "Set the domain minimum password length to at least 8 characters "
-            "(14 recommended) in the Default Domain Policy. "
-            "This is a PingCastle healthcheck finding, not a Windows "
-            "baseline audit or a live AD call."
+            "Set the domain minimum password length per NIST SP 800-63B-4 "
+            "(15 characters password-only, or 8 with MFA) or at least 8 as "
+            "PingCastle A-MinPwdLen scores. File-drop only, not a live AD call."
+        ),
+    },
+    "A-Krbtgt": {
+        "name": "Rotate the krbtgt password twice",
+        "fix": (
+            "Reset the krbtgt password twice, at least 10 hours apart, so old "
+            "KRBTGT keys die. This is PingCastle A-Krbtgt from a file-drop, "
+            "not a live DC call."
+        ),
+    },
+    "P-Delegated": {
+        "name": "Mark privileged accounts sensitive and cannot be delegated",
+        "fix": (
+            "Set 'Account is sensitive and cannot be delegated' on admins, or "
+            "add them to Protected Users. P-Delegated is that flag, not the "
+            "P-UnconstrainedDelegation RiskId."
+        ),
+    },
+    "P-UnconstrainedDelegation": {
+        "name": "Remove unconstrained Kerberos delegation",
+        "fix": (
+            "Disable unconstrained delegation; prefer constrained or resource-based. "
+            "This is PingCastle P-UnconstrainedDelegation from a file-drop."
+        ),
+    },
+    "S-NoPreAuth": {
+        "name": "Require Kerberos preauthentication",
+        "fix": (
+            "Uncheck 'Do not require Kerberos preauthentication' on the account. "
+            "This is PingCastle S-NoPreAuth from a file-drop, not a live AD call."
+        ),
+    },
+    "S-NoPreAuthAdmin": {
+        "name": "Require Kerberos preauthentication on admin accounts",
+        "fix": (
+            "Uncheck 'Do not require Kerberos preauthentication' on privileged "
+            "accounts. This is PingCastle S-NoPreAuthAdmin from a file-drop."
+        ),
+    },
+    "A-DsHeuristicsLDAPSecurity": {
+        "name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
+        "fix": (
+            "Apply the dSHeuristics LDAP security flags from KB5008383 "
+            "(CVE-2021-42291). Never cite a placeholder CVE. File-drop only."
         ),
     },
     "A-ZeroPoint": {
@@ -988,7 +1032,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     elif port == "21" or "ftp exposed" in text:
         name = "Disable or lock down cleartext FTP"
         fix = "Disable FTP (TCP/21) or replace with SFTP/FTPS. Restrict any remaining listener to a management VLAN."
-    elif port == "3389" or "rdp" in text:
+    elif port == "3389" or re.search(r"(?<![a-z0-9_])rdp(?![a-z0-9_])", text):
         name = "Restrict RDP to approved paths"
         fix = "Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE."
         key_medium = True
@@ -1035,7 +1079,8 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     elif "heartbleed" in text:
         name = "Remediate Heartbleed-vulnerable TLS"
         fix = (
-            "Upgrade the TLS stack so Heartbleed is not offered. "
+            "Upgrade the TLS stack so Heartbleed is not offered, then regenerate "
+            "private keys and reissue certificates (CISA TA14-098A). "
             "This is a dropped TLS export, not a live probe."
         )
     elif "tls 1.0" in text or "tlsv1.0" in text or "tls1 offered" in text.replace(" ", "").replace("_", "").replace("-", ""):
@@ -1046,10 +1091,9 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         )
     elif (
         port == "443"
-        or "tls" in text
-        or "ssl" in text
-        or "https" in text
-        or "certificate" in text
+        or re.search(r"(?<![a-z0-9_])tls(?![a-z0-9_])", text)
+        or re.search(r"(?<![a-z0-9_])ssl(?![a-z0-9_])", text)
+        or re.search(r"(?<![a-z0-9_])certificate(?![a-z0-9_])", text)
     ):
         name = "Harden TLS on the exposed service"
         fix = (

@@ -86,7 +86,7 @@ def test_testssl_side_channels_are_not_generic_cve_patches() -> None:
 
 
 def test_sample_testssl_poam_uses_human_titles() -> None:
-    recs = [r for r in vuln_scan.parse_file(SAMPLES / "testssl" / "finos_robmoff.at_443_vulnerable.json") if r["kind"] == "finding"]
+    recs = [r for r in vuln_scan.parse_file(SAMPLES / "testssl" / "synthetic_pretty_sections.json") if r["kind"] == "finding"]
     cert = next(r for r in recs if r["extra"].get("id") == "cert_expirationStatus")
     breach = next(r for r in recs if r["extra"].get("id") == "BREACH")
     lucky = next(r for r in recs if r["extra"].get("id") == "LUCKY13")

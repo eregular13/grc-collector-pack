@@ -903,13 +903,14 @@ def test_scuba_tenant_label_from_domain_not_guid(tmp_path: Path) -> None:
 def test_testssl_keeps_not_offered_when_severity_is_real() -> None:
     recs = vuln_scan.parse_file(SAMPLES / "testssl" / "synthetic_not_offered.json")
     findings = _findings(recs)
-    by_id = {r["name"]: r for r in findings}
+    by_id = {r["extra"].get("id"): r for r in findings}
     assert "TLS1_2" in by_id and by_id["TLS1_2"]["severity"] == "critical"
     assert "TLS1_3" in by_id and by_id["TLS1_3"]["severity"] == "medium"
     assert "TLS1" in by_id and by_id["TLS1"]["severity"] == "low"
     assert "SSLv2" not in by_id
     assert "SSLv3" not in by_id
     assert "tls-example-test" in by_id["TLS1_2"]["ref_id"]
+    assert by_id["TLS1_2"]["name"] != "TLS1_2"
 
 
 def test_fixture_honesty_real_vs_synthetic() -> None:

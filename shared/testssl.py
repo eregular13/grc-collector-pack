@@ -11,14 +11,14 @@ from shared.schema import canon_severity
 # cert_expirationStatus must not become the POA&M weakness name.
 TESTSSL_TITLES: dict[str, str] = {
     "cert_expirationStatus": "TLS certificate is expired or expiring",
-    "cert_caIssuers": "Certificate AIA / OCSP issuer could not be checked",
+    "cert_caIssuers": "Certificate CA Issuers URL could not be checked",
     "BREACH": "HTTPS response compression enables BREACH",
     "LUCKY13": "TLS CBC ciphers enable LUCKY13",
     "heartbleed": "TLS stack is vulnerable to Heartbleed",
     "TLS1": "TLS 1.0 is offered",
     "TLS1_1": "TLS 1.1 is offered",
     "SSLv3": "SSLv3 is offered",
-    "SSL2": "SSLv2 is offered",
+    "SSLv2": "SSLv2 is offered",
 }
 
 _SKIP_SEV = frozenset({"ok", "info", "information", "debug", "warnok"})

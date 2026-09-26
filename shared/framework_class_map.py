@@ -377,8 +377,12 @@ CONTROL_CLASS: dict[str, str] = {
     "Remove exposed web-app sensitive files": "config_benchmark",
     "Disable dangerous HTTP methods": "config_benchmark",
     "Replace web-app default credentials": "identity_default",
-    "Raise the domain minimum password length": "identity_password",
+    "Raise domain minimum password length": "identity_password",
     "Rotate the krbtgt password twice": "identity_credential",
+    "Stop reflected web-app cross-site scripting": "config_benchmark",
+    "Stop web-app local file inclusion": "config_benchmark",
+    "Mark privileged accounts sensitive and cannot be delegated": "identity_privilege",
+    "Set dSHeuristics LDAP security (CVE-2021-42291)": "identity_auth",
 }
 
 FINDING_TYPE_CLASS: dict[str, str] = {
@@ -433,8 +437,12 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "web_sensitive_file": "config_benchmark",
     "web_http_methods": "config_benchmark",
     "web_default_creds": "identity_default",
+    "web_xss": "config_benchmark",
+    "web_lfi": "config_benchmark",
     "pc_min_pwd_len": "identity_password",
     "pc_krbtgt": "identity_credential",
+    "pc_delegated": "identity_privilege",
+    "pc_dsheuristics": "identity_auth",
 }
 
 
