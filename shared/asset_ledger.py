@@ -28,6 +28,7 @@ from shared.asset_ids import (
     LEASE_DAYS,
     MATCH_ORDER,
     STRENGTH,
+    _CLOUD_SOURCES,
     display_uai,
     extra_dict,
     fqdn_mac_fingerprint,
@@ -84,6 +85,16 @@ def _days_apart(newer: str, older: str) -> float | None:
 def make_asset_uid(anchor_type: str, anchor_value: str, *, width: int = 10) -> str:
     digest = hashlib.sha256(f"a1|{anchor_type}|{anchor_value}".encode("utf-8")).hexdigest().upper()
     return f"{ASSET_UID_PREFIX}{digest[:width]}"
+
+
+def scoped_anchor(ids: dict[str, Any], skip: set[str] | None = None) -> tuple[str, str]:
+    """Strongest alias, with account/tenant scope on name-only / principal keys."""
+    typ, value = strongest_anchor(ids, skip=skip)
+    if typ in {"name", "principal"}:
+        scope = str(ids.get("scope") or "")
+        if scope:
+            value = f"{value}|{scope}"
+    return typ, value
 
 
 def _sha256_bytes(blob: bytes) -> str:
@@ -274,6 +285,7 @@ class AssetLedger:
             "fqdn",
             "ip",
             "hostname",
+            "principal",
             "name",
             "serial",
         ):
@@ -429,12 +441,19 @@ class AssetLedger:
             cd = str(cand.get("domain") or "")
             if od and cd and od.lower() != cd.lower():
                 return False
+        elif key in {"name", "principal"}:
+            if left[0].lower() != right[0].lower():
+                return False
+            oscope = str(obs.get("scope") or "")
+            cscope = str(cand.get("scope") or "") or self._scope_of(asset, key, right[0])
+            if oscope != cscope:
+                return False
         else:
             if left[0].lower() != right[0].lower():
                 return False
         return not self._stronger_conflict(obs, cand, key)
 
-    def _find_match(self, ids: dict[str, Any], now: str) -> dict[str, Any] | None:
+    def _find_match(self, ids: dict[str, Any], now: str, source: str = "") -> dict[str, Any] | None:
         if is_container(ids):
             # Class first (image_ref), then content keys per §6.3.
             order = ("image_ref",) + CONTAINER_ORDER
@@ -455,6 +474,99 @@ class AssetLedger:
             for asset in self._active_assets():
                 if self._match_key(ids, asset, key, now):
                     return asset
+        hostnames = [x.lower() for x in id_values(ids, "hostname")]
+        fqdns = [x.lower() for x in id_values(ids, "fqdn")]
+        if hostnames and not fqdns:
+            label = hostnames[0]
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if cand.get("principal"):
+                    continue
+                for fq in id_values(cand, "fqdn"):
+                    if str(fq).split(".", 1)[0].lower() == label:
+                        if not self._stronger_conflict(ids, cand, "hostname"):
+                            return asset
+        if fqdns and not hostnames:
+            label = fqdns[0].split(".", 1)[0]
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if id_values(cand, "fqdn") or cand.get("principal"):
+                    continue
+                if label in {x.lower() for x in id_values(cand, "hostname")}:
+                    if not self._stronger_conflict(ids, cand, "fqdn"):
+                        return asset
+        # Pre-#161: UPN was stored as fqdn. Re-anchor to principal.
+        principals = [x.lower() for x in id_values(ids, "principal")]
+        if principals:
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                for fq in id_values(cand, "fqdn"):
+                    token = str(fq).lower()
+                    if token in principals and "@" in token:
+                        if not self._stronger_conflict(ids, cand, "principal"):
+                            return asset
+        # Pre-#161: cloud/k8s/saas short names were hostname. Re-anchor to name.
+        # Do not merge a SaaS user into an nmap host that shares the short name.
+        names = [x.lower() for x in id_values(ids, "name")]
+        host_sources = {"inventory-nmap", "host-wazuh", "easm", "vuln-scan", "identity-ad"}
+        if (
+            names
+            and source in _CLOUD_SOURCES
+            and not id_values(ids, "arn")
+            and not id_values(ids, "ip")
+        ):
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                existing_sources = {str(s) for s in (asset.get("sources") or [])}
+                if existing_sources & host_sources:
+                    continue
+                if (
+                    id_values(cand, "ip")
+                    or id_values(cand, "mac")
+                    or id_values(cand, "uuid")
+                    or id_values(cand, "fqdn")
+                    or cand.get("principal")
+                ):
+                    continue
+                old_names = (
+                    {x.lower() for x in id_values(cand, "hostname")}
+                    | {x.lower() for x in id_values(cand, "name")}
+                    | {x.lower() for x in id_values(cand, "netbios")}
+                )
+                if not (set(names) & old_names):
+                    continue
+                old_scope = str(cand.get("scope") or "") or self._scope_of(
+                    asset, "hostname", next(iter(old_names), "")
+                )
+                if old_scope and old_scope != str(ids.get("scope") or ""):
+                    continue
+                if not self._stronger_conflict(ids, cand, "name"):
+                    return asset
+        # Pre-#161: ns/pod names were stored as netbios. Re-anchor to name.
+        incoming_labels = names + [x.lower() for x in id_values(ids, "hostname")]
+        if incoming_labels:
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if cand.get("principal"):
+                    continue
+                old_nb = {x.lower() for x in id_values(cand, "netbios")}
+                if not (set(incoming_labels) & old_nb):
+                    continue
+                if not self._stronger_conflict(ids, cand, "name"):
+                    return asset
+        nbs = [x.lower() for x in id_values(ids, "netbios")]
+        if nbs:
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                if cand.get("principal"):
+                    continue
+                old = {x.lower() for x in id_values(cand, "name")} | {
+                    x.lower() for x in id_values(cand, "hostname")
+                }
+                if not (set(nbs) & old):
+                    continue
+                if not self._stronger_conflict(ids, cand, "netbios"):
+                    return asset
         return None
 
     def _new_uid(self, ids: dict[str, Any]) -> tuple[str, dict[str, str]]:
@@ -463,7 +575,7 @@ class AssetLedger:
             skip.add("uuid")
         if ids.get("bios_uuid") and self._uuid_collided(str(ids.get("bios_uuid"))):
             skip.add("bios_uuid")
-        typ, value = strongest_anchor(ids, skip=skip)
+        typ, value = scoped_anchor(ids, skip=skip)
         width = 10
         uid = make_asset_uid(typ, value, width=width)
         while uid in self.assets:
@@ -588,14 +700,14 @@ class AssetLedger:
         self._note_uuid(blob)
         self._flag_collisions(stamp)
         if not observe:
-            match = self._find_match(blob, stamp)
+            match = self._find_match(blob, stamp, src)
             return str(match["asset_uid"]) if match else ""
 
         # Split an IP-only predecessor before matching the new identity.
         for asset in list(self._active_assets()):
             self._maybe_split(asset, blob, stamp)
 
-        match = self._find_match(blob, stamp)
+        match = self._find_match(blob, stamp, src)
         if match is None:
             uid, anchor = self._new_uid(blob)
             asset = _empty_asset(uid, stamp, anchor, blob)
@@ -727,6 +839,31 @@ class AssetLedger:
                         if not self._stronger_conflict(lids, rids, "ip"):
                             self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason="ip")
                             merged = True
+                    if not merged and not lids.get("principal") and not rids.get("principal"):
+                        lhost = {x.lower() for x in id_values(lids, "hostname")}
+                        rhost = {x.lower() for x in id_values(rids, "hostname")}
+                        lfqdn = {x.lower() for x in id_values(lids, "fqdn")}
+                        rfqdn = {x.lower() for x in id_values(rids, "fqdn")}
+                        rlabels = {f.split(".", 1)[0] for f in rfqdn if f}
+                        llabels = {f.split(".", 1)[0] for f in lfqdn if f}
+                        l_bare = bool(lhost and not lfqdn)
+                        r_bare = bool(rhost and not rfqdn)
+                        if l_bare and rlabels and lhost & rlabels:
+                            self.merge(
+                                str(left["asset_uid"]),
+                                str(right["asset_uid"]),
+                                now=now,
+                                reason="hostname_fqdn",
+                            )
+                            merged = True
+                        elif r_bare and llabels and rhost & llabels:
+                            self.merge(
+                                str(left["asset_uid"]),
+                                str(right["asset_uid"]),
+                                now=now,
+                                reason="hostname_fqdn",
+                            )
+                            merged = True
                     if merged:
                         changed = True
                         break
@@ -767,7 +904,7 @@ def asset_uid(
     """
     if ledger is None:
         ids = ids_from_record(record)
-        typ, value = strongest_anchor(ids)
+        typ, value = scoped_anchor(ids)
         uid = make_asset_uid(typ, value)
         extra = record.setdefault("extra", {})
         if isinstance(extra, dict):
