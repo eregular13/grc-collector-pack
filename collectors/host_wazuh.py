@@ -724,7 +724,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels + ["disk-encryption"],
                     collected_at=now,
-                    extra={"disk_encryption_enabled": False, "provider": provider},
+                    extra={
+                        "disk_encryption_enabled": False,
+                        "provider": provider,
+                        "check_id": "disk_encryption",
+                    },
                 )
             )
         elif device.get("encryption_collected") is False and provider == "jamf":
@@ -992,7 +996,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["fleet", "disk-encryption"],
                     collected_at=now,
-                    extra={"disk_encryption_enabled": False},
+                    extra={"disk_encryption_enabled": False, "check_id": "disk_encryption"},
                 )
             )
         mdm = agent.get("mdm") if isinstance(agent.get("mdm"), dict) else {}
