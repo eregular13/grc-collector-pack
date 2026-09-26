@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 207 — POA&M Gap 2 vendor dependency O/P/Q (2026-09-26)
+
+FedRAMP R3.0 Open O/P/Q: Vendor Dependency defaults to **No**
+(`vd_source=default`), never invents Yes. Scanner no-fix is
+suggestion-only. Operator override persists on the ledger. P/Q blank
+when No; Q is `Vendor – Product` when Yes. KEV due dates are not
+suspended. Host-lab unchanged: assets **79** findings **107** poam
+**124** excluded **5**. Pytest **1304**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 206 — merge master dd360a2 (#150) into #145 (2026-09-26)
 
 Normal merge of `origin/master` `dd360a2` (#150 nmap proto-keyed

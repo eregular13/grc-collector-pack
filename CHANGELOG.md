@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- POAM_GAP2_VENDOR_DEPENDENCY: FedRAMP R3.0 Open O/P/Q. Vendor
+  Dependency defaults to No (`vd_source=default`); never invents Yes.
+  Last Vendor Check-in Date and Vendor Dependent Product Name are blank
+  when O=No (never N/A). O=Yes only via `in/poam/overrides.csv` and
+  persists on the ledger. Q uses `Vendor – Product`. Scanner "no fix
+  available" is suggestion-only. KEV / BOD 22-01 due dates are not
+  suspended. `poam.md` states the No default is not a verified
+  determination. Host-lab unchanged (79 / 107 / poam 124 / excluded 5).
+  MIN_ gates unchanged. No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /
   `scripts/lab.ps1` / CI lab job) now run `collectors/honeypot.py` so DEMO
   `fixtures/demo/honeypot*` land in `poam/excluded.csv` (not header-only).
