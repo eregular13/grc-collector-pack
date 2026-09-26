@@ -7,20 +7,91 @@ from __future__ import annotations
 
 from typing import Any
 
-from shared.schema import canon_severity, csf_function
+from shared.schema import canon_severity
 
 # CISA CPG 2.x-style stamps already used on the CISO wire (underscore, not colon).
 # 2_W = known-weak / unnecessary service posture. 1_E = asset/exposure inventory.
 CPG_WEAK_SERVICE = "cpg_2_W"
 CPG_EXPOSURE = "cpg_1_E"
 
-# NIST CSF 2.0 function stamps (protect/identify/detect/respond).
+# NIST CSF 2.0 function stamps. Derived from control family/topic, never severity.
+CSF_FUNCTIONS = ("govern", "identify", "protect", "detect", "respond", "recover")
 CSF_STAMP = {
+    "govern": "csf_GV",
     "identify": "csf_ID",
     "protect": "csf_PR",
     "detect": "csf_DE",
     "respond": "csf_RS",
     "recover": "csf_RC",
+}
+# Schema-valid fallback when no 800-53 / CIS / topic maps. Identify = found, not classified.
+CSF_UNMAPPED_FUNCTION = "identify"
+CSF_UNMAPPED_STAMP = "csf_unmapped"
+
+# SP 800-53 Rev. 5 family → CSF 2.0 function (NIST CSF 2.0 Informative References).
+N53_FAMILY_CSF = {
+    "AC": "protect",
+    "AT": "protect",
+    "AU": "detect",
+    "CA": "identify",
+    "CM": "protect",
+    "CP": "recover",
+    "IA": "protect",
+    "IR": "respond",
+    "MA": "protect",
+    "MP": "protect",
+    "PE": "protect",
+    "PL": "govern",
+    "PM": "govern",
+    "PS": "protect",
+    "PT": "govern",
+    "RA": "identify",
+    "SA": "protect",
+    "SC": "protect",
+    "SI": "detect",
+    "SR": "govern",
+}
+
+# Control-id overrides where the family default is the wrong CSF function.
+N53_CONTROL_CSF = {
+    "CM-8": "identify",  # system component inventory
+    "SI-2": "protect",  # flaw remediation
+    "SI-3": "protect",  # malicious code protection
+    "SI-7": "protect",  # software / firmware integrity
+    "SI-8": "protect",  # spam protection
+    "SI-10": "protect",  # information input validation
+    "CA-7": "detect",  # continuous monitoring
+}
+
+# CIS Controls v8 (cis_<control>_<safeguard>) → CSF 2.0 function.
+CIS_CONTROL_CSF = {
+    1: "identify",
+    2: "identify",
+    3: "protect",
+    4: "protect",
+    5: "protect",
+    6: "protect",
+    7: "protect",
+    8: "detect",
+    9: "protect",
+    10: "protect",
+    11: "recover",
+    12: "protect",
+    13: "detect",
+    14: "protect",
+    15: "govern",
+    16: "protect",
+    17: "respond",
+    18: "identify",
+}
+
+# Topic primary when the control name is more specific than family defaults.
+TOPIC_CSF = {
+    "Review deception-sensor telemetry": "detect",
+    "Deploy endpoint detection and response": "detect",
+    "Restore endpoint coverage": "detect",
+    "Enable time synchronization": "detect",
+    "Lock down sensitive perimeter hostnames": "identify",
 }
 
 
@@ -163,8 +234,8 @@ MISCONFIG_RULES: dict[str, dict[str, Any]] = {
     },
 }
 
-# Port/exposure rules that already had specific control names: real 800-53 ids.
-EXPOSURE_800_53: dict[str, list[str]] = {
+# Named controls → SP 800-53 Rev. 5 ids (family/topic drives CSF, not severity).
+CONTROL_800_53: dict[str, list[str]] = {
     "Restrict Windows admin shares": ["AC-3", "AC-6", "CM-7"],
     "Harden or restrict SMB file sharing": ["CM-7", "SC-7"],
     "Disable Telnet; require encrypted remote admin": ["CM-7", "SC-8", "AC-17"],
@@ -173,11 +244,172 @@ EXPOSURE_800_53: dict[str, list[str]] = {
     "Disable TLS 1.0": ["SC-8", "SC-8(1)", "SC-13"],
     "Harden TLS on the exposed service": ["SC-8", "SC-8(1)", "SC-13"],
     "Remediate Heartbleed-vulnerable TLS": ["SI-2", "SC-8", "RA-5"],
+    "Review deception-sensor telemetry": ["SI-4", "AU-2"],
+    "Publish a DMARC policy": ["SI-8", "SC-8"],
+    "Tighten DMARC beyond p=none": ["SI-8", "SC-8"],
+    "Restrict SPF +all": ["SI-8", "SC-8"],
+    "Publish an SPF record": ["SI-8", "SC-8"],
+    "Tighten SPF softfail (~all)": ["SI-8", "SC-8"],
+    "Publish DKIM for the listed selector": ["SI-8", "SC-8"],
+    "Block public object-storage access": ["AC-3", "AC-6", "SC-7"],
+    "Remove standing IAM AdministratorAccess": ["AC-2", "AC-6"],
+    "Require MFA on the cloud root account": ["IA-2", "IA-2(1)"],
+    "Restrict security-group ingress from the internet": ["SC-7", "AC-17"],
+    "Disable public accessibility on RDS": ["SC-7", "AC-3"],
+    "Enable encryption at rest on cloud storage": ["SC-28", "SC-13"],
+    "Stop SQL injection in the application": ["SI-10", "SA-11"],
+    "Stop OS command injection": ["SI-10", "SA-11"],
+    "Patch Log4Shell-vulnerable services": ["SI-2", "RA-5"],
+    "Stop remote code execution": ["SI-2", "SI-10"],
+    "Stop cross-site scripting": ["SI-10", "SA-11"],
+    "Remove non-DC DCSync rights": ["AC-6", "AC-2"],
+    "Remove GenericAll on privileged objects": ["AC-6", "AC-2"],
+    "Require Kerberos preauthentication": ["IA-2", "AC-2"],
+    "Harden kerberoastable service accounts": ["IA-5", "AC-6"],
+    "Remove unconstrained Kerberos delegation": ["AC-6", "IA-2"],
+    "Restrict Backup Operators membership": ["AC-6", "AC-2"],
+    "Restrict Domain Admins membership": ["AC-6", "AC-2"],
+    "Enable full-disk encryption": ["SC-28", "MP-5"],
+    "Deploy endpoint detection and response": ["SI-4"],
+    "Enroll the endpoint in MDM": ["CM-2", "CM-6"],
+    "Review and expire stale guest accounts": ["AC-2"],
+    "Restore endpoint coverage": ["SI-4"],
+    "Rotate and revoke exposed credentials": ["IA-5", "SI-4"],
+    "Require phishing-resistant MFA for privileged users": ["IA-2", "IA-2(1)"],
+    "Require MFA for privileged SaaS admins": ["IA-2", "IA-2(1)"],
+    "Remove standing Global Administrator assignment": ["AC-2", "AC-6", "AC-5"],
+    "Enforce Windows password history": ["IA-5"],
+    "Disable LM hash storage": ["IA-5", "CM-6"],
+    "Enable a host firewall": ["SC-7", "CM-7"],
+    "Disable SSH root login": ["IA-2", "AC-6"],
+    "Disable SSH empty passwords": ["IA-5", "IA-2"],
+    "Apply security updates": ["SI-2", "CM-6", "RA-5"],
+    "Enable time synchronization": ["AU-8"],
+    "Deny privileged Kubernetes containers": ["AC-6", "CM-7"],
+    "Disable anonymous Kubernetes API access": ["AC-3", "IA-2"],
+    "Block Kubernetes privilege escalation": ["AC-6"],
+    "Avoid hostNetwork on Kubernetes workloads": ["SC-7", "CM-7"],
+    "Restrict exposed admin interfaces": ["AC-17", "SC-7"],
+    "Lock down sensitive perimeter hostnames": ["CM-8"],
+}
+
+# Backward-compatible alias used by older tests/docs.
+EXPOSURE_800_53 = CONTROL_800_53
+
+CONTROL_CIS: dict[str, list[str]] = {
+    "Publish a DMARC policy": ["cis_9_5"],
+    "Tighten DMARC beyond p=none": ["cis_9_5"],
+    "Restrict SPF +all": ["cis_9_5"],
+    "Publish an SPF record": ["cis_9_5"],
+    "Tighten SPF softfail (~all)": ["cis_9_5"],
+    "Publish DKIM for the listed selector": ["cis_9_5"],
+    "Deploy endpoint detection and response": ["cis_13_2"],
+    "Restore endpoint coverage": ["cis_13_2"],
+    "Enable time synchronization": ["cis_8_4"],
+    "Lock down sensitive perimeter hostnames": ["cis_1_1"],
+    "Rotate and revoke exposed credentials": ["cis_3_3"],
 }
 
 
 def _n53_tokens(ids: list[str]) -> list[str]:
     return [f"nist80053_{cid}" for cid in ids]
+
+
+def _n53_base(cid: str) -> str:
+    return str(cid or "").split("(", 1)[0].strip().upper()
+
+
+def _n53_family(cid: str) -> str:
+    return _n53_base(cid).split("-", 1)[0]
+
+
+def _cis_control_num(token: str) -> int | None:
+    raw = str(token or "").strip().lower().replace("-", "_")
+    if not raw.startswith("cis_"):
+        return None
+    parts = raw.split("_")
+    if len(parts) >= 2 and parts[1].isdigit():
+        return int(parts[1])
+    return None
+
+
+def _csf_from_n53(cid: str) -> str | None:
+    base = _n53_base(cid)
+    if base in N53_CONTROL_CSF:
+        return N53_CONTROL_CSF[base]
+    return N53_FAMILY_CSF.get(_n53_family(cid))
+
+
+def _csf_from_cis(token: str) -> str | None:
+    num = _cis_control_num(token)
+    if num is None:
+        return None
+    return CIS_CONTROL_CSF.get(num)
+
+
+def _collect_csf_functions(n53: list[str], cis: list[str]) -> tuple[set[str], dict[str, int]]:
+    counts: dict[str, int] = {fn: 0 for fn in CSF_FUNCTIONS}
+    found: set[str] = set()
+    for cid in n53:
+        fn = _csf_from_n53(cid)
+        if fn in counts:
+            found.add(fn)
+            counts[fn] += 1
+    for token in cis:
+        fn = _csf_from_cis(token)
+        if fn in counts:
+            found.add(fn)
+            counts[fn] += 1
+    return found, counts
+
+
+def _primary_csf(found: set[str], counts: dict[str, int], topic: str | None) -> str:
+    """One stamp for the CISO wire. Topic wins; else most votes, then CSF 2.0 order."""
+    if topic in found:
+        return topic
+    ranked = sorted(found, key=lambda fn: (-counts.get(fn, 0), CSF_FUNCTIONS.index(fn)))
+    return ranked[0]
+
+
+def _lookup_control_ids(control_name: str) -> tuple[list[str], list[str]]:
+    if control_name in CONTROL_800_53:
+        return list(CONTROL_800_53[control_name]), list(CONTROL_CIS.get(control_name) or [])
+    if control_name.startswith("Reduce unnecessary network exposure"):
+        return ["CM-7", "SC-7"], []
+    return [], []
+
+
+def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
+    """Attach CSF 2.0 function stamps from 800-53 / CIS / topic. Never from severity."""
+    n53 = list(mapped.get("nist_800_53") or [])
+    cis = list(mapped.get("cis") or [])
+    name = str(mapped.get("control_name") or "")
+    found, counts = _collect_csf_functions(n53, cis)
+    topic = TOPIC_CSF.get(name)
+    if topic:
+        found.add(topic)
+        counts[topic] = counts.get(topic, 0) + 1
+    if found:
+        primary = _primary_csf(found, counts, topic)
+        unmapped = False
+    else:
+        primary = CSF_UNMAPPED_FUNCTION
+        found = {primary}
+        unmapped = True
+    stamps: list[str] = []
+    for fn in CSF_FUNCTIONS:
+        if fn in found:
+            stamps.append(CSF_STAMP[fn])
+            stamps.append(f"csf_{fn}")
+    if unmapped:
+        stamps.append(CSF_UNMAPPED_STAMP)
+    mapped["csf"] = stamps
+    mapped["csf_function"] = primary
+    mapped["csf_functions"] = [fn for fn in CSF_FUNCTIONS if fn in found]
+    cpg = list(mapped.get("cpg") or [])
+    refs = cpg + stamps + _n53_tokens(n53) + list(cis)
+    mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
+    return mapped
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
@@ -188,28 +420,21 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     if rule:
         sev = canon_severity(rec.get("severity"))
         cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE] if sev in {"high", "critical"} else [CPG_WEAK_SERVICE]
-        csf = [CSF_STAMP["protect"], "csf_protect"]
-        refs = cpg + csf + _n53_tokens(rule["nist_800_53"]) + list(rule["cis"])
-        return {
-            "control_name": rule["name"],
-            "recommended_fix": rule["fix"],
-            "cpg": cpg,
-            "csf": csf,
-            "csf_function": "protect",
-            "include_poam": True,
-            "nist_800_53": list(rule["nist_800_53"]),
-            "cis": list(rule["cis"]),
-            "framework_refs": ",".join(dict.fromkeys(refs)),
-        }
-    mapped = _map_finding_legacy(rec)
-    n53 = EXPOSURE_800_53.get(mapped["control_name"], [])
-    mapped["nist_800_53"] = list(n53)
-    mapped["cis"] = []
-    if n53:
-        mapped["framework_refs"] = ",".join(
-            dict.fromkeys(mapped["framework_refs"].split(",") + _n53_tokens(n53))
+        return _stamp_csf(
+            {
+                "control_name": rule["name"],
+                "recommended_fix": rule["fix"],
+                "cpg": cpg,
+                "include_poam": True,
+                "nist_800_53": list(rule["nist_800_53"]),
+                "cis": list(rule["cis"]),
+            }
         )
-    return mapped
+    mapped = _map_finding_legacy(rec)
+    n53, cis = _lookup_control_ids(mapped["control_name"])
+    mapped["nist_800_53"] = n53
+    mapped["cis"] = cis
+    return _stamp_csf(mapped)
 
 
 def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
@@ -218,8 +443,6 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     port = str(extra.get("port") or "")
     text = _blob(rec)
     sev = canon_severity(rec.get("severity"))
-    fn = csf_function(sev)
-    csf = [CSF_STAMP.get(fn, "csf_PR"), f"csf_{fn}"]
     cpg = [CPG_WEAK_SERVICE]
     key_medium = False
     source = str(rec.get("source") or "").lower()
@@ -239,10 +462,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
                 "compromise incident from the stage hit alone."
             ),
             "cpg": [CPG_EXPOSURE],
-            "csf": [CSF_STAMP["detect"], "csf_detect"],
-            "csf_function": "detect",
             "include_poam": False,
-            "framework_refs": ",".join(dict.fromkeys([CPG_EXPOSURE, CSF_STAMP["detect"], "csf_detect"])),
         }
 
     if (
@@ -664,10 +884,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         "control_name": name,
         "recommended_fix": fix,
         "cpg": cpg,
-        "csf": csf,
-        "csf_function": fn,
         "include_poam": include or sev in {"high", "critical"},
-        "framework_refs": ",".join(dict.fromkeys(cpg + csf)),
     }
 
 

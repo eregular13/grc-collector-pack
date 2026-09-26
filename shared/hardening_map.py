@@ -71,7 +71,7 @@ CONTROL_META: dict[str, dict[str, str]] = {
             "Run chrony or ntpd so audit timestamps stay trustworthy. "
             "This is a Lynis/OpenSCAP posture finding, not a CVE."
         ),
-        "csf": "csf_PR",
+        "csf": "csf_DE",
         "cpg": "cpg_1_E",
     },
 }

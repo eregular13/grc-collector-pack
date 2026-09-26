@@ -138,3 +138,42 @@ def test_drop_zip_includes_packaged_opengrc_when_out_lacks_sinks(
     assert "Probo" in import_md
     assert "Do not POST /api/risks" in import_md
     assert "posted=false" in import_md.lower()
+    assert not any("riskready" in name.lower() for name in names)
+    assert not any(name.endswith(".json") and "riskready" in name.lower() for name in names)
+
+
+def test_product_lab_drop_ships_no_riskready_json() -> None:
+    """The packaged drop (and /export.zip) must not ship RiskReady JSON."""
+    assert not any(
+        path.is_file() and "riskready" in path.as_posix().lower() for path in DROP.rglob("*")
+    )
+    rr_dir = DROP / "riskready"
+    if rr_dir.exists():
+        assert not list(rr_dir.glob("*.json"))
+    manifest = MANIFEST.read_text(encoding="utf-8")
+    assert "riskready/risks_proposed.json" not in manifest
+    assert "out of scope" in manifest.lower() or "ships no RiskReady" in manifest
+    readme = (DROP / "README.md").read_text(encoding="utf-8")
+    assert "risks_proposed.json" not in readme
+    assert "/api/risks" in readme
+
+
+def test_export_zip_contains_no_riskready_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "summary.json").write_text('{"lab": true}', encoding="utf-8")
+    rr = out / "riskready"
+    rr.mkdir()
+    (rr / "risks_proposed.json").write_text("[]", encoding="utf-8")
+    (rr / "assets.json").write_text("[]", encoding="utf-8")
+    monkeypatch.setenv("OUT_DIR", str(out))
+    blob = build_drop_zip()
+    with zipfile.ZipFile(BytesIO(blob)) as zf:
+        names = set(zf.namelist())
+        import_md = zf.read("IMPORT.md").decode("utf-8")
+    assert not any("riskready" in name.lower() for name in names)
+    assert "risks_proposed.json" not in names
+    assert "out of scope" in import_md.lower()
+    assert "Do not POST /api/risks" in import_md
