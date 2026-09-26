@@ -343,7 +343,10 @@ def _wazuh_raw_host(rec: dict[str, Any]) -> str:
 
 
 def _is_dns_fqdn(raw: str) -> bool:
-    token = str(raw or "").strip().lower().rstrip(".").split()[0]
+    text = str(raw or "").strip().lower().rstrip(".")
+    if not text:
+        return False
+    token = text.split()[0]
     if not token or token[0].isdigit() or ":" in token:
         return False
     return "." in token
@@ -371,8 +374,14 @@ def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> b
     name so ``web01.corp-a.local`` cannot absorb ``web01.corp-b.local``.
     """
     incoming = _wazuh_raw_host(rec)
-    stored = str(item.get("display_asset") or "").strip().split()[0].lower().rstrip(".")
-    if not incoming or not stored:
+    display = str(item.get("display_asset") or "").strip()
+    if not incoming or not display:
+        return False
+    parts = display.split()
+    if not parts:
+        return False
+    stored = parts[0].lower().rstrip(".")
+    if not stored:
         return False
     if _is_dns_fqdn(incoming) and _is_dns_fqdn(stored):
         return incoming == stored
@@ -405,6 +414,16 @@ def _find_stored_wazuh_by_display(
             continue
         if _wazuh_hostless_item_matches(rec, item):
             out.append((old_fp, item))
+    incoming = _wazuh_raw_host(rec)
+    if incoming and not _is_dns_fqdn(incoming):
+        fqdn_hits = [
+            pair
+            for pair in out
+            if _is_dns_fqdn(str(pair[1].get("display_asset") or ""))
+        ]
+        # Bare web01 vs two stored FQDNs is ambiguous — mint a new ID.
+        if len(fqdn_hits) >= 2:
+            return []
     return out
 
 

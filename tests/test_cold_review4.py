@@ -1391,3 +1391,76 @@ def test_x2dom_a_then_b_does_not_steal_egp() -> None:
     b_row = next(it for it in open_items if str(it.get("display_asset") or "") == b[0])
     assert b_row["poam_id"] != a[2]
     assert b_row["poam_id"].startswith("EGP-")
+
+
+def test_wazuh_empty_display_asset_never_matches() -> None:
+    """A stored host-less row must not crash or match any incoming host."""
+    from shared.poam_ledger import _wazuh_hostless_item_matches, _weakness_key_core
+
+    rec = _wazuh_disconnected("hosta")
+    assert not _wazuh_hostless_item_matches(rec, {"display_asset": ""})
+    assert not _wazuh_hostless_item_matches(rec, {"display_asset": None})
+    assert not _wazuh_hostless_item_matches(rec, {})
+    prior = empty_ledger()
+    prior["items"]["deadbeef"] = {
+        "poam_id": "EGP-HOSTLESS01",
+        "fp": "deadbeef",
+        "source_family": "host-wazuh",
+        "weakness_key": _weakness_key_core(rec),
+        "asset_key": "EGA-MISSING00",
+        "display_asset": "",
+        "name": "Wazuh agent disconnected",
+        "description": "no host",
+        "ref_id": "WAZ-coverage-unknown",
+        "original_detection_date": "2026-08-01",
+        "first_seen": "2026-08-01T00:00:00Z",
+        "last_seen": "2026-08-01T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    out = apply_ledger(
+        [rec],
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-02T00:00:00Z"),
+        ledger_in=prior,
+        prior_existed=True,
+    )
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    assert "EGP-HOSTLESS01" in ids
+    assert any(pid != "EGP-HOSTLESS01" and str(pid).startswith("EGP-") for pid in ids)
+    stolen = [
+        e for e in (out.get("events_this_run") or []) if e.get("kind") == "migrated_alias"
+    ]
+    assert stolen == []
+
+
+def test_x_short_only_ambiguous_mints_new_id() -> None:
+    """Bare web01 vs two stored FQDNs is ambiguous: new EGP, no aliases."""
+    a, b = _x2dom_hosts()
+    prior = empty_ledger()
+    for host, ip, pid in (a, b):
+        fp, item = _seed_29c4c3e_wazuh(host, ip, pid)
+        prior["items"][fp] = item
+    out = _apply_x2dom(prior, [("web01", "10.3.0.30")])
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+    stolen = [
+        e for e in (out.get("events_this_run") or []) if e.get("kind") == "migrated_alias"
+    ]
+    assert a[2] in ids
+    assert b[2] in ids
+    assert len(ids) == 3
+    web01_row = next(
+        it for it in open_items if str(it.get("display_asset") or "") == "web01"
+    )
+    assert web01_row["poam_id"] not in {a[2], b[2]}
+    assert not aliases
+    assert stolen == []
