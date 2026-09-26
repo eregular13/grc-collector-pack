@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_sample_benchmark">
+  <TestResult id="xccdf_sample_testresult">
+    <target>jump-unmanaged</target>
+    <rule-result idref="xccdf_sample_rule_prelink" time="2014-10-17T09:07:43" severity="low" weight="1.000000">
+      <result>fail</result>
+    </rule-result>
+    <rule-result idref="xccdf_sample_rule_ssh_permitroot" time="2014-10-17T09:07:44" severity="medium" weight="1.000000">
+      <result>fail</result>
+    </rule-result>
+    <rule-result idref="xccdf_sample_rule_firewall" time="2014-10-17T09:07:45" severity="high" weight="1.000000">
+      <result>fail</result>
+    </rule-result>
+    <rule-result idref="xccdf_sample_rule_cramfs" time="2014-10-17T09:07:46" severity="high" weight="1.000000">
+      <result>pass</result>
+    </rule-result>
+  </TestResult>
+</Benchmark>
