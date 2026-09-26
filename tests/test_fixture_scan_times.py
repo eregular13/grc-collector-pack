@@ -85,7 +85,7 @@ NO_TIMESTAMP_TOOLS = (
     "honeypot events (ts is event time; rows stay excluded telemetry)",
 )
 
-# Fresh DEMO poam.csv EGP IDs on master ac06bdc. ArtifactName was dropped
+# Fresh DEMO poam.csv EGP IDs on master ce49f26. ArtifactName was dropped
 # so this set and the asset-ledger count stay exactly as on master.
 MASTER_DEMO_ASSET_LEDGER = 80
 MASTER_DEMO_EGP_IDS = frozenset(
@@ -437,7 +437,7 @@ def _run_demo_pack(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_demo_pack_run_detection_dates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     poam = _run_demo_pack(tmp_path, monkeypatch)
     real, missing, dates = _poam_date_counts(poam)
-    # Measured on master ac06bdc: 9 real / 112 not recorded of 121.
+    # Measured on master ce49f26: 9 real / 112 not recorded of 121.
     # After fixtures + parser reads on this branch:
     assert real + missing == 121
     assert real == 61
@@ -461,7 +461,7 @@ def test_lab_drop_run_detection_dates(tmp_path: Path) -> None:
     stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
     poam = Path(stamp["out_dir"]) / "poam" / "poam.csv"
     real, missing, dates = _poam_date_counts(poam)
-    # Measured on master ac06bdc: 15 real / 34 not recorded of 49.
+    # Measured on master ce49f26: 15 real / 34 not recorded of 49.
     assert real + missing == 49
     assert real == 23
     assert missing == 26
@@ -476,7 +476,7 @@ def test_farm_drop_detection_date_counts(tmp_path: Path) -> None:
     stamp = prove_ciso(root=ROOT, dest=dest)
     poam = Path(stamp["out_dir"]) / "poam" / "poam.csv"
     real, missing, dates = _poam_date_counts(poam)
-    # Farm is unchanged by this PR. Measured on master ac06bdc: 69 / 4 of 73.
+    # Farm is unchanged by this PR. Measured on master ce49f26: 69 / 4 of 73.
     # Dates come from pack_drop meta.json generated_at (2026-09-08).
     assert real + missing == 73
     assert real == 69

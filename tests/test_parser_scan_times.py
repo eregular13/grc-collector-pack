@@ -24,7 +24,7 @@ from collectors import (
 from shared.masscan import parse_masscan
 from shared.nessus import iter_nessus_items
 from shared.openscap import iter_openscap_failures
-from shared.scan_time import NOT_RECORDED, format_detection_date
+from shared.scan_time import NOT_RECORDED, extra_scan_raw, format_detection_date, zone_for
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "fixtures" / "demo"
@@ -314,3 +314,186 @@ def test_custodian_execution_start_and_missing(tmp_path: Path) -> None:
     _all_not_recorded(cloud_prowler.parse_file(dest))
     sample = cloud_prowler.parse_file(SAMPLES / "cloud" / "s3-encryption-missing" / "resources.json")
     assert _dates(sample) == {"2026-09-24"}
+
+
+def test_custodian_real_metadata_epoch_float() -> None:
+    """c7n writes execution.start as time.time() float — not an ISO string."""
+    ebs = cloud_prowler.parse_file(
+        SAMPLES / "cloud" / "check-ebs-snapshot-public" / "resources.json"
+    )
+    assert _dates(ebs) == {"2026-05-02"}
+    for rec in _findings(ebs):
+        assert format_detection_date(extra_scan_raw(rec)) == "2026-05-02"
+    pods = cloud_prowler.parse_file(
+        SAMPLES / "cloud" / "security-context-pods" / "resources.json"
+    )
+    assert _dates(pods) == {"2023-07-05"}
+    for rec in _findings(pods):
+        assert format_detection_date(extra_scan_raw(rec)) == "2023-07-05"
+
+
+def test_custodian_iso_string_still_accepted(tmp_path: Path) -> None:
+    dest = tmp_path / "custodian.json"
+    dest.write_text(
+        json.dumps(
+            {
+                "execution": {"start": "2026-09-24T15:00:00.000000+00:00"},
+                "policies": [
+                    {
+                        "name": "s3-encryption-missing",
+                        "resource": "aws.s3",
+                        "severity": "high",
+                        "description": "S3 bucket without default encryption",
+                        "resources": [
+                            {
+                                "Name": "demo-unencrypted-tmp",
+                                "Arn": "arn:aws:s3:::demo-unencrypted-tmp",
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert _dates(cloud_prowler.parse_file(dest)) == {"2026-09-24"}
+
+
+def test_epoch_float_string_and_implausible_epochs() -> None:
+    assert format_detection_date(1777719763.7834156) == "2026-05-02"
+    assert format_detection_date("1777719763.7834156") == "2026-05-02"
+    assert format_detection_date(1688566785.685432) == "2023-07-05"
+    assert format_detection_date(12345) == NOT_RECORDED
+    assert format_detection_date("12345") == NOT_RECORDED
+    assert format_detection_date(0) == NOT_RECORDED
+    assert format_detection_date(4_000_000_000) == NOT_RECORDED
+
+
+def test_naabu_uses_earliest_timestamp_regardless_of_order(tmp_path: Path) -> None:
+    rows = [
+        {
+            "ip": "10.0.0.50",
+            "host": "filesrv.corp.local",
+            "port": 23,
+            "protocol": "tcp",
+            "timestamp": "2026-09-15T00:00:00Z",
+        },
+        {
+            "ip": "10.0.0.50",
+            "host": "filesrv.corp.local",
+            "port": 3389,
+            "protocol": "tcp",
+            "timestamp": "2026-09-02T00:00:00Z",
+        },
+        {
+            "ip": "10.0.0.50",
+            "host": "filesrv.corp.local",
+            "port": 445,
+            "protocol": "tcp",
+            "timestamp": "2026-09-20T00:00:00Z",
+        },
+    ]
+    later_first = tmp_path / "later.jsonl"
+    later_first.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    earlier_first = tmp_path / "earlier.jsonl"
+    earlier_first.write_text(
+        "\n".join(json.dumps(r) for r in reversed(rows)) + "\n", encoding="utf-8"
+    )
+    assert _dates(inventory_nmap.parse_file(later_first)) == {"2026-09-02"}
+    assert _dates(inventory_nmap.parse_file(earlier_first)) == {"2026-09-02"}
+
+
+def test_seven_tools_malformed_values_are_not_recorded(tmp_path: Path) -> None:
+    cases = [
+        (
+            k8s_kubescape.parse_file,
+            DEMO / "k8s" / "kubescape.json",
+            tmp_path / "ks.json",
+            lambda p: {**p, "generationTime": "not-a-time"},
+        ),
+        (
+            cloud_prowler.parse_file,
+            DEMO / "cloud" / "scoutsuite.json",
+            tmp_path / "scout.json",
+            lambda p: {**p, "last_run": {"time": "garbage"}},
+        ),
+        (
+            saas_idp.parse_file,
+            DEMO / "saas" / "maester.json",
+            tmp_path / "mae.json",
+            lambda p: {**p, "ExecutedAt": ""},
+        ),
+        (
+            easm.parse_file,
+            DEMO / "easm" / "ffuf.json",
+            tmp_path / "ff.json",
+            lambda p: {**p, "time": "??"},
+        ),
+        (
+            cloud_prowler.parse_file,
+            DEMO / "cloud" / "custodian.json",
+            tmp_path / "c7n.json",
+            lambda p: {**p, "execution": {"start": "nope"}},
+        ),
+    ]
+    for parse, src, dest, mutate in cases:
+        payload = json.loads(src.read_text(encoding="utf-8"))
+        dest.write_text(json.dumps(mutate(payload)), encoding="utf-8")
+        _all_not_recorded(parse(dest))
+    dest = tmp_path / "naabu-bad.jsonl"
+    dest.write_text(
+        json.dumps(
+            {
+                "ip": "10.0.0.50",
+                "host": "filesrv.corp.local",
+                "port": 23,
+                "protocol": "tcp",
+                "timestamp": "xyz",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _all_not_recorded(inventory_nmap.parse_file(dest))
+    dest = tmp_path / "nikto-bad.txt"
+    dest.write_text(
+        (DEMO / "vuln" / "nikto.txt")
+        .read_text(encoding="utf-8")
+        .replace("2026-09-04 17:00:00 (GMT0)", "not-a-clock"),
+        encoding="utf-8",
+    )
+    _all_not_recorded(vuln_scan.parse_file(dest))
+
+
+def test_seven_tools_timezone_offsets() -> None:
+    from tempfile import TemporaryDirectory
+
+    with TemporaryDirectory() as td:
+        path = Path(td)
+        nikto = path / "nikto.txt"
+        nikto.write_text(
+            (DEMO / "vuln" / "nikto.txt")
+            .read_text(encoding="utf-8")
+            .replace("(GMT0)", "(GMT-7)"),
+            encoding="utf-8",
+        )
+        recs = vuln_scan.parse_file(nikto)
+        assert _dates(recs) == {"2026-09-04"}
+        hit = _findings(recs)[0]
+        assert zone_for(extra_scan_raw(hit)) == "UTC-07:00"
+
+        ks = path / "kubescape.json"
+        payload = json.loads((DEMO / "k8s" / "kubescape.json").read_text(encoding="utf-8"))
+        payload["generationTime"] = "2026-09-20T16:00:00-07:00"
+        ks.write_text(json.dumps(payload), encoding="utf-8")
+        recs = k8s_kubescape.parse_file(ks)
+        assert _dates(recs) == {"2026-09-20"}
+        assert zone_for(extra_scan_raw(_findings(recs)[0])) == "UTC-07:00"
+
+        ff = path / "ffuf.json"
+        payload = json.loads((DEMO / "easm" / "ffuf.json").read_text(encoding="utf-8"))
+        payload["time"] = "2026-09-07T16:00:00+02:00"
+        ff.write_text(json.dumps(payload), encoding="utf-8")
+        recs = easm.parse_file(ff)
+        assert _dates(recs) == {"2026-09-07"}
+        assert zone_for(extra_scan_raw(_findings(recs)[0])) == "UTC+02:00"

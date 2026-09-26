@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import read_text
+from shared.scan_time import parse_scan_datetime
 
 
 def _named(name: str) -> bool:
@@ -135,8 +136,16 @@ def _push(
             slot["cdn"] = True
         if extra.get("cdn_name") and not slot.get("cdn_name"):
             slot["cdn_name"] = extra["cdn_name"]
-        if extra.get("scan_time") and not slot.get("scan_time"):
-            slot["scan_time"] = extra["scan_time"]
+        if extra.get("scan_time"):
+            incoming = extra["scan_time"]
+            current = slot.get("scan_time")
+            if not current:
+                slot["scan_time"] = incoming
+            else:
+                parsed_in = parse_scan_datetime(incoming)
+                parsed_cur = parse_scan_datetime(current)
+                if parsed_in and (not parsed_cur or parsed_in[0] < parsed_cur[0]):
+                    slot["scan_time"] = incoming
     ports: list[tuple[str, str]] = slot["ports"]
     proto = svc if svc in {"tcp", "udp", "sctp"} else ""
     if not any(p == portid and (not proto or s == proto or s == svc) for p, s in ports):

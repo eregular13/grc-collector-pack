@@ -637,19 +637,19 @@ def _scoutsuite_last_run(payload: Any) -> str:
     return raw
 
 
-def _execution_start(src: Any) -> str:
-    """Cloud Custodian ``execution.start`` (ISO or epoch)."""
+def _execution_start(src: Any) -> Any:
+    """Cloud Custodian ``execution.start`` — keep the raw float epoch or ISO."""
     if not isinstance(src, dict):
         return ""
     exe = src.get("execution")
     if isinstance(exe, dict) and exe.get("start") not in (None, ""):
-        return str(exe["start"])
+        return exe["start"]
     return ""
 
 
-def _custodian_execution_start(payload: Any, path: Path | None) -> str:
+def _custodian_execution_start(payload: Any, path: Path | None) -> Any:
     hit = _execution_start(payload)
-    if hit:
+    if hit not in (None, ""):
         return hit
     if path is None:
         return ""
@@ -663,11 +663,11 @@ def _custodian_execution_start(payload: Any, path: Path | None) -> str:
     return _execution_start(doc)
 
 
-def _stamp_scan_time(items: list[dict[str, Any]], stamp: str) -> list[dict[str, Any]]:
-    if not stamp:
+def _stamp_scan_time(items: list[dict[str, Any]], stamp: Any) -> list[dict[str, Any]]:
+    if stamp in (None, ""):
         return items
     for item in items:
-        if not item.get("scan_time"):
+        if item.get("scan_time") in (None, ""):
             item["scan_time"] = stamp
     return items
 
@@ -1073,14 +1073,15 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                 extra["resources"] = list(affected_rids)
             if account:
                 extra["account_id"] = account
-            scan_time = str(
+            scan_time = (
                 item.get("scan_time")
-                or item.get("Timestamp")
+                if item.get("scan_time") not in (None, "")
+                else item.get("Timestamp")
                 or item.get("timestamp")
                 or item.get("time_dt")
                 or ""
             )
-            if scan_time and not is_placeholder_id(scan_time):
+            if scan_time not in (None, "") and not is_placeholder_id(str(scan_time)):
                 extra["scan_time"] = scan_time
             if sev_unmapped:
                 extra["severity_unmapped"] = True

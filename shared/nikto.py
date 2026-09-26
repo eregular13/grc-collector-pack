@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterator
@@ -224,14 +225,21 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
     return out
 
 
+_NIKTO_GMT = re.compile(r"^(.*?)\s*\(\s*GMT\s*([+-]?\d+)\s*\)\s*$", re.I)
+
+
 def _nikto_start_time(raw: str) -> str:
-    """Nikto text ``+ Start Time: 2026-09-04 17:00:00 (GMT0)`` → datetime token."""
+    """Nikto ``2026-09-04 17:00:00 (GMT0)`` / ``(GMT-7)`` → offset datetime."""
     text = (raw or "").strip()
     if not text:
         return ""
-    if " (" in text:
-        text = text.split(" (", 1)[0].strip()
-    return text
+    match = _NIKTO_GMT.match(text)
+    if not match:
+        return text
+    body = match.group(1).strip()
+    off = int(match.group(2))
+    sign = "+" if off >= 0 else "-"
+    return f"{body}{sign}{abs(off):02d}:00"
 
 
 def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
