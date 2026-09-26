@@ -75,8 +75,9 @@ printed as metadata. Changing HEAD without touching the surface is skip.
   Measured farm_drop after port-only fold: findings=174, poam=106,
   excluded=68 (60 info + 8 honeypot). No `superseded_by_specific` rows —
   pack_drop is exposure-only, so bare port-open rows have no specific
-  peer. Host-lab (demo collectors) measured weaknesses=125, poam=124,
-  excluded=1 (`superseded_by_specific` on `NMAP-telnet-legacy-corp-local-80`).
+  peer. Host-lab (demo collectors) measured weaknesses=126, poam=124,
+  excluded=2 (`telemetry` on `WAZ-alert-5710-web-01` plus
+  `superseded_by_specific` on `NMAP-telnet-legacy-corp-local-80`).
   Brick 5 floors: findings >= 110, poam_rows >= 100. The old 35-row floor
   was the lighter High/key-Medium-only plan; do not revert. MIN_ gates
   unchanged.

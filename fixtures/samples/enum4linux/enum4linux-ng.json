@@ -1,0 +1,34 @@
+{
+  "target": {"host": "10.0.0.5"},
+  "sessions": {
+    "sessions_possible": true,
+    "null": true,
+    "user": false,
+    "kerberos": false,
+    "ntlm": false,
+    "guest": false
+  },
+  "smb_domain_info": {
+    "NetBIOS computer name": "DC01",
+    "NetBIOS domain name": "CORP",
+    "FQDN": "DC01.CORP.LOCAL"
+  },
+  "users": {
+    "500": {"username": "Administrator"}
+  },
+  "groups": {
+    "512": {"groupname": "Domain Admins"}
+  },
+  "shares": {
+    "IPC$": {
+      "type": "IPC",
+      "comment": "Remote IPC",
+      "access": {"mapping": "ok", "listing": "not supported"}
+    },
+    "NETLOGON": {
+      "type": "Disk",
+      "comment": "Logon server share",
+      "access": {"mapping": "ok", "listing": "ok"}
+    }
+  }
+}
