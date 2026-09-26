@@ -22,6 +22,7 @@ from shared.ciso_shape import (
     SCENARIO_LEVELS,
     assert_risk_register_and_poam,
     csv_rows,
+    first_nonempty_line,
     write_minimal_register,
 )
 
@@ -307,11 +308,11 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     ):
         path = ciso / name
         assert path.is_file()
-        header = path.read_text(encoding="utf-8").splitlines()[0].strip()
+        header = first_nonempty_line(path)
         assert header == CISO_HEADERS[name], name
     poam = work / "out" / "poam" / "poam.csv"
     assert poam.is_file()
-    assert poam.read_text(encoding="utf-8").splitlines()[0].strip() == POAM_HEADER
+    assert first_nonempty_line(poam) == POAM_HEADER
     assert (work / "out" / "poam" / "poam.md").is_file()
     scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
     assert len(scenarios) == shape["risk_scenarios"]

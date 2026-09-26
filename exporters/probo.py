@@ -198,7 +198,10 @@ def build_probo_preview(out: Path | None = None, estate: PackEstate | None = Non
         compat = _create_risk_compat(draft)
         compat["severity"] = finding.severity
         create_risk.append(compat)
+    stamp = estate.estate_stamp()
     return {
+        "estate": stamp.label,
+        "estate_banner": stamp.banner_oneline(),
         "product": "grc-collector-pack",
         "sink": "probo",
         "posted": False,
@@ -235,11 +238,15 @@ def write_probo(out: Path | None = None, estate: PackEstate | None = None) -> Pa
     payload = build_probo_preview(out, estate=estate)
     dest = dest_dir / "probo.json"
     dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    banner = str(payload.get("estate") or "")
+    stamp = (estate or load_pack_estate(out)).estate_stamp()
+    from shared.estate_pages import write_estate_sidecar
+
     (dest_root / "probo" / "README.md").parent.mkdir(parents=True, exist_ok=True)
+    write_estate_sidecar(dest_root / "probo", stamp)
     (dest_root / "probo" / "README.md").write_text(
-        "# Probo import preview (documentation only)\n\n"
-        f"{banner}\n\n"
+        stamp.banner_md()
+        + "\n\n# Probo import preview (documentation only)\n\n"
+        f"{stamp.banner_oneline()}\n\n"
         "Canonical file: `out/import_preview/probo.json`.\n\n"
         "- `addFinding` — one draft per CISO finding/vulnerability.\n"
         "- `addRisk` — CISO risk_scenarios plus high/critical findings.\n"

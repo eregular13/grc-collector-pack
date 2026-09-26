@@ -101,10 +101,15 @@ FedRAMP POA&M R3.0-style fields (appended; the first nine columns are unchanged)
 - `original_risk_rating` = Low/Moderate/High/Critical (`severity` keeps the legacy low/medium/high/critical vocabulary for existing readers).
 - `point_of_contact` is blank, like `owner`. `cve` = explicit CVE ids or known aliases (Heartbleed -> CVE-2014-0160), else blank.
 
-- `estate` is the run watermark: `LAB`, `SAMPLE`, `DEMO`, or `UNLABELED` (never client).
-  `poam.md` opens with an `ESTATE: ...` banner. CISO import CSVs keep their headers;
-  `findings.csv` / `assets.csv` carry an `estate_<label>` token in `filtering_labels`
-  and `ciso-assistant/ESTATE.txt` states the label.
+- Estate label is fail-closed and not suppressible (`SAMPLE DATA: NOT A CLIENT`,
+  `DEMO: NOT A CLIENT`, `LAB: TEST ENVIRONMENT`, `CLIENT: <name>`, or
+  `MIXED: REVIEW BEFORE USE`). CISO Assistant import CSVs start with the exact
+  locked header (no `#` preamble, no extra `estate` column — the importer and
+  spreadsheets do not skip comments). The banner lives in
+  `EXECUTIVE_SUMMARY.md`, `SCOPE_AND_TRUST.md`, `poam.md`, and
+  `ciso-assistant/ESTATE.txt`. `filtering_labels` still include `estate_<kind>`.
+  Operator POA&M (`poam.csv`) keeps a trailing `estate` column because it is
+  not a CISO import.
 
 - High/critical findings and key medium exposures (SMB 445, RDP 3389) are included.
 - `framework_refs` are wizard-safe `cpg_*` / `csf_*` stamps (no colons).

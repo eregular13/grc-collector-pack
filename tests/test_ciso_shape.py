@@ -18,6 +18,7 @@ from shared.ciso_shape import (
     assert_ciso_register,
     assert_poam_for_findings,
     assert_risk_register_and_poam,
+    first_nonempty_line,
     write_minimal_register,
 )
 
@@ -39,10 +40,10 @@ def test_write_minimal_register_matches_schema_headers(tmp_path: Path) -> None:
     assert shape["findings"] == 1
     assert shape["poam_rows"] == 1
     for name in MUST_EXIST_CSVS:
-        first = (ciso / name).read_text(encoding="utf-8").splitlines()[0].strip()
+        first = first_nonempty_line(ciso / name)
         assert first == CISO_HEADERS[name]
-    poam = (tmp_path / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
-    assert poam.splitlines()[0].strip() == POAM_HEADER
+    poam = tmp_path / "out" / "poam" / "poam.csv"
+    assert first_nonempty_line(poam) == POAM_HEADER
     assert (tmp_path / "out" / "poam" / "poam.md").is_file()
     assert "risk_scenarios.csv" in REGISTER_CSVS
     assert CVE_CLASS_CSV not in REGISTER_CSVS

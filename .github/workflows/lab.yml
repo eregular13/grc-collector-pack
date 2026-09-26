@@ -37,7 +37,7 @@ jobs:
           import sys
           from pathlib import Path
 
-          from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, assert_risk_register_and_poam
+          from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, assert_risk_register_and_poam, first_nonempty_line
 
           work = Path(sys.argv[1])
           stamp = json.loads((work / "prove-ciso.json").read_text(encoding="utf-8"))
@@ -59,10 +59,10 @@ jobs:
               "applied_controls.csv",
               "risk_scenarios.csv",
           ):
-              first = (ciso / name).read_text(encoding="utf-8").splitlines()[0].strip()
+              first = first_nonempty_line(ciso / name)
               assert first == CISO_HEADERS[name], (name, first)
-          poam = (work / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
-          assert poam.splitlines()[0].strip() == POAM_HEADER
+          poam = work / "out" / "poam" / "poam.csv"
+          assert first_nonempty_line(poam) == POAM_HEADER
           assert (work / "out" / "poam" / "poam.md").is_file()
           print(
               f"farm_drop register ok; findings={shape['findings']} "
@@ -120,7 +120,7 @@ jobs:
           import sys
           from pathlib import Path
 
-          from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, assert_risk_register_and_poam
+          from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, assert_risk_register_and_poam, first_nonempty_line
 
           work = Path(sys.argv[1])
           ciso = work / "out" / "ciso-assistant"
@@ -139,10 +139,10 @@ jobs:
               path = ciso / name
               if not path.is_file():
                   continue
-              first = path.read_text(encoding="utf-8").splitlines()[0].strip()
+              first = first_nonempty_line(path)
               assert first == header, (name, first)
-          poam = (work / "out" / "poam" / "poam.csv").read_text(encoding="utf-8")
-          assert poam.splitlines()[0].strip() == POAM_HEADER
+          poam = work / "out" / "poam" / "poam.csv"
+          assert first_nonempty_line(poam) == POAM_HEADER
           print(
               f"IMPORT.json honesty ok; findings={shape['findings']} "
               f"risk_scenarios={shape['risk_scenarios']} "
