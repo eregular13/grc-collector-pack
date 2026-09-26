@@ -19,6 +19,7 @@ from shared.ciso_shape import (
     POAM_HEADER,
     RegisterShapeError,
     assert_risk_register_and_poam,
+    first_nonempty_line,
 )
 
 # Paths whose content change is a farm ship event. Unrelated commits
@@ -241,13 +242,13 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         path = ciso / name
         if not path.is_file():
             raise FarmShipError(f"FARM_SHIP_FAIL missing {name}")
-        first = path.read_text(encoding="utf-8").splitlines()[0].strip()
+        first = first_nonempty_line(path)
         if first != CISO_HEADERS[name]:
             raise FarmShipError(f"FARM_SHIP_FAIL header mismatch {name}: {first}")
     poam = dest / "out" / "poam" / "poam.csv"
     if not poam.is_file():
         raise FarmShipError(f"FARM_SHIP_FAIL missing POA&M csv ({poam})")
-    if poam.read_text(encoding="utf-8").splitlines()[0].strip() != POAM_HEADER:
+    if first_nonempty_line(poam) != POAM_HEADER:
         raise FarmShipError("FARM_SHIP_FAIL POA&M header mismatch")
     if not (dest / "out" / "poam" / "poam.md").is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing POA&M md")

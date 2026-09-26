@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from shared.ciso_shape import POAM_HEADER, write_minimal_register
+from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, write_minimal_register
 from shared.farm_ship import (
     FARM_SHIP_OK_LINE,
     FARM_SHIP_PATHS,
@@ -62,7 +62,7 @@ def _honest_farm_work(folder: Path) -> None:
     ciso.mkdir(parents=True, exist_ok=True)
     write_minimal_register(ciso, with_poam=True)
     (ciso / "vulnerabilities.csv").write_text(
-        "ref_id,name,description,status,severity,assets,applied_controls\n",
+        CISO_HEADERS["vulnerabilities.csv"] + "\n",
         encoding="utf-8",
     )
     (folder / "prove-ciso.json").write_text(
