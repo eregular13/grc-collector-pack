@@ -1111,12 +1111,10 @@ def build_drop_zip() -> bytes:
         files.extend(sorted((drop / "probo").glob("*")))
     readme = (
         "GRC Collector Pack drop\n"
-        "Evergreen maps it.\n"
         "Import CISO CSVs with clica or the CISO Assistant UI.\n"
         "POA&M: poam/poam.csv — owner and due are blank for a human.\n"
         "OpenGRC Data Manager CSVs: opengrc/*.csv — file-true leave-behind, posted=false, not live import.\n"
         "Probo drafts: import_preview/probo.json — file-true, posted=false, not live GraphQL.\n"
-        "RiskReady is out of scope. This drop does not include RiskReady JSON.\n"
         "Do not POST /api/risks.\n"
     )
     if include_packaged:
