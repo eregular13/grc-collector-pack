@@ -31,14 +31,20 @@ SOURCE = "inventory-nmap"
 LABELS = ["nmap", "inventory"]
 _CDN_EDGE_PORTS = frozenset({"80", "443", "8080", "8443"})
 _VULNERS_SOLO_CVSS = 7.0
+# Keyed by (port, proto). tcp/445 is SMB; udp/445 is not.
 RISKY = {
-    "23": ("critical", "Telnet exposed"),
-    "21": ("high", "FTP exposed"),
-    "445": ("high", "SMB 445 exposed"),
-    "3389": ("medium", "RDP exposed"),
-    "22": ("low", "SSH exposed"),
-    "80": ("low", "HTTP exposed"),
+    ("23", "tcp"): ("critical", "Telnet exposed"),
+    ("21", "tcp"): ("high", "FTP exposed"),
+    ("445", "tcp"): ("high", "SMB 445 exposed"),
+    ("3389", "tcp"): ("medium", "RDP exposed"),
+    ("22", "tcp"): ("low", "SSH exposed"),
+    ("80", "tcp"): ("low", "HTTP exposed"),
+    ("161", "udp"): ("medium", "SNMP 161/udp exposed"),
+    ("69", "udp"): ("high", "TFTP 69/udp exposed"),
 }
+RISKY_TCP = {port: val for (port, proto), val in RISKY.items() if proto == "tcp"}
+# Confirmed-open UDP only. open|filtered never uses this table.
+RISKY_UDP = {port: val for (port, proto), val in RISKY.items() if proto == "udp"}
 
 
 def _is_dropbox_demo(path: Path, raw: str) -> bool:
@@ -214,13 +220,21 @@ def _emit_host(
             proto = svc.lower() if svc.lower() in {"tcp", "udp", "sctp"} else "tcp"
         if extra and extra.get("cdn") and portid in _CDN_EDGE_PORTS:
             continue
-        sev, title = RISKY.get(portid, ("info", f"Open port {portid}/{svc or proto}"))
+        not_a_weakness = False
         if proto == "udp" and state == "open|filtered":
-            sev = "info"
-            title = f"UDP {portid} open|filtered (not confirmed open)"
-        elif sev == "info" and portid not in {"80", "443"}:
-            sev = "low"
-            title = f"Open port {portid}/{svc or proto or 'unknown'}"
+            sev, title = "info", f"UDP {portid} open|filtered (not confirmed open)"
+            not_a_weakness = True
+        elif proto == "udp" and state == "open":
+            sev, title = RISKY_UDP.get(
+                portid, ("info", f"Open UDP port {portid}/{svc or 'udp'}")
+            )
+        elif proto == "tcp":
+            sev, title = RISKY_TCP.get(portid, ("info", f"Open port {portid}/{svc or proto}"))
+            if sev == "info" and portid not in {"80", "443"}:
+                sev = "low"
+                title = f"Open port {portid}/{svc or proto or 'unknown'}"
+        else:
+            sev, title = "info", f"Open port {portid}/{svc or proto}"
         if portid == "443" and proto == "tcp":
             continue
         find_labels = list(LABELS) + [f"port-{portid}"]
@@ -230,19 +244,29 @@ def _emit_host(
         extra_find: dict[str, Any] = {"port": portid, "service": svc, "protocol": proto, "ip": addr}
         if state and state != "open":
             extra_find["state"] = state
+        if not_a_weakness:
+            extra_find["not_a_weakness"] = True
+            extra_find["exclude_reason"] = "not_a_weakness"
         if extra:
             if extra.get("cdn"):
                 extra_find["cdn"] = True
             if extra.get("cdn_name"):
                 extra_find["cdn_name"] = extra["cdn_name"]
-        ref_port = f"{name}-{portid}" if proto == "tcp" else f"{name}-{portid}-{proto}"
+        ref_port = f"{name}-{portid}/{proto}"
+        if state == "open|filtered":
+            desc = (
+                f"{name} has {proto.upper()}/{portid} open|filtered "
+                f"({svc or 'unknown'}); not a confirmed open port."
+            )
+        else:
+            desc = f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'})."
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
                 ref_id=make_ref(SOURCE, ref_port),
                 name=title,
-                description=f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'}).",
+                description=desc,
                 severity=canon_severity(sev),
                 category="exposure",
                 assets=[name],
@@ -251,7 +275,12 @@ def _emit_host(
                 extra=extra_find,
             )
         )
-        if portid == "445" and portid not in (samba_ports or set()):
+        if (
+            proto == "tcp"
+            and state == "open"
+            and portid == "445"
+            and portid not in (samba_ports or set())
+        ):
             # Samba has no C$/ADMIN$; do not infer Windows admin shares there.
             records.append(
                 make_record(
