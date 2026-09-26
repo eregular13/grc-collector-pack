@@ -9,15 +9,17 @@ from datetime import datetime
 from pathlib import Path
 
 from shared.kev import KevCatalog, KevEntry, join_kev
-from shared.poam_fedramp import item_to_row
-from shared.poam_ledger import apply_ledger
+from shared.poam_fedramp import item_to_row, write_fedramp_poam
+from shared.poam_ledger import apply_ledger, fp_v1
 from shared.vendor_dependency import (
     CHECKIN_OVERDUE_AFTER_DAYS,
     KEV_NOT_SUSPENDED_COMMENT,
     SUGGEST_COMMENT,
+    VD_INVALID_OVERRIDE,
     VD_MISSING_PRODUCT,
     VD_NO,
     VD_NOTE,
+    VD_NOT_CLOSED,
     VD_YES,
     VENDOR_CHECKIN_OVERDUE,
     canon_yes_no,
@@ -144,6 +146,149 @@ def test_override_yes_persists_across_later_runs_without_file() -> None:
     assert item["vd_source"] == "operator"
     assert item["vendor_product"] == "Vendor XYZ – Product"
     assert item["last_vendor_checkin"] == "2026-09-10"
+
+
+def test_override_no_persists_across_later_runs_without_file() -> None:
+    """Operator No must persist like Yes: run 3 without overrides.csv keeps operator."""
+    rec = _rec()
+    run1 = _apply([rec], when="2026-09-10T00:00:00Z")
+    item1 = next(iter(run1["items"].values()))
+    pid = item1["poam_id"]
+    assert item1["vendor_dependency"] == VD_NO
+    assert item1["vd_source"] == "default"
+    run2 = _apply(
+        [rec],
+        ledger=run1,
+        when="2026-09-11T00:00:00Z",
+        overrides={pid: {"vendor_dependency": "No"}},
+    )
+    item2 = next(iter(run2["items"].values()))
+    assert item2["vendor_dependency"] == VD_NO
+    assert item2["vd_source"] == "operator"
+    run3 = _apply([rec], ledger=run2, when="2026-09-12T00:00:00Z", overrides={})
+    item3 = next(iter(run3["items"].values()))
+    assert item3["vendor_dependency"] == VD_NO
+    assert item3["vd_source"] == "operator"
+    assert item3["last_vendor_checkin"] == ""
+    assert item3["vendor_product"] == ""
+
+
+def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
+    """Spec §3.4 step 3: any O/P/Q (or vd_source) change sets status_date + field_changed."""
+    rec = _rec()
+    run1 = _apply([rec], when="2026-09-10T00:00:00Z")
+    item1 = next(iter(run1["items"].values()))
+    pid = item1["poam_id"]
+    fp = item1["fp"]
+    assert item1["status_date"] == "2026-09-10"
+    assert item1["vd_source"] == "default"
+
+    run2 = _apply(
+        [rec],
+        ledger=run1,
+        when="2026-09-11T00:00:00Z",
+        overrides={pid: {"vendor_dependency": "No"}},
+    )
+    item2 = next(iter(run2["items"].values()))
+    assert item2["vendor_dependency"] == VD_NO
+    assert item2["vd_source"] == "operator"
+    assert item2["status_date"] == "2026-09-11"
+    vd_events = [
+        e
+        for e in run2["events"]
+        if e.get("kind") == "field_changed"
+        and e.get("poam_id") == pid
+        and (e.get("detail") or {}).get("after", {}).get("vd_source") == "operator"
+    ]
+    assert vd_events, run2["events"]
+    before = vd_events[-1]["detail"]["before"]
+    after = vd_events[-1]["detail"]["after"]
+    assert before["vd_source"] == "default"
+    assert after["vd_source"] == "operator"
+    assert before["vendor_dependency"] == VD_NO
+    assert after["vendor_dependency"] == VD_NO
+
+    run3 = _apply(
+        [rec],
+        ledger=run2,
+        when="2026-09-12T00:00:00Z",
+        overrides={
+            pid: {
+                "vendor_dependency": "Yes",
+                "last_vendor_checkin": "2026-09-12",
+                "vendor_product": "Vendor – Product",
+            }
+        },
+    )
+    item3 = next(iter(run3["items"].values()))
+    assert item3["vendor_dependency"] == VD_YES
+    assert item3["status_date"] == "2026-09-12"
+    yes_events = [
+        e
+        for e in run3["events"]
+        if e.get("kind") == "field_changed"
+        and e.get("poam_id") == pid
+        and (e.get("detail") or {}).get("after", {}).get("vendor_dependency") == VD_YES
+    ]
+    assert yes_events, run3["events"]
+    assert yes_events[-1]["detail"]["before"]["vendor_dependency"] == VD_NO
+    assert yes_events[-1]["detail"]["after"]["last_vendor_checkin"] == "2026-09-12"
+    assert yes_events[-1]["detail"]["after"]["vendor_product"] == "Vendor – Product"
+    assert item3["poam_id"] == pid
+    assert item3["fp"] == fp
+    assert fp_v1(rec) == fp
+
+
+def test_invalid_override_maybe_warns() -> None:
+    rec = _rec()
+    first = _apply([rec])
+    pid = next(iter(first["items"].values()))["poam_id"]
+    second = _apply(
+        [rec],
+        ledger=first,
+        overrides={pid: {"vendor_dependency": "Maybe"}},
+    )
+    item = next(iter(second["items"].values()))
+    assert item["vendor_dependency"] == VD_NO
+    assert item["vd_source"] == "default"
+    assert any(str(w).startswith(f"{VD_INVALID_OVERRIDE}:{pid}:Maybe") for w in second["warnings"])
+
+
+def test_vd_yes_not_listed_on_closed_csv(tmp_path: Path) -> None:
+    rec = _rec()
+    first = _apply([rec])
+    pid = next(iter(first["items"].values()))["poam_id"]
+    confirmed = _apply(
+        [rec],
+        ledger=first,
+        overrides={
+            pid: {
+                "vendor_dependency": "Yes",
+                "last_vendor_checkin": "2026-09-10",
+                "vendor_product": "Vendor – Product",
+                "status": "closed",
+                "evidence_ref": "ticket-1",
+            }
+        },
+    )
+    item = next(iter(confirmed["items"].values()))
+    assert item["status"] != "closed"
+    assert any(str(w).startswith(f"{VD_NOT_CLOSED}:{pid}") for w in confirmed["warnings"])
+
+    leaked = dict(item)
+    leaked["status"] = "closed"
+    leaked["closed_date"] = "2026-09-11"
+    write_fedramp_poam(
+        tmp_path,
+        {"items": {item["fp"]: leaked}, "closed": [leaked]},
+    )
+    with (tmp_path / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        open_rows = list(csv.DictReader(fh))
+    with (tmp_path / "poam_fedramp_closed.csv").open(encoding="utf-8", newline="") as fh:
+        closed_rows = list(csv.DictReader(fh))
+    assert any(r.get("POAM ID") == pid and r.get("Vendor Dependency") == VD_YES for r in open_rows)
+    assert not any(r.get("Vendor Dependency") == VD_YES for r in closed_rows)
+    assert not any(r.get("POAM ID") == pid for r in closed_rows)
 
 
 def test_yes_without_product_flags_vd_missing_product() -> None:
