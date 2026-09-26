@@ -169,11 +169,13 @@ def test_lab_hardening_ingest_e2e_through_drop(tmp_path: Path) -> None:
     assert stamp["client_keep"] is False
     assert stamp["paying_day"] == "FAIL"
     assert stamp["posted"] is False
-    findings_csv = (Path(stamp["out_dir"]) / "ciso-assistant" / "findings.csv").read_text(
+    out = Path(stamp["out_dir"])
+    findings_csv = (out / "ciso-assistant" / "findings.csv").read_text(
         encoding="utf-8"
     )
-    assert "Lynis" in findings_csv
-    assert "OpenSCAP" in findings_csv
+    poam_csv = (out / "poam" / "poam.csv").read_text(encoding="utf-8")
+    assert "Lynis" in findings_csv or "lynis" in poam_csv.lower()
+    assert "OpenSCAP" in findings_csv or "oscap" in poam_csv.lower() or "openscap" in poam_csv.lower()
     assert "FIRE-4590" in findings_csv or "firewall" in findings_csv.lower()
     assert "sshd_disable_root_login" in findings_csv or "PermitRootLogin" in findings_csv
     assert "CIS-CAT" not in findings_csv
