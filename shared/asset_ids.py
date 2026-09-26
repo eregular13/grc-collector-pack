@@ -462,6 +462,9 @@ def lift_extra_fields(extra: dict[str, Any]) -> dict[str, Any]:
     return blob
 
 
+_HOST_TOOLS = frozenset({"hardeningkitty", "cis-cat", "enum4linux"})
+
+
 def _is_computer_identity(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
     kind = str(extra.get("kind") or extra.get("object_kind") or "").lower()
     if kind == "computer":
@@ -471,21 +474,31 @@ def _is_computer_identity(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
         return True
     if extra.get("operatingsystem"):
         return True
+    if str(rec.get("category") or "").lower() == "host":
+        return True
+    if str(extra.get("tool") or "").lower() in _HOST_TOOLS:
+        return True
     return False
 
 
 def _is_principal_record(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
-    """AD/SaaS users and groups — not computer objects, not network hosts."""
+    """AD/SaaS users and groups — not computer objects, not network hosts.
+
+    HardeningKitty / enum4linux / CIS-CAT land under identity-ad but are
+    hosts. ``source=identity-ad`` + ``kind=asset`` is not enough.
+    """
     if extra.get("principal") or (isinstance(extra.get("ids"), dict) and extra["ids"].get("principal")):
+        if _is_computer_identity(rec, extra):
+            return False
         return True
     if _is_computer_identity(rec, extra):
         return False
     atype = str(extra.get("asset_type") or rec.get("type") or "").upper()
     cat = str(rec.get("category") or "").lower()
-    source = str(rec.get("source") or extra.get("source") or "")
+    extra_kind = str(extra.get("kind") or extra.get("object_kind") or "").lower()
     if atype == "SP" or cat in {"identity", "saas-tenant", "saas"}:
-        return True
-    if source in {"saas-idp", "identity-ad"} and str(rec.get("kind") or "") == "asset":
+        return extra_kind not in {"computer"}
+    if extra_kind in {"user", "group"}:
         return True
     return False
 

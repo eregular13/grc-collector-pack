@@ -29,6 +29,7 @@ from shared.asset_ids import (
     MATCH_ORDER,
     STRENGTH,
     _CLOUD_SOURCES,
+    _HOST_TOOLS,
     display_uai,
     extra_dict,
     fqdn_mac_fingerprint,
@@ -41,6 +42,15 @@ from shared.asset_ids import (
     strongest_anchor,
     values_overlap,
 )
+
+_HOST_SOURCES = frozenset(
+    {
+        "inventory-nmap",
+        "host-wazuh",
+        "easm",
+        "vuln-scan",
+    }
+) | _HOST_TOOLS
 from shared.io_util import in_dir, iso_now, out_dir
 
 LEDGER_SCHEMA = "evergreen.asset_ledger.v1"
@@ -424,9 +434,52 @@ class AssetLedger:
     def _is_principal_ids(self, ids: dict[str, Any]) -> bool:
         return bool(str(ids.get("principal") or "").strip())
 
-    def _match_key(self, obs: dict[str, Any], asset: dict[str, Any], key: str, now: str) -> bool:
+    def _has_host_anchors(self, ids: dict[str, Any]) -> bool:
+        return bool(
+            id_values(ids, "ip")
+            or id_values(ids, "mac")
+            or ids.get("uuid")
+            or ids.get("bios_uuid")
+            or ids.get("agent")
+        )
+
+    def _is_host_class(
+        self,
+        ids: dict[str, Any],
+        asset: dict[str, Any] | None = None,
+        *,
+        source: str = "",
+        tool: str = "",
+    ) -> bool:
+        """True for network hosts. Identity-only rows stay off this side."""
+        if self._has_host_anchors(ids):
+            return True
+        srcs = {str(s) for s in ((asset or {}).get("sources") or []) if s}
+        if source:
+            srcs.add(source)
+        if tool:
+            srcs.add(tool)
+        return bool(srcs & _HOST_SOURCES)
+
+    def _match_key(
+        self,
+        obs: dict[str, Any],
+        asset: dict[str, Any],
+        key: str,
+        now: str,
+        *,
+        source: str = "",
+        tool: str = "",
+    ) -> bool:
         cand = self._ids_of(asset)
-        if self._is_principal_ids(obs) != self._is_principal_ids(cand):
+        # Refuse principal↔host only. A stored identity that predates the
+        # principal stamp (hostname/name, no principal alias) must still
+        # match the new principal observation — XOR here minted twins.
+        if self._is_principal_ids(obs) and self._is_host_class(cand, asset):
+            return False
+        if self._is_principal_ids(cand) and self._is_host_class(
+            obs, source=source, tool=tool
+        ):
             return False
         left = id_values(obs, key)
         right = id_values(cand, key)
@@ -496,7 +549,13 @@ class AssetLedger:
                     counts[lab] = counts.get(lab, 0) + 1
         return {lab for lab, n in counts.items() if n > 1}
 
-    def _find_match(self, ids: dict[str, Any], now: str, source: str = "") -> dict[str, Any] | None:
+    def _find_match(
+        self,
+        ids: dict[str, Any],
+        now: str,
+        source: str = "",
+        tool: str = "",
+    ) -> dict[str, Any] | None:
         if is_container(ids):
             # Class first (image_ref), then content keys per §6.3.
             order = ("image_ref",) + CONTAINER_ORDER
@@ -504,18 +563,18 @@ class AssetLedger:
                 if not id_values(ids, key):
                     continue
                 for asset in self._active_assets():
-                    if self._match_key(ids, asset, key, now):
+                    if self._match_key(ids, asset, key, now, source=source, tool=tool):
                         return asset
             return None
         if id_values(ids, "arn"):
             for asset in self._active_assets():
-                if self._match_key(ids, asset, "arn", now):
+                if self._match_key(ids, asset, "arn", now, source=source, tool=tool):
                     return asset
         for key in MATCH_ORDER:
             if not id_values(ids, key):
                 continue
             for asset in self._active_assets():
-                if self._match_key(ids, asset, key, now):
+                if self._match_key(ids, asset, key, now, source=source, tool=tool):
                     return asset
         hostnames = [x.lower() for x in id_values(ids, "hostname")]
         fqdns = [x.lower() for x in id_values(ids, "fqdn")]
@@ -553,15 +612,28 @@ class AssetLedger:
                     if not self._stronger_conflict(ids, cand, "fqdn"):
                         return asset
         # Pre-#161: UPN was stored as fqdn. Re-anchor to principal.
+        # Pre-principal-stamp: hostname/name/netbios on a non-host identity.
         principals = [x.lower() for x in id_values(ids, "principal")]
-        if principals:
+        if principals and not self._is_host_class(ids, source=source, tool=tool):
             for asset in self._active_assets():
                 cand = self._ids_of(asset)
+                if self._is_host_class(cand, asset):
+                    continue
                 for fq in id_values(cand, "fqdn"):
                     token = str(fq).lower()
                     if token in principals and "@" in token:
                         if not self._stronger_conflict(ids, cand, "principal"):
                             return asset
+                old = (
+                    {x.lower() for x in id_values(cand, "hostname")}
+                    | {x.lower() for x in id_values(cand, "name")}
+                    | {x.lower() for x in id_values(cand, "netbios")}
+                    | {x.lower() for x in id_values(cand, "principal")}
+                )
+                for typ in ("hostname", "name", "netbios", "principal"):
+                    old.update(x.lower() for x in self._alias_values(asset, typ))
+                if set(principals) & old and not self._stronger_conflict(ids, cand, "principal"):
+                    return asset
         # Pre-#161: cloud/k8s/saas short names were hostname. Re-anchor to name.
         # Do not merge a SaaS user into an nmap host that shares the short name.
         names = [x.lower() for x in id_values(ids, "name")]
@@ -752,19 +824,20 @@ class AssetLedger:
         stamp = now or str((rec or {}).get("collected_at") or "") or iso_now()
         blob = merge_ids(ids or {}, ids_from_record(rec or {}))
         src = source or str((rec or {}).get("source") or "")
+        tool = str(extra_dict(rec).get("tool") or "").strip()
         if src:
             self._run_sources.add(src)
         self._note_uuid(blob)
         self._flag_collisions(stamp)
         if not observe:
-            match = self._find_match(blob, stamp, src)
+            match = self._find_match(blob, stamp, src, tool)
             return str(match["asset_uid"]) if match else ""
 
         # Split an IP-only predecessor before matching the new identity.
         for asset in list(self._active_assets()):
             self._maybe_split(asset, blob, stamp)
 
-        match = self._find_match(blob, stamp, src)
+        match = self._find_match(blob, stamp, src, tool)
         if match is None:
             uid, anchor = self._new_uid(blob)
             asset = _empty_asset(uid, stamp, anchor, blob)
@@ -783,6 +856,8 @@ class AssetLedger:
         self._add_aliases(match, blob, stamp, src, scope)
         if src and src not in match.setdefault("sources", []):
             match["sources"].append(src)
+        if tool and tool not in match.setdefault("sources", []):
+            match["sources"].append(tool)
         match["uai"] = display_uai(self._ids_of(match)) or match.get("uai") or ""
         match["absent_covered_runs"] = 0
         if match.get("poam_status") == "pending_verification":
@@ -900,6 +975,32 @@ class AssetLedger:
                     ):
                         if not self._stronger_conflict(lids, rids, "ip"):
                             self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason="ip")
+                            merged = True
+                    if (
+                        not merged
+                        and (lids.get("principal") or rids.get("principal"))
+                        and not self._is_host_class(lids, left)
+                        and not self._is_host_class(rids, right)
+                    ):
+                        ltok = (
+                            {x.lower() for x in id_values(lids, "principal")}
+                            | {x.lower() for x in id_values(lids, "hostname")}
+                            | {x.lower() for x in id_values(lids, "name")}
+                            | {x.lower() for x in id_values(lids, "netbios")}
+                        )
+                        rtok = (
+                            {x.lower() for x in id_values(rids, "principal")}
+                            | {x.lower() for x in id_values(rids, "hostname")}
+                            | {x.lower() for x in id_values(rids, "name")}
+                            | {x.lower() for x in id_values(rids, "netbios")}
+                        )
+                        if ltok & rtok:
+                            self.merge(
+                                str(left["asset_uid"]),
+                                str(right["asset_uid"]),
+                                now=now,
+                                reason="principal_upgrade",
+                            )
                             merged = True
                     if not merged and not lids.get("principal") and not rids.get("principal"):
                         lhost = {x.lower() for x in id_values(lids, "hostname")}
