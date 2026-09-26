@@ -52,6 +52,7 @@ def test_t18a_security_context_pods_is_finding() -> None:
     assert hit["extra"].get("check_id") == "security-context-pods"
     assert hit["severity"] == "medium"
     assert hit["extra"].get("exclude_reason") != "NOT_A_WEAKNESS"
+    assert hit["extra"].get("classification") == "security"
     assert poam_decision(hit)["include"] is True
     assert not any(r["name"] == "security-context-pods" for r in recs if r["kind"] == "asset")
 

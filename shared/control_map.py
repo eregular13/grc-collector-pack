@@ -9,7 +9,13 @@ import os
 import re
 from typing import Any
 
-from shared.finding_types import TYPE_WEAKNESS_NAME, finding_type, has_xss_signal, type_remediation
+from shared.finding_types import (
+    TYPE_WEAKNESS_NAME,
+    finding_type,
+    has_xss_signal,
+    is_custodian_policy_row,
+    type_remediation,
+)
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
     REDIS_AUTH_TEMPLATE_IDS,
@@ -482,6 +488,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Enable malware protection": ["SI-3"],
     "Require encryption in transit": ["SC-8"],
     "Deny privileged Kubernetes containers": ["AC-6", "CM-7"],
+    "Require a Kubernetes container securityContext": ["AC-6", "CM-6", "CM-7"],
     "Disable anonymous Kubernetes API access": ["AC-3", "IA-2"],
     "Block Kubernetes privilege escalation": ["AC-6"],
     "Avoid hostNetwork on Kubernetes workloads": ["SC-7", "CM-7"],
@@ -1042,6 +1049,30 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     # group-specific playbook + AC-2/AC-6 before falling through.
     if check == "bh-high-value":
         return _bh_high_value_map(rec)
+    if (
+        typed
+        and typed.get("generic")
+        and is_custodian_policy_row(rec)
+        and not _is_needs_review(rec)
+    ):
+        return _stamp_csf(
+            {
+                "control_name": "Unmapped Custodian security policy",
+                "recommended_fix": (
+                    "This Cloud Custodian security policy has no honest NIST "
+                    "SP 800-53 mapping yet. It is excluded from the POA&M as "
+                    "unmapped until an operator maps it. High/Critical never "
+                    "ship blank Controls."
+                ),
+                "cpg": [],
+                "include_poam": False,
+                "nist_800_53": [],
+                "generic": False,
+                "finding_type": "custodian_unmapped",
+                "weakness_name": "Unmapped Custodian security policy",
+            },
+            rec,
+        )
     if _is_package_cve(rec):
         play = _vuln_playbook(rec)
         mapped = _stamp_csf(
@@ -2091,9 +2122,12 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
 
     Default (full) plan includes every non-info, non-honeypot weakness.
     NSE misconfig is always included. Honeypot / deception-sensor is always
-    excluded. Cost/ops Custodian policies are NOT_A_WEAKNESS. Unclassified
+    excluded.     Cost/ops Custodian policies are NOT_A_WEAKNESS. Unclassified
     Custodian policies stay on the plan as needs_review (never a silent
-    drop). kind:excluded rows (osquery unmapped, Custodian cost) land in
+    drop) when Moderate; High/Critical needs-review with blank Controls
+    is excluded as unmapped. Classified Custodian security with no honest
+    800-53 stamp is excluded as unmapped (not a silent blank Controls
+    cell). kind:excluded rows (osquery unmapped, Custodian cost) land in
     excluded.csv. Informational is excluded (telemetry_info for telemetry-only
     rows). Status is not a gate. Repeated telemetry lows are collapsed by
     iter_poam_decisions, not here.
@@ -2116,9 +2150,16 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
             reason = "unmapped"
         return {"include": False, "reason": reason, "severity": sev}
     if _is_needs_review(rec):
+        if sev in {"high", "critical"} and not (mapped.get("nist_800_53") or []):
+            return {"include": False, "reason": "unmapped", "severity": sev}
         return {"include": True, "reason": "needs_review", "severity": sev}
     if _is_custodian_not_a_weakness(rec):
         return {"include": False, "reason": "not_a_weakness", "severity": sev}
+    if (
+        is_custodian_policy_row(rec)
+        and not (mapped.get("nist_800_53") or [])
+    ):
+        return {"include": False, "reason": "unmapped", "severity": sev}
     if check in MISCONFIG_RULES:
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):
