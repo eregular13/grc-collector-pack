@@ -159,16 +159,20 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             svc = str(item.attrib.get("svc_name") or "")
             family = str(item.attrib.get("pluginFamily") or "")
             desc = title
+            solution = ""
             cves = _cves_from_item(item)
             cwes = _cwes_from_item(item)
             for child in list(item):
                 tag = _tag(child)
                 if tag == "description" and (child.text or "").strip():
                     desc = (child.text or "").strip()
+                elif tag == "solution" and (child.text or "").strip():
+                    solution = (child.text or "").strip()
             row: dict[str, Any] = {
                 "host": host,
                 "name": title,
                 "description": desc,
+                "solution": solution,
                 "severity": sev,
                 "port": port,
                 "protocol": proto,
