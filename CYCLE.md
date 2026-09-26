@@ -1,5 +1,12 @@
 # CYCLE log
 
+## cycle 209 — drop FedRAMP rewrite; wait on #149 (2026-09-26)
+
+Restored master's `write_fedramp_poam(ledger)`. Removed G0 FedRAMP
+asserts from this PR. Flood-guard decision set kept. #149 not merged.
+Stay draft. pytest **1305**. Host-lab 79/107/124 excluded 18. Catalog
+**unchanged**. paying_day **FAIL**.
+
 ## cycle 208 — Metis flood-guard spec §12.3/12.5/12.6 (2026-09-26)
 
 Complete reason-code vocabulary (`HONEYPOT`, `LIGHTER_*`, `ACCEPTED_RISK`,

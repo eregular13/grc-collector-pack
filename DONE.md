@@ -23,6 +23,9 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 }
 ```
 
+Cycle 209: dropped FedRAMP rewrite from #158; waiting on #149. Stay draft.
+pytest 1305. Host-lab 79/107/poam 124 excluded 18. CoS #48 rails stand.
+
 Cycle 208 Metis flood-guard spec: §12.3 vocab + report-only §12.5 T/cap +
 C5 excluded merges + §12.6 `findings_in == members + excluded`.
 Host-lab 79/107/poam 124 excluded 18 (UNEXPLAINED==0, G0). pytest 1307.

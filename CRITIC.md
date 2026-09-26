@@ -1,3 +1,16 @@
+# CRITIC — cycle 209 (DROP_FEDRAMP_WAIT_149)
+
+Dropped this PR's `write_fedramp_poam` rewrite (`item_from_poam_row`,
+`included_ids` / `open_items`, G0 Open==poam.csv asserts). Master's
+ledger-only export is back. Flood-guard / one decision-set stays.
+#149 still open (draft, dirty) and owns FedRAMP Open==poam.csv plus
+excluded counting. Stay draft. Do not merge #158 before #149. After
+#149: normal merge of master, take #149's FedRAMP path, then undraft.
+Lab this brick: pytest **1305** passed, 1 skipped. Host-lab 79/107/poam
+124 excluded 18 UNEXPLAINED=0. SAMPLE 6/8/2. farm 174/106/68. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 208 (METIS_FLOOD_GUARD_SPEC)
 
 Lab this brick: pytest **1307** passed, 1 skipped. Ten collectors +
