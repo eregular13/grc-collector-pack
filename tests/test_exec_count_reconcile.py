@@ -36,7 +36,7 @@ RECONCILE_RE = re.compile(
     r"(?P<weaknesses>\d+) weaknesses, (?P<poam>\d+) POA&M, "
     r"(?P<excluded>\d+) excluded, (?P<kind_excluded>\d+) kind-excluded, "
     r"(?P<register>\d+) register "
-    r"\((?P<eq>[^)]+)\)\."
+    r"\((?P<eq>.+)\)\."
 )
 PLAN_EQ_RE = re.compile(
     r"^(?P<p>\d+) \+ (?:\((?P<e>\d+) - (?P<m>\d+)\)|(?P<e2>\d+)) "
