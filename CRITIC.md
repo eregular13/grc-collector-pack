@@ -1,3 +1,19 @@
+# CRITIC — cycle 208 (METIS_FLOOD_GUARD_SPEC)
+
+Lab this brick: pytest **1307** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `vulnerabilities=22` `applied_controls=129`
+`risk_scenarios=129` `poam=124` `excluded=18` `severity_unmapped=0`
+`demo=true`). `flood_guard.findings_in=142` == members 124 + excluded
+18. `UNEXPLAINED==0`. FedRAMP Open IDs == `poam.csv` (G0). C5 adds 13
+`DUPLICATE_INSTANCE` rows to excluded.csv (poam rows unchanged).
+§12.5 T=40 / cap=12 report-only `exceeded`. Cold SAMPLE→SoR
+findings=6 poam=8 vulns=2 excluded=0. Cold farm_drop→SoR findings=174
+poam=106 vulns=0 excluded=68. §13 parser adjustments already on master.
+E4 late-only not implemented. Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 207 (METIS_FLOOD_GUARD)
 
 Lab this brick: pytest **1303** passed, 1 skipped. Ten collectors +

@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 208 — Metis flood-guard spec §12.3/12.5/12.6 (2026-09-26)
+
+Complete reason-code vocabulary (`HONEYPOT`, `LIGHTER_*`, `ACCEPTED_RISK`,
+`UNVERIFIED_BANNER_CVE`; `NOT_YET_LATE` vocab-only). §12.5 T/cap
+report-only (never removes). C5 merges → `excluded.csv` as
+`DUPLICATE_INSTANCE`. Self-members on included rows. `flood_guard`
+`findings_in == members + excluded`. Host-lab 79/107/poam 124
+excluded 18 (13 C5). SAMPLE 6/8/2. farm 174/106/68. pytest **1307**.
+E4 not implemented. Catalog **unchanged**. paying_day **FAIL**.
+
 ## cycle 207 — Metis flood-guard (2026-09-26)
 
 One POA&M decision set: `shared/poam_rollup.py` classify/build + E1
