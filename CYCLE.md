@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 210 — pre-#160 vendor backfill is not a field change (2026-09-26)
+
+Upgrade run over a ledger without O/P/Q fills No/default as a schema
+baseline: no `field_changed`, no Status Date churn. Merged
+`origin/master` `befc7d0` (#162) with a normal merge. Pytest **1314**.
+Host-lab unchanged (79 / 107 / poam 124 / excluded 5). Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 209 — persist operator No + O/P/Q audit (#160) (2026-09-26)
 
 Metis acceptance: operator Vendor Dependency=No persists across later

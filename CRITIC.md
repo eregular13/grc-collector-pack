@@ -1,3 +1,14 @@
+# CRITIC — cycle 210 (POAM_GAP2_VD_UPGRADE_BASELINE)
+
+Lab this brick: pytest **1314** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=124` `excluded=5` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Pre-#160 ledger upgrade backfills No/default
+without `field_changed` or column N churn. Merged `befc7d0` (#162).
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 209 (POAM_GAP2_VD_PERSIST_NO_AUDIT)
 
 Lab this brick: pytest **1309** passed, 1 skipped. Ten collectors +
