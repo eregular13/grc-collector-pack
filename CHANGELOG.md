@@ -14,7 +14,9 @@
   uses `Vendor – Product`. Scanner "no fix available" is
   suggestion-only. KEV / BOD 22-01 due dates are not suspended.
   `poam.md` states the No default is not a verified determination.
-  Vendor fields stay out of `fp_v1`; EGP IDs unchanged. Host-lab
+  Vendor fields stay out of `fp_v1`; EGP IDs unchanged. Upgrading a
+  pre-#160 ledger backfills No/default as a schema baseline — no
+  `field_changed` event and no Status Date (col N) churn. Host-lab
   unchanged (79 / 107 / poam 124 / excluded 5). MIN_ gates unchanged.
   No POST `/api/risks`. Does not touch `product-lab/drop`.
 - LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /

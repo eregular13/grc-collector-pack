@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import importlib
 import json
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
@@ -237,6 +238,51 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     assert item3["poam_id"] == pid
     assert item3["fp"] == fp
     assert fp_v1(rec) == fp
+
+
+def test_pre_gap2_ledger_upgrade_does_not_churn_status_date() -> None:
+    """First run over a pre-#160 ledger backfills No/default without touching N."""
+    rec = _rec()
+    other = _rec(
+        extra={"id": "other", "tool": "nessus", "port": "80", "protocol": "tcp"},
+        assets=["10.0.0.9"],
+        name="other",
+        ref_id="VULN-other",
+    )
+    run1 = _apply([rec, other], when="2026-09-01T00:00:00Z")
+    prior = deepcopy(run1)
+    for item in prior["items"].values():
+        item["status_date"] = "2026-09-01"
+        for key in (
+            "vendor_dependency",
+            "vd_source",
+            "last_vendor_checkin",
+            "vendor_product",
+            "vd_comments",
+            "vd_flags",
+        ):
+            item.pop(key, None)
+    dates = {it["status_date"] for it in prior["items"].values()}
+    assert dates == {"2026-09-01"}
+
+    run2 = _apply([rec, other], ledger=prior, when="2026-09-20T00:00:00Z")
+    for item in run2["items"].values():
+        assert item["vendor_dependency"] == VD_NO
+        assert item["vd_source"] == "default"
+        assert item["status_date"] == "2026-09-01"
+    new_events = [e for e in run2["events"] if str(e.get("at") or "").startswith("2026-09-20")]
+    assert not any(e.get("kind") == "field_changed" for e in new_events), new_events
+    assert {it["poam_id"] for it in run2["items"].values()} == {
+        it["poam_id"] for it in run1["items"].values()
+    }
+
+    unseen = _apply([rec], ledger=prior, when="2026-09-20T00:00:00Z")
+    for item in unseen["items"].values():
+        assert item["status_date"] == "2026-09-01"
+        assert item["vendor_dependency"] == VD_NO
+        assert item["vd_source"] == "default"
+    unseen_new = [e for e in unseen["events"] if str(e.get("at") or "").startswith("2026-09-20")]
+    assert not any(e.get("kind") == "field_changed" for e in unseen_new), unseen_new
 
 
 def test_invalid_override_maybe_warns() -> None:

@@ -46,6 +46,7 @@ from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
 from shared.vendor_dependency import (
     VD_INVALID_OVERRIDE,
+    VD_NO,
     VD_NOT_CLOSED,
     VD_YES,
     canon_yes_no,
@@ -354,6 +355,20 @@ VD_AUDIT_FIELDS = (
 
 def _vd_snapshot(item: dict[str, Any]) -> dict[str, Any]:
     return {k: item.get(k) for k in VD_AUDIT_FIELDS}
+
+
+def _vd_is_schema_backfill(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    """Pre-#160 rows lack vendor fields. Filling No/default is not a change."""
+    if str(before.get("vendor_dependency") or "").strip():
+        return False
+    if str(before.get("vd_source") or "").strip():
+        return False
+    return (
+        after.get("vendor_dependency") == VD_NO
+        and after.get("vd_source") == "default"
+        and not str(after.get("last_vendor_checkin") or "").strip()
+        and not str(after.get("vendor_product") or "").strip()
+    )
 
 
 def _apply_override(
@@ -853,7 +868,11 @@ def apply_ledger(
         for flag in finalize_vendor_fields(item, rec, run_date=run_date, override=ov or None):
             warnings.append(f"{flag}:{item.get('poam_id')}")
         after_vd = _vd_snapshot(item)
-        if after_vd != before_vd and not closed_now:
+        if (
+            after_vd != before_vd
+            and not closed_now
+            and not _vd_is_schema_backfill(before_vd, after_vd)
+        ):
             item["status_date"] = run_date.isoformat()
             ledger["events"].append(
                 _event(
@@ -874,7 +893,7 @@ def apply_ledger(
         for flag in finalize_vendor_fields(item, None, run_date=run_date):
             warnings.append(f"{flag}:{item.get('poam_id')}")
         after_vd = _vd_snapshot(item)
-        if after_vd != before_vd:
+        if after_vd != before_vd and not _vd_is_schema_backfill(before_vd, after_vd):
             item["status_date"] = run_date.isoformat()
             ledger["events"].append(
                 _event(
