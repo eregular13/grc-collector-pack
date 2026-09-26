@@ -8,9 +8,12 @@ Keep register-one-truth + flood_guard + FedRAMP Open = poam.csv +
 included_for_ledger + DUPLICATE_INSTANCE; take master's telemetry
 exclude, CSF/CPG class tags, real-sample parsers, Argus B4,
 honeypot exclude, not_a_weakness, framework_refs on ledger items.
-Host-lab / farm counts restamped after this-brick lab. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`.
-RiskReady stay-out.
+Identity assert accepts master's `Framework Tags` extra column
+(`FEDRAMP_CSV_HEADERS`). Host-lab **79 / 105 / 122** excluded **20**
+(honeypot 3 + telemetry 1 + superseded 1 + DUPLICATE_INSTANCE 15);
+flood_guard 142 = 122 + 20. Farm **48 / 134 / 85** excluded **89**;
+flood_guard 174 = 85 + 89. pytest **1304**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
 
 ## cycle 201 — FedRAMP Open = poam.csv; flood_guard (2026-09-26)
 

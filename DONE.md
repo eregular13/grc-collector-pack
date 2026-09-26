@@ -8,19 +8,19 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 78,
-  "findings": 101,
+  "assets": 79,
+  "findings": 105,
   "vulnerabilities": 22,
-  "evidences": 33,
-  "applied_controls": 123,
+  "evidences": 34,
+  "applied_controls": 126,
   "poam": 122,
-  "risk_scenarios": 123,
-  "ocsf": 101,
-  "canonical": 206,
+  "risk_scenarios": 127,
+  "ocsf": 105,
+  "canonical": 212,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:11:25Z"
+  "generated_at": "2026-09-26T08:07:19Z"
 }
 ```
 
-Cycle 207 merge origin/master `1be65cf` (#134+#141+#145+#150+#151+#152+#155+#156+#159) into register-one-truth (no rebase). Counts restamped after this-brick lab. Cycle 201 flood_guard + FedRAMP Open stands as history. Cycle 200 no-Pentera console/refresh stands as history. Cycle 199 register one truth stands as history. CoS #48 rails above stand.
+Cycle 207 merge origin/master `1be65cf` (#134+#141+#145+#150+#151+#152+#155+#156+#159) into register-one-truth (no rebase). Pytest 1304; host-lab 79 / 105 / 122 excluded 20 flood_guard 142=122+20; farm 48 / 134 / 85 excluded 89 flood_guard 174=85+89. Cycle 201 flood_guard + FedRAMP Open stands as history. Cycle 200 no-Pentera console/refresh stands as history. Cycle 199 register one truth stands as history. CoS #48 rails above stand.

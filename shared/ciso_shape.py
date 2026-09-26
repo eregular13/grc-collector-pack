@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.control_map import POAM_EXCLUDE_REASONS
-from shared.poam_fedramp import FEDRAMP_CSV_NAME, FEDRAMP_OPEN_HEADERS
+from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_CSV_NAME, FEDRAMP_OPEN_HEADERS
 from shared.poam_fields import POAM_EXTRA_FIELDS
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
@@ -419,8 +419,11 @@ def assert_poam_fedramp_identity(ciso_or_out: Path) -> dict[str, Any]:
         if str(a.get("weakness") or "") != str(b.get("Weakness Name") or ""):
             raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL title {pid}")
     header = first_nonempty_line(fed_path)
-    if header != ",".join(FEDRAMP_OPEN_HEADERS):
+    expected = ",".join(FEDRAMP_CSV_HEADERS)
+    if header != expected:
         raise RegisterShapeError("EXPORT_IDENTITY_FAIL FedRAMP header mismatch")
+    if not expected.startswith(",".join(FEDRAMP_OPEN_HEADERS)):
+        raise RegisterShapeError("EXPORT_IDENTITY_FAIL FedRAMP B-AB prefix lost")
     return {"ok": True, "rows": len(poam)}
 
 

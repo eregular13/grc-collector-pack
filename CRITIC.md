@@ -5,7 +5,13 @@ with a normal merge commit. No rebase. Both sides kept: flood_guard +
 FedRAMP Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE;
 master telemetry exclude, CSF/CPG class tags, real-sample parsers,
 Argus B4, honeypot exclude, not_a_weakness, framework_refs on ledger.
-Lab counts restamped after this brick. Zero P0/P1. Catalog
+Identity assert accepts master's `Framework Tags` extra column.
+Lab this brick: pytest **1304** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=105`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=127`
+`poam=122` `excluded=20` `duplicates_merged=15` `flood_guard`
+`findings_in=142` `demo=true`). Farm `assets=48` `findings=134`
+`poam=85` `excluded=89` (`findings_in=174`). Zero P0/P1. Catalog
 **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
 `/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
