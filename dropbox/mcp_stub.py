@@ -119,7 +119,8 @@ TOOL_DESC = {
         "Default (GRC_LIVE_SCAN unset/0/false) stages fixtures/lab-drop pack_drop "
         "then prove --use-existing-in (same SoR rails as lab_drop / lab_drop_to_sor). "
         "Opt-in live: GRC_LIVE_SCAN=1 runs existing dropbox run collectors against "
-        "gated lab-estate targets only (estate=lab; 192.168.64.0/24 dest_in). "
+        "gated lab-estate targets only (estate=lab; 172.28.10.0/24 labnet, "
+        "172.28.11.0/24 labnet2, 172.31.250.0/24 misconfig overlay). "
         "Never reseeds fixtures/pack_drop as client KEEP. Never writes pack in/. "
         "Never POSTs /api/risks. Refusal is {ok:false, refused:true, reason}. "
         "LAB≠SAMPLE≠client. paying_day FAIL."
@@ -660,9 +661,19 @@ SCAN_TO_SOR_LIVE_PS1 = (
     "$env:GRC_LIVE_SCAN=1; python -m dropbox run --profile all --live; "
     ".\\scripts\\lab_drop_to_sor.ps1 -Work DIR"
 )
-# DESKTOP compose-lab / fixtures/lab-drop dest_in (docs/PROVE_CISO.md,
-# fixtures/lab-drop/nmap/pack_drop/meta.json). Do not invent client nets.
-LAB_ESTATE_NETWORKS = ("192.168.64.0/24",)
+# DESKTOP evergreen-lab compose CIDRs (not fixtures/lab-drop dest_in).
+# labnet 172.28.10.0/24 and labnet2 172.28.11.0/24 are declared in DESKTOP
+# lab-estate\docker-compose.yml (compose project evergreen-lab).
+# 172.31.250.0/24 is the internal network of the misconfig overlay under
+# lab-estate\misconfig\. Confirm with
+# `docker network inspect evergreen-lab_labnet evergreen-lab_labnet2`
+# (and the misconfig overlay's network) once Docker Desktop is running;
+# they are not yet runtime-verified. Do not invent client nets.
+LAB_ESTATE_NETWORKS = (
+    "172.28.10.0/24",
+    "172.28.11.0/24",
+    "172.31.250.0/24",
+)
 LAB_ESTATE_ALIASES = frozenset({"", "lab", "lab-estate", "lab_estate"})
 
 
@@ -1907,7 +1918,8 @@ def scan_to_sor_cli_twin(root: Path | None = None, *, live: bool = False) -> dic
             f"{posix} "
             f"(Windows: {windows}). "
             "SCOPE gate first. Live mode also requires estate=lab and "
-            "targets inside lab-estate networks (192.168.64.0/24). "
+            "targets inside lab-estate networks (172.28.10.0/24 labnet, "
+            "172.28.11.0/24 labnet2, 172.31.250.0/24 misconfig overlay). "
             "Never writes pack in/. Never POSTs /api/risks. "
             "LAB≠SAMPLE≠client. paying_day FAIL."
         ),
@@ -1971,12 +1983,12 @@ def _is_lab_estate(estate: str) -> bool:
 
 
 def lab_estate_networks() -> tuple[str, ...]:
-    """DESKTOP lab-estate dest_in CIDRs. From fixtures/lab-drop — not invented."""
+    """DESKTOP evergreen-lab CIDRs (labnet / labnet2 / misconfig overlay)."""
     return LAB_ESTATE_NETWORKS
 
 
 def allows_lab_estate_target(target: str) -> bool:
-    """True when target is an IP inside DESKTOP lab-estate networks (192.168.64.0/24)."""
+    """True when target is an IP inside DESKTOP evergreen-lab networks."""
     raw = (target or "").strip()
     if not raw:
         return False
