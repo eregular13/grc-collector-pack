@@ -117,6 +117,9 @@ MAX_EXEC_BODY_ROWS = {
 }
 # One printed page: keep banner + limits; cut table rows if needed.
 MAX_PAGE_LINES = 58
+MAX_COVERAGE_GAP_ROWS = 4
+COVERAGE_GAPS_NONE = "None. Every sensor that received input was assessed."
+COVERAGE_GAPS_HEADING = "### Coverage gaps"
 
 EXPORT_CSV_REL = (
     "poam/poam.csv",
@@ -722,6 +725,64 @@ def _engagement_window(records: list[dict]) -> tuple[str, str]:
     return recorded(start), recorded(end)
 
 
+def coverage_gap_rows(sensor_rows: list[dict] | None) -> list[dict[str, str]]:
+    """Failed or empty sensors: name, files, reason. ok/demo are not gaps."""
+    from shared.io_util import SENSOR_GAP_STATUSES, UNRECOGNIZED_STATUS
+
+    gaps: list[dict[str, str]] = []
+    for row in sensor_rows or []:
+        if not isinstance(row, dict):
+            continue
+        status = str(row.get("status") or "").strip()
+        if status in {"ok", "demo"}:
+            continue
+        issues = row.get("issues") if isinstance(row.get("issues"), list) else []
+        files: list[str] = []
+        reasons: list[str] = []
+        for item in issues:
+            if not isinstance(item, dict):
+                continue
+            item_status = str(item.get("status") or "").strip()
+            if item_status not in SENSOR_GAP_STATUSES and item_status != UNRECOGNIZED_STATUS:
+                continue
+            name = str(item.get("file") or "").strip() or "(no file)"
+            files.append(name)
+            reasons.append(str(item.get("reason") or item_status or status))
+        if not files:
+            if status not in SENSOR_GAP_STATUSES:
+                continue
+            files = ["(no file)"]
+            reasons = [status]
+        gaps.append(
+            {
+                "source": str(row.get("source") or "sensor"),
+                "status": status or "empty",
+                "files": ", ".join(files),
+                "reason": reasons[0] if len(set(reasons)) == 1 else "; ".join(reasons),
+            }
+        )
+    return gaps
+
+
+def format_coverage_gaps(sensor_rows: list[dict] | None) -> list[str]:
+    """Short Coverage gaps block. Long lists collapse to a count + out/coverage."""
+    gaps = coverage_gap_rows(sensor_rows)
+    lines = [COVERAGE_GAPS_HEADING]
+    if not gaps:
+        lines.append(COVERAGE_GAPS_NONE)
+        return lines
+    if len(gaps) > MAX_COVERAGE_GAP_ROWS:
+        lines.append(
+            f"{len(gaps)} sensors were not assessed (failed or empty). See `out/coverage`."
+        )
+        return lines
+    for gap in gaps:
+        lines.append(
+            f"- {gap['source']}: {gap['files']} ({gap['status']} — {gap['reason']})"
+        )
+    return lines
+
+
 @dataclass
 class PageContext:
     stamp: EstateStamp
@@ -737,6 +798,7 @@ class PageContext:
     excluded_poam: int = 0
     in_dir: Path | None = None
     generated_at: str = ""
+    sensor_rows: list[dict] = field(default_factory=list)
 
 
 def build_executive_summary(ctx: PageContext) -> str:
@@ -851,6 +913,8 @@ def build_executive_summary(ctx: PageContext) -> str:
             "- This is a point-in-time review of scanner artifacts. It is not a penetration test and not continuous monitoring.",
             f"- Owners and due dates in the POA&M are blank until {owner_who} assigns them.",
             "",
+            *format_coverage_gaps(ctx.sensor_rows),
+            "",
             "### Next step",
             REVIEWER_NEXT_STEP,
             "",
@@ -858,7 +922,15 @@ def build_executive_summary(ctx: PageContext) -> str:
             "",
         ]
     )
-    return _fit_one_page("\n".join(lines), keep_tails=("### What this does not tell you", "### Next step", "Companion files:"))
+    return _fit_one_page(
+        "\n".join(lines),
+        keep_tails=(
+            "### What this does not tell you",
+            COVERAGE_GAPS_HEADING,
+            "### Next step",
+            "Companion files:",
+        ),
+    )
 
 
 def build_scope_and_trust(ctx: PageContext) -> str:
@@ -905,6 +977,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
         + ". List every collector folder that was empty or fell back to fixtures, by name."
     )
     lines.append("")
+    lines.extend(format_coverage_gaps(ctx.sensor_rows))
+    lines.append("")
     who = recorded(_env(None, "GRC_COLLECTED_BY"))
     merged = recorded(ctx.merged if ctx.merged != "0" else ctx.merged)
     frameworks = _frameworks_used(ctx.mapped_by_ref)
@@ -942,7 +1016,12 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     )
     return _fit_one_page(
         "\n".join(lines),
-        keep_tails=("### Limits (read before relying on this)", "### Integrity and traceability", "### What the labels mean"),
+        keep_tails=(
+            COVERAGE_GAPS_HEADING,
+            "### Limits (read before relying on this)",
+            "### Integrity and traceability",
+            "### What the labels mean",
+        ),
     )
 
 
