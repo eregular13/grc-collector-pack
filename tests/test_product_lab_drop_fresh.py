@@ -122,8 +122,11 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     ):
         text = (DROP / rel).read_text(encoding="utf-8")
         assert "DEMO: NOT A CLIENT" in text or "SAMPLE DATA: NOT A CLIENT" in text, rel
-        assert "CLIENT KEEP" not in text.upper()
         assert "not a client" in text.lower()
+        # Honesty copy may say "never client KEEP"; a CLIENT KEEP banner would not.
+        first = text.splitlines()[0]
+        assert first.startswith(">") or first.startswith("DEMO") or first.startswith("SAMPLE")
+        assert "CLIENT KEEP:" not in text.upper()
 
     assert not (DROP / "riskready").exists()
     assert len(findings) + len(csv_rows(drop_ciso / "vulnerabilities.csv")) == len(drop_poam)
