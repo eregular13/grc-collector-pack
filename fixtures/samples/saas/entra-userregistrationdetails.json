@@ -1,0 +1,22 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#reports/authenticationMethods/userRegistrationDetails",
+  "value": [
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "userPrincipalName": "AdeleV@contoso.com",
+      "userDisplayName": "Adele Vance",
+      "userType": "member",
+      "isAdmin": true,
+      "isMfaRegistered": true,
+      "isMfaCapable": true
+    },
+    {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "userPrincipalName": "DiegoS@contoso.com",
+      "userDisplayName": "Diego Siciliani",
+      "userType": "member",
+      "isAdmin": false,
+      "isMfaRegistered": true
+    }
+  ]
+}

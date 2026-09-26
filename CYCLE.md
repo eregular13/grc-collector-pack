@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 207 — merge origin/master 1be65cf (#134+#159) (2026-09-26)
+
+Normal merge of `origin/master` `1be65cf` (#159 farm_which PATH
+isolate; also #134+#141+#145+#150+#151+#152+#155+#156). No rebase.
+Keep register-one-truth + flood_guard + FedRAMP Open = poam.csv +
+included_for_ledger + DUPLICATE_INSTANCE; take master's telemetry
+exclude, CSF/CPG class tags, real-sample parsers, Argus B4,
+honeypot exclude, not_a_weakness, framework_refs on ledger items.
+Host-lab / farm counts restamped after this-brick lab. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
 ## cycle 201 — FedRAMP Open = poam.csv; flood_guard (2026-09-26)
 
 FedRAMP Open rows are the included POA&M decision set only — info,

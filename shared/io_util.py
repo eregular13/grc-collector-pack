@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -95,6 +96,15 @@ SKIP_INPUT_NAMES = frozenset(
 DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})
 NEVER_DEMO_LABELS = frozenset({"LAB", "CLIENT"})
 UNRECOGNIZED_STATUS = "unrecognized_shape"
+
+
+class UnrecognizedShape(ValueError):
+    """Live drop is a known suffix but not a shape this sensor can parse."""
+
+    def __init__(self, reason: str, *, file: str = "") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.file = file
 SENSOR_GAP_STATUSES = frozenset(
     {"parse_error", "no_records", UNRECOGNIZED_STATUS, "empty", "partial"}
 )
@@ -358,7 +368,7 @@ def _sensor_rollup(
 
 
 def _malformed_reason(path: Path) -> str | None:
-    """Name truncated/invalid JSON even when a parser swallows the exception."""
+    """Name truncated/invalid JSON or XML even when a parser swallows the exception."""
     try:
         raw = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff").strip()
     except OSError as exc:
@@ -371,6 +381,11 @@ def _malformed_reason(path: Path) -> str | None:
             json.loads(raw)
         except json.JSONDecodeError as exc:
             return f"JSONDecodeError: {exc}"
+    if suffix in {".xml", ".xccdf"}:
+        try:
+            ET.fromstring(raw)
+        except ET.ParseError as exc:
+            return f"ParseError: {exc}"
     return None
 
 
@@ -386,14 +401,28 @@ def run_collector(
     issues: list[dict[str, str]] = []
     for path in files:
         error: str | None = None
+        unrecognized: str | None = None
         try:
             recs = list(parse_file(path) or [])
+        except UnrecognizedShape as exc:
+            recs = []
+            unrecognized = exc.reason or str(exc)
         except Exception as exc:
             recs = []
             error = f"{type(exc).__name__}: {exc}"
         if recs:
             records.extend(recs)
             write_raw_copy(source, path, recs)
+            continue
+        if unrecognized:
+            issues.append(
+                {"status": UNRECOGNIZED_STATUS, "file": path.name, "reason": unrecognized}
+            )
+            write_raw_copy(
+                source,
+                path,
+                {"error": UNRECOGNIZED_STATUS, "file": path.name, "reason": unrecognized},
+            )
             continue
         malformed = error or _malformed_reason(path)
         status = "parse_error" if malformed else "no_records"

@@ -13,6 +13,7 @@ from dropbox.scanner_free import LAB_STUB_DIR, is_demo_lab_stub
 from dropbox.scope import GateError, load_scope
 from farm.adapters.catalog import select_stage_slots
 from farm.adapters.stubs import run_slot
+from tests.hermetic_path import isolate_farm_path
 
 LAB_STUB_NAMES = ("nmap", "curl", "nessus", "nessuscli", "testssl", "testssl.sh", "lynis")
 ALLOW_LAB = list(LAB_STUB_NAMES)
@@ -193,9 +194,12 @@ def test_farm_tool_bin_license_lock_still_refuses_subprocess(
         assert farm_which(name) is None
 
 
-def test_farm_toolbin_lab_script_asserts_nmap_curl(tmp_path: Path) -> None:
+def test_farm_toolbin_lab_script_asserts_nmap_curl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import importlib.util
 
+    isolate_farm_path(monkeypatch, tmp_path)
     spec = importlib.util.spec_from_file_location(
         "farm_toolbin_lab", ROOT / "scripts" / "farm_toolbin_lab.py"
     )

@@ -23,4 +23,4 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 }
 ```
 
-Cycle 200 no-Pentera console/refresh (pytest 1223; host-lab 78 / 101 / 122 unchanged). Cycle 199 register one truth stands as history. CoS #48 rails above stand.
+Cycle 207 merge origin/master `1be65cf` (#134+#141+#145+#150+#151+#152+#155+#156+#159) into register-one-truth (no rebase). Counts restamped after this-brick lab. Cycle 201 flood_guard + FedRAMP Open stands as history. Cycle 200 no-Pentera console/refresh stands as history. Cycle 199 register one truth stands as history. CoS #48 rails above stand.

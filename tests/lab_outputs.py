@@ -20,6 +20,7 @@ VULN_H = "ref_id,name,description,status,severity,assets,applied_controls"
 SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment"
 
 FIND_SEV = {"low", "medium", "high", "critical"}
+EXCLUDED_SEV = FIND_SEV | {"info"}
 VULN_SEV = {"Information", "Low", "Medium", "High", "Critical"}
 LIVE_KEY = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{20,}")
 
@@ -125,12 +126,19 @@ def assert_lab() -> None:
     excluded_path = OUT / "poam" / "excluded.csv"
     assert excluded_path.is_file(), "poam/excluded.csv missing"
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
+    assert excluded, "DEMO/lab excluded.csv must not be header-only"
     assert int(summary.get("excluded") or 0) == len(excluded)
     assert_flood_guard(summary)
     fg = summary["flood_guard"]
     assert int(fg["findings_in"]) + int(fg.get("pending_carried") or 0) == len(poam) + len(
         excluded
     )
+    reasons = {str(row.get("excluded_reason") or "") for row in excluded}
+    assert reasons & {"honeypot", "severity_info"}, reasons
+    for row in excluded:
+        assert row.get("severity") in EXCLUDED_SEV, row
+        if row.get("excluded_reason") == "severity_info":
+            assert row.get("severity") == "info", row
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()
@@ -157,9 +165,10 @@ def assert_lab() -> None:
         ).lstrip().startswith("#")
     fed = OUT / "poam" / "poam_fedramp.csv"
     if fed.is_file():
-        from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
+        from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
-        _csv_rows(fed, ",".join(FEDRAMP_OPEN_HEADERS))
+        _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
         closed = OUT / "poam" / "poam_fedramp_closed.csv"
         if closed.is_file():
             first = closed.read_text(encoding="utf-8").splitlines()[0]
@@ -203,7 +212,8 @@ def assert_lab() -> None:
         assert (row.get("owner") or "") == ""
         assert (row.get("due") or "") == ""
     for row in rdp + shares:
-        assert "cpg_2_W" in (row.get("framework_refs") or "")
+        refs = row.get("framework_refs") or ""
+        assert "cpg_3_S" in refs or "cpg_" in refs
     exposure_smb = [
         r
         for r in smb
@@ -215,9 +225,10 @@ def assert_lab() -> None:
     ]
     assert exposure_smb, "open-port SMB exposure must remain on the POA&M"
     for row in exposure_smb:
-        assert "cpg_2_W" in (row.get("framework_refs") or "")
+        assert "cpg_3_S" in (row.get("framework_refs") or "")
     for row in smb:
-        assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
+        refs = row.get("framework_refs") or ""
+        assert "csf_PR_IR_01" in refs or "csf_PR_AA_05" in refs or "csf_PR_DS_02" in refs
         fix = (row.get("recommended_fix") or "").lower()
         weak = (row.get("weakness") or "").lower()
         assert (
@@ -234,7 +245,9 @@ def assert_lab() -> None:
         refs = row.get("framework_refs") or ""
         assert ":" not in refs
         assert "csf_" in refs
-        # CPG is derived from 800-53 (CM-7/SC-7 → 2_W, CM-8 → 1_E) or omitted.
+        # CSF is a 2.0 subcategory stamp (csf_PR_IR_01), never a function catch-all.
+        assert "csf_PR," not in refs + "," and not refs.endswith("csf_PR")
+        assert "csf_protect" not in refs
     high_findings = [r for r in findings if r["severity"] in {"high", "critical"}]
     for row in high_findings:
         labels = row.get("filtering_labels") or ""
@@ -267,6 +280,54 @@ def assert_lab() -> None:
     assert priv_poam
     det = " ".join(r.get("detector_source") or "" for r in priv_poam)
     assert "falco" in det and "kubescape" in det, det
+
+    from shared.framework_class_map import csf_cpg_tag_set
+
+    csf_counts: dict[str, int] = {}
+    cpg_goals: set[str] = set()
+    for row in poam:
+        csf, cpg = csf_cpg_tag_set(row.get("framework_refs") or "")
+        for tok in csf:
+            csf_counts[tok] = csf_counts.get(tok, 0) + 1
+        cpg_goals.update(t for t in cpg if t != "cpg_unmapped")
+    n_poam = len(poam)
+    assert n_poam, "lab POA&M is empty"
+    if csf_counts:
+        top_tok, top_n = max(csf_counts.items(), key=lambda kv: kv[1])
+        share = top_n / n_poam
+        assert share <= 0.40, (
+            f"honest CSF tag {top_tok} covers {top_n}/{n_poam}={share:.1%} of lab "
+            f"POA&M (cap 40%). distribution={csf_counts}"
+        )
+    assert len(cpg_goals) >= 5, (
+        f"lab POA&M must carry ≥5 distinct CPG 2.0 goals; got {sorted(cpg_goals)}"
+    )
+
+    if fed.is_file():
+        import csv as _csv
+
+        ledger_path = OUT / "poam" / "poam-ledger.json"
+        if ledger_path.is_file():
+            ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+            by_ref = {
+                str(item.get("ref_id") or ""): item
+                for item in (ledger.get("items") or {}).values()
+            }
+            with fed.open(encoding="utf-8", newline="") as fh:
+                fed_rows = list(_csv.DictReader(fh))
+            fed_by_id = {r.get("POAM ID") or "": r for r in fed_rows}
+            poam_by_ref = {r.get("finding_ref_id") or "": r for r in poam}
+            for ref, prow in poam_by_ref.items():
+                item = by_ref.get(ref)
+                if not item:
+                    continue
+                egp = str(item.get("poam_id") or "")
+                frow = fed_by_id.get(egp)
+                if not frow:
+                    continue
+                a = csf_cpg_tag_set(prow.get("framework_refs") or "")
+                b = csf_cpg_tag_set(frow.get("Framework Tags") or "")
+                assert a == b, (egp, ref, a, b)
 
     blob = ""
     for path in OUT.rglob("*"):

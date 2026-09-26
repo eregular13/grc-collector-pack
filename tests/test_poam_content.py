@@ -105,7 +105,8 @@ def test_xz_backdoor_gets_si2_ra5_and_specific_fix() -> None:
     assert "csf_unmapped" not in mapped["csf"]
     assert "generic fallback" not in mapped["recommended_fix"].lower()
     assert "xz-utils" in mapped["recommended_fix"] or "liblzma" in mapped["recommended_fix"]
-    assert "cpg_2_W" not in mapped["cpg"]
+    assert mapped["cpg"] == ["cpg_2_B"]
+    assert mapped["csf_subcategory"] in {"ID.RA-01", "PR.PS-02"}
 
 
 def test_generic_cve_gets_patch_family_and_upgrade_fix() -> None:
@@ -137,7 +138,8 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"port": "445", "service": "microsoft-ds"},
         )
     )
-    assert "cpg_2_W" in smb["cpg"]
+    assert "cpg_3_S" in smb["cpg"]
+    assert smb["csf_subcategory"] == "PR.IR-01"
     mfa = map_finding(
         _finding(
             name="Root account MFA enabled",
@@ -145,9 +147,10 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"check_id": "iam_root_mfa_enabled"},
         )
     )
+    assert "cpg_3_F" in mfa["cpg"]
     assert "cpg_2_W" not in mfa["cpg"]
-    assert "cpg_1_E" not in mfa["cpg"]
     assert mfa["csf_function"] == "protect"
+    assert mfa["csf_subcategory"] == "PR.AA-03"
     enc = map_finding(
         _finding(
             name="S3 bucket server-side encryption",
@@ -155,8 +158,9 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"check_id": "s3_bucket_default_encryption"},
         )
     )
-    assert enc["cpg"] == []
+    assert "cpg_3_K" in enc["cpg"]
     assert enc["csf_function"] == "protect"
+    assert enc["csf_subcategory"] == "PR.DS-01"
 
 
 def test_critical_sla_is_shorter_than_high() -> None:
@@ -247,6 +251,10 @@ def test_lows_on_full_plan_infos_and_honeypot_excluded(tmp_path: Path, monkeypat
         ex = list(csv.DictReader(fh))
     assert {row["finding_ref_id"] for row in ex} == {"NMAP-info", "HPOT-1"}
     assert {row["excluded_reason"] for row in ex} == {"severity_info", "honeypot"}
+    by_ref = {row["finding_ref_id"]: row for row in ex}
+    assert by_ref["NMAP-info"]["severity"] == "info"
+    assert by_ref["NMAP-info"]["severity"] != "low"
+    assert by_ref["HPOT-1"]["severity"] == "high"
     md = (out_dir() / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "full" in md.lower()
@@ -380,39 +388,38 @@ def test_poam_decision_telemetry_info_named() -> None:
     assert decision["reason"] == "telemetry_info"
 
 
-def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
+def test_wazuh_multi_alert_lows_are_telemetry_not_poam(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Same Wazuh rule + asset must not mint one 180-day POA&M row per alert."""
+    """Aggregated Wazuh alerts stay off the POA&M unless level >= 12 or compromise."""
     monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
     monkeypatch.setenv("OUT_DIR", str(tmp_path))
     recs = [
-        _wazuh_alert(ref_id="WAZ-alert-17001", extra={"rule_id": "5710"}),
-        _wazuh_alert(ref_id="WAZ-alert-17002", extra={"rule_id": "5710"}),
-        _wazuh_alert(ref_id="WAZ-alert-17003", extra={"rule_id": "5710"}),
+        _wazuh_alert(ref_id="WAZ-alert-17001", extra={"rule_id": "5710", "rule_level": 5}),
+        _wazuh_alert(ref_id="WAZ-alert-17002", extra={"rule_id": "5710", "rule_level": 5}),
+        _wazuh_alert(ref_id="WAZ-alert-17003", extra={"rule_id": "5710", "rule_level": 5}),
         _wazuh_alert(
             ref_id="WAZ-alert-info",
             severity="info",
             name="Host login success",
             description="syslog: user login",
-            extra={"rule_id": "5501"},
+            extra={"rule_id": "5501", "rule_level": 3},
         ),
         _wazuh_alert(
             ref_id="WAZ-alert-other-host",
-            extra={"rule_id": "5710"},
+            extra={"rule_id": "5710", "rule_level": 5},
             assets=["db-01"],
         ),
     ]
     write_canonical("host-wazuh", recs)
     summary = load()
-    # Same rule + same EGA- asset merges to one weakness before POA&M
-    # decisions; web-01 keeps one Low row, db-01 stays a second host,
-    # info stays telemetry_info. Merged-away alerts land on excluded.csv
-    # as DUPLICATE_INSTANCE (not silent count-only). No per-alert 180-day rows.
+    # Level-5 alerts are telemetry (off the plan). Same rule + EGA- asset
+    # still merges; the extras land on excluded.csv as DUPLICATE_INSTANCE.
     assert summary["weaknesses_total"] == 3
-    assert summary["poam_included"] == 2
-    assert summary["excluded"] == 3
+    assert summary["poam_included"] == 0
+    assert summary["excluded"] == 5
     assert summary["excluded_by_reason"] == {
+        "telemetry": 2,
         "telemetry_info": 1,
         "DUPLICATE_INSTANCE": 2,
     }
@@ -423,23 +430,15 @@ def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
     )
     with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    refs = [r["finding_ref_id"] for r in rows]
-    assert "WAZ-alert-17001" in refs
-    assert "WAZ-alert-other-host" in refs
-    assert "WAZ-alert-17002" not in refs
-    assert "WAZ-alert-17003" not in refs
-    assert "WAZ-alert-info" not in refs
-    assert len(rows) == 2
-    assert {r["original_risk_rating"] for r in rows} == {"Low"}
-    survivor = next(r["poam_id"] for r in rows if r["finding_ref_id"] == "WAZ-alert-17001")
+    assert [r["finding_ref_id"] for r in rows] == []
     with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
         ex = list(csv.DictReader(fh))
     by_ref = {row["finding_ref_id"]: row for row in ex}
+    assert by_ref["WAZ-alert-17001"]["excluded_reason"] == "telemetry"
+    assert by_ref["WAZ-alert-other-host"]["excluded_reason"] == "telemetry"
+    assert by_ref["WAZ-alert-info"]["excluded_reason"] == "telemetry_info"
     assert by_ref["WAZ-alert-17002"]["excluded_reason"] == "DUPLICATE_INSTANCE"
     assert by_ref["WAZ-alert-17003"]["excluded_reason"] == "DUPLICATE_INSTANCE"
-    assert by_ref["WAZ-alert-17002"]["superseded_by"] == survivor
-    assert by_ref["WAZ-alert-17003"]["superseded_by"] == survivor
-    assert by_ref["WAZ-alert-info"]["excluded_reason"] == "telemetry_info"
     walked_recs = [
         r
         for r in dedupe_hardening(
@@ -448,7 +447,8 @@ def test_wazuh_multi_alert_lows_collapse_to_one_poam_row(
         if r.get("kind") == "finding"
     ]
     walked = poam_breakdown(walked_recs)
-    assert walked["poam_included"] == 2
+    assert walked["poam_included"] == 0
     assert walked["excluded_by_reason"] == {
+        "telemetry": 2,
         "telemetry_info": 1,
     }

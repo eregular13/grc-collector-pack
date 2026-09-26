@@ -59,15 +59,15 @@ HK_OFFICIAL_COLS = HK_AUDIT_COLUMNS
 
 # Real MS baseline IDs from finding_list_msft_security_baseline_windows_11_24h2_machine.csv
 EXPECTED_MAP = {
-    "10100": ("password_policy", ["IA-5"], "csf_PR", ""),
-    "10101": ("password_policy", ["IA-5"], "csf_PR", ""),
-    "10001": ("account_lockout", ["AC-7"], "csf_PR", ""),
-    "10208": ("session_lock", ["AC-11"], "csf_PR", ""),
-    "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", ""),
-    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_2_W"),
-    "10219": ("password_policy", ["IA-5"], "csf_PR", ""),
-    "11014": ("malware_protection", ["SI-3"], "csf_PR", ""),
-    "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", ""),
+    "10100": ("password_policy", ["IA-5"], "csf_PR", "cpg_3_B"),
+    "10101": ("password_policy", ["IA-5"], "csf_PR", "cpg_3_B"),
+    "10001": ("account_lockout", ["AC-7"], "csf_PR", "cpg_3_E"),
+    "10208": ("session_lock", ["AC-11"], "csf_PR", "cpg_3_E"),
+    "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", "cpg_3_Q"),
+    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_S"),
+    "10219": ("password_policy", ["IA-5"], "csf_PR", "cpg_3_B"),
+    "11014": ("malware_protection", ["SI-3"], "csf_PR", "cpg_4_A"),
+    "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", "cpg_3_K"),
 }
 
 # Client-facing weakness column: check titles are policy names, not failures.
@@ -206,16 +206,8 @@ def test_hk_lab_rows_failure_titles_and_honest_cpg() -> None:
         # extra.nist_800_53 unions with CONTROL_800_53 for the same control.
         for cid in n53:
             assert cid in mapped["nist_800_53"], (hid, cid, mapped["nist_800_53"])
-        honest = ["cpg_2_W"] if any(
-            cid in mapped["nist_800_53"] for cid in ("CM-7", "SC-7")
-        ) else (
-            ["cpg_1_E"] if "CM-8" in mapped["nist_800_53"] else []
-        )
-        assert mapped["cpg"] == honest, (hid, mapped["cpg"], mapped["nist_800_53"])
-        if extra_cpg:
-            assert extra_cpg in mapped["framework_refs"]
-        else:
-            assert "cpg_" not in mapped["framework_refs"]
+        assert mapped["cpg"] == [extra_cpg], (hid, mapped["cpg"], mapped.get("weakness_class"))
+        assert extra_cpg in mapped["framework_refs"]
         assert CIS_V8_PREFIX not in mapped["framework_refs"]
         assert rec["extra"].get("control_key") == key
 

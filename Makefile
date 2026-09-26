@@ -24,6 +24,7 @@ collectors:
 	$(PYTHON) collectors/code_secrets.py
 	$(PYTHON) collectors/saas_idp.py
 	$(PYTHON) collectors/dns_email.py
+	$(PYTHON) collectors/honeypot.py
 
 loader:
 	$(PYTHON) collectors/grc_loader.py

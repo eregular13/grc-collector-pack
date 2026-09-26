@@ -1,3 +1,14 @@
+# CRITIC — cycle 207 (MERGE_MASTER_159_INTO_149)
+
+Merge `origin/master` `1be65cf` (#159; also #134+#141+#145+#150+#151+#152+#155+#156)
+with a normal merge commit. No rebase. Both sides kept: flood_guard +
+FedRAMP Open = poam.csv + included_for_ledger + DUPLICATE_INSTANCE;
+master telemetry exclude, CSF/CPG class tags, real-sample parsers,
+Argus B4, honeypot exclude, not_a_weakness, framework_refs on ledger.
+Lab counts restamped after this brick. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 201 (FEDRAMP_OPEN_FLOOD_GUARD)
 
 Lab this brick: pytest **1226** passed, 1 skipped. Ten collectors +

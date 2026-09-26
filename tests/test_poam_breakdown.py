@@ -35,6 +35,7 @@ COLLECTORS = (
     "collectors.code_secrets",
     "collectors.saas_idp",
     "collectors.dns_email",
+    "collectors.honeypot",
 )
 
 

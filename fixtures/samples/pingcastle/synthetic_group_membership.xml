@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HealthcheckData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <EngineVersion>3.2.0.1</EngineVersion>
+  <DomainFQDN>example.local</DomainFQDN>
+  <NetBIOSName>EXAMPLE</NetBIOSName>
+  <ForestFQDN>example.local</ForestFQDN>
+  <RiskRules>
+    <HealthcheckRiskRule>
+      <Points>0</Points>
+      <Category>Anomalies</Category>
+      <Model>Informational</Model>
+      <RiskId>A-ZeroPoint</RiskId>
+      <Rationale>Zero-point informational rule</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-BackupOperators</RiskId>
+      <Rationale>Backup Operators has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-AccountOperators</RiskId>
+      <Rationale>Account Operators has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-PrintOperators</RiskId>
+      <Rationale>Print Operators has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-ServerOperators</RiskId>
+      <Rationale>Server Operators has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-SchemaAdmins</RiskId>
+      <Rationale>Schema Admins has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-EnterpriseAdmins</RiskId>
+      <Rationale>Enterprise Admins has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-DomainAdmins</RiskId>
+      <Rationale>Domain Admins has members</Rationale>
+    </HealthcheckRiskRule>
+    <HealthcheckRiskRule>
+      <Points>10</Points>
+      <Category>PrivilegedAccounts</Category>
+      <Model>PrivilegedGroup</Model>
+      <RiskId>P-Administrators</RiskId>
+      <Rationale>Administrators has members</Rationale>
+    </HealthcheckRiskRule>
+  </RiskRules>
+  <PrivilegedGroups>
+    <HealthCheckGroupData>
+      <GroupName>Backup Operators</GroupName>
+      <NumberOfMember>0</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Account Operators</GroupName>
+      <NumberOfMember>0</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Print Operators</GroupName>
+      <NumberOfMember>0</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Server Operators</GroupName>
+      <NumberOfMember>0</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Schema Admins</GroupName>
+      <NumberOfMember>2</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Enterprise Admins</GroupName>
+      <NumberOfMember>1</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Domain Admins</GroupName>
+      <NumberOfMember>3</NumberOfMember>
+    </HealthCheckGroupData>
+    <HealthCheckGroupData>
+      <GroupName>Administrators</GroupName>
+      <NumberOfMember>4</NumberOfMember>
+    </HealthCheckGroupData>
+  </PrivilegedGroups>
+</HealthcheckData>
