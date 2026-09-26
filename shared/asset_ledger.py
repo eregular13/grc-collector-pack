@@ -815,10 +815,8 @@ def attach_asset_uids(
             source=str(rec.get("source") or ""),
             observe=False,
         )
-        extra = rec.setdefault("extra", extra_dict(rec))
-        if uid and isinstance(extra, dict):
-            extra["asset_uid"] = uid
-            extra["uai"] = (ledger.assets.get(uid) or {}).get("uai") or extra.get("uai") or ""
+        if uid:
+            _stamp_finding_from_ledger(rec, ledger, uid)
     # Re-stamp merged-into UIDs.
     by_uid: dict[str, dict[str, Any]] = {}
     out: list[dict[str, Any]] = []
@@ -829,10 +827,7 @@ def attach_asset_uids(
         asset = ledger.assets.get(uid)
         if asset and asset.get("status") == "merged" and asset.get("merged_into"):
             uid = str(asset["merged_into"])
-            extra = rec.setdefault("extra", extra)
-            if isinstance(extra, dict):
-                extra["asset_uid"] = uid
-                extra["uai"] = (ledger.assets.get(uid) or {}).get("uai") or extra.get("uai")
+            _stamp_finding_from_ledger(rec, ledger, uid)
         if rec.get("kind") == "asset" and uid:
             kept = by_uid.get(uid)
             if kept is None:
@@ -878,6 +873,49 @@ def _merge_asset_records(kept: dict[str, Any], other: dict[str, Any], asset: dic
     other_name = str(other.get("name") or "")
     if other_name and other_name not in names and other_name != kept.get("name"):
         names.append(other_name)
+
+
+def _stamp_finding_from_ledger(rec: dict[str, Any], ledger: AssetLedger, uid: str) -> None:
+    """Copy EGA- uid plus ledger aliases onto a finding for the POA&M swap."""
+    extra = rec.setdefault("extra", extra_dict(rec))
+    if not isinstance(extra, dict):
+        rec["extra"] = extra = {}
+    extra["asset_uid"] = uid
+    asset = ledger.assets.get(uid) or {}
+    extra["uai"] = asset.get("uai") or extra.get("uai") or ""
+    ids = {
+        k: v
+        for k, v in ledger._ids_of(asset).items()
+        if v not in ("", [], None)
+    }
+    existing = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
+    if ids or existing:
+        extra["ids"] = {
+            k: v
+            for k, v in merge_ids(existing, ids).items()
+            if v not in ("", [], None)
+        }
+    also = extra.get("also_names")
+    if not isinstance(also, list):
+        also = []
+        extra["also_names"] = also
+    seen = {str(x).strip().lower() for x in also if x}
+    skip = {
+        str(rec.get("name") or "").strip().lower(),
+        str((rec.get("assets") or [""])[0] or "").strip().lower(),
+    }
+    for alias in asset.get("aliases") or []:
+        if not isinstance(alias, dict) or alias.get("valid_to"):
+            continue
+        typ = str(alias.get("type") or "")
+        val = str(alias.get("value") or "").strip()
+        if typ not in {"name", "hostname", "fqdn", "ip", "arn", "netbios"}:
+            continue
+        token = val.lower()
+        if not val or token in seen or token in skip:
+            continue
+        seen.add(token)
+        also.append(val)
 
 
 def ledger_ids(asset: dict[str, Any]) -> dict[str, Any]:
