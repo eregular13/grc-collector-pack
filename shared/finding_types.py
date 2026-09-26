@@ -520,7 +520,8 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "recommended_fix": (
             "Set dSHeuristics characters 28 (LDAPAddAuthZVerifications) and 29 "
             "(LDAPOwnerModify) to 1 for Enforcement after watching events "
-            "3044-3056 in audit mode (KB5008383 / CVE-2021-42291). PingCastle "
+            "3044-3056 in audit mode. The 10th character must be 1 and the 20th "
+            "character must be 2 per KB5008383 (CVE-2021-42291). PingCastle "
             "A-DsHeuristicsLDAPSecurity from a file-drop, not a live directory call."
         ),
         "nist_800_53": ["AC-3", "AC-6", "SI-2"],

@@ -80,8 +80,8 @@ def test_leftover_pingcastle_risk_ids_get_named_ad_playbooks() -> None:
         ),
         (
             "A-LAPS-Joined-Computers",
-            "Deploy LAPS for local administrator passwords",
-            ("laps", "joined"),
+            "Change the computer object owner after a LAPS join",
+            ("owner", "extended rights", "write-owner", "dacl"),
         ),
         (
             "P-DNSAdmin",
@@ -91,12 +91,22 @@ def test_leftover_pingcastle_risk_ids_get_named_ad_playbooks() -> None:
         (
             "S-SIDHistory",
             "Remove SID History from trusted accounts",
-            ("sid history",),
+            ("sid history", "re-permission", "before"),
         ),
         (
             "T-SIDHistoryDangerous",
             "Remove SID History from trusted accounts",
-            ("sid history",),
+            ("sid history", "re-permission", "before"),
+        ),
+        (
+            "T-SIDHistorySameDomain",
+            "Remove SID History from trusted accounts",
+            ("compromise", "re-permission", "before"),
+        ),
+        (
+            "T-SIDHistoryUnknownDomain",
+            "Remove SID History from trusted accounts",
+            ("sid history", "re-permission", "before"),
         ),
         (
             "T-SIDFiltering",
@@ -120,6 +130,12 @@ def test_leftover_pingcastle_risk_ids_get_named_ad_playbooks() -> None:
         assert "generic fallback" not in mapped["recommended_fix"].lower()
         blob = mapped["recommended_fix"].lower()
         assert all(tok in blob for tok in tokens), (rid, blob)
+        if rid == "A-LAPS-Joined-Computers":
+            assert "install" not in blob
+            assert "deploy laps" not in mapped["control_name"].lower()
+        if rid == "T-SIDHistorySameDomain":
+            assert "migration" in blob
+            assert "leftover" in blob
     dead = _rec(
         source="identity-ad",
         name="PingCastle T-SIDHistory",
@@ -284,6 +300,9 @@ def test_firefox_printpreview_is_not_ntp_and_safari_is_not_nuclei_rce() -> None:
     assert "ntpd" not in fmap["recommended_fix"].lower()
     assert smap["control_name"] != "Stop remote code execution"
     assert "nuclei flagged" not in smap["recommended_fix"].lower()
+    assert "safari 10.0.2" in smap["recommended_fix"].lower()
+    assert "or later" in smap["recommended_fix"].lower()
+    assert "upgrade to safari 10.0.2" in smap["control_name"].lower()
     assert nmap["control_name"] == "Enable time synchronization"
     assert "ntp" in nmap["recommended_fix"].lower() or "chrony" in nmap["recommended_fix"].lower()
 
@@ -300,4 +319,5 @@ def test_dsheuristics_cites_kb5008383_chars_28_29() -> None:
     assert "kb5008383" in fix
     assert "3044" in fix and "3056" in fix
     assert "character 28" in fix or "characters 28" in fix
+    assert "10th" in fix and "20th" in fix
     assert "create computer objects" not in fix

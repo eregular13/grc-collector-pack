@@ -703,10 +703,22 @@ def _vuln_playbook(rec: dict[str, Any]) -> dict[str, Any]:
     pkg = _pkg_from_rec(rec)
     known = KNOWN_CVE_REMEDIATION.get(cve) or {}
     raw_name = str(rec.get("name") or "").strip()
+    safari_m = re.search(r"safari\s*<\s*([0-9.]+)", raw_name, re.I)
     if known:
         weakness = known["weakness_name"]
         control = known["control_name"]
         fix = known["fix"]
+    elif safari_m:
+        ver = safari_m.group(1)
+        weakness = raw_name if raw_name and not _looks_like_pass_title(raw_name) else (
+            f"Safari is older than {ver}"
+        )
+        control = f"Upgrade to Safari {ver} or later"
+        fix = (
+            f"Upgrade to Safari {ver} or later so the reported Safari "
+            "vulnerabilities are not present. This is a vulnerability "
+            "finding, not a config-drift playbook."
+        )
     elif _is_caa_finding(rec):
         weakness = raw_name if raw_name and not _looks_like_pass_title(raw_name) else (
             "CAA DNS record is missing or invalid"
@@ -1028,7 +1040,8 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
         "fix": (
             "Set dSHeuristics characters 28 (LDAPAddAuthZVerifications) and 29 "
             "(LDAPOwnerModify) to 1 for Enforcement after watching events "
-            "3044-3056 in audit mode (KB5008383 / CVE-2021-42291). File-drop only."
+            "3044-3056 in audit mode. The 10th character must be 1 and the 20th "
+            "character must be 2 per KB5008383 (CVE-2021-42291). File-drop only."
         ),
     },
     "A-ZeroPoint": {
@@ -1119,11 +1132,13 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
         ),
     },
     "A-LAPS-Joined-Computers": {
-        "name": "Deploy LAPS for local administrator passwords",
+        "name": "Change the computer object owner after a LAPS join",
         "fix": (
-            "Install Windows LAPS on joined computers so unique local-admin "
-            "passwords rotate into the directory. This is PingCastle "
-            "A-LAPS-Joined-Computers from a file-drop, not a live AD call."
+            "The account that joined the computer can still read its LAPS "
+            "password. Change the computer object's owner (for example to "
+            "Domain Admins) and remove that creator's write-owner, DACL write, "
+            "and All extended rights. This is PingCastle A-LAPS-Joined-Computers "
+            "from a file-drop, not a live AD call."
         ),
     },
     "P-DNSAdmin": {
@@ -1137,31 +1152,34 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
     "S-SIDHistory": {
         "name": "Remove SID History from trusted accounts",
         "fix": (
-            "Strip SID History from the flagged principals after the migration "
-            "window. This is PingCastle S-SIDHistory from a file-drop, not a live AD call."
+            "Re-permission ACLs and security descriptors to the new SID before "
+            "removing SID History. This is PingCastle S-SIDHistory from a "
+            "file-drop, not a live AD call."
         ),
     },
     "T-SIDHistoryDangerous": {
         "name": "Remove SID History from trusted accounts",
         "fix": (
-            "Strip dangerous SID History (privileged SIDs from another domain) "
-            "after the migration window. This is PingCastle T-SIDHistoryDangerous "
-            "from a file-drop, not a live AD call."
+            "Re-permission ACLs and security descriptors to the new SID before "
+            "removing dangerous SID History (privileged SIDs from another domain). "
+            "This is PingCastle T-SIDHistoryDangerous from a file-drop, not a live AD call."
         ),
     },
     "T-SIDHistorySameDomain": {
         "name": "Remove SID History from trusted accounts",
         "fix": (
-            "Strip same-domain SID History leftovers after the migration window. "
-            "This is PingCastle T-SIDHistorySameDomain from a file-drop, not a live AD call."
+            "Same-domain SID History is not a leftover from migration — "
+            "investigate the principal for compromise, then re-permission "
+            "descriptors to the new SID before removing SID History. This is "
+            "PingCastle T-SIDHistorySameDomain from a file-drop, not a live AD call."
         ),
     },
     "T-SIDHistoryUnknownDomain": {
         "name": "Remove SID History from trusted accounts",
         "fix": (
-            "Strip SID History that points at an unknown domain after the "
-            "migration window. This is PingCastle T-SIDHistoryUnknownDomain "
-            "from a file-drop, not a live AD call."
+            "Re-permission ACLs and security descriptors to the new SID before "
+            "removing SID History that points at an unknown domain. This is "
+            "PingCastle T-SIDHistoryUnknownDomain from a file-drop, not a live AD call."
         ),
     },
     "T-SIDFiltering": {
