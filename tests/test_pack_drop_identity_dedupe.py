@@ -12,10 +12,12 @@ from datetime import datetime
 from pathlib import Path
 
 from collectors import inventory_nmap
+from shared.control_map import iter_poam_decisions
 from shared.estate_pages import _exec_top_findings
 from shared.kev import KevCatalog
 from shared.poam_ledger import (
     _is_pack_drop_row_id,
+    _is_port_exposure_observation,
     _is_scanner_identity,
     apply_ledger,
     fp_v1,
@@ -147,6 +149,182 @@ def test_farm_demo_nmap_host_port_collapses_to_one_egp() -> None:
         if "telnet-legacy" in host and port_proto == "23/tcp"
     ]
     assert telnet and len(telnet[0]) == 1
+
+
+def _nmap_pack(name: str, extra_id: str, severity: str = "high") -> dict:
+    return {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": f"NMAP-{extra_id}",
+        "name": name,
+        "severity": severity,
+        "category": "exposure",
+        "assets": ["dc.corp.local"],
+        "labels": ["nmap", "covey"],
+        "extra": {
+            "port": "445",
+            "protocol": "tcp",
+            "service": "microsoft-ds",
+            "ip": "10.0.0.10",
+            "id": extra_id,
+            "adapter": "nmap",
+            "pack_drop": "covey",
+        },
+    }
+
+
+def _xml_smb445() -> dict:
+    return {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-dc-445/tcp",
+        "name": "SMB 445 exposed",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["dc.corp.local"],
+        "labels": ["nmap"],
+        "extra": {
+            "port": "445",
+            "protocol": "tcp",
+            "service": "microsoft-ds",
+            "ip": "10.0.0.10",
+            "check_id": "nmap-port-445/tcp",
+            "tool": "nmap",
+        },
+    }
+
+
+def test_specific_findings_on_same_host_port_stay_distinct() -> None:
+    """Metis #180: port key is for port-exposure only, not SMBv1 / TLS / .git."""
+    xml = _xml_smb445()
+    exposed = _nmap_pack("SMB 445 exposed", "nmap-10-microsoftds-445")
+    signing = _nmap_pack("SMB signing not required", "nmap-10-smb-signing-445")
+    smbv1 = _nmap_pack("SMBv1 protocol enabled", "nmap-10-smbv1-445", "critical")
+    tls = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-sslscan-50-tls10-443",
+        "name": "TLS 1.0 enabled",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["10.9.8.50"],
+        "labels": ["sslscan", "covey"],
+        "extra": {
+            "port": "443",
+            "protocol": "tcp",
+            "service": "https",
+            "ip": "10.9.8.50",
+            "id": "sslscan-50-tls10-443",
+            "adapter": "sslscan",
+            "pack_drop": "covey",
+        },
+    }
+    rc4 = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-sslscan-50-rc4-443",
+        "name": "RC4 cipher suites enabled",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["10.9.8.50"],
+        "labels": ["sslscan", "covey"],
+        "extra": {
+            "port": "443",
+            "protocol": "tcp",
+            "service": "https",
+            "ip": "10.9.8.50",
+            "id": "sslscan-50-rc4-443",
+            "adapter": "sslscan",
+            "pack_drop": "covey",
+        },
+    }
+    git = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-httpx-20-git-80",
+        "name": "Exposed .git directory at /.git",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["10.9.8.20"],
+        "labels": ["httpx", "covey"],
+        "extra": {
+            "port": "80",
+            "protocol": "tcp",
+            "service": "http",
+            "ip": "10.9.8.20",
+            "id": "httpx-20-git-80",
+            "adapter": "httpx",
+            "pack_drop": "covey",
+            "path": "/.git",
+        },
+    }
+    panel = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-httpx-20-admin-80",
+        "name": "Exposed admin panel",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["10.9.8.20"],
+        "labels": ["httpx", "covey"],
+        "extra": {
+            "port": "80",
+            "protocol": "tcp",
+            "service": "http",
+            "ip": "10.9.8.20",
+            "id": "httpx-20-admin-80",
+            "adapter": "httpx",
+            "pack_drop": "covey",
+            "path": "/admin",
+        },
+    }
+
+    assert _is_port_exposure_observation(xml)
+    assert _is_port_exposure_observation(exposed)
+    assert not _is_port_exposure_observation(signing)
+    assert not _is_port_exposure_observation(smbv1)
+    assert not _is_port_exposure_observation(tls)
+    assert not _is_port_exposure_observation(rc4)
+    assert not _is_port_exposure_observation(git)
+    assert not _is_port_exposure_observation(panel)
+
+    assert weakness_key(xml) == weakness_key(exposed) == "nmap:nmap-port-445/tcp"
+    assert weakness_key(signing) != weakness_key(xml)
+    assert weakness_key(smbv1) != weakness_key(xml)
+    assert weakness_key(signing) != weakness_key(smbv1)
+    assert weakness_key(tls) != weakness_key(rc4)
+    assert "sslscan:port:443/tcp" not in {weakness_key(tls), weakness_key(rc4)}
+    assert weakness_key(git) != weakness_key(panel)
+    assert "httpx:port:80/tcp" not in {weakness_key(git), weakness_key(panel)}
+
+    rows = [xml, exposed, signing, smbv1, tls, rc4, git, panel]
+    included = {
+        str(rec.get("name")): decision
+        for rec, decision in iter_poam_decisions(rows)
+        if decision.get("include")
+    }
+    for name in (
+        "SMB 445 exposed",
+        "SMB signing not required",
+        "SMBv1 protocol enabled",
+        "TLS 1.0 enabled",
+        "RC4 cipher suites enabled",
+        "Exposed .git directory at /.git",
+        "Exposed admin panel",
+    ):
+        assert name in included, f"{name} folded off the POA&M"
+
+    ledger = apply_ledger(
+        rows,
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-26T00:00:00Z"),
+        prior_existed=False,
+    )
+    names = {str(item.get("name") or "") for item in ledger["items"].values()}
+    assert "SMB signing not required" in names
+    assert "SMBv1 protocol enabled" in names
+    assert "TLS 1.0 enabled" in names
+    assert "Exposed .git directory at /.git" in names
 
 
 def test_exec_top5_collapses_farm_demo_telnet_pairs() -> None:
