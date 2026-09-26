@@ -13,6 +13,7 @@ from typing import Any
 
 import xml.etree.ElementTree as ET
 
+from shared.asset_ids import stamp_ids
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.enum4linux import parse_enum4linux
 from shared.hardening_dedup import dedupe_hardening
@@ -507,12 +508,17 @@ def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> l
                 "host_unresolved": unresolved,
             }
         )
+        extra = stamp_ids(extra, fqdn=host, hostname=host)
         labels = LABELS + ["hardeningkitty"]
         if unresolved:
             labels = labels + ["host-unresolved"]
         if host not in seen_hosts:
             seen_hosts.add(host)
-            asset_extra = {"asset_type": "PR", "tool": "hardeningkitty", "host_source": host_source}
+            asset_extra = stamp_ids(
+                {"asset_type": "PR", "tool": "hardeningkitty", "host_source": host_source},
+                fqdn=host,
+                hostname=host,
+            )
             if unresolved:
                 asset_extra["host_unresolved"] = True
             records.append(
@@ -607,7 +613,14 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                 assets=[name],
                 labels=LABELS + ["enum4linux"],
                 collected_at=now,
-                extra={"asset_type": "PR", "ip": addr},
+                extra=stamp_ids(
+                    {"asset_type": "PR", "ip": addr},
+                    ip=addr,
+                    fqdn=str(host.get("fqdn") or ""),
+                    netbios=str(host.get("netbios") or ""),
+                    domain=str(host.get("domain") or ""),
+                    hostname=name,
+                ),
             )
         )
         if host.get("null_session"):

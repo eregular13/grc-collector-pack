@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.arp_scan import parse_arp_scan
+from shared.asset_ids import stamp_ids
 from shared.fast_portscan import parse_fast_portscan
 from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
@@ -69,6 +70,15 @@ def _emit_host(
         for key, value in extra.items():
             if value not in (None, ""):
                 extra_out[key] = value
+    extra_out = stamp_ids(
+        extra_out,
+        ip=extra_out.get("ip") or addr,
+        hostname=extra_out.get("hostname") or hostname,
+        fqdn=extra_out.get("fqdn") or hostname,
+        mac=extra_out.get("mac") or extra_out.get("macs") or [],
+        netbios=extra_out.get("netbios") or "",
+        domain=extra_out.get("domain") or "",
+    )
     labels = list(LABELS)
     for lab in extra_labels or []:
         if lab not in labels:
@@ -449,15 +459,45 @@ def parse_file(path: Path) -> list[dict]:
         if state_el is not None and state_el.attrib.get("state") == "down":
             continue
         addr = ""
+        ips: list[str] = []
+        macs: list[str] = []
         for address in host.findall("address"):
-            if address.attrib.get("addrtype") in {None, "ipv4", "ipv6"}:
-                addr = address.attrib.get("addr", addr)
+            atype = address.attrib.get("addrtype")
+            token = address.attrib.get("addr", "")
+            if atype == "mac":
+                if token:
+                    macs.append(token)
+                continue
+            if atype in {None, "ipv4", "ipv6"}:
+                addr = token or addr
+                if token:
+                    ips.append(token)
+        hostnames: list[str] = []
         hostname = ""
         hnames = host.find("hostnames")
         if hnames is not None:
-            hn = hnames.find("hostname")
-            if hn is not None:
-                hostname = hn.attrib.get("name", "")
+            for hn in hnames.findall("hostname"):
+                token = hn.attrib.get("name", "")
+                if token:
+                    hostnames.append(token)
+                    if not hostname:
+                        hostname = token
+        smb_netbios = ""
+        smb_fqdn = ""
+        smb_domain = ""
+        for script in host.findall("hostscript/script"):
+            if script.attrib.get("id") != "smb-os-discovery":
+                continue
+            for elem in script.findall("elem"):
+                key = str(elem.attrib.get("key") or "")
+                val = (elem.text or "").strip()
+                if key == "server" and val:
+                    smb_netbios = val
+                elif key == "fqdn" and val:
+                    smb_fqdn = val
+                elif key == "domain" and val:
+                    smb_domain = val
+        hostname = hostname or smb_fqdn
         name = hostname or addr or "unknown-host"
         ports: list[tuple[str, str]] = []
         samba_ports: set[str] = set()
@@ -490,7 +530,22 @@ def parse_file(path: Path) -> list[dict]:
         ]
         for spec in nse_findings(name, addr, smb_port, "microsoft-ds", "", host_scripts):
             nse_specs.append((smb_port, "microsoft-ds", spec))
-        _emit_host(records, now, name, addr, hostname, ports, samba_ports=samba_ports)
+        _emit_host(
+            records,
+            now,
+            name,
+            addr,
+            hostname,
+            ports,
+            extra={
+                "ip": ips or addr,
+                "mac": macs,
+                "fqdn": smb_fqdn or hostname,
+                "netbios": smb_netbios,
+                "domain": smb_domain,
+            },
+            samba_ports=samba_ports,
+        )
         for portid, svc, spec in nse_specs:
             records.append(
                 make_record(

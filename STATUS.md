@@ -15,7 +15,7 @@ dropbox_lab: pass
 farm_lab: pass
 farm_toolbin_e2e: pass
 keep_lab: pass
-e2e_assets: 84
+e2e_assets: 78
 e2e_findings: 103
 e2e_poam: 125
 demo: true

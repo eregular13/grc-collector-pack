@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 from typing import Any, Iterator
 
+from shared.asset_ids import stamp_ids
 from shared.idp_inventory import parse_idp_file
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
 from shared.schema import make_record, make_ref
@@ -196,7 +197,11 @@ def _emit_idp_inventory(inv: dict, now: str) -> list[dict]:
                 assets=[name],
                 labels=LABELS + extra_labels,
                 collected_at=now,
-                extra={"asset_type": "SP", "provider": provider},
+                extra=stamp_ids(
+                    {"asset_type": "SP", "provider": provider},
+                    name=name,
+                    hostname=name if "@" not in name else "",
+                ),
             )
         )
 
@@ -328,7 +333,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[name],
                 labels=LABELS + extra_labels,
                 collected_at=now,
-                extra={"asset_type": "SP"},
+                extra=stamp_ids({"asset_type": "SP"}, name=name, hostname=name if "@" not in name else ""),
             )
         )
 
@@ -527,7 +532,7 @@ def parse_file(path: Path) -> list[dict]:
                         assets=[login],
                         labels=LABELS + ["okta"],
                         collected_at=now,
-                        extra={"asset_type": "SP", "roles": roles},
+                        extra=stamp_ids({"asset_type": "SP", "roles": roles}, name=login),
                     )
                 )
         return records

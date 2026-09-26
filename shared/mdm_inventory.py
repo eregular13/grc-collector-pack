@@ -289,12 +289,21 @@ def _normalize_device(device: dict[str, Any]) -> dict[str, Any] | None:
     if not name:
         return None
     general = device.get("general") if isinstance(device.get("general"), dict) else {}
+    uuid = str(
+        device.get("azureADDeviceId")
+        or device.get("azureAdDeviceId")
+        or device.get("udid")
+        or general.get("udid")
+        or general.get("udidHash")
+        or ""
+    ).strip()
     return {
         "name": name,
         "encrypted": _encrypted(device),
         "encryption_collected": _encryption_collected(device),
         "mdm_enrolled": _mdm_enrolled(device),
         "edr_present": _edr_present(device),
+        "uuid": uuid,
         "platform": str(
             (
                 device.get("operatingSystem")

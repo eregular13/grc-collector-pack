@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from shared.asset_ids import stamp_ids
 from shared.greenbone import cvss_band, parse_greenbone
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.nessus import parse_nessus
@@ -122,10 +123,24 @@ def _trivy_result_blocks(payload: Any) -> list[dict[str, Any]]:
     return blocks
 
 
+def _trivy_ids(payload: dict[str, Any]) -> dict[str, Any]:
+    meta = payload.get("Metadata") if isinstance(payload.get("Metadata"), dict) else {}
+    tags = meta.get("RepoTags") if isinstance(meta.get("RepoTags"), list) else []
+    digests = meta.get("RepoDigests") if isinstance(meta.get("RepoDigests"), list) else []
+    image_ref = str(payload.get("ArtifactName") or (tags[0] if tags else "") or "").strip()
+    return {
+        "image_digest": [str(x) for x in digests if x],
+        "image_id": str(meta.get("ImageID") or "").strip(),
+        "artifact_id": str(payload.get("ArtifactID") or "").strip(),
+        "image_ref": image_ref,
+    }
+
+
 def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not isinstance(payload, dict):
         return rows
+    ids = _trivy_ids(payload)
     for result in _trivy_result_blocks(payload):
         k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
         target = str(
@@ -138,7 +153,7 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
             target = f"{k8s.get('namespace')}/{target}"
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
-                vuln = {**vuln, "_target": target, "_class": "vuln"}
+                vuln = {**vuln, "_target": target, "_class": "vuln", "_ids": ids}
                 rows.append(vuln)
         for secret in result.get("Secrets") or result.get("secrets") or []:
             if not isinstance(secret, dict):
@@ -152,6 +167,7 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
                     "PkgName": "",
                     "_target": target,
                     "_class": "secret",
+                    "_ids": ids,
                 }
             )
         for mis in result.get("Misconfigurations") or result.get("misconfigurations") or []:
@@ -168,6 +184,7 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
                     "PkgName": "",
                     "_target": target,
                     "_class": "misconfig",
+                    "_ids": ids,
                 }
             )
     return rows
@@ -237,11 +254,12 @@ def parse_file(path: Path) -> list[dict]:
     records: list[dict] = []
     seen_assets: set[str] = set()
 
-    def add_asset(name: str) -> None:
+    def add_asset(name: str, ids: dict[str, Any] | None = None) -> None:
         key = name.lower()
         if key in seen_assets:
             return
         seen_assets.add(key)
+        extra = stamp_ids({"asset_type": "PR"}, **(ids or {}))
         records.append(
             make_record(
                 kind="asset",
@@ -253,7 +271,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[name],
                 labels=LABELS,
                 collected_at=now,
-                extra={"asset_type": "PR"},
+                extra=extra,
             )
         )
 
@@ -261,9 +279,13 @@ def parse_file(path: Path) -> list[dict]:
     if sarif:
         for row in iter_sarif_results(sarif):
             host = str(row.get("uri") or "unknown")
-            add_asset(host)
+            ids = row.get("ids") if isinstance(row.get("ids"), dict) else {}
+            add_asset(host, ids)
             rid = str(row.get("rule_id") or "sarif")
-            extra = {"rule": rid, "cve": rid if rid.upper().startswith("CVE") else ""}
+            extra = stamp_ids(
+                {"rule": rid, "cve": rid if rid.upper().startswith("CVE") else ""},
+                **ids,
+            )
             if row.get("scan_time"):
                 extra["scan_time"] = row.get("scan_time")
             records.append(
@@ -356,18 +378,23 @@ def parse_file(path: Path) -> list[dict]:
     if nessus is not None:
         for row in nessus:
             host = str(row.get("host") or "unknown")
-            add_asset(host)
+            ids = row.get("ids") if isinstance(row.get("ids"), dict) else {}
+            add_asset(host, ids)
             plugin = str(row.get("plugin_id") or "nessus")
             port = str(row.get("port") or "")
             cves = [str(c).strip() for c in (row.get("cves") or []) if str(c).strip()]
-            extra: dict[str, Any] = {
-                "port": port,
-                "service": row.get("service") or "",
-                "protocol": row.get("protocol") or "",
-                "id": plugin,
-                "tool": "nessus",
-                "cves": cves,
-            }
+            extra = stamp_ids(
+                {
+                    "port": port,
+                    "service": row.get("service") or "",
+                    "id": plugin,
+                    "protocol": row.get("protocol") or "",
+                    "id_quality": row.get("id_quality") or "",
+                    "tool": "nessus",
+                    "cves": cves,
+                },
+                **ids,
+            )
             if row.get("scan_time"):
                 extra["scan_time"] = row.get("scan_time")
             if cves:
@@ -464,12 +491,16 @@ def parse_file(path: Path) -> list[dict]:
         for vuln in trivy:
             vid = str(vuln.get("VulnerabilityID") or vuln.get("id") or "CVE-UNKNOWN")
             target = str(vuln.get("_target") or "image")
-            add_asset(target)
-            extra = {
-                "cve": vid if vid.upper().startswith("CVE") else "",
-                "pkg": vuln.get("PkgName"),
-                "class": vuln.get("_class") or "vuln",
-            }
+            ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
+            add_asset(target, ids)
+            extra = stamp_ids(
+                {
+                    "cve": vid if vid.upper().startswith("CVE") else "",
+                    "pkg": vuln.get("PkgName"),
+                    "class": vuln.get("_class") or "vuln",
+                },
+                **ids,
+            )
             if trivy_created:
                 extra["scan_time"] = trivy_created
             records.append(

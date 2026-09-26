@@ -1,3 +1,4 @@
+from shared.asset_ledger import asset_uid, resolve_asset_id  # noqa: F401
 from shared.schema import (  # noqa: F401
     canon_severity,
     ciso_finding_severity,

@@ -139,17 +139,17 @@ def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
         or ""
     ).strip()
     addr = ""
+    smb = payload.get("smb_domain_info") if isinstance(payload.get("smb_domain_info"), dict) else {}
+    fqdn = str(smb.get("FQDN") or smb.get("fqdn") or "").strip()
+    netbios_name = str(
+        smb.get("NetBIOS computer name") or smb.get("netbios_computer") or ""
+    ).strip()
+    domain = str(
+        smb.get("NetBIOS domain name") or smb.get("DNS domain") or smb.get("domain") or ""
+    ).strip()
     if IP_RE.fullmatch(target):
         addr = target
-        netbios = payload.get("smb_domain_info")
-        if isinstance(netbios, dict):
-            target = str(
-                netbios.get("NetBIOS computer name")
-                or netbios.get("hostname")
-                or target
-            )
-        else:
-            target = addr
+        target = netbios_name or smb.get("hostname") or target
     elif IP_RE.search(str(payload.get("target") or "")):
         addr = IP_RE.search(str(payload.get("target"))).group(0)
     sessions = payload.get("sessions") if isinstance(payload.get("sessions"), dict) else {}
@@ -186,6 +186,9 @@ def _host_from_json(payload: dict[str, Any]) -> dict[str, Any] | None:
         "groups": groups,
         "users": users,
         "shares": shares,
+        "fqdn": fqdn,
+        "netbios": netbios_name,
+        "domain": domain,
     }
 
 
