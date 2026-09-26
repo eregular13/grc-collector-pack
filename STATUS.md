@@ -1,4 +1,4 @@
-cycle: 199
+cycle: 203
 phase: DONE
 item: COS48-FARM-DROP-TO-SOR
 critic_score: 8/10
@@ -17,7 +17,7 @@ farm_toolbin_e2e: pass
 keep_lab: pass
 e2e_assets: 78
 e2e_findings: 104
-e2e_poam: 125
+e2e_poam: 124
 demo: true
 estate: DEMO — not a client estate
 compose_lab: pass_desktop

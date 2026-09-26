@@ -6,8 +6,10 @@ These files are **SAMPLE/DEMO fixtures**, not a client KEEP drop. No live scan.
 Provenance matches the research pack `samples/SOURCES.md` (fetched 2026-09-25 PT)
 and DefectDojo / ScubaGear / testssl public fixtures used in the §8 / §9 audit.
 
-PR #134 (not on master at this writing) owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng
-rows in this file. Merge by appending, do not overwrite #134's rows.
+PR #134 owns Prowler/Wazuh/XCCDF/SARIF/enum4linux-ng rows. PR #139 owns
+PingCastle, Greenbone, ScubaGear, testssl, and Nikto rows. Tables are unioned.
+This branch also documents Metis §11 / real-sample Cloud / MDM / IdP /
+BloodHound / Trivy / osquery fixtures below.
 
 LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 

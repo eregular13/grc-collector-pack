@@ -21,7 +21,7 @@ from shared.hardening_map import extra_control_fields, hk_control
 from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "identity-ad"
 LABELS = ["identity", "ad"]
@@ -586,7 +586,7 @@ def _emit_cis_cat(rows: list[dict[str, str]], now: str) -> list[dict]:
                 ref_id=make_ref(SOURCE, f"cis-{hid}-{host}"),
                 name=f"CIS-CAT {hid}: {title}",
                 description=title,
-                severity="high",
+                severity=str(row.get("severity") or "high"),
                 category="host-posture",
                 assets=[host],
                 labels=LABELS + ["cis-cat"],
@@ -631,7 +631,7 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"null-session-{name}"),
                     name=f"SMB null session allowed on {name}",
                     description=f"{name} enum4linux-ng export shows an anonymous/null SMB session.",
-                    severity="high",
+                    severity=canon_severity("high"),
                     category="identity-gap",
                     assets=[name],
                     labels=LABELS + ["enum4linux", "smb"],
@@ -657,7 +657,7 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"{title}-{name}"),
                     name=title,
                     description=desc,
-                    severity="high",
+                    severity=canon_severity("high"),
                     category="identity-gap",
                     assets=[name],
                     labels=LABELS + ["enum4linux"],
@@ -681,7 +681,7 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
                     ref_id=make_ref(SOURCE, f"{name}-share-{share_name}"),
                     name=f"Writable SMB share {share_name} on {name}",
                     description=f"{name} enum4linux-ng export shows {share_name} as {access}.",
-                    severity="high",
+                    severity=canon_severity("high"),
                     category="exposure",
                     assets=[name],
                     labels=LABELS + ["enum4linux", "smb"],
