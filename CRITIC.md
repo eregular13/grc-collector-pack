@@ -1,15 +1,18 @@
 # CRITIC — cycle 204 (METIS_FLOOD_GUARD)
 
-Lab this brick: pytest **1288** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1292** passed, 1 skipped. Ten collectors +
 honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
 `findings=107` `vulnerabilities=22` `applied_controls=129`
 `risk_scenarios=129` `poam=124` `excluded=5` `severity_unmapped=0`
 `demo=true`). `flood_guard.UNEXPLAINED==0`. FedRAMP Open IDs ==
 `poam.csv` (G0). Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
 Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68.
-Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
-**FAIL**. No POST `/api/risks`. RiskReady stay-out. E4 late-only not
-implemented. CoS #48 rails below are unchanged.
+Merged current `origin/master` (#150 proto-key / #156 nmap UDP IDs /
+#155 #141 follow-ups); `not_a_weakness` stays a named reason
+(`NOT_A_WEAKNESS`). Zero P0/P1. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. E4 late-only not implemented. CoS #48 rails
+below are unchanged.
 
 # CRITIC — cycle 203 (MERGE_MASTER_134_147_140_144)
 

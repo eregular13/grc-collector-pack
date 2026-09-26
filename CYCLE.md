@@ -4,11 +4,12 @@
 
 One POA&M decision set: `shared/poam_rollup.py` classify/build + E1
 telemetry + escalate budget; FedRAMP Open == poam.csv; UNEXPLAINED==0
-on lab/SAMPLE/farm. E4 late-only not implemented. pytest **1288**.
-Host-lab `assets=79` `findings=107` `poam=124` `excluded=5`.
-SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0 excluded=68. Catalog
-**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
-stay-out.
+on lab/SAMPLE/farm. Merged current `origin/master` (#150+#156+#155);
+`not_a_weakness` maps to `NOT_A_WEAKNESS`. E4 late-only not implemented.
+pytest **1292**. Host-lab `assets=79` `findings=107` `poam=124`
+`excluded=5`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0 excluded=68.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
 
 ## cycle 203 — merge master #134/#147/#140/#144; keep Metis §11 (2026-09-26)
 

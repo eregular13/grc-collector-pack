@@ -19,10 +19,10 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "canonical": 214,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:37:10Z"
+  "generated_at": "2026-09-26T07:42:19Z"
 }
 ```
 
-Cycle 204 Metis flood-guard: UNEXPLAINED==0; FedRAMP Open == poam.csv. pytest 1288. CoS #48 rails above stand.
+Cycle 204 Metis flood-guard: UNEXPLAINED==0; FedRAMP Open == poam.csv. pytest 1292. Merged origin/master #150+#156+#155. CoS #48 rails above stand.
 
 Cycle 203 merge origin/master `51bba3c` (#134+#147+#140+#144) into parser-real-output; keep Metis §11 + asset_uid + unrecognized_shape (pytest 1235; host-lab assets=78 findings=104 poam=124 excluded=2). Cycle 202 restamp after merging master `9aeb229` stands as history. CoS #48 rails above stand.
