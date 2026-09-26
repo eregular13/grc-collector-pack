@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from shared.scan_time import extra_scan_raw, format_detection_date
+
 NOT_RECORDED = "not recorded"
 
 # Most restrictive first. Unsure → SAMPLE (never CLIENT).
@@ -158,6 +160,14 @@ def recorded(value: Any) -> str:
     if text.lower() in {"none", "null", "unknown", "n/a", "na", "-"}:
         return NOT_RECORDED
     return text
+
+
+def _artifact_scan_stamp(rec: dict) -> str:
+    """Artifact scan calendar day, or 'not recorded'. Never collected_at / pack now."""
+    raw = extra_scan_raw(rec)
+    if raw in (None, ""):
+        return NOT_RECORDED
+    return format_detection_date(raw)
 
 
 def most_restrictive(*kinds: str) -> str:
@@ -634,11 +644,7 @@ def _scope_rows(
         extra0 = recs[0].get("extra") if isinstance(recs[0].get("extra"), dict) else {}
         tool = recorded(extra0.get("tool") or extra0.get("scanner") or src)
         version = recorded(extra0.get("version") or extra0.get("tool_version"))
-        collected = recorded(
-            extra0.get("collected_at")
-            or recs[0].get("collected_at")
-            or extra0.get("scan_time")
-        )
+        collected = _artifact_scan_stamp(recs[0])
         labels = [str(x).strip().lower() for x in (recs[0].get("labels") or [])]
         if "demo" in labels or "sample" in labels:
             targets = "bundled sample / fixture"
@@ -708,11 +714,9 @@ def _engagement_window(records: list[dict]) -> tuple[str, str]:
         pass
     times: list[str] = []
     for rec in records:
-        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-        for key in ("collected_at", "scan_time", "first_seen"):
-            val = extra.get(key) or rec.get(key)
-            if val:
-                times.append(str(val))
+        stamp = _artifact_scan_stamp(rec)
+        if stamp != NOT_RECORDED:
+            times.append(stamp)
     if times:
         return recorded(min(times)), recorded(max(times))
     return recorded(start), recorded(end)
