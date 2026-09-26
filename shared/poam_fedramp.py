@@ -59,10 +59,12 @@ FEDRAMP_EXTRA_HEADERS: tuple[str, ...] = ("Framework Tags",)
 FEDRAMP_CSV_HEADERS: tuple[str, ...] = FEDRAMP_OPEN_HEADERS + FEDRAMP_EXTRA_HEADERS
 
 M_BLANK_NOTE = (
-    "Scheduled Completion Date (col M) is blank in this CSV — the FedRAMP "
-    "template formula computes it (High/Critical +30, Moderate +90, Low +180). "
-    "Internal effective_due = min(template-derived due, earliest KEV dueDate) "
-    "and is stored on the ledger only."
+    "Scheduled Completion Date (col M) is blank in this CSV — this is the "
+    "FedRAMP template's own schedule (High/Critical +30, Moderate +90, Low +180), "
+    "not the Evergreen default (Critical 15 / High 30 / Moderate 90 / Low 180). "
+    "Internal effective_due = min(FedRAMP-template due, earliest KEV dueDate) "
+    "and is stored on the ledger only. Evergreen-schedule text and the KEV note "
+    "use Critical 15 days."
 )
 
 
@@ -78,21 +80,32 @@ def _comments(item: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def item_to_row(item: dict[str, Any]) -> list[str]:
+def item_to_row(
+    item: dict[str, Any],
+    *,
+    weakness: str = "",
+    controls: str = "",
+    description: str = "",
+    asset: str = "",
+    detector: str = "",
+    source_id: str = "",
+    remediation: str = "",
+    poam_id: str = "",
+) -> list[str]:
     cves = item.get("cves") or []
     return [
-        str(item.get("poam_id") or ""),
-        "",
-        str(item.get("name") or ""),
-        str(item.get("description") or ""),
-        str(item.get("source_family") or ""),
-        str(item.get("weakness_key") or ""),
-        str(item.get("display_asset") or item.get("asset_key") or ""),
+        str(poam_id or item.get("poam_id") or ""),
+        str(controls or item.get("controls") or ""),
+        str(weakness or item.get("weakness_name") or item.get("name") or ""),
+        str(description or item.get("description") or ""),
+        str(detector or item.get("source_family") or ""),
+        str(source_id or item.get("weakness_key") or ""),
+        str(asset or item.get("display_asset") or item.get("asset_key") or ""),
         str(item.get("point_of_contact") or ""),
         "",
-        str(item.get("remediation_plan") or ""),
+        str(remediation or item.get("remediation_plan") or ""),
         str(item.get("original_detection_date") or ""),
-        "",  # M — template formula; never written
+        "",  # M — FedRAMP template formula (Crit/High +30); never written
         str(item.get("status_date") or ""),
         str(item.get("vendor_dependency") or ""),
         str(item.get("last_vendor_checkin") or ""),
@@ -112,6 +125,28 @@ def item_to_row(item: dict[str, Any]) -> list[str]:
     ]
 
 
+def decision_to_row(decision: dict[str, Any]) -> list[str]:
+    """One FedRAMP row from the same POA&M decision the operator CSV used."""
+    item = decision.get("item") if isinstance(decision.get("item"), dict) else {}
+    rec = decision.get("rec") if isinstance(decision.get("rec"), dict) else {}
+    mapped = decision.get("mapped") if isinstance(decision.get("mapped"), dict) else {}
+    fields = decision.get("fields") if isinstance(decision.get("fields"), dict) else {}
+    controls = str(fields.get("controls") or "") or ", ".join(mapped.get("nist_800_53") or [])
+    return item_to_row(
+        item,
+        weakness=str(decision.get("weakness") or ""),
+        controls=controls,
+        description=str(
+            fields.get("weakness_description") or rec.get("description") or ""
+        ),
+        asset=str(decision.get("assets_s") or ""),
+        detector=str(fields.get("detector_source") or ""),
+        source_id=str(fields.get("weakness_source_id") or item.get("weakness_key") or ""),
+        remediation=str(mapped.get("recommended_fix") or item.get("remediation_plan") or ""),
+        poam_id=str(fields.get("poam_id") or item.get("poam_id") or ""),
+    )
+
+
 def _write_csv(path: Path, rows: list[list[str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as fh:
@@ -121,15 +156,24 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
             writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
 
 
-def write_fedramp_poam(out_poam: Path, ledger: dict[str, Any]) -> dict[str, Path]:
+def write_fedramp_poam(
+    out_poam: Path,
+    ledger: dict[str, Any],
+    *,
+    decisions: list[dict[str, Any]] | None = None,
+) -> dict[str, Path]:
+    """Write FedRAMP Open rows from the same included POA&M decisions only.
+
+    The ledger may still hold info / honeypot / lighter-excluded items for
+    coverage. Those never become Open rows. Open == poam.csv.
+    """
     open_rows: list[list[str]] = []
     closed_rows: list[list[str]] = []
+    if decisions is not None:
+        open_rows = [decision_to_row(row) for row in decisions]
     for item in (ledger.get("items") or {}).values():
-        row = item_to_row(item)
         if str(item.get("status") or "") == "closed":
-            closed_rows.append(row)
-        else:
-            open_rows.append(row)
+            closed_rows.append(item_to_row(item))
     for item in ledger.get("closed") or []:
         closed_rows.append(item_to_row(item))
     open_path = out_poam / FEDRAMP_CSV_NAME
@@ -145,6 +189,10 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
         "## KEV catalog (offline snapshot)",
         "",
         M_BLANK_NOTE,
+        "",
+        "Evergreen default schedule (poam.csv / KEV note): Critical 15 days, "
+        "High 30, Moderate 90, Low 180. FedRAMP col M uses FedRAMP's own "
+        "Critical/High +30 formula and stays blank in the CSV.",
         "",
         f"kev_evaluated: {str(catalog.kev_evaluated).lower()}",
     ]
