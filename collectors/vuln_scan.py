@@ -75,8 +75,38 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
         target = str(result.get("Target") or result.get("target") or "image")
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
-                vuln = {**vuln, "_target": target}
+                vuln = {**vuln, "_target": target, "_class": "vuln"}
                 rows.append(vuln)
+        for secret in result.get("Secrets") or result.get("secrets") or []:
+            if not isinstance(secret, dict):
+                continue
+            rows.append(
+                {
+                    "VulnerabilityID": str(secret.get("RuleID") or secret.get("Title") or "secret"),
+                    "Title": str(secret.get("Title") or secret.get("RuleID") or "secret"),
+                    "Description": str(secret.get("Category") or secret.get("Match") or secret.get("Title") or "secret"),
+                    "Severity": secret.get("Severity") or "high",
+                    "PkgName": "",
+                    "_target": target,
+                    "_class": "secret",
+                }
+            )
+        for mis in result.get("Misconfigurations") or result.get("misconfigurations") or []:
+            if not isinstance(mis, dict):
+                continue
+            if str(mis.get("Status") or mis.get("status") or "").upper() not in {"FAIL", "FAILED"}:
+                continue
+            rows.append(
+                {
+                    "VulnerabilityID": str(mis.get("ID") or mis.get("AVDID") or mis.get("Title") or "misconfig"),
+                    "Title": str(mis.get("Title") or mis.get("ID") or "misconfiguration"),
+                    "Description": str(mis.get("Message") or mis.get("Description") or mis.get("Title") or "misconfig"),
+                    "Severity": mis.get("Severity") or "medium",
+                    "PkgName": "",
+                    "_target": target,
+                    "_class": "misconfig",
+                }
+            )
     return rows
 
 
@@ -316,7 +346,11 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[target],
                     labels=LABELS + ["trivy"],
                     collected_at=now,
-                    extra={"cve": vid, "pkg": vuln.get("PkgName")},
+                    extra={
+                        "cve": vid if vid.upper().startswith("CVE") else "",
+                        "pkg": vuln.get("PkgName"),
+                        "class": vuln.get("_class") or "vuln",
+                    },
                 )
             )
         return records

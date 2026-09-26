@@ -13,7 +13,7 @@ from typing import Any
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, lynis_control
-from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
@@ -25,7 +25,10 @@ LABELS = ["wazuh", "host"]
 
 
 def _normalize_host(row: dict[str, Any]) -> dict[str, Any] | None:
-    name = row.get("name") or row.get("hostname") or row.get("computer_name") or row.get("display_name")
+    if row.get("action") or row.get("snapshot") or row.get("diffResults") or row.get("hostIdentifier"):
+        name = row.get("hostIdentifier") or row.get("hostname")
+    else:
+        name = row.get("name") or row.get("hostname") or row.get("computer_name") or row.get("display_name")
     if not name and row.get("id") not in (None, ""):
         name = row.get("id")
     if not name:
@@ -63,6 +66,20 @@ def _host_rows(raw: Any) -> list[dict[str, Any]]:
 
 def _agents(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
+        if payload and isinstance(payload[0], dict) and (
+            payload[0].get("action")
+            or payload[0].get("snapshot")
+            or payload[0].get("diffResults")
+            or payload[0].get("hostIdentifier")
+        ):
+            out = []
+            for row in payload:
+                if not isinstance(row, dict):
+                    continue
+                host = _normalize_host(row)
+                if host:
+                    out.append(host)
+            return out
         return [a for a in payload if isinstance(a, dict)]
     if not isinstance(payload, dict):
         return []
@@ -91,6 +108,9 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
         return rows
     if isinstance(payload.get("host"), dict):
         host = _normalize_host(payload["host"])
+        return [host] if host else []
+    if payload.get("hostIdentifier") or payload.get("action") or payload.get("snapshot"):
+        host = _normalize_host(payload)
         return [host] if host else []
     return []
 
@@ -467,7 +487,15 @@ def parse_file(path: Path) -> list[dict]:
                 title_fmt="CIS-CAT {id}: {title}",
             )
         return []
-    payload = read_json(path)
+    if path.suffix.lower() == ".jsonl":
+        rows = read_jsonl(path)
+        payload = rows if rows else {}
+    else:
+        try:
+            payload = read_json(path)
+        except Exception:
+            rows = read_jsonl(path)
+            payload = rows if rows else {}
     records: list[dict] = []
     if is_openscap(payload, name=path.name, text=text):
         return _emit_openscap_rows(iter_openscap_failures(text), now, path=path)
@@ -633,7 +661,7 @@ def parse_file(path: Path) -> list[dict]:
 def main() -> None:
     run_collector(
         SOURCE,
-        (".json", ".xml", ".txt", ".log", ".dat", ".csv"),
+        (".json", ".jsonl", ".xml", ".txt", ".log", ".dat", ".csv"),
         parse_file,
         finalize=dedupe_hardening,
     )

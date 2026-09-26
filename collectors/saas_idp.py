@@ -146,28 +146,52 @@ def _emit_idp_inventory(inv: dict, now: str) -> list[dict]:
                     extra={"mfa_registered": False, "roles": user.get("roles") or []},
                 )
             )
-        if user.get("privileged_roles") and user.get("pim_eligible") is not True:
+        if user.get("privileged_roles"):
             roles = [str(r) for r in (user.get("privileged_roles") or [])]
+            pim = user.get("pim_eligible")
             standing_ga = any("global administrator" in r.lower() for r in roles)
-            title = "Standing Global Administrator" if standing_ga else "Standing privileged role"
-            records.append(
-                make_record(
-                    kind="finding",
-                    source=SOURCE,
-                    ref_id=make_ref(SOURCE, f"standing-admin-{login}"),
-                    name=title,
-                    description=(
-                        f"Export lists a standing {roles[0]} assignment for {login} "
-                        f"(not PIM-eligible in this drop). {_ASSESS}"
-                    ),
-                    severity="critical" if standing_ga else "high",
-                    category="identity-gap",
-                    assets=assets,
-                    labels=LABELS + extra_labels + ["privileged"],
-                    collected_at=now,
-                    extra={"role": roles[0], "pim_eligible": False},
+            unspecified = any("unspecified" in r.lower() for r in roles)
+            extra = {"role": roles[0], "pim_eligible": pim}
+            if pim is True:
+                title = ""
+            elif pim is False:
+                title = "Standing Global Administrator" if standing_ga else "Standing privileged role"
+                sev = "critical" if standing_ga else "high"
+                desc = (
+                    f"Export lists a standing {roles[0]} assignment for {login} "
+                    f"(PIM-eligible is false in this drop). {_ASSESS}"
                 )
-            )
+            elif standing_ga:
+                title = "Global Administrator"
+                sev = "critical"
+                desc = (
+                    f"Export lists {roles[0]} for {login}. "
+                    f"Standing vs eligible is unknown (no PIM field in this drop). {_ASSESS}"
+                )
+            else:
+                title = "Privileged role (unspecified)" if unspecified else "Privileged role"
+                sev = "high"
+                extra["inventory_note"] = "assets prove a privileged role; MFA/roles need a separate export when absent"
+                desc = (
+                    f"Export lists {roles[0]} for {login}. "
+                    f"This is not a Global Administrator claim. {_ASSESS}"
+                )
+            if title:
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, f"standing-admin-{login}"),
+                        name=title,
+                        description=desc,
+                        severity=sev,
+                        category="identity-gap",
+                        assets=assets,
+                        labels=LABELS + extra_labels + ["privileged"],
+                        collected_at=now,
+                        extra=extra,
+                    )
+                )
         if user.get("stale_guest"):
             records.append(
                 make_record(
@@ -274,7 +298,13 @@ def parse_file(path: Path) -> list[dict]:
             )
             if not _failing(result, row.get("Passed")):
                 continue
-            sev = row.get("Severity") or row.get("severity") or "high"
+            raw_sev = row.get("Severity") if "Severity" in row else row.get("severity")
+            if raw_sev is None or str(raw_sev).strip() == "":
+                sev = "medium"
+                sev_source = "default"
+            else:
+                sev = raw_sev
+                sev_source = "maester"
             if not _high_enough(sev):
                 continue
             add_asset(tenant, f"Maester tenant {tenant}", ["maester"])
@@ -291,7 +321,11 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[tenant],
                     labels=LABELS + ["maester"],
                     collected_at=now,
-                    extra={"result": "failed", "id": row.get("Id") or row.get("id") or name},
+                    extra={
+                        "result": "failed",
+                        "id": row.get("Id") or row.get("id") or name,
+                        "severity_source": sev_source,
+                    },
                 )
             )
         return records

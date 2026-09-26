@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 189 — real-output parser bricks (Custodian/IdP/MDM/BH/Trivy/osquery) (2026-09-26)
+
+Fix collectors that were false or empty on real tool output (§8.2 / §9.2):
+Cloud Custodian `resources.json` list, Intune `azureADRegistered` ≠ MDM off,
+Entra/Google `isAdmin` ≠ standing GA, Jamf Pro `results[]`, Powerpipe +
+Steampipe query-without-status, Okta/Google content detect, BloodHound CE v6
+false roast/ACL criticals, Trivy secrets/misconfig, osquery `hostIdentifier`,
+ScoutSuite danger→high, Maester missing severity→medium+flag. Real-shaped
+samples under `fixtures/samples/` + `SOURCES.md`. SAMPLE ≠ client. No POST
+`/api/risks`. Catalog unchanged. paying_day **FAIL**.
+
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 
 Wire Lynis (GPLv3) + OpenSCAP/SSG (LGPL/BSD) into the LAB dest_in

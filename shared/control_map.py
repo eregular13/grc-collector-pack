@@ -764,6 +764,13 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Use PIM eligible assignments instead of standing Global Administrator. "
             "This is a dropped Scuba/Graph export finding, not a Graph API call."
         )
+    elif "privileged role" in text:
+        name = "Review privileged directory role"
+        fix = (
+            "Confirm the admin role from the dropped IdP export. "
+            "isAdmin means any admin role, not Global Administrator. "
+            "This is not a Graph or Okta API call."
+        )
     elif "password history" in text:
         name = "Enforce Windows password history"
         fix = (

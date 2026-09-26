@@ -1,0 +1,24 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#deviceManagement/managedDevices",
+  "value": [
+    {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "deviceName": "LAPTOP-GRAPH-01",
+      "operatingSystem": "Windows",
+      "complianceState": "compliant",
+      "isEncrypted": true,
+      "azureADRegistered": false,
+      "managedDeviceOwnerType": "company",
+      "isSupervised": false
+    },
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "deviceName": "LAPTOP-GRAPH-02",
+      "operatingSystem": "Windows",
+      "complianceState": "noncompliant",
+      "isEncrypted": false,
+      "azureADRegistered": false,
+      "managedDeviceOwnerType": "company"
+    }
+  ]
+}

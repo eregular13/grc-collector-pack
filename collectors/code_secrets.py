@@ -306,6 +306,46 @@ def parse_file(path: Path) -> list[dict]:
                         extra={"cve": vid, "pkg": vuln.get("PkgName")},
                     )
                 )
+            for secret in result.get("Secrets") or []:
+                if not isinstance(secret, dict):
+                    continue
+                sid = str(secret.get("RuleID") or secret.get("Title") or "secret")
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, sid),
+                        name=str(secret.get("Title") or sid),
+                        description=str(secret.get("Category") or sid),
+                        severity=secret.get("Severity") or "high",
+                        category="secret",
+                        assets=[target],
+                        labels=LABELS + ["trivy", "secret"],
+                        collected_at=now,
+                        extra={"rule": sid, "class": "secret"},
+                    )
+                )
+            for mis in result.get("Misconfigurations") or []:
+                if not isinstance(mis, dict):
+                    continue
+                if str(mis.get("Status") or "").upper() not in {"FAIL", "FAILED"}:
+                    continue
+                mid = str(mis.get("ID") or mis.get("Title") or "misconfig")
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, mid),
+                        name=str(mis.get("Title") or mid),
+                        description=str(mis.get("Message") or mis.get("Description") or mid),
+                        severity=mis.get("Severity") or "medium",
+                        category="misconfiguration",
+                        assets=[target],
+                        labels=LABELS + ["trivy", "misconfig"],
+                        collected_at=now,
+                        extra={"rule": mid, "class": "misconfig"},
+                    )
+                )
     return records
 
 

@@ -37,7 +37,20 @@ _EDGE_FINDINGS = {
     "DCSYNC": ("critical", "BloodHound DCSync", "Principal can replicate directory secrets."),
     "ALLOWEDTODELEGATE": ("high", "BloodHound constrained delegation", "Constrained delegation path."),
     "ADDMEMBER": ("medium", "BloodHound AddMember", "Can add members to a privileged group."),
+    "WRITEDACL": ("high", "BloodHound WriteDacl", "WriteDacl can plant a backdoor ACE."),
+    "WRITEOWNER": ("high", "BloodHound WriteOwner", "WriteOwner can take the object."),
+    "OWNS": ("high", "BloodHound Owns", "Owner can rewrite the DACL."),
+    "ADDKEYCREDENTIALLINK": ("high", "BloodHound AddKeyCredentialLink", "Shadow-credentials / key-cred write."),
 }
+
+# Built-in admin / DC principals. Default ACLs from these are not exposures.
+_DEFAULT_ADMIN_RIDS = frozenset({"500", "498", "512", "516", "518", "519", "544", "548"})
+_WELL_KNOWN_ADMIN = (
+    "S-1-5-32-544",
+    "S-1-5-32-548",
+    "S-1-5-32-549",
+    "S-1-5-9",
+)
 
 
 def _looks_like_edge(obj: dict[str, Any]) -> bool:
@@ -87,9 +100,25 @@ def _nodes(payload: Any) -> list[dict[str, Any]]:
     return [n for n in raw if not _looks_like_edge(n)]
 
 
+def _sid_rid(sid: str) -> str:
+    parts = str(sid or "").strip().split("-")
+    return parts[-1] if parts else ""
+
+
+def _is_default_admin_principal(sid: str) -> bool:
+    text = str(sid or "").strip()
+    if not text:
+        return False
+    upper = text.upper()
+    if any(token in upper for token in _WELL_KNOWN_ADMIN):
+        return True
+    return _sid_rid(text) in _DEFAULT_ADMIN_RIDS
+
+
 def _aces_as_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """SharpHound ACE rows → mapped edges only. Empty Aces invent nothing."""
     out: list[dict[str, Any]] = []
+    dcsync_rights: dict[tuple[str, str], set[str]] = {}
     for node in nodes:
         aces = node.get("Aces") or node.get("aces") or []
         if not isinstance(aces, list):
@@ -105,15 +134,86 @@ def _aces_as_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for ace in aces:
             if not isinstance(ace, dict):
                 continue
+            if ace.get("IsInherited") is True:
+                continue
             right = str(ace.get("RightName") or ace.get("rightName") or ace.get("kind") or "")
+            sid = str(ace.get("PrincipalSID") or ace.get("principalSid") or "")
             start = str(
                 ace.get("PrincipalName")
-                or ace.get("PrincipalSID")
+                or sid
                 or ace.get("principal")
                 or ""
             )
-            if right and start:
-                out.append({"kind": right, "start": start, "end": end})
+            if not right or not start:
+                continue
+            if _is_default_admin_principal(sid or start):
+                continue
+            folded = right.upper().replace(" ", "")
+            if folded in {"GETCHANGES", "GETCHANGESALL"}:
+                dcsync_rights.setdefault((start, end), set()).add(folded)
+                continue
+            out.append({"kind": right, "start": start, "end": end})
+    for (start, end), rights in dcsync_rights.items():
+        if "GETCHANGES" in rights and "GETCHANGESALL" in rights:
+            out.append({"kind": "DCSync", "start": start, "end": end})
+    return out
+
+
+def _session_and_admin_edges(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """LocalGroups ADMINISTRATORS → AdminTo; Sessions → HasSession."""
+    names: dict[str, str] = {}
+    for node in nodes:
+        props = _props(node)
+        oid = str(
+            node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or node.get("objectId")
+            or ""
+        )
+        name = str(props.get("name") or oid)
+        if oid:
+            names[oid] = name
+    out: list[dict[str, Any]] = []
+    for node in nodes:
+        props = _props(node)
+        computer = str(
+            props.get("name")
+            or node.get("ObjectIdentifier")
+            or node.get("objectid")
+            or ""
+        )
+        groups = node.get("LocalGroups") or node.get("local_groups") or []
+        if isinstance(groups, list):
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                oid = str(group.get("ObjectIdentifier") or group.get("Name") or "")
+                gname = str(group.get("Name") or "")
+                if not (oid.upper().endswith("-544") or "ADMINISTRATOR" in gname.upper()):
+                    continue
+                results = group.get("Results") if isinstance(group.get("Results"), list) else []
+                for member in results:
+                    if not isinstance(member, dict):
+                        continue
+                    msid = str(member.get("ObjectIdentifier") or member.get("UserSID") or "")
+                    if not msid or _is_default_admin_principal(msid):
+                        continue
+                    start = names.get(msid, msid)
+                    out.append({"kind": "AdminTo", "start": start, "end": computer})
+        for key in ("Sessions", "PrivilegedSessions"):
+            bag = node.get(key) or node.get(key.lower()) or {}
+            results = bag.get("Results") if isinstance(bag, dict) else bag
+            if not isinstance(results, list):
+                continue
+            for row in results:
+                if not isinstance(row, dict):
+                    continue
+                user = str(row.get("UserSID") or row.get("user") or "")
+                if not user:
+                    continue
+                start = names.get(user, user)
+                end = names.get(str(row.get("ComputerSID") or ""), computer) or computer
+                out.append({"kind": "HasSession", "start": start, "end": end})
     return out
 
 
@@ -134,6 +234,7 @@ def _edges(payload: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         collected.extend(e for e in data if isinstance(e, dict) and _looks_like_edge(e))
     collected.extend(_aces_as_edges(_nodes(payload)))
+    collected.extend(_session_and_admin_edges(_nodes(payload)))
     return collected
 
 
@@ -465,9 +566,18 @@ def parse_file(path: Path) -> list[dict]:
         )
         findings: list[tuple[str, str, str]] = []
         uname = name.upper()
+        is_computer = (
+            kind.lower() == "computer"
+            or str(props.get("samaccountname") or "").endswith("$")
+            or bool(props.get("operatingsystem"))
+        )
+        is_dc = "OU=DOMAIN CONTROLLERS" in str(props.get("distinguishedname") or "").upper()
+        enabled = props.get("enabled")
         if "BACKUP OPERATORS" in uname or (props.get("highvalue") and "BACKUP" in uname):
             findings.append(("high", "Backup Operators privileged group", "Members can dump SAM / seize privileged files."))
-        if props.get("hasspn") or props.get("serviceprincipalnames"):
+        spns = props.get("serviceprincipalnames") or []
+        has_spn = bool(props.get("hasspn") or (isinstance(spns, list) and spns) or (isinstance(spns, str) and spns))
+        if has_spn and not is_computer and enabled is not False:
             findings.append(("high", "Roastable SPN", f"{name} has an SPN and is kerberoastable."))
         if props.get("dontreqpreauth"):
             findings.append(("high", "AS-REP roastable account", f"{name} does not require Kerberos preauth."))
@@ -477,7 +587,7 @@ def parse_file(path: Path) -> list[dict]:
         pim = props.get("pimEligible") if "pimEligible" in props else props.get("pimeligible")
         if any("Global Administrator" in str(r) for r in roles) and not pim:
             findings.append(("critical", "Entra GA without PIM", f"{name} is Global Administrator without PIM eligibility."))
-        if props.get("unconstraineddelegation"):
+        if props.get("unconstraineddelegation") and not is_dc:
             findings.append(("high", "Unconstrained delegation", f"{name} has unconstrained Kerberos delegation."))
         if props.get("highvalue") and not findings:
             findings.append(("medium", "High-value identity", f"{name} is marked high-value."))

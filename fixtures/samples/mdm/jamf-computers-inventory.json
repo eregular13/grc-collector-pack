@@ -1,0 +1,29 @@
+{
+  "totalCount": 2,
+  "results": [
+    {
+      "id": "1",
+      "general": {
+        "name": "mac-jamf-01",
+        "platform": "Mac",
+        "remoteManagement": {"managed": true},
+        "mdmCapable": {"capable": true, "capableUsers": ["it"]}
+      },
+      "diskEncryption": {"fileVault2Enabled": true},
+      "operatingSystem": {"fileVault2Status": "AllPartitionsEncrypted"},
+      "security": {}
+    },
+    {
+      "id": "2",
+      "general": {
+        "name": "mac-jamf-02",
+        "platform": "Mac",
+        "remoteManagement": {"managed": true},
+        "mdmCapable": {"capable": true, "capableUsers": []}
+      },
+      "diskEncryption": {"fileVault2Enabled": false},
+      "operatingSystem": {"fileVault2Status": "NotEncrypted"},
+      "security": {}
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -61,10 +62,53 @@ def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _iter_findings(payload: Any) -> list[dict[str, Any]]:
+def _looks_asff_row(row: dict[str, Any]) -> bool:
+    return ("GeneratorId" in row or "Resources" in row) and "CheckID" not in row
+
+
+def _looks_prowler_row(row: dict[str, Any]) -> bool:
+    return "CheckID" in row or "CheckTitle" in row or (
+        "Status" in row and ("ResourceId" in row or "ResourceArn" in row)
+    )
+
+
+def _looks_custodian_resource(row: Any) -> bool:
+    if not isinstance(row, dict) or _looks_prowler_row(row) or _looks_asff_row(row):
+        return False
+    return any(
+        k in row
+        for k in ("Arn", "arn", "Name", "InstanceId", "BucketName", "id", "Id")
+    )
+
+
+def _custodian_policy_name(path: Path | None) -> str:
+    if path is None:
+        return "c7n-policy"
+    if path.name.lower() == "resources.json":
+        parent = path.parent.name.strip()
+        if parent:
+            return parent
+    meta = path.parent / "metadata.json"
+    if meta.is_file():
+        try:
+            doc = json.loads(meta.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            doc = {}
+        pol = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
+        if isinstance(pol, dict) and pol.get("name"):
+            return str(pol["name"])
+    return path.stem or "c7n-policy"
+
+
+def _iter_findings(payload: Any, path: Path | None = None) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         rows = [x for x in payload if isinstance(x, dict)]
-        if rows and ("GeneratorId" in rows[0] or "Resources" in rows[0]) and "CheckID" not in rows[0]:
+        if not rows:
+            return []
+        named = bool(path and path.name.lower() == "resources.json")
+        if named or (not _looks_prowler_row(rows[0]) and not _looks_asff_row(rows[0]) and _looks_custodian_resource(rows[0])):
+            return _custodian_from_resources(rows, path)
+        if _looks_asff_row(rows[0]):
             return [_asff_to_prowler(x) for x in rows]
         return rows
     if not isinstance(payload, dict):
@@ -83,6 +127,9 @@ def _iter_findings(payload: Any) -> list[dict[str, Any]]:
     custodian = _custodian_findings(payload)
     if custodian:
         return custodian
+    powerpipe = _powerpipe_findings(payload)
+    if powerpipe:
+        return powerpipe
     steampipe = _steampipe_findings(payload)
     if steampipe:
         return steampipe
@@ -115,8 +162,9 @@ def _scoutsuite_findings(payload: Any) -> list[dict[str, Any]]:
                 continue
             items = item.get("items") if isinstance(item.get("items"), list) else [fid]
             level = str(item.get("level") or "warning").lower()
-            sev = {"danger": "critical", "warning": "medium", "info": "low"}.get(level, "high")
-            for rid in items[:8]:
+            # ScoutSuite only has danger/warning — danger is high, not a critical tier.
+            sev = {"danger": "high", "warning": "medium", "info": "low"}.get(level, "high")
+            for rid in items:
                 out.append(
                     {
                         "CheckID": str(fid),
@@ -147,7 +195,15 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
         for res in rows:
             if not isinstance(res, dict):
                 continue
-            rid = str(res.get("Name") or res.get("Id") or res.get("id") or pname)
+            rid = str(
+                res.get("Arn")
+                or res.get("arn")
+                or res.get("Name")
+                or res.get("InstanceId")
+                or res.get("Id")
+                or res.get("id")
+                or pname
+            )
             arn = str(res.get("Arn") or res.get("arn") or rid)
             out.append(
                 {
@@ -164,13 +220,73 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
     return out
 
 
+def _custodian_from_resources(rows: list[dict[str, Any]], path: Path | None) -> list[dict[str, Any]]:
+    pname = _custodian_policy_name(path)
+    return _custodian_findings({"name": pname, "resource": "cloud", "resources": rows})
+
+
+def _powerpipe_findings(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    if not (payload.get("controls") or payload.get("groups") or payload.get("group_id")):
+        return []
+    out: list[dict[str, Any]] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, list):
+            for child in node:
+                walk(child)
+            return
+        if not isinstance(node, dict):
+            return
+        controls = node.get("controls")
+        if isinstance(controls, list):
+            for ctrl in controls:
+                if not isinstance(ctrl, dict):
+                    continue
+                cid = str(ctrl.get("control_id") or ctrl.get("control") or "powerpipe")
+                title = str(ctrl.get("title") or cid)
+                sev = ctrl.get("severity") or "medium"
+                service = str(ctrl.get("service") or "cloud")
+                results = ctrl.get("results") if isinstance(ctrl.get("results"), list) else []
+                for res in results:
+                    if not isinstance(res, dict):
+                        continue
+                    status = str(res.get("status") or "").strip().lower()
+                    if status not in {"alarm", "error"}:
+                        continue
+                    rid = str(res.get("resource") or res.get("reason") or cid)
+                    out.append(
+                        {
+                            "CheckID": cid,
+                            "CheckTitle": title,
+                            "Status": "FAIL",
+                            "Severity": sev,
+                            "ResourceId": rid,
+                            "ResourceArn": str(res.get("arn") or rid),
+                            "Description": str(res.get("reason") or title),
+                            "ServiceName": service,
+                        }
+                    )
+        groups = node.get("groups")
+        if isinstance(groups, list):
+            walk(groups)
+
+    walk(payload)
+    return out
+
+
 def _steampipe_findings(payload: Any) -> list[dict[str, Any]]:
     rows = []
     if isinstance(payload, dict) and isinstance(payload.get("rows"), list):
         rows = [r for r in payload["rows"] if isinstance(r, dict)]
     out: list[dict[str, Any]] = []
     for row in rows:
-        status = str(row.get("status") or row.get("alarm") or "alarm").lower()
+        raw_status = row.get("status")
+        if raw_status is None or str(raw_status).strip() == "":
+            # steampipe query --output json inventory rows are not controls.
+            continue
+        status = str(raw_status).lower()
         mapped = "FAIL" if status in {"alarm", "fail", "failed", "error"} else "PASS"
         rid = str(row.get("resource") or row.get("arn") or row.get("title") or "steampipe")
         out.append(
@@ -193,7 +309,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
     now = iso_now()
     records: list[dict[str, Any]] = []
     seen_assets: set[str] = set()
-    for item in _iter_findings(payload):
+    for item in _iter_findings(payload, path=path):
         check = str(item.get("CheckID") or item.get("CheckId") or item.get("check_id") or "check")
         title = str(item.get("CheckTitle") or item.get("title") or check)
         status = str(item.get("Status") or item.get("status") or "").upper()
