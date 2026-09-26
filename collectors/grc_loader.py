@@ -625,9 +625,9 @@ def load() -> dict:
         out_sr / "README.md",
         stamp.banner_md()
         + "\n\n# SimpleRisk leave-behind\n\n"
-        + "Copy of POA&M rows under `out/` only. No SimpleRisk API. No push.\n"
-        + "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n"
-        + "RiskReady JSON is not generated. Count identity is CISO register + POA&M.\n",
+        "Copy of POA&M rows under `out/` only. No SimpleRisk API. No push.\n"
+        "Owner/due stay blank. CISO Assistant (clica/UI) is the SoR.\n"
+        "RiskReady JSON is not generated. Count identity is CISO register + POA&M.\n",
     )
     write_estate_sidecar(out_sr, stamp)
 
