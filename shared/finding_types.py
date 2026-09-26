@@ -11,6 +11,8 @@ provenance. Apply before risk-register and POA&M generation.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import re
 from typing import Any
 
@@ -1025,17 +1027,112 @@ _IDENTITY_LOCATION_KEYS = (
     "command",
 )
 
+# Secret-class identity is rule + file + secret_hash when material is
+# usable. Line remints when a leak slides in the file (Argus CR6-2) —
+# keep line when the value is empty or redacted so two leaks of one
+# rule in one file stay two IDs. Path/url/user stay so #170 httpx-admin
+# root vs /login and honeypot wget vs uname are untouched.
+SECRET_UNSTABLE_LOCATION_KEYS = frozenset(
+    {"line", "evidence", "evidence_ref", "cmd", "command"}
+)
+SECRET_UNSTABLE_WITHOUT_HASH = frozenset(
+    {"evidence", "evidence_ref", "cmd", "command"}
+)
+SECRET_HASH_LEN = 16
+# Pack-internal HMAC pepper. Not an estate secret; stops unsalted
+# sha256(secret)[:16] from being confirmed offline from a CSV.
+SECRET_HASH_PEPPER = b"grc-collector-pack/cr6-2/secret-identity/v1"
+_SECRET_HASH_IN_KEY = re.compile(r"(?:\|)?secret_hash:[0-9a-fA-F]+", re.I)
 
-def _identity_location(extra: dict[str, Any]) -> str:
-    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows."""
+
+def secret_material_usable(material: Any) -> bool:
+    """False when the scanner omitted the value or replaced it with REDACTED / *."""
+    text = str(material or "").strip()
+    if not text:
+        return False
+    if "redacted" in text.lower():
+        return False
+    if text.replace("*", "") == "":
+        return False
+    return True
+
+
+def secret_material_hash(material: Any) -> str:
+    """HMAC-SHA256 prefix of Secret/Match/Raw. Empty when omitted or redacted."""
+    if not secret_material_usable(material):
+        return ""
+    text = str(material).strip()
+    return hmac.new(
+        SECRET_HASH_PEPPER, text.encode("utf-8"), hashlib.sha256
+    ).hexdigest()[:SECRET_HASH_LEN]
+
+
+def secret_has_identity_hash(rec: dict[str, Any] | None, extra: dict[str, Any] | None = None) -> bool:
+    extra = extra if extra is not None else extra_dict(rec or {})
+    return bool(str(extra.get("secret_hash") or "").strip())
+
+
+def strip_secret_hash_from_key(key: str) -> str:
+    """Drop secret_hash tokens from a client-facing weakness_source_id."""
+    text = str(key or "")
+    if not text:
+        return ""
+    cleaned = _SECRET_HASH_IN_KEY.sub("", text)
+    cleaned = cleaned.replace("||", "|").strip("|")
+    return cleaned.rstrip(":")
+
+
+def is_secret_finding(
+    rec: dict[str, Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> bool:
+    """Gitleaks / TruffleHog / category secrets. Not Checkov, Semgrep, or httpx."""
+    rec = rec or {}
+    extra = extra if extra is not None else extra_dict(rec)
+    category = str(rec.get("category") or extra.get("category") or "").strip().lower()
+    if category in {"secrets", "secret"}:
+        return True
+    labels = {
+        str(x).strip().lower()
+        for x in (rec.get("labels") or extra.get("labels") or [])
+        if str(x).strip()
+    }
+    if labels & {"gitleaks", "trufflehog"}:
+        return True
+    check_id = str(extra.get("check_id") or extra.get("rule") or "").strip().lower()
+    return check_id.startswith(("gitleaks-", "trufflehog-"))
+
+
+def _identity_location(
+    extra: dict[str, Any], rec: dict[str, Any] | None = None
+) -> str:
+    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows.
+
+    Secret-class rows drop line/evidence/cmd and append ``secret_hash`` when
+    present. File stays so two leaks of the same rule in different files
+    stay two rows.
+    """
+    secret = is_secret_finding(rec, extra)
+    has_hash = secret_has_identity_hash(rec, extra)
+    skip = SECRET_UNSTABLE_LOCATION_KEYS if (secret and has_hash) else (
+        SECRET_UNSTABLE_WITHOUT_HASH if secret else frozenset()
+    )
     bits: list[str] = []
     seen: set[str] = set()
     for key in _IDENTITY_LOCATION_KEYS:
+        if key in skip:
+            continue
         val = str(extra.get(key) or "").strip().lower()
         if not val or val in seen:
             continue
         seen.add(val)
         bits.append(f"{key}:{val}")
+    if secret:
+        hashed = str(extra.get("secret_hash") or "").strip().lower()
+        if hashed:
+            token = f"secret_hash:{hashed}"
+            if token not in seen:
+                bits.append(token)
     return "|".join(bits)
 
 
@@ -1047,6 +1144,8 @@ def finding_identity(rec: dict[str, Any]) -> str:
     this key — two long IDs that share a prefix would otherwise collide.
     Repeating check_ids (httpx-admin / whatweb-admin / path-exposure) keep
     the #170 path/url discriminator so root vs /login do not collapse.
+    Secret-class rows key rule + file + secret_hash (CR6-2); line moves do
+    not remint.
     """
     extra = extra_dict(rec)
     for key in (
@@ -1064,7 +1163,7 @@ def finding_identity(rec: dict[str, Any]) -> str:
         if val:
             ident = val.lower()
             if key != "cve" and not ident.startswith("cve-"):
-                loc = _identity_location(extra)
+                loc = _identity_location(extra, rec)
                 if loc:
                     ident = f"{ident}:{loc}"
             return ident

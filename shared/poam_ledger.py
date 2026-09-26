@@ -32,7 +32,14 @@ from shared.asset_key import (
     legacy_port_only_asset_key,
     normalize_weakness_name,
 )
-from shared.finding_types import extra_dict, finding_type
+from shared.finding_types import (
+    SECRET_UNSTABLE_LOCATION_KEYS,
+    SECRET_UNSTABLE_WITHOUT_HASH,
+    extra_dict,
+    finding_type,
+    is_secret_finding,
+    secret_has_identity_hash,
+)
 from shared.io_util import in_dir, out_dir
 from shared.kev import (
     collect_cves,
@@ -437,15 +444,31 @@ _LOCATION_KEYS = (
 )
 
 
-def _location_suffix(rec: dict[str, Any]) -> str:
+def _location_suffix(rec: dict[str, Any], *, secret_legacy: bool = False) -> str:
     """Path/url/file/line/user/evidence (and cmd/service) when present.
 
     Same-title fallback rows on one asset stay distinct. CVE keys omit this.
+    Secret-class rows drop line/evidence/cmd and append ``secret_hash``
+    when the value is usable (CR6-2). Empty or redacted material keeps
+    ``line`` so two leaks of one rule in one file stay two IDs.
+    Path/url/user stay so #170 admin URLs and honeypot cmds still
+    split. ``secret_legacy`` rebuilds the pre-CR6-2 suffix.
     """
     extra = extra_dict(rec)
+    secret = is_secret_finding(rec)
+    has_hash = secret_has_identity_hash(rec)
+    skip: frozenset[str] = frozenset()
+    if secret and not secret_legacy:
+        skip = (
+            SECRET_UNSTABLE_LOCATION_KEYS
+            if has_hash
+            else SECRET_UNSTABLE_WITHOUT_HASH
+        )
     bits: list[str] = []
     seen: set[str] = set()
     for key in _LOCATION_KEYS:
+        if key in skip:
+            continue
         val = _extra_field(extra, key)
         if not val:
             continue
@@ -453,6 +476,13 @@ def _location_suffix(rec: dict[str, Any]) -> str:
         if token not in seen:
             seen.add(token)
             bits.append(token)
+    if secret and not secret_legacy:
+        hashed = _extra_field(extra, "secret_hash")
+        if hashed:
+            token = f"secret_hash:{hashed.lower()}"
+            if token not in seen:
+                seen.add(token)
+                bits.append(token)
     port = _extra_field(extra, "port")
     has_plugin = False
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id", "id"):
@@ -467,6 +497,16 @@ def _location_suffix(rec: dict[str, Any]) -> str:
             if token not in seen:
                 bits.append(token)
     return "|".join(bits)
+
+
+def legacy_secret_line_weakness_key(rec: dict[str, Any]) -> str:
+    """Pre-CR6-2 secret key: line/evidence/cmd in location, no secret_hash."""
+    core = _weakness_key_core(rec)
+    if not core.startswith("cve:"):
+        loc = _location_suffix(rec, secret_legacy=True)
+        if loc:
+            core = f"{core}:{loc}"
+    return _attach_wazuh_host(rec, core)
 
 
 def _wazuh_host_segment(raw: str) -> str:
@@ -1361,6 +1401,41 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
             hosted = _attach_wazuh_host(variant, _weakness_key_core(variant))
             if hosted and hosted != legacy_pre_location_weakness_key(variant):
                 fp = fp_v1(variant, asset_key_fn=fn, weakness_key_fn=lambda _r, k=hosted: k)
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
+    # CR6-2: pre-hash / line-keyed secret fps rematch. Strip newly stamped
+    # file+secret_hash so DEMO gitleaks ``:line:N`` and TruffleHog check_id-only
+    # rows keep their EGP. Do not drop path/url — that would undo #170.
+    if is_secret_finding(rec):
+        extra = extra_dict(rec)
+        secret_variants = [rec]
+        no_new = {k: v for k, v in extra.items() if k not in ("secret_hash", "file")}
+        if no_new != dict(extra):
+            fake = dict(rec)
+            fake["extra"] = no_new
+            secret_variants.append(fake)
+        no_hash = {k: v for k, v in extra.items() if k != "secret_hash"}
+        if no_hash != dict(extra) and no_hash != no_new:
+            fake = dict(rec)
+            fake["extra"] = no_hash
+            secret_variants.append(fake)
+        for variant in secret_variants:
+            for fn, reason in (
+                (asset_key, "secret_line_to_hash"),
+                (legacy_master_asset_key, "secret_line_to_hash"),
+                (legacy_asset_id_port_key, "secret_line_to_hash"),
+                (legacy_name_asset_key, "secret_line_to_hash"),
+            ):
+                fp = fp_v1(
+                    variant,
+                    asset_key_fn=fn,
+                    weakness_key_fn=legacy_secret_line_weakness_key,
+                )
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
+                fp = fp_v1(variant, asset_key_fn=fn)
                 if fp and fp not in seen:
                     seen.add(fp)
                     out.append((fp, reason))

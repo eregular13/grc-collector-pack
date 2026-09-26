@@ -35,7 +35,12 @@ from shared.estate_pages import (
 )
 from shared.evidence import build_evidence_rows
 from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
-from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
+from shared.finding_types import (
+    dedupe_weaknesses,
+    finding_identity,
+    primary_asset,
+    strip_secret_hash_from_key,
+)
 from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
@@ -561,7 +566,9 @@ def load() -> dict:
         fields["finding_ref_id"] = str(item.get("ref_id") or "")
         fields["weakness_description"] = str(item.get("description") or item.get("name") or "")
         fields["detector_source"] = str(item.get("source_family") or "")
-        fields["weakness_source_id"] = str(item.get("weakness_key") or "")
+        fields["weakness_source_id"] = strip_secret_hash_from_key(
+            str(item.get("weakness_key") or "")
+        )
         fields["original_detection_date"] = str(item.get("original_detection_date") or "")
         fields["status_date"] = str(item.get("status_date") or "")
         fields["original_risk_rating"] = str(item.get("original_risk_rating") or "")
