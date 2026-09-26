@@ -28,6 +28,7 @@ from shared.asset_ids import (
     LEASE_DAYS,
     MATCH_ORDER,
     STRENGTH,
+    _CLOUD_SOURCES,
     display_uai,
     extra_dict,
     fqdn_mac_fingerprint,
@@ -452,7 +453,7 @@ class AssetLedger:
                 return False
         return not self._stronger_conflict(obs, cand, key)
 
-    def _find_match(self, ids: dict[str, Any], now: str) -> dict[str, Any] | None:
+    def _find_match(self, ids: dict[str, Any], now: str, source: str = "") -> dict[str, Any] | None:
         if is_container(ids):
             # Class first (image_ref), then content keys per §6.3.
             order = ("image_ref",) + CONTAINER_ORDER
@@ -494,6 +495,51 @@ class AssetLedger:
                 if label in {x.lower() for x in id_values(cand, "hostname")}:
                     if not self._stronger_conflict(ids, cand, "fqdn"):
                         return asset
+        # Pre-#161: UPN was stored as fqdn. Re-anchor to principal.
+        principals = [x.lower() for x in id_values(ids, "principal")]
+        if principals:
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                for fq in id_values(cand, "fqdn"):
+                    token = str(fq).lower()
+                    if token in principals and "@" in token:
+                        if not self._stronger_conflict(ids, cand, "principal"):
+                            return asset
+        # Pre-#161: cloud/k8s/saas short names were hostname. Re-anchor to name.
+        # Do not merge a SaaS user into an nmap host that shares the short name.
+        names = [x.lower() for x in id_values(ids, "name")]
+        host_sources = {"inventory-nmap", "host-wazuh", "easm", "vuln-scan", "identity-ad"}
+        if (
+            names
+            and source in _CLOUD_SOURCES
+            and not id_values(ids, "arn")
+            and not id_values(ids, "ip")
+        ):
+            for asset in self._active_assets():
+                cand = self._ids_of(asset)
+                existing_sources = {str(s) for s in (asset.get("sources") or [])}
+                if existing_sources & host_sources:
+                    continue
+                if (
+                    id_values(cand, "ip")
+                    or id_values(cand, "mac")
+                    or id_values(cand, "uuid")
+                    or id_values(cand, "fqdn")
+                    or cand.get("principal")
+                ):
+                    continue
+                old_names = {x.lower() for x in id_values(cand, "hostname")} | {
+                    x.lower() for x in id_values(cand, "name")
+                }
+                if not (set(names) & old_names):
+                    continue
+                old_scope = str(cand.get("scope") or "") or self._scope_of(
+                    asset, "hostname", next(iter(old_names), "")
+                )
+                if old_scope and old_scope != str(ids.get("scope") or ""):
+                    continue
+                if not self._stronger_conflict(ids, cand, "name"):
+                    return asset
         return None
 
     def _new_uid(self, ids: dict[str, Any]) -> tuple[str, dict[str, str]]:
@@ -627,14 +673,14 @@ class AssetLedger:
         self._note_uuid(blob)
         self._flag_collisions(stamp)
         if not observe:
-            match = self._find_match(blob, stamp)
+            match = self._find_match(blob, stamp, src)
             return str(match["asset_uid"]) if match else ""
 
         # Split an IP-only predecessor before matching the new identity.
         for asset in list(self._active_assets()):
             self._maybe_split(asset, blob, stamp)
 
-        match = self._find_match(blob, stamp)
+        match = self._find_match(blob, stamp, src)
         if match is None:
             uid, anchor = self._new_uid(blob)
             asset = _empty_asset(uid, stamp, anchor, blob)

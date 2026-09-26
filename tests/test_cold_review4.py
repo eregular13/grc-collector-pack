@@ -13,10 +13,14 @@ from shared.asset_key import legacy_name_asset_key
 from shared.asset_ledger import AssetLedger, asset_uid
 from shared.kev import KevCatalog
 from shared.poam_ledger import (
+    _is_scanner_identity,
     apply_ledger,
     empty_ledger,
+    fingerprints_for,
     fp_v1,
     item_maps_to_current,
+    legacy_master_asset_key,
+    legacy_master_weakness_key,
     legacy_title_weakness_key,
     migrate_finding_refs,
     payload_sha256,
@@ -359,3 +363,250 @@ def test_ledger_lost_does_not_stick() -> None:
         prior_existed=True,
     )
     assert "LEDGER_LOST" not in second["warnings"]
+
+
+def test_scanner_ids_are_accepted_not_titles() -> None:
+    samples = (
+        ("lynis", "FIRE-4590", "host-wazuh"),
+        ("lynis", "SSH-7408", "host-wazuh"),
+        ("k8s", "C-0013", "k8s-kubescape"),
+        ("trivy", "KSV-0017", "code-secrets"),
+        ("trivy", "AVD-AWS-0086", "code-secrets"),
+        ("trivy", "DS-0002", "code-secrets"),
+        ("oscap", "V-230221", "host-wazuh"),
+        ("greenbone", "1.3.6.1.4.1.25623.1.0.103234", "vuln-scan"),
+    )
+    for tool, check, source in samples:
+        assert _is_scanner_identity(check), check
+        rec = {
+            "source": source,
+            "name": f"{tool} {check}: pass-sounding title",
+            "assets": ["host-a"],
+            "extra": {"id": check, "check_id": check, "tool": tool},
+        }
+        assert weakness_key(rec) == f"{tool}:{check}"
+        assert not weakness_key(rec).startswith("name:")
+
+
+def test_scanner_identity_denylist() -> None:
+    assert not _is_scanner_identity("kerberos-sec")
+    assert not _is_scanner_identity("obs-12")
+    assert not _is_scanner_identity("10.0.0.50-445")
+    assert not _is_scanner_identity("filesrv-445-tcp")
+    assert not _is_scanner_identity("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+
+
+def test_distinct_findings_on_one_asset_do_not_share_id() -> None:
+    a = {
+        "source": "identity-ad",
+        "name": "AS-REP roastable",
+        "assets": ["ga@contoso.onmicrosoft.com"],
+        "extra": {"id": "ASREPRoasting", "tool": "bloodhound", "objectid": "S-1-5-21-aaa"},
+    }
+    b = {
+        "source": "identity-ad",
+        "name": "AS-REP roastable admin",
+        "assets": ["ga@contoso.onmicrosoft.com"],
+        "extra": {"id": "ASREPRoastable", "tool": "bloodhound", "objectid": "S-1-5-21-bbb"},
+    }
+    assert weakness_key(a) != weakness_key(b)
+    assert fp_v1(a) != fp_v1(b)
+    port_a = {
+        "source": "inventory-nmap",
+        "name": "Admin interface",
+        "assets": ["10.0.0.9"],
+        "extra": {"port": "443", "protocol": "tcp", "nse_script": "http-auth", "tool": "nmap"},
+    }
+    port_b = {
+        "source": "inventory-nmap",
+        "name": "TLS expired",
+        "assets": ["10.0.0.9"],
+        "extra": {"port": "443", "protocol": "tcp", "nse_script": "ssl-cert", "tool": "nmap"},
+    }
+    assert weakness_key(port_a) != weakness_key(port_b)
+
+
+def test_pre161_upgrade_zero_new_ids_no_ghost_open() -> None:
+    """Master-keyed ledger → head: 0 created IDs, Open count unchanged."""
+    recs = [
+        {
+            "source": "host-wazuh",
+            "ref_id": "WAZ-lynis-FIRE-4590",
+            "name": "Lynis FIRE-4590: No firewall software installed",
+            "severity": "high",
+            "assets": ["web-01"],
+            "extra": {"id": "FIRE-4590", "check_id": "FIRE-4590", "tool": "lynis"},
+        },
+        {
+            "source": "k8s-kubescape",
+            "ref_id": "K8S-c-0013-prod-cluster",
+            "name": "Anonymous Kubernetes API access",
+            "severity": "critical",
+            "assets": ["prod-cluster"],
+            "extra": {"id": "C-0013", "check_id": "C-0013", "tool": "k8s"},
+        },
+        {
+            "source": "vuln-scan",
+            "ref_id": "VULN-heartbleed",
+            "name": "OpenSSL Heartbleed",
+            "severity": "critical",
+            "assets": ["app.corp.local"],
+            "extra": {
+                "id": "1.3.6.1.4.1.25623.1.0.103234",
+                "tool": "greenbone",
+                "cve": "CVE-2014-0160",
+            },
+        },
+        {
+            "source": "identity-ad",
+            "ref_id": "ID-dcsync",
+            "name": "BloodHound DCSync",
+            "severity": "critical",
+            "assets": ["ga@contoso.onmicrosoft.com"],
+            "extra": {"tool": "bloodhound"},
+        },
+        {
+            "source": "cloud-prowler",
+            "ref_id": "CLD-s3-public",
+            "name": "S3 bucket prohibits public access",
+            "severity": "high",
+            "assets": ["demo-public-assets"],
+            "extra": {"id": "s3_bucket_public", "tool": "prowler", "account_id": "111111111111"},
+        },
+    ]
+    seeded = empty_ledger()
+    old_ids: list[str] = []
+    for i, rec in enumerate(recs, start=1):
+        old_fp = fp_v1(
+            rec,
+            asset_key_fn=legacy_master_asset_key,
+            weakness_key_fn=legacy_master_weakness_key,
+        )
+        pid = f"EGP-KEEP{i:04d}XX"
+        old_ids.append(pid)
+        seeded["items"][old_fp] = {
+            "poam_id": pid,
+            "fp": old_fp,
+            "source_family": rec["source"],
+            "weakness_key": legacy_master_weakness_key(rec),
+            "asset_key": legacy_master_asset_key(rec),
+            "ref_id": rec["ref_id"],
+            "name": rec["name"],
+            "original_detection_date": "2024-01-15",
+            "first_seen": "2024-01-15T00:00:00Z",
+            "status": "open",
+            "severity": rec["severity"],
+            "missed_covered_runs": 0,
+            "kev_comments": [],
+        }
+    seeded["sha256"] = payload_sha256(seeded)
+    out = apply_ledger(
+        recs,
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-20T00:00:00Z"),
+        ledger_in=seeded,
+        prior_existed=True,
+    )
+    created = [e for e in (out.get("events_this_run") or []) if e.get("kind") == "created"]
+    assert created == []
+    open_items = [it for it in out["items"].values() if str(it.get("status") or "") != "closed"]
+    assert len(open_items) == len(recs)
+    assert {it["poam_id"] for it in open_items} == set(old_ids)
+    assert all(it.get("original_detection_date") == "2024-01-15" for it in open_items)
+    assert all(m.get("from") != m.get("to") for m in (out.get("fp_migrations") or []))
+
+
+def test_asset_upn_and_cloud_name_reclass_keep_uid() -> None:
+    from shared.asset_ledger import AssetLedger, make_asset_uid
+
+    ledger = AssetLedger()
+    upn = "ga@contoso.onmicrosoft.com"
+    old_upn = make_record(
+        kind="asset",
+        source="saas-idp",
+        ref_id="SAAS-ga-old",
+        name=upn,
+        category="identity",
+        assets=[upn],
+        extra={"ids": {"fqdn": upn}},
+        collected_at=NOW,
+    )
+    old_uid = ledger.observe(old_upn, now=NOW)
+    assert old_uid == make_asset_uid("fqdn", upn)
+    new_upn = make_record(
+        kind="asset",
+        source="saas-idp",
+        ref_id="SAAS-ga-new",
+        name=upn,
+        category="identity",
+        assets=[upn],
+        collected_at=NOW,
+    )
+    assert ledger.observe(new_upn, now=NOW) == old_uid
+
+    old_cloud = make_record(
+        kind="asset",
+        source="k8s-kubescape",
+        ref_id="K8S-cluster-old",
+        name="prod-cluster",
+        category="cluster",
+        assets=["prod-cluster"],
+        extra={"hostname": "prod-cluster"},
+        collected_at=NOW,
+    )
+    cloud_uid = ledger.observe(old_cloud, now=NOW)
+    new_cloud = make_record(
+        kind="asset",
+        source="k8s-kubescape",
+        ref_id="K8S-cluster-new",
+        name="prod-cluster",
+        category="cluster",
+        assets=["prod-cluster"],
+        collected_at=NOW,
+    )
+    assert ledger.observe(new_cloud, now=NOW) == cloud_uid
+
+
+def test_lab_sh_does_not_copy_ledger_into_in() -> None:
+    text = Path(__file__).resolve().parents[1].joinpath("scripts/lab.sh").read_text(encoding="utf-8")
+    assert "in/poam" not in text
+    assert "asset-ledger.json" not in text
+
+
+def test_ledger_files_do_not_count_as_live_inputs(tmp_path: Path, monkeypatch) -> None:
+    from shared.io_util import SKIP_INPUT_NAMES, in_dir_has_live_inputs
+
+    assert "poam-ledger.json" in SKIP_INPUT_NAMES
+    dest = tmp_path / "in"
+    (dest / "poam").mkdir(parents=True)
+    (dest / "poam" / "poam-ledger.json").write_text("{}", encoding="utf-8")
+    (dest / "assets").mkdir()
+    (dest / "assets" / "asset-ledger.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("IN_DIR", str(dest))
+    assert in_dir_has_live_inputs() is False
+
+
+def test_scan_time_epoch_ms_and_ignores_creation_time() -> None:
+    from shared.scan_time import extra_scan_raw, format_detection_date, parse_scan_datetime
+
+    parsed = parse_scan_datetime(1_700_000_000_000)
+    assert parsed is not None
+    assert parsed[0].year == 2023
+    only_created = {"extra": {"CreationTime": "2018-01-01T00:00:00Z", "creation_time": "2018-01-01T00:00:00Z"}}
+    assert extra_scan_raw(only_created) in (None, "")
+    assert format_detection_date(extra_scan_raw(only_created)) == "not recorded"
+
+
+def test_fingerprints_for_includes_master_alias() -> None:
+    rec = {
+        "source": "host-wazuh",
+        "name": "Lynis FIRE-4590: No firewall software installed",
+        "assets": ["web-01"],
+        "extra": {"id": "FIRE-4590", "check_id": "FIRE-4590", "tool": "lynis"},
+    }
+    master_fp = fp_v1(
+        rec,
+        asset_key_fn=legacy_master_asset_key,
+        weakness_key_fn=legacy_master_weakness_key,
+    )
+    assert master_fp in fingerprints_for(rec)

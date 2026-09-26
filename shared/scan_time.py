@@ -44,8 +44,6 @@ _SCAN_KEYS = (
     "created_time_dt",
     "scanTime",
     "EventTime",
-    "CreationTime",
-    "creation_time",
     "start",
     "finished",
     "starttime",
@@ -95,7 +93,10 @@ def parse_scan_datetime(raw: Any) -> tuple[datetime, str] | None:
         return datetime(raw.year, raw.month, raw.day), "artifact-local"
     if isinstance(raw, (int, float)) or (isinstance(raw, str) and raw.strip().isdigit()):
         try:
-            dt = datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            epoch = int(raw)
+            if epoch >= 10**11:
+                epoch //= 1000
+            dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
         except (OverflowError, OSError, ValueError):
             return None
         return dt, "UTC"

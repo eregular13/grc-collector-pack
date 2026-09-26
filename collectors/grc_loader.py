@@ -41,6 +41,7 @@ from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import (
+    fingerprints_for,
     fp_v1,
     item_maps_to_current,
     ledger_run_delta,
@@ -468,7 +469,9 @@ def load() -> dict:
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
     observed_refs = {str(rec.get("ref_id") or "") for rec in weaknesses if rec.get("ref_id")}
-    observed_fps = {fp_v1(rec) for rec in weaknesses}
+    observed_fps: set[str] = set()
+    for rec in weaknesses:
+        observed_fps.update(fingerprints_for(rec))
     pending_carried = 0
     for item in (poam_ledger.get("items") or {}).values():
         pid = str(item.get("poam_id") or "")

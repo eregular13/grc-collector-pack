@@ -74,8 +74,8 @@ _UUIDISH = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.I,
 )
-_HOST_PORT_SLUG = re.compile(r".+-\d+(-(tcp|udp|sctp))?$", re.I)
-_PLUGIN_PREFIX = re.compile(r"^(plugin|rule|check|nvt|oid|osvdb|cve|template)", re.I)
+_HOST_PORT_PROTO_SLUG = re.compile(r".+-\d+-(tcp|udp|sctp)$", re.I)
+_IPV4_PORT_SLUG = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}-\d+", re.I)
 _SERVICE_NAMES = frozenset(
     {
         "kerberos",
@@ -197,10 +197,38 @@ def legacy_title_weakness_key(rec: dict[str, Any]) -> str:
     return f"name:{name}"
 
 
+def legacy_master_weakness_key(rec: dict[str, Any]) -> str:
+    """Pre-#161 key: extra.id|rule|check_id, else CVE, else title. Migration only."""
+    extra = extra_dict(rec)
+    scanner_id = ""
+    for key in ("id", "rule", "check_id"):
+        val = str(extra.get(key) or "").strip()
+        if val:
+            scanner_id = val
+            break
+    tool = _tool_tag(rec)
+    if scanner_id:
+        return f"{tool}:{scanner_id}"
+    cves = collect_cves(rec)
+    extra_cve = str(extra.get("cve") or "").strip()
+    if extra_cve and cves:
+        return f"cve:{cves[0]}"
+    return legacy_title_weakness_key(rec)
+
+
+def _is_literal_host_port_slug(text: str) -> bool:
+    """True for observation host/IP slugs, not FIRE-4590 / C-0013 / OIDs."""
+    if _IPV4_PORT_SLUG.match(text):
+        return True
+    if _HOST_PORT_PROTO_SLUG.match(text):
+        return True
+    return False
+
+
 def _is_scanner_identity(val: str) -> bool:
-    """True for plugin/check ids. False for service names and observation slugs."""
+    """True for plugin/check ids. Denylist: service names, obs-*, UUIDs, host/IP slugs."""
     text = str(val or "").strip()
-    if not text or text.startswith("<") or text.endswith(">"):
+    if not text or "<" in text or text.endswith(">"):
         return False
     if _UUIDISH.match(text):
         return False
@@ -209,17 +237,34 @@ def _is_scanner_identity(val: str) -> bool:
         return False
     if lowered.startswith("obs-") or lowered.startswith("observation"):
         return False
-    if text.isdigit():
-        return True
-    if _HOST_PORT_SLUG.match(text) and not _PLUGIN_PREFIX.match(text):
-        return False
-    if re.search(r"\d+\.\d+\.\d+\.\d+", text):
+    if _is_literal_host_port_slug(text):
         return False
     return True
 
 
+def _extra_identity_token(rec: dict[str, Any]) -> str:
+    """Non-title token so two findings on one asset do not share a class-only key."""
+    extra = extra_dict(rec)
+    for key in (
+        "edge",
+        "relationship",
+        "objectid",
+        "object_id",
+        "finding",
+        "control_id",
+        "plugin_name",
+        "check",
+        "nse_script",
+        "template_id",
+    ):
+        val = str(extra.get(key) or "").strip()
+        if val and _is_scanner_identity(val):
+            return f"{key}:{val}"
+    return ""
+
+
 def weakness_key(rec: dict[str, Any]) -> str:
-    """Stable weakness identity: check_id, then port/proto+class. Never title/service."""
+    """Stable weakness identity: scanner id, share, port+class. Never title/service."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule"):
@@ -234,8 +279,11 @@ def weakness_key(rec: dict[str, Any]) -> str:
         return f"{tool}:share:{share.lower()}"
     port = str(extra.get("port") or "").strip()
     proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
+    token = _extra_identity_token(rec)
     if port and port != "0":
         cls = finding_type(rec) or str(rec.get("category") or "exposure")
+        if token:
+            return f"port:{port}/{proto or 'tcp'}:{cls.lower()}:{token}"
         return f"port:{port}/{proto or 'tcp'}:{cls.lower()}"
     cves = collect_cves(rec)
     extra_cve = str(extra.get("cve") or "").strip()
@@ -243,9 +291,12 @@ def weakness_key(rec: dict[str, Any]) -> str:
         return f"cve:{cves[0]}"
     ftype = finding_type(rec)
     if ftype and ftype not in {"", "unknown"}:
+        if token:
+            return f"class:{ftype}:{token}"
         return f"class:{ftype}"
-    name = normalize_weakness_name(strip_asset_from_title(rec))
-    return f"name:{name}"
+    if token:
+        return f"{tool}:{token}"
+    return f"{tool}:unkeyed"
 
 
 def fp_v1(
@@ -271,6 +322,42 @@ def migrate_finding_refs(ref: str) -> list[str]:
     bare = _NMAP_PORT_REF.match(text)
     if bare:
         out.append(f"{bare.group(1)}{bare.group(2)}-tcp")
+    return list(dict.fromkeys(out))
+
+
+def legacy_master_asset_key(rec: dict[str, Any]) -> str:
+    """Pre-#161 EGA- key: UPN as FQDN, cloud short names as hostname, no scope."""
+    from shared.asset_ids import (
+        classify_name_pre161,
+        extra_dict as ids_extra,
+        lift_extra_fields,
+        merge_ids,
+        strongest_anchor,
+    )
+    from shared.asset_ledger import make_asset_uid
+    from shared.asset_key import _port_proto
+
+    extra = ids_extra(rec)
+    lifted = dict(lift_extra_fields(extra))
+    lifted.pop("principal", None)
+    lifted.pop("scope", None)
+    parts = [lifted, classify_name_pre161(rec.get("name"))]
+    assets = rec.get("assets") or []
+    if assets:
+        parts.append(classify_name_pre161(assets[0]))
+    ids = merge_ids(*parts)
+    typ, value = strongest_anchor(ids)
+    uid = make_asset_uid(typ, value)
+    suffix = _port_proto(rec)
+    return f"{uid}{suffix}" if uid else suffix.lstrip(":")
+
+
+def fingerprints_for(rec: dict[str, Any]) -> list[str]:
+    """Current fp plus every legacy alias this row may have been stored under."""
+    out = [fp_v1(rec)]
+    for old_fp, _reason in _legacy_fps_for(rec):
+        if old_fp:
+            out.append(old_fp)
     return list(dict.fromkeys(out))
 
 
@@ -676,22 +763,43 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
         fake_extra.pop("check_id", None)
         fake_extra.pop("rule", None)
         fake["extra"] = fake_extra
-        for fn in (asset_key, legacy_asset_id_port_key, legacy_name_asset_key):
+        for fn in (asset_key, legacy_asset_id_port_key, legacy_name_asset_key, legacy_master_asset_key):
             fp = fp_v1(fake, asset_key_fn=fn, weakness_key_fn=lambda r: f"{_tool_tag(r)}:{svc}")
             if fp and fp not in seen:
                 seen.add(fp)
                 out.append((fp, "service_to_check_id"))
+    # Pre-#161 master: extra.id|rule|check_id (or title) plus old/new asset keys.
+    for fn, reason in (
+        (asset_key, "master_key_current_ega"),
+        (legacy_master_asset_key, "master_key_master_ega"),
+        (legacy_asset_id_port_key, "master_key_asset_id"),
+        (legacy_name_asset_key, "master_key_name"),
+    ):
+        fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=legacy_master_weakness_key)
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append((fp, reason))
+    fp = fp_v1(rec, asset_key_fn=legacy_master_asset_key, weakness_key_fn=weakness_key)
+    if fp and fp not in seen:
+        seen.add(fp)
+        out.append((fp, "current_key_master_ega"))
+    fp = fp_v1(rec, asset_key_fn=legacy_master_asset_key, weakness_key_fn=legacy_title_weakness_key)
+    if fp and fp not in seen:
+        seen.add(fp)
+        out.append((fp, "title_master_ega"))
     return out
 
 
 def _legacy_asset_keys_for(rec: dict[str, Any]) -> set[str]:
-    """#131 / pre-#140 / pre-#131 asset_key strings a prior ledger item may still hold."""
+    """#131 / pre-#140 / pre-#131 / pre-#161 asset_key strings a prior item may hold."""
     keys: set[str] = set()
     for fake in _legacy_alias_records(rec):
         keys.add(legacy_name_asset_key(fake))
         keys.add(legacy_asset_id_port_key(fake))
+        keys.add(legacy_master_asset_key(fake))
         if _legacy_port_only_allowed(rec):
             keys.add(legacy_port_only_asset_key(fake))
+    keys.add(legacy_master_asset_key(rec))
     return {k for k in keys if k}
 
 
@@ -718,10 +826,16 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
     wk = weakness_key(rec)
     fam = source_family(rec)
     alias_keys = _legacy_asset_keys_for(rec)
+    related_wks = {
+        wk,
+        legacy_master_weakness_key(rec),
+        legacy_title_weakness_key(rec),
+    }
     for fp, item in list(items.items()):
         if fp == new_fp or fp in found:
             continue
-        if str(item.get("weakness_key") or "") != wk:
+        stored_wk = str(item.get("weakness_key") or "")
+        if stored_wk not in related_wks:
             continue
         if str(item.get("source_family") or "") != fam:
             continue
@@ -812,10 +926,14 @@ def build_coverage(instances: Iterable[dict[str, Any]]) -> dict[str, set[str]]:
                 legacy_asset_id_port_key(fake),
                 legacy_name_asset_key(fake),
                 legacy_port_only_asset_key(fake),
+                legacy_master_asset_key(fake),
                 asset_id(fake),
             ):
                 if key:
                     bucket.add(key)
+        host_ega = legacy_master_asset_key(rec).split(":")[0]
+        if host_ega:
+            bucket.add(host_ega)
     return cov
 
 

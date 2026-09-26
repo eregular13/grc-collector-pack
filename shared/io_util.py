@@ -91,7 +91,16 @@ def redact(value: Any) -> Any:
 # Banner / bookkeeping files are not scanner drops. LAB.txt in a sensor
 # folder must not count as a live parse target or trigger demo fallback.
 SKIP_INPUT_NAMES = frozenset(
-    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
+    {
+        ".gitkeep",
+        ".DS_Store",
+        "SAMPLE.txt",
+        "LAB.txt",
+        "README.md",
+        "MANIFEST",
+        "poam-ledger.json",
+        "asset-ledger.json",
+    }
 )
 DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})
 NEVER_DEMO_LABELS = frozenset({"LAB", "CLIENT"})

@@ -332,6 +332,40 @@ def identity_scope(extra: dict[str, Any] | None = None, ids: dict[str, Any] | No
     return "|".join(parts)
 
 
+def classify_name_pre161(name: Any) -> dict[str, Any]:
+    """Master classify_name before #161: UPN is FQDN, short names are hostname."""
+    text = str(name or "").strip()
+    if not text:
+        return {}
+    host = _host_from_url(text)
+    if host:
+        ip = normalize_ip(host)
+        if ip:
+            return {"ip": [ip]}
+        fqdn = normalize_fqdn(host)
+        if fqdn:
+            return {"fqdn": fqdn}
+        short = normalize_hostname(host)
+        if short:
+            return {"hostname": short}
+    ip = normalize_ip(text)
+    if ip:
+        return {"ip": [ip]}
+    fqdn = normalize_fqdn(text)
+    if fqdn:
+        return {"fqdn": fqdn}
+    short = normalize_hostname(text)
+    if short:
+        return {"hostname": short}
+    netbios = normalize_netbios(text)
+    if netbios and text.upper() == netbios:
+        return {"netbios": netbios}
+    arn = normalize_arn(text)
+    if arn:
+        return {"arn": arn}
+    return {"name": text}
+
+
 def classify_name(name: Any, *, source: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """Turn a display name into identifier fields without inventing strength."""
     text = str(name or "").strip()
