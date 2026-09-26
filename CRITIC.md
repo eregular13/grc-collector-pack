@@ -1,18 +1,35 @@
+# CRITIC — cycle 195 (MERGE_EVIDENCE_AND_MULTI_HOST_LAB)
+
+Lab this brick: pytest **1087** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=111` `severity_unmapped=0` `demo=true`). Cold sample_to_sor +
+farm_drop_to_sor honesty PASS. Zero P0/P1. Merged master #132+#139+#136;
+Falco+Kubescape privileged merge keeps both tools in evidence; three
+Redis hosts are three vulns on the lab gate. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 191 (LOADER_IDENTITY_SEVERITY)
+
+Lab this brick: pytest **1049** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=103`
+`vulnerabilities=19` `applied_controls=122` `risk_scenarios=122`
+`poam=108` `severity_unmapped=0` `demo=true`). Zero P0/P1. Same-rule
+multi-host inputs stay separate; same-asset duplicates collapse.
+Vendor WARNING/WARN/ERROR/IMPORTANT/danger + CVSS map explicitly;
+unknown words are medium + flag. kube-bench/kubescape/checkov/semgrep
+blanket severities fixed. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
 # CRITIC — cycle 195 (MERGE_MASTER_REAL_OUTPUT_PARSERS)
 
-Lab this brick: pytest **1141** passed, 1 skipped. Ten collectors +
-`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
-`applied_controls=123` `risk_scenarios=123` `poam=123` `demo=true`).
-sample_to_sor + farm_drop_to_sor honesty PASS (cold work dirs).
-Zero P0/P1. Findings **unchanged** vs cycle 194 (81 / 104). POA&M
-**123** (was 109) is master's #135 full-plan inclusion (Lows and
-non-key Mediums), not a parser-count change. Pytest **1141** = master
-~1068 plus #131/#135 tests plus the §9 real-output parser tests.
-Merge origin/master (`#133` `#132` `#139` `#136` `#131` `#135`);
-ScubaGear/Maester tenant from #139 wins (never invent contoso). Union
-`SOURCES.md`. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
-**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
-below are unchanged.
+Merge origin/master into the real-output parser branch. Master's #137
+host-scoped `ref_id` + `canon_severity` stay. §9 parser fixes stay.
+ScubaGear/Maester tenant from #139 wins. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 

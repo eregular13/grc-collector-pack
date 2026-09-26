@@ -369,6 +369,8 @@ def parse_file(path: Path) -> list[dict]:
                     collected_at=now,
                     extra={
                         "product": product or row.get("ProductName"),
+                        "check_id": req,
+                        "rule": req,
                         "control_id": cid,
                         "criticality": row.get("Criticality") or row.get("criticality") or "",
                         "result": row.get("Result") or row.get("result") or "",

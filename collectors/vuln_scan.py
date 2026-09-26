@@ -159,13 +159,15 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
         assets=[host],
         labels=LABELS + ["greenbone"],
         collected_at=now,
-        extra={
-            "cve": row.get("cve") or "",
-            "id": vid,
-            "port": port,
-            "cvss": row.get("cvss") or "",
-            "threat": row.get("threat") or "",
-        },
+                extra={
+                    "cve": row.get("cve") or "",
+                    "id": vid,
+                    "rule": vid,
+                    "oid": vid,
+                    "port": port,
+                    "cvss": row.get("cvss") or "",
+                    "threat": row.get("threat") or "",
+                },
     )
 
 
@@ -207,7 +209,7 @@ def parse_file(path: Path) -> list[dict]:
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, rid),
+                    ref_id=make_ref(SOURCE, f"{rid}-{host}"),
                     name=str(row.get("message") or rid),
                     description=str(row.get("message") or rid),
                     severity=row.get("severity") or "medium",
@@ -364,7 +366,7 @@ def parse_file(path: Path) -> list[dict]:
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, tid),
+                    ref_id=make_ref(SOURCE, f"{tid}-{host}"),
                     name=str(info.get("name") or tid),
                     description=str(info.get("description") or tid),
                     severity=sev,
@@ -411,7 +413,7 @@ def parse_file(path: Path) -> list[dict]:
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, vid),
+                    ref_id=make_ref(SOURCE, f"{vid}-{target}"),
                     name=str(vuln.get("Title") or vid),
                     description=str(vuln.get("Description") or vuln.get("PkgName") or vid),
                     severity=vuln.get("Severity") or "medium",
@@ -451,7 +453,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["greenbone"],
                 collected_at=now,
-                extra={"id": vid, "cve": row.get("cve") or ""},
+                extra={"id": vid, "rule": vid, "oid": vid, "cve": row.get("cve") or ""},
             )
         )
     return records

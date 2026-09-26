@@ -84,8 +84,12 @@ def detector_source(rec: dict[str, Any]) -> str:
     source = str(rec.get("source") or "").strip() or "unknown"
     tool = str(extra.get("tool") or extra.get("scanner") or "").strip()
     nse = str(extra.get("nse_script") or "").strip()
+    tools = extra.get("tools") if isinstance(extra.get("tools"), list) else []
+    merged = [str(t).strip() for t in tools if str(t).strip()]
     if nse:
         tool = f"{tool or 'nmap'} NSE {nse}"
+    elif merged:
+        tool = ", ".join(dict.fromkeys(merged))
     return f"{source} ({tool})" if tool else source
 
 

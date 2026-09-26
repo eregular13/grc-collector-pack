@@ -1,20 +1,35 @@
 # CYCLE log
 
+## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
+
+Merged master `f3db646` (#132 estate pages + #139 real parsers) into the
+loader-identity branch. Falco privileged + Kubescape C-0057 still merge
+on `prod-cluster` but `extra.tools` / sources / provenance / POA&M
+`detector_source` keep both scanners. Committed nuclei `exposed-redis`
+on three hosts so `lab_outputs` proves N hosts = N weaknesses.
+Host-lab `assets=84` `findings=103` `vulnerabilities=22` `poam=111`
+`weaknesses=125`. Also merged #136 (no `out/riskready`). pytest **1087**.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+
+## cycle 191 — loader identity + vendor severity (2026-09-26)
+
+Audit §8.0: same rule on N hosts stays N weaknesses; unknown severity
+is medium + `severity_unmapped` (counted in summary.json), not silent
+info. Parsers stamp extra.rule/cve/check_id and host in ref_id
+(nuclei/Trivy/Greenbone/SARIF/semgrep/falco/kube-bench/ScubaGear).
+kube-bench scored/WARN, kubescape scoreFactor, checkov null→medium,
+semgrep ERROR/WARNING/INFO. Lab `findings=103` `poam=108` `weaknesses=122`
+(−1 vs #129: Falco privileged now keys the node and merges with
+Kubescape C-0057 on `prod-cluster`). Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
 ## cycle 195 — merge master + real-output parser bricks (2026-09-26)
 
-Merge origin/master (`ae56e08`; #133 DEMO fallback honesty, #132 estate
-pages / header-first import CSVs, #139 real-sample PingCastle/Greenbone/
-ScubaGear/testssl/Nikto, #136 no out/riskready, #131 offline KEV +
-EGP- ledger, #135 POA&M titles/CVE/CPG/full-plan inclusion) into
-`cursor/parser-real-output-0dba`. Keep master's behavior everywhere
-plus §9 parser fixes (Custodian list, Intune enrollment, IdP isAdmin,
-Jamf `results[]`, Powerpipe/Steampipe, Okta/Google detect, BloodHound
-CE v6, Trivy secrets/misconfig, osquery `hostIdentifier`, ScoutSuite
-danger→high, Maester default medium). ScubaGear/Maester tenant from
-#139 (`_tenant_from`, never invent contoso). Union `SOURCES.md`.
-Host-lab **81 / 104 / 123** (findings unchanged; poam 123 from #135
-full-plan inclusion). pytest **1141**. Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+Merge origin/master into `cursor/parser-real-output-0dba`. Keep master's
+behavior everywhere plus §9 parser fixes. ScubaGear/Maester tenant from
+#139 (`_tenant_from`, never invent contoso). Union `SOURCES.md`. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
 
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 
