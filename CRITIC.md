@@ -1,3 +1,22 @@
+# CRITIC — cycle 203 (MERGE_MASTER_134_147_140_144)
+
+Merge `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux
+real output, #147 ledger lifecycle, #140 discovery/web, #144 port-only
+fold) into this branch. Both sides kept: Metis §11 parser honesty
+(osquery content-detect + predicates, Custodian security-only /
+`NOT_A_WEAKNESS` / Medium default, ScoutSuite `.js`, Trivy k8s,
+Intune unknown owner, HasSession rollup, Jamf FileVault2);
+`asset_uid` / `unrecognized_shape`; #134 OCSF/CSV + Wazuh
+`_is_alert_row`. Lab this brick: pytest **1235** passed, 1 skipped.
+Ten collectors + `grc_loader` + `tests/lab_outputs.py` PASS
+(`assets=78` `findings=104` `vulnerabilities=22`
+`applied_controls=126` `risk_scenarios=126` `poam=124` `excluded=2`
+`severity_unmapped=0` `demo=true`). Cold SAMPLE→SoR findings=6 poam=8
+vulns=2. Cold farm_drop→SoR findings=174 poam=106 vulns=0 excluded=68.
+Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 202 (MERGE_MASTER_147_LEDGER_LIFECYCLE)
 
 Merge `origin/master` `9aeb229` (#147 multi-run POA&M ledger

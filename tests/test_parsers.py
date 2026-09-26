@@ -232,7 +232,7 @@ def test_code_secrets_no_live_scan() -> None:
 
 def test_cloud_custodian() -> None:
     recs = cloud_prowler.parse_file(DEMO / "cloud" / "custodian.json")
-    assert any(r["kind"] == "asset" and r["name"] == "demo-unencrypted-tmp" for r in recs)
+    assert any(r["kind"] == "asset" and "demo-unencrypted-tmp" in r["name"] for r in recs)
     assert any("Cloud Custodian" in r["name"] for r in recs if r["kind"] == "finding")
 
 

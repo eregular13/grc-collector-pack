@@ -1,0 +1,85 @@
+{
+  "data": [
+    {
+      "ObjectIdentifier": "S-1-5-21-1000-2000-3000-1001",
+      "Properties": {
+        "name": "ADMIN@LAB.LOCAL",
+        "admincount": 1,
+        "enabled": true,
+        "samaccountname": "ADMIN"
+      }
+    },
+    {
+      "ObjectIdentifier": "S-1-5-21-1000-2000-3000-1105",
+      "Properties": {
+        "name": "BOB@LAB.LOCAL",
+        "admincount": 0,
+        "enabled": true,
+        "samaccountname": "BOB"
+      }
+    },
+    {
+      "ObjectIdentifier": "S-1-5-21-1000-2000-3000-2001",
+      "Properties": {
+        "name": "WS01.LAB.LOCAL",
+        "operatingsystem": "Windows 10",
+        "samaccountname": "WS01$"
+      },
+      "Sessions": {
+        "Results": [
+          {
+            "UserSID": "S-1-5-21-1000-2000-3000-1001",
+            "ComputerSID": "S-1-5-21-1000-2000-3000-2001"
+          },
+          {
+            "UserSID": "S-1-5-21-1000-2000-3000-1105",
+            "ComputerSID": "S-1-5-21-1000-2000-3000-2001"
+          }
+        ],
+        "Collected": true,
+        "FailureReason": null
+      }
+    },
+    {
+      "ObjectIdentifier": "S-1-5-21-1000-2000-3000-2002",
+      "Properties": {
+        "name": "WS02.LAB.LOCAL",
+        "operatingsystem": "Windows 10",
+        "samaccountname": "WS02$"
+      },
+      "Sessions": {
+        "Results": [
+          {
+            "UserSID": "S-1-5-21-1000-2000-3000-1001",
+            "ComputerSID": "S-1-5-21-1000-2000-3000-2002"
+          }
+        ],
+        "Collected": true,
+        "FailureReason": null
+      }
+    },
+    {
+      "ObjectIdentifier": "S-1-5-21-1000-2000-3000-2003",
+      "Properties": {
+        "name": "WS03.LAB.LOCAL",
+        "operatingsystem": "Windows 10",
+        "samaccountname": "WS03$"
+      },
+      "PrivilegedSessions": {
+        "Results": [
+          {
+            "UserSID": "S-1-5-21-1000-2000-3000-1001",
+            "ComputerSID": "S-1-5-21-1000-2000-3000-2003"
+          }
+        ],
+        "Collected": true,
+        "FailureReason": null
+      }
+    }
+  ],
+  "meta": {
+    "type": "computers",
+    "count": 5,
+    "version": 6
+  }
+}

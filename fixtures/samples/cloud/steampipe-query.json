@@ -1,0 +1,12 @@
+{
+  "columns": [
+    {"name": "arn", "data_type": "text"},
+    {"name": "name", "data_type": "text"}
+  ],
+  "rows": [
+    {
+      "arn": "arn:aws:iam::111122223333:user/query-row",
+      "name": "query-row"
+    }
+  ]
+}

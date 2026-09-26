@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 203 — merge master #134/#147/#140/#144; keep Metis §11 (2026-09-26)
+
+Merge `origin/master` `51bba3c` without rebase. #134 OCSF/CSV +
+Wazuh alert-row filter, #147 ledger lifecycle, #140 discovery/web,
+#144 port-fold, plus this branch's Metis §11 / `asset_uid` /
+`unrecognized_shape` all kept. pytest **1235**. Host-lab `assets=78`
+`findings=104` `poam=124` `excluded=2`. SAMPLE→SoR 6/8/2.
+farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 202 — merge master #147 ledger lifecycle; keep Wazuh telemetry (2026-09-26)
 
 Merge `origin/master` `9aeb229` without rebase. #147 multi-run POA&M

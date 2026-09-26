@@ -185,7 +185,8 @@ def residual_level(level: str) -> str:
     return order[idx]
 
 
-def slug(text: str, maxlen: int = 48) -> str:
+def slug(text: str, maxlen: int | None = 48) -> str:
+    """Normalize a token. Display callers may cap length; identity must not."""
     out = []
     for ch in (text or "").lower():
         if ch.isalnum():
@@ -195,12 +196,15 @@ def slug(text: str, maxlen: int = 48) -> str:
         elif ch in " /:\\" and (not out or out[-1] != "-"):
             out.append("-")
     s = "".join(out).strip("-") or "item"
+    if maxlen is None:
+        return s
     return s[:maxlen]
 
 
 def make_ref(source: str, key: str) -> str:
+    """Identity/dedupe key — never truncate. Display limits belong elsewhere."""
     prefix = PREFIX.get(source, "GRC")
-    return f"{prefix}-{slug(key)}"
+    return f"{prefix}-{slug(key, maxlen=None)}"
 
 
 def make_record(
