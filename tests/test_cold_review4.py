@@ -951,8 +951,9 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     """master→this-branch: first Exposed-admin URL keeps its EGP; sibling is new.
 
     #170: upgrade must not stay at 126 — the newly discriminated /login
-    (or apex) URL is tracked. 0 ghosts. FedRAMP Open follows unique
-    poam.csv IDs, not the full ledger (#179).
+    (or apex) URL is tracked. Collapsed Graph/Standing GA IDs are
+    aliased (not orphaned). FedRAMP Open follows unique poam.csv IDs
+    (#179).
     """
     from tests.test_poam_breakdown import _run_lab
 
@@ -980,17 +981,20 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
         plan_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
-    ghosts = prior_ids - reseen_ids
+    aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+    ghosts = prior_ids - reseen_ids - aliases
     plan_ids = {r.get("poam_id") or "" for r in plan_rows if r.get("poam_id")}
     fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
     new_ids = reseen_ids - prior_ids
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
+    assert len(aliases) == 2, sorted(aliases)
+    assert prior_ids - reseen_ids <= aliases
     assert len(created) == 1, [e.get("poam_id") for e in created]
     assert {e.get("poam_id") for e in created} == new_ids
-    assert len(open_items) == 127
+    assert len(open_items) == 125
     assert fed_ids == plan_ids
     assert len(fed_rows) == len(plan_ids)
-    assert prior_ids <= reseen_ids
+    assert prior_ids <= (reseen_ids | aliases)
     admin_rows = [
         it
         for it in open_items
@@ -1004,10 +1008,11 @@ def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
 def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 7ebc697 DEMO ledger: 0 duplicate opens, 1 new (#170 split), 127 open.
+    """Upgrade a 7ebc697 DEMO ledger: 0 duplicate opens, 1 new (#170 split).
 
     Pre-#172 title-keyed host-less Wazuh rows rematch. The #170 admin URL
-    sibling is the only mint. No ghosts.
+    sibling is the only mint. Graph/Standing GA IDs alias onto the UPN
+    survivor instead of remaining as ghosts.
     """
     from tests.test_poam_breakdown import _run_lab
 
@@ -1035,18 +1040,21 @@ def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
         plan_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
-    ghosts = prior_ids - reseen_ids
+    aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+    ghosts = prior_ids - reseen_ids - aliases
     new_ids = reseen_ids - prior_ids
     plan_ids = {r.get("poam_id") or "" for r in plan_rows if r.get("poam_id")}
     fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
+    assert len(aliases) == 2, sorted(aliases)
+    assert prior_ids - reseen_ids <= aliases
     assert len(created) == 1, [e.get("poam_id") for e in created]
     assert {e.get("poam_id") for e in created} == new_ids
-    assert len(open_items) == 127
+    assert len(open_items) == 125
     assert fed_ids == plan_ids
     assert len(fed_rows) == len(plan_ids)
-    assert prior_ids <= reseen_ids
-    assert len({it["poam_id"] for it in open_items}) == 127
+    assert prior_ids <= (reseen_ids | aliases)
+    assert len({it["poam_id"] for it in open_items}) == 125
     admin_rows = [
         it
         for it in open_items
