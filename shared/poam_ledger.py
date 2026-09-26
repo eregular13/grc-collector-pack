@@ -1953,8 +1953,16 @@ def apply_ledger(
     return ledger
 
 
-def ledger_run_delta(ledger: dict[str, Any]) -> dict[str, int]:
+def ledger_run_delta(
+    ledger: dict[str, Any],
+    *,
+    plan_ids: set[str] | frozenset[str] | None = None,
+) -> dict[str, int]:
     """Client-facing counts for this run: open / new / pending / reopened / closed.
+
+    ``open`` is the operator plan (poam.csv) when ``plan_ids`` is supplied —
+    excluded ledger items stay off that headline. ``ledger_open`` is every
+    non-closed ledger item, including excluded, for a labeled secondary figure.
 
     Prefer ``events_this_run`` (the events ``apply_ledger`` appended). The
     timestamp filter is a fallback for older ledgers; second-resolution
@@ -1966,13 +1974,19 @@ def ledger_run_delta(ledger: dict[str, Any]) -> dict[str, int]:
     else:
         run_iso = str(ledger.get("run_at") or "")
         events = [e for e in (ledger.get("events") or []) if str(e.get("at") or "") == run_iso]
-    open_n = sum(
-        1
+    live = [
+        item
         for item in items.values()
         if str(item.get("status") or "") != "closed"
-    )
+    ]
+    ledger_open_n = len(live)
+    if plan_ids is None:
+        open_n = ledger_open_n
+    else:
+        open_n = sum(1 for item in live if str(item.get("poam_id") or "") in plan_ids)
     return {
         "open": open_n,
+        "ledger_open": ledger_open_n,
         "new": sum(1 for e in events if e.get("kind") == "created"),
         "pending_verification": sum(
             1 for item in items.values() if str(item.get("status") or "") == "pending_verification"

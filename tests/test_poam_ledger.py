@@ -676,7 +676,7 @@ def test_existing_poam_csv_header_constant_unchanged() -> None:
 
 
 def test_ledger_run_delta_counts_this_run_only() -> None:
-    """EXECUTIVE one-liner: open includes pending; new/reopened/closed are this-run events."""
+    """EXECUTIVE one-liner: open includes pending when no plan_ids; new/reopened/closed are this-run events."""
     same_second = "2026-09-15T00:00:00Z"
     ledger = {
         "run_at": same_second,
@@ -700,10 +700,27 @@ def test_ledger_run_delta_counts_this_run_only() -> None:
     }
     delta = ledger_run_delta(ledger)
     assert delta["open"] == 3
+    assert delta["ledger_open"] == 3
     assert delta["new"] == 1
     assert delta["pending_verification"] == 1
     assert delta["reopened"] == 1
     assert delta["closed"] == 0
+
+
+def test_ledger_run_delta_open_follows_plan_ids() -> None:
+    """Headline open is poam.csv; ledger_open still counts excluded items."""
+    ledger = {
+        "run_at": "2026-09-15T00:00:00Z",
+        "items": {
+            "on-plan": {"status": "open", "poam_id": "EGP-PLAN"},
+            "excluded": {"status": "open", "poam_id": "EGP-X"},
+            "closed": {"status": "closed", "poam_id": "EGP-C"},
+        },
+        "events_this_run": [],
+    }
+    delta = ledger_run_delta(ledger, plan_ids={"EGP-PLAN"})
+    assert delta["open"] == 1
+    assert delta["ledger_open"] == 2
 
 
 def test_ledger_run_delta_same_second_runs_do_not_inflate_new() -> None:
@@ -720,3 +737,4 @@ def test_ledger_run_delta_same_second_runs_do_not_inflate_new() -> None:
     delta = ledger_run_delta(second)
     assert delta["new"] == 1
     assert delta["open"] == 2
+    assert delta["ledger_open"] == 2
