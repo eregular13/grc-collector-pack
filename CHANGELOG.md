@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- B6_PLAYBOOKS: unmapped PingCastle RiskIds (A-ZeroPoint, P-SchemaAdmins,
+  group-operator rules) fall through to the #145 playbook instead of the
+  generic fallback. Mapped ids (SSLv2, P-Delegated, S-NoPreAuth*) stay typed.
+- B6_PLAYBOOKS: per-type remediations for Nikto web-app findings, TLS
+  side-channels (BREACH / LUCKY13), and PingCastle RiskIds. HOLD remap:
+  testssl exact `SSLv2`; PingCastle `P-Delegated` is Protected Users (not
+  unconstrained — that is `P-UnconstrainedDelegation`); AS-REP is
+  `S-NoPreAuth` / `S-NoPreAuthAdmin`; Nikto PUT/DELETE including 999995;
+  no substring TLS/RDP on NextGEN LFI; XSS is output-encoding/CSP;
+  `A-DsHeuristicsLDAPSecurity` cites CVE-2021-42291 / KB5008383. Each
+  class has a short `source` field. Paraphrase only (PingCastle NPOSL-3.0;
+  Nikto DBs All Rights Reserved). No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /
   `scripts/lab.ps1` / CI lab job) now run `collectors/honeypot.py` so DEMO
   `fixtures/demo/honeypot*` land in `poam/excluded.csv` (not header-only).

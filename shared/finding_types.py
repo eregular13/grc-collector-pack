@@ -11,6 +11,7 @@ provenance. Apply before risk-register and POA&M generation.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # Sources whose emitted types this catalog covers. Other collectors stay on
@@ -80,6 +81,28 @@ TYPE_ALIASES: dict[str, str] = {
     "1_2_1": "k8s_anonymous_auth",
     "c_0034": "k8s_privilege_escalation",
     "c_0041": "k8s_hostnetwork",
+    # testssl.sh exact ids (norm_type_key of SSLv2 → sslv2, not ssl2).
+    "breach": "tls_breach",
+    "lucky13": "tls_lucky13",
+    "cert_expirationstatus": "tls_cert_expiration",
+    "heartbleed": "tls_heartbleed",
+    "tls1": "tls_1_0",
+    "tls1_1": "tls_1_1",
+    "sslv3": "tls_sslv3",
+    "ssl3": "tls_sslv3",
+    "sslv2": "tls_sslv2",
+    # Nikto plugin ids that name a known web-app class (IDs drift; message wins).
+    "999966": "tls_breach",
+    "999995": "web_http_methods",  # Nikto 2.6.1 PUT
+    "999978": "web_http_methods",  # Nikto 2.1.5 PUT
+    # PingCastle Healthcheck exact RiskId values (norm_type_key).
+    "a_minpwdlen": "pc_min_pwd_len",
+    "a_krbtgt": "pc_krbtgt",
+    "s_nopreauth": "ad_asrep",
+    "s_nopreauthadmin": "ad_asrep",
+    "p_delegated": "pc_delegated",
+    "p_unconstraineddelegation": "ad_unconstrained_delegation",
+    "a_dsheuristicsldapsecurity": "pc_dsheuristics",
 }
 
 # Type-specific remediations. Distinct types must not share identical fix text
@@ -302,6 +325,208 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "nist_800_53": ["SI-7", "CM-6", "AC-3"],
         "key_medium": True,
     },
+    # Playbook text is paraphrase-only. PingCastle reports are NPOSL-3.0;
+    # Nikto plugin DBs are All Rights Reserved. Never copy vendor wording.
+    "tls_breach": {
+        "control_name": "Disable HTTP compression on HTTPS (BREACH)",
+        "recommended_fix": (
+            "Disable gzip, deflate, and brotli HTTP compression on HTTPS, or mask "
+            "secrets so they never appear in a compressed body. BREACH is a "
+            "compression side-channel, not a cipher-suite upgrade and not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_lucky13": {
+        "control_name": "Disable TLS CBC ciphers (LUCKY13)",
+        "recommended_fix": (
+            "Disable CBC cipher suites and prefer AEAD (AES-GCM or ChaCha20-Poly1305), "
+            "or enable encrypt-then-MAC / a patched TLS library. LUCKY13 is a CBC "
+            "timing side-channel, not HTTP compression and not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "source": "testssl",
+    },
+    "tls_cert_expiration": {
+        "control_name": "Renew the expired or expiring TLS certificate",
+        "recommended_fix": (
+            "Replace the expired or expiring certificate before NotAfter with a "
+            "currently-valid chain. This is a certificate-lifetime finding, not a "
+            "protocol or cipher change and not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-17"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_heartbleed": {
+        "control_name": "Remediate Heartbleed-vulnerable TLS",
+        "recommended_fix": (
+            "Upgrade the TLS stack so Heartbleed is not offered, then regenerate "
+            "private keys and reissue certificates (CISA TA14-098A). "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SI-2", "RA-5", "SC-8"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_1_0": {
+        "control_name": "Disable TLS 1.0",
+        "recommended_fix": (
+            "Disable TLS 1.0 and require TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_1_1": {
+        "control_name": "Disable TLS 1.1",
+        "recommended_fix": (
+            "Disable TLS 1.1 and require TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe and not a TLS 1.0-only finding."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "source": "testssl",
+    },
+    "tls_sslv3": {
+        "control_name": "Disable SSLv3",
+        "recommended_fix": (
+            "Disable SSLv3 on the listener. Prefer TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_sslv2": {
+        "control_name": "Disable SSLv2",
+        "recommended_fix": (
+            "Disable SSLv2 on the listener. Prefer TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "web_admin_path": {
+        "control_name": "Remove or lock down the exposed web admin path",
+        "recommended_fix": (
+            "Remove or restrict /admin (and sibling login/manager consoles) so they "
+            "are not reachable from untrusted networks. Require SSO or VPN. "
+            "This is a Nikto file-drop finding, not a live HTTP probe and not a hostname inventory row."
+        ),
+        "nist_800_53": ["AC-6", "CM-7", "SC-7"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_dir_listing": {
+        "control_name": "Disable web-app directory listing",
+        "recommended_fix": (
+            "Turn off autoindex / directory listing on the web root. "
+            "This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-6", "AC-3"],
+        "source": "nikto",
+    },
+    "web_sensitive_file": {
+        "control_name": "Remove exposed web-app sensitive files",
+        "recommended_fix": (
+            "Remove .git / .env / phpinfo / server-status from the published tree "
+            "and block those paths. This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-7", "AC-3", "SI-12"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_http_methods": {
+        "control_name": "Disable dangerous HTTP methods",
+        "recommended_fix": (
+            "Disable PUT and DELETE (and any unused write methods) on the public listener. "
+            "This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-7", "AC-3"],
+        "source": "nikto",
+    },
+    "web_default_creds": {
+        "control_name": "Replace web-app default credentials",
+        "recommended_fix": (
+            "Change vendor default passwords on the admin console and disable the "
+            "default account. This is a Nikto file-drop finding, not a live login."
+        ),
+        "nist_800_53": ["IA-5", "AC-2"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_xss": {
+        "control_name": "Stop reflected web-app cross-site scripting",
+        "recommended_fix": (
+            "Encode untrusted response output for the HTML and JavaScript context "
+            "and set a Content-Security-Policy that blocks inline script. "
+            "This is a Nikto web-app finding, not a source-code static-analysis "
+            "row and not a live HTTP probe."
+        ),
+        "nist_800_53": ["SI-10", "SC-18", "CM-6"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_lfi": {
+        "control_name": "Stop web-app local file inclusion",
+        "recommended_fix": (
+            "Reject path traversal in upload/connector parameters and keep plugin "
+            "files off the public tree. This is a Nikto web-app finding, not a "
+            "listener-protocol or remote-desktop exposure and not a live HTTP probe."
+        ),
+        "nist_800_53": ["SI-10", "AC-3", "CM-7"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "pc_min_pwd_len": {
+        "control_name": "Raise domain minimum password length",
+        "recommended_fix": (
+            "Set the domain minimum password length per NIST SP 800-63B-4 "
+            "(15 characters password-only, or 8 with MFA) or at least 8 as "
+            "PingCastle A-MinPwdLen scores. This is a PingCastle file-drop, not a "
+            "live directory call."
+        ),
+        "nist_800_53": ["IA-5", "AC-2"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "pc_krbtgt": {
+        "control_name": "Rotate the krbtgt password twice",
+        "recommended_fix": (
+            "Reset the krbtgt password twice, at least 10 hours apart, so old "
+            "KRBTGT keys die. This is PingCastle rule A-Krbtgt from a file-drop, "
+            "not a live DC call."
+        ),
+        "nist_800_53": ["IA-5", "SC-12"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "pc_delegated": {
+        "control_name": "Mark privileged accounts sensitive and cannot be delegated",
+        "recommended_fix": (
+            "Set 'Account is sensitive and cannot be delegated' on admins, or add "
+            "them to Protected Users. PingCastle P-Delegated is that flag, not "
+            "the P-UnconstrainedDelegation RiskId. File-drop only."
+        ),
+        "nist_800_53": ["AC-6", "IA-2"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "pc_dsheuristics": {
+        "control_name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
+        "recommended_fix": (
+            "Turn on the KB5008383 dSHeuristics LDAP authorization checks "
+            "(CVE-2021-42291) so adding or renaming a computer object requires "
+            "Create Computer Objects. PingCastle A-DsHeuristicsLDAPSecurity from "
+            "a file-drop, not a live directory call."
+        ),
+        "nist_800_53": ["AC-3", "AC-6", "SI-2"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
 }
 
 # Failure-oriented weakness names. Check titles that read as passes
@@ -333,6 +558,25 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
     "k8s_hostnetwork": "Workload uses hostNetwork",
     "k8s_write_binary_dir": "Workload can write under container binary directories",
+    "tls_breach": "HTTPS response compression enables BREACH",
+    "tls_lucky13": "TLS CBC ciphers enable LUCKY13",
+    "tls_cert_expiration": "TLS certificate is expired or expiring",
+    "tls_heartbleed": "TLS stack is vulnerable to Heartbleed",
+    "tls_1_0": "TLS 1.0 is offered",
+    "tls_1_1": "TLS 1.1 is offered",
+    "tls_sslv3": "SSLv3 is offered",
+    "tls_sslv2": "SSLv2 is offered",
+    "web_admin_path": "Web admin or login path is exposed",
+    "web_dir_listing": "Web-app directory listing is enabled",
+    "web_sensitive_file": "Sensitive web-app file is published",
+    "web_http_methods": "Dangerous HTTP write methods are enabled",
+    "web_default_creds": "Web-app default credentials are in use",
+    "web_xss": "Web application reflects cross-site scripting",
+    "web_lfi": "Web application allows local file inclusion",
+    "pc_min_pwd_len": "Domain minimum password length is below policy",
+    "pc_krbtgt": "krbtgt password has not been rotated",
+    "pc_delegated": "Privileged account is not marked sensitive / Protected Users",
+    "pc_dsheuristics": "dSHeuristics LDAP security flags are not set",
 }
 
 # Distinct types may share remediations only with an explicit reason.
@@ -355,6 +599,9 @@ def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
 
 def _alias_keys(rec: dict[str, Any]) -> list[str]:
     extra = extra_dict(rec)
+    # risk_id is not an alias key: unmapped PingCastle RiskIds must fall
+    # through to control_map._pingcastle_playbook (#145), not "unknown".
+    # Mapped RiskIds are read via _exact_scanner_id / _PINGCASTLE_EXACT.
     keys = [
         extra.get("check_id"),
         extra.get("edge"),
@@ -364,6 +611,16 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("rule"),
     ]
     return [norm_type_key(str(k)) for k in keys if k]
+
+
+def _risk_id_only(rec: dict[str, Any]) -> bool:
+    extra = extra_dict(rec)
+    if not str(extra.get("risk_id") or "").strip():
+        return False
+    return not any(
+        extra.get(k)
+        for k in ("check_id", "edge", "control", "id", "control_key", "rule")
+    )
 
 
 def _match_blob(rec: dict[str, Any]) -> str:
@@ -385,8 +642,98 @@ def _match_blob(rec: dict[str, Any]) -> str:
     ).lower()
 
 
+def _has_word(text: str, *words: str) -> bool:
+    """True when any token matches on a word boundary (not a substring)."""
+    blob = str(text or "")
+    for word in words:
+        if re.search(rf"(?<![A-Za-z0-9_]){re.escape(word)}(?![A-Za-z0-9_])", blob, re.I):
+            return True
+    return False
+
+
+def _message_text(rec: dict[str, Any]) -> str:
+    """Nikto/testssl message first — name + description, not URL-only extra."""
+    return f"{rec.get('name') or ''} {rec.get('description') or ''}"
+
+
+def _exact_scanner_id(rec: dict[str, Any]) -> str:
+    extra = extra_dict(rec)
+    return norm_type_key(str(extra.get("id") or extra.get("risk_id") or "").strip())
+
+
+_TESTSSL_EXACT: dict[str, str] = {
+    "breach": "tls_breach",
+    "lucky13": "tls_lucky13",
+    "cert_expirationstatus": "tls_cert_expiration",
+    "heartbleed": "tls_heartbleed",
+    "tls1": "tls_1_0",
+    "tls1_1": "tls_1_1",
+    "sslv3": "tls_sslv3",
+    "ssl3": "tls_sslv3",
+    "sslv2": "tls_sslv2",
+}
+
+_PINGCASTLE_EXACT: dict[str, str] = {
+    "a_minpwdlen": "pc_min_pwd_len",
+    "a_krbtgt": "pc_krbtgt",
+    "s_nopreauth": "ad_asrep",
+    "s_nopreauthadmin": "ad_asrep",
+    "p_delegated": "pc_delegated",
+    "p_unconstraineddelegation": "ad_unconstrained_delegation",
+    "a_dsheuristicsldapsecurity": "pc_dsheuristics",
+}
+
+_NIKTO_METHOD_IDS = frozenset({"999995", "999978"})
+_NIKTO_BREACH_IDS = frozenset({"999966"})
+
+
+def _nikto_http_methods(msg: str, extra_id: str) -> bool:
+    if extra_id in _NIKTO_METHOD_IDS:
+        return True
+    write_method = _has_word(msg, "put", "delete") or "webdav" in msg
+    if not write_method:
+        return False
+    if "allowed http methods" in msg:
+        return True
+    if _has_word(msg, "method", "methods") or ("allow" in msg and "header" in msg):
+        return True
+    return False
+
+
 def _heuristic_type(rec: dict[str, Any]) -> str:
     text = _match_blob(rec)
+    extra = extra_dict(rec)
+    extra_id = _exact_scanner_id(rec)
+    raw_id = str(extra.get("id") or extra.get("risk_id") or "").strip()
+    mapped = _TESTSSL_EXACT.get(extra_id) or _PINGCASTLE_EXACT.get(extra_id)
+    if mapped:
+        return mapped
+    msg = _message_text(rec)
+    labels = {str(x).lower() for x in (rec.get("labels") or [])}
+    nikto = "nikto" in labels or raw_id.isdigit() or "nikto" in msg.lower()
+    if nikto:
+        # Message-text-first, then plugin ID (IDs drift between Nikto versions).
+        if _has_word(msg, "breach") or raw_id in _NIKTO_BREACH_IDS:
+            return "tls_breach"
+        if _has_word(msg, "xss") or "cross-site scripting" in msg.lower() or "cross site scripting" in msg.lower():
+            return "web_xss"
+        if (
+            _has_word(msg, "lfi")
+            or "directory traversal" in msg.lower()
+            or "directory-traversal" in msg.lower()
+            or "local file inclusion" in msg.lower()
+        ):
+            return "web_lfi"
+        if "directory listing" in msg.lower() or "directory index" in msg.lower() or "indexing found" in msg.lower():
+            return "web_dir_listing"
+        if any(tok in msg.lower() for tok in (".git", ".env", "phpinfo", "server-status")):
+            return "web_sensitive_file"
+        if "default password" in msg.lower() or "default credential" in msg.lower():
+            return "web_default_creds"
+        if _nikto_http_methods(msg.lower(), raw_id):
+            return "web_http_methods"
+        if any(tok in msg.lower() for tok in ("admin login", "/admin", "phpmyadmin", "wp-admin", "manager/html")):
+            return "web_admin_path"
     if "dcsync" in text or "ds-replication-get-changes" in text or (
         "replicat" in text and ("directory" in text or "get-changes" in text)
     ):
@@ -466,17 +813,28 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
 
 def finding_type(rec: dict[str, Any]) -> str:
     """Stable type id. Empty string = leave the row to the legacy narrative map."""
+    extra = extra_dict(rec)
+    risk_key = norm_type_key(str(extra.get("risk_id") or "").strip())
+    if risk_key:
+        mapped_risk = TYPE_ALIASES.get(risk_key) or _PINGCASTLE_EXACT.get(risk_key)
+        if mapped_risk:
+            return mapped_risk
     keys = _alias_keys(rec)
     for key in keys:
         mapped = TYPE_ALIASES.get(key)
         if mapped:
             return mapped
+    guessed = _heuristic_type(rec)
     source = str(rec.get("source") or "")
+    # Unmapped PingCastle RiskId-only rows stay untyped so #145 playbooks win.
+    if _risk_id_only(rec) and source in {"identity-ad", ""}:
+        return ""
+    if guessed and (
+        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+    ):
+        return guessed
     if source not in TYPED_SOURCES:
         return ""
-    guessed = _heuristic_type(rec)
-    if guessed:
-        return guessed
     # Typed collector with an explicit check/edge/control we do not know.
     if keys:
         return "unknown"
@@ -522,6 +880,7 @@ def type_remediation(rec: dict[str, Any]) -> dict[str, Any] | None:
         "cis": list(meta.get("cis") or []),
         "key_medium": bool(meta.get("key_medium")),
         "weakness_name": TYPE_WEAKNESS_NAME.get(ftype) or str(meta.get("weakness_name") or ""),
+        "source": str(meta.get("source") or ""),
     }
 
 
