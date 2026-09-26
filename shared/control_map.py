@@ -9,12 +9,8 @@ import os
 import re
 from typing import Any
 
-from shared.finding_types import TYPE_WEAKNESS_NAME, has_xss_signal, type_remediation
-from shared.framework_class_map import (
-    BLANKET_REGISTER_STAMPS,
-    apply_class_mapping,
-    csf_cpg_tag_set,
-)
+from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
+from shared.framework_class_map import apply_class_mapping
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
 
@@ -162,6 +158,11 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Enable malware protection": "Malware real-time protection is disabled",
     "Require encryption in transit": "Remote session encryption is not required",
     "Enable a host firewall": "Host firewall is disabled",
+    "Enable full-disk encryption on the endpoint": "Disk encryption is disabled",
+    "Require authentication and bind Redis": "Redis accepts unauthenticated access",
+    "Require authentication on Redis": "Redis accepts unauthenticated access",
+    "Bind Redis and enable protected-mode": "Redis is bound beyond localhost without protected-mode",
+    "Rename or disable dangerous Redis commands": "Dangerous Redis commands are enabled",
     "Disable SSH root login": "SSH root login is enabled",
     "Disable SSH empty passwords": "SSH empty passwords are allowed",
     "Apply security updates": "Security updates are not applied",
@@ -249,8 +250,7 @@ TOPIC_CSF = {
     "Deploy endpoint detection and response": "detect",
     "Restore endpoint coverage": "detect",
     "Enable time synchronization": "detect",
-    "Lock down sensitive perimeter hostnames": "protect",
-    "Stop writes under container binary directories": "detect",
+    "Lock down sensitive perimeter hostnames": "identify",
 }
 
 
@@ -474,7 +474,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Avoid hostNetwork on Kubernetes workloads": ["SC-7", "CM-7"],
     "Stop writes under container binary directories": ["SI-7", "CM-6", "AC-3"],
     "Restrict exposed admin interfaces": ["AC-17", "SC-7"],
-    "Lock down sensitive perimeter hostnames": ["SC-7"],
+    "Lock down sensitive perimeter hostnames": ["CM-8"],
     "Remove standing privileged role assignment": ["AC-2", "AC-6"],
     "Disable legacy authentication protocols": ["IA-2", "IA-5"],
     "Restrict external sharing": ["AC-3", "AC-6"],
@@ -721,13 +721,6 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     compact = re.sub(r"[^a-z0-9]+", "", key)
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     control = str(mapped.get("control_name") or extra.get("control_name") or "")
-    scanner_id = str(extra.get("id") or extra.get("risk_id") or "").strip()
-    typed_name = str(mapped.get("weakness_name") or "").strip()
-    if typed_name and scanner_id:
-        raw_l = raw.lower()
-        sid_l = scanner_id.lower()
-        if raw_l == sid_l or raw_l.endswith(sid_l) or f" {sid_l}" in f" {raw_l}":
-            return typed_name
     for title, failure in CHECK_TITLE_FAILURE.items():
         if key == title or compact == title.replace(" ", ""):
             return failure
@@ -771,20 +764,11 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
             "finding_type": typed.get("finding_type") or "",
             "weakness_name": str(typed.get("weakness_name") or ""),
             "key_medium": bool(typed.get("key_medium")),
-            "source": str(typed.get("source") or ""),
         },
         rec,
     )
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
-
-
-def _is_custodian_not_a_weakness(rec: dict[str, Any]) -> bool:
-    """Custodian cost/ops only. nmap extra.not_a_weakness stays on the nmap path."""
-    if str(rec.get("source") or "") != "cloud-prowler":
-        return False
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    return str(extra.get("exclude_reason") or extra.get("poam_exclude") or "") == "NOT_A_WEAKNESS"
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
@@ -796,57 +780,10 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     return mapped
 
 
-def _is_unauth_redis(rec: dict[str, Any]) -> bool:
-    """Nuclei exposed-redis / nmap redis-info — auth gap, not a patch finding."""
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    tid = str(
-        extra.get("check_id")
-        or extra.get("template_id")
-        or extra.get("rule")
-        or extra.get("template-id")
-        or ""
-    ).lower()
-    if tid in {"exposed-redis", "nse-redis-noauth"}:
-        return True
-    text = _blob(rec)
-    if "redis" not in text:
-        return False
-    return any(
-        tok in text
-        for tok in (
-            "without auth",
-            "unauthenticated",
-            "noauth",
-            "no auth",
-            "requirepass",
-            "accessible without authentication",
-        )
-    )
-
-
 def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    if _is_custodian_not_a_weakness(rec):
-        return _stamp_csf(
-            {
-                "control_name": "Cost or operations signal (not a control weakness)",
-                "recommended_fix": (
-                    "This Cloud Custodian match is a cost/ops or unmapped policy, "
-                    "not a security control failure. Do not open a High POA&M. "
-                    "Map the policy to a control if it should be treated as a finding."
-                ),
-                "cpg": [],
-                "include_poam": False,
-                "generic": False,
-                "finding_type": "not_a_weakness",
-                "weakness_name": "Not a weakness (cost/ops or unmapped Custodian policy)",
-            },
-            rec,
-        )
     check = str(extra.get("check_id") or "")
-    if _is_unauth_redis(rec):
-        check = "nse-redis-noauth"
     rule = MISCONFIG_RULES.get(check)
     if rule:
         mapped = _stamp_csf(
@@ -912,54 +849,10 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
     "A-MinPwdLen": {
         "name": "Raise domain minimum password length",
         "fix": (
-            "Set the domain minimum password length per NIST SP 800-63B-4 "
-            "(15 characters password-only, or 8 with MFA) or at least 8 as "
-            "PingCastle A-MinPwdLen scores. File-drop only, not a live AD call."
-        ),
-    },
-    "A-Krbtgt": {
-        "name": "Rotate the krbtgt password twice",
-        "fix": (
-            "Reset the krbtgt password twice, at least 10 hours apart, so old "
-            "KRBTGT keys die. This is PingCastle A-Krbtgt from a file-drop, "
-            "not a live DC call."
-        ),
-    },
-    "P-Delegated": {
-        "name": "Mark privileged accounts sensitive and cannot be delegated",
-        "fix": (
-            "Set 'Account is sensitive and cannot be delegated' on admins, or "
-            "add them to Protected Users. P-Delegated is that flag, not the "
-            "P-UnconstrainedDelegation RiskId."
-        ),
-    },
-    "P-UnconstrainedDelegation": {
-        "name": "Remove unconstrained Kerberos delegation",
-        "fix": (
-            "Disable unconstrained delegation; prefer constrained or resource-based. "
-            "This is PingCastle P-UnconstrainedDelegation from a file-drop."
-        ),
-    },
-    "S-NoPreAuth": {
-        "name": "Require Kerberos preauthentication",
-        "fix": (
-            "Uncheck 'Do not require Kerberos preauthentication' on the account. "
-            "This is PingCastle S-NoPreAuth from a file-drop, not a live AD call."
-        ),
-    },
-    "S-NoPreAuthAdmin": {
-        "name": "Require Kerberos preauthentication on admin accounts",
-        "fix": (
-            "Uncheck 'Do not require Kerberos preauthentication' on privileged "
-            "accounts. This is PingCastle S-NoPreAuthAdmin from a file-drop."
-        ),
-    },
-    "A-DsHeuristicsLDAPSecurity": {
-        "name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
-        "fix": (
-            "Turn on the KB5008383 dSHeuristics LDAP authorization checks "
-            "(CVE-2021-42291) so adding or renaming a computer object requires "
-            "Create Computer Objects. File-drop only."
+            "Set the domain minimum password length to at least 8 characters "
+            "(14 recommended) in the Default Domain Policy. "
+            "This is a PingCastle healthcheck finding, not a Windows "
+            "baseline audit or a live AD call."
         ),
     },
     "A-ZeroPoint": {
@@ -1093,7 +986,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     elif port == "21" or "ftp exposed" in text:
         name = "Disable or lock down cleartext FTP"
         fix = "Disable FTP (TCP/21) or replace with SFTP/FTPS. Restrict any remaining listener to a management VLAN."
-    elif port == "3389" or re.search(r"(?<![a-z0-9_])rdp(?![a-z0-9_])", text):
+    elif port == "3389" or "rdp" in text:
         name = "Restrict RDP to approved paths"
         fix = "Restrict TCP/3389 (RDP) to VPN/jump hosts. Require NLA. This is an exposure finding, not a specific RDP CVE."
         key_medium = True
@@ -1140,8 +1033,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     elif "heartbleed" in text:
         name = "Remediate Heartbleed-vulnerable TLS"
         fix = (
-            "Upgrade the TLS stack so Heartbleed is not offered, then regenerate "
-            "private keys and reissue certificates (CISA TA14-098A). "
+            "Upgrade the TLS stack so Heartbleed is not offered. "
             "This is a dropped TLS export, not a live probe."
         )
     elif "tls 1.0" in text or "tlsv1.0" in text or "tls1 offered" in text.replace(" ", "").replace("_", "").replace("-", ""):
@@ -1152,9 +1044,10 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         )
     elif (
         port == "443"
-        or re.search(r"(?<![a-z0-9_])tls(?![a-z0-9_])", text)
-        or re.search(r"(?<![a-z0-9_])ssl(?![a-z0-9_])", text)
-        or re.search(r"(?<![a-z0-9_])certificate(?![a-z0-9_])", text)
+        or "tls" in text
+        or "ssl" in text
+        or "https" in text
+        or "certificate" in text
     ):
         name = "Harden TLS on the exposed service"
         fix = (
@@ -1244,7 +1137,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Patch or isolate the service that Nuclei flagged as RCE. "
             "This is a dropped Nuclei finding, not a live scan."
         )
-    elif has_xss_signal(rec):
+    elif "xss" in text or "cross-site scripting" in text:
         name = "Stop cross-site scripting"
         fix = (
             "Encode untrusted output for the HTML context. Avoid raw innerHTML. "
@@ -1612,7 +1505,6 @@ POAM_INCLUDE_REASONS = frozenset(
 POAM_EXCLUDE_REASONS = frozenset(
     {
         "honeypot",
-        "NOT_A_WEAKNESS",
         "severity_info",
         "severity_low",
         "severity_medium_not_key",
@@ -1620,6 +1512,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
+        "DUPLICATE_INSTANCE",
         "not_a_weakness",
     }
 )
@@ -1698,8 +1591,7 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
 
     Default (full) plan includes every non-info, non-honeypot weakness.
     NSE misconfig is always included. Honeypot / deception-sensor is always
-    excluded. Cost/ops or unmapped Custodian policies are NOT_A_WEAKNESS.
-    Informational is excluded (telemetry_info for telemetry-only
+    excluded. Informational is excluded (telemetry_info for telemetry-only
     rows). Status is not a gate. Repeated telemetry lows are collapsed by
     iter_poam_decisions, not here.
 
@@ -1713,8 +1605,6 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     key_medium = bool(mapped.get("key_medium"))
     if lighter is None:
         lighter = poam_lighter_requested()
-    if _is_custodian_not_a_weakness(rec):
-        return {"include": False, "reason": "NOT_A_WEAKNESS", "severity": sev}
     if check in MISCONFIG_RULES:
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):
@@ -1813,27 +1703,25 @@ def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = Non
 def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
     """Wizard-safe CPG + CSF stamps. No colons on the CISO wire.
 
-    Findings get the same class-based CSF/CPG stamps as poam.csv
-    (subcategory + CPG 2.0 goal). Assets and other kinds get none.
-    Never the blanket ``csf_PR`` / ``csf_protect`` or retired
-    ``cpg_2_W`` / ``cpg_1_E``.
+    With no record, return the known stamp vocabulary. With a finding,
+    stamp only what the 800-53 / CIS map actually produced — do not force
+    cpg_2_W onto every row.
     """
     if rec and rec.get("kind") == "finding":
         mapped = map_finding(rec)
-        csf, cpg = csf_cpg_tag_set(str(mapped.get("framework_refs") or ""))
-        stamps = [t for t in list(cpg) + list(csf) if t not in BLANKET_REGISTER_STAMPS]
-        if any(t.startswith("cpg_") for t in stamps):
+        stamps = list(mapped.get("cpg") or []) + list(mapped.get("csf") or [])
+        if mapped.get("cpg"):
             stamps.append("cisa_cpg")
-        if any(t.startswith("csf_") for t in stamps):
+        if mapped.get("csf"):
             stamps.append("nist_csf")
-    elif rec:
-        stamps = []
     else:
         stamps = [
+            CPG_WEAK_SERVICE,
+            CPG_EXPOSURE,
+            "csf_PR",
             "nist_csf",
             "cisa_cpg",
             "cpg_3_S",
-            "cpg_3_I",
             "cpg_2_B",
             "csf_PR_IR_01",
             "csf_unmapped",
@@ -1841,6 +1729,6 @@ def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
         ]
     out: list[str] = []
     for stamp in stamps:
-        if stamp and ":" not in stamp and stamp not in BLANKET_REGISTER_STAMPS and stamp not in out:
+        if stamp and ":" not in stamp and stamp not in out:
             out.append(stamp)
     return out
