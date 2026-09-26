@@ -25,17 +25,17 @@ NMAP = PACK / "nmap"
 # Full POA&M plan (default) puts Lows + non-key Mediums on the plan. Measured
 # farm_drop after port-only fold (unchanged vs 174/106): pack_drop has no
 # specific-on-port peer so no superseded_by_specific. After (weakness, EGA-
-# asset) merge, unique included POA&M rows measure 85 (21 duplicate pairs
-# collapsed; not a thinner unique estate). Findings and excluded floors stay
-# 110 / 20 — those MIN_ gates are not loosened. MIN_FARM_POAM restamped to
-# the unique included count (was 100 against the duplicate-inflated 106).
+# asset) merge plus asset+port/proto collapse of nmap/rustscan/naabu/… port-
+# only rows, unique findings measure 98 and included POA&M rows measure 65
+# (not a thinner unique estate). Excluded floor stays 20. MIN_FARM_FINDINGS
+# restamped 110→98 and MIN_FARM_POAM 85→65 to the unique included counts.
 BEFORE_FARM_FINDINGS = 85
 BEFORE_FARM_POAM = 23
 MIN_NMAP_HOSTS = 14
 MIN_NMAP_PORTS = 30
 MIN_NMAP_FINDINGS = 30
-MIN_FARM_FINDINGS = 110
-MIN_FARM_POAM = 85
+MIN_FARM_FINDINGS = 98
+MIN_FARM_POAM = 65
 MIN_FARM_EXCLUDED = 20
 CORP_PREFIX = "10.0.0."
 LAB_PREFIX = "172.16.10."

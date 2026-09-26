@@ -78,7 +78,7 @@ printed as metadata. Changing HEAD without touching the surface is skip.
   peer. Host-lab (demo collectors) measured weaknesses=126, poam=124,
   excluded=2 (`telemetry` on `WAZ-alert-5710-web-01` plus
   `superseded_by_specific` on `NMAP-telnet-legacy-corp-local-80`).
-  Brick 5 floors: findings >= 110, poam_rows >= 100. The old 35-row floor
+  Brick 5 floors: findings >= 98, poam_rows >= 65. The old 35-row floor
   was the lighter High/key-Medium-only plan; do not revert. MIN_ gates
   unchanged.
 - `assert_farm_ship_sor` requires `excluded.csv` non-empty with both

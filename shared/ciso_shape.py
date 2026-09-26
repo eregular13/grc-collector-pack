@@ -561,7 +561,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         poam.write_text(
             POAM_HEADER
             + "\nsample-finding,sample-asset,high,cpg_2_W csf_PR,restrict exposure,,,open,SAMPLE,"
-            + "POAM-DEMO-F,DEMO-F,SC-7,SAMPLE stub,sample,,2026-01-01,2026-01-31,2026-01-01,"
+            + "EGP-DEMO-F,DEMO-F,SC-7,SAMPLE stub,sample,,2026-01-01,2026-01-31,2026-01-01,"
             + "M1 2026-01-08 Validate; M2 2026-01-24 Apply fix; M3 2026-01-31 Rescan,High,,\n",
             encoding="utf-8",
         )

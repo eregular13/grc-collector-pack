@@ -80,7 +80,8 @@ def _honest_farm_work(folder: Path) -> None:
         encoding="utf-8",
     )
     (out / "EXECUTIVE_SUMMARY.md").write_text(
-        f"> **{label}**: Every finding below comes from bundled example files. None describes any real organization.\n",
+        f"> **{label}**: Every finding below comes from bundled example files. None describes any real organization.\n"
+        "Open POA&M (poam.csv): 1\n",
         encoding="utf-8",
     )
     from shared.estate_pages import write_export_manifest

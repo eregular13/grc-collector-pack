@@ -201,8 +201,12 @@ def _lift_record(
         if row.get(key) not in (None, "") and key not in extra_out:
             extra_out[key] = str(row.get(key)) if key == "port" else row.get(key)
     obs_id = row.get("observation_id") or row.get("id")
-    if obs_id not in (None, "") and "observation_id" not in extra_out:
-        extra_out["observation_id"] = obs_id
+    if obs_id not in (None, ""):
+        if "observation_id" not in extra_out:
+            extra_out["observation_id"] = obs_id
+        # Provenance only — finding_identity / dedupe_key do not use extra.id.
+        if "id" not in extra_out:
+            extra_out["id"] = obs_id
     if row.get("not_claimed") and "not_claimed" not in extra_out:
         extra_out["not_claimed"] = row.get("not_claimed")
     stamp = pick_row_scan_time(row, artifact_scan_time)

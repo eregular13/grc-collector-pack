@@ -1076,17 +1076,26 @@ def register_asset_key(rec: dict[str, Any]) -> str:
 
 
 def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
-    """(asset, port/proto+class or weakness class). Observation id is not a key."""
+    """(asset, port/proto or weakness class). Observation id is not a key.
+
+    Port-only inventory rows (nmap/rustscan/…) merge on asset + port/proto.
+    Named weaknesses (type, CVE, or title) keep their class so TLS 1.0 and
+    a bare 443/tcp open stay two rows.
+    """
+    ftype = finding_type(rec)
+    asset = register_asset_key(rec)
+    if ftype and ftype != "unknown":
+        return (asset, ftype)
     extra = extra_dict(rec)
     port = str(extra.get("port") or "").strip()
     proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
-    ftype = finding_type(rec)
-    asset = register_asset_key(rec)
     if port and port != "0":
-        cls = ftype if ftype and ftype != "unknown" else str(rec.get("category") or "exposure")
-        return (asset, f"port:{port}/{proto or 'tcp'}:{cls}")
-    if ftype and ftype != "unknown":
-        return (asset, ftype)
+        from shared.port_fold import finding_port, finding_proto, is_port_only_finding
+
+        port = finding_port(rec) or port
+        proto = finding_proto(rec) or proto
+        if is_port_only_finding(rec):
+            return (asset, f"port:{port}/{proto or 'tcp'}")
     return (asset, semantic_weakness_key(rec))
 
 

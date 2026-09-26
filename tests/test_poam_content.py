@@ -207,7 +207,7 @@ def test_lows_on_full_plan_infos_and_honeypot_excluded(tmp_path: Path, monkeypat
             description="banner only",
             severity="info",
             category="exposure",
-            extra={"port": "80"},
+            extra={"port": "443"},
         ),
         _finding(
             source="honeypot",
