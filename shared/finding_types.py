@@ -689,16 +689,65 @@ def is_custodian_policy_row(rec: dict[str, Any]) -> bool:
     return klass in {"security", "needs-review", "cost"} or extra.get("needs_review") is True
 
 
+# Split camelCase and letter–digit boundaries before lowercasing so OpenRdpPort
+# / rdp3389 / ssh22 tokenize, while wordpress / sshd / 33890 stay whole.
+_CAMEL_DIGIT_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
+# Collector fallback when the policy has no authored description.
+_SYNTHESIZED_MATCHED_DESC = re.compile(r"^Policy\s+\S+\s+matched\s+", re.I)
+_SG_RESOURCE_KINDS = frozenset({"sg", "security-group", "securitygroup"})
+
+
+def _policy_tokens(*parts: str) -> set[str]:
+    """Whole tokens from policy text. Never feed a resource id into this."""
+    words: set[str] = set()
+    for part in parts:
+        text = str(part or "")
+        if not text:
+            continue
+        for tok in _CAMEL_DIGIT_RE.findall(text):
+            words.add(tok.lower())
+    return words
+
+
+def _authored_policy_description(rec: dict[str, Any]) -> str:
+    """Policy-authored description only — drop synthesized 'matched <rid>' text."""
+    desc = str(rec.get("description") or "").strip()
+    if not desc or _SYNTHESIZED_MATCHED_DESC.match(desc):
+        return ""
+    return desc
+
+
+def _is_security_group_resource(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
+    """True when the row's resource type / service / label is a security group."""
+    candidates = [extra.get("resource_type"), extra.get("service")]
+    candidates.extend(rec.get("labels") or [])
+    for raw in candidates:
+        kind = str(raw or "").strip().lower()
+        if not kind:
+            continue
+        tail = kind.rsplit(".", 1)[-1]
+        if tail in _SG_RESOURCE_KINDS:
+            return True
+    return False
+
+
+def _has_security_group_token(words: set[str]) -> bool:
+    if "sg" in words or "securitygroup" in words:
+        return True
+    return "security" in words and "group" in words
+
+
 def _custodian_security_type(rec: dict[str, Any]) -> str:
     """Honest class for Custodian security-policy / security-context names."""
     if not is_custodian_policy_row(rec):
         return ""
     extra = extra_dict(rec)
-    raw = " ".join(
-        str(x or "")
-        for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
-    )
-    words = set(re.findall(r"[a-z0-9]+", raw.lower()))
+    authored = _authored_policy_description(rec)
+    # check_id + title + authored description only. Resource ids / ARNs /
+    # synthesized "Policy <name> matched <rid>" text are not tokenized.
+    raw_parts = (str(extra.get("check_id") or ""), str(rec.get("name") or ""), authored)
+    raw = " ".join(p for p in raw_parts if p)
+    words = _policy_tokens(*raw_parts)
     blob = " ".join(
         norm_type_key(str(x or ""))
         for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
@@ -716,7 +765,9 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
     admin = bool(words & {"ssh", "rdp", "3389"})
     if exposed and admin:
         return "sg_ingress_open"
-    if "public" in words and ({"ingress", "security"} & words):
+    if "ingress" in words and (
+        _has_security_group_token(words) or _is_security_group_resource(rec, extra)
+    ):
         return "sg_ingress_open"
     return ""
 

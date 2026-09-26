@@ -27,6 +27,9 @@ def _findings(recs: list[dict]) -> list[dict]:
     return [r for r in recs if r["kind"] == "finding"]
 
 
+SG_INGRESS_FIX = "Remove 0.0.0.0/0 ingress"
+
+
 def _custodian_finding(
     *,
     name: str = "Cloud Custodian mystery-policy",
@@ -34,6 +37,7 @@ def _custodian_finding(
     severity: str = "medium",
     extra: dict | None = None,
     assets: list[str] | None = None,
+    labels: list[str] | None = None,
 ) -> dict:
     payload = dict(extra or {})
     payload.setdefault("check_id", "mystery-policy")
@@ -47,7 +51,34 @@ def _custodian_finding(
         severity=severity,
         category="cloud-misconfiguration",
         assets=assets or ["res-1"],
+        labels=labels,
         extra=payload,
+    )
+
+
+def _from_c7n_policy(pol: dict) -> dict:
+    """Canonical-shaped row from a Custodian policy payload (real description)."""
+    items = cloud_prowler._custodian_findings(pol)
+    assert items, pol.get("name")
+    item = items[0]
+    extra = {
+        "check_id": item["CheckID"],
+        "classification": item.get("Classification") or "security",
+        "service": item.get("ServiceName"),
+        "resource_type": item.get("ResourceType"),
+        "arn": item.get("ResourceArn"),
+    }
+    return make_record(
+        kind="finding",
+        source="cloud-prowler",
+        ref_id="CLD-c7n-probe",
+        name=item["CheckTitle"],
+        description=item["Description"],
+        severity="medium",
+        category="cloud-misconfiguration",
+        assets=[item["ResourceId"]],
+        labels=["cloud", str(item.get("ServiceName") or "")],
+        extra=extra,
     )
 
 
@@ -200,6 +231,63 @@ def test_wordpress_public_is_not_sg_ingress_open() -> None:
             extra={"check_id": name, "classification": "security"},
         )
         assert finding_type(rec) != "sg_ingress_open", name
+        assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"], name
+
+
+def test_s3_public_read_security_blurb_is_not_sg_ingress_open() -> None:
+    rec = _from_c7n_policy(
+        {
+            "name": "s3-public-read",
+            "resource": "aws.s3",
+            "description": "Security: S3 bucket allows public read",
+            "resources": [{"Name": "public-read-bucket"}],
+        }
+    )
+    assert finding_type(rec) == "s3_public_access"
+    mapped = map_finding(rec)
+    assert SG_INGRESS_FIX not in mapped["recommended_fix"]
+    assert "public ACL" in mapped["recommended_fix"] or "public ACLs" in mapped["recommended_fix"]
+
+
+def test_ebs_public_snapshot_security_paren_is_not_sg_ingress_open() -> None:
+    rec = _from_c7n_policy(
+        {
+            "name": "ebs-snapshot-public",
+            "resource": "aws.ebs",
+            "description": "Public EBS snapshot (security)",
+            "resources": [{"SnapshotId": "snap-abc01"}],
+        }
+    )
+    assert finding_type(rec) == "ebs_snapshot_public"
+    mapped = map_finding(rec)
+    assert SG_INGRESS_FIX not in mapped["recommended_fix"]
+    assert "EBS snapshot private" in mapped["recommended_fix"]
+
+
+def test_bucket_named_security_logs_is_not_sg_ingress_open() -> None:
+    rec = _from_c7n_policy(
+        {
+            "name": "s3-bucket-public",
+            "resource": "aws.s3",
+            "resources": [{"Name": "acme-security-logs"}],
+        }
+    )
+    assert rec["description"].startswith("Policy ")
+    assert "acme-security-logs" in rec["description"]
+    assert rec["assets"] == ["acme-security-logs"]
+    assert finding_type(rec) != "sg_ingress_open"
+    assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
+
+
+def test_wordpress_security_review_is_not_sg_ingress_open() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian lightsail-wordpress-public",
+        description="Security review: public WordPress instance",
+        extra={"check_id": "lightsail-wordpress-public", "classification": "security"},
+        assets=["i-wordpress01"],
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+    assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
 
 
 def test_open_rdp_custodian_is_internet_facing_sg_ingress() -> None:
@@ -237,6 +325,49 @@ def test_rdp_token_in_policy_name_is_sg_ingress_open() -> None:
         extra={"check_id": "sg-open-rdp-ingress", "classification": "security"},
     )
     assert finding_type(rec) == "sg_ingress_open"
+
+
+def test_camelcase_and_digit_admin_ports_are_sg_ingress_open() -> None:
+    cases = (
+        "OpenRdpPort",
+        "sgOpenSSH",
+        "rdp3389",
+        "ssh22-open",
+        "sg-open-rdp",
+    )
+    for check_id in cases:
+        rec = _custodian_finding(
+            name=f"Cloud Custodian {check_id}",
+            description="internet-facing admin port",
+            extra={"check_id": check_id, "classification": "security"},
+        )
+        assert finding_type(rec) == "sg_ingress_open", check_id
+        assert SG_INGRESS_FIX in map_finding(rec)["recommended_fix"], check_id
+
+
+def test_sshd_and_33890_are_not_sg_ingress_open() -> None:
+    cases = (
+        ("sshd-public", "sshd config allows open root login"),
+        ("port-33890-open", "port 33890 open"),
+    )
+    for check_id, description in cases:
+        rec = _custodian_finding(
+            name=f"Cloud Custodian {check_id}",
+            description=description,
+            extra={"check_id": check_id, "classification": "security"},
+        )
+        assert finding_type(rec) != "sg_ingress_open", check_id
+        assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"], check_id
+
+
+def test_demo_custodian_s3_encryption_stays_off_sg_ingress() -> None:
+    """Host-lab DEMO poam.csv is byte-identical to master aside from intended rows."""
+    recs = cloud_prowler.parse_file(ROOT / "fixtures" / "demo" / "cloud" / "custodian.json")
+    hit = _findings(recs)[0]
+    assert finding_type(hit) == "s3_encryption"
+    mapped = map_finding(hit)
+    assert SG_INGRESS_FIX not in mapped["recommended_fix"]
+    assert "encryption" in mapped["recommended_fix"].lower()
 
 
 def test_prowler_non_custodian_high_is_not_forced_unmapped() -> None:
