@@ -563,6 +563,7 @@ _REDIS_AUTH_BLOB_TOKS = (
     "no auth",
     "requirepass",
     "accessible without authentication",
+    "unprotected by password",
 )
 
 

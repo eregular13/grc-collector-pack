@@ -146,6 +146,22 @@ def test_real_redis_cve_stays_vuln_patch() -> None:
     assert classify_weakness_class(mapped, rec) == "vuln_patch"
 
 
+def test_nessus_unprotected_by_password_uses_redis_auth_class() -> None:
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-nessus-redis-unprotected",
+        name="Redis Server Unprotected by Password Authentication",
+        description="The remote Redis server does not require a password.",
+        severity="high",
+        category="vulnerability",
+        assets=["10.0.0.41"],
+        labels=["nessus"],
+        extra={"plugin_id": "45484", "id": "45484"},
+    )
+    _assert_redis_auth_class(rec)
+
+
 def test_nuclei_json_wrapper_maps_redis_auth(tmp_path: Path) -> None:
     dest = tmp_path / "scan.json"
     dest.write_text(
