@@ -964,7 +964,7 @@ def build_executive_summary(ctx: PageContext) -> str:
         mapped = ctx.mapped_by_ref.get(str(rec.get("ref_id"))) or {}
         weakness = recorded(rec.get("name") or rec.get("ref_id"))
         assets = rec.get("assets") or []
-        affected = recorded("| ".join(str(a) for a in assets) if assets else None)
+        affected = recorded("|".join(str(a) for a in assets) if assets else None)
         action = recorded(mapped.get("recommended_fix"))
         ref = recorded(rec.get("ref_id"))
         lines.append(
@@ -1269,7 +1269,7 @@ def parse_scope_table_areas(trust_text: str) -> list[str]:
             continue
         if line.startswith("Out of scope") or line.startswith("### "):
             break
-        if not line.startswith("|") or line.startswith("|---") or "Area |" in line:
+        if not line.startswith("|" ) or line.startswith("|---") or "Area |" in line:
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if cells and cells[0] and cells[0] != NOT_RECORDED:
