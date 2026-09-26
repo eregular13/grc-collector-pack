@@ -1,3 +1,21 @@
+# CRITIC — cycle 201 (MERGE_MASTER_140_DISCOVERY_WEB)
+
+Merge `origin/master` `76f5e86` (#140 discovery/web collectors that
+drop, merge, or invent assets; Metis §11) into this branch. Both
+sides kept: Wazuh maps by `rule.level` only (never default High);
+aggregated alerts stay `excluded.csv` telemetry unless level ≥ 12 or
+a known compromise indicator; #140 nmap/httpx/smbmap/nbtscan/fping
+fixes stay. Lab this brick: pytest **1232** passed, 1 skipped. Ten
+collectors + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=78`
+`findings=104` `vulnerabilities=22` `applied_controls=126`
+`risk_scenarios=126` `poam=124` `excluded=2` `severity_unmapped=0`
+`demo=true`). Excluded: `WAZ-alert-5710-web-01` telemetry +
+`NMAP-telnet-legacy-corp-local-80` superseded_by_specific. Cold
+SAMPLE→SoR findings=6 poam=8 vulns=2. Cold farm_drop→SoR
+findings=174 poam=106 vulns=0 excluded=68. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 200 (MERGE_MASTER_144_PORT_FOLD)
 
 Merge `origin/master` `ec61cde` (#144 fold nmap port-only rows into
