@@ -1,3 +1,21 @@
+# CRITIC — cycle 217 (REMASTER_177_B8_CHECK_ID)
+
+Lab this brick: pytest **1502** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=119` `excluded=23` `duplicates_merged=17` `pending_carried=0`
+`flood_guard` `findings_in=142` `UNEXPLAINED=0` `demo=true`). Farm drop
+`assets=48` `findings=100` `poam=65` `excluded=109` (`findings_in=174`
+`UNEXPLAINED=0`). FedRAMP Open IDs == poam.csv IDs == exec
+`Open POA&M (poam.csv): N` == console on DEMO and farm (119 / 65).
+Merged `origin/master` `5f83872` (#177 B8 stable check_id) with a
+normal merge after `026304c` (#176). Privileged-role disclaimers are
+not entra_ga_pim; httpx-admin root vs `/login` stay two rows. 7ebc697
+upgrade: 0 ghosts, 1 new, Open exports are poam.csv. Zero P0/P1.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 216 (REMASTER_176_ARGUS_ONE_TRUTH)
 
 Lab this brick: pytest **1495** passed, 1 skipped. Ten collectors +

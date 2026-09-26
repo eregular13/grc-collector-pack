@@ -443,13 +443,19 @@ def assert_poam_for_findings(
 
 
 def assert_unique_weakness_asset(poam_rows: list[dict[str, str]]) -> None:
-    """No (weakness, asset) pair repeats on the POA&M register."""
-    seen: set[tuple[str, str]] = set()
-    dups: list[tuple[str, str]] = []
+    """No (weakness, asset, finding_ref) triple repeats on the POA&M register.
+
+    Same title on one host may be two rows when #170 splits path/url
+    (root vs /login). Observation-id / port-only / GA copies must still
+    collapse to one finding_ref before export.
+    """
+    seen: set[tuple[str, str, str]] = set()
+    dups: list[tuple[str, str, str]] = []
     for row in poam_rows:
         key = (
             str(row.get("weakness") or "").strip().lower(),
             str(row.get("asset") or "").strip().lower(),
+            str(row.get("finding_ref_id") or row.get("poam_id") or "").strip().lower(),
         )
         if not key[0] and not key[1]:
             continue

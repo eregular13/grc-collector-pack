@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 217 — remaster 5f83872 (#177) + B8 check_id (2026-09-26)
+
+Merge `origin/master` `5f83872` (#177) with a normal merge. No rebase.
+Keep flood_guard + FedRAMP Open == poam.csv. Take B8 stable check_id.
+Privileged-role “not a Global Administrator claim” is not
+entra_ga_pim. httpx-admin root vs `/login` keep the #170 location in
+the dedupe key. 7ebc697 upgrade: 0 ghosts, 1 new, FedRAMP Open ==
+poam.csv. Pytest **1502**. Host-lab **79 / 103 / 119** excluded **23**;
+flood_guard 142 = 119 + 23 UNEXPLAINED=0. Farm drop **48 / 100 / 65**
+excluded **109**; flood_guard 174 = 65 + 109 UNEXPLAINED=0. Catalog
+unchanged. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 216 — remaster 026304c + Argus one-truth (2026-09-26)
 
 Merge `origin/master` `026304c` (#176) with a normal merge. No rebase.
