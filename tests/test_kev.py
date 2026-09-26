@@ -167,7 +167,11 @@ def test_1_6_4_col_m_never_written_effective_due_min(
     catalog = _catalog(_entry("CVE-2024-11111", "2026-09-05"))
     in_dir = tmp_path / "in"
     _write_kev(in_dir, catalog)
-    rec = _finding("CVE-2024-11111", collected_at="2026-09-01T00:00:00Z", extra={"port": "443"})
+    rec = _finding(
+        "CVE-2024-11111",
+        collected_at="2026-09-01T00:00:00Z",
+        extra={"port": "443", "scan_time": "2026-09-01T00:00:00Z"},
+    )
     out = _load_loader(tmp_path, monkeypatch, [rec], in_dir=in_dir)
     with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))

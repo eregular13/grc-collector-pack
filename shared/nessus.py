@@ -7,20 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import read_text
-
-_KEY_MEDIUM_PORTS = frozenset({"445", "3389", "23", "21"})
-_KEY_MEDIUM_TEXT = (
-    "smb",
-    "microsoft-ds",
-    "rdp",
-    "remote desktop",
-    "telnet",
-    "admin share",
-    "administrative share",
-    "tls 1.0",
-    "ssl version",
-    "weak cipher",
-)
+from shared.scan_time import format_detection_date, parse_scan_datetime
 
 
 def _tag(el: ET.Element) -> str:
@@ -70,25 +57,37 @@ def _risk_severity(item: ET.Element) -> str:
     return "info"
 
 
-def _plugin_text(item: ET.Element) -> str:
-    bits = [str(item.attrib.get("pluginName") or "")]
-    for child in list(item):
-        tag = _tag(child).lower()
-        if tag in {"description", "synopsis", "plugin_output", "solution"}:
-            bits.append(child.text or "")
-    return " ".join(bits).lower()
-
-
 def _keep_item(item: ET.Element, sev: str) -> bool:
-    if sev in {"high", "critical"}:
-        return True
-    if sev != "medium":
-        return False
-    port = str(item.attrib.get("port") or "")
-    if port in _KEY_MEDIUM_PORTS:
-        return True
-    blob = _plugin_text(item)
-    return any(tok in blob for tok in _KEY_MEDIUM_TEXT)
+    """Keep every non-info ReportItem. POA&M gating is include_poam, not the parser."""
+    del item
+    return sev in {"low", "medium", "high", "critical"}
+
+
+def _host_scan_time(host_el: ET.Element) -> str:
+    """HOST_START, else HOST_END, from ReportHost HostProperties tags."""
+    start = ""
+    end = ""
+    for child in list(host_el):
+        if _tag(child) != "HostProperties":
+            continue
+        for tag_el in list(child):
+            if _tag(tag_el) != "tag":
+                continue
+            name = str(tag_el.attrib.get("name") or "")
+            val = (tag_el.text or "").strip()
+            if not val:
+                continue
+            if name in {"HOST_START", "host_start"}:
+                start = val
+            elif name in {"HOST_END", "host_end"}:
+                end = val
+    raw = start or end
+    if not raw:
+        return ""
+    parsed = parse_scan_datetime(raw)
+    if not parsed:
+        return raw
+    return parsed[0].isoformat()
 
 
 def iter_nessus_items(text: str) -> list[dict[str, Any]]:
@@ -112,6 +111,7 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
                     }:
                         host = (tag_el.text or "").strip() or host
         host = host or "unknown"
+        scan_time = _host_scan_time(host_el)
         for item in list(host_el):
             if _tag(item) != "ReportItem":
                 continue
@@ -133,19 +133,20 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
                     raw = (child.text or "").strip()
                     if raw and raw not in cves:
                         cves.append(raw)
-            rows.append(
-                {
-                    "host": host,
-                    "name": title,
-                    "description": desc,
-                    "severity": sev,
-                    "port": port,
-                    "service": svc,
-                    "protocol": proto,
-                    "plugin_id": plugin,
-                    "cves": cves,
-                }
-            )
+            row: dict[str, Any] = {
+                "host": host,
+                "name": title,
+                "description": desc,
+                "severity": sev,
+                "port": port,
+                "service": svc,
+                "protocol": proto,
+                "plugin_id": plugin,
+                "cves": cves,
+            }
+            if scan_time:
+                row["scan_time"] = scan_time
+            rows.append(row)
     return rows
 
 
@@ -157,3 +158,8 @@ def parse_nessus(path: Path) -> list[dict[str, Any]] | None:
     if not is_nessus_text(text, path.name):
         return None
     return iter_nessus_items(text)
+
+
+def nessus_detection_date(row: dict[str, Any]) -> str:
+    """YYYY-MM-DD from HOST_START/HOST_END, else not recorded."""
+    return format_detection_date(row.get("scan_time"))

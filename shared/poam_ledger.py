@@ -38,6 +38,7 @@ from shared.kev import (
     KevCatalog,
 )
 from shared.poam_fields import _to_date
+from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
 
 LEDGER_IN_REL = Path("poam") / "poam-ledger.json"
@@ -141,18 +142,11 @@ def next_reopen_id(base_id: str, existing: set[str]) -> str:
     return f"{core}-R{n}"
 
 
-def detection_time(rec: dict[str, Any], run_date: date) -> tuple[date, str]:
-    extra = extra_dict(rec)
-    for raw, basis in (
-        (extra.get("first_seen") or extra.get("firstSeen") or extra.get("first_seen_at"), "scanner"),
-        (extra.get("scan_time") or extra.get("scan_start") or extra.get("HOST_START"), "scanner"),
-        (rec.get("first_seen") or rec.get("firstSeen"), "scanner"),
-        (rec.get("collected_at"), "collected_at"),
-    ):
-        got = _to_date(raw)
-        if got:
-            return got, basis
-    return run_date, "run"
+def detection_time(rec: dict[str, Any], run_date: date | None = None) -> tuple[date | None, str]:
+    """Artifact scan timestamp only. Never the pack run date or collected_at."""
+    del run_date
+    detected, basis, _tz = artifact_detection(rec)
+    return detected, basis
 
 
 def fan_out_instances(findings: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -276,8 +270,19 @@ def _new_item(
     detected, basis = detection_time(rec, run_date)
     rating = fedramp_risk_for_col_r(rec.get("severity"))
     scanner = ciso_finding_severity(rec.get("severity"))
-    tmpl = template_due_date(detected, rec.get("severity"))
     kev_due = kev.get("kev_due")
+    if detected is not None:
+        tmpl = template_due_date(detected, rec.get("severity"))
+        eff = effective_due(tmpl, kev_due)
+        template_s = tmpl.isoformat()
+        effective_s = (eff or tmpl).isoformat()
+        odd = detected.isoformat()
+    else:
+        tmpl = None
+        template_s = ""
+        effective_s = kev_due.isoformat() if kev_due else ""
+        odd = NOT_RECORDED
+        basis = "not_recorded"
     return {
         "poam_id": poam_id,
         "fp": fp,
@@ -293,7 +298,7 @@ def _new_item(
         "kev_comments": list(kev.get("comments") or []),
         "first_seen": run_iso,
         "last_seen": run_iso,
-        "original_detection_date": detected.isoformat(),
+        "original_detection_date": odd,
         "detection_date_basis": basis,
         "original_risk_rating": rating,
         "current_scanner_rating": scanner,
@@ -311,8 +316,8 @@ def _new_item(
         "prior_poam_id": "",
         "missed_covered_runs": 0,
         "missed_dates": [],
-        "effective_due": (effective_due(tmpl, kev_due) or tmpl).isoformat(),
-        "template_due": tmpl.isoformat(),
+        "effective_due": effective_s,
+        "template_due": template_s,
         "kev_overdue_on_detection": kev_overdue_on_detection(detected, kev_due),
         "name": str(rec.get("name") or rec.get("ref_id") or ""),
         "description": str(rec.get("description") or rec.get("name") or ""),
@@ -467,7 +472,7 @@ def apply_ledger(
                 closed_copy = deepcopy(item)
                 ledger["closed"].append(closed_copy)
                 new_id = next_reopen_id(str(item.get("poam_id") or ""), _existing_id_set(ledger) | {closed_copy.get("poam_id", "")})
-                detected, basis = detection_time(rec, run_date)
+                detected, basis = detection_time(rec)
                 fresh = _new_item(
                     rec,
                     fp=fp,
@@ -479,8 +484,10 @@ def apply_ledger(
                 )
                 fresh["status"] = "reopened"
                 fresh["prior_poam_id"] = str(item.get("poam_id") or "")
-                fresh["original_detection_date"] = detected.isoformat()
-                fresh["detection_date_basis"] = basis
+                fresh["original_detection_date"] = (
+                    detected.isoformat() if detected is not None else NOT_RECORDED
+                )
+                fresh["detection_date_basis"] = basis if detected is not None else "not_recorded"
                 fresh["kev_comments"] = list(fresh.get("kev_comments") or []) + [
                     f"Reopened from {item.get('poam_id')}; closed row remains on Closed."
                 ]
@@ -505,12 +512,26 @@ def apply_ledger(
                 item["display_asset"] = display_asset(rec)
                 item["name"] = str(rec.get("name") or item.get("name") or "")
                 item["description"] = str(rec.get("description") or item.get("description") or "")
-                detected = _to_date(item.get("original_detection_date")) or run_date
-                tmpl = template_due_date(detected, rec.get("severity"))
-                item["template_due"] = tmpl.isoformat()
-                item["effective_due"] = (
-                    effective_due(tmpl, kev.get("kev_due")) or tmpl
-                ).isoformat()
+                incoming, incoming_basis = detection_time(rec)
+                item["original_detection_date"] = merge_detection(
+                    str(item.get("original_detection_date") or NOT_RECORDED),
+                    incoming,
+                )
+                if incoming is not None and item["original_detection_date"] != NOT_RECORDED:
+                    if item.get("detection_date_basis") in {"", "not_recorded", "run", "collected_at"}:
+                        item["detection_date_basis"] = incoming_basis
+                detected = _to_date(item.get("original_detection_date"))
+                if detected is not None:
+                    tmpl = template_due_date(detected, rec.get("severity"))
+                    item["template_due"] = tmpl.isoformat()
+                    item["effective_due"] = (
+                        effective_due(tmpl, kev.get("kev_due")) or tmpl
+                    ).isoformat()
+                else:
+                    item["template_due"] = ""
+                    item["effective_due"] = (
+                        kev.get("kev_due").isoformat() if kev.get("kev_due") else ""
+                    )
                 item["kev_overdue_on_detection"] = kev_overdue_on_detection(
                     detected, kev.get("kev_due")
                 )

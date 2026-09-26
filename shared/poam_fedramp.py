@@ -166,4 +166,10 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
         lines.append("ledger_warnings: " + ", ".join(ledger["warnings"]))
     lines.append("Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.")
     lines.append("FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).")
+    lines.append(
+        "Original Detection Date is the artifact scan timestamp's calendar day in the "
+        "recorded timezone (UTC when the artifact is Zulu). Missing scan time is the "
+        "literal 'not recorded' — never the pack run date. Scheduled / milestone dates "
+        "are not computed from 'not recorded'."
+    )
     return "\n".join(lines) + "\n"

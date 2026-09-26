@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+from shared.scan_time import pick_row_scan_time, sibling_meta_scan_time
 from shared.schema import make_record, make_ref
 
 PACK_DROP_NAMES = frozenset({"assets.jsonl", "findings.jsonl", "meta.json"})
@@ -166,6 +167,7 @@ def _lift_record(
     source: str,
     labels: list[str],
     default_kind: str,
+    artifact_scan_time: str = "",
 ) -> dict[str, Any]:
     kind = _row_kind(row, default_kind)
     name = _row_name(row, kind)
@@ -201,6 +203,9 @@ def _lift_record(
             extra_out[key] = str(row.get(key)) if key == "port" else row.get(key)
     if row.get("not_claimed") and "not_claimed" not in extra_out:
         extra_out["not_claimed"] = row.get("not_claimed")
+    stamp = pick_row_scan_time(row, artifact_scan_time)
+    if stamp and "scan_time" not in extra_out:
+        extra_out["scan_time"] = stamp
     rec_labels = list(labels)
     for lab in row.get("labels") or []:
         if str(lab) and str(lab) not in rec_labels:
@@ -296,6 +301,7 @@ def _meta_evidence(
             "run_id": str(row.get("run_id") or ""),
             "honesty": honesty,
             "ingest": row.get("ingest") if isinstance(row.get("ingest"), dict) else {},
+            **({"scan_time": generated} if generated and generated != now else {}),
         },
     )
 
@@ -337,7 +343,14 @@ def parse_pack_drop(
         if text and (text[0] in "{["):
             rows = _iter_rows(raw)
             recs = [
-                _lift_record(r, now, source=source, labels=labels, default_kind="evidence")
+                _lift_record(
+                    r,
+                    now,
+                    source=source,
+                    labels=labels,
+                    default_kind="evidence",
+                    artifact_scan_time=sibling_meta_scan_time(path),
+                )
                 for r in rows
                 if isinstance(r, dict) and (r.get("kind") == "evidence" or r.get("name"))
             ]
@@ -346,6 +359,7 @@ def parse_pack_drop(
         return [_file_evidence(path, now, source=source, labels=labels)]
 
     rows = _iter_rows(raw)
+    meta_stamp = sibling_meta_scan_time(path)
     if name == "meta.json":
         recs = []
         for row in rows:
@@ -414,9 +428,25 @@ def parse_pack_drop(
             )
             continue
         if kind == "evidence" or name == "meta.json":
-            records.append(_lift_record(row, now, source=source, labels=labels, default_kind="evidence"))
+            records.append(
+                _lift_record(
+                    row,
+                    now,
+                    source=source,
+                    labels=labels,
+                    default_kind="evidence",
+                    artifact_scan_time=meta_stamp,
+                )
+            )
             continue
         records.append(
-            _lift_record(row, now, source=source, labels=labels, default_kind=kind or default_kind)
+            _lift_record(
+                row,
+                now,
+                source=source,
+                labels=labels,
+                default_kind=kind or default_kind,
+                artifact_scan_time=meta_stamp,
+            )
         )
     return records

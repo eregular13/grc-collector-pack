@@ -149,8 +149,8 @@ def test_3_5_5_lost_ledger() -> None:
     assert item["poam_id"] == pid
     assert "ledger_lost" in item["detection_date_basis"]
     assert LEDGER_LOST in second["warnings"]
-    # collected_at still 2026-09-01, but the warning records the reset of carried state
-    assert item["original_detection_date"] == "2026-09-01"
+    # collected_at is not a scan timestamp — missing artifact time is 'not recorded'
+    assert item["original_detection_date"] == "not recorded"
 
 
 def test_3_5_6_no_coverage_no_closure() -> None:
@@ -210,7 +210,10 @@ def test_3_5_8_operator_closure() -> None:
 
 def test_3_5_9_reopen_after_closure() -> None:
     """§3.5.9 Reopen after closure: fp reappears → ID …-R1, new detection date; old row still Closed; Comment links both."""
-    rec = _rec(collected_at="2026-09-01T00:00:00Z")
+    rec = _rec(
+        collected_at="2026-09-01T00:00:00Z",
+        extra={"id": "plugin-1", "tool": "nessus", "port": "443", "protocol": "tcp", "scan_time": "2026-09-01T00:00:00Z"},
+    )
     first = _apply([rec], when="2026-09-10T00:00:00Z")
     pid = next(iter(first["items"].values()))["poam_id"]
     closed = _apply(
@@ -219,7 +222,10 @@ def test_3_5_9_reopen_after_closure() -> None:
         when="2026-09-11T00:00:00Z",
         overrides={pid: {"status": "closed", "evidence_ref": "ticket-1", "status_date": "2026-09-11"}},
     )
-    rec2 = _rec(collected_at="2026-09-20T00:00:00Z")
+    rec2 = _rec(
+        collected_at="2026-09-20T00:00:00Z",
+        extra={"id": "plugin-1", "tool": "nessus", "port": "443", "protocol": "tcp", "scan_time": "2026-09-20T00:00:00Z"},
+    )
     reopened = _apply([rec2], ledger=closed, when="2026-09-20T00:00:00Z")
     item = next(iter(reopened["items"].values()))
     assert item["poam_id"] == f"{pid}-R1"
