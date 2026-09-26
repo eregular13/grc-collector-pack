@@ -378,6 +378,27 @@ def test_jsonrpc_invokes_plan_status_and_farm_slots(
         assert body["result"]["ok"] is True
 
 
+def test_mcp_stub_nmap_will_run_independent_of_host_nmap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plan-only nmap stays false when host nmap is hidden behind a stub PATH."""
+    from dropbox.mcp_stub import handle_jsonrpc
+    from dropbox.orchestrator import byo
+
+    monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    isolate_farm_path(monkeypatch, tmp_path)
+    monkeypatch.setattr(byo, "farm_which", lambda name: None)
+    plan = handle_jsonrpc(
+        {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "orchestrator_plan"}}
+    )
+    will_run = plan["result"]["will_run"]
+    assert "nmap" in will_run["discover"]
+    assert will_run["discover"]["nmap"] is False
+    assert plan["result"]["live"] is False
+
+
 def test_farm_toolbin_status_lab_env(monkeypatch: pytest.MonkeyPatch) -> None:
     from dropbox.mcp_stub import handle_jsonrpc
     from dropbox.scanner_free import LAB_STUB_DIR
