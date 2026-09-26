@@ -30,7 +30,7 @@ from shared.osquery_checks import (
     looks_osquery_text,
     osquery_hosts,
 )
-from shared.schema import canon_severity, make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref, slug
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
@@ -699,7 +699,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                 assets=[estate],
                 labels=LABELS + extra_labels + ["disk-encryption"],
                 collected_at=now,
-                extra={"encryption_pct": pct, "measured_count": measured},
+                extra={
+                    "encryption_pct": pct,
+                    "measured_count": measured,
+                    "check_id": f"enc-compliance-{slug(provider, maxlen=None)}",
+                },
             )
         )
     for device in inv.get("devices") or []:
@@ -727,7 +731,7 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     extra={
                         "disk_encryption_enabled": False,
                         "provider": provider,
-                        "check_id": "disk_encryption",
+                        "check_id": "disk-encryption-disabled",
                     },
                 )
             )
@@ -747,7 +751,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels + ["disk-encryption", "coverage"],
                     collected_at=now,
-                    extra={"encryption_collected": False, "provider": provider},
+                    extra={
+                        "encryption_collected": False,
+                        "provider": provider,
+                        "check_id": "enc-gap",
+                    },
                 )
             )
         if device.get("mdm_enrolled") is False:
@@ -766,7 +774,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels,
                     collected_at=now,
-                    extra={"mdm_enrollment": "unenrolled", "provider": provider},
+                    extra={
+                        "mdm_enrollment": "unenrolled",
+                        "provider": provider,
+                        "check_id": "mdm-unenrolled",
+                    },
                 )
             )
         if device.get("edr_present") is False:
@@ -784,7 +796,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels + ["edr"],
                     collected_at=now,
-                    extra={"edr_present": False, "provider": provider},
+                    extra={
+                        "edr_present": False,
+                        "provider": provider,
+                        "check_id": "edr-missing",
+                    },
                 )
             )
     return records
@@ -1000,7 +1016,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["coverage"],
                     collected_at=now,
-                    extra={"agent_status": status},
+                    extra={
+                        "agent_status": status,
+                        "check_id": "wazuh-agent-disconnected",
+                    },
                 )
             )
         enc = agent.get("disk_encryption_enabled")
@@ -1017,7 +1036,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["fleet", "disk-encryption"],
                     collected_at=now,
-                    extra={"disk_encryption_enabled": False, "check_id": "disk_encryption"},
+                    extra={
+                        "disk_encryption_enabled": False,
+                        "check_id": "disk-encryption-disabled",
+                    },
                 )
             )
         mdm = agent.get("mdm") if isinstance(agent.get("mdm"), dict) else {}
@@ -1035,7 +1057,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["fleet", "mdm"],
                     collected_at=now,
-                    extra={"mdm_enrollment": enroll},
+                    extra={
+                        "mdm_enrollment": enroll,
+                        "check_id": "mdm-unenrolled",
+                    },
                 )
             )
     for policy in _failing_policies(payload):
@@ -1059,7 +1084,11 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["fleet", "policy"],
                 collected_at=now,
-                extra={"policy": pname, "name": pname},
+                extra={
+                    "policy": pname,
+                    "name": pname,
+                    "check_id": f"fleet-policy-{slug(pname, maxlen=None)}",
+                },
             )
         )
     for alert in _aggregate_alerts(_extract_alerts(payload)):

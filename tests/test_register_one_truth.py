@@ -17,7 +17,7 @@ from shared.ciso_shape import (
 )
 from shared.control_map import map_finding, weakness_name_for
 from shared.estate_pages import rank_exec_findings
-from shared.finding_types import dedupe_key, dedupe_weaknesses, finding_type
+from shared.finding_types import dedupe_key, dedupe_weaknesses, finding_identity, finding_type
 from shared.schema import canon_severity, make_record, map_severity
 
 
@@ -690,6 +690,55 @@ def test_observation_id_dropped_from_identity() -> None:
     assert "obs-12" not in finding_identity(a)
     assert finding_identity(a) != "obs-12"
     assert dedupe_key(a) == dedupe_key(b)
+
+
+def test_httpx_admin_root_and_login_stay_two_dedupe_keys() -> None:
+    root = {
+        "source": "easm",
+        "ref_id": "EASM-admin-example-com-url-https-admin-example-com",
+        "name": "Exposed admin interface on admin.example.com",
+        "assets": ["admin.example.com"],
+        "extra": {
+            "check_id": "httpx-admin",
+            "path": "https://admin.example.com",
+            "url": "https://admin.example.com",
+        },
+    }
+    login = {
+        "source": "easm",
+        "ref_id": "EASM-admin-example-com-url-login",
+        "name": "Exposed admin interface on admin.example.com",
+        "assets": ["admin.example.com"],
+        "extra": {
+            "check_id": "httpx-admin",
+            "path": "/login",
+            "url": "https://admin.example.com/login",
+        },
+    }
+    assert finding_identity(root) != finding_identity(login)
+    assert dedupe_key(root) != dedupe_key(login)
+
+
+def test_privileged_role_disclaimer_is_not_entra_ga_pim() -> None:
+    from shared.finding_types import finding_type
+
+    rec = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-standing-admin-adminexample-com",
+        name="Privileged role (unspecified)",
+        description=(
+            "Export lists Privileged role (unspecified) for admin@example.com. "
+            "This is not a Global Administrator claim. This is an identity-posture "
+            "assessment finding from a dropped IdP export, not evidence of a breach "
+            "or a live Graph/Okta/Google API call."
+        ),
+        severity="high",
+        category="identity-gap",
+        assets=["admin@example.com", "example.com"],
+        extra={"role": "Privileged role (unspecified)", "pim_eligible": None},
+    )
+    assert finding_type(rec) != "entra_ga_pim"
 
 
 def test_entra_ga_three_sources_merge_one_egp(
