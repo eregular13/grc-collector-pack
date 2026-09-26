@@ -54,7 +54,9 @@ ENV_KEYS = (
 )
 
 
-SKIP_INPUT_NAMES = frozenset({".gitkeep", ".DS_Store", "SAMPLE.txt", "README.md"})
+SKIP_INPUT_NAMES = frozenset(
+    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
+)
 
 
 def _has_input_files(sensor_dir: Path) -> bool:

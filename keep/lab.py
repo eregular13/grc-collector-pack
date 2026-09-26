@@ -19,6 +19,7 @@ from keep.adapters import (
     client_keep_ready,
     keep_collectors,
     land_keep_files,
+    pack_in_is_lab,
     sample_as_client_reason,
     scan_keep_dir,
 )
@@ -108,6 +109,10 @@ def _watched_pack_dirs(root: Path, pack_in: Path) -> list[Path]:
 
 
 def _choose_sources(root: Path, pack_in: Path) -> tuple[list[dict[str, Any]], bool, str]:
+    # LAB dest_in never becomes client KEEP and never counts toward keep_real.
+    if pack_in_is_lab(pack_in):
+        samples = root / "fixtures" / "keep-samples"
+        return scan_keep_dir(samples), False, "keep-samples"
     pack_rows = scan_keep_dir(pack_in)
     if client_keep_ready(pack_rows):
         return pack_rows, True, "pack-in"

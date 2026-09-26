@@ -198,7 +198,12 @@ def mark_demo(records: list[dict[str, Any]], used_demo: bool) -> list[dict[str, 
     return records
 
 
-def run_collector(source: str, suffixes: Iterable[str], parse_file) -> list[dict[str, Any]]:
+def run_collector(
+    source: str,
+    suffixes: Iterable[str],
+    parse_file,
+    finalize=None,
+) -> list[dict[str, Any]]:
     files, demo = load_inputs(source, suffixes)
     records: list[dict[str, Any]] = []
     parsed_any = False
@@ -224,6 +229,8 @@ def run_collector(source: str, suffixes: Iterable[str], parse_file) -> list[dict
                 if recs:
                     records.extend(recs)
                     write_raw_copy(source, path, recs)
+    if callable(finalize):
+        records = list(finalize(records) or records)
     records = mark_demo(records, demo)
     write_canonical(source, records)
     return records

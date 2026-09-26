@@ -64,7 +64,7 @@ LAB_BANNER = (
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 SKIP_EXISTING_IN_NAMES = frozenset(
-    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md"}
+    {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
 )
 
 ENV_KEYS = (
