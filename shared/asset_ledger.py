@@ -601,16 +601,10 @@ class AssetLedger:
                 )
             elif len(matches) == 1:
                 return matches[0]
-        if fqdns and not hostnames:
-            label = fqdns[0].split(".", 1)[0]
-            for asset in self._active_assets():
-                cand = self._ids_of(asset)
-                if id_values(cand, "fqdn") or cand.get("principal"):
-                    continue
-                host_aliases = {x.lower() for x in self._alias_values(asset, "hostname")}
-                if label in host_aliases or label in {x.lower() for x in id_values(cand, "hostname")}:
-                    if not self._stronger_conflict(ids, cand, "fqdn"):
-                        return asset
+        # FQDN-only → existing bare hostname is deferred to late_merge_pass.
+        # Eager fold here sees only FQDNs already observed, so the first
+        # web01.corp-a.local absorbs agent web01 before web01.corp-b.local
+        # arrives (normal grc_loader: host-wazuh before inventory-nmap).
         # Pre-#161: UPN was stored as fqdn. Re-anchor to principal.
         # Pre-principal-stamp: hostname/name/netbios on a non-host identity.
         principals = [x.lower() for x in id_values(ids, "principal")]
@@ -1003,6 +997,8 @@ class AssetLedger:
                             )
                             merged = True
                     if not merged and not lids.get("principal") and not rids.get("principal"):
+                        # Sole short-name↔FQDN fold. Observe never merges this
+                        # direction so every FQDN in the run is visible here.
                         lhost = {x.lower() for x in id_values(lids, "hostname")}
                         rhost = {x.lower() for x in id_values(rids, "hostname")}
                         lfqdn = {x.lower() for x in id_values(lids, "fqdn")}
