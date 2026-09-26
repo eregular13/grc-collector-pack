@@ -1,0 +1,14 @@
+scoutsuite_results = {
+  "services": {
+    "s3": {
+      "findings": {
+        "s3-bucket-allusers-read": {
+          "description": "Bucket readable by AllUsers",
+          "level": "danger",
+          "flagged_items": 1,
+          "items": ["demo-scout-js-public"]
+        }
+      }
+    }
+  }
+};

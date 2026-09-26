@@ -1,0 +1,10 @@
+[
+  {
+    "Name": "c7n-unencrypted",
+    "Arn": "arn:aws:s3:::c7n-unencrypted"
+  },
+  {
+    "Name": "c7n-public-logs",
+    "Arn": "arn:aws:s3:::c7n-public-logs"
+  }
+]

@@ -207,7 +207,7 @@ def test_long_ids_sharing_first_48_chars_do_not_collide() -> None:
     id_a = f"{prefix}-suffix-alpha"
     id_b = f"{prefix}-suffix-bravo"
     assert slug(id_a) == slug(id_b)
-    assert make_ref("code-secrets", id_a) == make_ref("code-secrets", id_b)
+    assert make_ref("code-secrets", id_a) != make_ref("code-secrets", id_b)
     assert finding_identity({"extra": {"rule": id_a}}) != finding_identity({"extra": {"rule": id_b}})
     a = make_record(
         kind="finding",
@@ -229,7 +229,7 @@ def test_long_ids_sharing_first_48_chars_do_not_collide() -> None:
         assets=["repo/a.py"],
         extra={"rule": id_b},
     )
-    assert a["ref_id"] == b["ref_id"]
+    assert a["ref_id"] != b["ref_id"]
     kept = [r for r in _dedupe([a, b]) if r.get("kind") == "finding"]
     assert len(kept) == 2
     merged = [r for r in dedupe_weaknesses(_dedupe([a, b])) if r.get("kind") == "finding"]

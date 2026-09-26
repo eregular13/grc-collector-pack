@@ -1,0 +1,26 @@
+[
+  {
+    "id": "00u1q2w3e4r5t6y7z8",
+    "status": "ACTIVE",
+    "created": "2024-01-15T18:00:00.000Z",
+    "lastLogin": "2026-08-20T12:00:00.000Z",
+    "profile": {
+      "login": "isaac.brock@example.com",
+      "email": "isaac.brock@example.com",
+      "firstName": "Isaac",
+      "lastName": "Brock"
+    }
+  },
+  {
+    "id": "00u9z8y7x6w5v4u3t2",
+    "status": "ACTIVE",
+    "created": "2024-03-01T18:00:00.000Z",
+    "lastLogin": "2026-09-01T12:00:00.000Z",
+    "profile": {
+      "login": "jane.doe@example.com",
+      "email": "jane.doe@example.com",
+      "firstName": "Jane",
+      "lastName": "Doe"
+    }
+  }
+]
