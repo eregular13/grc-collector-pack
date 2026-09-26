@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 199 — merge master #138/#142/#146; keep Wazuh level table (2026-09-26)
+
+Merge `origin/master` `2818608` without rebase. #138 asset_uid ledger,
+#142 unread sensors, #146 SCOPE_AND_TRUST coverage all kept. Wazuh
+rule.level table + telemetry exclude still stand. pytest **1204**.
+Host-lab `assets=78` `findings=103` `poam=124` `excluded=1`. SAMPLE→SoR
+6/8/2. farm_drop→SoR 174/106/0 excluded=68. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 198 — Wazuh rule.level table + telemetry flood off the plan (2026-09-26)
 
 Map Wazuh by rule.level (0-3 info, 4-7 low, 8-11 medium, 12+ high);

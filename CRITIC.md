@@ -1,3 +1,23 @@
+# CRITIC — cycle 199 (MERGE_MASTER_138_142_146)
+
+Merge `origin/master` `2818608` (#138 EGA- asset identity ledger, #142
+unread sensor files + Coverage gaps, #146 SCOPE_AND_TRUST from one
+coverage source) into this branch. Both sides kept: Wazuh maps by
+`rule.level` only (never default High); aggregated alerts stay
+`excluded.csv` telemetry unless level ≥ 12 or a known compromise
+indicator; Prowler assets get `stamp_ids` plus account identity;
+enum4linux never stringifies `target` dict and still keeps
+FQDN/NetBIOS/domain; SARIF keeps rule catalog + run image/host ids.
+Lab this brick: pytest **1204** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=124` `excluded=1` `severity_unmapped=0` `demo=true`). Cold
+SAMPLE→SoR findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174
+poam=106 vulns=0 excluded=68. DEMO brute-force (5710 / level 10) is
+medium telemetry, not a High weakness. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 198 (WAZUH_LEVEL_TABLE_TELEMETRY)
 
 Lab this brick: pytest **1162** passed, 1 skipped. Ten collectors +
