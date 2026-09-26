@@ -94,6 +94,10 @@ SKIP_INPUT_NAMES = frozenset(
 )
 DEMO_FALLBACK_LABELS = frozenset({"DEMO", "SAMPLE"})
 NEVER_DEMO_LABELS = frozenset({"LAB", "CLIENT"})
+UNRECOGNIZED_STATUS = "unrecognized_shape"
+SENSOR_GAP_STATUSES = frozenset(
+    {"parse_error", "no_records", UNRECOGNIZED_STATUS, "empty", "partial"}
+)
 
 
 def _is_input_file(path: Path) -> bool:
@@ -104,18 +108,45 @@ def _is_input_file(path: Path) -> bool:
     return True
 
 
+def _suffix_set(suffixes: Iterable[str] | None) -> set[str]:
+    return {s.lower() for s in (suffixes or [])}
+
+
+def recognized_suffix(path: Path, suffixes: Iterable[str] | None) -> bool:
+    suf = _suffix_set(suffixes)
+    if not suf:
+        return True
+    return path.suffix.lower() in suf or path.name.lower() in suf
+
+
 def list_files(folder: Path, suffixes: Iterable[str] | None = None) -> list[Path]:
     if not folder.exists():
         return []
-    suf = {s.lower() for s in (suffixes or [])}
     out: list[Path] = []
     for path in sorted(folder.rglob("*")):
         if not _is_input_file(path):
             continue
-        if suf and path.suffix.lower() not in suf and path.name.lower() not in suf:
+        if suffixes is not None and not recognized_suffix(path, suffixes):
             continue
         out.append(path)
     return out
+
+
+def unread_input_files(source: str, suffixes: Iterable[str] | None = None) -> list[Path]:
+    """Live drops whose type/shape this sensor does not read."""
+    unread: list[Path] = []
+    for folder in _sensor_folders(source):
+        for path in list_files(in_dir() / folder, suffixes=None):
+            if not recognized_suffix(path, suffixes):
+                unread.append(path)
+    return unread
+
+
+def unrecognized_reason(path: Path, suffixes: Iterable[str] | None) -> str:
+    suf = sorted(_suffix_set(suffixes))
+    suffix = path.suffix.lower() or "(none)"
+    accepted = ", ".join(suf) if suf else "(any)"
+    return f"unrecognized shape; suffix {suffix} not in {accepted}"
 
 
 def _sensor_folders(source: str) -> list[str]:
@@ -182,6 +213,10 @@ def load_inputs(source: str, suffixes: Iterable[str] | None = None) -> tuple[lis
         live.extend(list_files(in_dir() / folder, suffixes))
     if live:
         return live, False
+    unread = unread_input_files(source, suffixes)
+    if unread:
+        # A live drop is present; do not hide it behind fixtures/demo.
+        return [], False
     if not allow_demo_fallback(had_live_files=False):
         return [], False
     demo: list[Path] = []
@@ -291,13 +326,18 @@ def _sensor_rollup(
     files: list[Path],
     records: list[dict[str, Any]],
     issues: list[dict[str, str]],
+    unread: list[Path] | None = None,
 ) -> dict[str, Any]:
     n_rec = len(records)
-    n_files = len(files)
+    unread = list(unread or [])
+    n_files = len(files) + len(unread)
+    issue_statuses = {str(item.get("status") or "") for item in issues}
     if used_demo and n_rec:
         status = "demo"
-    elif any(item.get("status") == "parse_error" for item in issues) and n_rec == 0:
+    elif "parse_error" in issue_statuses and n_rec == 0:
         status = "parse_error"
+    elif UNRECOGNIZED_STATUS in issue_statuses and n_rec == 0:
+        status = UNRECOGNIZED_STATUS
     elif n_files == 0:
         status = "empty" if not issues else "no_records"
     elif n_rec == 0:
@@ -312,6 +352,7 @@ def _sensor_rollup(
         "demo": bool(used_demo),
         "files": n_files,
         "records": n_rec,
+        "unread": [path.name for path in unread],
         "issues": issues,
     }
 
@@ -340,6 +381,7 @@ def run_collector(
     finalize=None,
 ) -> list[dict[str, Any]]:
     files, used_demo = load_inputs(source, suffixes)
+    unread = unread_input_files(source, suffixes) if not used_demo else []
     records: list[dict[str, Any]] = []
     issues: list[dict[str, str]] = []
     for path in files:
@@ -358,8 +400,19 @@ def run_collector(
         reason = malformed or "parser yielded no records"
         issues.append({"status": status, "file": path.name, "reason": reason})
         write_raw_copy(source, path, {"error": status, "file": path.name, "reason": reason})
+    for path in unread:
+        reason = unrecognized_reason(path, suffixes)
+        issues.append(
+            {"status": UNRECOGNIZED_STATUS, "file": path.name, "reason": reason}
+        )
+        write_raw_copy(
+            source,
+            path,
+            {"error": UNRECOGNIZED_STATUS, "file": path.name, "reason": reason},
+        )
     # Honesty: live files that fail or yield nothing never pull fixtures/demo.
-    if not files and not used_demo:
+    # Unread files are named above — do not collapse them to "empty sensor".
+    if not files and not used_demo and not unread:
         issues.append(
             {
                 "status": "no_records",
@@ -382,6 +435,7 @@ def run_collector(
             files=files,
             records=records,
             issues=issues,
+            unread=unread,
         )
     )
     return records
