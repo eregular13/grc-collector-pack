@@ -1,3 +1,17 @@
+# CRITIC — cycle 197 (MERGE_138_ASSET_UID_AND_142_UNRECOGNIZED)
+
+Lab this brick: pytest **1201** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=125` `severity_unmapped=0` `demo=true`). Cold sample_to_sor +
+farm_drop_to_sor honesty PASS. Zero P0/P1. Merged master `fdb8d6a`
+(#138 EGA- `asset_uid` / #142 `unrecognized_shape`). Intune/Jamf/
+Entra/Google/Okta assets stamp `extra.ids`. Unread sensor files are
+`unrecognized_shape`. Assets **78** is #138 ledger collapse (was 84).
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 196 (METIS_S11_PARSER_FALSE_FAILS)
 
 Lab this brick: pytest **1162** passed, 1 skipped. Ten collectors +

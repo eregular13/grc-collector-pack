@@ -8,7 +8,7 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 84,
+  "assets": 78,
   "findings": 103,
   "vulnerabilities": 22,
   "evidences": 33,
@@ -16,11 +16,11 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "poam": 125,
   "risk_scenarios": 125,
   "ocsf": 103,
-  "canonical": 214,
+  "canonical": 208,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:59:34Z"
+  "generated_at": "2026-09-26T07:03:34Z"
 }
 ```
 
-Cycle 196 restamp after Metis §11 parser fixes (pytest 1162; assets 84 / findings 103 / poam 125 full-plan). CoS #48 rails above stand.
+Cycle 197 restamp after merge #138/#142 (pytest 1201; assets 78 / findings 103 / poam 125). CoS #48 rails above stand.

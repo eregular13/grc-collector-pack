@@ -1,5 +1,15 @@
 # CYCLE log
 
+## cycle 197 — merge #138 asset_uid + #142 unrecognized_shape (2026-09-26)
+
+Merged origin/master `fdb8d6a` (normal merge). #138 EGA- ledger +
+EGP- `fp_migrations`; Intune/Jamf/Entra/Google/Okta `stamp_ids`.
+#142 unread files → `unrecognized_shape`. Host-lab `assets=78`
+`findings=103` `vulnerabilities=22` `poam=125`. pytest **1201**.
+Cold SAMPLE 6/6/8; farm 48/174/106 (assets −7 vs pre-#138 55 is
+ledger collapse). Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`.
+
 ## cycle 196 — Metis §11 false/empty parser fixes (2026-09-26)
 
 Merged origin/master `1f8d347` (#137 host-scoped `ref_id`). Seven
