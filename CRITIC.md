@@ -1,3 +1,13 @@
+# CRITIC — cycle 213 (B8_STABLE_CHECK_ID)
+
+Lab this brick: pytest **1419** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=104` `poam=120` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Title-keyed families stamp `check_id`;
+33.3%→50.0% keeps the EGP. FedRAMP Open **126**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 
 Merge `origin/master` `d6ae8d0` (#163) with a normal merge commit. No

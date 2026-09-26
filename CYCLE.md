@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 213 — B8 stable check_id (title metrics cannot remint EGP) (2026-09-26)
+
+Stamp `extra.check_id` on title-keyed DEMO families (wazuh posture,
+easm, secrets, identity). Intune `enc-compliance-{provider}`:
+33.3%→50.0% keeps the same EGP. Pre-B8 title-keyed rows migrate.
+Host-lab 79 / 104 / poam 120 / excluded 6. Pytest **1419**. FedRAMP
+Open stays **126**. Catalog **unchanged**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
 
 Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;
