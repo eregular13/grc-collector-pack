@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 215 — merge master 6a5ebd6 (#172+#178) into B8 (2026-09-26)
+
+Normal merge of `origin/master` `6a5ebd6` (#172 short-name fold +
+Wazuh host key; after `15c2de1` #178 CLIENT estate guard). No rebase.
+B8 check_id brick kept. Pytest **1440**. Host-lab unchanged
+(79 / 104 / poam 120 / excluded 6). FedRAMP Open **126**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 214 — merge master 7ebc697 (#169) into B8 (2026-09-26)
 
 Normal merge of `origin/master` `7ebc697` (#169 Redis-auth class). No

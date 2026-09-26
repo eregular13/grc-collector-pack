@@ -1,3 +1,10 @@
+# CRITIC — cycle 215 (MERGE_MASTER_172_178_INTO_B8)
+
+Merge `origin/master` `6a5ebd6` (#172+#178) with a normal merge
+commit. No rebase. B8 check_id brick kept. Pytest **1440**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 214 (MERGE_MASTER_169_INTO_B8)
 
 Merge `origin/master` `7ebc697` (#169) with a normal merge commit. No
