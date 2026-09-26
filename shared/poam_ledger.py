@@ -85,6 +85,8 @@ _UUIDISH = re.compile(
 )
 _HOST_PORT_PROTO_SLUG = re.compile(r".+-\d+-(tcp|udp|sctp)$", re.I)
 _IPV4_PORT_SLUG = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}-\d+", re.I)
+_URL_IN_TEXT = re.compile(r"https?://[^\s<>()\[\]'\",;]+", re.I)
+_TRAILING_LOC = ").,;:\"'"
 _SERVICE_NAMES = frozenset(
     {
         "kerberos",
@@ -1017,22 +1019,186 @@ def _item_sort_key(item: dict[str, Any]) -> tuple:
     return (detected is None, detected or date.max, first, pid)
 
 
-def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str) -> str:
+def _norm_loc_url(url: str) -> str:
+    """Lowercase URL, strip trailing slash/punctuation. Host-only ≠ /login."""
+    text = str(url or "").strip().lower().rstrip(_TRAILING_LOC)
+    if not text:
+        return ""
+    while text.endswith("/") and text.count("/") > 2:
+        text = text[:-1]
+    return text.rstrip(_TRAILING_LOC)
+
+
+def _urls_in_text(text: str) -> list[str]:
+    return [_norm_loc_url(m.group(0)) for m in _URL_IN_TEXT.finditer(text or "") if _norm_loc_url(m.group(0))]
+
+
+def _url_matches_hay(url: str, hay: str) -> bool:
+    target = _norm_loc_url(url)
+    if not target:
+        return False
+    return target in _urls_in_text(hay)
+
+
+def _path_in_hay(path: str, hay: str) -> bool:
+    raw = str(path or "").strip()
+    if not raw or raw in {".", "/"}:
+        return False
+    if "://" in raw:
+        return _url_matches_hay(raw, hay)
+    norm = raw if raw.startswith("/") else f"/{raw}"
+    norm = norm.rstrip("/") or "/"
+    if norm == "/":
+        return False
+    for url in _urls_in_text(hay):
+        rest = url.split("://", 1)[-1]
+        url_path = "/" + rest.split("/", 1)[-1] if "/" in rest else "/"
+        url_path = url_path.rstrip("/") or "/"
+        if url_path == norm.lower():
+            return True
+    hay_l = hay.lower()
+    needle = norm.lower()
+    idx = 0
+    while True:
+        idx = hay_l.find(needle, idx)
+        if idx < 0:
+            return False
+        after = hay_l[idx + len(needle) : idx + len(needle) + 1]
+        if after in {"", " ", ".", ",", ")", "'", '"', ";", ":", "\n", "\t"}:
+            return True
+        idx += len(needle)
+
+
+def _cmd_in_hay(cmd: str, hay: str) -> bool:
+    text = str(cmd or "").strip()
+    if len(text) < 3:
+        return False
+    if f"'{text}'" in hay or f'"{text}"' in hay:
+        return True
+    return text in hay
+
+
+def _item_location_haystack(item: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key in ("description", "url", "cmd", "command", "path", "file"):
+        val = item.get(key)
+        if val not in (None, ""):
+            parts.append(str(val))
+    return " ".join(parts)
+
+
+def _haystack_has_location(hay: str) -> bool:
+    if not str(hay or "").strip():
+        return False
+    if _urls_in_text(hay):
+        return True
+    lowered = hay.lower()
+    if "observed command" in lowered:
+        return True
+    if re.search(r"presents\s+\S+", hay, re.I):
+        return True
+    if re.search(r"(?:^|[\s'\"])(/[A-Za-z0-9._-]+)", hay):
+        return True
+    return False
+
+
+def _location_affinity(rec: dict[str, Any], item: dict[str, Any]) -> int:
+    """>0 this rec's path/url/file/line/cmd matches the stored row; <0 contradicts; 0 unknown."""
+    extra = extra_dict(rec)
+    url = _extra_field(extra, "url")
+    path = _extra_field(extra, "path")
+    cmd = _extra_field(extra, "cmd") or _extra_field(extra, "command")
+    file_name = _extra_field(extra, "file")
+    line = _extra_field(extra, "line")
+    user = _extra_field(extra, "user")
+    if not any((url, path, cmd, file_name, user)):
+        return 0
+    hay = _item_location_haystack(item)
+    hits = 0
+    if url and _url_matches_hay(url, hay):
+        hits += 1
+    if path:
+        if "://" in path:
+            if _url_matches_hay(path, hay):
+                hits += 1
+        elif _path_in_hay(path, hay):
+            hits += 1
+    if cmd and _cmd_in_hay(cmd, hay):
+        hits += 1
+    if file_name and file_name.lower() in hay.lower():
+        hits += 1
+        if line and line in hay:
+            hits += 1
+    if user and not cmd and user.lower() in hay.lower():
+        hits += 1
+    if hits > 0:
+        return hits
+    if _haystack_has_location(hay):
+        return -1
+    return 0
+
+
+def _legacy_fps_cached(
+    rec: dict[str, Any], cache: dict[int, list[tuple[str, str]]]
+) -> list[tuple[str, str]]:
+    key = id(rec)
+    hit = cache.get(key)
+    if hit is None:
+        hit = _legacy_fps_for(rec)
+        cache[key] = hit
+    return hit
+
+
+def _may_claim_legacy_fp(
+    rec: dict[str, Any],
+    item: dict[str, Any],
+    old_fp: str,
+    instances: list[dict[str, Any]],
+    legacy_cache: dict[int, list[tuple[str, str]]],
+) -> bool:
+    """Same-title siblings: location match wins; first in record order only if none match."""
+    siblings = [
+        other
+        for other in instances
+        if any(fp == old_fp for fp, _reason in _legacy_fps_cached(other, legacy_cache))
+    ]
+    if len(siblings) <= 1:
+        return True
+    if _location_affinity(rec, item) > 0:
+        return True
+    if any(other is not rec and _location_affinity(other, item) > 0 for other in siblings):
+        return False
+    return siblings[0] is rec
+
+
+def _migrate_if_needed(
+    rec: dict[str, Any],
+    ledger: dict[str, Any],
+    run_iso: str,
+    *,
+    instances: list[dict[str, Any]] | None = None,
+    legacy_cache: dict[int, list[tuple[str, str]]] | None = None,
+) -> str:
     """Map prior fps onto the current EGA- key. Never remint a surviving EGP- ID.
 
     Same weakness + two old asset keys → keep the older EGP- ID and earliest
     Original Detection Date; the other EGP- ID is recorded on ``fp_migrations``
     as an alias (not deleted). Different weaknesses stay separate items.
 
-    Location split (Metis #170): the first sibling to rematch a pre-location
-    fp keeps that EGP. Later siblings that now have a distinct location key
-    mint new EGPs — do not fold them onto the already-migrated dest.
+    Location split (Metis #170): when several current rows rematch the same
+    stored title/location-family item, the sibling whose path/url/file/line/cmd
+    matches the stored description/url/cmd keeps that EGP. Others mint new
+    EGPs. Fall back to the first sibling in record order only if none match.
     """
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
+    peers = instances or [rec]
+    cache = legacy_cache if legacy_cache is not None else {}
     found: dict[str, tuple[dict[str, Any], str]] = {}
-    for old_fp, reason in _legacy_fps_for(rec):
+    for old_fp, reason in _legacy_fps_cached(rec, cache):
         if old_fp != new_fp and old_fp in items:
+            if not _may_claim_legacy_fp(rec, items[old_fp], old_fp, peers, cache):
+                continue
             found[old_fp] = (items[old_fp], reason)
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
@@ -1166,9 +1332,12 @@ def apply_ledger(
     coverage = build_coverage(instances)
     seen: set[str] = set()
     catalog_sha = catalog.sha256 if catalog.kev_evaluated else ""
+    legacy_cache: dict[int, list[tuple[str, str]]] = {}
 
     for rec in instances:
-        fp = _migrate_if_needed(rec, ledger, run_iso)
+        fp = _migrate_if_needed(
+            rec, ledger, run_iso, instances=instances, legacy_cache=legacy_cache
+        )
         seen.add(fp)
         cves = collect_cves(rec)
         kev = join_kev(cves, catalog)
