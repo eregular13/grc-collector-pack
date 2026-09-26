@@ -13,14 +13,14 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "vulnerabilities": 22,
   "evidences": 33,
   "applied_controls": 126,
-  "poam": 126,
+  "poam": 125,
   "risk_scenarios": 126,
   "ocsf": 104,
   "canonical": 209,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:59:35Z"
+  "generated_at": "2026-09-26T07:16:06Z"
 }
 ```
 
-Cycle 198 merge `origin/master` `76f5e86` #140 into parser-real-output (honesty restamp after lab). Cycle 197 merge #138/#142 stands as history. CoS #48 rails above stand.
+Cycle 199 osquery/Custodian real-sample fixes (pytest 1235; host-lab 78 / 104 / 125; farm 48 / 174 / 106). Cycle 198 #140 merge stands as history. CoS #48 rails above stand.

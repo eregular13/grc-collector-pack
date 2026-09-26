@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 199 — osquery routing + predicates + Custodian NOT_A_WEAKNESS (2026-09-26)
+
+Merged origin/master `76f5e86` (#140) with a normal merge. osquery `*.log`
+detected by content (not Lynis). it-compliance fail predicates: disk
+encryption off per host (ignore loop; any encrypted volume passes),
+`alf.global_state=0`, SIP disabled / `allow_*` on. Unknown queries
+excluded as unmapped. Custodian security-only findings; cost policies
+`NOT_A_WEAKNESS`; default Medium via `canon_severity`. Host-lab
+`assets=78` `findings=104` `vulnerabilities=22` `poam=125` (1
+`superseded_by_specific`). pytest **1235**. Cold SAMPLE 6/6/8; farm
+48/174/106. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`.
+
 ## cycle 198 — merge master f8b7ff1 #138 into discovery/web (#140) (2026-09-26)
 
 Normal merge of `origin/master` `f8b7ff1` (#138 EGA- asset ledger).

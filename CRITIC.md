@@ -1,3 +1,17 @@
+# CRITIC — cycle 199 (OSQUERY_C7N_REAL_SAMPLES)
+
+Lab this brick: pytest **1235** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=78` `findings=104`
+`vulnerabilities=22` `applied_controls=126` `risk_scenarios=126`
+`poam=125` `severity_unmapped=0` `demo=true`). Cold SAMPLE 6/6/8;
+farm 48/174/106. Zero P0/P1. Merged master `76f5e86` (#140). osquery
+results logs by content; it-compliance predicates; Custodian
+security-only + Medium default. Findings **104** is #140 httpx (+1 vs
+parser-only 103). POA&M **125** is 126 weaknesses minus 1
+`superseded_by_specific` (#144). Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 198 (MERGE_138_DISCOVERY_WEB)
 
 Lab this brick: pytest **1190** passed, 1 skipped. Ten collectors +
