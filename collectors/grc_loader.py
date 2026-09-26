@@ -2,7 +2,8 @@
 """Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
 
 RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
-is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+is mitigate == POA&M == CTL; accept == non-merged excluded. Merged pack_drop
+twins (merged_into:<EGP>) stay off the register. Never POST /api/risks.
 """
 
 from __future__ import annotations
@@ -373,6 +374,8 @@ def load() -> dict:
         rec_ref = str(rec.get("ref_id") or "")
         decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
         register = risk_register_treatment(decision)
+        if not register.get("on_register", True):
+            continue
         if register["attach_control"]:
             resid = residual_level(level)
             cid = control_ids_by_finding.get(rec_ref, "")
@@ -741,11 +744,15 @@ def load() -> dict:
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
-            "risk_scenarios == findings + vulnerabilities + kind_excluded; "
+            "mitigate == POA&M == CTL; accept == non-merged excluded; "
+            "risk_scenarios == findings + vulnerabilities + kind_excluded "
+            "- merged_into aliases; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
             "weaknesses_total == poam_included + excluded == "
             "weaknesses + kind_excluded + pending_carried; "
             "kind:excluded rows stay on the register as treatment=accept; "
+            "pack_drop twins are excluded as merged_into:<survivor EGP> and "
+            "stay off the register; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),

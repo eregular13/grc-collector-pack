@@ -66,7 +66,8 @@ printed as metadata. Changing HEAD without touching the surface is skip.
 - `prove-ciso.json`: `sample`/`demo` true, `client` false, `paying_day` FAIL,
   `posted` false.
 - Risk register + POA&M **shape** (`assert_risk_register_and_poam`): findings
-  >= 1, risk_scenarios >= findings, poam_rows >= 1, headers match, farm
+  >= 1, risk_scenarios == mitigate + accept (merged_into aliases off the
+  register), poam_rows >= 1, headers match, farm
   vulnerabilities == 0 (exposure, not CVE-class). Not mere file counts.
 - Full POA&M plan (Evergreen default schedule): Lows (180-day) and non-key
   Mediums (90-day) stay **on** the plan. Infos + honeypot hits go to

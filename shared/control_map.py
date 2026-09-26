@@ -2016,6 +2016,15 @@ POAM_EXCLUDE_REASONS = frozenset(
         "unmapped",
     }
 )
+# pack_drop twins use merged_into:<survivor EGP> (prefix, not a fixed token).
+
+
+def is_poam_exclude_reason(reason: str) -> bool:
+    """Named POA&M exclude, including collapsed-twin merged_into:<EGP> aliases."""
+    from shared.egp_collapse import is_merged_into_reason
+
+    text = str(reason or "")
+    return text in POAM_EXCLUDE_REASONS or is_merged_into_reason(text)
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
 TELEMETRY_SOURCES = frozenset({"host-wazuh", "wazuh"})
 TELEMETRY_CATEGORIES = frozenset({"incident", "alert", "telemetry", "siem-alert"})
@@ -2159,21 +2168,43 @@ def risk_register_treatment(decision: dict[str, Any]) -> dict[str, Any]:
     """How risk_scenarios.csv writes a row for this POA&M decision.
 
     Included weaknesses stay mitigate + CTL- + residual step-down.
-    Excluded rows (honeypot, not_a_weakness, telemetry, info, superseded, …)
-    are accept with the exclusion reason. No CTL- and residual stays current —
-    the register must not invent a mitigation for something off the plan.
+    Genuine excluded rows (honeypot, not_a_weakness, telemetry, info,
+    superseded_by_specific, …) are accept. No CTL- and residual stays
+    current — the register must not invent a mitigation for something
+    off the plan.
+
+    Collapsed pack_drop twins (merged_into:<survivor EGP>) are aliases,
+    not accepted risk: they stay off the register. CISO Community
+    risk_scenarios.csv has no justification/comment column
+    (shared/ciso_shape.py CISO_HEADERS); accept reason lives in
+    poam/excluded.csv excluded_reason. existing_controls stays empty —
+    it is not an exclusion dump.
     """
+    from shared.egp_collapse import is_merged_into_reason
+
     if decision.get("include"):
         return {
             "treatment": INCLUDED_TREATMENT,
             "existing_controls": "",
+            "justification": "",
             "attach_control": True,
+            "on_register": True,
         }
     reason = str(decision.get("reason") or "unexplained")
+    if is_merged_into_reason(reason):
+        return {
+            "treatment": "",
+            "existing_controls": "",
+            "justification": reason,
+            "attach_control": False,
+            "on_register": False,
+        }
     return {
         "treatment": EXCLUDED_TREATMENT,
-        "existing_controls": f"excluded:{reason}",
+        "existing_controls": "",
+        "justification": reason,
         "attach_control": False,
+        "on_register": True,
     }
 
 
