@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.asset_ids import stamp_ids
-from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.io_util import UnrecognizedShape, iso_now, read_json, read_text, run_collector
 from shared.schema import canon_severity, make_record, make_ref, map_severity
 
 SOURCE = "cloud-prowler"
@@ -160,7 +160,10 @@ _C7N_KEYS = (
     "c7n:MatchedFiltersCount",
     "c7n:alert-user",
     "c7n:annotation",
+    "c7n:CrossAccountViolations",
+    "c7n.metrics",
 )
+_C7N_KEY_PREFIXES = ("c7n:", "c7n.")
 
 # Real Custodian output has no severity field. Security policies default
 # Medium via canon_severity (severity_source=default). Name keywords do
@@ -224,6 +227,7 @@ _C7N_SECURITY_NAMES = frozenset(
     {
         "s3-encryption-missing",
         "security-context-pods",
+        "check-ebs-snapshot-public",
     }
 )
 
@@ -232,14 +236,14 @@ def _looks_c7n_keys(row: Any) -> bool:
     """Custodian-specific keys only. Arn/Name/Id alone is Steampipe-shaped too."""
     if not isinstance(row, dict) or _looks_prowler_row(row) or _looks_asff_row(row):
         return False
-    return any(k in row for k in _C7N_KEYS)
+    if any(k in row for k in _C7N_KEYS):
+        return True
+    return any(str(k).startswith(_C7N_KEY_PREFIXES) for k in row)
 
 
 def _custodian_resources_path(path: Path | None) -> bool:
-    """resources.json plus sibling metadata.json (policy name / resource type)."""
-    if path is None or path.name.lower() != "resources.json":
-        return False
-    return (path.parent / "metadata.json").is_file()
+    """A c7n run's resources.json — metadata.json is optional (parent dir is the policy)."""
+    return path is not None and path.name.lower() == "resources.json"
 
 
 def _custodian_meta(path: Path | None) -> dict[str, Any]:
@@ -270,6 +274,23 @@ def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
     return False
 
 
+def _custodian_generic_id(res: dict[str, Any]) -> str:
+    """Last-resort *Id / *Arn field. Skip annotation/count keys."""
+    skip = {"id", "accountid", "ownerid", "vpcid", "imageid", "subnetid"}
+    for key, val in res.items():
+        if val in (None, "", [], {}):
+            continue
+        name = str(key)
+        low = name.lower()
+        if low.startswith("c7n"):
+            continue
+        if low.endswith("id") and low not in skip and not isinstance(val, (dict, list)):
+            return str(val)
+        if low.endswith("arn") and not isinstance(val, (dict, list)):
+            return str(val)
+    return ""
+
+
 def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
     """Identity is the cloud resource, keyed per resource type — not the policy name."""
     rtype = str(resource or "").lower()
@@ -289,13 +310,17 @@ def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
         if rid:
             return str(rid)
     return str(
-        res.get("Arn")
+        res.get("SnapshotId")
+        or res.get("VolumeId")
+        or res.get("DBInstanceIdentifier")
+        or res.get("InstanceId")
+        or res.get("Arn")
         or res.get("arn")
         or res.get("Name")
-        or res.get("InstanceId")
         or res.get("Id")
         or res.get("id")
         or meta.get("name")
+        or _custodian_generic_id(res)
         or ""
     )
 
@@ -362,6 +387,11 @@ def _iter_findings(payload: Any, path: Path | None = None) -> list[dict[str, Any
     scout = _scoutsuite_findings(payload)
     if scout:
         return scout
+    if path is not None and path.name.lower() == "resources.json":
+        raise UnrecognizedShape(
+            "unrecognized shape; Custodian resources.json is not a resource list or policy run",
+            file=path.name,
+        )
     return []
 
 

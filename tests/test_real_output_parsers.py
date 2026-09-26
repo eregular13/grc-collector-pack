@@ -277,6 +277,76 @@ def test_osquery_it_compliance_predicates_on_filebeat_and_msticpy() -> None:
     assert all((r.get("extra") or {}).get("exclude_reason") == "unmapped" for r in mstic if r.get("kind") == "excluded")
 
 
+def test_make_ref_keeps_full_azure_vm_identity() -> None:
+    """8 real Azure ARM ids must not collapse to one 48-char ref."""
+    from shared.schema import make_ref
+
+    recs = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json")
+    assets = [r for r in recs if r["kind"] == "asset"]
+    assert len(assets) == 8
+    refs = [r["ref_id"] for r in recs if r.get("kind") in {"finding", "excluded"}]
+    assert len(refs) == 8
+    assert len(set(refs)) == 8
+    rows = json.loads((SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json").read_text())
+    arms = [str(r["id"]) for r in rows]
+    assert len(arms) == 8
+    ident_refs = [make_ref("cloud-prowler", f"stop-underutilized-azure-vms-{arm}") for arm in arms]
+    assert len(set(ident_refs)) == 8
+    for arm, ref in zip(arms, ident_refs, strict=True):
+        tail = arm.rsplit("/", 1)[-1].lower()
+        assert ref.endswith(tail)
+        assert "subscriptions-8a4e83d9" in ref
+
+
+def test_custodian_ebs_snapshot_and_aws_cost_on_real_runs() -> None:
+    ebs = cloud_prowler.parse_file(SAMPLES / "cloud" / "check-ebs-snapshot-public" / "resources.json")
+    efind = [r for r in ebs if r["kind"] == "finding"]
+    assert len(efind) == 1
+    assert efind[0]["severity"] in {"medium", "high"}
+    assert "snap-084bf49b944409f37" in (efind[0].get("assets") or [])
+    assert efind[0]["extra"].get("check_id") == "check-ebs-snapshot-public"
+
+    aws = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-aws-instances" / "resources.json")
+    assert not any(r["kind"] == "finding" for r in aws)
+    excluded = [r for r in aws if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    assert len(excluded) == 6
+
+
+def test_custodian_annotations_without_sibling_metadata(tmp_path: Path) -> None:
+    src = SAMPLES / "cloud" / "check-ebs-snapshot-public" / "resources.json"
+    dest = tmp_path / "check-ebs-snapshot-public" / "resources.json"
+    dest.parent.mkdir()
+    dest.write_bytes(src.read_bytes())
+    recs = cloud_prowler.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 1
+    assert "snap-084bf49b944409f37" in (findings[0].get("assets") or [])
+
+
+def test_custodian_unparseable_resources_json_is_unrecognized_shape(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from shared.io_util import UNRECOGNIZED_STATUS, load_sensor_coverage, run_collector
+
+    dest_in = tmp_path / "in" / "cloud"
+    dest_out = tmp_path / "out"
+    dest_in.mkdir(parents=True)
+    dest_out.mkdir(parents=True)
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    monkeypatch.setenv("OUT_DIR", str(dest_out))
+    monkeypatch.setenv("GRC_ESTATE_LABEL", "LAB")
+    (dest_in / "resources.json").write_text('{"not": "a-c7n-run"}', encoding="utf-8")
+    run_collector("cloud-prowler", (".json", ".js", ".csv"), cloud_prowler.parse_file)
+    rows = {row["source"]: row for row in load_sensor_coverage(dest_out)}
+    cov = rows["cloud-prowler"]
+    assert cov["status"] == UNRECOGNIZED_STATUS
+    assert cov["records"] == 0
+    issue = cov["issues"][0]
+    assert issue["status"] == UNRECOGNIZED_STATUS
+    assert issue["file"] == "resources.json"
+    assert "unrecognized" in issue["reason"]
+
+
 def test_custodian_security_vs_cost_on_real_runs() -> None:
     pod = cloud_prowler.parse_file(SAMPLES / "cloud" / "security-context-pods" / "resources.json")
     pfind = [r for r in pod if r["kind"] == "finding"]
