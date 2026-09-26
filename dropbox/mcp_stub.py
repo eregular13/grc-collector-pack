@@ -78,7 +78,8 @@ TOOL_DESC = {
     ),
     "export_ciso_poam": (
         "Reads out/ciso-assistant/ + out/poam/ + out/simplerisk/. "
-        "posted false unless CISO_PUSH=1. Conductor http is always false."
+        "posted false unless something was actually sent; this tool lists "
+        "files only. Conductor http is always false."
     ),
     "keep_status": (
         "SCOPE-gated KEEP four-set inventory. Empty pack in/ is keep_real 0/4. "
@@ -2325,8 +2326,9 @@ def scan_to_sor(
 def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
     """Point at existing CISO/POA&M/SimpleRisk files. Does not invent owner or due.
 
-    posted is false unless CISO_PUSH=1 and DRY_RUN!=1. Conductor http is
-    always false — RISKREADY_PUSH never enables HTTP.
+    posted is false unless something was actually sent. This tool lists files
+    only and never pushes. Conductor http is always false — RISKREADY_PUSH
+    never enables HTTP. Never POST /api/risks.
     """
     scope = load_scope(scope_path)
     raw = os.environ.get("OUT_DIR")
@@ -2342,8 +2344,8 @@ def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
             if path.is_file():
                 files.append(str(path))
     ciso_push = os.environ.get("CISO_PUSH", "0") == "1"
-    dry_run = os.environ.get("DRY_RUN", "1") == "1"
-    posted = bool(ciso_push and not dry_run)
+    posted = False
+    reason = "push not implemented; files listed only"
     ciso_files = [
         str(path)
         for path in files
@@ -2359,6 +2361,7 @@ def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
         "sor": "ciso-assistant",
         "owner_due": "blank — human fills",
         "posted": posted,
+        "reason": reason,
         "http": False,
         "ciso_push": "1" if ciso_push else "0",
         "clica": "Desktop: clica or CISO UI import of out/ciso-assistant/*.csv — do not invent FindingsAssessment UUIDs",
@@ -2368,9 +2371,10 @@ def export_ciso_poam(scope_path: Path | None = None) -> dict[str, Any]:
         "demo": "DEMO" in scope.client_name.upper(),
         "wrap": "review-only",
         "note": (
-            "Operator SoR is out/ciso-assistant/*.csv. posted false unless "
-            "CISO_PUSH=1 and DRY_RUN!=1. Conductor never HTTP. RISKREADY_PUSH "
-            "is ignored. SimpleRisk is leave-behind under out/ only."
+            "Operator SoR is out/ciso-assistant/*.csv. posted is false unless "
+            "something was actually sent. This tool lists files only and never "
+            "pushes. Conductor never HTTP. RISKREADY_PUSH is ignored. "
+            "SimpleRisk is leave-behind under out/ only."
         ),
     }
 
@@ -2388,6 +2392,24 @@ def tool_catalog() -> dict[str, Any]:
         "cross_wire": "fail-closed",
         "tools": [{"name": name, "scope_gated": True} for name in OPERATOR_TOOLS],
     }
+
+
+def tool_exception_refusal(name: str, exc: BaseException) -> dict[str, Any]:
+    """Structured refusal for unexpected tool exceptions. No traceback."""
+    reason = f"{type(exc).__name__}: {exc}"
+    payload: dict[str, Any] = {
+        "tool": name,
+        "ok": False,
+        "refused": True,
+        "reason": reason,
+        "fail_code": "TOOL_ERROR",
+        "error": reason,
+        "stderr": reason,
+    }
+    if name == "scan_to_sor":
+        payload["scanned"] = False
+        payload["wrote_out"] = False
+    return payload
 
 
 def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None) -> dict[str, Any]:
@@ -2425,6 +2447,18 @@ def handle_jsonrpc(req: dict[str, Any], *, scope_path: Path | str | None = None)
             return {"jsonrpc": "2.0", "id": rid, "result": result}
         except GateError as exc:
             return {"jsonrpc": "2.0", "id": rid, "error": {"code": 2, "message": str(exc)}}
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as exc:
+            result = tool_exception_refusal(name, exc)
+            fail = keep_tool_fail_text(result)
+            if fail:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": rid,
+                    "error": {"code": 2, "message": fail, "data": result},
+                }
+            return {"jsonrpc": "2.0", "id": rid, "result": result}
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": f"method not found: {method}"}}
 
 
