@@ -600,7 +600,7 @@ def test_reviewer_21_row_sample_expectations() -> None:
             assert mapped.get("control_name") == control, (key, mapped.get("control_name"))
         if not_n53 := expect.get("not_n53"):
             n53 = set(mapped.get("nist_800_53") or [])
-            assert not set(not_n53) <= n53 or "IA-2" in n53, (key, n53)
+            assert not (set(not_n53) & n53), (key, n53)
             assert mapped.get("control_name") != "Apply vulnerability remediation"
 
 
