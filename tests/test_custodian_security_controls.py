@@ -191,6 +191,17 @@ def test_public_ssh_custodian_stays_on_plan_with_controls() -> None:
     assert is_internet_facing(rec, mapped) is True
 
 
+def test_wordpress_public_is_not_sg_ingress_open() -> None:
+    """'rdp' is a substring of 'wordpress' — must not steal the SG-ingress class."""
+    for name in ("lightsail-wordpress-public", "wordpress-public-bucket"):
+        rec = _custodian_finding(
+            name=f"Cloud Custodian {name}",
+            description="WordPress site published on a public endpoint",
+            extra={"check_id": name, "classification": "security"},
+        )
+        assert finding_type(rec) != "sg_ingress_open", name
+
+
 def test_open_rdp_custodian_is_internet_facing_sg_ingress() -> None:
     recs = cloud_prowler._custodian_findings(
         {
@@ -217,6 +228,15 @@ def test_open_rdp_custodian_is_internet_facing_sg_ingress() -> None:
     assert "SC-7" in set(mapped.get("nist_800_53") or [])
     assert poam_decision(rec)["include"] is True
     assert is_internet_facing(rec, mapped) is True
+
+
+def test_rdp_token_in_policy_name_is_sg_ingress_open() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian sg-open-rdp-ingress",
+        description="Security group allows inbound RDP from the internet",
+        extra={"check_id": "sg-open-rdp-ingress", "classification": "security"},
+    )
+    assert finding_type(rec) == "sg_ingress_open"
 
 
 def test_prowler_non_custodian_high_is_not_forced_unmapped() -> None:

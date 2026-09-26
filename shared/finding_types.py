@@ -694,6 +694,11 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
     if not is_custodian_policy_row(rec):
         return ""
     extra = extra_dict(rec)
+    raw = " ".join(
+        str(x or "")
+        for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
+    )
+    words = set(re.findall(r"[a-z0-9]+", raw.lower()))
     blob = " ".join(
         norm_type_key(str(x or ""))
         for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
@@ -706,13 +711,12 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
     ):
         return "k8s_security_context"
     # Public / open SSH or RDP (EC2.13 / EC2.14) — internet-facing SG ingress.
-    exposed = any(tok in blob for tok in ("public", "open", "0_0_0_0", "3389"))
-    admin = any(tok in blob for tok in ("ssh", "rdp", "3389"))
+    # Whole tokens only: "rdp" must not match inside "wordpress".
+    exposed = bool(words & {"public", "open", "3389"}) or "0.0.0.0" in raw
+    admin = bool(words & {"ssh", "rdp", "3389"})
     if exposed and admin:
         return "sg_ingress_open"
-    if "public" in blob and any(
-        tok in blob for tok in ("ingress", "security_group")
-    ):
+    if "public" in words and ({"ingress", "security"} & words):
         return "sg_ingress_open"
     return ""
 
