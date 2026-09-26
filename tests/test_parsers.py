@@ -1277,8 +1277,12 @@ def test_nessus_key_medium_rdp(tmp_path) -> None:
     )
     recs = vuln_scan.parse_file(dest)
     findings = [r for r in recs if r["kind"] == "finding"]
-    assert len(findings) == 1
-    assert findings[0]["extra"].get("port") == "3389"
+    # Parser keeps every non-info item; include_poam (not the parser) is the POA&M gate.
+    # Before: 1 (key-medium RDP only). After: 2 (RDP + non-key HTTP banner medium).
+    assert len(findings) == 2
+    by_port = {r["extra"].get("port"): r for r in findings}
+    assert by_port["3389"]["severity"] == "medium"
+    assert by_port["80"]["severity"] == "medium"
 
 
 def test_empty_nessus_invents_nothing(tmp_path) -> None:

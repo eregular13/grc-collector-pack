@@ -57,6 +57,14 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         driver = ((run.get("tool") or {}).get("driver") or {}) if isinstance(run.get("tool"), dict) else {}
         tool = str(driver.get("name") or "sarif")
+        scan_time = ""
+        for inv in run.get("invocations") or []:
+            if not isinstance(inv, dict):
+                continue
+            raw = inv.get("startTimeUtc") or inv.get("endTimeUtc")
+            if raw:
+                scan_time = str(raw)
+                break
         for hit in run.get("results") or []:
             if not isinstance(hit, dict):
                 continue
@@ -67,14 +75,15 @@ def iter_sarif_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 art = phys.get("artifactLocation") or {}
                 uri = str(art.get("uri") or uri)
             msg = hit.get("message") if isinstance(hit.get("message"), dict) else {}
-            rows.append(
-                {
-                    "rule_id": str(hit.get("ruleId") or "sarif"),
-                    "message": str(msg.get("text") or hit.get("ruleId") or "SARIF finding"),
-                    "uri": uri,
-                    "severity": _severity(hit),
-                    "tool": tool,
-                    "level": str(hit.get("level") or ""),
-                }
-            )
+            row = {
+                "rule_id": str(hit.get("ruleId") or "sarif"),
+                "message": str(msg.get("text") or hit.get("ruleId") or "SARIF finding"),
+                "uri": uri,
+                "severity": _severity(hit),
+                "tool": tool,
+                "level": str(hit.get("level") or ""),
+            }
+            if scan_time:
+                row["scan_time"] = scan_time
+            rows.append(row)
     return rows
