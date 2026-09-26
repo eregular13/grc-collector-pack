@@ -318,12 +318,12 @@ STATUS `compose_lab: pass_desktop` after `DESKTOP-222GHQV` proved
 is still **absent** — ABSENT on this VM ≠ that DESKTOP stamp.
 CoS #48 honesty sync — farm leave-behind `farm_drop_to_sor`
 (`./scripts/farm_drop_to_sor.sh` / `make farm-drop-to-sor` /
-`.\\scripts\\farm_drop_to_sor.ps1`; `python3 scripts/prove_ciso.py`
+`.\scripts\farm_drop_to_sor.ps1`; `python3 scripts/prove_ciso.py`
 under `prove/work/`; never pack `in/`). Pack HEAD this PR
 `a3a3651b` (after #91 `sample_to_sor`, #93 keep_ciso SoR paths,
 #92 honesty). SAMPLE keep remains the primary KEEP path
 (`./scripts/sample_to_sor.sh` / `make sample-to-sor` /
-`.\\scripts\\sample_to_sor.ps1`). DESKTOP cold run measured ~0.697s
+`.\scripts\sample_to_sor.ps1`). DESKTOP cold run measured ~0.697s
 (agent-VM ~0.231s) — honesty-only elapsed; not a paying_day PASS.
 SAMPLE `python3 -m keep lab` DESKTOP dry-run
 (`DRY_RUN=1` `CISO_PUSH=0`; `docs/DESKTOP_DRY_RUN.md`;
