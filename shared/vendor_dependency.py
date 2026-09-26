@@ -20,6 +20,8 @@ VD_SOURCES = frozenset({"default", "operator", "suggested"})
 VENDOR_CHECKIN_OVERDUE = "VENDOR_CHECKIN_OVERDUE"
 VD_MISSING_PRODUCT = "VD_MISSING_PRODUCT"
 VD_HIGH_NOT_MITIGATED = "VD_HIGH_NOT_MITIGATED"
+VD_INVALID_OVERRIDE = "VD_INVALID_OVERRIDE"
+VD_NOT_CLOSED = "VD_NOT_CLOSED"
 
 # Spec §2.3 / acceptance: overdue when run − P > 31 days (fires at 32, not 31).
 CHECKIN_OVERDUE_AFTER_DAYS = 31
@@ -117,8 +119,12 @@ def finalize_vendor_fields(
     ov_vd = canon_yes_no(ov.get("vendor_dependency"))
     persisted = canon_yes_no(item.get("vendor_dependency"))
     source = str(item.get("vd_source") or "").strip()
+    # Current override wins. Persist prior operator Yes/No only when the
+    # file is absent so run N without overrides.csv keeps the last call.
+    persist_yes = ov_vd is None and source == "operator" and persisted == VD_YES
+    persist_no = ov_vd is None and source == "operator" and persisted == VD_NO
 
-    if ov_vd == VD_YES or (source == "operator" and persisted == VD_YES):
+    if ov_vd == VD_YES or persist_yes:
         item["vendor_dependency"] = VD_YES
         item["vd_source"] = "operator"
         if ov.get("last_vendor_checkin"):
@@ -134,7 +140,7 @@ def finalize_vendor_fields(
         item["vendor_dependency"] = VD_NO
         item["last_vendor_checkin"] = ""
         item["vendor_product"] = ""
-        if ov_vd == VD_NO:
+        if ov_vd == VD_NO or persist_no:
             item["vd_source"] = "operator"
         elif suggested:
             item["vd_source"] = "suggested"
