@@ -166,18 +166,6 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Disable SSH empty passwords": "SSH empty passwords are allowed",
     "Apply security updates": "Security updates are not applied",
     "Enable time synchronization": "Time synchronization is not enabled",
-    "Stop trusting wildcard certificates too broadly": "Wildcard certificate trust is too broad",
-    "Publish a CAA DNS record": "CAA DNS record is missing or invalid",
-    "Set the missing web security header": "Web response is missing a security header",
-    "Require authentication on Redis": "Redis accepts unauthenticated access",
-    "Disable password-never-expires on accounts": "Accounts are set to password never expires",
-    "Require passwords on every account": "Accounts are configured with password not required",
-    "Deploy LAPS for local administrator passwords": "LAPS is not installed",
-    "Restrict DnsAdmins membership": "DnsAdmins has standing members",
-    "Remove SID History from trusted accounts": "SID History is present on privileged accounts",
-    "Enable SID filtering on trusts": "SID filtering is not enabled on a trust",
-    "Disable DES encryption types for Kerberos": "DES encryption types are enabled",
-    "Review high-value directory group membership": "A high-value directory principal has standing privilege",
 }
 
 # Host-hardening control_keys (Lynis / OpenSCAP / HardeningKitty). Check
@@ -307,8 +295,9 @@ MISCONFIG_RULES: dict[str, dict[str, Any]] = {
         "name": "Require authentication on Redis",
         "fix": (
             "Enable Redis ACL users or requirepass with a strong secret, set protected-mode yes, bind Redis "
-            "to localhost or a private interface only, and firewall TCP/6379. Rename or disable CONFIG, "
-            "MODULE, and DEBUG for application users. Rescan with nmap redis-info to verify INFO is refused."
+            "to localhost or a private interface only, and firewall TCP/6379. Deny dangerous commands with "
+            "ACL rules (for example -@dangerous) instead of rename-command. Rescan with nmap redis-info to "
+            "verify INFO is refused."
         ),
         "nist_800_53": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
         "cis": ["cis_4_1", "cis_4_8", "cis_5_2"],
@@ -491,18 +480,6 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable legacy authentication protocols": ["IA-2", "IA-5"],
     "Restrict external sharing": ["AC-3", "AC-6"],
     "Review SSH brute-force activity": ["SI-4", "AC-17", "SC-7"],
-    "Stop trusting wildcard certificates too broadly": ["SC-17", "SC-8"],
-    "Publish a CAA DNS record": ["SC-17", "SC-8"],
-    "Set the missing web security header": ["SC-8", "CM-6", "SI-10"],
-    "Require authentication on Redis": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
-    "Disable password-never-expires on accounts": ["IA-5", "AC-2"],
-    "Require passwords on every account": ["IA-5", "AC-2"],
-    "Deploy LAPS for local administrator passwords": ["IA-5", "AC-6"],
-    "Restrict DnsAdmins membership": ["AC-6", "AC-2"],
-    "Remove SID History from trusted accounts": ["AC-3", "AC-6"],
-    "Enable SID filtering on trusts": ["AC-3", "AC-4"],
-    "Disable DES encryption types for Kerberos": ["SC-13", "IA-5"],
-    "Review high-value directory group membership": ["AC-2", "AC-6"],
 }
 
 # Backward-compatible alias used by older tests/docs.
@@ -603,8 +580,6 @@ def _lookup_control_ids(control_name: str) -> tuple[list[str], list[str]]:
         return list(CONTROL_800_53[control_name]), list(CONTROL_CIS.get(control_name) or [])
     if control_name.startswith("Reduce unnecessary network exposure"):
         return ["CM-7", "SC-7"], []
-    if control_name.startswith("Remediate PingCastle"):
-        return ["AC-2", "AC-6", "IA-5"], []
     return [], []
 
 
@@ -664,6 +639,29 @@ def _pkg_from_rec(rec: dict[str, Any]) -> str:
     return str(match.group(1) or "").strip() if match else ""
 
 
+def _is_caa_finding(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    sid = str(extra.get("id") or "").strip().lower().replace("-", "_")
+    if sid == "dns_caarecord":
+        return True
+    blob = f"{rec.get('name') or ''} {rec.get('description') or ''}".lower()
+    return "caa" in blob and ("dns" in blob or "record" in blob)
+
+
+_HEADER_MSG_TOKS = (
+    "strict-transport-security",
+    "x-frame-options",
+    "x-content-type-options",
+    "content-security-policy",
+    "referrer-policy",
+)
+
+
+def _is_missing_web_header_text(text: str) -> bool:
+    blob = str(text or "").lower()
+    return any(tok in blob for tok in _HEADER_MSG_TOKS)
+
+
 def _is_package_cve(rec: dict[str, Any]) -> bool:
     """Trivy/SARIF/package CVE rows are patch findings, not TLS posture."""
     if not _cves_in(rec):
@@ -709,6 +707,15 @@ def _vuln_playbook(rec: dict[str, Any]) -> dict[str, Any]:
         weakness = known["weakness_name"]
         control = known["control_name"]
         fix = known["fix"]
+    elif _is_caa_finding(rec):
+        weakness = raw_name if raw_name and not _looks_like_pass_title(raw_name) else (
+            "CAA DNS record is missing or invalid"
+        )
+        control = "Apply vulnerability remediation"
+        fix = (
+            "Publish a CAA DNS record that names the approved certificate issuers "
+            "and an iodef contact. This is a dropped testssl export, not a live DNS query."
+        )
     elif cve and pkg:
         weakness = raw_name if raw_name and not _looks_like_pass_title(raw_name) else (
             f"{cve} is present in {pkg}"
@@ -1019,9 +1026,9 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
     "A-DsHeuristicsLDAPSecurity": {
         "name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
         "fix": (
-            "Turn on the KB5008383 dSHeuristics LDAP authorization checks "
-            "(CVE-2021-42291) so adding or renaming a computer object requires "
-            "Create Computer Objects. File-drop only."
+            "Set dSHeuristics characters 28 (LDAPAddAuthZVerifications) and 29 "
+            "(LDAPOwnerModify) to 1 for Enforcement after watching events "
+            "3044-3056 in audit mode (KB5008383 / CVE-2021-42291). File-drop only."
         ),
     },
     "A-ZeroPoint": {
@@ -1090,8 +1097,9 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
     "S-PwdNeverExpires": {
         "name": "Disable password-never-expires on accounts",
         "fix": (
-            "Clear 'Password never expires' on the flagged accounts and enroll them "
-            "in the domain password policy. This is PingCastle S-PwdNeverExpires "
+            "Clear 'Password never expires' on the flagged accounts, roll those "
+            "passwords now, use a gMSA for service accounts, and enroll them in "
+            "the domain password policy. This is PingCastle S-PwdNeverExpires "
             "from a file-drop, not a live AD call."
         ),
     },
@@ -1110,33 +1118,58 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
             "from a file-drop, not a live AD call."
         ),
     },
-    "A-LAPS-Not-Running": {
+    "A-LAPS-Joined-Computers": {
         "name": "Deploy LAPS for local administrator passwords",
         "fix": (
-            "Enable the LAPS client so unique local-admin passwords rotate. "
-            "This is PingCastle A-LAPS-Not-Running from a file-drop, not a live AD call."
+            "Install Windows LAPS on joined computers so unique local-admin "
+            "passwords rotate into the directory. This is PingCastle "
+            "A-LAPS-Joined-Computers from a file-drop, not a live AD call."
         ),
     },
     "P-DNSAdmin": {
         "name": "Restrict DnsAdmins membership",
         "fix": (
-            "Empty DnsAdmins except break-glass; members can load a DLL on a DC. "
-            "This is PingCastle P-DNSAdmin from a file-drop, not a live AD call."
+            "Empty DnsAdmins except break-glass. CVE-2021-40469 (October 2021) "
+            "fixes the DLL-load path; PingCastle has scored this informative "
+            "since 2.10.1. File-drop only, not a live AD call."
         ),
     },
-    "T-SIDHistory": {
+    "S-SIDHistory": {
         "name": "Remove SID History from trusted accounts",
         "fix": (
             "Strip SID History from the flagged principals after the migration "
-            "window. This is PingCastle T-SIDHistory from a file-drop, not a live AD call."
+            "window. This is PingCastle S-SIDHistory from a file-drop, not a live AD call."
+        ),
+    },
+    "T-SIDHistoryDangerous": {
+        "name": "Remove SID History from trusted accounts",
+        "fix": (
+            "Strip dangerous SID History (privileged SIDs from another domain) "
+            "after the migration window. This is PingCastle T-SIDHistoryDangerous "
+            "from a file-drop, not a live AD call."
+        ),
+    },
+    "T-SIDHistorySameDomain": {
+        "name": "Remove SID History from trusted accounts",
+        "fix": (
+            "Strip same-domain SID History leftovers after the migration window. "
+            "This is PingCastle T-SIDHistorySameDomain from a file-drop, not a live AD call."
+        ),
+    },
+    "T-SIDHistoryUnknownDomain": {
+        "name": "Remove SID History from trusted accounts",
+        "fix": (
+            "Strip SID History that points at an unknown domain after the "
+            "migration window. This is PingCastle T-SIDHistoryUnknownDomain "
+            "from a file-drop, not a live AD call."
         ),
     },
     "T-SIDFiltering": {
         "name": "Enable SID filtering on trusts",
         "fix": (
-            "Re-enable SID filtering (quarantine) on the flagged trust so foreign "
-            "SIDs cannot impersonate privileged groups. This is PingCastle "
-            "T-SIDFiltering from a file-drop, not a live AD call."
+            "On a domain trust run netdom /quarantine:yes. On a forest trust "
+            "run netdom /enablesidhistory:no — never /quarantine on a forest "
+            "trust. This is PingCastle T-SIDFiltering from a file-drop, not a live AD call."
         ),
     },
     "S-DesEnabled": {
@@ -1182,22 +1215,28 @@ def _is_highvalue_identity(rec: dict[str, Any]) -> bool:
 
 
 def _highvalue_identity_playbook(rec: dict[str, Any]) -> dict[str, str]:
+    """Paraphrase only. Do not reuse Restrict-* control names (those stamp n53)."""
     assets = " ".join(str(a) for a in (rec.get("assets") or []))
     blob = f"{assets} {rec.get('name') or ''} {rec.get('description') or ''}".lower()
+    fix = (
+        "Confirm the high-value principal still needs standing privilege and "
+        "remove unused members. This is a BloodHound/PingCastle file-drop "
+        "finding, not a live AD call."
+    )
     for needle, rid in _HIGHVALUE_GROUP_RULES:
         if needle in blob:
             play = _PINGCASTLE_RULES.get(rid)
             if play:
-                return play
-    if re.search(r"(?<![a-z])administrators?(?![a-z])", blob):
-        return _PINGCASTLE_RULES["P-Administrators"]
+                fix = play["fix"]
+                break
+    else:
+        if re.search(r"(?<![a-z])administrators?(?![a-z])", blob):
+            play = _PINGCASTLE_RULES.get("P-Administrators")
+            if play:
+                fix = play["fix"]
     return {
         "name": "Review high-value directory group membership",
-        "fix": (
-            "Confirm the high-value principal still needs standing privilege and "
-            "remove unused members. This is a BloodHound/PingCastle file-drop "
-            "finding, not a live AD call."
-        ),
+        "fix": fix,
     }
 
 
@@ -1317,6 +1356,23 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Disable TLS 1.0 and require TLS 1.2 or newer. "
             "This is a dropped TLS export, not a live probe."
         )
+    elif _is_missing_web_header_text(text):
+        header_fix = (
+            "Add the flagged response header (HSTS, X-Frame-Options, "
+            "X-Content-Type-Options, or Content-Security-Policy) on the public "
+            "listener. This is a Nikto file-drop finding, not a TLS cipher change."
+        )
+        if (
+            port == "443"
+            or re.search(r"(?<![a-z0-9_])tls(?![a-z0-9_])", text)
+            or re.search(r"(?<![a-z0-9_])ssl(?![a-z0-9_])", text)
+            or re.search(r"(?<![a-z0-9_])certificate(?![a-z0-9_])", text)
+        ):
+            name = "Harden TLS on the exposed service"
+            key_medium = True
+        else:
+            name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"
+        fix = header_fix
     elif not _is_package_cve(rec) and (
         port == "443"
         or re.search(r"(?<![a-z0-9_])tls(?![a-z0-9_])", text)
@@ -1324,10 +1380,16 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         or re.search(r"(?<![a-z0-9_])certificate(?![a-z0-9_])", text)
     ):
         name = "Harden TLS on the exposed service"
-        fix = (
-            "Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. "
-            "This is a posture finding, not a specific TLS CVE."
-        )
+        if "wildcard" in text or str(extra.get("id") or "").lower() == "cert_trust_wildcard":
+            fix = (
+                "Replace the shared wildcard certificate with hostname-scoped "
+                "certificates. This is a dropped testssl export, not a live TLS probe."
+            )
+        else:
+            fix = (
+                "Require TLS 1.2 or newer, disable weak ciphers, and use a valid certificate. "
+                "This is a posture finding, not a specific TLS CVE."
+            )
         key_medium = True
     elif (
         (
@@ -1405,7 +1467,17 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Upgrade Log4j to a fixed release and block JNDI lookups. "
             "This is a dropped Nuclei finding, not a live scan."
         )
-    elif "remote code execution" in text or text.endswith(" rce") or " rce " in f" {text} ":
+    elif (
+        (
+            "nuclei" in {str(x).lower() for x in (rec.get("labels") or [])}
+            or bool(extra.get("template_id"))
+        )
+        and (
+            "remote code execution" in text
+            or text.endswith(" rce")
+            or " rce " in f" {text} "
+        )
+    ):
         name = "Stop remote code execution"
         fix = (
             "Patch or isolate the service that Nuclei flagged as RCE. "
@@ -1657,7 +1729,12 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "This is a Lynis/OpenSCAP posture finding, not a CVE."
         )
     elif extra.get("control_key") == "time_sync" or "chrony" in text or (
-        "ntp" in text and ("enable" in text or "time" in text)
+        re.search(r"(?<![a-z0-9_])ntp(?:d)?(?![a-z0-9_])", text)
+        and (
+            "enable" in text
+            or "synchron" in text
+            or re.search(r"(?<![a-z0-9_])time(?![a-z0-9_])", text)
+        )
     ):
         name = "Enable time synchronization"
         fix = (
