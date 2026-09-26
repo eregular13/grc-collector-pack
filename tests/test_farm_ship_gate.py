@@ -70,12 +70,12 @@ def _honest_farm_work(folder: Path) -> None:
     (out / "SCOPE_AND_TRUST.md").write_text(
         f"> **{label}**: Every finding below comes from bundled example files.\n"
         "> Run `not recorded` · generated not recorded · pack `not recorded`\n\n"
-        ">### Authorization\n"
-        ">- No client authorization applies. No client systems were touched.\n\n"
-        ">### What was in scope\n"
-        ">| Area | Targets / source | Scanner or export used | Version | Collected (date/time) | Records |\n"
-        ">|---|---|---|---|---|---|\n"
-        ">| Host / network exposure | bundled sample / fixture | inventory-nmap | not recorded | not recorded | 1 |\n\n"
+        "### Authorization\n"
+        "- No client authorization applies. No client systems were touched.\n\n"
+        "### What was in scope\n"
+        "| Area | Targets / source | Scanner or export used | Version | Collected (date/time) | Records |\n"
+        "|---|---|---|---|---|---|\n"
+        "| Host / network exposure | bundled sample / fixture | inventory-nmap | not recorded | not recorded | 1 |\n\n"
         "Out of scope, or no data supplied: none.\n",
         encoding="utf-8",
     )
@@ -326,7 +326,7 @@ def test_assert_farm_ship_sor_ok_and_fail_closed(tmp_path: Path) -> None:
         assert_farm_ship_sor(work)
 
 
-def test_wipe_clone_script_fail_closed_on_partial_checkout(tmp_path: Path) -> None:
+def test_wipe_clone_script_fail_closed_on_partial_page(tmp_path: Path) -> None:
     repo = tmp_path / "partial"
     repo.mkdir()
     _run_git(repo, "init")
