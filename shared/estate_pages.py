@@ -941,6 +941,23 @@ def _dated_counts(records: list[dict]) -> tuple[int, int]:
     return dated, len(records)
 
 
+MERGED_INTO_PREFIX = "merged_into:"
+
+
+def is_merged_into_alias(reason: str) -> bool:
+    """True for excluded.csv merged_into:<EGP> aliases (pack_drop twins).
+
+    Distinct from PageContext.merged / duplicates_merged (raw-record collapse).
+    merged_into rows stay off the register; they are 0 until that change lands.
+    """
+    text = str(reason or "")
+    return text.startswith(MERGED_INTO_PREFIX) and len(text) > len(MERGED_INTO_PREFIX)
+
+
+def count_merged_aliases(reasons: Iterable[str]) -> int:
+    return sum(1 for reason in reasons if is_merged_into_alias(reason))
+
+
 def _reconcile(
     findings_n: int,
     poam_n: int,
@@ -948,28 +965,65 @@ def _reconcile(
     *,
     vuln_n: int = 0,
     excluded_poam: int = 0,
+    kind_excluded: int = 0,
     merged: str = NOT_RECORDED,
+    merged_aliases: int = 0,
 ) -> str | None:
-    if findings_n == poam_n == risk_n:
+    """Identity: POA&M + (excluded − merged) + kind-excluded = register
+    and weaknesses + kind-excluded − merged = register.
+
+    Printed sums are the computed totals, never the register count. A
+    mismatch always warns, even when extras (duplicates_merged) exist.
+    kind:excluded rows stay on the register as accept (#181).
+    """
+    merged_n = max(0, int(merged_aliases or 0))
+    if (
+        findings_n == poam_n == risk_n
+        and not excluded_poam
+        and not kind_excluded
+        and not merged_n
+    ):
         return None
-    reasons: list[str] = []
-    if vuln_n and findings_n + vuln_n == risk_n:
-        reasons.append(
+    plan_sum = poam_n + (excluded_poam - merged_n) + kind_excluded
+    weak_sum = findings_n + kind_excluded - merged_n
+    if merged_n:
+        equations = (
+            f"{poam_n} + ({excluded_poam} - {merged_n}) + {kind_excluded} = {plan_sum}; "
+            f"{findings_n} + {kind_excluded} - {merged_n} = {weak_sum}"
+        )
+    else:
+        equations = (
+            f"{poam_n} + {excluded_poam} + {kind_excluded} = {plan_sum}; "
+            f"{findings_n} + {kind_excluded} = {weak_sum}"
+        )
+    parts: list[str] = [
+        (
+            f"{findings_n} weaknesses, {poam_n} POA&M, {excluded_poam} excluded, "
+            f"{kind_excluded} kind-excluded, {risk_n} register "
+            f"({equations})."
+        )
+    ]
+    if kind_excluded:
+        parts.append(
+            f"{kind_excluded} kind-excluded records stay on the register as "
+            "accept and are not POA&M rows."
+        )
+    if merged_n:
+        parts.append(f"{merged_n} merged-into aliases stay off the register.")
+    extras: list[str] = []
+    if vuln_n and findings_n + kind_excluded + vuln_n == risk_n and findings_n + kind_excluded != risk_n:
+        extras.append(
             f"{vuln_n} vulnerability-class rows are counted on the risk register "
             "but not in findings.csv"
         )
-    if excluded_poam:
-        reasons.append(f"{excluded_poam} findings were not included in the POA&M")
     if merged not in {NOT_RECORDED, "0"} and merged.isdigit() and int(merged) > 0:
-        reasons.append(f"{merged} duplicates were merged")
-    if findings_n != poam_n and not excluded_poam:
-        pass
-    if reasons:
-        return (
-            f"{findings_n} findings produced {poam_n} POA&M rows and {risk_n} "
-            f"risk-register entries because {'; '.join(reasons)}."
-        )
-    return "counts not reconciled"
+        extras.append(f"{merged} duplicates were merged")
+    adds_up = plan_sum == risk_n and weak_sum == risk_n
+    if extras:
+        parts.append("Also: " + "; ".join(extras) + ".")
+    if not adds_up:
+        parts.append("counts not reconciled.")
+    return "\n".join(parts)
 
 
 def _read_scope_window(path: Path) -> tuple[str, str]:
@@ -1100,6 +1154,8 @@ class PageContext:
     poam_n: int = 0
     merged: str = NOT_RECORDED
     excluded_poam: int = 0
+    kind_excluded: int = 0
+    merged_aliases: int = 0
     in_dir: Path | None = None
     generated_at: str = ""
     run_delta: dict[str, int] = field(default_factory=dict)
@@ -1143,23 +1199,32 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(f"| {sev.title()} | {n_f} | {n_p} | {merged_by[sev]} |")
     lines.append(f"| **Total** | {tot_f} | {tot_p} | {merged_total} |")
     lines.append("")
+    headline_open = int(ctx.poam_n or tot_p)
+    lines.append(f"Open POA&M (poam.csv): {headline_open}")
+    lines.append("")
     if ctx.run_delta:
         lines.append(
             "Changed since last run: "
-            f"open={int(ctx.run_delta.get('open') or 0)} "
+            f"open={headline_open} "
             f"new={int(ctx.run_delta.get('new') or 0)} "
             f"pending verification={int(ctx.run_delta.get('pending_verification') or 0)} "
             f"reopened={int(ctx.run_delta.get('reopened') or 0)} "
             f"closed={int(ctx.run_delta.get('closed') or 0)}."
         )
+        ledger_open = int(ctx.run_delta.get("ledger_open") or 0)
+        if ledger_open and ledger_open != headline_open:
+            lines.append(f"Ledger open including excluded: {ledger_open}.")
         lines.append("")
+    weaknesses_n = ctx.findings_csv_n + ctx.vuln_n or tot_f
     recon = _reconcile(
-        tot_f,
-        ctx.poam_n or tot_p,
+        weaknesses_n,
+        headline_open,
         ctx.risk_n or tot_f,
         vuln_n=ctx.vuln_n,
         excluded_poam=ctx.excluded_poam,
+        kind_excluded=ctx.kind_excluded,
         merged=ctx.merged,
+        merged_aliases=ctx.merged_aliases,
     )
     if recon:
         lines.append(recon)
@@ -1241,6 +1306,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     return _fit_one_page(
         "\n".join(lines),
         keep_tails=(
+            "Open POA&M (poam.csv):",
             "### What this does not tell you",
             COVERAGE_GAPS_HEADING,
             "### Next step",

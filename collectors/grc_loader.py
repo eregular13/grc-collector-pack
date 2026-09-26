@@ -2,7 +2,11 @@
 """Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
 
 RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
-is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+is findings + vulnerabilities + kind_excluded - merged_into aliases ==
+risk_scenarios; POA&M == open_risks (poam.csv). mitigate == POA&M == CTL;
+accept == non-merged excluded. kind:excluded rows stay on the register as
+accept. Merged pack_drop twins (merged_into:<EGP>) stay off the register.
+Never POST /api/risks.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from shared.control_map import (
 from shared.estate_pages import (
     PageContext,
     classify_estate,
+    is_merged_into_alias,
     write_client_pages,
     write_csv_with_estate,
     write_estate_sidecar,
@@ -40,6 +45,7 @@ from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
+from shared.egp_collapse import bind_alias_targets_to_ledger
 from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import (
@@ -374,6 +380,8 @@ def load() -> dict:
         rec_ref = str(rec.get("ref_id") or "")
         decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
         register = risk_register_treatment(decision)
+        if not register.get("on_register", True):
+            continue
         if register["attach_control"]:
             resid = residual_level(level)
             cid = control_ids_by_finding.get(rec_ref, "")
@@ -466,6 +474,18 @@ def load() -> dict:
             item = ledger_by_fp.get(fp_v1(rec))
         return item
 
+    # Content-hash EGP (egp_id_for) is first-seen only. Bind alias
+    # pointers to the survivor's live ledger poam_id so upgraded
+    # farms do not write merged_into/superseded_by at a dead hash.
+    bind_alias_targets_to_ledger(poam_decisions, _ledger_item_for)
+    excluded_reasons: dict[str, int] = {}
+    for _rec, decision in poam_decisions:
+        if decision.get("include"):
+            continue
+        reason = str(decision.get("reason") or "unexplained")
+        excluded_reasons[reason] = excluded_reasons.get(reason, 0) + 1
+    breakdown["excluded_by_reason"] = excluded_reasons
+
     # Shared-EGP folds (#180): an excluded pack_drop duplicate and the
     # specific plan row resolve to the same item. Mark excluded only when
     # no included record maps to that item this run.
@@ -489,13 +509,11 @@ def load() -> dict:
             elif not decision.get("include"):
                 item["excluded_reason"] = str(decision.get("reason") or "unexplained")
         if not decision.get("include"):
-            winner_ref = str(decision.get("superseded_by_ref") or "")
-            winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
-            superseded_by = ""
-            if winner_item:
-                superseded_by = str(winner_item.get("poam_id") or "")
+            superseded_by = str(decision.get("superseded_by") or "")
             if not superseded_by:
-                superseded_by = str(decision.get("superseded_by") or "")
+                winner_ref = str(decision.get("superseded_by_ref") or "")
+                winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
+                superseded_by = str((winner_item or {}).get("poam_id") or "")
             excluded_rows.append(
                 [
                     rec.get("ref_id") or "",
@@ -709,6 +727,12 @@ def load() -> dict:
     excluded_poam = max(
         0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
     )
+    reason_idx = EXCLUDED_FIELDS.index("excluded_reason")
+    merged_aliases = sum(
+        1
+        for row in excluded_rows
+        if is_merged_into_alias(row[reason_idx] if len(row) > reason_idx else "")
+    )
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
@@ -744,11 +768,15 @@ def load() -> dict:
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
-            "risk_scenarios == findings + vulnerabilities + kind_excluded; "
+            "mitigate == POA&M == CTL; accept == non-merged excluded; "
+            "risk_scenarios == findings + vulnerabilities + kind_excluded "
+            "- merged_into aliases; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
             "weaknesses_total == poam_included + excluded == "
             "weaknesses + kind_excluded + pending_carried; "
             "kind:excluded rows stay on the register as treatment=accept; "
+            "pack_drop twins are excluded as merged_into:<survivor ledger EGP> and "
+            "stay off the register; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),
@@ -780,9 +808,11 @@ def load() -> dict:
         poam_n=len(poam_rows),
         merged=str(merged_n),
         excluded_poam=excluded_poam,
+        kind_excluded=len(pre_excluded),
+        merged_aliases=merged_aliases,
         in_dir=dest_in,
         generated_at=now,
-        run_delta=ledger_run_delta(poam_ledger),
+        run_delta=ledger_run_delta(poam_ledger, plan_ids=listed_ids),
         sensor_rows=sensor_rows,
     )
     write_client_pages(out_dir(), ctx)
