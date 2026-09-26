@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- PORT_ONLY_FOLD: when a specific finding (nuclei / Nessus / testssl / NSE / CVE)
+  already names a host+port, the bare nmap-style "port open" row is folded into
+  that finding as evidence (source + `nmap` label/tools) and listed in
+  `poam/excluded.csv` as `superseded_by_specific` with the winner's `EGP-` id.
+  Winner = highest severity, then lowest EGP- id. Port-only rows with no
+  specific peer stay on the POA&M. Count identity holds
+  (`weaknesses_total == poam_included + excluded`). Farm_drop measured
+  findings=174 / poam=106 / excluded=68 (unchanged). Host lab measured
+  weaknesses=125 / poam=124 / excluded=1. MIN_ gates unchanged. No POST
+  `/api/risks`. Does not touch `product-lab/drop`.
 - RETIRE_RISKREADY_JSON: `grc_loader` no longer writes `out/riskready/`. `summary.json` drops `incidents` / `risks_proposed` (outside count identity). The loopback console reads POA&M / CISO register for open-risk KPIs and `/api/proposed`. `out/simplerisk/poam.csv` starts with the exact header (no `#` preamble), carries the per-row `estate` column, and has sidecar `out/simplerisk/ESTATE.txt`. Never POSTs `/api/risks`. Does not touch `product-lab/drop`.
 - EXEC_AND_TRUST_PAGES: one-page exec summary + `SCOPE_AND_TRUST.md` plus fail-closed estate label. Machine-imported CSVs start with the locked importer header (no `#` preamble). CISO/OpenGRC omit an extra `estate` column; POA&M keeps it. Banner lives in the human pages and `out/<sink>/ESTATE.txt`. SAMPLE/DEMO/LAB and any `product-lab/drop` fallback cannot become CLIENT and cannot be suppressed. Missing values print `not recorded`. RiskReady stay-out. No POST `/api/risks`.
 - POAM_FEDRAMP_FIELDS: `poam.csv` keeps its first nine columns and appends FedRAMP POA&M R3.0-style fields from existing data: `poam_id` (POAM-<ref_id>), `finding_ref_id`, `controls` (SP 800-53 ids from control_map; blank if unmapped), `weakness_description`, `detector_source` (collector + tool/NSE script), `weakness_source_id`, `original_detection_date` (first-seen > nmap scan time > collected_at, UTC), `scheduled_completion_date` (DEFAULT 30/90/180 by risk; `due` stays blank), `status_date`, `milestones` (3 dated defaults: validate, apply fix, rescan), `original_risk_rating` (Low/Moderate/High/Critical), `point_of_contact` (blank), `cve` (explicit or known alias, e.g. Heartbleed -> CVE-2014-0160). `poam.md` states the dates are defaults. nmap XML findings carry `extra.scan_time`.
