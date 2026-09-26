@@ -326,7 +326,7 @@ def test_assert_farm_ship_sor_ok_and_fail_closed(tmp_path: Path) -> None:
         assert_farm_ship_sor(work)
 
 
-def test_wipe_clone_script_fail_closed_on_partial_page(tmp_path: Path) -> None:
+def test_wipe_clone_script_fail_closed_on_partial_checkout(tmp_path: Path) -> None:
     repo = tmp_path / "partial"
     repo.mkdir()
     _run_git(repo, "init")
