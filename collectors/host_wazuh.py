@@ -648,7 +648,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[aname],
                 labels=LABELS + ["alert"],
                 collected_at=now,
-                extra={},
+                extra={"rule_id": rule.get("id"), "telemetry": True},
             )
         )
     records.extend(

@@ -60,7 +60,7 @@ def test_spf_maps() -> None:
     soft = next(r for r in recs if r["kind"] == "finding" and "softfail" in r["name"])
     assert plus["severity"] == "high"
     assert map_finding(plus)["include_poam"] is True
-    assert map_finding(soft)["include_poam"] is False
+    assert map_finding(soft)["include_poam"] is True
     assert "hygiene" in map_finding(soft)["recommended_fix"].lower() or "softfail" in map_finding(soft)["recommended_fix"].lower()
 
 

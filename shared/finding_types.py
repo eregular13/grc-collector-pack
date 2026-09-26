@@ -19,6 +19,26 @@ TYPED_SOURCES = frozenset({"cloud-prowler", "identity-ad", "k8s-kubescape"})
 
 SEV_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
+# Tool labels that must survive a same-issue-same-asset merge (Falco +
+# Kubescape privileged on prod-cluster, etc.). Collector `source` is often
+# the same lane (k8s-kubescape) so labels/tools are the evidence.
+TOOL_LABELS = frozenset(
+    {
+        "falco",
+        "kubescape",
+        "kube-bench",
+        "nuclei",
+        "trivy",
+        "greenbone",
+        "semgrep",
+        "checkov",
+        "sarif",
+        "scuba",
+        "gitleaks",
+        "trufflehog",
+    }
+)
+
 # Normalized extra.check_id / extra.edge / extra.control / extra.id → type.
 TYPE_ALIASES: dict[str, str] = {
     # Cloud — AWS (fixtures + collector CheckID). Azure/GCP equivalents only
@@ -277,6 +297,37 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Failure-oriented weakness names. Check titles that read as passes
+# (e.g. "Root account MFA enabled") must not appear as the weakness.
+TYPE_WEAKNESS_NAME: dict[str, str] = {
+    "s3_public_access": "S3 bucket allows public access",
+    "s3_encryption": "S3 bucket default encryption is not enabled",
+    "ebs_encryption": "EBS volume is not encrypted",
+    "iam_admin_access": "IAM user has standing AdministratorAccess",
+    "iam_root_mfa": "Root account has no MFA",
+    "iam_user_mfa": "IAM user has no MFA",
+    "sg_ingress_open": "Security group allows inbound traffic from the internet",
+    "cloudtrail_logging": "CloudTrail multi-region trail is missing",
+    "rds_public": "RDS instance is publicly accessible",
+    "ad_dcsync": "Non-DC principal has DCSync / replication rights",
+    "ad_genericall": "Principal has GenericAll on a privileged object",
+    "ad_adminto": "Principal has standing local-admin (AdminTo) rights",
+    "ad_backup_operators": "Backup Operators has standing members",
+    "ad_kerberoast": "Service account is kerberoastable",
+    "ad_asrep": "Account does not require Kerberos preauthentication",
+    "ad_domain_admins": "Domain Admins has standing members",
+    "ad_unconstrained_delegation": "Account has unconstrained Kerberos delegation",
+    "entra_ga_pim": "Global Administrator is a standing assignment",
+    "ad_smb_null_session": "SMB null / anonymous sessions are allowed",
+    "hk_password_history": "Windows password history is not enforced",
+    "hk_lm_hash": "LM hash storage is enabled",
+    "k8s_privileged": "Privileged Kubernetes containers are admitted",
+    "k8s_anonymous_auth": "Anonymous Kubernetes API access is enabled",
+    "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
+    "k8s_hostnetwork": "Workload uses hostNetwork",
+    "k8s_write_binary_dir": "Workload can write under container binary directories",
+}
+
 # Distinct types may share remediations only with an explicit reason.
 SHARED_REMEDIATION_ALLOWLIST: dict[tuple[str, str], str] = {}
 
@@ -355,7 +406,11 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
-    if "lm hash" in text or "lmhash" in text.replace(" ", "").replace("_", ""):
+    if (
+        "lm hash" in text
+        or "lan manager hash" in text
+        or "lmhash" in text.replace(" ", "").replace("_", "")
+    ):
         return "hk_lm_hash"
     if "write below binary" in text or "binary directory" in text:
         return "k8s_write_binary_dir"
@@ -435,7 +490,9 @@ def generic_remediation(rec: dict[str, Any]) -> dict[str, Any]:
         "generic": True,
         "finding_type": "unknown",
         "nist_800_53": [],
+        "cis": [],
         "key_medium": False,
+        "weakness_name": "",
     }
 
 
@@ -455,7 +512,9 @@ def type_remediation(rec: dict[str, Any]) -> dict[str, Any] | None:
         "generic": False,
         "finding_type": ftype,
         "nist_800_53": list(meta.get("nist_800_53") or []),
+        "cis": list(meta.get("cis") or []),
         "key_medium": bool(meta.get("key_medium")),
+        "weakness_name": TYPE_WEAKNESS_NAME.get(ftype) or str(meta.get("weakness_name") or ""),
     }
 
 
@@ -521,6 +580,35 @@ def _sev_rank(rec: dict[str, Any]) -> int:
     return SEV_RANK.get(str(rec.get("severity") or "info").lower(), 0)
 
 
+def tools_of(rec: dict[str, Any]) -> list[str]:
+    """Scanner/tool names from labels + extra.tools. Survives a merge."""
+    extra = extra_dict(rec)
+    out: list[str] = []
+    for raw in extra.get("tools") or []:
+        token = str(raw or "").strip().lower()
+        if token and token not in out:
+            out.append(token)
+    for lab in rec.get("labels") or []:
+        token = str(lab or "").strip().lower()
+        if token in TOOL_LABELS and token not in out:
+            out.append(token)
+    return out
+
+
+def _record_tools(extra: dict[str, Any], rec: dict[str, Any]) -> None:
+    tools = extra.setdefault("tools", [])
+    if not isinstance(tools, list):
+        extra["tools"] = tools = []
+    sources = extra.setdefault("sources", [])
+    if not isinstance(sources, list):
+        extra["sources"] = sources = []
+    for token in tools_of(rec):
+        if token not in tools:
+            tools.append(token)
+        if token not in sources:
+            sources.append(token)
+
+
 def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     extra = kept.setdefault("extra", {})
     if not isinstance(extra, dict):
@@ -532,6 +620,8 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     for src in (kept.get("source"), other.get("source")):
         if src and src not in sources:
             sources.append(src)
+    _record_tools(extra, kept)
+    _record_tools(extra, other)
     also = extra.setdefault("also_ids", [])
     if not isinstance(also, list):
         extra["also_ids"] = also = []
@@ -546,6 +636,10 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
         other_extra.get("control"),
         other_extra.get("id"),
         other_extra.get("edge"),
+        other_extra.get("rule"),
+        extra.get("rule"),
+        extra.get("id"),
+        extra.get("control"),
     ):
         token = str(cid or "").strip()
         if token and token not in also_check:
@@ -619,6 +713,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                         }
                     ],
                 )
+                _record_tools(extra, rec)
             index[key] = rec
             out.append(rec)
             continue

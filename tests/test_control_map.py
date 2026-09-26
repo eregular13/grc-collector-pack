@@ -47,7 +47,7 @@ def test_rdp_medium_is_key_poam() -> None:
     assert map_finding(rec)["include_poam"] is True
 
 
-def test_low_ssh_not_forced_onto_poam() -> None:
+def test_low_ssh_is_on_full_poam() -> None:
     rec = make_record(
         kind="finding",
         source="inventory-nmap",
@@ -59,7 +59,7 @@ def test_low_ssh_not_forced_onto_poam() -> None:
         assets=["box"],
         extra={"port": "22", "service": "ssh"},
     )
-    assert map_finding(rec)["include_poam"] is False
+    assert map_finding(rec)["include_poam"] is True
 
 
 def test_tls_posture_is_key_poam() -> None:
@@ -517,7 +517,7 @@ def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) ->
         assert row.get("status") == "open"
         assert ":" not in (row.get("framework_refs") or "")
     md = (out_dir() / "poam" / "poam.md").read_text(encoding="utf-8")
-    assert "Pentera" in md and "Evergreen maps" in md
+    assert "Pentera" not in md
     assert "blank" in md.lower()
 
 
