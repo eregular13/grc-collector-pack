@@ -1037,6 +1037,11 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     typed = type_remediation(rec)
     if typed and not typed.get("generic"):
         return _typed_map(rec, typed)
+    # #177 stamped extra.check_id=bh-high-value. That is an unknown typed
+    # key, so type_remediation is the generic fallback. Restore the
+    # group-specific playbook + AC-2/AC-6 before falling through.
+    if check == "bh-high-value":
+        return _bh_high_value_map(rec)
     if _is_package_cve(rec):
         play = _vuln_playbook(rec)
         mapped = _stamp_csf(
@@ -1059,11 +1064,8 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
-    if typed and not (
-        typed.get("generic")
-        and str(extra.get("control_key") or "") in HARDENING_CONTROL_KEYS
-    ):
-        return _typed_map(rec, typed)
+    # Generic typed result falls through to the legacy title map so a
+    # stable check_id cannot hide a playbook the title already names.
     mapped = _map_finding_legacy(rec)
     if mapped.get("generic") and _is_vuln_finding(rec):
         play = _vuln_playbook(rec)
@@ -1329,6 +1331,27 @@ def _is_highvalue_identity(rec: dict[str, Any]) -> bool:
         return False
     blob = _blob(rec)
     return "high-value" in blob or "highvalue" in blob.replace("-", "")
+
+
+def _bh_high_value_map(rec: dict[str, Any]) -> dict[str, Any]:
+    """#177 bh-high-value: keep the group playbook and AC-2/AC-6. IDs unchanged."""
+    play = _highvalue_identity_playbook(rec)
+    mapped = _stamp_csf(
+        {
+            "control_name": play["name"],
+            "recommended_fix": play["fix"],
+            "cpg": [],
+            "include_poam": canon_severity(rec.get("severity")) != "info",
+            "nist_800_53": ["AC-2", "AC-6"],
+            "cis": [],
+            "generic": False,
+            "finding_type": "bh-high-value",
+            "weakness_name": str(rec.get("name") or "High-value identity"),
+        },
+        rec,
+    )
+    mapped["weakness_name"] = weakness_name_for(rec, mapped)
+    return mapped
 
 
 def _highvalue_identity_playbook(rec: dict[str, Any]) -> dict[str, str]:
