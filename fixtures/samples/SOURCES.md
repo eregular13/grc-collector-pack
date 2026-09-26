@@ -53,5 +53,8 @@ LAB/SAMPLE/DEMO — not a client estate. No invented hostnames or tenants.
 - `naabu.jsonl`: naabu v2.6.1 `output.go` (`protocol`, `cdn`, `cdn-name`; open ports only).
 - `nmap-open-filtered.xml`: nmap XML DTD / reference guide port states
   (`open|filtered` is a documented UDP state; MAC `addrtype="mac"`).
+- `udpConnect_10.11.1.0-254.xml`: [chroniccrash/c4rtographer](https://github.com/chroniccrash/c4rtographer)
+  `@ b73866a` `data/udpConnect_10.11.1.0-254.xml` (Nmap 7.40 `-sU` / udpConnect;
+  MIT License). Byte-identical. 44 hosts, 36 udp `open`, 101 `open|filtered`.
 
 Fetched 2026-09-26. Operator file-drop only — parsers never spawn the tools.

@@ -1351,7 +1351,8 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
 # alert). Repeated telemetry lows that share (rule/check id, asset) collapse
 # to one included row; the extras are telemetry_duplicate. A bare nmap-style
 # port-open row on a host+port that already has a specific finding
-# (nuclei/Nessus/testssl/NSE/…) is superseded_by_specific. A lighter plan
+# (nuclei/Nessus/testssl/NSE/…) is superseded_by_specific. UDP open|filtered
+# is not_a_weakness (not a confirmed open port). A lighter plan
 # (GRC_POAM_LIGHTER) restores the old exclude set.
 POAM_INCLUDE_REASONS = frozenset(
     {
@@ -1371,6 +1372,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
+        "not_a_weakness",
     }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
@@ -1453,6 +1455,8 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):
         return {"include": False, "reason": "honeypot", "severity": sev}
+    if extra.get("not_a_weakness") or str(extra.get("exclude_reason") or "") == "not_a_weakness":
+        return {"include": False, "reason": "not_a_weakness", "severity": sev}
     if sev == "info":
         if is_telemetry_finding(rec):
             return {"include": False, "reason": "telemetry_info", "severity": sev}
