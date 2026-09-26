@@ -43,9 +43,11 @@ from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detecti
 from shared.poam_ledger import (
     fingerprints_for,
     fp_v1,
+    item_is_excluded,
     item_maps_to_current,
     ledger_run_delta,
     migrate_finding_refs,
+    persist_ledger,
     run_ledger,
 )
 from shared.vendor_dependency import VD_NOTE
@@ -421,7 +423,18 @@ def load() -> dict:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
+        rec_ref = str(rec.get("ref_id") or "")
+        item = ledger_by_ref.get(rec_ref)
+        if item is None:
+            for cand in migrate_finding_refs(rec_ref):
+                item = ledger_by_ref.get(cand)
+                if item:
+                    break
+        if item is None:
+            item = ledger_by_fp.get(fp_v1(rec))
         if not decision.get("include"):
+            if item:
+                item["excluded_reason"] = str(decision.get("reason") or "unexplained")
             winner_ref = str(decision.get("superseded_by_ref") or "")
             winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
             superseded_by = ""
@@ -441,16 +454,9 @@ def load() -> dict:
                 ]
             )
             continue
+        if item:
+            item["excluded_reason"] = ""
         fields = poam_fields(rec, mapped, today)
-        rec_ref = str(rec.get("ref_id") or "")
-        item = ledger_by_ref.get(rec_ref)
-        if item is None:
-            for cand in migrate_finding_refs(rec_ref):
-                item = ledger_by_ref.get(cand)
-                if item:
-                    break
-        if item is None:
-            item = ledger_by_fp.get(fp_v1(rec))
         status = "open"
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
@@ -469,6 +475,7 @@ def load() -> dict:
                 *[fields[key] for key in POAM_EXTRA_FIELDS],
             ]
         )
+    persist_ledger(poam_ledger)
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
     observed_refs = {str(rec.get("ref_id") or "") for rec in weaknesses if rec.get("ref_id")}
@@ -482,6 +489,10 @@ def load() -> dict:
         if not pid or pid in listed_ids:
             continue
         if status not in {"open", "pending_verification", "reopened"}:
+            continue
+        # Excluded this scan (or a prior scan): stay off the plan even if
+        # the feed that produced the row later disappears.
+        if item_is_excluded(item):
             continue
         # Present this scan but excluded / collapsed, or the same weakness
         # under a migrated ref/fp (nmap ``-445`` → ``-445-tcp``): stay off.

@@ -674,6 +674,30 @@ def item_maps_to_current(
     return False
 
 
+def excluded_reason_for(rec: dict[str, Any]) -> str:
+    """Why this finding is off the POA&M, or empty when it stays on."""
+    from shared.control_map import poam_decision
+
+    decision = poam_decision(rec)
+    if decision.get("include"):
+        return ""
+    return str(decision.get("reason") or "unexplained")
+
+
+def item_is_excluded(item: dict[str, Any]) -> bool:
+    """True when a ledger item was recorded as excluded, not an open weakness."""
+    return bool(str(item.get("excluded_reason") or "").strip())
+
+
+def persist_ledger(ledger: dict[str, Any], out_root: Path | None = None) -> Path:
+    """Rewrite out/poam/poam-ledger.json after in-memory stamps."""
+    ledger["sha256"] = payload_sha256(ledger)
+    dest = (out_root or out_dir()) / LEDGER_OUT_REL
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    return dest
+
+
 def egr_key(policy: str, account: str) -> str:
     """Stable digest for an EGR- rollup. Policy name + account, not resources."""
     acct = str(account or "").strip() or "unknown"
@@ -880,6 +904,7 @@ def _new_item(
         "current_scanner_rating": scanner,
         "scanner_critical": scanner == "critical",
         "status": "open",
+        "excluded_reason": excluded_reason_for(rec),
         "status_date": run_date.isoformat(),
         "closed_date": "",
         "closure_evidence": [],
@@ -1646,6 +1671,7 @@ def apply_ledger(
                     item["ref_id"] = str(rec.get("ref_id") or "")
                 item["name"] = str(rec.get("name") or item.get("name") or "")
                 item["description"] = str(rec.get("description") or item.get("description") or "")
+                item["excluded_reason"] = excluded_reason_for(rec)
                 incoming, incoming_basis = detection_time(rec)
                 item["original_detection_date"] = merge_detection(
                     str(item.get("original_detection_date") or NOT_RECORDED),
@@ -1855,7 +1881,5 @@ def run_ledger(
     )
     if LEDGER_CHAIN_BROKEN in load_warnings:
         ledger["warnings"] = sorted(set(list(ledger.get("warnings") or []) + [LEDGER_CHAIN_BROKEN]))
-    dest = (out_root or out_dir()) / LEDGER_OUT_REL
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    persist_ledger(ledger, out_root)
     return ledger
