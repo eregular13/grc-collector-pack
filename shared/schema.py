@@ -191,7 +191,7 @@ def slug(text: str, maxlen: int | None = 48) -> str:
     for ch in (text or "").lower():
         if ch.isalnum():
             out.append(ch)
-        elif ch in "-_" and (not out or out[-1] != "-"):
+        elif ch in "-_." and (not out or out[-1] != "-"):
             out.append("-")
         elif ch in " /:\\" and (not out or out[-1] != "-"):
             out.append("-")
