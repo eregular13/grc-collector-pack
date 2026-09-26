@@ -311,48 +311,44 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
     return ""
 
 
+def _wazuh_host_segment(raw: str) -> str:
+    """First DNS label, lowercased. ``hosta.corp.local`` → ``hosta``. IPs stay whole."""
+    text = str(raw or "").strip().lower().rstrip(".")
+    if not text:
+        return ""
+    token = text.split()[0]
+    if not token:
+        return ""
+    if token[0].isdigit() or ":" in token:
+        return token
+    return token.split(".", 1)[0]
+
+
 def _wazuh_host_token(rec: dict[str, Any]) -> str:
-    """Finding's own host/agent name — not a ledger-merged hostname."""
+    """Finding's own host/agent — first name segment, not a ledger-merged hostname."""
     extra = extra_dict(rec)
-    assets = [str(a).strip().lower() for a in (rec.get("assets") or []) if str(a).strip()]
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
     if assets:
-        return assets[0]
+        return _wazuh_host_segment(assets[0])
     for key in ("agent", "hostname", "host"):
         val = _extra_field(extra, key)
         if val:
-            return val.lower()
+            return _wazuh_host_segment(val)
     ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
     for key in ("agent", "hostname"):
         val = str(ids.get(key) or "").strip()
         if val:
-            return val.lower()
+            return _wazuh_host_segment(val)
     return ""
 
 
 def _stored_wazuh_hosts(item: dict[str, Any]) -> set[str]:
-    """Host/agent names on a carried Wazuh ledger item (display, title, ref)."""
-    hosts: set[str] = set()
+    """Host tokens from the stored display/host field only — never the title."""
     display = str(item.get("display_asset") or "").strip()
-    if display:
-        hosts.add(display.split()[0].rstrip(".").lower())
-    name = str(item.get("name") or "")
-    if ":" in name:
-        tail = name.rsplit(":", 1)[-1].strip()
-        if tail:
-            hosts.add(tail.split()[0].rstrip(".").lower())
-    on_host = re.search(r"\s+on\s+([A-Za-z0-9_.-]+)\s*$", name, re.I)
-    if on_host:
-        hosts.add(on_host.group(1).lower())
-    ref = str(item.get("ref_id") or "")
-    for prefix in ("coverage-", "diskenc-", "asset-"):
-        idx = ref.lower().rfind(prefix)
-        if idx >= 0:
-            hosts.add(ref[idx + len(prefix) :].lower())
-    desc = str(item.get("description") or "")
-    endp = re.search(r"\bendpoint\s+([A-Za-z0-9_.-]+)\b", desc, re.I)
-    if endp:
-        hosts.add(endp.group(1).lower())
-    return {h for h in hosts if h}
+    if not display:
+        return set()
+    seg = _wazuh_host_segment(display)
+    return {seg} if seg else set()
 
 
 def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> bool:
