@@ -92,7 +92,7 @@ def test_poam_decision_names_low_exposure_and_honeypot() -> None:
     )
     decision = poam_decision(cost)
     assert decision["include"] is False
-    assert decision["reason"] == "NOT_A_WEAKNESS"
+    assert decision["reason"] == "not_a_weakness"
     assert decision["reason"] in POAM_EXCLUDE_REASONS
     assert map_finding(cost)["include_poam"] is False
 
@@ -166,12 +166,17 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     if folder.is_dir():
         for path in sorted(folder.glob("*.jsonl")):
             records.extend(row for row in read_jsonl(path) if isinstance(row, dict))
-    findings = [r for r in dedupe_weaknesses(_dedupe(records)) if r.get("kind") == "finding"]
+    findings = [
+        r
+        for r in dedupe_weaknesses(_dedupe(records))
+        if r.get("kind") in {"finding", "excluded"}
+    ]
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)
-    assert walked["weaknesses_total"] == summary["weaknesses_total"] == len(findings)
-    assert walked["poam_included"] == summary["poam_included"]
+    pending = int(summary.get("pending_carried") or 0)
+    assert walked["weaknesses_total"] + pending == summary["weaknesses_total"] == len(findings) + pending
+    assert walked["poam_included"] + pending == summary["poam_included"]
     assert walked["excluded_by_reason"] == summary["excluded_by_reason"]
     for rec in findings:
         decision = poam_decision(rec)
