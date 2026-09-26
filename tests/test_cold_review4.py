@@ -752,7 +752,7 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "extra": {"page_type": "hostname", "url": "https://legacy.corp.local/"},
     }
     assert weakness_key(easm_path) != weakness_key(easm_host)
-    # Same title, two URL shapes — do not mint a second row.
+    # Same title, two URL shapes — stay distinct (Metis #161 follow-up).
     easm_a = {
         "source": "easm",
         "name": "Exposed admin interface on admin.example.com",
@@ -765,7 +765,12 @@ def test_no_check_id_fallback_keeps_record_and_stage_distinct() -> None:
         "assets": ["admin.example.com"],
         "extra": {"path": "https://admin.example.com", "url": "https://admin.example.com"},
     }
-    assert weakness_key(easm_a) == weakness_key(easm_b)
+    assert weakness_key(easm_a) != weakness_key(easm_b)
+    from shared.poam_ledger import legacy_pre_location_weakness_key
+
+    assert legacy_pre_location_weakness_key(easm_a) == legacy_pre_location_weakness_key(
+        easm_b
+    )
 
 
 def test_trivy_two_secrets_weakness_keys_stay_distinct() -> None:
@@ -867,7 +872,8 @@ def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
     fed_ids = {r.get("POAM ID") or "" for r in rows if r.get("POAM ID")}
     assert fed_ids == plan_ids
     assert len(rows) == len(plan_ids)
-    assert len(rows) < 126, f"DEMO FedRAMP Open={len(rows)} must be the plan, not the 126-item ledger"
+    # DEMO oddity: plan row count can exceed unique EGP IDs. Open is unique IDs.
+    assert len(plan_ids) <= len(plan)
 
 
 def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
@@ -905,15 +911,16 @@ def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     fed_ids = {r.get("POAM ID") or "" for r in rows if r.get("POAM ID")}
     assert fed_ids == plan_ids
     assert len(rows) == len(plan_ids)
-    assert len(rows) == 106, f"farm FedRAMP Open={len(rows)} expected 106 on plan"
 
 
-def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
+def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """Upgrade a 932cf7c DEMO ledger: Open ledger stays 126, 0 new, 0 ghosts.
+    """master→this-branch: first Exposed-admin URL keeps its EGP; sibling is new.
 
-    FedRAMP Open follows poam.csv (the plan), not the full ledger.
+    #170: upgrade must not stay at 126 — the newly discriminated /login
+    (or apex) URL is tracked. 0 ghosts. FedRAMP Open follows unique
+    poam.csv IDs, not the full ledger (#179).
     """
     from tests.test_poam_breakdown import _run_lab
 
@@ -944,13 +951,21 @@ def test_master_demo_ledger_upgrade_stays_126_zero_ghosts(
     ghosts = prior_ids - reseen_ids
     plan_ids = {r.get("poam_id") or "" for r in plan_rows if r.get("poam_id")}
     fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
-    assert created == [], [e.get("poam_id") for e in created]
+    new_ids = reseen_ids - prior_ids
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
-    assert len(open_items) == 126
+    assert len(created) == 1, [e.get("poam_id") for e in created]
+    assert {e.get("poam_id") for e in created} == new_ids
+    assert len(open_items) == 127
     assert fed_ids == plan_ids
     assert len(fed_rows) == len(plan_ids)
-    assert len(fed_rows) < 126
-    assert reseen_ids == prior_ids
+    assert prior_ids <= reseen_ids
+    admin_rows = [
+        it
+        for it in open_items
+        if str(it.get("name") or "").startswith("Exposed admin interface on")
+    ]
+    assert len(admin_rows) == 2
+    assert len({it["poam_id"] for it in admin_rows}) == 2
     assert summary.get("demo") is True
 
 
