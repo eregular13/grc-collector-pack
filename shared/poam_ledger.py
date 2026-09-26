@@ -44,7 +44,13 @@ from shared.kev import (
 from shared.poam_fields import _to_date
 from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
-from shared.vendor_dependency import canon_yes_no, finalize_vendor_fields
+from shared.vendor_dependency import (
+    VD_INVALID_OVERRIDE,
+    VD_NOT_CLOSED,
+    VD_YES,
+    canon_yes_no,
+    finalize_vendor_fields,
+)
 
 LEDGER_IN_REL = Path("poam") / "poam-ledger.json"
 LEDGER_OUT_REL = Path("poam") / "poam-ledger.json"
@@ -338,8 +344,23 @@ def _tracked_snapshot(item: dict[str, Any]) -> dict[str, Any]:
     return {k: item.get(k) for k in TRACKED_FIELDS}
 
 
-def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: date) -> list[str]:
+VD_AUDIT_FIELDS = (
+    "vendor_dependency",
+    "vd_source",
+    "last_vendor_checkin",
+    "vendor_product",
+)
+
+
+def _vd_snapshot(item: dict[str, Any]) -> dict[str, Any]:
+    return {k: item.get(k) for k in VD_AUDIT_FIELDS}
+
+
+def _apply_override(
+    item: dict[str, Any], override: dict[str, str], run_date: date
+) -> tuple[list[str], list[str]]:
     changed: list[str] = []
+    warns: list[str] = []
     mapping = {
         "vendor_dependency": "vendor_dependency",
         "last_vendor_checkin": "last_vendor_checkin",
@@ -348,17 +369,24 @@ def _apply_override(item: dict[str, Any], override: dict[str, str], run_date: da
         "remediation_plan": "remediation_plan",
     }
     for src, dest in mapping.items():
-        if src in override and override[src] != "" and override[src] != item.get(dest):
-            val = override[src]
-            if dest == "vendor_dependency":
-                canon = canon_yes_no(val)
-                if canon is None:
-                    continue
-                val = canon
+        if src not in override or override[src] == "":
+            continue
+        val = override[src]
+        if dest == "vendor_dependency":
+            canon = canon_yes_no(val)
+            if canon is None:
+                warns.append(
+                    f"{VD_INVALID_OVERRIDE}:{item.get('poam_id')}:{val}"
+                )
+                continue
+            val = canon
+            if item.get("vd_source") != "operator":
                 item["vd_source"] = "operator"
+                changed.append("vd_source")
+        if val != item.get(dest):
             item[dest] = val
             changed.append(dest)
-    return changed
+    return changed, warns
 
 
 def _already_mapped(ledger: dict[str, Any], src_fp: str, dest_fp: str, poam_id: str = "") -> bool:
@@ -793,9 +821,17 @@ def apply_ledger(
                     )
 
         ov = overrides.get(str(item.get("poam_id") or ""))
+        before_vd = _vd_snapshot(item)
+        closed_now = False
         if ov:
-            changed = _apply_override(item, ov, run_date)
-            if str(ov.get("status") or "").strip().lower() == "closed" and ov.get("evidence_ref"):
+            changed, ov_warns = _apply_override(item, ov, run_date)
+            warnings.extend(ov_warns)
+            closing = (
+                str(ov.get("status") or "").strip().lower() == "closed" and ov.get("evidence_ref")
+            )
+            if closing and canon_yes_no(item.get("vendor_dependency")) == VD_YES:
+                warnings.append(f"{VD_NOT_CLOSED}:{item.get('poam_id')}")
+            elif closing:
                 closed_on = _to_date(ov.get("status_date") or ov.get("closed_date")) or run_date
                 item["status"] = "closed"
                 item["closed_date"] = closed_on.isoformat()
@@ -803,24 +839,52 @@ def apply_ledger(
                 ev = list(item.get("closure_evidence") or [])
                 ev.append(ov.get("evidence_ref"))
                 item["closure_evidence"] = ev
+                closed_now = True
                 ledger["events"].append(
                     _event(run_iso, fp, str(item["poam_id"]), "closed", {"evidence_ref": ov.get("evidence_ref")})
                 )
             elif changed:
-                item["status_date"] = run_date.isoformat()
-                ledger["events"].append(
-                    _event(run_iso, fp, str(item["poam_id"]), "field_changed", {"override": changed})
-                )
+                non_vd = [c for c in changed if c not in VD_AUDIT_FIELDS]
+                if non_vd:
+                    item["status_date"] = run_date.isoformat()
+                    ledger["events"].append(
+                        _event(run_iso, fp, str(item["poam_id"]), "field_changed", {"override": non_vd})
+                    )
         for flag in finalize_vendor_fields(item, rec, run_date=run_date, override=ov or None):
             warnings.append(f"{flag}:{item.get('poam_id')}")
+        after_vd = _vd_snapshot(item)
+        if after_vd != before_vd and not closed_now:
+            item["status_date"] = run_date.isoformat()
+            ledger["events"].append(
+                _event(
+                    run_iso,
+                    fp,
+                    str(item.get("poam_id") or ""),
+                    "field_changed",
+                    {"before": before_vd, "after": after_vd},
+                )
+            )
 
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
             continue
         if str(item.get("status") or "") == "closed":
             continue
+        before_vd = _vd_snapshot(item)
         for flag in finalize_vendor_fields(item, None, run_date=run_date):
             warnings.append(f"{flag}:{item.get('poam_id')}")
+        after_vd = _vd_snapshot(item)
+        if after_vd != before_vd:
+            item["status_date"] = run_date.isoformat()
+            ledger["events"].append(
+                _event(
+                    run_iso,
+                    fp,
+                    str(item.get("poam_id") or ""),
+                    "field_changed",
+                    {"before": before_vd, "after": after_vd},
+                )
+            )
         if str(item.get("vendor_dependency") or "").strip().lower() == "yes":
             continue
         if str(item.get("operational_requirement") or "").strip().lower() in {"yes", "or"}:
