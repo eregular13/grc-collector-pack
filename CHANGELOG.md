@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- B6_PLAYBOOKS: per-type remediations for Nikto web-app findings, TLS
+  side-channels (BREACH / LUCKY13), and PingCastle RiskIds (`A-MinPwdLen`,
+  `A-Krbtgt`). testssl `id` values map to human failure titles — POA&M
+  weakness is not raw `cert_expirationStatus`. Distinct playbooks (compression
+  vs CBC vs certificate lifetime vs CVE patch). No POST `/api/risks`. Does
+  not touch `product-lab/drop`.
 - LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /
   `scripts/lab.ps1` / CI lab job) now run `collectors/honeypot.py` so DEMO
   `fixtures/demo/honeypot*` land in `poam/excluded.csv` (not header-only).

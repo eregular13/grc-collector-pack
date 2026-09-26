@@ -2,7 +2,22 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Iterator
+
+# Raw testssl `id` → human failure title. Scanner IDs like
+# cert_expirationStatus must not become the POA&M weakness name.
+TESTSSL_TITLES: dict[str, str] = {
+    "cert_expirationStatus": "TLS certificate is expired or expiring",
+    "cert_caIssuers": "Certificate AIA / OCSP issuer could not be checked",
+    "BREACH": "HTTPS response compression enables BREACH",
+    "LUCKY13": "TLS CBC ciphers enable LUCKY13",
+    "heartbleed": "TLS stack is vulnerable to Heartbleed",
+    "TLS1": "TLS 1.0 is offered",
+    "TLS1_1": "TLS 1.1 is offered",
+    "SSLv3": "SSLv3 is offered",
+    "SSL2": "SSLv2 is offered",
+}
 
 _SKIP_SEV = frozenset({"ok", "info", "information", "debug", "warnok"})
 _KEEP_SEV = frozenset({"low", "medium", "high", "critical", "warn", "warning"})
@@ -17,6 +32,23 @@ _SKIP_SECTIONS = frozenset(
         "rating",
     }
 )
+
+
+def human_title(fid: str, finding: str = "") -> str:
+    """Human failure title for a testssl id. Never return raw camelCase IDs."""
+    raw = str(fid or "").strip()
+    if raw in TESTSSL_TITLES:
+        return TESTSSL_TITLES[raw]
+    for tok, title in TESTSSL_TITLES.items():
+        if tok.lower() == raw.lower():
+            return title
+    if raw:
+        spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", raw)
+        spaced = spaced.replace("_", " ").strip()
+        looks_like_id = "_" in raw or any(c.isupper() for c in raw[1:])
+        if looks_like_id and spaced:
+            return spaced[:1].upper() + spaced[1:]
+    return str(finding or "").strip() or raw or "TLS finding"
 
 
 def _host_from_row(row: dict[str, Any], default: str) -> str:

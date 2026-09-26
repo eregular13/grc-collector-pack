@@ -133,6 +133,66 @@ TYPE_ASSERTIONS: dict[str, dict[str, tuple[str, ...]]] = {
         "must": ("binary",),
         "must_not": ("rotate the secret", "acl"),
     },
+    "tls_breach": {
+        "must": ("compress", "breach"),
+        "must_not": ("lucky13", "cbc", "rotate the secret"),
+    },
+    "tls_lucky13": {
+        "must": ("cbc", "lucky13"),
+        "must_not": ("gzip", "breach", "rotate the secret"),
+    },
+    "tls_cert_expiration": {
+        "must": ("certificate", "expir"),
+        "must_not": ("gzip", "lucky13", "cbc"),
+    },
+    "tls_heartbleed": {
+        "must": ("heartbleed",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_1_0": {
+        "must": ("tls 1.0",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_1_1": {
+        "must": ("tls 1.1",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_sslv3": {
+        "must": ("sslv3",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "tls_sslv2": {
+        "must": ("sslv2",),
+        "must_not": ("gzip", "lucky13"),
+    },
+    "web_admin_path": {
+        "must": ("admin", "nikto"),
+        "must_not": ("easm", "gzip", "rotate the secret"),
+    },
+    "web_dir_listing": {
+        "must": ("directory listing", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_sensitive_file": {
+        "must": (".git", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_http_methods": {
+        "must": ("put", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "web_default_creds": {
+        "must": ("default", "nikto"),
+        "must_not": ("gzip", "rotate the secret"),
+    },
+    "pc_min_pwd_len": {
+        "must": ("password", "a-minpwdlen"),
+        "must_not": ("rotate the secret", "gzip"),
+    },
+    "pc_krbtgt": {
+        "must": ("krbtgt",),
+        "must_not": ("gzip", "rotate the secret"),
+    },
 }
 
 

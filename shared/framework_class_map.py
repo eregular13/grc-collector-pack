@@ -366,6 +366,19 @@ CONTROL_CLASS: dict[str, str] = {
     "Disable SMB guest access": "exposure_access",
     "Set strong credentials on database accounts": "identity_password",
     "Remove vendor default credentials": "identity_default",
+    "Disable HTTP compression on HTTPS (BREACH)": "tls_crypto",
+    "Disable TLS CBC ciphers (LUCKY13)": "tls_crypto",
+    "Renew the expired or expiring TLS certificate": "tls_crypto",
+    "Disable TLS 1.1": "tls_crypto",
+    "Disable SSLv3": "tls_crypto",
+    "Disable SSLv2": "tls_crypto",
+    "Remove or lock down the exposed web admin path": "exposure_access",
+    "Disable web-app directory listing": "config_benchmark",
+    "Remove exposed web-app sensitive files": "config_benchmark",
+    "Disable dangerous HTTP methods": "config_benchmark",
+    "Replace web-app default credentials": "identity_default",
+    "Raise the domain minimum password length": "identity_password",
+    "Rotate the krbtgt password twice": "identity_credential",
 }
 
 FINDING_TYPE_CLASS: dict[str, str] = {
@@ -407,6 +420,21 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "nse-smb-guest": "exposure_access",
     "nse-db-empty-password": "identity_password",
     "nse-default-credentials": "identity_default",
+    "tls_breach": "tls_crypto",
+    "tls_lucky13": "tls_crypto",
+    "tls_cert_expiration": "tls_crypto",
+    "tls_heartbleed": "vuln_patch",
+    "tls_1_0": "tls_crypto",
+    "tls_1_1": "tls_crypto",
+    "tls_sslv3": "tls_crypto",
+    "tls_sslv2": "tls_crypto",
+    "web_admin_path": "exposure_access",
+    "web_dir_listing": "config_benchmark",
+    "web_sensitive_file": "config_benchmark",
+    "web_http_methods": "config_benchmark",
+    "web_default_creds": "identity_default",
+    "pc_min_pwd_len": "identity_password",
+    "pc_krbtgt": "identity_credential",
 }
 
 

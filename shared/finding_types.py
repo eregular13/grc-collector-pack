@@ -80,6 +80,24 @@ TYPE_ALIASES: dict[str, str] = {
     "1_2_1": "k8s_anonymous_auth",
     "c_0034": "k8s_privilege_escalation",
     "c_0041": "k8s_hostnetwork",
+    # testssl.sh ids (canonical + lower).
+    "breach": "tls_breach",
+    "lucky13": "tls_lucky13",
+    "cert_expirationstatus": "tls_cert_expiration",
+    "heartbleed": "tls_heartbleed",
+    "tls1": "tls_1_0",
+    "tls1_1": "tls_1_1",
+    "sslv3": "tls_sslv3",
+    "ssl3": "tls_sslv3",
+    "ssl2": "tls_sslv2",
+    # Nikto plugin ids that name a known web-app class.
+    "999966": "tls_breach",
+    # PingCastle Healthcheck RiskId values.
+    "a_minpwdlen": "pc_min_pwd_len",
+    "a_krbtgt": "pc_krbtgt",
+    "a_preauth": "ad_asrep",
+    "a_nopreauth": "ad_asrep",
+    "p_delegated": "ad_unconstrained_delegation",
 }
 
 # Type-specific remediations. Distinct types must not share identical fix text
@@ -302,6 +320,141 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "nist_800_53": ["SI-7", "CM-6", "AC-3"],
         "key_medium": True,
     },
+    "tls_breach": {
+        "control_name": "Disable HTTP compression on HTTPS (BREACH)",
+        "recommended_fix": (
+            "Disable gzip/deflate HTTP compression on HTTPS responses (or isolate "
+            "secrets from compressed bodies). BREACH is a compression side-channel, "
+            "not a cipher-suite upgrade and not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+    },
+    "tls_lucky13": {
+        "control_name": "Disable TLS CBC ciphers (LUCKY13)",
+        "recommended_fix": (
+            "Disable CBC cipher suites and prefer AEAD (AES-GCM or ChaCha20-Poly1305). "
+            "LUCKY13 is a CBC timing side-channel, not HTTP compression and not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+    },
+    "tls_cert_expiration": {
+        "control_name": "Renew the expired or expiring TLS certificate",
+        "recommended_fix": (
+            "Replace the expired or expiring certificate before NotAfter with a "
+            "currently-valid chain. This is a certificate-lifetime finding, not a "
+            "protocol or cipher change and not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-17"],
+        "key_medium": True,
+    },
+    "tls_heartbleed": {
+        "control_name": "Remediate Heartbleed-vulnerable TLS",
+        "recommended_fix": (
+            "Upgrade the TLS stack so Heartbleed is not offered. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SI-2", "RA-5", "SC-8"],
+        "key_medium": True,
+    },
+    "tls_1_0": {
+        "control_name": "Disable TLS 1.0",
+        "recommended_fix": (
+            "Disable TLS 1.0 and require TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+    },
+    "tls_1_1": {
+        "control_name": "Disable TLS 1.1",
+        "recommended_fix": (
+            "Disable TLS 1.1 and require TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe and not a TLS 1.0-only finding."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+    },
+    "tls_sslv3": {
+        "control_name": "Disable SSLv3",
+        "recommended_fix": (
+            "Disable SSLv3 on the listener. Prefer TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+    },
+    "tls_sslv2": {
+        "control_name": "Disable SSLv2",
+        "recommended_fix": (
+            "Disable SSLv2 on the listener. Prefer TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+    },
+    "web_admin_path": {
+        "control_name": "Remove or lock down the exposed web admin path",
+        "recommended_fix": (
+            "Remove or restrict /admin (and sibling login/manager consoles) so they "
+            "are not reachable from untrusted networks. Require SSO or VPN. "
+            "This is a Nikto file-drop finding, not a live HTTP probe and not a hostname inventory row."
+        ),
+        "nist_800_53": ["AC-6", "CM-7", "SC-7"],
+        "key_medium": True,
+    },
+    "web_dir_listing": {
+        "control_name": "Disable web-app directory listing",
+        "recommended_fix": (
+            "Turn off autoindex / directory listing on the web root. "
+            "This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-6", "AC-3"],
+    },
+    "web_sensitive_file": {
+        "control_name": "Remove exposed web-app sensitive files",
+        "recommended_fix": (
+            "Remove .git / .env / phpinfo / server-status from the published tree "
+            "and block those paths. This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-7", "AC-3", "SI-12"],
+        "key_medium": True,
+    },
+    "web_http_methods": {
+        "control_name": "Disable dangerous HTTP methods",
+        "recommended_fix": (
+            "Disable PUT and DELETE (and any unused write methods) on the public listener. "
+            "This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-7", "AC-3"],
+    },
+    "web_default_creds": {
+        "control_name": "Replace web-app default credentials",
+        "recommended_fix": (
+            "Change vendor default passwords on the admin console and disable the "
+            "default account. This is a Nikto file-drop finding, not a live login."
+        ),
+        "nist_800_53": ["IA-5", "AC-2"],
+        "key_medium": True,
+    },
+    "pc_min_pwd_len": {
+        "control_name": "Raise the domain minimum password length",
+        "recommended_fix": (
+            "Set the domain password policy minimum length to at least 14 characters "
+            "(or the org standard). This is PingCastle rule A-MinPwdLen from a "
+            "file-drop, not a live directory call."
+        ),
+        "nist_800_53": ["IA-5", "AC-2"],
+        "key_medium": True,
+    },
+    "pc_krbtgt": {
+        "control_name": "Rotate the krbtgt password twice",
+        "recommended_fix": (
+            "Rotate krbtgt twice (with the required wait) so old KRBTGT keys die. "
+            "This is PingCastle rule A-Krbtgt from a file-drop, not a live DC call."
+        ),
+        "nist_800_53": ["IA-5", "SC-12"],
+        "key_medium": True,
+    },
 }
 
 # Failure-oriented weakness names. Check titles that read as passes
@@ -333,6 +486,21 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
     "k8s_hostnetwork": "Workload uses hostNetwork",
     "k8s_write_binary_dir": "Workload can write under container binary directories",
+    "tls_breach": "HTTPS response compression enables BREACH",
+    "tls_lucky13": "TLS CBC ciphers enable LUCKY13",
+    "tls_cert_expiration": "TLS certificate is expired or expiring",
+    "tls_heartbleed": "TLS stack is vulnerable to Heartbleed",
+    "tls_1_0": "TLS 1.0 is offered",
+    "tls_1_1": "TLS 1.1 is offered",
+    "tls_sslv3": "SSLv3 is offered",
+    "tls_sslv2": "SSLv2 is offered",
+    "web_admin_path": "Web admin or login path is exposed",
+    "web_dir_listing": "Web-app directory listing is enabled",
+    "web_sensitive_file": "Sensitive web-app file is published",
+    "web_http_methods": "Dangerous HTTP write methods are enabled",
+    "web_default_creds": "Web-app default credentials are in use",
+    "pc_min_pwd_len": "Domain minimum password length is below policy",
+    "pc_krbtgt": "krbtgt password has not been rotated",
 }
 
 # Distinct types may share remediations only with an explicit reason.
@@ -362,6 +530,7 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("id"),
         extra.get("control_key"),
         extra.get("rule"),
+        extra.get("risk_id"),
     ]
     return [norm_type_key(str(k)) for k in keys if k]
 
@@ -387,6 +556,41 @@ def _match_blob(rec: dict[str, Any]) -> str:
 
 def _heuristic_type(rec: dict[str, Any]) -> str:
     text = _match_blob(rec)
+    extra = extra_dict(rec)
+    extra_id = str(extra.get("id") or extra.get("risk_id") or "").strip().lower()
+    if extra_id == "breach" or (
+        "breach" in text and ("compress" in text or "gzip" in text or "deflate" in text)
+    ):
+        return "tls_breach"
+    if extra_id == "lucky13" or "lucky13" in text.replace("-", "").replace(" ", ""):
+        return "tls_lucky13"
+    if extra_id in {"cert_expirationstatus", "cert_expiration"} or "cert_expiration" in extra_id:
+        return "tls_cert_expiration"
+    if extra_id in {"sslv3", "ssl3"} or "sslv3" in text.replace(" ", "").replace("-", ""):
+        return "tls_sslv3"
+    if extra_id == "tls1_1" or "tls 1.1" in text or "tlsv1.1" in text:
+        return "tls_1_1"
+    if extra_id == "a-minpwdlen" or extra_id == "a_minpwdlen" or (
+        "minpwdlen" in text or ("password" in text and "less than 8" in text)
+    ):
+        return "pc_min_pwd_len"
+    if extra_id == "a-krbtgt" or extra_id == "a_krbtgt" or (
+        "krbtgt" in text and "pingcastle" in text
+    ):
+        return "pc_krbtgt"
+    labels = {str(x).lower() for x in (rec.get("labels") or [])}
+    nikto = "nikto" in labels or extra_id.isdigit() or "nikto" in text
+    if nikto:
+        if "directory listing" in text or "directory index" in text or "indexing found" in text:
+            return "web_dir_listing"
+        if any(tok in text for tok in (".git", ".env", "phpinfo", "server-status")):
+            return "web_sensitive_file"
+        if "default password" in text or "default credential" in text:
+            return "web_default_creds"
+        if "put" in text and "delete" in text or "allowed http methods" in text:
+            return "web_http_methods"
+        if any(tok in text for tok in ("admin login", "/admin", "phpmyadmin", "wp-admin", "manager/html")):
+            return "web_admin_path"
     if "dcsync" in text or "ds-replication-get-changes" in text or (
         "replicat" in text and ("directory" in text or "get-changes" in text)
     ):
@@ -471,12 +675,14 @@ def finding_type(rec: dict[str, Any]) -> str:
         mapped = TYPE_ALIASES.get(key)
         if mapped:
             return mapped
+    guessed = _heuristic_type(rec)
     source = str(rec.get("source") or "")
+    if guessed and (
+        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+    ):
+        return guessed
     if source not in TYPED_SOURCES:
         return ""
-    guessed = _heuristic_type(rec)
-    if guessed:
-        return guessed
     # Typed collector with an explicit check/edge/control we do not know.
     if keys:
         return "unknown"

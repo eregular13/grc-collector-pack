@@ -701,6 +701,13 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     compact = re.sub(r"[^a-z0-9]+", "", key)
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     control = str(mapped.get("control_name") or extra.get("control_name") or "")
+    scanner_id = str(extra.get("id") or extra.get("risk_id") or "").strip()
+    typed_name = str(mapped.get("weakness_name") or "").strip()
+    if typed_name and scanner_id:
+        raw_l = raw.lower()
+        sid_l = scanner_id.lower()
+        if raw_l == sid_l or raw_l.endswith(sid_l) or f" {sid_l}" in f" {raw_l}":
+            return typed_name
     for title, failure in CHECK_TITLE_FAILURE.items():
         if key == title or compact == title.replace(" ", ""):
             return failure
