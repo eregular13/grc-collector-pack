@@ -861,6 +861,7 @@ class PageContext:
     excluded_poam: int = 0
     in_dir: Path | None = None
     generated_at: str = ""
+    run_delta: dict[str, int] = field(default_factory=dict)
     sensor_rows: list[dict] = field(default_factory=list)
 
 
@@ -901,6 +902,16 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(f"| {sev.title()} | {n_f} | {n_p} | {merged_by[sev]} |")
     lines.append(f"| **Total** | {tot_f} | {tot_p} | {merged_total} |")
     lines.append("")
+    if ctx.run_delta:
+        lines.append(
+            "Changed since last run: "
+            f"open={int(ctx.run_delta.get('open') or 0)} "
+            f"new={int(ctx.run_delta.get('new') or 0)} "
+            f"pending verification={int(ctx.run_delta.get('pending_verification') or 0)} "
+            f"reopened={int(ctx.run_delta.get('reopened') or 0)} "
+            f"closed={int(ctx.run_delta.get('closed') or 0)}."
+        )
+        lines.append("")
     recon = _reconcile(
         tot_f,
         ctx.poam_n or tot_p,
