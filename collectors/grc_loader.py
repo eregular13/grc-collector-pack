@@ -326,7 +326,7 @@ def load() -> dict:
         register = risk_register_treatment(decision)
         if not register["attach_control"]:
             continue
-        cid = f"CTL-{slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
+        cid = f"CTL-{slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'), maxlen=None)}"
         control_ids_by_finding[rec_ref] = cid
         controls.append(
             [
@@ -378,7 +378,7 @@ def load() -> dict:
             cid = ""
         scenarios.append(
             [
-                f"RSK-{slug(str(rec.get('ref_id') or rec.get('name')))}",
+                f"RSK-{slug(str(rec.get('ref_id') or rec.get('name')), maxlen=None)}",
                 "|".join(rec.get("assets") or []),
                 rec.get("category") or rec.get("source"),
                 rec.get("name"),

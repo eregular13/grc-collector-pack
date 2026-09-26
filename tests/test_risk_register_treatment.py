@@ -20,7 +20,7 @@ from shared.control_map import (
     risk_register_treatment,
 )
 from shared.io_util import out_dir, write_canonical
-from shared.schema import make_record, residual_level, scenario_level
+from shared.schema import make_record, residual_level, scenario_level, slug
 
 
 def _finding(**kwargs):
@@ -59,6 +59,14 @@ def test_risk_register_treatment_helper_splits_include_and_exclude() -> None:
         assert stamp["treatment"] == EXCLUDED_TREATMENT == "accept"
         assert stamp["existing_controls"] == f"excluded:{reason}"
         assert stamp["attach_control"] is False
+
+
+def test_uncapped_identity_slug_keeps_long_custodian_refs_distinct() -> None:
+    a = "CLD-excl-stop-underutilized-azure-vms-subscription-aaaa-vm-1"
+    b = "CLD-excl-stop-underutilized-azure-vms-subscription-bbbb-vm-2"
+    assert slug(a) == slug(b)
+    assert slug(a, maxlen=None) != slug(b, maxlen=None)
+    assert slug(a, maxlen=None).startswith("cld-excl-stop-underutilized-azure-vms-subscription-")
 
 
 def test_loader_excluded_scenarios_are_accept_not_mitigate(
@@ -232,6 +240,8 @@ def test_real_custodian_register_is_36_not_8(
     assert summary["risk_scenarios"] == 36
     assert summary["findings"] + summary["kind_excluded"] == 36
     scenarios = csv_rows(out_dir() / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    refs = [row["ref_id"] for row in scenarios]
+    assert len(set(refs)) == len(refs) == 36
     accept = [row for row in scenarios if row.get("treatment") == "accept"]
     mitigate = [row for row in scenarios if row.get("treatment") == "mitigate"]
     assert len(accept) == 28

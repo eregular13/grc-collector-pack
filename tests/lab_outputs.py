@@ -148,6 +148,8 @@ def assert_lab() -> None:
     assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}
     assert reasons & {"honeypot", "severity_info"}, reasons
+    scen_refs = [row["ref_id"] for row in scen]
+    assert len(set(scen_refs)) == len(scen_refs)
     accept_n = 0
     for row in scen:
         treat = row.get("treatment")

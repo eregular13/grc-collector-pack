@@ -316,6 +316,8 @@ def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     assert (work / "out" / "poam" / "poam.md").is_file()
     scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
     assert len(scenarios) == shape["risk_scenarios"]
+    refs = [row["ref_id"] for row in scenarios]
+    assert len(set(refs)) == len(refs)
     excluded = csv_rows(work / "out" / "poam" / "excluded.csv")
     accept_n = 0
     for row in scenarios:
