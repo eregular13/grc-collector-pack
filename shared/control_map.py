@@ -166,6 +166,18 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Disable SSH empty passwords": "SSH empty passwords are allowed",
     "Apply security updates": "Security updates are not applied",
     "Enable time synchronization": "Time synchronization is not enabled",
+    "Stop trusting wildcard certificates too broadly": "Wildcard certificate trust is too broad",
+    "Publish a CAA DNS record": "CAA DNS record is missing or invalid",
+    "Set the missing web security header": "Web response is missing a security header",
+    "Require authentication on Redis": "Redis accepts unauthenticated access",
+    "Disable password-never-expires on accounts": "Accounts are set to password never expires",
+    "Require passwords on every account": "Accounts are configured with password not required",
+    "Deploy LAPS for local administrator passwords": "LAPS is not installed",
+    "Restrict DnsAdmins membership": "DnsAdmins has standing members",
+    "Remove SID History from trusted accounts": "SID History is present on privileged accounts",
+    "Enable SID filtering on trusts": "SID filtering is not enabled on a trust",
+    "Disable DES encryption types for Kerberos": "DES encryption types are enabled",
+    "Review high-value directory group membership": "A high-value directory principal has standing privilege",
 }
 
 # Host-hardening control_keys (Lynis / OpenSCAP / HardeningKitty). Check
@@ -479,6 +491,18 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable legacy authentication protocols": ["IA-2", "IA-5"],
     "Restrict external sharing": ["AC-3", "AC-6"],
     "Review SSH brute-force activity": ["SI-4", "AC-17", "SC-7"],
+    "Stop trusting wildcard certificates too broadly": ["SC-17", "SC-8"],
+    "Publish a CAA DNS record": ["SC-17", "SC-8"],
+    "Set the missing web security header": ["SC-8", "CM-6", "SI-10"],
+    "Require authentication on Redis": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
+    "Disable password-never-expires on accounts": ["IA-5", "AC-2"],
+    "Require passwords on every account": ["IA-5", "AC-2"],
+    "Deploy LAPS for local administrator passwords": ["IA-5", "AC-6"],
+    "Restrict DnsAdmins membership": ["AC-6", "AC-2"],
+    "Remove SID History from trusted accounts": ["AC-3", "AC-6"],
+    "Enable SID filtering on trusts": ["AC-3", "AC-4"],
+    "Disable DES encryption types for Kerberos": ["SC-13", "IA-5"],
+    "Review high-value directory group membership": ["AC-2", "AC-6"],
 }
 
 # Backward-compatible alias used by older tests/docs.
@@ -579,6 +603,8 @@ def _lookup_control_ids(control_name: str) -> tuple[list[str], list[str]]:
         return list(CONTROL_800_53[control_name]), list(CONTROL_CIS.get(control_name) or [])
     if control_name.startswith("Reduce unnecessary network exposure"):
         return ["CM-7", "SC-7"], []
+    if control_name.startswith("Remediate PingCastle"):
+        return ["AC-2", "AC-6", "IA-5"], []
     return [], []
 
 
@@ -625,6 +651,32 @@ def _stamp_csf(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> dic
     return mapped
 
 
+_PKG_LINE_RE = re.compile(r"(?im)(?:^|\b)package:\s*([A-Za-z0-9._+-]+)")
+
+
+def _pkg_from_rec(rec: dict[str, Any]) -> str:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    pkg = str(extra.get("pkg") or extra.get("package") or "").strip()
+    if pkg:
+        return pkg
+    blob = f"{rec.get('name') or ''}\n{rec.get('description') or ''}"
+    match = _PKG_LINE_RE.search(blob)
+    return str(match.group(1) or "").strip() if match else ""
+
+
+def _is_package_cve(rec: dict[str, Any]) -> bool:
+    """Trivy/SARIF/package CVE rows are patch findings, not TLS posture."""
+    if not _cves_in(rec):
+        return False
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("pkg") or extra.get("package"):
+        return True
+    labels = {str(x).lower() for x in (rec.get("labels") or [])}
+    if labels & {"trivy", "sarif"}:
+        return True
+    return bool(_pkg_from_rec(rec))
+
+
 def _cves_in(rec: dict[str, Any]) -> list[str]:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     found: list[str] = []
@@ -648,10 +700,9 @@ def _is_vuln_finding(rec: dict[str, Any]) -> bool:
 
 
 def _vuln_playbook(rec: dict[str, Any]) -> dict[str, Any]:
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     cves = _cves_in(rec)
     cve = cves[0] if cves else ""
-    pkg = str(extra.get("pkg") or extra.get("package") or "").strip()
+    pkg = _pkg_from_rec(rec)
     known = KNOWN_CVE_REMEDIATION.get(cve) or {}
     raw_name = str(rec.get("name") or "").strip()
     if known:
@@ -843,6 +894,17 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     typed = type_remediation(rec)
     if typed and not typed.get("generic"):
         return _typed_map(rec, typed)
+    if _is_package_cve(rec):
+        play = _vuln_playbook(rec)
+        mapped = _stamp_csf(
+            {
+                **play,
+                "cpg": [],
+            },
+            rec,
+        )
+        mapped["weakness_name"] = weakness_name_for(rec, mapped)
+        return mapped
     if typed and typed.get("generic") and _is_vuln_finding(rec):
         play = _vuln_playbook(rec)
         mapped = _stamp_csf(
@@ -1000,6 +1062,65 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
             "This is a PingCastle file-drop finding, not a live AD call."
         ),
     },
+    "S-PwdNeverExpires": {
+        "name": "Disable password-never-expires on accounts",
+        "fix": (
+            "Clear 'Password never expires' on the flagged accounts and enroll them "
+            "in the domain password policy. This is PingCastle S-PwdNeverExpires "
+            "from a file-drop, not a live AD call."
+        ),
+    },
+    "S-PwdNotRequired": {
+        "name": "Require passwords on every account",
+        "fix": (
+            "Clear PASSWD_NOTREQD so every account must have a password. "
+            "This is PingCastle S-PwdNotRequired from a file-drop, not a live AD call."
+        ),
+    },
+    "A-LAPS-Not-Installed": {
+        "name": "Deploy LAPS for local administrator passwords",
+        "fix": (
+            "Install Windows LAPS (or legacy LAPS) and store unique local-admin "
+            "passwords in the directory. This is PingCastle A-LAPS-Not-Installed "
+            "from a file-drop, not a live AD call."
+        ),
+    },
+    "A-LAPS-Not-Running": {
+        "name": "Deploy LAPS for local administrator passwords",
+        "fix": (
+            "Enable the LAPS client so unique local-admin passwords rotate. "
+            "This is PingCastle A-LAPS-Not-Running from a file-drop, not a live AD call."
+        ),
+    },
+    "P-DNSAdmin": {
+        "name": "Restrict DnsAdmins membership",
+        "fix": (
+            "Empty DnsAdmins except break-glass; members can load a DLL on a DC. "
+            "This is PingCastle P-DNSAdmin from a file-drop, not a live AD call."
+        ),
+    },
+    "T-SIDHistory": {
+        "name": "Remove SID History from trusted accounts",
+        "fix": (
+            "Strip SID History from the flagged principals after the migration "
+            "window. This is PingCastle T-SIDHistory from a file-drop, not a live AD call."
+        ),
+    },
+    "T-SIDFiltering": {
+        "name": "Enable SID filtering on trusts",
+        "fix": (
+            "Re-enable SID filtering (quarantine) on the flagged trust so foreign "
+            "SIDs cannot impersonate privileged groups. This is PingCastle "
+            "T-SIDFiltering from a file-drop, not a live AD call."
+        ),
+    },
+    "S-DesEnabled": {
+        "name": "Disable DES encryption types for Kerberos",
+        "fix": (
+            "Clear 'Use Kerberos DES encryption types' on the flagged accounts. "
+            "This is PingCastle S-DesEnabled from a file-drop, not a live AD call."
+        ),
+    },
 }
 
 
@@ -1007,6 +1128,52 @@ def _pingcastle_playbook(rec: dict[str, Any]) -> dict[str, str] | None:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     rid = str(extra.get("risk_id") or "").strip()
     return _PINGCASTLE_RULES.get(rid)
+
+
+# Specific group names first so Schema/Enterprise/DnsAdmins do not fall through
+# to the builtin Administrators playbook.
+_HIGHVALUE_GROUP_RULES: tuple[tuple[str, str], ...] = (
+    ("schema admin", "P-SchemaAdmins"),
+    ("enterprise admin", "P-EnterpriseAdmins"),
+    ("domain admin", "P-DomainAdmins"),
+    ("backup operator", "P-BackupOperators"),
+    ("account operator", "P-AccountOperators"),
+    ("print operator", "P-PrintOperators"),
+    ("server operator", "P-ServerOperators"),
+    ("dnsadmin", "P-DNSAdmin"),
+    ("dns admin", "P-DNSAdmin"),
+)
+
+
+def _is_highvalue_identity(rec: dict[str, Any]) -> bool:
+    name = str(rec.get("name") or "").strip().lower()
+    if name == "high-value identity":
+        return True
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("risk_id"):
+        return False
+    blob = _blob(rec)
+    return "high-value" in blob or "highvalue" in blob.replace("-", "")
+
+
+def _highvalue_identity_playbook(rec: dict[str, Any]) -> dict[str, str]:
+    assets = " ".join(str(a) for a in (rec.get("assets") or []))
+    blob = f"{assets} {rec.get('name') or ''} {rec.get('description') or ''}".lower()
+    for needle, rid in _HIGHVALUE_GROUP_RULES:
+        if needle in blob:
+            play = _PINGCASTLE_RULES.get(rid)
+            if play:
+                return play
+    if re.search(r"(?<![a-z])administrators?(?![a-z])", blob):
+        return _PINGCASTLE_RULES["P-Administrators"]
+    return {
+        "name": "Review high-value directory group membership",
+        "fix": (
+            "Confirm the high-value principal still needs standing privilege and "
+            "remove unused members. This is a BloodHound/PingCastle file-drop "
+            "finding, not a live AD call."
+        ),
+    }
 
 
 def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
@@ -1125,7 +1292,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Disable TLS 1.0 and require TLS 1.2 or newer. "
             "This is a dropped TLS export, not a live probe."
         )
-    elif (
+    elif not _is_package_cve(rec) and (
         port == "443"
         or re.search(r"(?<![a-z0-9_])tls(?![a-z0-9_])", text)
         or re.search(r"(?<![a-z0-9_])ssl(?![a-z0-9_])", text)
@@ -1535,6 +1702,10 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
                 "from the healthcheck rationale. This is a PingCastle file-drop finding, "
                 "not a live AD call."
             )
+    elif _is_highvalue_identity(rec):
+        play = _highvalue_identity_playbook(rec)
+        name = play["name"]
+        fix = play["fix"]
     elif str(rec.get("category") or "") == "exposure":
         name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"
         fix = (

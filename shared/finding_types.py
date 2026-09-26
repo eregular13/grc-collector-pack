@@ -91,6 +91,9 @@ TYPE_ALIASES: dict[str, str] = {
     "sslv3": "tls_sslv3",
     "ssl3": "tls_sslv3",
     "sslv2": "tls_sslv2",
+    "cert_trust_wildcard": "tls_wildcard",
+    "dns_caarecord": "tls_caa",
+    "exposed_redis": "redis_noauth",
     # Nikto plugin ids that name a known web-app class (IDs drift; message wins).
     "999966": "tls_breach",
     "999995": "web_http_methods",  # Nikto 2.6.1 PUT
@@ -409,6 +412,38 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "key_medium": True,
         "source": "testssl",
     },
+    "tls_wildcard": {
+        "control_name": "Stop trusting wildcard certificates too broadly",
+        "recommended_fix": (
+            "Replace the wildcard trust with a hostname-scoped certificate, or "
+            "limit which names the wildcard may cover. This is a dropped testssl "
+            "export, not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-17", "SC-8"],
+        "source": "testssl",
+    },
+    "tls_caa": {
+        "control_name": "Publish a CAA DNS record",
+        "recommended_fix": (
+            "Publish a CAA record that names the approved certificate issuers "
+            "and an iodef contact. This is a dropped testssl export, not a live "
+            "DNS query."
+        ),
+        "nist_800_53": ["SC-17", "SC-8"],
+        "source": "testssl",
+    },
+    "redis_noauth": {
+        "control_name": "Require authentication on Redis",
+        "recommended_fix": (
+            "Enable Redis ACL users or requirepass with a strong secret, set "
+            "protected-mode yes, bind Redis to localhost or a private interface "
+            "only, and firewall TCP/6379. This is a nuclei exposed-redis / "
+            "file-drop finding, not a live probe."
+        ),
+        "nist_800_53": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
+        "key_medium": True,
+        "source": "nuclei",
+    },
     "web_admin_path": {
         "control_name": "Remove or lock down the exposed web admin path",
         "recommended_fix": (
@@ -479,6 +514,17 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         ),
         "nist_800_53": ["SI-10", "AC-3", "CM-7"],
         "key_medium": True,
+        "source": "nikto",
+    },
+    "web_missing_header": {
+        "control_name": "Set the missing web security header",
+        "recommended_fix": (
+            "Add the flagged response header (HSTS, X-Frame-Options, "
+            "X-Content-Type-Options, or Content-Security-Policy) on the public "
+            "listener. This is a Nikto web-app finding, not a TLS cipher change "
+            "and not a live HTTP probe."
+        ),
+        "nist_800_53": ["SC-8", "CM-6", "SI-10"],
         "source": "nikto",
     },
     "pc_min_pwd_len": {
@@ -566,6 +612,9 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "tls_1_1": "TLS 1.1 is offered",
     "tls_sslv3": "SSLv3 is offered",
     "tls_sslv2": "SSLv2 is offered",
+    "tls_wildcard": "Wildcard certificate trust is too broad",
+    "tls_caa": "CAA DNS record is missing or invalid",
+    "redis_noauth": "Redis accepts unauthenticated access",
     "web_admin_path": "Web admin or login path is exposed",
     "web_dir_listing": "Web-app directory listing is enabled",
     "web_sensitive_file": "Sensitive web-app file is published",
@@ -573,6 +622,7 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "web_default_creds": "Web-app default credentials are in use",
     "web_xss": "Web application reflects cross-site scripting",
     "web_lfi": "Web application allows local file inclusion",
+    "web_missing_header": "Web response is missing a security header",
     "pc_min_pwd_len": "Domain minimum password length is below policy",
     "pc_krbtgt": "krbtgt password has not been rotated",
     "pc_delegated": "Privileged account is not marked sensitive / Protected Users",
@@ -609,6 +659,8 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("id"),
         extra.get("control_key"),
         extra.get("rule"),
+        extra.get("template_id"),
+        extra.get("template-id"),
     ]
     return [norm_type_key(str(k)) for k in keys if k]
 
@@ -671,6 +723,8 @@ _TESTSSL_EXACT: dict[str, str] = {
     "sslv3": "tls_sslv3",
     "ssl3": "tls_sslv3",
     "sslv2": "tls_sslv2",
+    "cert_trust_wildcard": "tls_wildcard",
+    "dns_caarecord": "tls_caa",
 }
 
 _PINGCASTLE_EXACT: dict[str, str] = {
@@ -685,6 +739,22 @@ _PINGCASTLE_EXACT: dict[str, str] = {
 
 _NIKTO_METHOD_IDS = frozenset({"999995", "999978"})
 _NIKTO_BREACH_IDS = frozenset({"999966"})
+_NIKTO_HEADER_IDS = frozenset({"999970", "999976", "999957"})
+_NIKTO_HEADER_TOKS = (
+    "strict-transport-security",
+    "x-frame-options",
+    "x-content-type-options",
+    "content-security-policy",
+    "x-xss-protection",
+    "referrer-policy",
+)
+
+
+def _nikto_missing_header(msg: str, extra_id: str) -> bool:
+    if extra_id in _NIKTO_HEADER_IDS:
+        return True
+    blob = str(msg or "").lower()
+    return any(tok in blob for tok in _NIKTO_HEADER_TOKS)
 
 
 def _nikto_http_methods(msg: str, extra_id: str) -> bool:
@@ -732,6 +802,8 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
             return "web_default_creds"
         if _nikto_http_methods(msg.lower(), raw_id):
             return "web_http_methods"
+        if _nikto_missing_header(msg, raw_id):
+            return "web_missing_header"
         if any(tok in msg.lower() for tok in ("admin login", "/admin", "phpmyadmin", "wp-admin", "manager/html")):
             return "web_admin_path"
     if "dcsync" in text or "ds-replication-get-changes" in text or (
@@ -766,6 +838,20 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         or "lmhash" in text.replace(" ", "").replace("_", "")
     ):
         return "hk_lm_hash"
+    if "redis" in text and any(
+        tok in text
+        for tok in (
+            "without auth",
+            "unauthenticated",
+            "noauth",
+            "no auth",
+            "requirepass",
+            "accessible without authentication",
+            "exposed-redis",
+            "exposed_redis",
+        )
+    ):
+        return "redis_noauth"
     if "write below binary" in text or "binary directory" in text:
         return "k8s_write_binary_dir"
     if "allowprivilegeescalation" in text.replace(" ", "").replace("_", "").replace("-", "") or (
@@ -830,7 +916,7 @@ def finding_type(rec: dict[str, Any]) -> str:
     if _risk_id_only(rec) and source in {"identity-ad", ""}:
         return ""
     if guessed and (
-        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_", "redis_"))
     ):
         return guessed
     if source not in TYPED_SOURCES:
