@@ -147,7 +147,7 @@ Do not restore wrap POSTs to `/api/auth/login`, `/itsm/assets`, `/evidence`, `/i
 
 ## Drop real scanner output
 
-Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`, `wazuh`, `identity`, `easm`, `k8s`, `code`, `saas`, `dns_email`, `honeypot`). Empty `in/` uses `fixtures/demo/` and labels include `demo`. Parse failure falls back to fixtures.
+Copy tool JSON/XML/JSONL into the matching `in/` folder (`cloud`, `nmap`, `vuln`, `wazuh`, `identity`, `easm`, `k8s`, `code`, `saas`, `dns_email`, `honeypot`). Empty `in/` on a DEMO/SAMPLE run uses `fixtures/demo/` and labels include `demo`. LAB / CLIENT / operator drops never substitute demo: parse failure or an empty sensor is recorded as `parse_error` / `no_records` and that collector stays empty.
 
 OSS / fair-use only (Prowler, Nmap, Nuclei, Trivy, Wazuh, BloodHound CE, Amass, Kubescape, Gitleaks, ScubaGear, official cloud APIs, …). No Wiz / Orca / Prisma / CrowdStrike / Qualys / Tenable / Vanta / Drata required.
 

@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 192 — merge master #133 DEMO fallback into real-sample parsers (2026-09-26)
+
+Merge `origin/master` `036aff8` (PR #133 no demo fixture fill on
+LAB/operator parse failures) into `cursor/real-sample-parsers-ea49`.
+Both behaviors kept: `run_collector` reports `parse_error` / `no_records`
+and never substitutes `fixtures/demo` on LAB/CLIENT/operator drops,
+and real-sample parsers (Prowler OCSF/CSV, Wazuh JSONL/SCA, XCCDF
+severity, SARIF Trivy critical, enum4linux-ng). Malformed
+Prowler/Wazuh/XCCDF/SARIF/enum4linux on a LAB run is `parse_error`,
+not demo fill. No force-push. PR #134 stays open. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 191 — merge master #130 HK into real-sample parsers (2026-09-26)
 
 Merge `origin/master` `05a29fd` (PR #130 HardeningKitty TestResult +
@@ -14,6 +27,16 @@ stays open. pytest **1046**. Host-lab `assets=81` `findings=104`
 **unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
 stay-out.
 
+## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
+
+Merge master `05a29fd` (#130 HardeningKitty) into the DEMO fallback
+honesty branch. Both behaviors stay: official Audit CSV TestResult +
+filename host on LAB dest_in identity, and `run_collector` never fills
+`fixtures/demo` on LAB/CLIENT/operator parse failure. HK lab-drop
+identity hosts stay `lab-win.lab.internal` / `lab-win-b.lab.internal`
+— never demo `win-dc01`. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`.
+
 ## cycle 190 — HK TestResult authority + filename host (2026-09-26)
 
 Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV
@@ -25,6 +48,15 @@ legacy Result=Failed still parses). Host from
 `HARDENINGKITTY_HOST` — never silent `windows-host`. Two SYNTHETIC
 fixtures, official header only. Catalog **unchanged**. paying_day
 **FAIL**. No POST `/api/risks`.
+
+## cycle 189 — DEMO fallback honesty (2026-09-26)
+
+Parse failure / empty sensor on LAB, CLIENT, or a live operator drop
+never substitutes `fixtures/demo`. Per-sensor `parse_error` /
+`no_records` land in `summary.json` and `/api/coverage` sensors.
+DEMO/SAMPLE empty-in still loads fixtures and stays labeled. No POST
+`/api/risks`. RiskReady stay-out. Catalog **unchanged**. paying_day
+**FAIL**.
 
 ## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
 
