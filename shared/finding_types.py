@@ -651,6 +651,30 @@ def _has_word(text: str, *words: str) -> bool:
     return False
 
 
+def has_xss_signal(rec: dict[str, Any]) -> bool:
+    """XSS only from plugin name, family, or CWE — never the description body.
+
+    'Multiple Vulnerabilities' plugins list XSS among other issues in the
+    description; that must not type the row as web_xss or pick an XSS playbook.
+    """
+    extra = extra_dict(rec)
+    blob = " ".join(
+        str(x or "")
+        for x in (
+            rec.get("name"),
+            extra.get("plugin_family"),
+            extra.get("family"),
+            extra.get("cwe"),
+            extra.get("cwes"),
+        )
+    ).lower()
+    if _has_word(blob, "xss") or "cross-site scripting" in blob or "cross site scripting" in blob:
+        return True
+    if re.search(r"cwe[-_ ]?79\b", blob):
+        return True
+    return False
+
+
 def _message_text(rec: dict[str, Any]) -> str:
     """Nikto/testssl message first — name + description, not URL-only extra."""
     return f"{rec.get('name') or ''} {rec.get('description') or ''}"
@@ -710,13 +734,18 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return mapped
     msg = _message_text(rec)
     labels = {str(x).lower() for x in (rec.get("labels") or [])}
-    nikto = "nikto" in labels or raw_id.isdigit() or "nikto" in msg.lower()
+    nessus = "nessus" in labels or str(extra.get("tool") or "").lower() == "nessus"
+    nikto = (not nessus) and (
+        "nikto" in labels or raw_id.isdigit() or "nikto" in msg.lower()
+    )
+    if has_xss_signal(rec):
+        return "web_xss"
     if nikto:
         # Message-text-first, then plugin ID (IDs drift between Nikto versions).
+        # XSS is name / family / CWE only (has_xss_signal above) — never a
+        # substring inside a Nessus 'Multiple Vulnerabilities' description.
         if _has_word(msg, "breach") or raw_id in _NIKTO_BREACH_IDS:
             return "tls_breach"
-        if _has_word(msg, "xss") or "cross-site scripting" in msg.lower() or "cross site scripting" in msg.lower():
-            return "web_xss"
         if (
             _has_word(msg, "lfi")
             or "directory traversal" in msg.lower()
