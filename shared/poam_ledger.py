@@ -87,6 +87,50 @@ _UUIDISH = re.compile(
 )
 _HOST_PORT_PROTO_SLUG = re.compile(r".+-\d+-(tcp|udp|sctp)$", re.I)
 _IPV4_PORT_SLUG = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}-\d+", re.I)
+# Covey pack_drop observation/service row ids (nmap-10-microsoftds-445,
+# rustscan-7-tcp-80). Not plugin/check ids. nmap-port-445/tcp is excluded.
+_PACK_DROP_ROW_ADAPTERS = frozenset(
+    {
+        "nmap",
+        "rustscan",
+        "naabu",
+        "nping",
+        "unicornscan",
+        "httpx",
+        "sslscan",
+        "tlsx",
+        "whatweb",
+        "hping3",
+        "onesixtyone",
+        "nbtscan",
+        "braa",
+        "ike-scan",
+        "svmap",
+        "fping",
+    }
+)
+_PACK_DROP_ROW_PORT = re.compile(r"-\d+$")
+_PACK_DROP_HOST_INDEX = re.compile(
+    r"^(" + "|".join(sorted(_PACK_DROP_ROW_ADAPTERS)) + r")-[a-z]?\d+-",
+    re.I,
+)
+_NMAP_PORT_CHECK_ID = re.compile(r"^nmap-port-\d+/(tcp|udp|sctp)$", re.I)
+_OPEN_PORT_OBSERVED = re.compile(
+    r"^open(?:\s+[a-z0-9._/-]+(?:\s+on)?)?\s+(?:tcp|udp|sctp)/\d+\s+observed$",
+    re.I,
+)
+_OPEN_PORT_N = re.compile(
+    r"^open\s+port\s+\d+(?:/[a-z0-9._-]+)?$",
+    re.I,
+)
+_PORT_EXPOSURE_TITLE = re.compile(
+    r"^[a-z0-9._/+-]+(?:\s+\d+(?:/(?:tcp|udp|sctp))?)?(?:\s+[a-z0-9._/+-]+)?\s+exposed$",
+    re.I,
+)
+_NOT_PORT_EXPOSURE_TITLE = re.compile(
+    r"share|signing|protocol|enabled|required|directory|\.git|cipher|smbv1|tls\s+\d",
+    re.I,
+)
 _URL_IN_TEXT = re.compile(r"https?://[^\s<>()\[\]'\",;]+", re.I)
 _TRAILING_LOC = ").,;:\"'"
 _SERVICE_NAMES = frozenset(
@@ -238,8 +282,71 @@ def _is_literal_host_port_slug(text: str) -> bool:
     return False
 
 
+def _is_pack_drop_row_id(val: str) -> bool:
+    """True for Covey row ids that must not become weakness identity.
+
+    ``nmap-10-microsoftds-445`` / ``rustscan-7-tcp-80`` are lift keys.
+    ``nmap-port-445/tcp`` is the stable XML/check id and stays accepted.
+    """
+    text = str(val or "").strip()
+    if not text or _NMAP_PORT_CHECK_ID.match(text):
+        return False
+    prefix, sep, rest = text.lower().partition("-")
+    if not sep or prefix not in _PACK_DROP_ROW_ADAPTERS:
+        return False
+    return bool(_PACK_DROP_ROW_PORT.search(rest))
+
+
+def _nmap_port_weakness_key(port: str, proto: str) -> str:
+    proto_n = proto if proto in {"tcp", "udp", "sctp"} else "tcp"
+    return f"nmap:nmap-port-{port}/{proto_n}"
+
+
+def _strip_pack_drop_host_index(row_id: str) -> str:
+    """nmap-10-microsoftds-445 → nmap-microsoftds-445. Empty when not a row id."""
+    text = str(row_id or "").strip()
+    if not text or not _is_pack_drop_row_id(text):
+        return ""
+    return _PACK_DROP_HOST_INDEX.sub(r"\1-", text, count=1)
+
+
+def _is_port_exposure_observation(rec: dict[str, Any]) -> bool:
+    """True only for open-port / '{svc} {port} exposed' rows.
+
+    Specific findings on the same host/port (SMBv1, TLS 1.0, .git) stay distinct.
+    """
+    name = strip_asset_from_title(rec)
+    if _NOT_PORT_EXPOSURE_TITLE.search(name):
+        return False
+    extra = extra_dict(rec)
+    if _extra_field(extra, "claim").lower() == "open_port_observed":
+        return True
+    if str(rec.get("kind") or "").strip().lower() == "observation":
+        return True
+    if _OPEN_PORT_OBSERVED.match(name) or _OPEN_PORT_N.match(name):
+        return True
+    return bool(_PORT_EXPOSURE_TITLE.match(name))
+
+
+def _pack_drop_specific_port_key(
+    rec: dict[str, Any],
+    *,
+    port: str,
+    proto: str,
+    token: str,
+    title: str,
+) -> str:
+    """Keep a discriminator so SMBv1 ≠ SMB 445 exposed on the same port."""
+    cls = finding_type(rec) or str(rec.get("category") or "exposure")
+    proto_n = proto if proto in {"tcp", "udp", "sctp"} else "tcp"
+    disc = token or title or _strip_pack_drop_host_index(_extra_field(extra_dict(rec), "id"))
+    if not disc:
+        disc = "specific"
+    return f"port:{port}/{proto_n}:{cls.lower()}:{disc}"
+
+
 def _is_scanner_identity(val: str) -> bool:
-    """True for plugin/check ids. Denylist: service names, obs-*, UUIDs, host/IP slugs."""
+    """True for plugin/check ids. Denylist: service names, obs-*, UUIDs, host/IP slugs, pack_drop row ids."""
     text = str(val or "").strip()
     if not text or "<" in text or text.endswith(">"):
         return False
@@ -251,6 +358,8 @@ def _is_scanner_identity(val: str) -> bool:
     if lowered.startswith("obs-") or lowered.startswith("observation"):
         return False
     if _is_literal_host_port_slug(text):
+        return False
+    if _is_pack_drop_row_id(text):
         return False
     return True
 
@@ -513,6 +622,22 @@ def _weakness_key_core(rec: dict[str, Any]) -> str:
     proto = (_extra_field(extra, "protocol") or _extra_field(extra, "proto")).lower()
     token = _extra_identity_token(rec)
     title = _title_discriminator(rec)
+    adapter = _extra_field(extra, "adapter").lower()
+    port_exposure = bool(port and port != "0" and _is_port_exposure_observation(rec))
+    if (
+        port_exposure
+        and adapter in {"", "nmap"}
+        and (tool == "nmap" or source_family(rec) == "inventory-nmap")
+    ):
+        # pack_drop extra.id is not identity; same host/port as XML nmap-port-*.
+        return _nmap_port_weakness_key(port, proto)
+    if port_exposure and adapter in _PACK_DROP_ROW_ADAPTERS:
+        proto_n = proto if proto in {"tcp", "udp", "sctp"} else "tcp"
+        return f"{adapter}:port:{port}/{proto_n}"
+    if port and port != "0" and adapter in _PACK_DROP_ROW_ADAPTERS and not port_exposure:
+        return _pack_drop_specific_port_key(
+            rec, port=port, proto=proto, token=token, title=title
+        )
     if port and port != "0":
         cls = finding_type(rec) or str(rec.get("category") or "exposure")
         if token:

@@ -2194,7 +2194,9 @@ def iter_poam_decisions(
             decision["superseded_by"] = egp_id_for(winner)
             decision["superseded_by_ref"] = str(winner.get("ref_id") or "")
         out.append((rec, decision))
-    return out
+    from shared.egp_collapse import collapse_same_egp
+
+    return collapse_same_egp(out)
 
 
 def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = None) -> dict[str, Any]:

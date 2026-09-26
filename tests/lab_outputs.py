@@ -213,6 +213,11 @@ def assert_lab() -> None:
             if vd == "No":
                 assert not (row.get("Last Vendor Check-in Date") or "").strip()
                 assert not (row.get("Vendor Dependent Product Name") or "").strip()
+                comments = row.get("Comments") or ""
+                assert (
+                    "default, not verified" in comments
+                    or "no fix available" in comments.lower()
+                ), comments
             else:
                 product = (row.get("Vendor Dependent Product Name") or "").strip()
                 assert product and product.lower() not in {"n/a", "none"}
