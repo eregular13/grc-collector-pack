@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from shared.asset_ids import stamp_ids
+from shared.asset_ids import is_placeholder_id, stamp_ids
 from shared.io_util import (
     SidecarSkip,
     UnrecognizedShape,
@@ -129,6 +129,19 @@ def _ocsf_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
     arn = str(res_meta.get("arn") or rid)
     service = str(group.get("name") or (types[0] if types else "") or "cloud")
     account_uid = str(account.get("uid") or item.get("account_uid") or "").strip()
+    if is_placeholder_id(account_uid):
+        account_uid = ""
+    info_time = ""
+    if isinstance(info, dict):
+        info_time = str(info.get("created_time") or info.get("created_time_dt") or "")
+    scan_time = str(
+        item.get("time_dt")
+        or item.get("time")
+        or info_time
+        or item.get("Timestamp")
+        or item.get("timestamp")
+        or ""
+    )
     return {
         "CheckID": check_id,
         "CheckTitle": title,
@@ -140,6 +153,7 @@ def _ocsf_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         "ServiceName": service,
         "AccountId": account_uid,
         "Muted": _is_muted(item),
+        **({"scan_time": scan_time} if scan_time and not is_placeholder_id(scan_time) else {}),
     }
 
 
@@ -792,7 +806,11 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             res0 = _ocsf_resource(item)
             rid = res0.get("uid") or res0.get("name")
         rid = str(rid or check)
+        if is_placeholder_id(rid):
+            continue
         arn = str(item.get("ResourceArn") or item.get("arn") or rid)
+        if is_placeholder_id(arn):
+            arn = ""
         desc = str(item.get("Description") or item.get("StatusExtended") or title)
         service = str(item.get("ServiceName") or item.get("service") or "cloud")
         account = str(
@@ -802,6 +820,8 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             or item.get("AwsAccountId")
             or ""
         ).strip()
+        if is_placeholder_id(account):
+            account = ""
         asset_type = "SP" if service.lower() in {"iam", "identity", "aad"} else "PR"
         asset_key = rid.lower()
         if asset_key not in seen_assets:
@@ -859,6 +879,9 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             }
             if account:
                 extra["account_id"] = account
+            scan_time = str(item.get("scan_time") or item.get("Timestamp") or item.get("time_dt") or "")
+            if scan_time and not is_placeholder_id(scan_time):
+                extra["scan_time"] = scan_time
             if sev_unmapped:
                 extra["severity_unmapped"] = True
                 extra["severity_raw"] = str(raw_sev)

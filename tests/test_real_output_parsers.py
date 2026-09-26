@@ -127,9 +127,61 @@ def test_trivy_secrets_and_misconfig_only() -> None:
     assert sfind
     assert any("aws-access-key-id" in (r.get("description") or r["name"]).lower() or "AWS Access Key" in r["name"] for r in sfind)
     assert all("[REDACTED]" in str(secrets) or "AKIA" not in str(secrets) for _ in [0])
+    assert all(r["extra"].get("rule") and r["extra"].get("check_id") for r in sfind)
+    assert any(r["extra"].get("check_id") == "aws-access-key-id" for r in sfind)
     mis = vuln_scan.parse_file(SAMPLES / "trivy" / "dockerfile.json")
     mfind = [r for r in mis if r["kind"] == "finding"]
     assert any(r["extra"].get("cve") == "" and "DS-0002" in r["ref_id"] or "DS-0002" in r["name"] or r["name"].startswith("Image user") for r in mfind)
+    assert any(r["extra"].get("check_id") == "DS-0002" or r["extra"].get("rule") == "DS-0002" for r in mfind)
+    cve_rows = vuln_scan.parse_file(SAMPLES / "trivy" / "k8s-cluster.json")
+    cve_find = [r for r in cve_rows if r["kind"] == "finding" and str(r["extra"].get("cve") or "").startswith("CVE")]
+    assert cve_find
+    assert all(not r["extra"].get("check_id") and not r["extra"].get("rule") for r in cve_find)
+
+
+def test_trivy_two_secrets_on_one_file_stay_distinct(tmp_path: Path) -> None:
+    payload = {
+        "SchemaVersion": 2,
+        "ArtifactName": "testdata/fixtures/repo/secrets",
+        "ArtifactType": "repository",
+        "Results": [
+            {
+                "Target": "deploy.sh",
+                "Class": "secret",
+                "Secrets": [
+                    {
+                        "RuleID": "aws-access-key-id",
+                        "Category": "AWS",
+                        "Severity": "CRITICAL",
+                        "Title": "AWS Access Key ID",
+                        "Match": "export AWS_ACCESS_KEY_ID=[REDACTED]",
+                    },
+                    {
+                        "RuleID": "generic-secret",
+                        "Category": "General",
+                        "Severity": "HIGH",
+                        "Title": "My Secret",
+                        "Match": "export MY_SECRET=[REDACTED]",
+                    },
+                ],
+            }
+        ],
+    }
+    dest = tmp_path / "two-secrets.json"
+    dest.write_text(json.dumps(payload), encoding="utf-8")
+    recs = vuln_scan.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 2
+    ids = {r["extra"].get("check_id") for r in findings}
+    assert ids == {"aws-access-key-id", "generic-secret"}
+    from shared.poam_ledger import fp_v1, weakness_key
+
+    keys = {weakness_key(r) for r in findings}
+    fps = {fp_v1(r) for r in findings}
+    assert len(keys) == 2
+    assert len(fps) == 2
+    assert "unkeyed" not in "".join(keys)
+    assert all(r["extra"].get("rule") == r["extra"].get("check_id") for r in findings)
 
 
 def test_osquery_hostidentifier_and_check_snapshot() -> None:
