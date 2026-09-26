@@ -41,6 +41,7 @@ from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
+from shared.egp_collapse import bind_alias_targets_to_ledger
 from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import (
@@ -468,6 +469,18 @@ def load() -> dict:
             item = ledger_by_fp.get(fp_v1(rec))
         return item
 
+    # Content-hash EGP (egp_id_for) is first-seen only. Bind alias
+    # pointers to the survivor's live ledger poam_id so upgraded
+    # farms do not write merged_into/superseded_by at a dead hash.
+    bind_alias_targets_to_ledger(poam_decisions, _ledger_item_for)
+    excluded_reasons: dict[str, int] = {}
+    for _rec, decision in poam_decisions:
+        if decision.get("include"):
+            continue
+        reason = str(decision.get("reason") or "unexplained")
+        excluded_reasons[reason] = excluded_reasons.get(reason, 0) + 1
+    breakdown["excluded_by_reason"] = excluded_reasons
+
     # Shared-EGP folds (#180): an excluded pack_drop duplicate and the
     # specific plan row resolve to the same item. Mark excluded only when
     # no included record maps to that item this run.
@@ -491,13 +504,11 @@ def load() -> dict:
             elif not decision.get("include"):
                 item["excluded_reason"] = str(decision.get("reason") or "unexplained")
         if not decision.get("include"):
-            winner_ref = str(decision.get("superseded_by_ref") or "")
-            winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
-            superseded_by = ""
-            if winner_item:
-                superseded_by = str(winner_item.get("poam_id") or "")
+            superseded_by = str(decision.get("superseded_by") or "")
             if not superseded_by:
-                superseded_by = str(decision.get("superseded_by") or "")
+                winner_ref = str(decision.get("superseded_by_ref") or "")
+                winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
+                superseded_by = str((winner_item or {}).get("poam_id") or "")
             excluded_rows.append(
                 [
                     rec.get("ref_id") or "",
@@ -751,7 +762,7 @@ def load() -> dict:
             "weaknesses_total == poam_included + excluded == "
             "weaknesses + kind_excluded + pending_carried; "
             "kind:excluded rows stay on the register as treatment=accept; "
-            "pack_drop twins are excluded as merged_into:<survivor EGP> and "
+            "pack_drop twins are excluded as merged_into:<survivor ledger EGP> and "
             "stay off the register; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"

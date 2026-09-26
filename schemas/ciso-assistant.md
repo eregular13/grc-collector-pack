@@ -85,7 +85,9 @@ One row per canonical finding that is on the register. `findings.csv` rows > 0 r
 CISO Community CSV import has no justification/comment column
 (`shared/ciso_shape.py` `CISO_HEADERS`). Accept / exclude reasons live in
 `out/poam/excluded.csv` `excluded_reason`. Pack_drop twins excluded as
-`merged_into:<survivor EGP>` are aliases and are not register accept rows.
+`merged_into:<survivor ledger EGP>` are aliases and are not register accept rows.
+The survivor ID is the live ledger `poam_id` (preserved on upgrade), not a
+fresh content hash. The same ID is written to `superseded_by`.
 
 ## POA&M (operator draft — not a CISO import)
 
