@@ -91,12 +91,12 @@ Preferred import: clica or CISO Assistant UI. Do not invent FindingsAssessment U
 
 | File | Rows |
 |---|---|
-| `assets.csv` | {counts[\"ciso/assets.csv\"]} |
-| `findings.csv` | {counts[\"ciso/findings.csv\"]} |
-| `vulnerabilities.csv` | {counts[\"ciso/vulnerabilities.csv\"]} |
-| `evidences.csv` | {counts[\"ciso/evidences.csv\"]} |
-| `applied_controls.csv` | {counts[\"ciso/applied_controls.csv\"]} |
-| `risk_scenarios.csv` | {counts[\"ciso/risk_scenarios.csv\"]} |
+| `assets.csv` | {counts["ciso/assets.csv"]} |
+| `findings.csv` | {counts["ciso/findings.csv"]} |
+| `vulnerabilities.csv` | {counts["ciso/vulnerabilities.csv"]} |
+| `evidences.csv` | {counts["ciso/evidences.csv"]} |
+| `applied_controls.csv` | {counts["ciso/applied_controls.csv"]} |
+| `risk_scenarios.csv` | {counts["ciso/risk_scenarios.csv"]} |
 
 ## `poam/`
 
@@ -104,7 +104,7 @@ Operator draft. Not a CISO import. Owner and due stay blank.
 
 | File | Rows |
 |---|---|
-| `poam.csv` | {counts[\"poam/poam.csv\"]} |
+| `poam.csv` | {counts["poam/poam.csv"]} |
 | `poam.md` | same draft, markdown |
 
 Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
@@ -115,9 +115,9 @@ OpenGRC Data Manager CSVs (Risks / Assets / Implementations). File-true leave-be
 
 | File | Rows |
 |---|---|
-| `risks.csv` | {counts[\"opengrc/risks.csv\"]} |
-| `assets.csv` | {counts[\"opengrc/assets.csv\"]} |
-| `implementations.csv` | {counts[\"opengrc/implementations.csv\"]} |
+| `risks.csv` | {counts["opengrc/risks.csv"]} |
+| `assets.csv` | {counts["opengrc/assets.csv"]} |
+| `implementations.csv` | {counts["opengrc/implementations.csv"]} |
 
 Operator path: Data Manager → Import Data → map headers. Status is **Not Assessed**. No taxonomy FKs invented.
 
@@ -127,7 +127,7 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 
 | File | Rows |
 |---|---|
-| `import_preview/probo.json` | {counts[\"import_preview/probo.json\"]} addFinding drafts |
+| `import_preview/probo.json` | {counts["import_preview/probo.json"]} addFinding drafts |
 
 RiskReady is out of scope. This drop does not include RiskReady JSON. Do not POST `/api/risks`.
 """
