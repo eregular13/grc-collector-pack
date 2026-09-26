@@ -23,5 +23,4 @@ python -m pytest tests -q
   "grc_loader.py"
 ) | ForEach-Object { python (Join-Path $Root "collectors\$_") }
 python (Join-Path $Root "scripts\preview_probo.py")
-python (Join-Path $Root "scripts\preview_rr.py")
 python (Join-Path $Root "tests\lab_outputs.py")

@@ -8,7 +8,7 @@ Count identity is CISO Assistant CSVs + `out/poam/poam.csv` (`open_risks`). Impo
 
 1. Run the host lab or Reload from disk in the console.
 2. Hand `out/ciso-assistant/` and `out/poam/poam.csv` (SimpleRisk leave-behind: `out/simplerisk/poam.csv`).
-3. Optional leftover preview only if an old tree still has `out/riskready/`: `python scripts/preview_rr.py`. Status is `PENDING`, `auto_approve: false`, `posts_api_risks: false`.
+3. There is no leftover RiskReady preview. `out/riskready/` was retired in #136. Do not run `scripts/preview_rr.py` — that script is gone.
 
 ## LICENSE-LOCK stay-out
 

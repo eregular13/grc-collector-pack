@@ -622,9 +622,10 @@ def test_export_ciso_poam_does_not_post(tmp_path: Path, monkeypatch: pytest.Monk
     assert "Desktop" in data["clica"] or "clica" in data["clica"]
 
 
-def test_export_ciso_poam_posted_only_when_ciso_push(
+def test_export_ciso_poam_posted_false_when_ciso_push(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """CISO_PUSH=1 still lists files only — posted stays false with a reason."""
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     (tmp_path / "out" / "poam").mkdir(parents=True)
     (tmp_path / "out" / "poam" / "poam.csv").write_text("weakness\nsmb\n", encoding="utf-8")
@@ -634,12 +635,106 @@ def test_export_ciso_poam_posted_only_when_ciso_push(
     dry = dispatch("export_ciso_poam", scope_path=SCOPE)
     assert dry["posted"] is False
     assert dry["http"] is False
+    assert dry.get("reason")
     monkeypatch.setenv("DRY_RUN", "0")
     armed = dispatch("export_ciso_poam", scope_path=SCOPE)
-    assert armed["posted"] is True
+    assert armed["posted"] is False
     assert armed["http"] is False
     assert armed["ciso_push"] == "1"
     assert armed["wrap"] == "review-only"
+    reason = str(armed.get("reason") or "")
+    assert reason
+    assert "listed" in reason.lower() or "not implemented" in reason.lower()
+    assert "files" in reason.lower() or "push" in reason.lower()
+
+
+def _rpc_tool_payload(body: dict) -> dict:
+    """Refusal may be a JSON-RPC result or error.data — both are a normal reply."""
+    err = body.get("error") if isinstance(body.get("error"), dict) else {}
+    data = err.get("data") if isinstance(err.get("data"), dict) else None
+    result = body.get("result") if isinstance(body.get("result"), dict) else None
+    return data or result or {}
+
+
+def test_handle_jsonrpc_tool_runtime_error_is_refusal_and_stdio_continues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unexpected tool exceptions become a structured refusal; the stdio loop continues."""
+    import io
+    import json
+    import sys
+
+    from dropbox import mcp_stub
+    from dropbox.mcp_stub import _stdio_loop, handle_jsonrpc
+
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("collector exploded")
+
+    monkeypatch.setattr(mcp_stub, "scan_to_sor", boom)
+
+    body = handle_jsonrpc(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "scan_to_sor", "arguments": {}},
+        }
+    )
+    assert "jsonrpc" in body
+    assert body.get("id") == 1
+    assert "result" in body or "error" in body
+    payload = _rpc_tool_payload(body)
+    assert payload.get("ok") is False
+    assert payload.get("refused") is True
+    assert payload.get("fail_code") == "TOOL_ERROR"
+    reason = str(payload.get("reason") or "")
+    assert "RuntimeError" in reason
+    assert "collector exploded" in reason
+    assert "Traceback" not in json.dumps(body)
+    assert "traceback" not in reason.lower()
+    assert payload.get("scanned") is False
+    assert payload.get("wrote_out") is False
+
+    reqs = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "tools/call",
+                "params": {"name": "scan_to_sor"},
+            }
+        )
+        + "\n"
+        + json.dumps({"jsonrpc": "2.0", "id": 11, "method": "initialize", "params": {}})
+        + "\n"
+    )
+    buf = io.StringIO()
+    monkeypatch.setattr(sys, "stdin", io.StringIO(reqs))
+    monkeypatch.setattr(sys, "stdout", buf)
+    assert _stdio_loop() == 0
+    lines = [json.loads(line) for line in buf.getvalue().splitlines() if line.strip()]
+    assert len(lines) == 2
+    first = _rpc_tool_payload(lines[0])
+    assert first.get("ok") is False
+    assert first.get("refused") is True
+    assert first.get("fail_code") == "TOOL_ERROR"
+    assert "RuntimeError" in str(first.get("reason") or "")
+    assert lines[1]["id"] == 11
+    assert lines[1]["result"]["serverInfo"]["name"] == "dropbox-operator-mcp"
+
+    def interrupt(*_args, **_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(mcp_stub, "scan_to_sor", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        handle_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": 12,
+                "method": "tools/call",
+                "params": {"name": "scan_to_sor"},
+            }
+        )
 
 
 def _rpc_once(argv: list[str], req: dict, *, cwd: Path | None = None) -> dict:
