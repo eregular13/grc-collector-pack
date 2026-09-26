@@ -513,3 +513,41 @@ def test_synthetic_eleven_security_policies_never_drop_unknown() -> None:
             assert recs[0].get("NeedsReview") in (None, False)
     assert dropped == []
     assert len(on_plan) == 11
+
+
+def test_unknown_needs_review_rolls_up_per_policy() -> None:
+    """Two unknown policies × many resources → two rollup items, not N."""
+    recs = cloud_prowler._custodian_findings(
+        {
+            "policies": [
+                {
+                    "name": "require-owner-tag",
+                    "resource": "aws.ec2",
+                    "description": "stage label",
+                    "filters": [],
+                    "resources": [
+                        {"InstanceId": f"i-aaa{i:03d}", "AccountId": "111122223333"}
+                        for i in range(20)
+                    ],
+                },
+                {
+                    "name": "snapshot-age-days",
+                    "resource": "aws.ec2",
+                    "description": "age window",
+                    "filters": [],
+                    "resources": [
+                        {"InstanceId": f"i-bbb{i:03d}", "AccountId": "111122223333"}
+                        for i in range(20)
+                    ],
+                },
+            ]
+        }
+    )
+    assert len(recs) == 2
+    assert {r["CheckID"] for r in recs} == {"require-owner-tag", "snapshot-age-days"}
+    for item in recs:
+        assert item.get("NeedsReview") is True
+        assert item.get("Rollup") is True
+        assert item["AffectedCount"] == 20
+        assert item["ResourceId"] == "account:111122223333"
+        assert item["AffectedResources"] == sorted(item["AffectedResources"])

@@ -262,6 +262,126 @@ def test_e546db1_ledger_upgrade_keeps_every_carried_id() -> None:
     assert all(e.get("poam_id") not in old_ids for e in created)
 
 
+def _unknown_policy_payload(name: str, resources: list[dict]) -> dict:
+    return {
+        "name": name,
+        "resource": "aws.ec2",
+        "description": "stage label or age window",
+        "filters": [],
+        "resources": resources,
+    }
+
+
+def test_two_unknown_policies_on_200_resources_are_two_egr_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Needs-review rolls up per policy+account (EGR-), not per resource.
+
+    Two unknown tagging/age policies × 200 resources used to mint 200
+    needs-review rows (over the 50/100-asset budget). One POA&M row per
+    unknown policy; known security stays per resource.
+    """
+    from shared.poam_ledger import egr_key, assign_poam_id
+
+    account = "111122223333"
+    names = ("require-owner-tag", "snapshot-age-days")
+    for name in names:
+        assert cloud_prowler._custodian_classify(
+            name, {"description": "stage label or age window", "resource": "aws.ec2"}
+        ) == "unknown"
+
+    def _resources(prefix: str, order: range) -> list[dict]:
+        return [
+            {"InstanceId": f"i-{prefix}{i:04d}", "AccountId": account} for i in order
+        ]
+
+    payload = {
+        "policies": [
+            _unknown_policy_payload(names[0], _resources("tag", range(200))),
+            _unknown_policy_payload(names[1], _resources("age", range(200))),
+        ]
+    }
+    src = tmp_path / "unknown-rollups.json"
+    src.write_text(json.dumps(payload), encoding="utf-8")
+    recs = cloud_prowler.parse_file(src)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert len(findings) == 2, [r.get("ref_id") for r in findings]
+    by_check = {(r.get("extra") or {}).get("check_id"): r for r in findings}
+    assert set(by_check) == set(names)
+    for name, hit in by_check.items():
+        extra = hit.get("extra") or {}
+        assert extra.get("needs_review") is True
+        assert extra.get("rollup") is True
+        assert extra.get("poam_prefix") == "EGR-"
+        assert extra.get("affected_count") == 200
+        assert len(extra.get("resources") or []) == 200
+        assert extra["resources"] == sorted(extra["resources"])
+        assert hit["assets"] == [f"account:{account}"]
+        assert f"matched 200 resources" in (hit.get("description") or "")
+        assert extra["resources"][0] in (hit.get("description") or "")
+
+    sec = cloud_prowler._custodian_findings(
+        {
+            "name": "s3-encryption-missing",
+            "resource": "aws.s3",
+            "description": "unencrypted buckets",
+            "filters": [],
+            "resources": [
+                {"Name": "bucket-a", "AccountId": account},
+                {"Name": "bucket-b", "AccountId": account},
+            ],
+        }
+    )
+    assert len(sec) == 2
+    assert all(not r.get("NeedsReview") and not r.get("Rollup") for r in sec)
+    assert [r["ResourceId"] for r in sec] == ["bucket-a", "bucket-b"]
+
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out-a"))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    write_canonical("cloud-prowler", recs)
+    summary = load()
+    with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam = list(csv.DictReader(fh))
+    assert len(poam) == 2
+    ids = [row["poam_id"] for row in poam]
+    assert all(pid.startswith("EGR-") for pid in ids)
+    assert len(set(ids)) == 2
+    expected = {
+        names[0]: assign_poam_id(egr_key(names[0], account), {}, prefix="EGR-"),
+        names[1]: assign_poam_id(egr_key(names[1], account), {}, prefix="EGR-"),
+    }
+    for name, pid in expected.items():
+        hit = next(
+            row
+            for row in poam
+            if name in (row.get("weakness_source_id") or row.get("weakness") or "")
+        )
+        assert hit["poam_id"] == pid
+        detail = " ".join(
+            str(hit.get(k) or "")
+            for k in ("weakness_description", "weakness", "recommended_fix", "comments")
+        )
+        assert "200" in detail
+    assert summary["poam"] == 2
+
+    shuffled = {
+        "policies": [
+            _unknown_policy_payload(names[0], _resources("tag", range(199, -1, -1))),
+            _unknown_policy_payload(names[1], _resources("age", range(199, -1, -1))),
+        ]
+    }
+    src2 = tmp_path / "unknown-rollups-shuffled.json"
+    src2.write_text(json.dumps(shuffled), encoding="utf-8")
+    recs2 = cloud_prowler.parse_file(src2)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out-b"))
+    write_canonical("cloud-prowler", recs2)
+    load()
+    with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        poam2 = list(csv.DictReader(fh))
+    assert {row["poam_id"] for row in poam2} == set(ids)
+
+
 def test_demo_ledger_upgrade_keeps_e546_carried_ids(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -905,6 +905,16 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     if _is_needs_review(rec):
+        n_hit = extra.get("affected_count")
+        try:
+            n_hit_i = int(n_hit)
+        except (TypeError, ValueError):
+            n_hit_i = 0
+        count_bit = (
+            f" Rolled up {n_hit_i} affected resources into this row."
+            if n_hit_i
+            else ""
+        )
         return _stamp_csf(
             {
                 "control_name": "Needs review (unclassified Cloud Custodian policy)",
@@ -912,6 +922,7 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
                     "This Cloud Custodian policy matched no known security or "
                     "cost/ops classification. It stays on the POA&M as "
                     "needs-review until an operator maps it. Do not drop it."
+                    + ((" " + count_bit) if count_bit else "")
                 ),
                 "cpg": [],
                 "include_poam": True,
