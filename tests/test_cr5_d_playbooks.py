@@ -96,12 +96,14 @@ def test_osquery_alf_firewall_disabled_is_not_generic() -> None:
     recs = host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.darwin.log")
     alf = next(r for r in recs if r["kind"] == "finding" and "Application firewall" in r["name"])
     assert finding_type(alf) == "host_fw"
+    mapped = map_finding(alf)
     _assert_specific(
-        map_finding(alf),
+        mapped,
         control="Enable a host firewall",
         n53={"SC-7", "CM-7"},
         tokens=("firewall",),
     )
+    assert "macos alf" in str(mapped.get("weakness_name") or "").lower()
 
 
 def test_custodian_ebs_snapshot_public_stamps_ac3_sc7_and_3s() -> None:
@@ -135,7 +137,7 @@ def test_greenbone_ssh_weak_encryption_uses_scanner_solution() -> None:
     _assert_specific(
         mapped,
         control="Disable weak SSH cryptographic algorithms",
-        n53={"CM-6", "SC-13"},
+        n53={"CM-6", "SC-8(1)", "SC-13"},
         tokens=("disable the weak encryption algorithms",),
     )
     n53 = set(mapped.get("nist_800_53") or [])
@@ -151,7 +153,7 @@ def test_nessus_ssh_weak_mac_matches_greenbone_pattern() -> None:
     _assert_specific(
         mapped,
         control="Disable weak SSH cryptographic algorithms",
-        n53={"CM-6", "SC-13"},
+        n53={"CM-6", "SC-8(1)", "SC-13"},
         tokens=("disable the weak mac algorithms",),
     )
     n53 = set(mapped.get("nist_800_53") or [])

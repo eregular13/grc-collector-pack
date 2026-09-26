@@ -471,7 +471,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "End privileged HasSession logons": ["AC-6", "AC-2"],
     "Run container images as a non-root USER": ["AC-6", "CM-7"],
     "Block public EBS snapshot sharing": ["AC-3", "SC-7"],
-    "Disable weak SSH cryptographic algorithms": ["CM-6", "SC-13"],
+    "Disable weak SSH cryptographic algorithms": ["CM-6", "SC-8(1)", "SC-13"],
     "Disable SSH empty passwords": ["IA-5", "IA-2"],
     "Apply security updates": ["SI-2", "CM-6", "RA-5"],
     "Enable time synchronization": ["AU-8"],
@@ -738,7 +738,7 @@ def _ssh_weak_crypto_playbook(rec: dict[str, Any]) -> dict[str, Any]:
         "recommended_fix": (
             f"{fix} This is a dropped scanner finding, not a live SSH probe."
         ),
-        "nist_800_53": ["CM-6", "SC-13"],
+        "nist_800_53": ["CM-6", "SC-8(1)", "SC-13"],
         "cis": [],
         "generic": False,
         "finding_type": "ssh_weak_crypto",
@@ -844,6 +844,9 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     control = str(mapped.get("control_name") or extra.get("control_name") or "")
     scanner_id = str(extra.get("id") or extra.get("risk_id") or "").strip()
+    check_id = str(extra.get("check_id") or extra.get("id") or "").strip().lower()
+    if check_id == "alf" or "application firewall" in key:
+        return "macOS ALF is disabled"
     typed_name = str(mapped.get("weakness_name") or "").strip()
     if typed_name and scanner_id:
         raw_l = raw.lower()

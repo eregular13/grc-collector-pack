@@ -605,7 +605,7 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "ad_adminto": "Principal has standing local-admin (AdminTo) rights",
     "ad_session": "Privileged principal has a HasSession on a workstation",
     "ssh_root_login": "SSH PermitRootLogin is enabled",
-    "host_fw": "Host or application firewall is disabled",
+    "host_fw": "Host firewall or macOS ALF is disabled",
     "docker_nonroot": "Container image runs as root",
     "ebs_snapshot_public": "EBS snapshot is shared publicly",
     "ad_backup_operators": "Backup Operators has standing members",
