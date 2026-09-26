@@ -169,6 +169,7 @@ COVERAGE_GAPS_HEADING = "### Coverage gaps"
 
 EXPORT_CSV_REL = (
     "poam/poam.csv",
+    "poam/poam_fedramp.csv",
     "poam/excluded.csv",
     "ciso-assistant/assets.csv",
     "ciso-assistant/applied_controls.csv",
@@ -1234,6 +1235,9 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(f"| {sev.title()} | {n_f} | {n_p} | {merged_by[sev]} |")
     lines.append(f"| **Total** | {tot_f} | {tot_p} | {merged_total} |")
     lines.append("")
+    plan_n = int(ctx.poam_n or tot_p)
+    lines.append(f"Open POA&M (poam.csv): {plan_n}")
+    lines.append("")
     if ctx.run_delta:
         lines.append(
             "Changed since last run: "
@@ -1338,6 +1342,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     return _fit_one_page(
         "\n".join(lines),
         keep_tails=(
+            "Open POA&M (poam.csv):",
             "### What this does not tell you",
             COVERAGE_GAPS_HEADING,
             "### Next step",

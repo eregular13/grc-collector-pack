@@ -11,7 +11,7 @@ import pytest
 
 from collectors.grc_loader import _dedupe, load
 from shared.asset_ledger import AssetLedger, attach_asset_uids
-from shared.ciso_shape import assert_flood_guard, assert_poam_breakdown
+from shared.ciso_shape import assert_flood_guard, assert_one_truth_counts, assert_poam_breakdown
 from shared.control_map import (
     POAM_EXCLUDE_REASONS,
     map_finding,
@@ -220,6 +220,7 @@ def _run_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
 def test_poam_breakdown_identity_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     summary = _run_lab(tmp_path, monkeypatch)
     _assert_walk_matches_summary(tmp_path, summary)
+    assert_one_truth_counts(tmp_path)
 
 
 def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
@@ -242,6 +243,7 @@ def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
     )
     summary = json.loads((work / "out" / "summary.json").read_text(encoding="utf-8"))
     _assert_walk_matches_summary(work / "out", summary)
+    assert_one_truth_counts(work / "out")
 
 
 def test_poam_breakdown_identity_farm_drop(tmp_path: Path) -> None:
@@ -265,3 +267,4 @@ def test_poam_breakdown_identity_farm_drop(tmp_path: Path) -> None:
     )
     summary = json.loads((work / "out" / "summary.json").read_text(encoding="utf-8"))
     _assert_walk_matches_summary(work / "out", summary)
+    assert_one_truth_counts(work / "out")

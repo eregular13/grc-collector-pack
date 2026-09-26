@@ -352,7 +352,7 @@ def test_real_corpus_28_excluded_reach_excluded_csv(
     import csv
 
     from collectors.grc_loader import load
-    from shared.ciso_shape import assert_flood_guard
+    from shared.ciso_shape import assert_flood_guard, assert_one_truth_counts
     from shared.io_util import out_dir, write_canonical
 
     accept = json.loads((SAMPLES / "acceptance.json").read_text(encoding="utf-8"))
@@ -409,6 +409,8 @@ def test_real_corpus_28_excluded_reach_excluded_csv(
     for rec in osq_excl:
         assert by_ref[rec["ref_id"]]["superseded_by"] == "unmapped query"
     assert {r["ref_id"] for r in osq_excl + c7n_excl} <= set(by_ref)
+    assert all("poam_id" in row for row in rows)
+    assert_one_truth_counts(out_dir())
 
 
 def test_real_corpus_four_poam_rows() -> None:

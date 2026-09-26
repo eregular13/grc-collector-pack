@@ -56,7 +56,7 @@ CISO_HEADERS = {
 }
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
-EXCLUDED_HEADER = "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by"
+EXCLUDED_HEADER = "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,poam_id"
 EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
@@ -442,6 +442,60 @@ def assert_poam_fedramp_identity(ciso_or_out: Path) -> dict[str, Any]:
     return {"ok": True, "rows": len(poam)}
 
 
+def assert_one_truth_counts(
+    ciso_or_out: Path,
+    *,
+    exec_text: str | None = None,
+    console_poam: int | None = None,
+) -> dict[str, Any]:
+    """FedRAMP Open IDs == poam.csv IDs == console count == exec count."""
+    identity = assert_poam_fedramp_identity(ciso_or_out)
+    out = resolve_out_dir(ciso_or_out)
+    poam = csv_rows(out / "poam" / "poam.csv")
+    n = len(poam)
+    if any(not str(row.get("poam_id") or "").startswith("EGP-") for row in poam):
+        bad = [row.get("poam_id") for row in poam if not str(row.get("poam_id") or "").startswith("EGP-")]
+        raise RegisterShapeError(f"EXPORT_IDENTITY_FAIL POAM- fallback {bad[:8]}")
+    summary_path = out / "summary.json"
+    summary: dict[str, Any] = {}
+    if summary_path.is_file():
+        loaded = json.loads(summary_path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            summary = loaded
+            if "poam" in summary and int(summary.get("poam") or 0) != n:
+                raise RegisterShapeError(
+                    f"EXPORT_IDENTITY_FAIL summary.poam={summary.get('poam')} != poam.csv={n}"
+                )
+    if console_poam is None:
+        try:
+            from product.server import _count_identity_summary, poam_summary
+
+            console_summary = _count_identity_summary(out, dict(summary))
+            kpi = poam_summary(out)
+            console_poam = int(console_summary.get("poam") or 0)
+            if int(kpi.get("total") or 0) != n:
+                raise RegisterShapeError(
+                    f"EXPORT_IDENTITY_FAIL console kpi={kpi.get('total')} != poam.csv={n}"
+                )
+        except ImportError:
+            console_poam = n
+    if int(console_poam) != n:
+        raise RegisterShapeError(
+            f"EXPORT_IDENTITY_FAIL console_poam={console_poam} != poam.csv={n}"
+        )
+    text = exec_text
+    if text is None:
+        exec_path = out / "EXECUTIVE_SUMMARY.md"
+        text = exec_path.read_text(encoding="utf-8") if exec_path.is_file() else ""
+    if text:
+        marker = f"Open POA&M (poam.csv): {n}"
+        if marker not in text:
+            raise RegisterShapeError(
+                f"EXPORT_IDENTITY_FAIL exec missing {marker!r}"
+            )
+    return {"ok": True, "rows": n, **({} if identity.get("skipped") else {"identity": True})}
+
+
 def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
     """Usable risk register + POA&M, not merely N CSV files exist."""
     register = assert_ciso_register(ciso_dir_of(ciso_or_out))
@@ -517,7 +571,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
             EXCLUDED_HEADER + "\n"
-            "DEMO-I,sample-info,sample-asset,info,severity_info,\n"
-            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,\n",
+            "DEMO-I,sample-info,sample-asset,info,severity_info,,\n"
+            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,,\n",
             encoding="utf-8",
         )

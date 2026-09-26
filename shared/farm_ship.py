@@ -17,9 +17,11 @@ from typing import Any, Iterable
 
 from shared.ciso_shape import (
     CISO_HEADERS,
+    EXCLUDED_HEADER,
     POAM_HEADER,
     RegisterShapeError,
     assert_flood_guard,
+    assert_one_truth_counts,
     assert_risk_register_and_poam,
     first_nonempty_line,
 )
@@ -223,6 +225,7 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
         raise FarmShipError("FARM_SHIP_FAIL posted must be false")
     try:
         shape = assert_risk_register_and_poam(dest / "out")
+        assert_one_truth_counts(dest / "out")
     except RegisterShapeError as exc:
         raise FarmShipError(f"FARM_SHIP_FAIL {exc}") from exc
     summary_path = dest / "out" / "summary.json"
@@ -273,6 +276,8 @@ def assert_farm_ship_sor(work: Path) -> dict[str, Any]:
     excluded_path = dest / "out" / "poam" / "excluded.csv"
     if not excluded_path.is_file():
         raise FarmShipError("FARM_SHIP_FAIL missing poam/excluded.csv")
+    if first_nonempty_line(excluded_path) != EXCLUDED_HEADER:
+        raise FarmShipError("FARM_SHIP_FAIL excluded.csv header missing poam_id")
     with excluded_path.open(encoding="utf-8", newline="") as fh:
         excluded_rows = list(csv.DictReader(fh))
     if not excluded_rows:

@@ -17,8 +17,11 @@ from shared.kev import (
     KevCatalog,
     format_cves,
 )
+from shared.poam_fields import risk_rating
 from shared.poam_ledger import pending_comment
 from shared.io_util import redact
+from shared.scan_time import NOT_RECORDED, PENDING_DUE
+from shared.schema import canon_severity
 from shared.vendor_dependency import VD_NO, VD_NOTE, VD_YES, format_vendor_product
 
 # S1 Open tab row 5 B→AB (R3.0). Match by header text, never by letter.
@@ -60,19 +63,18 @@ FEDRAMP_EXTRA_HEADERS: tuple[str, ...] = ("Framework Tags",)
 FEDRAMP_CSV_HEADERS: tuple[str, ...] = FEDRAMP_OPEN_HEADERS + FEDRAMP_EXTRA_HEADERS
 
 M_BLANK_NOTE = (
-    "Scheduled Completion Date (col M) is blank in this CSV — this is the "
-    "FedRAMP template's own schedule (High/Critical +30, Moderate +90, Low +180), "
-    "not the Evergreen default (Critical 15 / High 30 / Moderate 90 / Low 180). "
+    "Scheduled Completion Date (col M) writes the Evergreen Critical 15-day "
+    "date when Original Risk Rating is Critical. High / Moderate / Low stay "
+    "blank so the FedRAMP template formula owns those (+30 / +90 / +180). "
     "Internal effective_due = min(FedRAMP-template due, earliest KEV dueDate) "
-    "and is stored on the ledger only. Evergreen-schedule text and the KEV note "
-    "use Critical 15 days."
+    "and is stored on the ledger only."
 )
 
 
 def _comments(item: dict[str, Any]) -> str:
     parts: list[str] = []
     if item.get("scanner_critical"):
-        parts.append("Scanner rating Critical (col R maps Critical→High; template M has no Critical branch).")
+        parts.append("Scanner rating Critical (col R + col M use Critical 15-day Evergreen schedule).")
     parts.extend(item.get("kev_comments") or [])
     if str(item.get("status") or "") == "pending_verification":
         parts.append(pending_comment(item))
@@ -82,6 +84,16 @@ def _comments(item: dict[str, Any]) -> str:
     for flag in item.get("vd_flags") or []:
         parts.append(str(flag))
     return "\n".join(parts)
+
+
+def _critical_scheduled(rating: str, scheduled: str) -> str:
+    """Col M: Evergreen Critical 15 only. High/Mod/Low stay blank for the template."""
+    if str(rating or "") != "Critical":
+        return ""
+    raw = str(scheduled or "").strip()
+    if raw in {"", PENDING_DUE, NOT_RECORDED}:
+        return ""
+    return raw
 
 
 def item_to_row(
@@ -95,11 +107,17 @@ def item_to_row(
     source_id: str = "",
     remediation: str = "",
     poam_id: str = "",
+    scheduled: str = "",
+    risk: str = "",
 ) -> list[str]:
     cves = item.get("cves") or []
     vd = str(item.get("vendor_dependency") or VD_NO)
     if vd not in {VD_YES, VD_NO}:
         vd = VD_NO
+    rating = str(risk or item.get("original_risk_rating") or "")
+    if item.get("scanner_critical") and rating in {"", "High"}:
+        rating = "Critical"
+    sched = _critical_scheduled(rating, scheduled)
     return [
         str(poam_id or item.get("poam_id") or ""),
         str(controls or item.get("controls") or ""),
@@ -112,12 +130,12 @@ def item_to_row(
         "",
         str(remediation or item.get("remediation_plan") or ""),
         str(item.get("original_detection_date") or ""),
-        "",  # M — FedRAMP template formula (Crit/High +30); never written
+        sched,
         str(item.get("status_date") or ""),
         vd,
         str(item.get("last_vendor_checkin") or "") if vd == VD_YES else "",
         format_vendor_product(item.get("vendor_product")) if vd == VD_YES else "",
-        str(item.get("original_risk_rating") or ""),
+        rating,
         "",
         "",
         "",
@@ -139,6 +157,17 @@ def decision_to_row(decision: dict[str, Any]) -> list[str]:
     mapped = decision.get("mapped") if isinstance(decision.get("mapped"), dict) else {}
     fields = decision.get("fields") if isinstance(decision.get("fields"), dict) else {}
     controls = str(fields.get("controls") or "") or ", ".join(mapped.get("nist_800_53") or [])
+    remediation = str(
+        mapped.get("recommended_fix") or item.get("remediation_plan") or ""
+    )
+    rating = str(fields.get("original_risk_rating") or "")
+    if not rating or (
+        rating == "High" and canon_severity(rec.get("severity")) == "critical"
+    ):
+        if rec:
+            rating = risk_rating(rec.get("severity"))
+        elif item.get("scanner_critical"):
+            rating = "Critical"
     return item_to_row(
         item,
         weakness=str(decision.get("weakness") or ""),
@@ -149,8 +178,10 @@ def decision_to_row(decision: dict[str, Any]) -> list[str]:
         asset=str(decision.get("assets_s") or ""),
         detector=str(fields.get("detector_source") or ""),
         source_id=str(fields.get("weakness_source_id") or item.get("weakness_key") or ""),
-        remediation=str(mapped.get("recommended_fix") or item.get("remediation_plan") or ""),
+        remediation=remediation,
         poam_id=str(fields.get("poam_id") or item.get("poam_id") or ""),
+        scheduled=str(fields.get("scheduled_completion_date") or ""),
+        risk=rating,
     )
 
 
@@ -222,8 +253,8 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
         M_BLANK_NOTE,
         "",
         "Evergreen default schedule (poam.csv / KEV note): Critical 15 days, "
-        "High 30, Moderate 90, Low 180. FedRAMP col M uses FedRAMP's own "
-        "Critical/High +30 formula and stays blank in the CSV.",
+        "High 30, Moderate 90, Low 180. FedRAMP col M writes Critical 15 and "
+        "leaves High/Moderate/Low blank for the template formula.",
         "",
         f"kev_evaluated: {str(catalog.kev_evaluated).lower()}",
     ]

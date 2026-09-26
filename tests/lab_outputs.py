@@ -59,6 +59,7 @@ def assert_lab() -> None:
         POAM_HEADER,
         assert_count_consistency,
         assert_flood_guard,
+        assert_one_truth_counts,
         assert_poam_fedramp_identity,
         assert_unique_weakness_asset,
     )
@@ -109,6 +110,7 @@ def assert_lab() -> None:
     assert_unique_weakness_asset(poam)
     if (OUT / "poam" / "poam_fedramp.csv").is_file():
         assert_poam_fedramp_identity(OUT)
+        assert_one_truth_counts(OUT)
     assert int(summary.get("risk_scenarios") or 0) == len(scen)
     assert int(summary.get("poam") or 0) == len(poam)
     assert int(summary.get("weaknesses") or 0) == len(findings) + len(vulns)

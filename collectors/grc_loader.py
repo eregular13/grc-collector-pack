@@ -42,6 +42,7 @@ from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import (
+    assign_poam_id,
     fingerprints_for,
     fp_v1,
     item_maps_to_current,
@@ -428,6 +429,11 @@ def load() -> dict:
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
     export_decisions: list[dict] = []
+    used_ids = {
+        str(it.get("poam_id") or ""): fp
+        for fp, it in (poam_ledger.get("items") or {}).items()
+        if str(it.get("poam_id") or "").startswith("EGP-")
+    }
     ranked = sorted(
         weaknesses,
         key=lambda rec: (
@@ -457,6 +463,7 @@ def load() -> dict:
                     canon_severity(rec.get("severity")),
                     decision.get("reason") or "unexplained",
                     superseded_by,
+                    superseded_by if str(superseded_by).startswith("EGP-") else "",
                 ]
             )
             continue
@@ -474,6 +481,18 @@ def load() -> dict:
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
             status = str(item.get("status") or "open")
+        if not str(fields.get("poam_id") or "").startswith("EGP-"):
+            minted = assign_poam_id(fp_v1(rec), used_ids)
+            fields["poam_id"] = minted
+            used_ids[minted] = fp_v1(rec)
+            if item is not None:
+                item["poam_id"] = minted
+        if item is not None:
+            item["controls"] = fields.get("controls") or item.get("controls") or ""
+            item["remediation_plan"] = mapped.get("recommended_fix") or item.get("remediation_plan") or ""
+            if str(fields.get("original_risk_rating") or "") == "Critical":
+                item["original_risk_rating"] = "Critical"
+                item["scanner_critical"] = True
         export_decisions.append(
             {
                 "rec": rec,
@@ -517,6 +536,7 @@ def load() -> dict:
                 ciso_finding_severity(rec.get("severity")),
                 "DUPLICATE_INSTANCE",
                 survivor_id,
+                survivor_id if str(survivor_id).startswith("EGP-") else "",
             ]
         )
     parser_excluded_n = 0
@@ -540,6 +560,7 @@ def load() -> dict:
                 canon_severity(rec.get("severity")),
                 reason,
                 detail,
+                "",
             ]
         )
         parser_excluded_n += 1

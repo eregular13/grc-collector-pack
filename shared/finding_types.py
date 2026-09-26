@@ -833,7 +833,11 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "ad_smb_null_session"
     if "domain admins" in text:
         return "ad_domain_admins"
-    if "global administrator" in text and ("pim" in text or "standing" in text or "graph" in text):
+    if (
+        "global administrator" in text
+        or "entra ga" in text
+        or (" ga " in f" {text} " and "pim" in text)
+    ) and ("pim" in text or "standing" in text or "graph" in text):
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
@@ -923,7 +927,9 @@ def finding_type(rec: dict[str, Any]) -> str:
     if _risk_id_only(rec) and source in {"identity-ad", ""}:
         return ""
     if guessed and (
-        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+        source in TYPED_SOURCES
+        or guessed.startswith(("tls_", "web_", "pc_"))
+        or guessed == "entra_ga_pim"
     ):
         return guessed
     if source not in TYPED_SOURCES:
@@ -1017,7 +1023,6 @@ def finding_identity(rec: dict[str, Any]) -> str:
         "template_id",
         "plugin_id",
         "nse_script",
-        "id",
         "edge",
         "control",
     ):
@@ -1055,8 +1060,15 @@ def semantic_weakness_key(rec: dict[str, Any]) -> str:
 
 
 def register_asset_key(rec: dict[str, Any]) -> str:
-    """EGA- asset UID when #138 stamped it; else the normalized display asset."""
+    """EGA- asset UID when #138 stamped it; else the normalized display asset.
+
+    Standing Global Administrator / Graph / Scuba rows for the same UPN share
+    one key even when one copy also lists the tenant as a second asset.
+    """
     extra = extra_dict(rec)
+    ftype = finding_type(rec)
+    if ftype == "entra_ga_pim":
+        return primary_asset(rec)
     uid = str(extra.get("asset_uid") or "").strip()
     if uid.startswith("EGA-"):
         return uid
@@ -1064,11 +1076,18 @@ def register_asset_key(rec: dict[str, Any]) -> str:
 
 
 def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
-    """(EGA- asset or normalized name, type or semantic weakness)."""
+    """(asset, port/proto+class or weakness class). Observation id is not a key."""
+    extra = extra_dict(rec)
+    port = str(extra.get("port") or "").strip()
+    proto = str(extra.get("protocol") or extra.get("proto") or "").strip().lower()
     ftype = finding_type(rec)
+    asset = register_asset_key(rec)
+    if port and port != "0":
+        cls = ftype if ftype and ftype != "unknown" else str(rec.get("category") or "exposure")
+        return (asset, f"port:{port}/{proto or 'tcp'}:{cls}")
     if ftype and ftype != "unknown":
-        return (register_asset_key(rec), ftype)
-    return (register_asset_key(rec), semantic_weakness_key(rec))
+        return (asset, ftype)
+    return (asset, semantic_weakness_key(rec))
 
 
 def _sev_rank(rec: dict[str, Any]) -> int:

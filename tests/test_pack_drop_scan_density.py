@@ -12,7 +12,7 @@ from pathlib import Path
 
 from collectors import inventory_nmap
 from scripts.prove_ciso import prove_ciso
-from shared.ciso_shape import assert_flood_guard, assert_risk_register_and_poam
+from shared.ciso_shape import assert_flood_guard, assert_one_truth_counts, assert_risk_register_and_poam
 from shared.control_map import map_finding
 from shared.farm_ship import assert_farm_ship_sor
 
@@ -177,6 +177,7 @@ def test_farm_drop_prove_register_is_denser_and_exposure_only(tmp_path: Path) ->
     assert stamp["paying_day"] == "FAIL"
     assert stamp["posted"] is False
     shape = assert_risk_register_and_poam(Path(stamp["out_dir"]))
+    assert_one_truth_counts(Path(stamp["out_dir"]))
     assert shape["findings"] >= MIN_FARM_FINDINGS
     assert shape["findings"] > BEFORE_FARM_FINDINGS
     assert shape["risk_scenarios"] >= shape["findings"]

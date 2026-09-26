@@ -10,6 +10,7 @@ import pytest
 
 from shared.ciso_shape import (
     assert_flood_guard,
+    assert_one_truth_counts,
     assert_poam_fedramp_identity,
     assert_unique_weakness_asset,
     csv_rows,
@@ -129,6 +130,7 @@ def test_poam_and_fedramp_row_identity(tmp_path: Path, monkeypatch: pytest.Monke
     assert poam[0]["controls"] == fed[0]["Controls"]
     assert poam[0]["weakness"] == fed[0]["Weakness Name"]
     assert poam[0]["controls"]
+    assert_one_truth_counts(out)
 
 
 def test_failure_title_on_register_fedramp_and_exec(
@@ -197,7 +199,11 @@ def test_evergreen_critical_sla_15_fedramp_labelled_30(
     assert "FedRAMP" in md and "+30" in md
     assert "Evergreen default schedule (poam.csv / KEV note): Critical 15 days" in md
     fed = csv_rows(out / "poam" / "poam_fedramp.csv")[0]
-    assert fed["Scheduled Completion Date"] == ""
+    assert fed["Original Risk Rating"] == "Critical"
+    assert fed["Scheduled Completion Date"] == "2026-09-16"
+    assert fed["Controls"] == poam["controls"]
+    assert fed["Overall Remediation Plan"]
+    assert_one_truth_counts(out)
 
 
 def test_console_severity_from_poam(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -206,7 +212,7 @@ def test_console_severity_from_poam(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     out = tmp_path / "out"
     out.mkdir()
     (out / "summary.json").write_text(
-        json.dumps({"demo": True, "client": False, "assets": 2, "findings": 1, "poam": 2}),
+        json.dumps({"demo": True, "client": False, "assets": 2, "findings": 1, "poam": 107}),
         encoding="utf-8",
     )
     ciso = out / "ciso-assistant"
@@ -240,6 +246,10 @@ def test_console_severity_from_poam(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert data["severity"]["high"] == 1
     assert data["severity"] == data["poam"]["severity"]
     assert data["severity"]["critical"] != 0
+    # Strip uses poam.csv (2), never the stale summary.json 107 vs 124 drift.
+    assert data["summary"]["poam"] == 2
+    assert data["summary"]["open_risks"] == 2
+    assert data["poam"]["total"] == 2
 
 
 def test_exec_top5_severity_kev_criticality_no_dupes_no_inflation() -> None:
@@ -658,3 +668,113 @@ def test_poam_decision_maps_unmapped_excluded() -> None:
     decision = poam_decision(rec)
     assert decision["include"] is False
     assert decision["reason"] == "NOT_A_WEAKNESS"
+
+
+def test_observation_id_dropped_from_identity() -> None:
+    from shared.finding_types import finding_identity
+
+    a = {
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-obs-a",
+        "name": "Port 443/tcp open",
+        "assets": ["10.0.0.9"],
+        "extra": {"id": "obs-12", "observation_id": "obs-12", "port": "443", "protocol": "tcp"},
+    }
+    b = {
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-obs-b",
+        "name": "Port 443/tcp open",
+        "assets": ["10.0.0.9"],
+        "extra": {"id": "obs-99", "observation_id": "obs-99", "port": "443", "protocol": "tcp"},
+    }
+    assert "obs-12" not in finding_identity(a)
+    assert finding_identity(a) != "obs-12"
+    assert dedupe_key(a) == dedupe_key(b)
+
+
+def test_entra_ga_three_sources_merge_one_egp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asset = _asset("ga@contoso.onmicrosoft.com", "EGA-GACONTOSO")
+    scuba = make_record(
+        kind="finding",
+        source="identity-ad",
+        ref_id="ID-entra-ga-without-pim-gacontoso",
+        name="Entra GA without PIM",
+        description="ga@contoso.onmicrosoft.com is Global Administrator without PIM eligibility.",
+        severity="critical",
+        category="identity-posture",
+        assets=["ga@contoso.onmicrosoft.com"],
+        extra={"check_id": "entra_ga_pim", "asset_uid": "EGA-GACONTOSO"},
+    )
+    graph = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-graph-ga-gacontoso",
+        name="Entra Global Administrator via Graph",
+        description="ga@contoso.onmicrosoft.com holds Global Administrator (Microsoft Graph export)",
+        severity="critical",
+        category="identity-posture",
+        assets=["ga@contoso.onmicrosoft.com", "contoso.onmicrosoft.com"],
+        extra={"check_id": "directoryRole", "asset_uid": "EGA-TENANT001"},
+    )
+    standing = make_record(
+        kind="finding",
+        source="saas-idp",
+        ref_id="SAAS-standing-admin-gacontoso",
+        name="Standing Global Administrator",
+        description="Export lists a standing Global Administrator assignment for ga@contoso.onmicrosoft.com",
+        severity="critical",
+        category="identity-posture",
+        assets=["ga@contoso.onmicrosoft.com", "contoso.onmicrosoft.com"],
+        extra={"check_id": "standing_ga", "asset_uid": "EGA-TENANT001"},
+    )
+    assert finding_type(scuba) == finding_type(graph) == finding_type(standing) == "entra_ga_pim"
+    assert dedupe_key(scuba) == dedupe_key(graph) == dedupe_key(standing)
+    out = _load(tmp_path, monkeypatch, [asset, scuba, graph, standing])
+    poam = csv_rows(out / "poam" / "poam.csv")
+    fed = csv_rows(out / "poam" / "poam_fedramp.csv")
+    ga_rows = [row for row in poam if "administrator" in row["weakness"].lower() or "ga" in row["weakness"].lower()]
+    assert len(ga_rows) == 1
+    assert ga_rows[0]["poam_id"].startswith("EGP-")
+    assert {row["POAM ID"] for row in fed} == {row["poam_id"] for row in poam}
+    excluded = csv_rows(out / "poam" / "excluded.csv")
+    assert "poam_id" in excluded[0]
+    dups = [row for row in excluded if row["excluded_reason"] == "DUPLICATE_INSTANCE"]
+    assert len(dups) == 2
+    assert all(row["poam_id"].startswith("EGP-") for row in dups)
+    assert_one_truth_counts(out)
+
+
+def test_one_truth_invariant_demo_lab_console_and_exec(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """DEMO lab: FedRAMP Open IDs == poam.csv IDs == console == exec."""
+    from product.server import estate
+    from tests.test_poam_breakdown import _run_lab
+
+    _run_lab(tmp_path, monkeypatch)
+    data = estate()
+    poam = csv_rows(tmp_path / "poam" / "poam.csv")
+    fed = csv_rows(tmp_path / "poam" / "poam_fedramp.csv")
+    n = len(poam)
+    assert {row["POAM ID"] for row in fed} == {row["poam_id"] for row in poam}
+    assert all(row["poam_id"].startswith("EGP-") for row in poam)
+    assert data["summary"]["poam"] == n
+    assert data["poam"]["total"] == n
+    assert_one_truth_counts(tmp_path, console_poam=data["summary"]["poam"])
+
+
+def test_every_poam_row_is_egp_and_on_fedramp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _load(
+        tmp_path,
+        monkeypatch,
+        [_asset("fleet-laptop-07", "EGA-LAPTOP007"), _finding()],
+    )
+    poam = csv_rows(out / "poam" / "poam.csv")
+    assert poam
+    assert all(row["poam_id"].startswith("EGP-") for row in poam)
+    assert not any(str(row["poam_id"]).startswith("POAM-") for row in poam)
+    assert_one_truth_counts(out)
