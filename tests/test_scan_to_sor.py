@@ -13,7 +13,9 @@ from pathlib import Path
 import pytest
 
 from dropbox.mcp_stub import (
+    LAB_ESTATE_NETWORKS,
     OPERATOR_TOOLS,
+    allows_lab_estate_target,
     dispatch,
     scan_to_sor_cli_twin,
     tools_list_entries,
@@ -258,7 +260,11 @@ def test_scan_to_sor_tools_list_and_docs() -> None:
     assert "GRC_LIVE_SCAN" in iface
     assert "LIVE_ESTATE" in iface
     assert "LIVE_LAB_NET" in iface
-    assert "192.168.64.0/24" in iface
+    assert "172.28.10.0/24" in iface
+    assert "172.28.11.0/24" in iface
+    assert "172.31.250.0/24" in iface
+    assert "docker network inspect" in iface
+    assert "192.168.64.0/24" not in iface
 
 
 def _patch_collectors_raise(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
@@ -405,17 +411,35 @@ def test_scan_to_sor_live_refuses_non_lab_estate(
     _assert_out_untouched(out)
 
 
+@pytest.mark.parametrize(
+    ("target", "scope_kind"),
+    [
+        ("127.0.0.1", "repo"),
+        ("192.168.64.10", "legacy"),
+    ],
+    ids=["loopback", "legacy-192-168-64"],
+)
 def test_scan_to_sor_live_refuses_target_outside_lab_estate_networks(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    target: str,
+    scope_kind: str,
 ) -> None:
     monkeypatch.setenv("GRC_LIVE_SCAN", "1")
     calls = _patch_collectors_raise(monkeypatch)
+    if scope_kind == "legacy":
+        scope = _signed_scope(
+            tmp_path,
+            cidrs="    - 10.20.30.0/23\n    - 192.168.64.0/24\n",
+        )
+    else:
+        scope = SCOPE
     out = tmp_path / "out"
     result = dispatch(
         "scan_to_sor",
-        scope_path=SCOPE,
+        scope_path=scope,
         arguments={
-            "targets": ["127.0.0.1"],
+            "targets": [target],
             "out": str(out),
             "work": str(tmp_path / "w"),
             "estate": "lab",
@@ -429,15 +453,46 @@ def test_scan_to_sor_live_refuses_target_outside_lab_estate_networks(
     reason = result["reason"]
     assert "SCOPE gate" in reason
     assert "outside lab-estate networks" in reason
-    assert "127.0.0.1" in reason
+    assert target in reason
     assert result["fail_code"] == "LIVE_LAB_NET"
     assert calls["scan_and_pack"] == 0
     assert calls["run_live_collectors"] == 0
     _assert_out_untouched(out)
 
 
+LIVE_LAB_ALLOW_HOSTS = (
+    ("172.28.10.10", "labnet"),
+    ("172.28.11.10", "labnet2"),
+    ("172.31.250.10", "misconfig"),
+)
+LIVE_LAB_ALLOW_CIDRS = (
+    "    - 10.20.30.0/23\n"
+    "    - 172.28.10.0/24\n"
+    "    - 172.28.11.0/24\n"
+    "    - 172.31.250.0/24\n"
+)
+
+
+def test_lab_estate_networks_are_desktop_compose_cidrs() -> None:
+    assert LAB_ESTATE_NETWORKS == (
+        "172.28.10.0/24",
+        "172.28.11.0/24",
+        "172.31.250.0/24",
+    )
+    assert "192.168.64.0/24" not in LAB_ESTATE_NETWORKS
+    for host, _label in LIVE_LAB_ALLOW_HOSTS:
+        assert allows_lab_estate_target(host) is True
+    assert allows_lab_estate_target("127.0.0.1") is False
+    assert allows_lab_estate_target("192.168.64.10") is False
+
+
+@pytest.mark.parametrize(
+    "target",
+    [host for host, _label in LIVE_LAB_ALLOW_HOSTS],
+    ids=[label for _host, label in LIVE_LAB_ALLOW_HOSTS],
+)
 def test_scan_to_sor_live_happy_path_mocked_collector(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, target: str
 ) -> None:
     monkeypatch.setenv("GRC_LIVE_SCAN", "1")
     calls: dict[str, object] = {"n": 0, "targets": None}
@@ -459,13 +514,13 @@ def test_scan_to_sor_live_happy_path_mocked_collector(
     pack_in.mkdir()
     scope = _signed_scope(
         tmp_path,
-        cidrs="    - 10.20.30.0/23\n    - 192.168.64.0/24\n",
+        cidrs=LIVE_LAB_ALLOW_CIDRS,
     )
     result = dispatch(
         "scan_to_sor",
         scope_path=scope,
         arguments={
-            "targets": ["192.168.64.10"],
+            "targets": [target],
             "out": str(out),
             "work": str(work),
             "estate": "lab",
@@ -484,9 +539,9 @@ def test_scan_to_sor_live_happy_path_mocked_collector(
     assert result["paying_day"] == "FAIL"
     assert result["posted"] is False
     assert result["http"] is False
-    assert result["targets"] == ["192.168.64.10"]
+    assert result["targets"] == [target]
     assert calls["n"] == 1
-    assert calls["targets"] == ["192.168.64.10"]
+    assert calls["targets"] == [target]
     register = Path(result["risk_register"])
     poam = Path(result["poam"])
     pack = Path(result["pack_drop"])
