@@ -1,0 +1,34 @@
+{
+  "data": {
+    "affected_items": [
+      {
+        "description": "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems.",
+        "id": 19000,
+        "reason": "Invalid path or wrong permissions to run command 'modprobe -n -v cramfs'",
+        "command": "modprobe -n -v cramfs,lsmod",
+        "rationale": "Removing support for unneeded filesystem types reduces the local attack surface of the server.",
+        "condition": "all",
+        "title": "Ensure mounting of cramfs filesystems is disabled.",
+        "result": "not applicable",
+        "policy_id": "cis_ubuntu20-04"
+      },
+      {
+        "id": 19001,
+        "title": "Ensure mounting of freevxfs filesystems is disabled.",
+        "result": "passed",
+        "policy_id": "cis_ubuntu20-04"
+      },
+      {
+        "id": 19002,
+        "title": "Ensure SSH PermitRootLogin is no.",
+        "result": "failed",
+        "policy_id": "cis_ubuntu20-04"
+      }
+    ],
+    "total_affected_items": 3,
+    "total_failed_items": 0,
+    "failed_items": []
+  },
+  "message": "All selected SCA/policy information was returned",
+  "error": 0
+}
