@@ -1,3 +1,15 @@
+# CRITIC — cycle 195 (MERGE_MASTER_DISCOVERY_WEB)
+
+Lab this brick: pytest **1086** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
+Zero P0/P1. Merged master `5adc8b7` (#139 / #136) with a normal merge
+commit. SOURCES.md is the union of both lists. Count delta vs master
+STATUS: assets 81→82, findings 104→105, poam 109→110 — same as the
+pre-merge discovery/web lab; #139 host-lab was unchanged. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
 Lab this brick: pytest **1068** passed, 1 skipped. Ten collectors +

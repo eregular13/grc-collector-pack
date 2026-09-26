@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 195 — merge master 5adc8b7 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `5adc8b7` (#139 real-sample parsers,
+#136 retire `out/riskready`) into this branch. No rebase. Union
+`fixtures/samples/SOURCES.md` (PingCastle/Greenbone/Scuba/testssl/Nikto
++ discovery/web). Recomputed host-lab on the merged tree: pytest
+**1086** (1 skipped); assets **82** findings **105** poam **110**
+(`applied_controls=124` `risk_scenarios=124` `demo=true`). Same delta
+vs master STATUS 81/104/109 as pre-merge (L2/NBT `10.0.0.50` + second
+httpx admin URL). Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 
 §8 collectors that were silently empty or wrong on real tool output.
