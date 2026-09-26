@@ -401,6 +401,12 @@ def test_scanner_identity_denylist() -> None:
     assert not _is_scanner_identity("10.0.0.50-445")
     assert not _is_scanner_identity("filesrv-445-tcp")
     assert not _is_scanner_identity("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    # pack_drop lift keys are not plugin/check ids (Argus B5).
+    assert not _is_scanner_identity("nmap-10-microsoftds-445")
+    assert not _is_scanner_identity("nmap-l10-ssh-22")
+    assert not _is_scanner_identity("rustscan-7-tcp-80")
+    assert _is_scanner_identity("nmap-port-445/tcp")
+    assert _is_scanner_identity("AVD-AWS-0086")
 
 
 def test_distinct_findings_on_one_asset_do_not_share_id() -> None:
@@ -883,7 +889,7 @@ def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
     assert len(plan_ids) <= len(plan)
 
 
-def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
+def _farm_drop_out(tmp_path: Path) -> Path:
     import os
     import subprocess
 
@@ -907,8 +913,13 @@ def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    poam = work / "out" / "poam" / "poam.csv"
-    fed = work / "out" / "poam" / "poam_fedramp.csv"
+    return work / "out"
+
+
+def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
+    out = _farm_drop_out(tmp_path)
+    poam = out / "poam" / "poam.csv"
+    fed = out / "poam" / "poam_fedramp.csv"
     assert fed.is_file()
     with poam.open(encoding="utf-8", newline="") as fh:
         plan = list(csv.DictReader(fh))
@@ -918,6 +929,20 @@ def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     fed_ids = {r.get("POAM ID") or "" for r in rows if r.get("POAM ID")}
     assert fed_ids == plan_ids
     assert len(rows) == len(plan_ids)
+
+
+def test_farm_fedramp_open_stays_109(tmp_path: Path) -> None:
+    """#180 farm lock: pack_drop fold leaves farm ledger Open at 109.
+
+    FedRAMP Open follows unique poam.csv IDs (#179), so this locks the
+    ledger, not a fat export dump.
+    """
+    out = _farm_drop_out(tmp_path)
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    open_items = [
+        it for it in (ledger.get("items") or {}).values() if str(it.get("status") or "") != "closed"
+    ]
+    assert len(open_items) == 109, f"farm ledger Open={len(open_items)} expected 109"
 
 
 def test_master_demo_ledger_upgrade_splits_admin_url_zero_ghosts(

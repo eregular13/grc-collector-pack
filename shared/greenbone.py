@@ -131,6 +131,24 @@ def is_greenbone_csv(text: str, name: str = "") -> bool:
     return False
 
 
+def _solution_type(result: ET.Element, nvt: ET.Element) -> str:
+    """GMP Solution Type: <solution type="WillNotFix"> or tags solution_type=."""
+    for el in (nvt, result):
+        hit = _child(el, "solution")
+        if hit is not None:
+            raw = (hit.attrib.get("type") or "").strip()
+            if raw:
+                return raw
+    tags = _child_text(nvt, "tags")
+    for part in (tags or "").split("|"):
+        if "=" not in part:
+            continue
+        key, val = part.split("=", 1)
+        if key.strip().lower() == "solution_type" and val.strip():
+            return val.strip()
+    return ""
+
+
 def _cves_from_nvt(nvt: ET.Element) -> list[str]:
     """Every CVE ref on the NVT. First-only drops KEV matches for the rest."""
     refs = _child(nvt, "refs")
@@ -199,6 +217,7 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
             "description": desc,
             "solution": _child_text(el, "solution") or _child_text(nvt, "solution"),
             "scan_time": scan_time,
+            "solution_type": _solution_type(el, nvt),
         }
 
 
@@ -232,6 +251,7 @@ def iter_greenbone_csv(text: str) -> Iterator[dict[str, Any]]:
             "description": lower.get("summary") or lower.get("specific result") or name,
             "solution": lower.get("solution") or "",
             "scan_time": lower.get("timestamp") or lower.get("scan_start") or "",
+            "solution_type": lower.get("solution type") or lower.get("solution_type") or "",
         }
 
 

@@ -795,6 +795,34 @@ def _risk_key(rec: dict, mapped: dict | None) -> tuple[int, int, int, str]:
     return (SEV_RANK.get(sev, 9), -poam, -refs, str(rec.get("ref_id") or ""))
 
 
+def _exec_top_findings(
+    findings: list[dict],
+    mapped_by_ref: dict[str, dict],
+    n: int,
+) -> list[dict]:
+    """Top-N by risk, one row per host/port EGP (pack_drop id ≠ weakness)."""
+    from shared.poam_ledger import fp_v1
+
+    ranked: list[dict] = []
+    seen: set[str] = set()
+    def _exec_sort(rec: dict) -> tuple:
+        sev, poam, refs, ref = _risk_key(rec, mapped_by_ref.get(str(rec.get("ref_id"))))
+        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        port_first = 0 if str(extra.get("check_id") or "").startswith("nmap-port-") else 1
+        return (sev, poam, refs, port_first, ref)
+
+    ordered = sorted(findings, key=_exec_sort)
+    for rec in ordered:
+        ident = fp_v1(rec)
+        if ident in seen:
+            continue
+        seen.add(ident)
+        ranked.append(rec)
+        if len(ranked) >= n:
+            break
+    return ranked
+
+
 def _frameworks_used(mapped_by_ref: dict[str, dict]) -> str:
     names: list[str] = []
     blob = " ".join(
@@ -1137,10 +1165,9 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(recon)
         lines.append("")
 
-    ranked = sorted(
-        ctx.findings,
-        key=lambda rec: _risk_key(rec, ctx.mapped_by_ref.get(str(rec.get("ref_id")))),
-    )[: MAX_EXEC_BODY_ROWS["top_n"]]
+    ranked = _exec_top_findings(
+        ctx.findings, ctx.mapped_by_ref, MAX_EXEC_BODY_ROWS["top_n"]
+    )
     lines.extend(
         [
             "### Fix these first (top 5 by risk, not by scanner severity alone)",

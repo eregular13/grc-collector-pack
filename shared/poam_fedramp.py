@@ -19,7 +19,13 @@ from shared.kev import (
 )
 from shared.poam_ledger import pending_comment
 from shared.io_util import redact
-from shared.vendor_dependency import VD_NO, VD_NOTE, VD_YES, format_vendor_product
+from shared.vendor_dependency import (
+    DEFAULT_COMMENT,
+    VD_NO,
+    VD_NOTE,
+    VD_YES,
+    format_vendor_product,
+)
 
 # S1 Open tab row 5 B→AB (R3.0). Match by header text, never by letter.
 FEDRAMP_OPEN_HEADERS: tuple[str, ...] = (
@@ -139,6 +145,8 @@ def _comments(item: dict[str, Any], plan: Mapping[str, Any] | None = None) -> st
     if item.get("prior_poam_id"):
         parts.append(f"Reopened from {item['prior_poam_id']}; closed row remains on Closed.")
     parts.extend(item.get("vd_comments") or [])
+    if str(item.get("vd_source") or "") == "default" and DEFAULT_COMMENT not in parts:
+        parts.append(DEFAULT_COMMENT)
     for flag in item.get("vd_flags") or []:
         parts.append(str(flag))
     return "\n".join(parts)

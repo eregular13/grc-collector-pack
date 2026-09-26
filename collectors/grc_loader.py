@@ -408,14 +408,18 @@ def load() -> dict:
             ledger_by_fp[fp] = item
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
-    ranked = sorted(
-        weaknesses,
-        key=lambda rec: (
+    def _poam_rank(rec: dict) -> tuple:
+        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        check = str(extra.get("check_id") or "")
+        port_first = 0 if check.startswith("nmap-port-") else 1
+        return (
             sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            port_first,
             str(rec.get("name") or rec.get("ref_id") or ""),
             str(rec.get("ref_id") or ""),
-        ),
-    )
+        )
+
+    ranked = sorted(weaknesses, key=_poam_rank)
     breakdown = poam_breakdown(ranked, lighter=lighter)
     for rec, decision in iter_poam_decisions(ranked, lighter=lighter):
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
