@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 219 — slim register: alias-merge control union + AC-5 (2026-09-26)
+
+Owner decision on #192: when alias/weakness merge folds rows, the
+survivor takes the union of controls (de-duplicated, first-seen
+order). saas-idp standing-GA / tenant PIM keep title-map AC-5.
+Tenant `EGP-8F1A843A26` keeps AC-5. BloodHound UPN survivor
+`EGP-F18CA5E082` carries AC-5 from the two merged-away DEMO rows.
+Row counts and IDs unchanged. Pytest **1525**. Host-lab 79 / 103 /
+poam 119 / excluded 6. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 218 — slim register: GA-by-UPN + alias collapsed IDs (2026-09-26)
 
 Rebased onto master `ce67328` (#188). Type real saas-idp Global

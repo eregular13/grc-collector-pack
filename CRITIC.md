@@ -1,3 +1,15 @@
+# CRITIC — cycle 219 (SLIM_REGISTER_ALIAS_CONTROL_UNION)
+
+Lab this brick: pytest **1525** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Owner AC-5: merge-union of controls onto
+the survivor; tenant `EGP-8F1A843A26` keeps AC-5; UPN survivor
+`EGP-F18CA5E082` cites `AC-2, AC-6, AC-5`. IDs/counts unchanged.
+Exec `Open POA&M (poam.csv): 119`. Farm ledger Open **109**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 218 (SLIM_REGISTER_GA_UPN_ALIAS)
 
 Lab this brick: pytest **1523** passed, 1 skipped. Ten collectors +
