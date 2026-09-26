@@ -75,6 +75,7 @@ def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         or item.get("Id")
         or "asff"
     )
+    created = str(item.get("CreatedAt") or item.get("UpdatedAt") or "").strip()
     return {
         "CheckID": check_id,
         "CheckTitle": item.get("Title") or item.get("GeneratorId") or "asff",
@@ -86,6 +87,7 @@ def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         "ServiceName": service,
         "AccountId": str(item.get("AwsAccountId") or ""),
         "Muted": _is_muted(item),
+        **({"scan_time": created} if created else {}),
     }
 
 
@@ -1015,7 +1017,13 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                 extra["resources"] = list(affected_rids)
             if account:
                 extra["account_id"] = account
-            scan_time = str(item.get("scan_time") or item.get("Timestamp") or item.get("time_dt") or "")
+            scan_time = str(
+                item.get("scan_time")
+                or item.get("Timestamp")
+                or item.get("timestamp")
+                or item.get("time_dt")
+                or ""
+            )
             if scan_time and not is_placeholder_id(scan_time):
                 extra["scan_time"] = scan_time
             if sev_unmapped:

@@ -164,6 +164,20 @@ def _result_refs(el: ET.Element) -> list[str]:
     return refs
 
 
+def _report_scan_time(root: ET.Element) -> str:
+    """XCCDF TestResult start-time, else end-time. Real oscap attribute names."""
+    for el in root.iter():
+        if _local(el.tag) != "testresult":
+            continue
+        raw = (
+            str(el.attrib.get("start-time") or el.attrib.get("start_time") or "").strip()
+            or str(el.attrib.get("end-time") or el.attrib.get("end_time") or "").strip()
+        )
+        if raw:
+            return raw
+    return ""
+
+
 def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
     """Return fail/error rule-results. pass/notapplicable/notselected invent nothing."""
     raw = text or ""
@@ -176,6 +190,7 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
     catalog = _rule_catalog(root)
     host = _target_host(root)
     ids = target_ids(root)
+    scan_time = _report_scan_time(root)
     out: list[dict[str, Any]] = []
     for el in _iter_rule_results(root):
         result = _result_value(el)
@@ -218,6 +233,8 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
                 "tool": "openscap",
             }
         )
+        if scan_time:
+            extra["scan_time"] = scan_time
         out.append(
             {
                 "id": rid,

@@ -220,7 +220,12 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
         assets=[host],
         labels=LABELS + ["testssl"] + extra_labels,
         collected_at=now,
-        extra={"cve": row.get("cve") or "", "id": row.get("id") or "", "ip": row.get("ip") or ""},
+        extra={
+            "cve": row.get("cve") or "",
+            "id": row.get("id") or "",
+            "ip": row.get("ip") or "",
+            **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
+        },
     )
 
 
@@ -339,8 +344,13 @@ def parse_file(path: Path) -> list[dict]:
     except Exception:
         peek = None
     if peek is not None and is_testssl(peek):
+        testssl_at = ""
+        if isinstance(peek, dict):
+            testssl_at = str(peek.get("at") or "")
         for row in iter_testssl_findings(peek):
             host = str(row.get("host") or "unknown")
+            if testssl_at and not row.get("scan_time"):
+                row = {**row, "scan_time": testssl_at}
             add_asset(host)
             records.append(_emit_testssl_row(row, host, now))
         if records:
@@ -568,13 +578,24 @@ def parse_file(path: Path) -> list[dict]:
         return records
 
     if is_testssl(payload):
+        testssl_at = ""
+        if isinstance(payload, dict):
+            testssl_at = str(payload.get("at") or payload.get("scanTime") or "")
+            # scanTime is elapsed seconds in real testssl.sh JSON — only keep clock strings.
+            if testssl_at.isdigit():
+                testssl_at = str(payload.get("at") or "")
         for row in iter_testssl_findings(payload):
             host = str(row.get("host") or "unknown")
+            if testssl_at and not row.get("scan_time"):
+                row = {**row, "scan_time": testssl_at}
             add_asset(host)
             records.append(_emit_testssl_row(row, host, now))
         if records:
             return records
 
+    gb_stamp = ""
+    if isinstance(payload, dict):
+        gb_stamp = str(payload.get("timestamp") or payload.get("scan_start") or "")
     for row in _greenbone_rows(payload):
         nvt = row.get("nvt") if isinstance(row.get("nvt"), dict) else {}
         vid = str(nvt.get("oid") or row.get("name") or "openvas")
@@ -608,6 +629,15 @@ def parse_file(path: Path) -> list[dict]:
                     "cve": row.get("cve") or "",
                     "cves": _greenbone_cves(row),
                     **_no_fix_extra(solution_type),
+                    **(
+                        {
+                            "scan_time": str(
+                                row.get("timestamp") or row.get("scan_start") or gb_stamp
+                            )
+                        }
+                        if (row.get("timestamp") or row.get("scan_start") or gb_stamp)
+                        else {}
+                    ),
                 },
             )
         )

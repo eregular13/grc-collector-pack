@@ -589,7 +589,14 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=labels,
                     collected_at=now,
-                    extra={"check_id": "sensitive-hostname"},
+                    extra={
+                        "check_id": "sensitive-hostname",
+                        **(
+                            {"timestamp": str(meta.get("timestamp") or meta.get("time") or "")}
+                            if (meta.get("timestamp") or meta.get("time"))
+                            else {}
+                        ),
+                    },
                 )
             )
         seen_urls: set[str] = set()
@@ -641,6 +648,11 @@ def parse_file(path: Path) -> list[dict]:
                             if admin_ui
                             else f"httpx-url-{slug(path_s or url, maxlen=None)}"
                         ),
+                        **(
+                            {"timestamp": str(row.get("timestamp") or row.get("time") or "")}
+                            if (row.get("timestamp") or row.get("time"))
+                            else {}
+                        ),
                     },
                 )
             )
@@ -661,6 +673,11 @@ def parse_file(path: Path) -> list[dict]:
                         "port": "443",
                         "service": "https",
                         "check_id": "tls-weak-cipher",
+                        **(
+                            {"timestamp": str(meta.get("timestamp") or meta.get("time") or "")}
+                            if (meta.get("timestamp") or meta.get("time"))
+                            else {}
+                        ),
                     },
                 )
             )

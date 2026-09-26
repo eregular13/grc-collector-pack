@@ -281,7 +281,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[uri],
                     labels=LABELS + ["sarif", str(row.get("tool") or "sarif").lower()],
                     collected_at=now,
-                    extra={"rule": rid},
+                    extra={
+                        "rule": rid,
+                        **({"scan_time": row.get("scan_time")} if row.get("scan_time") else {}),
+                    },
                 )
             )
         if records:

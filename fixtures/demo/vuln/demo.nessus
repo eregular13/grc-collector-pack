@@ -4,6 +4,9 @@
   <ReportHost name="http://10.0.0.20">
     <HostProperties>
       <tag name="host-ip">10.0.0.20</tag>
+      <tag name="HOST_START">Thu Sep 10 12:30:00 2026</tag>
+      <tag name="HOST_START_TIMESTAMP">1789043400</tag>
+      <tag name="HOST_END">Thu Sep 10 12:35:00 2026</tag>
     </HostProperties>
     <ReportItem port="445" svc_name="cifs" protocol="tcp" severity="3" pluginID="42411" pluginName="Microsoft Windows SMB Shares Unprivileged Access">
       <risk_factor>High</risk_factor>

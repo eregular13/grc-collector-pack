@@ -1,4 +1,6 @@
 {
+  "timestamp": "2026-09-15T10:00:00Z",
+  "scan_start": "2026-09-15T10:00:00Z",
   "results": [
     {
       "name": "OpenSSL Heartbleed",
