@@ -1,0 +1,27 @@
+{
+  "Invocation": "testssl.sh --jsonfile-pretty",
+  "at": "2024-06-01T12:00:00Z",
+  "version": "3.3dev",
+  "scanResult": [
+    {
+      "targetHost": "robmoff.at",
+      "ip": "198.51.100.10",
+      "port": "443",
+      "rDNS": "robmoff.at",
+      "protocols": [
+        {"id": "SSLv3", "severity": "HIGH", "finding": "SSLv3 is offered"},
+        {"id": "TLS1", "severity": "LOW", "finding": "TLSv1 is offered"},
+        {"id": "TLS1_1", "severity": "LOW", "finding": "TLSv1.1 is offered"},
+        {"id": "TLS1_2", "severity": "OK", "finding": "TLSv1.2 is offered"}
+      ],
+      "serverDefaults": [
+        {"id": "cert_expirationStatus", "severity": "HIGH", "finding": "Certificate expired (2020-01-01)"}
+      ],
+      "vulnerabilities": [
+        {"id": "heartbleed", "severity": "OK", "cve": "CVE-2014-0160", "finding": "Heartbleed: not vulnerable"},
+        {"id": "BREACH", "severity": "MEDIUM", "cve": "CVE-2013-3587", "finding": "BREACH potentially: gzip/deflate HTTP compression"},
+        {"id": "LUCKY13", "severity": "LOW", "cve": "CVE-2013-0169", "finding": "potentially vulnerable to LUCKY13"}
+      ]
+    }
+  ]
+}
