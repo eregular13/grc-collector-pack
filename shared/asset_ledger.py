@@ -407,8 +407,13 @@ class AssetLedger:
                 return True
         return False
 
+    def _is_principal_ids(self, ids: dict[str, Any]) -> bool:
+        return bool(str(ids.get("principal") or "").strip())
+
     def _match_key(self, obs: dict[str, Any], asset: dict[str, Any], key: str, now: str) -> bool:
         cand = self._ids_of(asset)
+        if self._is_principal_ids(obs) != self._is_principal_ids(cand):
+            return False
         left = id_values(obs, key)
         right = id_values(cand, key)
         if not left or not right:
@@ -835,7 +840,12 @@ class AssetLedger:
                             self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason=key)
                             merged = True
                             break
-                    if not merged and values_overlap(id_values(lids, "ip"), id_values(rids, "ip")):
+                    if (
+                        not merged
+                        and not lids.get("principal")
+                        and not rids.get("principal")
+                        and values_overlap(id_values(lids, "ip"), id_values(rids, "ip"))
+                    ):
                         if not self._stronger_conflict(lids, rids, "ip"):
                             self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason="ip")
                             merged = True
@@ -952,6 +962,8 @@ def attach_asset_uids(
             source=str(rec.get("source") or ""),
             observe=False,
         )
+        if not uid:
+            uid = _lookup_finding_host(ledger, rec, stamp)
         if uid:
             _stamp_finding_from_ledger(rec, ledger, uid)
     # Re-stamp merged-into UIDs.
@@ -1010,6 +1022,49 @@ def _merge_asset_records(kept: dict[str, Any], other: dict[str, Any], asset: dic
     other_name = str(other.get("name") or "")
     if other_name and other_name not in names and other_name != kept.get("name"):
         names.append(other_name)
+
+
+def _lookup_finding_host(ledger: AssetLedger, rec: dict[str, Any], now: str) -> str:
+    """Match a finding to a ledger host using asset identifiers only.
+
+    Finding titles must not participate. Used when observe(False) missed
+    because a weakness name leaked into NetBIOS/hostname.
+    """
+    extra = extra_dict(rec)
+    assets = [a for a in (rec.get("assets") or []) if str(a).strip()]
+    identity = {
+        "kind": "asset",
+        "name": assets[0] if assets else extra.get("host") or extra.get("fqdn") or extra.get("ip") or "",
+        "assets": assets,
+        "source": rec.get("source") or extra.get("source") or "",
+        "extra": {
+            k: v
+            for k, v in extra.items()
+            if k
+            in {
+                "ids",
+                "ip",
+                "mac",
+                "fqdn",
+                "hostname",
+                "arn",
+                "uuid",
+                "bios_uuid",
+                "agent",
+                "netbios",
+                "host",
+            }
+        },
+    }
+    return str(
+        ledger.observe(
+            identity,
+            now=now,
+            source=str(rec.get("source") or ""),
+            observe=False,
+        )
+        or ""
+    )
 
 
 def _stamp_finding_from_ledger(rec: dict[str, Any], ledger: AssetLedger, uid: str) -> None:
