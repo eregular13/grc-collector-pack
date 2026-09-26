@@ -94,7 +94,7 @@ def test_poam_decision_names_low_exposure_and_honeypot() -> None:
     )
     decision = poam_decision(cost)
     assert decision["include"] is False
-    assert decision["reason"] == "NOT_A_WEAKNESS"
+    assert decision["reason"] == "not_a_weakness"
     assert decision["reason"] in POAM_EXCLUDE_REASONS
     assert map_finding(cost)["include_poam"] is False
 

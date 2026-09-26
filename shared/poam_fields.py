@@ -189,7 +189,7 @@ def apply_ledger_detection(
     """Stamp ledger-stable original_detection_date and EGP- id onto poam.csv fields."""
     out = dict(fields)
     ledger_id = str(item.get("poam_id") or "").strip()
-    if ledger_id.startswith("EGP-"):
+    if ledger_id.startswith("EGP-") or ledger_id.startswith("EGR-"):
         out["poam_id"] = ledger_id
     stored = str(item.get("original_detection_date") or NOT_RECORDED)
     incoming, _basis, _tz = artifact_detection(rec)

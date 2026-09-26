@@ -781,6 +781,16 @@ def parse_file(path: Path) -> list[dict]:
         )
         name = str(props.get("name") or node.get("label") or objectid or "identity")
         kind = str(node.get("kind") or node.get("type") or meta_kind or "User")
+        is_computer = (
+            kind.lower() == "computer"
+            or str(props.get("samaccountname") or "").endswith("$")
+            or bool(props.get("operatingsystem"))
+        )
+        asset_extra: dict = {"asset_type": "SP", "kind": kind, "objectid": objectid}
+        if is_computer:
+            asset_extra["asset_type"] = "PR"
+        else:
+            asset_extra["principal"] = name
         # Empty Members / empty Aces invent nothing — we do not walk group membership.
         records.append(
             make_record(
@@ -793,17 +803,12 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[name],
                 labels=LABELS + [kind.lower()],
                 collected_at=now,
-                extra={"asset_type": "SP", "kind": kind, "objectid": objectid},
+                extra=asset_extra,
             )
         )
         findings: list[tuple[str, str, str]] = []
         uname = name.upper()
         empty_group = str(kind).lower() == "group" and props.get("member_count") == 0
-        is_computer = (
-            kind.lower() == "computer"
-            or str(props.get("samaccountname") or "").endswith("$")
-            or bool(props.get("operatingsystem"))
-        )
         is_dc = "OU=DOMAIN CONTROLLERS" in str(props.get("distinguishedname") or "").upper()
         enabled = props.get("enabled")
         if empty_group:

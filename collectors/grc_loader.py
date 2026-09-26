@@ -33,7 +33,7 @@ from shared.estate_pages import (
     write_export_manifest,
 )
 from shared.evidence import build_evidence_rows
-from shared.ciso_shape import EXCLUDED_FIELDS
+from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
@@ -43,12 +43,15 @@ from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import (
     assign_poam_id,
+    egr_key,
     fingerprints_for,
     fp_v1,
+    is_egr_rollup,
     item_maps_to_current,
     ledger_run_delta,
     migrate_finding_refs,
     run_ledger,
+    _egr_account,
 )
 from shared.vendor_dependency import VD_NOTE
 from shared.io_util import (
@@ -266,6 +269,7 @@ def load() -> dict:
     estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
+    pre_excluded = [r for r in records if r.get("kind") == "excluded"]
     fold_port_only_into_specific(findings)
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
     severity_unmapped = sum(
@@ -402,7 +406,7 @@ def load() -> dict:
     ]
     today = utc_run_date()
     lighter = poam_lighter_requested()
-    weaknesses = other_findings + vuln_findings
+    weaknesses = other_findings + vuln_findings + pre_excluded
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     included_for_ledger = [
         rec for rec in findings if poam_decision(rec, lighter=lighter).get("include")
@@ -432,7 +436,7 @@ def load() -> dict:
     used_ids = {
         str(it.get("poam_id") or ""): fp
         for fp, it in (poam_ledger.get("items") or {}).items()
-        if str(it.get("poam_id") or "").startswith("EGP-")
+        if str(it.get("poam_id") or "").startswith(("EGP-", "EGR-"))
     }
     ranked = sorted(
         weaknesses,
@@ -455,15 +459,21 @@ def load() -> dict:
                 superseded_by = str(winner_item.get("poam_id") or "")
             if not superseded_by:
                 superseded_by = str(decision.get("superseded_by") or "")
+            extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+            raw_reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
+            if raw_reason.lower() in {"unmapped", "unmapped query"} or "unmapped" in raw_reason.lower():
+                superseded_by = str(extra.get("exclude_detail") or "") or "unmapped query"
+            ref = rec.get("ref_id") or ""
             excluded_rows.append(
                 [
-                    rec.get("ref_id") or "",
+                    ref,
+                    ref,
                     weakness,
                     assets_s,
                     canon_severity(rec.get("severity")),
                     decision.get("reason") or "unexplained",
                     superseded_by,
-                    superseded_by if str(superseded_by).startswith("EGP-") else "",
+                    superseded_by if str(superseded_by).startswith(("EGP-", "EGR-")) else "",
                 ]
             )
             continue
@@ -481,8 +491,18 @@ def load() -> dict:
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
             status = str(item.get("status") or "open")
-        if not str(fields.get("poam_id") or "").startswith("EGP-"):
-            minted = assign_poam_id(fp_v1(rec), used_ids)
+        pid = str(fields.get("poam_id") or "")
+        if not (pid.startswith("EGP-") or pid.startswith("EGR-")):
+            extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+            if is_egr_rollup(rec):
+                policy = str(extra.get("check_id") or rec.get("name") or "")
+                minted = assign_poam_id(
+                    egr_key(policy, _egr_account(rec)),
+                    used_ids,
+                    prefix="EGR-",
+                )
+            else:
+                minted = assign_poam_id(fp_v1(rec), used_ids)
             fields["poam_id"] = minted
             used_ids[minted] = fp_v1(rec)
             if item is not None:
@@ -528,42 +548,24 @@ def load() -> dict:
             survivor_id = str(survivor_item.get("poam_id") or "")
         if not survivor_id:
             survivor_id = survivor_ref
+        ref = rec.get("ref_id") or ""
         excluded_rows.append(
             [
-                rec.get("ref_id") or "",
+                ref,
+                ref,
                 weakness_name_for(rec, mapped),
                 "|".join(rec.get("assets") or []),
                 ciso_finding_severity(rec.get("severity")),
                 "DUPLICATE_INSTANCE",
                 survivor_id,
-                survivor_id if str(survivor_id).startswith("EGP-") else "",
+                survivor_id if str(survivor_id).startswith(("EGP-", "EGR-")) else "",
             ]
         )
-    parser_excluded_n = 0
+    parser_excluded_n = len(pre_excluded)
     parser_excluded_reasons: dict[str, int] = {}
-    for rec in raw:
-        if rec.get("kind") != "excluded":
-            continue
-        mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
-        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-        raw_reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
+    for rec in pre_excluded:
         decision = poam_decision(rec, lighter=lighter)
         reason = str(decision.get("reason") or "NOT_A_WEAKNESS")
-        detail = str(extra.get("exclude_detail") or "")
-        if raw_reason.lower() in {"unmapped", "unmapped query"} or "unmapped" in raw_reason.lower():
-            detail = detail or "unmapped query"
-        excluded_rows.append(
-            [
-                rec.get("ref_id") or "",
-                weakness_name_for(rec, mapped),
-                "|".join(rec.get("assets") or []),
-                canon_severity(rec.get("severity")),
-                reason,
-                detail,
-                "",
-            ]
-        )
-        parser_excluded_n += 1
         parser_excluded_reasons[reason] = int(parser_excluded_reasons.get(reason) or 0) + 1
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
@@ -651,6 +653,11 @@ def load() -> dict:
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
+    assert_input_export_accounting(
+        [r for r in records if r.get("kind") in {"finding", "excluded"}],
+        [dict(zip(poam_header, row)) for row in poam_rows],
+        [dict(zip(EXCLUDED_FIELDS, row)) for row in excluded_rows],
+    )
     if lighter:
         plan_line = (
             "POA&M plan: lighter — Lows and non-key Mediums excluded at operator "
@@ -783,6 +790,7 @@ def load() -> dict:
         "excluded": len(excluded_rows),
         "excluded_by_reason": excluded_by_reason,
         "parser_excluded": parser_excluded_n,
+        "kind_excluded": len(pre_excluded),
         "flood_guard": flood_guard,
         "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
         "poam_plan_note": (
@@ -808,6 +816,7 @@ def load() -> dict:
             "weaknesses_total == weaknesses + pending_carried (deduped); "
             "flood_guard: findings_in + pending_carried == poam_rows + excluded_rows "
             "(findings_in counts kind=finding and kind=excluded); "
+            "kind_excluded counts parser kind=excluded; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),

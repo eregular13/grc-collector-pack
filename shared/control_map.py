@@ -169,6 +169,10 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Require authentication on Redis": "Redis accepts unauthenticated access",
     "Bind Redis and enable protected-mode": "Redis is bound beyond localhost without protected-mode",
     "Rename or disable dangerous Redis commands": "Dangerous Redis commands are enabled",
+    "End privileged HasSession logons": "Privileged principal has a HasSession on a workstation",
+    "Run container images as a non-root USER": "Container image runs as root",
+    "Block public EBS snapshot sharing": "EBS snapshot is shared publicly",
+    "Disable weak SSH cryptographic algorithms": "SSH offers weak encryption or MAC algorithms",
     "Disable SSH root login": "SSH root login is enabled",
     "Disable SSH empty passwords": "SSH empty passwords are allowed",
     "Apply security updates": "Security updates are not applied",
@@ -469,6 +473,10 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable LM hash storage": ["IA-5", "CM-6"],
     "Enable a host firewall": ["SC-7", "CM-7"],
     "Disable SSH root login": ["IA-2", "AC-6"],
+    "End privileged HasSession logons": ["AC-6", "AC-2"],
+    "Run container images as a non-root USER": ["AC-6", "CM-7"],
+    "Block public EBS snapshot sharing": ["AC-3", "SC-7"],
+    "Disable weak SSH cryptographic algorithms": ["CM-6", "SC-8(1)", "SC-13"],
     "Disable SSH empty passwords": ["IA-5", "IA-2"],
     "Apply security updates": ["SI-2", "CM-6", "RA-5"],
     "Enable time synchronization": ["AU-8"],
@@ -706,7 +714,47 @@ def _is_vuln_finding(rec: dict[str, Any]) -> bool:
     return bool(_CVE_RE.search(cve))
 
 
+def _is_ssh_weak_crypto(rec: dict[str, Any]) -> bool:
+    """Greenbone/Nessus SSH weak encryption or MAC — config, not a package CVE."""
+    blob = _blob(rec)
+    if "ssh" not in blob:
+        return False
+    return bool(
+        re.search(r"weak\s+encryption\s+algorithms", blob)
+        or re.search(r"weak\s+mac\s+algorithms", blob)
+    )
+
+
+def _ssh_weak_crypto_playbook(rec: dict[str, Any]) -> dict[str, Any]:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    solution = str(extra.get("solution") or "").strip()
+    blob = _blob(rec)
+    if re.search(r"weak\s+mac\s+algorithms", blob):
+        default = "Disable the weak MAC algorithms."
+        weakness = "SSH offers weak MAC algorithms"
+    else:
+        default = "Disable the weak encryption algorithms."
+        weakness = "SSH offers weak encryption algorithms"
+    fix = solution if solution else default
+    if fix and not fix.endswith("."):
+        fix += "."
+    return {
+        "control_name": "Disable weak SSH cryptographic algorithms",
+        "recommended_fix": (
+            f"{fix} This is a dropped scanner finding, not a live SSH probe."
+        ),
+        "nist_800_53": ["CM-6", "SC-8(1)", "SC-13"],
+        "cis": [],
+        "generic": False,
+        "finding_type": "ssh_weak_crypto",
+        "weakness_name": weakness,
+        "include_poam": canon_severity(rec.get("severity")) != "info",
+    }
+
+
 def _vuln_playbook(rec: dict[str, Any]) -> dict[str, Any]:
+    if _is_ssh_weak_crypto(rec):
+        return _ssh_weak_crypto_playbook(rec)
     cves = _cves_in(rec)
     cve = cves[0] if cves else ""
     pkg = _pkg_from_rec(rec)
@@ -801,6 +849,9 @@ def weakness_name_for(rec: dict[str, Any], mapped: dict[str, Any]) -> str:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     control = str(mapped.get("control_name") or extra.get("control_name") or "")
     scanner_id = str(extra.get("id") or extra.get("risk_id") or "").strip()
+    check_id = str(extra.get("check_id") or extra.get("id") or "").strip().lower()
+    if check_id == "alf" or "application firewall" in key:
+        return "macOS ALF is disabled"
     typed_name = str(mapped.get("weakness_name") or "").strip()
     if typed_name and scanner_id:
         raw_l = raw.lower()
@@ -858,17 +909,30 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
     return mapped
 
 
+def _canon_exclude_reason(reason: str) -> str:
+    """One spelling: not_a_weakness. Accept the old Custodian NOT_A_WEAKNESS."""
+    raw = str(reason or "").strip()
+    if raw.upper() == "NOT_A_WEAKNESS":
+        return "not_a_weakness"
+    return raw
+
+
 def _is_custodian_not_a_weakness(rec: dict[str, Any]) -> bool:
     """Custodian cost/ops only. nmap extra.not_a_weakness stays on the nmap path."""
     if str(rec.get("source") or "") != "cloud-prowler":
         return False
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    return str(extra.get("exclude_reason") or extra.get("poam_exclude") or "") == "NOT_A_WEAKNESS"
+    return _canon_exclude_reason(
+        extra.get("exclude_reason") or extra.get("poam_exclude") or ""
+    ) == "not_a_weakness"
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     mapped = _map_finding_body(rec)
+    if rec.get("kind") == "excluded":
+        mapped = dict(mapped)
+        mapped["include_poam"] = False
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
         mapped = dict(mapped)
         mapped["include_poam"] = False
@@ -896,15 +960,51 @@ def _is_unauth_redis(rec: dict[str, Any]) -> bool:
     )
 
 
+def _is_needs_review(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("needs_review") is True:
+        return True
+    return str(extra.get("classification") or "").strip().lower() == "needs-review"
+
+
 def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if _is_needs_review(rec):
+        n_hit = extra.get("affected_count")
+        try:
+            n_hit_i = int(n_hit)
+        except (TypeError, ValueError):
+            n_hit_i = 0
+        count_bit = (
+            f" Rolled up {n_hit_i} affected resources into this row."
+            if n_hit_i
+            else ""
+        )
+        return _stamp_csf(
+            {
+                "control_name": "Needs review (unclassified Cloud Custodian policy)",
+                "recommended_fix": (
+                    "This Cloud Custodian policy matched no known security or "
+                    "cost/ops classification. It stays on the POA&M as "
+                    "needs-review until an operator maps it. Do not drop it."
+                    + ((" " + count_bit) if count_bit else "")
+                ),
+                "cpg": [],
+                "include_poam": True,
+                "generic": False,
+                "finding_type": "needs_review",
+                "weakness_name": "Needs review (unclassified Cloud Custodian policy)",
+                "key_medium": True,
+            },
+            rec,
+        )
     if _is_custodian_not_a_weakness(rec):
         return _stamp_csf(
             {
                 "control_name": "Cost or operations signal (not a control weakness)",
                 "recommended_fix": (
-                    "This Cloud Custodian match is a cost/ops or unmapped policy, "
+                    "This Cloud Custodian match is a cost/ops policy, "
                     "not a security control failure. Do not open a High POA&M. "
                     "Map the policy to a control if it should be treated as a finding."
                 ),
@@ -912,7 +1012,7 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
                 "include_poam": False,
                 "generic": False,
                 "finding_type": "not_a_weakness",
-                "weakness_name": "Not a weakness (cost/ops or unmapped Custodian policy)",
+                "weakness_name": "Not a weakness (cost/ops Custodian policy)",
             },
             rec,
         )
@@ -1720,7 +1820,10 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "This is a HardeningKitty MS Security Baseline posture finding, not a CVE."
         )
     elif "firewall" in text and (
-        "no firewall" in text or "not installed" in text or "inactive" in text
+        "no firewall" in text
+        or "not installed" in text
+        or "inactive" in text
+        or "disabled" in text
     ):
         name = "Enable a host firewall"
         fix = (
@@ -1877,6 +1980,7 @@ POAM_INCLUDE_REASONS = frozenset(
         "key_medium",
         "severity_low",
         "severity_medium",
+        "needs_review",
     }
 )
 POAM_EXCLUDE_REASONS = frozenset(
@@ -1892,6 +1996,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "superseded_by_specific",
         "DUPLICATE_INSTANCE",
         "not_a_weakness",
+        "unmapped",
     }
 )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
@@ -1969,8 +2074,10 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
 
     Default (full) plan includes every non-info, non-honeypot weakness.
     NSE misconfig is always included. Honeypot / deception-sensor is always
-    excluded. Cost/ops or unmapped Custodian policies are NOT_A_WEAKNESS.
-    Informational is excluded (telemetry_info for telemetry-only
+    excluded. Cost/ops Custodian policies are NOT_A_WEAKNESS. Unclassified
+    Custodian policies stay on the plan as needs_review (never a silent
+    drop). kind:excluded rows (osquery unmapped, Custodian cost) land in
+    excluded.csv. Informational is excluded (telemetry_info for telemetry-only
     rows). Status is not a gate. Repeated telemetry lows are collapsed by
     iter_poam_decisions, not here.
 
@@ -1988,11 +2095,15 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
         reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
         if reason.lower() in {"unmapped", "unmapped query"} or "unmapped" in reason.lower():
             reason = "NOT_A_WEAKNESS"
+        else:
+            reason = _canon_exclude_reason(reason or "unmapped")
         if reason not in POAM_EXCLUDE_REASONS:
             reason = "NOT_A_WEAKNESS"
         return {"include": False, "reason": reason, "severity": sev}
+    if _is_needs_review(rec):
+        return {"include": True, "reason": "needs_review", "severity": sev}
     if _is_custodian_not_a_weakness(rec):
-        return {"include": False, "reason": "NOT_A_WEAKNESS", "severity": sev}
+        return {"include": False, "reason": "not_a_weakness", "severity": sev}
     if check in MISCONFIG_RULES:
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):

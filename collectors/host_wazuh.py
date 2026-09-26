@@ -818,9 +818,29 @@ def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> l
             )
         )
     for row in iter_osquery_unmapped(payload):
-        host = row.get("host") or ""
+        host = str(row.get("host") or "").strip()
         if not host:
-            continue
+            # Wazuh alert wraps can classify as unmapped with no host.
+            # Only invent account-less "unknown" on real osquery results.
+            if not is_osquery_results_payload(payload):
+                continue
+            host = "unknown"
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"Host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + ["osquery"],
+                    collected_at=now,
+                    extra=stamp_ids({"asset_type": "PR"}, hostname=host, fqdn=host if "." in host else ""),
+                )
+            )
         hid = row.get("id") or "osquery"
         records.append(
             {

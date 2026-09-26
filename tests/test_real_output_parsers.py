@@ -405,8 +405,9 @@ def test_real_corpus_28_excluded_reach_excluded_csv(
     by_ref = {row["finding_ref_id"]: row for row in rows}
     for rec in osq_excl + c7n_excl:
         row = by_ref[rec["ref_id"]]
-        assert row["excluded_reason"] == "NOT_A_WEAKNESS"
+        assert row["excluded_reason"] in {"NOT_A_WEAKNESS", "not_a_weakness"}
     for rec in osq_excl:
+        assert by_ref[rec["ref_id"]]["excluded_reason"] == "NOT_A_WEAKNESS"
         assert by_ref[rec["ref_id"]]["superseded_by"] == "unmapped query"
     assert {r["ref_id"] for r in osq_excl + c7n_excl} <= set(by_ref)
     assert all("poam_id" in row for row in rows)
@@ -479,7 +480,7 @@ def test_custodian_ebs_snapshot_and_aws_cost_on_real_runs() -> None:
 
     aws = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-aws-instances" / "resources.json")
     assert not any(r["kind"] == "finding" for r in aws)
-    excluded = [r for r in aws if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    excluded = [r for r in aws if (r.get("extra") or {}).get("exclude_reason") == "not_a_weakness"]
     assert len(excluded) == 6
 
 
@@ -530,7 +531,7 @@ def test_custodian_security_vs_cost_on_real_runs() -> None:
 
     vms = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json")
     assert not any(r["kind"] == "finding" for r in vms)
-    excluded = [r for r in vms if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    excluded = [r for r in vms if (r.get("extra") or {}).get("exclude_reason") == "not_a_weakness"]
     assert len(excluded) == 8
 
 
