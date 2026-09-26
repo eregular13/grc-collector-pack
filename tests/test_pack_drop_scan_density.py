@@ -188,6 +188,10 @@ def test_farm_drop_prove_register_is_denser_and_exposure_only(tmp_path: Path) ->
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}
     assert "severity_info" in reasons
     assert "honeypot" in reasons
+    info_rows = [row for row in excluded if row.get("excluded_reason") == "severity_info"]
+    assert info_rows
+    assert all(row.get("severity") == "info" for row in info_rows)
+    assert all(row.get("severity") != "low" for row in info_rows)
     summary = json.loads((Path(stamp["out_dir"]) / "summary.json").read_text(encoding="utf-8"))
     assert summary["poam_plan"] == "full"
     assert int(summary["weaknesses_total"]) == int(summary["poam_included"]) + int(
