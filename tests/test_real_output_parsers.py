@@ -168,10 +168,10 @@ def test_custodian_rejects_steampipe_list_and_defaults_medium(tmp_path: Path) ->
     recs = cloud_prowler.parse_file(steampipe)
     assert not any(r["kind"] == "finding" for r in recs)
 
-    dest = tmp_path / "ebs-unused"
+    dest = tmp_path / "ebs-unencrypted"
     dest.mkdir()
     (dest / "metadata.json").write_text(
-        json.dumps({"policy": {"name": "ebs-unused", "resource": "aws.ebs"}}),
+        json.dumps({"policy": {"name": "ebs-unencrypted", "resource": "aws.ebs"}}),
         encoding="utf-8",
     )
     (dest / "resources.json").write_text(
@@ -249,6 +249,48 @@ def test_jamf_filevault2_states_and_general_coverage_gap() -> None:
     assert "NOT_ENCRYPTED" in fixture
     assert "AllPartitionsEncrypted" not in fixture
     assert "NotEncrypted" not in fixture
+
+
+def test_osquery_results_log_is_not_lynis() -> None:
+    """*.log osqueryd results are detected by content, not sent to Lynis."""
+    recs = host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.sample.log")
+    assert recs
+    assert not any("lynis" in (r.get("labels") or []) for r in recs)
+    assert any(r["kind"] == "asset" and r["name"] == "ubuntu-xenial" for r in recs)
+
+
+def test_osquery_it_compliance_predicates_on_filebeat_and_msticpy() -> None:
+    ubuntu = host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.sample.log")
+    ufind = [r for r in ubuntu if r["kind"] == "finding"]
+    assert len(ufind) == 1
+    assert "disk encryption" in ufind[0]["name"].lower() or "disk_encryption" in ufind[0]["name"]
+    assert "ubuntu-xenial" in (ufind[0].get("assets") or [])
+
+    mac = host_wazuh.parse_file(SAMPLES / "osquery" / "osqueryd.results.darwin.log")
+    mfind = [r for r in mac if r["kind"] == "finding"]
+    assert len(mfind) == 1
+    assert "alf" in mfind[0]["name"].lower() or "firewall" in mfind[0]["name"].lower()
+    assert not any("disk_encryption" in r["name"] or "disk encryption" in r["name"].lower() for r in mfind)
+
+    mstic = host_wazuh.parse_file(SAMPLES / "osquery" / "msticpy.osqueryd.results.log")
+    assert not any(r["kind"] == "finding" for r in mstic)
+    assert all((r.get("extra") or {}).get("exclude_reason") == "unmapped" for r in mstic if r.get("kind") == "excluded")
+
+
+def test_custodian_security_vs_cost_on_real_runs() -> None:
+    pod = cloud_prowler.parse_file(SAMPLES / "cloud" / "security-context-pods" / "resources.json")
+    pfind = [r for r in pod if r["kind"] == "finding"]
+    assert len(pfind) == 1
+    assert pfind[0]["severity"] == "medium"
+    assert pfind[0]["extra"].get("severity_source") == "default"
+    assert "test/test-pod-1" in (pfind[0].get("assets") or [])
+    assert pfind[0]["extra"].get("check_id") == "security-context-pods"
+    assert not any(r["name"] == "security-context-pods" and r["kind"] == "asset" for r in pod)
+
+    vms = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json")
+    assert not any(r["kind"] == "finding" for r in vms)
+    excluded = [r for r in vms if (r.get("extra") or {}).get("exclude_reason") == "NOT_A_WEAKNESS"]
+    assert len(excluded) == 8
 
 
 def test_samples_are_not_client_keep() -> None:

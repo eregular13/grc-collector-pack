@@ -1,0 +1,1364 @@
+[
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01",
+    "name": "DBA-VM-Services-01",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "westus",
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/extensions/AzureDiskEncryption"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/extensions/AzurePolicyforWindows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/extensions/enablevmaccess"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/extensions/MDE.Windows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/extensions/Microsoft.Insights.VMDiagnosticsSettings"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/extensions/MicrosoftMonitoringAgent"
+      }
+    ],
+    "identity": {
+      "principalId": "2a4452ca-2db8-4b37-a802-1e2d321555ae",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_D8s_v3"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "MicrosoftWindowsDesktop",
+          "offer": "Windows-10",
+          "sku": "rs5-pro",
+          "version": "latest",
+          "exactVersion": "17763.1577.2011031610"
+        },
+        "osDisk": {
+          "osType": "Windows",
+          "name": "DBA-VM-Services-01_OsDisk_1_0fbffc6bd0ef49a3a3235e5ca926624d",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-Win-Services/providers/Microsoft.Compute/disks/DBA-VM-Services-01_OsDisk_1_0fbffc6bd0ef49a3a3235e5ca926624d"
+          }
+        },
+        "dataDisks": [
+          {
+            "lun": 0,
+            "name": "DBA-VM-Services-01_DataDisk_0",
+            "caching": "ReadWrite",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-Win-Services/providers/Microsoft.Compute/disks/DBA-VM-Services-01_DataDisk_0"
+            },
+            "toBeDetached": false
+          },
+          {
+            "lun": 1,
+            "name": "DBA-VM-Services-01_DataDisk_1",
+            "caching": "ReadWrite",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-Win-Services/providers/Microsoft.Compute/disks/dba-vm-services-01_datadisk_1"
+            },
+            "toBeDetached": false,
+            "deleteOption": "Detach"
+          }
+        ]
+      },
+      "osProfile": {
+        "computerName": "DBA-VM-Services",
+        "adminUsername": "dbamedia",
+        "windowsConfiguration": {
+          "provisionVMAgent": true,
+          "enableAutomaticUpdates": true,
+          "patchSettings": {
+            "patchMode": "AutomaticByOS",
+            "assessmentMode": "ImageDefault"
+          }
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-Win-Services/providers/Microsoft.Network/networkInterfaces/dba-vm-services-01801"
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "licenseType": "Windows_Client",
+      "vmId": "628088ba-1939-46e3-a77d-d13a0113e9c7",
+      "timeCreated": "2021-01-28T08:14:12.890241Z"
+    },
+    "resourceGroup": "DBA-RG-WIN-SERVICES",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "westus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services-01/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES",
+    "name": "DBA-V2-DEV-SERVICES",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "centralus",
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/extensions/AzureDiskEncryption"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/extensions/AzurePolicyforWindows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/extensions/MDE.Windows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/extensions/Microsoft.Azure.Monitoring.DependencyAgent"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/extensions/Microsoft.Insights.VMDiagnosticsSettings"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/extensions/MicrosoftMonitoringAgent"
+      }
+    ],
+    "identity": {
+      "principalId": "c1eb2f83-abc8-4a9c-9c01-afa290cff1af",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_B2s"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "MicrosoftWindowsServer",
+          "offer": "WindowsServer",
+          "sku": "2022-datacenter-azure-edition",
+          "version": "latest",
+          "exactVersion": "20348.768.220609"
+        },
+        "osDisk": {
+          "osType": "Windows",
+          "name": "DBA-V2-DEV-SERVICES_OsDisk_1_b1907efa088745689fa1c1a52c7d0f1b",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/commandpad-v2/providers/Microsoft.Compute/disks/DBA-V2-DEV-SERVICES_OsDisk_1_b1907efa088745689fa1c1a52c7d0f1b"
+          },
+          "deleteOption": "Delete"
+        },
+        "dataDisks": [],
+        "diskControllerType": "SCSI"
+      },
+      "osProfile": {
+        "computerName": "DBA-V2-DEV-SERV",
+        "adminUsername": "v2-dev-services",
+        "windowsConfiguration": {
+          "provisionVMAgent": true,
+          "enableAutomaticUpdates": true,
+          "patchSettings": {
+            "patchMode": "AutomaticByOS",
+            "enableHotpatching": false,
+            "assessmentMode": "ImageDefault"
+          },
+          "enableVMAgentPlatformUpdates": false
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/commandpad-v2/providers/Microsoft.Network/networkInterfaces/dba-v2-dev-servic392",
+            "properties": {
+              "deleteOption": "Detach"
+            }
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "vmId": "4adb9e41-e021-4305-aadf-bcba0a4eb3f2",
+      "timeCreated": "2022-06-30T13:20:56.266857Z"
+    },
+    "resourceGroup": "COMMANDPAD-V2",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "centralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-DEV-SERVICES/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES",
+    "name": "DBA-V2-PROD-SERVICES",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "centralus",
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/AzureDiskEncryption"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/AzurePolicyforWindows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/enablevmaccess"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/MDE.Windows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/Microsoft.Azure.Monitoring.DependencyAgent"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/Microsoft.Insights.VMDiagnosticsSettings"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/extensions/MicrosoftMonitoringAgent"
+      }
+    ],
+    "identity": {
+      "principalId": "8f6f48ca-fdb6-49c3-8862-aa7c585aa124",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_B4ms"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "MicrosoftWindowsServer",
+          "offer": "WindowsServer",
+          "sku": "2022-datacenter-azure-edition",
+          "version": "latest",
+          "exactVersion": "20348.768.220609"
+        },
+        "osDisk": {
+          "osType": "Windows",
+          "name": "DBA-V2-PROD-SERVICES_OsDisk_1_06f25a38b0de495f8d4fad90e08f6c7f",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/commandpad-v2/providers/Microsoft.Compute/disks/DBA-V2-PROD-SERVICES_OsDisk_1_06f25a38b0de495f8d4fad90e08f6c7f"
+          },
+          "deleteOption": "Delete"
+        },
+        "dataDisks": [],
+        "diskControllerType": "SCSI"
+      },
+      "osProfile": {
+        "computerName": "DBA-V2-PROD-SER",
+        "adminUsername": "dba_vm_user",
+        "windowsConfiguration": {
+          "provisionVMAgent": true,
+          "enableAutomaticUpdates": true,
+          "patchSettings": {
+            "patchMode": "AutomaticByOS",
+            "enableHotpatching": false,
+            "assessmentMode": "ImageDefault"
+          },
+          "enableVMAgentPlatformUpdates": false
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/commandpad-v2/providers/Microsoft.Network/networkInterfaces/dba-v2-prod-servi231",
+            "properties": {
+              "deleteOption": "Detach"
+            }
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "vmId": "11e486d3-48bd-499e-b763-95ede89a6e3e",
+      "timeCreated": "2022-07-08T10:57:17.770695Z"
+    },
+    "resourceGroup": "COMMANDPAD-V2",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "centralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/COMMANDPAD-V2/providers/Microsoft.Compute/virtualMachines/DBA-V2-PROD-SERVICES/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z"
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/virtualMachines/dba-apps",
+    "name": "dba-apps",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "centralus",
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/virtualMachines/dba-apps/extensions/AzurePolicyforLinux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/virtualMachines/dba-apps/extensions/DependencyAgentLinux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/virtualMachines/dba-apps/extensions/MDE.Linux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/virtualMachines/dba-apps/extensions/OmsAgentForLinux"
+      }
+    ],
+    "identity": {
+      "principalId": "d1b73fa6-9119-472c-9cc7-1d12893b9cbd",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_B2s"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "canonical",
+          "offer": "0001-com-ubuntu-server-focal",
+          "sku": "20_04-lts-gen2",
+          "version": "latest",
+          "exactVersion": "20.04.202301130"
+        },
+        "osDisk": {
+          "osType": "Linux",
+          "name": "dba-apps_disk1_057a68662d8744e5bc5b6f84e1010b4c",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "diskSizeGB": 30,
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/disks/dba-apps_disk1_057a68662d8744e5bc5b6f84e1010b4c",
+            "storageAccountType": "Premium_LRS"
+          },
+          "deleteOption": "Delete"
+        },
+        "dataDisks": [
+          {
+            "lun": 0,
+            "name": "dba-apps_DataDisk_0",
+            "caching": "None",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "diskSizeGB": 128,
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/dba-apps/providers/Microsoft.Compute/disks/dba-apps_DataDisk_0",
+              "storageAccountType": "Premium_LRS"
+            },
+            "toBeDetached": false,
+            "deleteOption": "Delete"
+          }
+        ],
+        "diskControllerType": "SCSI"
+      },
+      "osProfile": {
+        "computerName": "dba-apps",
+        "adminUsername": "azureuser",
+        "linuxConfiguration": {
+          "disablePasswordAuthentication": true,
+          "ssh": {
+            "publicKeys": [
+              {
+                "path": "/home/azureuser/.ssh/authorized_keys",
+                "keyData": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC01rKFPC4VnwAaUBXwZgOgvNzkKLMD0c+TXkPrNWSY+H9AWBxGq3osR4MyEjeah+rNjBg0TBTErVvVjHroxcNaZ2PMOt29J9118xBIvp43ubceexB4WhCjCtnMw3R7AlRsGXG4aC+RR06DIq+0jj7uLya4h01NF6XRmk8y7Af3sHY6omQG1wGCJAdG7NGudXCwKh2JFZXh+AnvRcbwQtlwUtH8wkiE7QClt9tKYqz26j9xr4vjRMul/iD0En55ol6pQePevEM3Af0uGdF0LCzbp+vSAXyXxTk4TlY+gbfcSufUIyc0i/iqKWLOjcaY+OZQntGzptpEVvrv0LbObA6lWKZcJjJ8eYdMb4/Bl2jWZ8ZBxy+pFxTIhsWzAHawhmA/bdu8+FbQlajF6s33HoBI3VwQPwQVYnMpd7uLxqAk/uTdUT8PPryT3Pvn/h9/54HfonowUZi6GNF/t3ZcTdx49DInLd4mjHw+Pmu1JoSjbnRsWKLed+npdoai84G8ew0= generated-by-azure"
+              }
+            ]
+          },
+          "provisionVMAgent": true,
+          "patchSettings": {
+            "patchMode": "ImageDefault",
+            "assessmentMode": "ImageDefault"
+          },
+          "enableVMAgentPlatformUpdates": false
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/dba-apps/providers/Microsoft.Network/networkInterfaces/dba-apps437",
+            "properties": {
+              "deleteOption": "Delete"
+            }
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "vmId": "42296a53-4822-47be-8df6-c14c679f5928",
+      "timeCreated": "2023-01-18T10:18:56.443904Z"
+    },
+    "resourceGroup": "DBA-APPS",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "centralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-APPS/providers/Microsoft.Compute/virtualMachines/dba-apps/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z",
+                      "average": 2.1934166666666663
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z",
+                      "average": 2.164416666666667
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z",
+                      "average": 2.0556666666666668
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z",
+                      "average": 2.3015833333333333
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z",
+                      "average": 2.0469166666666667
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z",
+                      "average": 2.1088333333333336
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z",
+                      "average": 1.9826315789473685
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          2.1934166666666663,
+          2.164416666666667,
+          2.0556666666666668,
+          2.3015833333333333,
+          2.0469166666666667,
+          2.1088333333333336,
+          1.9826315789473685
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services",
+    "name": "DBA-VM-Services",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "centralus",
+    "tags": {},
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/extensions/AzureDiskEncryption"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/extensions/AzureNetworkWatcherExtension"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/extensions/AzurePolicyforWindows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/extensions/enablevmaccess"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/extensions/MDE.Windows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/extensions/MicrosoftMonitoringAgent"
+      }
+    ],
+    "identity": {
+      "principalId": "0819e2eb-a44e-4b6e-b8ad-698591856b5e",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_F8s_v2"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "MicrosoftWindowsDesktop",
+          "offer": "Windows-10",
+          "sku": "rs4-pro",
+          "version": "latest",
+          "exactVersion": "17134.471.62"
+        },
+        "osDisk": {
+          "osType": "Windows",
+          "name": "DBA-VM-Services_OsDisk_1_1cec8a8f8be54c20b4fa4ed63cd7eafc",
+          "caching": "ReadWrite",
+          "writeAcceleratorEnabled": false,
+          "createOption": "FromImage",
+          "diskSizeGB": 512,
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/disks/DBA-VM-Services_OsDisk_1_1cec8a8f8be54c20b4fa4ed63cd7eafc",
+            "storageAccountType": "Premium_LRS"
+          }
+        },
+        "dataDisks": [
+          {
+            "lun": 0,
+            "name": "backup",
+            "caching": "None",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "diskSizeGB": 512,
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-Win-Services/providers/Microsoft.Compute/disks/backup",
+              "storageAccountType": "Premium_LRS"
+            },
+            "toBeDetached": false
+          }
+        ]
+      },
+      "osProfile": {
+        "computerName": "DBA-VM-Services",
+        "adminUsername": "dbamedia",
+        "windowsConfiguration": {
+          "provisionVMAgent": true,
+          "enableAutomaticUpdates": true,
+          "patchSettings": {
+            "patchMode": "AutomaticByOS",
+            "assessmentMode": "ImageDefault"
+          }
+        },
+        "secrets": [],
+        "allowExtensionOperations": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-Win-Services/providers/Microsoft.Network/networkInterfaces/dba-vm-services35"
+          }
+        ]
+      },
+      "provisioningState": "Succeeded",
+      "licenseType": "Windows_Client",
+      "vmId": "cb95b957-033f-4215-9d54-fe44b2d26f79",
+      "timeCreated": "2018-12-27T09:46:38.708402Z"
+    },
+    "resourceGroup": "DBA-RG-WIN-SERVICES",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "centralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-RG-WIN-SERVICES/providers/Microsoft.Compute/virtualMachines/DBA-VM-Services/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z",
+                      "average": 2.1882499999999996
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z",
+                      "average": 2.2395
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z",
+                      "average": 2.431
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z",
+                      "average": 2.4190833333333335
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z",
+                      "average": 2.223583333333333
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z",
+                      "average": 2.2560000000000002
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z",
+                      "average": 2.2939830508474577
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          2.1882499999999996,
+          2.2395,
+          2.431,
+          2.4190833333333335,
+          2.223583333333333,
+          2.2560000000000002,
+          2.2939830508474577
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM",
+    "name": "DBA-BUILD-WIN-VM",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "centralus",
+    "tags": {
+      "Name": "DBA-BUILD-WIN-VM"
+    },
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/AzureDiskEncryption"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/AzureNetworkWatcherExtension"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/AzurePolicyforWindows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/enablevmaccess"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/MDE.Windows"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/Microsoft.Insights.VMDiagnosticsSettings"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/extensions/MicrosoftMonitoringAgent"
+      }
+    ],
+    "identity": {
+      "principalId": "6d64e582-cef3-46a5-bfd1-cd84ac7f8a13",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "zones": [
+      "1"
+    ],
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_B4ms"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "MicrosoftWindowsServer",
+          "offer": "WindowsServer",
+          "sku": "2016-Datacenter",
+          "version": "latest",
+          "exactVersion": "14393.4350.2104091630"
+        },
+        "osDisk": {
+          "osType": "Windows",
+          "name": "DBA-BUILD-WIN-VM_OsDisk_1_8fd7b1ec56cd4d6bba590ab96bfdfebe",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "diskSizeGB": 256,
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/disks/DBA-BUILD-WIN-VM_OsDisk_1_8fd7b1ec56cd4d6bba590ab96bfdfebe",
+            "storageAccountType": "Premium_LRS"
+          }
+        },
+        "dataDisks": [
+          {
+            "lun": 0,
+            "name": "DB_Export",
+            "caching": "None",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "diskSizeGB": 2048,
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/disks/db_export",
+              "storageAccountType": "StandardSSD_LRS"
+            },
+            "toBeDetached": false,
+            "deleteOption": "Detach"
+          }
+        ]
+      },
+      "osProfile": {
+        "computerName": "DBA-BUILD-WIN-V",
+        "adminUsername": "dbadev",
+        "windowsConfiguration": {
+          "provisionVMAgent": true,
+          "enableAutomaticUpdates": true,
+          "patchSettings": {
+            "patchMode": "AutomaticByOS",
+            "enableHotpatching": false,
+            "assessmentMode": "ImageDefault"
+          }
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/dva-development/providers/Microsoft.Network/networkInterfaces/dba-build-win-vm458"
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "vmId": "5f8ecc44-4f54-4724-8834-64b5f28d3647",
+      "timeCreated": "2021-05-03T12:29:20.31404Z"
+    },
+    "resourceGroup": "DVA-DEVELOPMENT",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "centralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DVA-DEVELOPMENT/providers/Microsoft.Compute/virtualMachines/DBA-BUILD-WIN-VM/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z",
+                      "average": 1.4981666666666666
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z",
+                      "average": 1.898
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z",
+                      "average": 2.2303333333333333
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z",
+                      "average": 1.5319327731092438
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z",
+                      "average": 1.675
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z",
+                      "average": 1.7188333333333332
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z",
+                      "average": 1.5867796610169493
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          1.4981666666666666,
+          1.898,
+          2.2303333333333333,
+          1.5319327731092438,
+          1.675,
+          1.7188333333333332,
+          1.5867796610169493
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL",
+    "name": "DBA-DB-TUNNEL",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "southcentralus",
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/AzureNetworkWatcherExtension"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/AzurePolicyforLinux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/DependencyAgentLinux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/enablevmaccess"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/LinuxDiagnostic"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/MDE.Linux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/extensions/OmsAgentForLinux"
+      }
+    ],
+    "identity": {
+      "principalId": "776e9a23-a54d-43a0-803c-aef4845ef259",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_B2s"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "canonical",
+          "offer": "0001-com-ubuntu-server-focal",
+          "sku": "20_04-lts-gen2",
+          "version": "latest",
+          "exactVersion": "20.04.202205270"
+        },
+        "osDisk": {
+          "osType": "Linux",
+          "name": "DBA-DB-TUNNEL_OsDisk_1_e7374ed3c5374cdf9f899a155cd916cb",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "diskSizeGB": 30,
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/dba-developer-tools/providers/Microsoft.Compute/disks/DBA-DB-TUNNEL_OsDisk_1_e7374ed3c5374cdf9f899a155cd916cb",
+            "storageAccountType": "Premium_LRS"
+          },
+          "deleteOption": "Delete"
+        },
+        "dataDisks": [
+          {
+            "lun": 0,
+            "name": "DBA-DB-TUNNEL_DataDisk_0",
+            "caching": "None",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "diskSizeGB": 128,
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/dba-developer-tools/providers/Microsoft.Compute/disks/DBA-DB-TUNNEL_DataDisk_0",
+              "storageAccountType": "Premium_LRS"
+            },
+            "toBeDetached": false,
+            "deleteOption": "Delete"
+          }
+        ],
+        "diskControllerType": "SCSI"
+      },
+      "osProfile": {
+        "computerName": "DBA-DB-TUNNEL",
+        "adminUsername": "azureuser",
+        "linuxConfiguration": {
+          "disablePasswordAuthentication": true,
+          "ssh": {
+            "publicKeys": [
+              {
+                "path": "/home/azureuser/.ssh/authorized_keys",
+                "keyData": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9mKJf6RsLPdkaZ8AuJ0ue5KKg\r\nZs2c6myFJAhOgqRlvOnXu2JS4ZPuha0u8g+Dy4RH9aKzIMOs5mWPpmeD/IX0lrnQ\r\nrXHgp7vT5RRuUEl0UKXBXJmwQMwIU5z6J+i8EiDjvorsb4e1RONcmWNUuP6MXlyp\r\nQEdxqHvi1+xJKznWBGsz/pA2jhO8aEoGWdnoU6Wo8cx80tcZuOmFOBIgiS7nyjZO\r\nOpqj2ojtQt2OpUJRXhXnubxYmP4fRN/GrVdEqsQV7oFfqoFwmm8n8+L4gdWjRpe6\r\nMdy4yxSh0VcWtc3DfBvLgp3F31tMgFBD89bZax6Wtq3V7w/5qiYgqyfAQwbCNKxp\r\nB94+PF1QWJRA941Z3WI/tYbjpFAiHAcBCHWgPpONg85PtwK0t60XBOMHf7dDgvFN\r\n7B6V5KP7AMG2qQH/w5bt39Fgj1ahYXZtMH2PPMp0B/MRanMD8vjtMZs95cU0e7Az\r\nBlhD5f9MPyWA/ryjz9Yy90pzu+yZUKa8hXx/HCE= generated-by-azure\r\n"
+              }
+            ]
+          },
+          "provisionVMAgent": true,
+          "patchSettings": {
+            "patchMode": "ImageDefault",
+            "assessmentMode": "ImageDefault"
+          },
+          "enableVMAgentPlatformUpdates": false
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/dba-developer-tools/providers/Microsoft.Network/networkInterfaces/dba-db-tunnel242",
+            "properties": {
+              "deleteOption": "Delete"
+            }
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "vmId": "165b1bfe-81e8-4b36-b820-7c9e24a4064a",
+      "timeCreated": "2022-06-01T19:03:33.303044Z"
+    },
+    "resourceGroup": "DBA-DEVELOPER-TOOLS",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "southcentralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/DBA-DEVELOPER-TOOLS/providers/Microsoft.Compute/virtualMachines/DBA-DB-TUNNEL/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z",
+                      "average": 3.0064166666666665
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z",
+                      "average": 3.1771186440677965
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z",
+                      "average": 2.7280327868852456
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z",
+                      "average": 2.667333333333333
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z",
+                      "average": 2.9224166666666664
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z",
+                      "average": 2.562627118644068
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z",
+                      "average": 3.475338983050847
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          3.0064166666666665,
+          3.1771186440677965,
+          2.7280327868852456,
+          2.667333333333333,
+          2.9224166666666664,
+          2.562627118644068,
+          3.475338983050847
+        ]
+      }
+    }
+  },
+  {
+    "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware",
+    "name": "hubspot-middleware",
+    "type": "Microsoft.Compute/virtualMachines",
+    "location": "southcentralus",
+    "resources": [
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware/extensions/AzurePolicyforLinux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware/extensions/DependencyAgentLinux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware/extensions/LinuxDiagnostic"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware/extensions/MDE.Linux"
+      },
+      {
+        "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware/extensions/OmsAgentForLinux"
+      }
+    ],
+    "identity": {
+      "principalId": "bfb46e88-c949-407f-b90e-69e81d60e1d4",
+      "tenantId": "b57e615a-2796-4cb9-aca9-8346c9e927ab",
+      "type": "SystemAssigned"
+    },
+    "zones": [
+      "1"
+    ],
+    "properties": {
+      "hardwareProfile": {
+        "vmSize": "Standard_A2_v2"
+      },
+      "storageProfile": {
+        "imageReference": {
+          "publisher": "canonical",
+          "offer": "0001-com-ubuntu-server-focal",
+          "sku": "20_04-lts",
+          "version": "latest",
+          "exactVersion": "20.04.202111080"
+        },
+        "osDisk": {
+          "osType": "Linux",
+          "name": "hubspot-middleware_OsDisk_1_81e18ffb95d94695902e000680f3dcec",
+          "caching": "ReadWrite",
+          "createOption": "FromImage",
+          "diskSizeGB": 30,
+          "managedDisk": {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/hubspot-middleware/providers/Microsoft.Compute/disks/hubspot-middleware_OsDisk_1_81e18ffb95d94695902e000680f3dcec",
+            "storageAccountType": "StandardSSD_LRS"
+          },
+          "deleteOption": "Detach"
+        },
+        "dataDisks": [
+          {
+            "lun": 0,
+            "name": "hubspot-middleware_DataDisk_0",
+            "caching": "ReadOnly",
+            "writeAcceleratorEnabled": false,
+            "createOption": "Attach",
+            "diskSizeGB": 64,
+            "managedDisk": {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/hubspot-middleware/providers/Microsoft.Compute/disks/hubspot-middleware_DataDisk_0",
+              "storageAccountType": "StandardSSD_LRS"
+            },
+            "toBeDetached": false,
+            "deleteOption": "Detach"
+          }
+        ]
+      },
+      "osProfile": {
+        "computerName": "hubspot-middleware",
+        "adminUsername": "azureuser",
+        "linuxConfiguration": {
+          "disablePasswordAuthentication": true,
+          "ssh": {
+            "publicKeys": [
+              {
+                "path": "/home/azureuser/.ssh/authorized_keys",
+                "keyData": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDFuNEVN7058HNg+tiVRWhhRR7x\r\nCeFFiO3bA5ea6L37EX9ZFf0NW+WqYttOntIFWOlXJQIGi1/HyhHyLfbWr4fipRg7\r\n0bzJYxgKokdFLKduWU16/Z91cCsRG5H2g7eheYhFgh7uZ46syFOOzuVCWTcjqqng\r\nH7x6kqS56BNqd3tVoDtIz7HZxAgTETciQaLN9NZTrz7rin7YNj9EHlc+EYS6Gnhb\r\nka09wROR65mThRuI2pvhqsaDR+3GtamLypzUV3Z+JBnKVcXfYYA9Wi0P96j1f9Ch\r\nv/RupHRbyE7NnHjIv3d9QNRo5J3KrmeIsdXdD0ikl8k0xhhmbms4LuJGjTZPS2AY\r\n5DioUTjEAVUMvZnuE/KPk2s3VPKu471ig4PXjIi1soTSG2k+XCnF2MNzNCevIhaK\r\nIC2oIgZH3bN87mrPjaU2Hw7jjAAl7IYDVpqVu+82B5eDhqIPpj7c3cjWDfmY5mDx\r\n9SvUAcF/4YTBpw8Se8tFHkm101mZ59ouWdlL9DU= generated-by-azure\r\n"
+              }
+            ]
+          },
+          "provisionVMAgent": true,
+          "patchSettings": {
+            "patchMode": "ImageDefault",
+            "assessmentMode": "AutomaticByPlatform"
+          }
+        },
+        "secrets": [],
+        "allowExtensionOperations": true,
+        "requireGuestProvisionSignal": true
+      },
+      "networkProfile": {
+        "networkInterfaces": [
+          {
+            "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/hubspot-middleware/providers/Microsoft.Network/networkInterfaces/hubspot-middleware79"
+          }
+        ]
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": true
+        }
+      },
+      "provisioningState": "Succeeded",
+      "vmId": "ccfecd74-e4c1-481d-940e-9a8cd1913e4c",
+      "timeCreated": "2021-11-15T10:27:12.199389Z"
+    },
+    "resourceGroup": "HUBSPOT-MIDDLEWARE",
+    "c7n:metrics": {
+      "Percentage CPU, average, 7.0, 1:00:00, None": {
+        "metrics_data": {
+          "cost": 419,
+          "timespan": "2025-07-11T02:58:03Z/2025-07-11T09:58:03Z",
+          "interval": "PT1H",
+          "namespace": "Microsoft.Compute/virtualMachines",
+          "resourceregion": "southcentralus",
+          "value": [
+            {
+              "id": "/subscriptions/8a4e83d9-b1b3-485f-a7d1-0aab11284c12/resourceGroups/HUBSPOT-MIDDLEWARE/providers/Microsoft.Compute/virtualMachines/hubspot-middleware/providers/Microsoft.Insights/metrics/Percentage CPU",
+              "type": "Microsoft.Insights/metrics",
+              "name": {
+                "value": "Percentage CPU",
+                "localized_value": "Percentage CPU"
+              },
+              "unit": "Percent",
+              "timeseries": [
+                {
+                  "metadatavalues": [],
+                  "data": [
+                    {
+                      "time_stamp": "2025-07-11T02:58:00.000Z",
+                      "average": 4.448833333333334
+                    },
+                    {
+                      "time_stamp": "2025-07-11T03:58:00.000Z",
+                      "average": 4.78051724137931
+                    },
+                    {
+                      "time_stamp": "2025-07-11T04:58:00.000Z",
+                      "average": 5.495573770491804
+                    },
+                    {
+                      "time_stamp": "2025-07-11T05:58:00.000Z",
+                      "average": 5.030666666666666
+                    },
+                    {
+                      "time_stamp": "2025-07-11T06:58:00.000Z",
+                      "average": 4.760083333333333
+                    },
+                    {
+                      "time_stamp": "2025-07-11T07:58:00.000Z",
+                      "average": 4.664916666666667
+                    },
+                    {
+                      "time_stamp": "2025-07-11T08:58:00.000Z",
+                      "average": 4.335677966101695
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "measurement": [
+          4.448833333333334,
+          4.78051724137931,
+          5.495573770491804,
+          5.030666666666666,
+          4.760083333333333,
+          4.664916666666667,
+          4.335677966101695
+        ]
+      }
+    }
+  }
+]

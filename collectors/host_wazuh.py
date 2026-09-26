@@ -18,7 +18,14 @@ from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collec
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
-from shared.osquery_checks import iter_osquery_failures
+from shared.osquery_checks import (
+    is_osquery_results_payload,
+    iter_osquery_failures,
+    iter_osquery_unmapped,
+    load_osquery_payload,
+    looks_osquery_text,
+    osquery_hosts,
+)
 from shared.schema import make_record, make_ref
 
 SOURCE = "host-wazuh"
@@ -515,12 +522,76 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
     return records
 
 
+def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> list[dict]:
+    records = _emit_check_rows(
+        iter_osquery_failures(payload),
+        now,
+        prefix="osquery",
+        labels=["osquery"],
+        title_fmt="osquery {id}: {title}",
+    )
+    seen_hosts = {r["name"] for r in records if r.get("kind") == "asset"}
+    for host in osquery_hosts(payload):
+        if host in seen_hosts:
+            continue
+        seen_hosts.add(host)
+        records.append(
+            make_record(
+                kind="asset",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"asset-{host}"),
+                name=host,
+                description=f"Host {host}",
+                category="host",
+                assets=[host],
+                labels=LABELS + ["osquery"],
+                collected_at=now,
+                extra=stamp_ids({"asset_type": "PR"}, hostname=host, fqdn=host if "." in host else ""),
+            )
+        )
+    for row in iter_osquery_unmapped(payload):
+        host = row.get("host") or "osquery-host"
+        hid = row.get("id") or "osquery"
+        records.append(
+            {
+                "kind": "excluded",
+                "source": SOURCE,
+                "ref_id": make_ref(SOURCE, f"osquery-unmapped-{hid}-{host}"),
+                "name": f"osquery unmapped: {hid}",
+                "description": row.get("title") or hid,
+                "severity": "info",
+                "category": "excluded",
+                "assets": [host],
+                "labels": LABELS + ["osquery", "unmapped"],
+                "collected_at": now,
+                "extra": {
+                    "exclude_reason": "unmapped",
+                    "id": hid,
+                    "check_id": hid,
+                    "host": host,
+                },
+            }
+        )
+    return stamp_lab_labels(records, lab=path_is_lab(path)) if path is not None else records
+
+
 def parse_file(path: Path) -> list[dict]:
     if path.name in SKIP_INPUT_NAMES:
         return []
-    if path.suffix.lower() in {".txt", ".log", ".dat"}:
-        return parse_lynis_report(read_text(path), iso_now(), path=path)
     text = read_text(path)
+    # osqueryd results logs are JSON lines — never Lynis, even when suffix is .log.
+    if looks_osquery_text(text):
+        osq_payload = load_osquery_payload(text)
+        wazuh_wrap = isinstance(osq_payload, dict) and (
+            osq_payload.get("osquery") or osq_payload.get("agents")
+        )
+        if osq_payload is not None and not wazuh_wrap and (
+            path.suffix.lower() in {".log", ".txt", ".dat", ".jsonl"}
+            or is_osquery_results_payload(osq_payload)
+        ):
+            return _emit_osquery_records(osq_payload, iso_now(), path=path)
+    if path.suffix.lower() in {".txt", ".log", ".dat"}:
+        return parse_lynis_report(text, iso_now(), path=path)
     now = iso_now()
     if path.suffix.lower() == ".csv":
         mdm = parse_mdm_file(path)
@@ -704,15 +775,7 @@ def parse_file(path: Path) -> list[dict]:
                 extra={"rule_id": rule.get("id"), "telemetry": True},
             )
         )
-    records.extend(
-        _emit_check_rows(
-            iter_osquery_failures(payload),
-            now,
-            prefix="osquery",
-            labels=["osquery"],
-            title_fmt="osquery {id}: {title}",
-        )
-    )
+    records.extend(_emit_osquery_records(payload, now, path=path))
     mdm = parse_mdm_inventory(payload, name=path.name, text=text)
     if mdm:
         records.extend(_emit_mdm_inventory(mdm, now))

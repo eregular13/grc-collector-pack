@@ -9,7 +9,7 @@ from typing import Any
 
 from shared.asset_ids import stamp_ids
 from shared.io_util import iso_now, read_json, read_text, run_collector
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "cloud-prowler"
 LABELS = ["cloud", "prowler"]
@@ -80,13 +80,69 @@ _C7N_KEYS = (
     "c7n:annotation",
 )
 
-# Policy-name keywords → severity. Unmapped policies default medium.
-_C7N_NAME_SEV = (
-    ("public", "high"),
-    ("admin", "high"),
-    ("unencrypted", "high"),
-    ("encryption-missing", "high"),
-    ("encryption_missing", "high"),
+# Real Custodian output has no severity field. Security policies default
+# Medium via canon_severity (severity_source=default). Name keywords do
+# not invent High.
+_C7N_SECURITY = (
+    "security",
+    "encrypt",
+    "unencrypt",
+    "public",
+    "exposed",
+    "insecure",
+    "privilege",
+    "iam",
+    "firewall",
+    "nacl",
+    "secret",
+    "password",
+    "wildcard",
+    "cis",
+    "hipaa",
+    "pci",
+    "ssh",
+    "rdp",
+    "0.0.0.0",
+    "world-open",
+    "anonymous",
+    "sec-con",
+    "security-context",
+    "security_context",
+    "hostnetwork",
+    "hostpid",
+    "hostipc",
+    "capability",
+    "run-as",
+    "runas",
+    "privileged",
+    "admin",
+    "open-ssh",
+    "open-rdp",
+    "missing-sec",
+)
+_C7N_NOT_WEAKNESS = (
+    "cost",
+    "unused",
+    "idle",
+    "underutilized",
+    "under-utilized",
+    "underutil",
+    "oversized",
+    "rightsiz",
+    "offhours",
+    "off-hours",
+    "billing",
+    "budget",
+    "utilization",
+    "cpu-under",
+    "stop-under",
+)
+# Operator map: exact policy names that are security findings.
+_C7N_SECURITY_NAMES = frozenset(
+    {
+        "s3-encryption-missing",
+        "security-context-pods",
+    }
 )
 
 
@@ -104,44 +160,85 @@ def _custodian_resources_path(path: Path | None) -> bool:
     return (path.parent / "metadata.json").is_file()
 
 
+def _custodian_meta(path: Path | None) -> dict[str, Any]:
+    if path is None:
+        return {}
+    meta = path.parent / "metadata.json"
+    if not meta.is_file():
+        return {}
+    try:
+        doc = json.loads(meta.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    inner = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
+    return inner if isinstance(inner, dict) else {}
+
+
+def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
+    """Only security policies become findings. Cost/ops → NOT_A_WEAKNESS."""
+    if pname.lower() in _C7N_SECURITY_NAMES:
+        return True
+    blob = f"{pname} {pol.get('description') or ''} {pol.get('resource') or ''}".lower()
+    security = any(token in blob for token in _C7N_SECURITY)
+    cost = any(token in blob for token in _C7N_NOT_WEAKNESS)
+    if security and not cost:
+        return True
+    if security and cost:
+        return True
+    return False
+
+
+def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
+    """Identity is the cloud resource, keyed per resource type — not the policy name."""
+    rtype = str(resource or "").lower()
+    meta = res.get("metadata") if isinstance(res.get("metadata"), dict) else {}
+    if rtype.startswith("k8s.") or rtype in {"k8s", "pod"}:
+        ns = str(meta.get("namespace") or res.get("namespace") or "")
+        name = str(meta.get("name") or "")
+        if ns and name:
+            return f"{ns}/{name}"
+        if name:
+            return name
+    if rtype.startswith("azure."):
+        name = str(res.get("name") or res.get("Name") or meta.get("name") or "")
+        if name:
+            return name
+        rid = res.get("id") or res.get("Id")
+        if rid:
+            return str(rid)
+    return str(
+        res.get("Arn")
+        or res.get("arn")
+        or res.get("Name")
+        or res.get("InstanceId")
+        or res.get("Id")
+        or res.get("id")
+        or meta.get("name")
+        or ""
+    )
+
+
 def _custodian_severity(pname: str, pol: dict[str, Any], path: Path | None) -> tuple[str, str]:
-    """Severity from policy metadata or a name mapping. Else medium + default."""
+    """Severity from policy metadata only. Else medium + default (no High invent)."""
     for key in ("severity", "Severity"):
         if pol.get(key):
-            return str(pol[key]), "policy"
-    if path is not None:
-        meta = path.parent / "metadata.json"
-        if meta.is_file():
-            try:
-                doc = json.loads(meta.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                doc = {}
-            inner = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
-            if isinstance(inner, dict) and (inner.get("severity") or inner.get("Severity")):
-                return str(inner.get("severity") or inner.get("Severity")), "metadata"
-    low = pname.lower()
-    for needle, sev in _C7N_NAME_SEV:
-        if needle in low:
-            return sev, "policy-name"
-    return "medium", "default"
+            return canon_severity(pol[key]), "policy"
+    inner = _custodian_meta(path)
+    if inner.get("severity") or inner.get("Severity"):
+        return canon_severity(inner.get("severity") or inner.get("Severity")), "metadata"
+    return canon_severity("medium"), "default"
 
 
 def _custodian_policy_name(path: Path | None) -> str:
     if path is None:
         return "c7n-policy"
+    meta = _custodian_meta(path)
+    if meta.get("name"):
+        return str(meta["name"])
     if path.name.lower() == "resources.json":
         parent = path.parent.name.strip()
         if parent:
             return parent
-    meta = path.parent / "metadata.json"
-    if meta.is_file():
-        try:
-            doc = json.loads(meta.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            doc = {}
-        pol = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
-        if isinstance(pol, dict) and pol.get("name"):
-            return str(pol["name"])
     return path.stem or "c7n-policy"
 
 
@@ -239,54 +336,51 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
         resource = str(pol.get("resource") or "cloud")
         service = resource.split(".")[-1] if resource else "cloud"
         rows = pol.get("resources") if isinstance(pol.get("resources"), list) else []
+        security = _custodian_is_security(pname, pol)
+        path = pol.get("_path")
+        path_obj = path if isinstance(path, Path) else None
         for res in rows:
             if not isinstance(res, dict):
                 continue
-            rid = str(
-                res.get("Arn")
-                or res.get("arn")
-                or res.get("Name")
-                or res.get("InstanceId")
-                or res.get("Id")
-                or res.get("id")
-                or pname
-            )
-            arn = str(res.get("Arn") or res.get("arn") or rid)
-            sev, sev_source = _custodian_severity(pname, pol, None)
-            out.append(
-                {
-                    "CheckID": pname,
-                    "CheckTitle": f"Cloud Custodian {pname}",
-                    "Status": "FAIL",
-                    "Severity": sev,
-                    "ResourceId": rid,
-                    "ResourceArn": arn,
-                    "Description": str(pol.get("description") or f"Policy {pname} matched {rid}"),
-                    "ServiceName": service,
-                    "SeveritySource": sev_source,
-                }
-            )
+            rid = _custodian_resource_id(res, resource) or pname
+            arn = str(res.get("Arn") or res.get("arn") or res.get("id") or res.get("Id") or rid)
+            sev, sev_source = _custodian_severity(pname, pol, path_obj)
+            item = {
+                "CheckID": pname,
+                "CheckTitle": f"Cloud Custodian {pname}",
+                "Status": "FAIL" if security else "EXCLUDED",
+                "Severity": sev,
+                "ResourceId": rid,
+                "ResourceArn": arn,
+                "Description": str(pol.get("description") or f"Policy {pname} matched {rid}"),
+                "ServiceName": service,
+                "SeveritySource": sev_source,
+                "ResourceType": resource,
+            }
+            if not security:
+                item["ExcludeReason"] = "NOT_A_WEAKNESS"
+            out.append(item)
     return out
 
 
 def _custodian_from_resources(rows: list[dict[str, Any]], path: Path | None) -> list[dict[str, Any]]:
+    meta = _custodian_meta(path)
     pname = _custodian_policy_name(path)
-    resource = "cloud"
-    if path is not None:
-        meta = path.parent / "metadata.json"
-        if meta.is_file():
-            try:
-                doc = json.loads(meta.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                doc = {}
-            inner = doc.get("policy") if isinstance(doc.get("policy"), dict) else doc
-            if isinstance(inner, dict) and inner.get("resource"):
-                resource = str(inner["resource"])
-    findings = _custodian_findings({"name": pname, "resource": resource, "resources": rows})
-    sev, sev_source = _custodian_severity(pname, {}, path)
+    resource = str(meta.get("resource") or "cloud")
+    findings = _custodian_findings(
+        {
+            "name": pname,
+            "resource": resource,
+            "description": meta.get("description") or "",
+            "resources": rows,
+            "_path": path,
+        }
+    )
+    sev, sev_source = _custodian_severity(pname, meta, path)
     for item in findings:
         item["Severity"] = sev
         item["SeveritySource"] = sev_source
+        item["ResourceType"] = resource
     return findings
 
 
@@ -419,6 +513,31 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     ),
                 )
             )
+        if item.get("ExcludeReason") or status == "EXCLUDED":
+            records.append(
+                {
+                    "kind": "excluded",
+                    "source": SOURCE,
+                    "ref_id": make_ref(SOURCE, f"excl-{check}-{rid}"),
+                    "name": title,
+                    "description": desc,
+                    "severity": canon_severity(sev),
+                    "category": "excluded",
+                    "assets": [rid],
+                    "labels": LABELS + [service, "not-a-weakness"],
+                    "collected_at": now,
+                    "extra": {
+                        "exclude_reason": str(item.get("ExcludeReason") or "NOT_A_WEAKNESS"),
+                        "check_id": check,
+                        "arn": arn,
+                        "status": status or "EXCLUDED",
+                        "service": service,
+                        "resource": rid,
+                        "resource_type": item.get("ResourceType") or service,
+                    },
+                }
+            )
+            continue
         if status in {"", "FAIL", "FAILED", "MANUAL"}:
             records.append(
                 make_record(
@@ -427,7 +546,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     ref_id=make_ref(SOURCE, f"{check}-{rid}"),
                     name=title,
                     description=desc,
-                    severity=sev,
+                    severity=canon_severity(sev),
                     category="cloud-misconfiguration",
                     assets=[rid],
                     labels=LABELS + [service],
