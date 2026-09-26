@@ -225,7 +225,10 @@ def test_import_csvs_first_line_is_not_a_hash_comment(
         first = text.splitlines()[0]
         assert not first.lstrip().startswith("#"), rel
         if rel.endswith(".csv"):
-            assert first == ",".join(FEDRAMP_OPEN_HEADERS), rel
+            from shared.poam_fedramp import FEDRAMP_CSV_HEADERS
+
+            assert first == ",".join(FEDRAMP_CSV_HEADERS), rel
+            assert first.startswith(",".join(FEDRAMP_OPEN_HEADERS))
         else:
             assert text.lstrip()[:1] in "{["
     assert (out / "poam" / "ESTATE.txt").is_file()
