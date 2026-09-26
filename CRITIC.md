@@ -1,3 +1,19 @@
+# CRITIC — cycle 196 (PARSER_WRITE_SCA_ALERT_PROWLER)
+
+Lab this brick: pytest **1089** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`poam=109` `demo=true`). Cold SAMPLE→SoR findings=6 poam=8 vulns=2.
+Cold farm_drop→SoR findings=174 poam=48 vulns=0. Host-lab / SAMPLE /
+farm_drop counts **unchanged**. enum4linux listing OK is READ; writable
+share only on explicit write. Wazuh alerts aggregate by (rule.id,
+agent) with count/first/last; levels 0-3 are info and stay off the
+POA&M. SCA agent from path/export/hint or `unknown-agent` (never
+`wazuh-host`); failed-check severity from rationale/compliance or
+medium + `severity_source=default`. Prowler skips muted and MANUAL;
+account ID stays in finding identity. Zero P0/P1. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 195 (MERGE_MASTER_ESTATE_PLUS_BOTH_REAL_SAMPLES)
 
 Merge `origin/master` `5adc8b7` (after #132 estate banner / exact-header

@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 196 — enum4linux write / Wazuh alert+SCA / Prowler mute+account (2026-09-26)
+
+listing OK is READ; writable SMB finding only on explicit write.
+Wazuh alerts aggregate by (rule.id, agent) with count and first/last
+seen; levels 0-3 are info (never POA&M). SCA agent from path/export/
+hint or unknown-agent, never wazuh-host; severity from the check or
+medium default. Prowler skips muted and MANUAL; account ID in
+identity. pytest **1089**. Host-lab / SAMPLE / farm_drop counts
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 195 — merge master #132/#139/#136 into real-sample parsers (2026-09-26)
 
 Merge `origin/master` `5adc8b7` (PR #132 estate banner + exact-header
