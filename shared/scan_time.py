@@ -33,6 +33,8 @@ _SCAN_KEYS = (
     "created_at",
     "generated_at",
     "timestamp",
+    "TimestampZulu",
+    "timestamp_zulu",
     "start",
     "finished",
     "starttime",

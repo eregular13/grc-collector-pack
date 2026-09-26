@@ -16,6 +16,10 @@ Host-lab assets/findings **unchanged** 84 / 103. POA&M restamped
 `poam==weaknesses==125`). Pytest **1147** (+6 follow-up tests; prior
 STATUS 1087 was a stale stamp vs 1f8d347). Catalog **unchanged**.
 paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+Cold-review add-on: Greenbone `scan_start`/`Timestamp` and ScubaGear
+`TimestampZulu` feed `extra.scan_time` → #131 detection date (15/30/90/180).
+`status_date` is UTC YYYY-MM-DD on poam.csv / poam_fedramp.csv / ledger.
+PingCastle `A-MinPwdLen` gets a rule-specific password-length fix.
 
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 

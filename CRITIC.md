@@ -12,7 +12,9 @@ member count + 0-point info; ScubaGear DomainName label; testssl
 POA&M 111→125 is the current loader full plan (excluded=0), not a
 MIN_ loosen. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
 **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below
-are unchanged.
+are unchanged. Cold-review add-on: artifact scan time → detection date
+(Greenbone/Scuba), UTC `status_date`, PingCastle rule-specific fix.
+Pytest **1151**.
 
 # CRITIC — cycle 195 (MERGE_EVIDENCE_AND_MULTI_HOST_LAB)
 

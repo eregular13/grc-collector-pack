@@ -153,11 +153,21 @@ def _cves_from_nvt(nvt: ET.Element) -> list[str]:
     return found
 
 
+def _report_scan_time(root: ET.Element) -> str:
+    """GMP Timestamp / scan_start (report-level), else first result creation_time."""
+    for name in ("scan_start", "timestamp", "scan_end"):
+        for el in root.iter():
+            if _local(el.tag) == name and (el.text or "").strip():
+                return (el.text or "").strip()
+    return ""
+
+
 def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
     try:
         root = ET.fromstring(text)
     except ET.ParseError:
         return
+    report_ts = _report_scan_time(root)
     for el in root.iter():
         if _local(el.tag) != "result":
             continue
@@ -175,6 +185,7 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
         cvss = _child_text(el, "severity") or _child_text(nvt, "cvss_base")
         desc = _child_text(el, "description") or name
         cves = _cves_from_nvt(nvt)
+        scan_time = report_ts or _child_text(el, "creation_time")
         yield {
             "host": host or "unknown",
             "port": port,
@@ -186,6 +197,7 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
             "cves": cves,
             "cve": " ".join(cves),
             "description": desc,
+            "scan_time": scan_time,
         }
 
 
@@ -217,6 +229,7 @@ def iter_greenbone_csv(text: str) -> Iterator[dict[str, Any]]:
             "cves": cves,
             "cve": " ".join(cves),
             "description": lower.get("summary") or lower.get("specific result") or name,
+            "scan_time": lower.get("timestamp") or lower.get("scan_start") or "",
         }
 
 

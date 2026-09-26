@@ -11,7 +11,6 @@ import csv
 import json
 import os
 import shutil
-from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.control_map import (
@@ -36,7 +35,7 @@ from shared.finding_types import dedupe_weaknesses, finding_identity, primary_as
 from shared.hardening_dedup import dedupe_hardening
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
 from shared.poam_ledger import run_ledger
 from shared.io_util import (
     in_dir,
@@ -360,7 +359,7 @@ def load() -> dict:
         "estate",
         *POAM_EXTRA_FIELDS,
     ]
-    today = datetime.now(timezone.utc).date()
+    today = utc_run_date()
     lighter = poam_lighter_requested()
     weaknesses = other_findings + vuln_findings
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}

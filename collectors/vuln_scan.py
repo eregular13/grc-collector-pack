@@ -147,6 +147,7 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
             "port": port,
             "cvss": row.get("cvss") or "",
             "threat": row.get("threat") or "",
+            **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
         },
     )
 

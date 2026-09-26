@@ -139,6 +139,14 @@ CONTROL_WEAKNESS: dict[str, str] = {
     "Restrict external sharing": "External sharing is not restricted",
     "Review SSH brute-force activity": "SSH brute-force activity was observed",
     "Enforce password policy": "Password policy is not enforced",
+    "Raise domain minimum password length": "Domain minimum password length is below 8",
+    "Restrict Account Operators membership": "Account Operators has standing members",
+    "Restrict Print Operators membership": "Print Operators has standing members",
+    "Restrict Server Operators membership": "Server Operators has standing members",
+    "Restrict Schema Admins membership": "Schema Admins has standing members",
+    "Restrict Enterprise Admins membership": "Enterprise Admins has standing members",
+    "Restrict Administrators membership": "Builtin Administrators has standing members",
+    "Review informational PingCastle finding": "PingCastle reported a zero-point finding",
     "Enforce Windows password history": "Password history is shorter than required",
     "Disable LM hash storage": "LM hashes are stored",
     "Enforce account lockout": "Account lockout is not enforced",
@@ -421,6 +429,13 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Harden kerberoastable service accounts": ["IA-5", "AC-6"],
     "Remove unconstrained Kerberos delegation": ["AC-6", "IA-2"],
     "Restrict Backup Operators membership": ["AC-6", "AC-2"],
+    "Restrict Account Operators membership": ["AC-6", "AC-2"],
+    "Restrict Print Operators membership": ["AC-6", "AC-2"],
+    "Restrict Server Operators membership": ["AC-6", "AC-2"],
+    "Restrict Schema Admins membership": ["AC-6", "AC-2"],
+    "Restrict Enterprise Admins membership": ["AC-6", "AC-2"],
+    "Restrict Administrators membership": ["AC-6", "AC-2"],
+    "Raise domain minimum password length": ["IA-5"],
     "Restrict Domain Admins membership": ["AC-6", "AC-2"],
     "Enable full-disk encryption": ["SC-28", "MP-5"],
     "Deploy endpoint detection and response": ["SI-4"],
@@ -807,6 +822,88 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     mapped = _stamp_csf(mapped)
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
+
+
+_PINGCASTLE_RULES: dict[str, dict[str, str]] = {
+    "A-MinPwdLen": {
+        "name": "Raise domain minimum password length",
+        "fix": (
+            "Set the domain minimum password length to at least 8 characters "
+            "(14 recommended) in the Default Domain Policy. "
+            "This is a PingCastle healthcheck finding, not a Windows "
+            "baseline audit or a live AD call."
+        ),
+    },
+    "A-ZeroPoint": {
+        "name": "Review informational PingCastle finding",
+        "fix": (
+            "No score was assigned. Confirm the rationale is still true, then "
+            "close or accept. This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-BackupOperators": {
+        "name": "Restrict Backup Operators membership",
+        "fix": (
+            "Remove standing Backup Operators members; the group can dump SAM. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-AccountOperators": {
+        "name": "Restrict Account Operators membership",
+        "fix": (
+            "Empty Account Operators; members can create privileged accounts. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-PrintOperators": {
+        "name": "Restrict Print Operators membership",
+        "fix": (
+            "Empty Print Operators; members can load a driver and seize SYSTEM. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-ServerOperators": {
+        "name": "Restrict Server Operators membership",
+        "fix": (
+            "Empty Server Operators; members can take control of DCs. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-SchemaAdmins": {
+        "name": "Restrict Schema Admins membership",
+        "fix": (
+            "Keep Schema Admins empty except during a documented schema update. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-EnterpriseAdmins": {
+        "name": "Restrict Enterprise Admins membership",
+        "fix": (
+            "Minimize Enterprise Admins to break-glass accounts only. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-DomainAdmins": {
+        "name": "Restrict Domain Admins membership",
+        "fix": (
+            "Minimize Domain Admins; no standing workstation logons. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+    "P-Administrators": {
+        "name": "Restrict Administrators membership",
+        "fix": (
+            "Minimize builtin Administrators; prefer Domain Admins only on DCs. "
+            "This is a PingCastle file-drop finding, not a live AD call."
+        ),
+    },
+}
+
+
+def _pingcastle_playbook(rec: dict[str, Any]) -> dict[str, str] | None:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    rid = str(extra.get("risk_id") or "").strip()
+    return _PINGCASTLE_RULES.get(rid)
 
 
 def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
@@ -1316,6 +1413,18 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Do not publish vpn/admin/dev hostnames on the open internet. "
             "This is a dropped EASM finding, not a live DNS/HTTP probe."
         )
+    elif extra.get("risk_id"):
+        play = _pingcastle_playbook(rec)
+        if play:
+            name = play["name"]
+            fix = play["fix"]
+        else:
+            name = f"Remediate PingCastle {extra.get('risk_id') or rec.get('name')}"
+            fix = (
+                f"Apply the PingCastle {extra.get('risk_id') or 'risk'} remediation "
+                "from the healthcheck rationale. This is a PingCastle file-drop finding, "
+                "not a live AD call."
+            )
     elif str(rec.get("category") or "") == "exposure":
         name = f"Reduce unnecessary network exposure ({rec.get('name') or port or 'service'})"
         fix = (
