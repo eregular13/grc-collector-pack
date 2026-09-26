@@ -1,3 +1,46 @@
+# CRITIC — cycle 215 (REMASTER_6A5EBD6 + REASON_CASE)
+
+Lab this brick: pytest **1449** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `origin/master` `6a5ebd6` (#172 +
+#178) with a normal merge commit. EGR- per-policy+account rollup
+kept. Custodian exclude reason is `not_a_weakness` (old
+`NOT_A_WEAKNESS` still accepted). DEMO/SAMPLE/farm counts unchanged
+vs 2b7157b. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
+# CRITIC — cycle 214 (EGR_NEEDS_REVIEW_ROLLUP)
+
+Lab this brick: pytest **1436** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `origin/master` `7ebc697` (#169 +
+#175) with a normal merge commit. Unknown Custodian needs-review
+rolls up one `EGR-` POA&M row per policy+account (2 unknown × 200
+resources → 2 rows; ID stable, not resource order). Known security
+stays per resource. DEMO/SAMPLE/farm counts unchanged vs 92c5520 /
+e546db1. Real-sample corpus poam 6 / excluded 28 after identity
+collapse (28 excluded unchanged; no unknown policies in that set).
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
+# CRITIC — cycle 213 (FAIL_CLOSED_GATING)
+
+Lab this brick: pytest **1417** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Unknown Custodian stays on the plan as
+needs-review. kind:excluded rows appear in excluded.csv with id.
+Prowler placeholder FAIL kept under `account:unknown`. e546db1
+carried POA&M IDs persist. DEMO/SAMPLE/farm counts unchanged vs
+e546db1. Real-sample corpus poam 6→8 excluded 0→28. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
+
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 
 Merge `origin/master` `d6ae8d0` (#163) with a normal merge commit. No

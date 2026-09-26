@@ -1,5 +1,39 @@
 # CYCLE log
 
+## cycle 215 — remaster 6a5ebd6 + not_a_weakness case (2026-09-26)
+
+Merged `origin/master` `6a5ebd6` (#172 + #178) as a merge commit; no
+rebase. EGR- rollup kept. Custodian exclude reason canon
+`not_a_weakness`. Pytest **1449**. Host-lab 79 / 107 / poam **123** /
+excluded **6**. SAMPLE 6/8/0 and farm 174/106/68 unchanged. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out. Hold for Metis. Do not squash-merge.
+
+## cycle 214 — EGR- needs-review rollup + merge 7ebc697 (2026-09-26)
+
+Unknown Custodian tagging/retention policies roll up one `EGR-`
+POA&M row per policy+account (affected-resource count + resource
+list in the row detail). ID keyed on policy name and account, not
+resource order. Known security stays per resource. Merged
+`origin/master` `7ebc697` (#169 + #175) as a merge commit; no
+rebase. Pytest **1436**. Host-lab 79 / 107 / poam **123** /
+excluded **6**. SAMPLE 6/8/0 and farm 174/106/68 unchanged. Real
+samples poam 6 / excluded 28 after collapse. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 213 — fail-closed Custodian/Prowler/osquery accounting (2026-09-26)
+
+Unknown Custodian policies go on the POA&M as needs-review (never
+drop). kind:excluded records (Custodian cost + osquery unmapped) land
+in `poam/excluded.csv` with `id` + reason. Prowler FAIL on placeholder
+resources stays under `account:<uid or unknown>`. Lab accounting:
+every finding/excluded key is in exactly one of poam.csv or
+excluded.csv. e546db1 ledger upgrade keeps every carried ID. Pytest
+**1417**. Host-lab 79 / 107 / poam **123** / excluded **6** (unchanged
+vs e546db1). SAMPLE 8/0 and farm 106/68 unchanged. Real samples
+poam 6→8 excluded 0→28. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
 
 Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;
