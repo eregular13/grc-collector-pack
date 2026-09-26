@@ -1159,35 +1159,61 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
         seen.add(fp)
         out.append((fp, "title_master_ega"))
     extra = extra_dict(rec)
-    if _tool_tag(rec) == "wazuh" and (
+    variants = [rec]
+    if str(extra.get("check_id") or "").strip():
+        pre = dict(rec)
+        pre["extra"] = {k: v for k, v in extra.items() if k != "check_id"}
+        variants.append(pre)
+    wazuh_hostful = _tool_tag(rec) == "wazuh" and (
         extra.get("agent_status") not in (None, "")
         or extra.get("disk_encryption_enabled") not in (None, "")
-    ):
-        hostless = _weakness_key_core(rec)
-        if hostless and hostless != weakness_key(rec):
-            for fn, reason in (
-                (asset_key, "wazuh_add_host"),
-                (legacy_master_asset_key, "wazuh_add_host"),
-                (legacy_asset_id_port_key, "wazuh_add_host"),
-                (legacy_name_asset_key, "wazuh_add_host"),
-            ):
-                fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=lambda _r, k=hostless: k)
+    )
+    # #172 host-less before #170 pre_location. Title→check_id is chained
+    # through `variants` so a 7ebc697 / 29c4c3e title-keyed host-less row
+    # rematches (Metis #177).
+    if wazuh_hostful:
+        for variant in variants:
+            hostless = _weakness_key_core(variant)
+            loc = ""
+            if hostless and not hostless.startswith("cve:"):
+                loc = _location_suffix(variant)
+            hostless_loc = f"{hostless}:{loc}" if loc else hostless
+            for key in (hostless_loc, hostless):
+                if not key or key == weakness_key(rec):
+                    continue
+                for fn, reason in (
+                    (asset_key, "wazuh_add_host"),
+                    (legacy_master_asset_key, "wazuh_add_host"),
+                    (legacy_asset_id_port_key, "wazuh_add_host"),
+                    (legacy_name_asset_key, "wazuh_add_host"),
+                ):
+                    fp = fp_v1(variant, asset_key_fn=fn, weakness_key_fn=lambda _r, k=key: k)
+                    if fp and fp not in seen:
+                        seen.add(fp)
+                        out.append((fp, reason))
+    # Pre-location fallback (#161): same title on one asset, no path/url/file.
+    # After wazuh_add_host so hosta's stored host-less fp is claimed before a
+    # same-title sibling (KR-B / EGP-946F27C7C3). Also run on the pre-check_id
+    # variant so #170 location rematch still sees the title-keyed family.
+    for variant in variants:
+        for fn, reason in (
+            (asset_key, "pre_location_to_location"),
+            (legacy_master_asset_key, "pre_location_master_ega"),
+            (legacy_asset_id_port_key, "pre_location_asset_id"),
+            (legacy_name_asset_key, "pre_location_name"),
+        ):
+            fp = fp_v1(
+                variant, asset_key_fn=fn, weakness_key_fn=legacy_pre_location_weakness_key
+            )
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, reason))
+            hosted = _attach_wazuh_host(variant, _weakness_key_core(variant))
+            if hosted and hosted != legacy_pre_location_weakness_key(variant):
+                fp = fp_v1(variant, asset_key_fn=fn, weakness_key_fn=lambda _r, k=hosted: k)
                 if fp and fp not in seen:
                     seen.add(fp)
                     out.append((fp, reason))
-    # Pre-location fallback (#161): same title on one asset, no path/url/file.
-    # After wazuh_add_host so hosta's stored host-less fp is claimed before a
-    # same-title sibling (KR-B / EGP-946F27C7C3).
-    for fn, reason in (
-        (asset_key, "pre_location_to_location"),
-        (legacy_master_asset_key, "pre_location_master_ega"),
-        (legacy_asset_id_port_key, "pre_location_asset_id"),
-        (legacy_name_asset_key, "pre_location_name"),
-    ):
-        fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=legacy_pre_location_weakness_key)
-        if fp and fp not in seen:
-            seen.add(fp)
-            out.append((fp, reason))
     return out
 
 

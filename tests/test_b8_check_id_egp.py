@@ -134,3 +134,37 @@ def test_title_keyed_families_stamp_stable_check_id() -> None:
         assert not wk.startswith("name:"), (rec.get("name"), wk)
         assert "33.3" not in wk
         assert "50.0" not in wk
+
+
+def test_repeating_admin_check_ids_keep_location_discriminator() -> None:
+    """httpx-admin / whatweb-admin / path-exposure stay distinct across URLs."""
+    httpx = [
+        r
+        for r in easm.parse_file(DEMO / "easm" / "httpx.json")
+        + easm.parse_file(DEMO / "easm" / "httpx.jsonl")
+        if r.get("kind") == "finding"
+        and str((r.get("extra") or {}).get("check_id") or "") == "httpx-admin"
+        and "admin.example.com" in (r.get("assets") or [])
+    ]
+    assert len(httpx) >= 2
+    keys = {weakness_key(r) for r in httpx}
+    assert len(keys) == len(httpx), keys
+    assert all("url:" in weakness_key(r) or "path:" in weakness_key(r) for r in httpx)
+
+    whatweb = [
+        r
+        for r in easm.parse_file(DEMO / "easm" / "whatweb.json")
+        if r.get("kind") == "finding"
+        and str((r.get("extra") or {}).get("check_id") or "") == "whatweb-admin"
+    ]
+    if len(whatweb) >= 2:
+        assert len({weakness_key(r) for r in whatweb}) == len(whatweb)
+
+    ffuf = [
+        r
+        for r in easm.parse_file(DEMO / "easm" / "ffuf.json")
+        if r.get("kind") == "finding"
+        and str((r.get("extra") or {}).get("check_id") or "").startswith("path-exposure")
+    ]
+    if len(ffuf) >= 2:
+        assert len({weakness_key(r) for r in ffuf}) == len(ffuf)

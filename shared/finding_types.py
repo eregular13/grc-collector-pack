@@ -947,12 +947,40 @@ def primary_asset(rec: dict[str, Any]) -> str:
     return normalize_asset_id(extra.get("arn") or rec.get("name") or "")
 
 
+_IDENTITY_LOCATION_KEYS = (
+    "path",
+    "url",
+    "file",
+    "line",
+    "user",
+    "evidence",
+    "evidence_ref",
+    "cmd",
+    "command",
+)
+
+
+def _identity_location(extra: dict[str, Any]) -> str:
+    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows."""
+    bits: list[str] = []
+    seen: set[str] = set()
+    for key in _IDENTITY_LOCATION_KEYS:
+        val = str(extra.get(key) or "").strip().lower()
+        if not val or val in seen:
+            continue
+        seen.add(val)
+        bits.append(f"{key}:{val}")
+    return "|".join(bits)
+
+
 def finding_identity(rec: dict[str, Any]) -> str:
     """Full rule/vuln/check id. Never a 48-char display slug.
 
     Collectors store the raw SARIF rule, Trivy CVE, check_id, etc. in extra.
     ``make_ref`` / ``slug(..., maxlen=48)`` is display-only and must not feed
     this key — two long IDs that share a prefix would otherwise collide.
+    Repeating check_ids (httpx-admin / whatweb-admin / path-exposure) keep
+    the #170 path/url discriminator so root vs /login do not collapse.
     """
     extra = extra_dict(rec)
     for key in (
@@ -968,7 +996,12 @@ def finding_identity(rec: dict[str, Any]) -> str:
     ):
         val = str(extra.get(key) or "").strip()
         if val:
-            return val.lower()
+            ident = val.lower()
+            if key != "cve" and not ident.startswith("cve-"):
+                loc = _identity_location(extra)
+                if loc:
+                    ident = f"{ident}:{loc}"
+            return ident
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
 
 
