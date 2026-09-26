@@ -422,11 +422,131 @@ def test_real_chain_upgrade_no_blank_high_critical_and_observed_match_fresh(
         assert row["controls"] == fresh_plan[pid]["controls"], pid
         assert row["recommended_fix"] == fresh_plan[pid]["recommended_fix"], pid
     ledger = json.loads((up_dir / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
-    reseen = {it["poam_id"] for it in ledger["items"].values() if it.get("status") != "closed"}
-    aliases = {
+    plan_ids = {r["poam_id"] for r in up_rows if r.get("poam_id")}
+    open_items = {k: it for k, it in ledger["items"].items() if it.get("status") != "closed"}
+    reseen = {it["poam_id"] for it in open_items.values()}
+    migs = ledger.get("fp_migrations") or []
+    kept_by_alias = {
         x
-        for it in ledger["items"].values()
+        for k, it in open_items.items()
+        if it["poam_id"] in plan_ids
         for x in (it.get("aliased_poam_ids") or [])
-        if x
+        if any(m.get("poam_id") == x and m.get("to") == k and m.get("alias_of") == it["poam_id"] for m in migs)
     }
-    assert prior_ids <= (reseen | aliases)
+    assert prior_ids <= reseen | kept_by_alias
+
+
+def _alias_lock_holds(prior_ids: set[str], ledger: dict, up_rows: list[dict]) -> bool:
+    """Metis v3 lock: alias counts only on an open survivor that is on poam.csv."""
+    plan_ids = {r["poam_id"] for r in up_rows if r.get("poam_id")}
+    open_items = {k: it for k, it in ledger["items"].items() if it.get("status") != "closed"}
+    reseen = {it["poam_id"] for it in open_items.values()}
+    migs = ledger.get("fp_migrations") or []
+    kept_by_alias = {
+        x
+        for k, it in open_items.items()
+        if it["poam_id"] in plan_ids
+        for x in (it.get("aliased_poam_ids") or [])
+        if any(m.get("poam_id") == x and m.get("to") == k and m.get("alias_of") == it["poam_id"] for m in migs)
+    }
+    return prior_ids <= reseen | kept_by_alias
+
+
+def _alias_lock_fixture() -> tuple[set[str], dict, list[dict]]:
+    """Minimal open survivor on poam.csv + one migrated alias + one other prior."""
+    ledger = {
+        "items": {
+            "surv-fp": {
+                "poam_id": "EGP-SURVIVOR01",
+                "status": "open",
+                "aliased_poam_ids": ["EGP-ALIASED001"],
+            },
+            "other-fp": {"poam_id": "EGP-OTHER00001", "status": "open"},
+            "off-fp": {"poam_id": "EGP-OFFPLAN001", "status": "open", "aliased_poam_ids": []},
+        },
+        "fp_migrations": [
+            {
+                "poam_id": "EGP-ALIASED001",
+                "to": "surv-fp",
+                "alias_of": "EGP-SURVIVOR01",
+                "reason": "merged_away_alias",
+            }
+        ],
+    }
+    plan = [{"poam_id": "EGP-SURVIVOR01"}, {"poam_id": "EGP-OTHER00001"}]
+    prior = {"EGP-SURVIVOR01", "EGP-ALIASED001", "EGP-OTHER00001"}
+    return prior, ledger, plan
+
+
+def test_alias_lock_accepts_open_on_plan_survivor_with_migration() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    assert _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_when_non_aliased_prior_id_deleted() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    del ledger["items"]["other-fp"]
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_on_bogus_alias_on_nonexistent_survivor() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    del ledger["items"]["other-fp"]
+    ledger["items"]["phantom-fp"] = {
+        "poam_id": "EGP-PHANTOM001",
+        "status": "open",
+        "aliased_poam_ids": ["EGP-OTHER00001"],
+    }
+    ledger["fp_migrations"].append(
+        {"poam_id": "EGP-OTHER00001", "to": "phantom-fp", "alias_of": "EGP-PHANTOM001"}
+    )
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_on_bogus_alias_on_closed_phantom() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    del ledger["items"]["other-fp"]
+    ledger["items"]["phantom-fp"] = {
+        "poam_id": "EGP-PHANTOM001",
+        "status": "closed",
+        "aliased_poam_ids": ["EGP-OTHER00001"],
+    }
+    ledger["fp_migrations"].append(
+        {"poam_id": "EGP-OTHER00001", "to": "phantom-fp", "alias_of": "EGP-PHANTOM001"}
+    )
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_on_alias_from_off_poam_row() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    del ledger["items"]["other-fp"]
+    ledger["items"]["off-fp"]["aliased_poam_ids"] = ["EGP-OTHER00001"]
+    ledger["fp_migrations"].append(
+        {"poam_id": "EGP-OTHER00001", "to": "off-fp", "alias_of": "EGP-OFFPLAN001"}
+    )
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_when_alias_has_no_migration() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    del ledger["items"]["other-fp"]
+    ledger["items"]["surv-fp"]["aliased_poam_ids"].append("EGP-OTHER00001")
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_when_survivor_removed_from_poam_csv() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    plan = [row for row in plan if row["poam_id"] != "EGP-SURVIVOR01"]
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_when_survivor_closed() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    ledger["items"]["surv-fp"]["status"] = "closed"
+    assert not _alias_lock_holds(prior, ledger, plan)
+
+
+def test_alias_lock_fires_when_migration_alias_of_points_elsewhere() -> None:
+    prior, ledger, plan = _alias_lock_fixture()
+    ledger["fp_migrations"][0]["alias_of"] = "EGP-WRONG00001"
+    assert not _alias_lock_holds(prior, ledger, plan)
