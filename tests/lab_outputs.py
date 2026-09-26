@@ -20,6 +20,7 @@ VULN_H = "ref_id,name,description,status,severity,assets,applied_controls"
 SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment"
 
 FIND_SEV = {"low", "medium", "high", "critical"}
+EXCLUDED_SEV = FIND_SEV | {"info"}
 VULN_SEV = {"Information", "Low", "Medium", "High", "Critical"}
 LIVE_KEY = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{20,}")
 
@@ -115,8 +116,15 @@ def assert_lab() -> None:
     excluded_path = OUT / "poam" / "excluded.csv"
     assert excluded_path.is_file(), "poam/excluded.csv missing"
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
+    assert excluded, "DEMO/lab excluded.csv must not be header-only"
     assert int(summary.get("excluded") or 0) == len(excluded)
     assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
+    reasons = {str(row.get("excluded_reason") or "") for row in excluded}
+    assert reasons & {"honeypot", "severity_info"}, reasons
+    for row in excluded:
+        assert row.get("severity") in EXCLUDED_SEV, row
+        if row.get("excluded_reason") == "severity_info":
+            assert row.get("severity") == "info", row
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()
