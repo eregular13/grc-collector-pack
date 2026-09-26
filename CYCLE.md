@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 214 — merge master 7ebc697 (#169) into B8 (2026-09-26)
+
+Normal merge of `origin/master` `7ebc697` (#169 Redis-auth class). No
+rebase. B8 check_id brick kept. Pytest **1427**. Host-lab unchanged
+(79 / 104 / poam 120 / excluded 6). FedRAMP Open **126**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 213 — B8 stable check_id (title metrics cannot remint EGP) (2026-09-26)
 
 Stamp `extra.check_id` on title-keyed DEMO families (wazuh posture,

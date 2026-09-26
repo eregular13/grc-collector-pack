@@ -1,3 +1,10 @@
+# CRITIC — cycle 214 (MERGE_MASTER_169_INTO_B8)
+
+Merge `origin/master` `7ebc697` (#169) with a normal merge commit. No
+rebase. B8 check_id brick kept. Pytest **1427**. Host-lab unchanged.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
 # CRITIC — cycle 213 (B8_STABLE_CHECK_ID)
 
 Lab this brick: pytest **1419** passed, 1 skipped. Ten collectors +
