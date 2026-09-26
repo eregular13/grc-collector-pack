@@ -14,8 +14,9 @@ from __future__ import annotations
 from typing import Any
 
 # Sources whose emitted types this catalog covers. Other collectors stay on
-# the legacy nmap/easm/code/dns/host map.
+# the legacy nmap/easm/code/dns/host map unless an alias or heuristic hits.
 TYPED_SOURCES = frozenset({"cloud-prowler", "identity-ad", "k8s-kubescape"})
+HEURISTIC_SOURCES = TYPED_SOURCES | frozenset({"host-wazuh"})
 
 SEV_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
@@ -80,6 +81,15 @@ TYPE_ALIASES: dict[str, str] = {
     "1_2_1": "k8s_anonymous_auth",
     "c_0034": "k8s_privilege_escalation",
     "c_0041": "k8s_hostnetwork",
+    # Host / vuln — disk encryption + Redis (aliases match before TYPED_SOURCES).
+    "disk_encryption": "disk_encryption",
+    "disk_encryption_enabled": "disk_encryption",
+    "exposed_redis": "redis_unauth",
+    "nse_redis_noauth": "redis_unauth",
+    "redis_info": "redis_unauth",
+    "redis_noauth": "redis_unauth",
+    "redis_bind": "redis_bind",
+    "redis_dangerous_cmd": "redis_dangerous_cmd",
 }
 
 # Type-specific remediations. Distinct types must not share identical fix text
@@ -302,6 +312,46 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "nist_800_53": ["SI-7", "CM-6", "AC-3"],
         "key_medium": True,
     },
+    "disk_encryption": {
+        "control_name": "Enable full-disk encryption on the endpoint",
+        "recommended_fix": (
+            "Enable BitLocker or FileVault (or the MDM disk-encryption profile) "
+            "on the endpoint and confirm the device reports encrypted. Intune and "
+            "Jamf evidence on the same asset is one weakness, not two. This is an "
+            "MDM file-drop finding, not a live Graph/Jamf API call."
+        ),
+        "nist_800_53": ["SC-28", "MP-5"],
+        "key_medium": True,
+    },
+    "redis_unauth": {
+        "control_name": "Require authentication and bind Redis",
+        "recommended_fix": (
+            "Enable Redis ACL users or requirepass with a strong secret; set "
+            "protected-mode yes and bind Redis to localhost or a private interface "
+            "only (firewall TCP/6379); rename or disable CONFIG, MODULE, and DEBUG "
+            "for application users. Rescan to verify INFO is refused."
+        ),
+        "nist_800_53": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
+        "cis": ["cis_4_1", "cis_4_8", "cis_5_2"],
+    },
+    "redis_bind": {
+        "control_name": "Bind Redis and enable protected-mode",
+        "recommended_fix": (
+            "Set protected-mode yes and bind Redis to localhost or a private "
+            "interface only; firewall TCP/6379. This is a bind/protected-mode "
+            "finding, not a password rotation."
+        ),
+        "nist_800_53": ["SC-7", "CM-6", "CM-7"],
+    },
+    "redis_dangerous_cmd": {
+        "control_name": "Rename or disable dangerous Redis commands",
+        "recommended_fix": (
+            "Rename or disable CONFIG, MODULE, and DEBUG for application users "
+            "(rename-command in redis.conf or an ACL that denies those commands). "
+            "This is a dangerous-command finding, not bind-only."
+        ),
+        "nist_800_53": ["AC-3", "CM-6", "CM-7"],
+    },
 }
 
 # Failure-oriented weakness names. Check titles that read as passes
@@ -333,6 +383,10 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
     "k8s_hostnetwork": "Workload uses hostNetwork",
     "k8s_write_binary_dir": "Workload can write under container binary directories",
+    "disk_encryption": "Disk encryption is disabled",
+    "redis_unauth": "Redis accepts unauthenticated access",
+    "redis_bind": "Redis is bound beyond localhost without protected-mode",
+    "redis_dangerous_cmd": "Dangerous Redis commands are enabled",
 }
 
 # Distinct types may share remediations only with an explicit reason.
@@ -362,6 +416,8 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("id"),
         extra.get("control_key"),
         extra.get("rule"),
+        extra.get("template_id"),
+        extra.get("template-id"),
     ]
     return [norm_type_key(str(k)) for k in keys if k]
 
@@ -461,6 +517,22 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         "security group" in text or "security_group" in text or "securitygroup" in text
     ):
         return "sg_ingress_open"
+    if "disk encryption" in text or "filevault" in text or "bitlocker" in text:
+        return "disk_encryption"
+    if "redis" in text and (
+        "unauth" in text
+        or "noauth" in text
+        or "without auth" in text
+        or "requirepass" in text
+        or "no password" in text
+    ):
+        return "redis_unauth"
+    if "redis" in text and ("protected-mode" in text or "bind" in text):
+        return "redis_bind"
+    if "redis" in text and (
+        "rename-command" in text or "dangerous" in text or "config" in text and "debug" in text
+    ):
+        return "redis_dangerous_cmd"
     return ""
 
 
@@ -472,13 +544,13 @@ def finding_type(rec: dict[str, Any]) -> str:
         if mapped:
             return mapped
     source = str(rec.get("source") or "")
-    if source not in TYPED_SOURCES:
+    if source not in HEURISTIC_SOURCES:
         return ""
     guessed = _heuristic_type(rec)
     if guessed:
         return guessed
     # Typed collector with an explicit check/edge/control we do not know.
-    if keys:
+    if source in TYPED_SOURCES and keys:
         return "unknown"
     return ""
 
@@ -575,12 +647,48 @@ def finding_identity(rec: dict[str, Any]) -> str:
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
 
 
-def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
-    """(normalized asset, finding type or full identity). Asset is always in the key."""
+def _norm_weakness_token(raw: str) -> str:
+    return " ".join(str(raw or "").strip().lower().split())
+
+
+def semantic_weakness_key(rec: dict[str, Any]) -> str:
+    """Stable weakness id for register merge: type, then CVE, then name.
+
+    Not ``tool:scanner_id`` — same issue from Intune+Jamf or nmap+rustscan
+    on one EGA- asset must collapse.
+    """
     ftype = finding_type(rec)
-    if not ftype or ftype == "unknown":
-        ftype = finding_identity(rec) or "finding"
-    return (primary_asset(rec), ftype)
+    if ftype and ftype != "unknown":
+        return f"type:{ftype}"
+    extra = extra_dict(rec)
+    cve = str(extra.get("cve") or "").strip().upper()
+    if cve.startswith("CVE-"):
+        return f"cve:{cve}"
+    for blob in (rec.get("ref_id"), rec.get("name"), rec.get("description")):
+        text = str(blob or "").upper()
+        idx = text.find("CVE-")
+        if idx >= 0:
+            token = text[idx : idx + 20].split()[0].rstrip(",;:)")
+            if token.startswith("CVE-"):
+                return f"cve:{token}"
+    return f"name:{_norm_weakness_token(rec.get('name') or rec.get('ref_id') or 'finding')}"
+
+
+def register_asset_key(rec: dict[str, Any]) -> str:
+    """EGA- asset UID when #138 stamped it; else the normalized display asset."""
+    extra = extra_dict(rec)
+    uid = str(extra.get("asset_uid") or "").strip()
+    if uid.startswith("EGA-"):
+        return uid
+    return primary_asset(rec)
+
+
+def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
+    """(EGA- asset or normalized name, type or semantic weakness)."""
+    ftype = finding_type(rec)
+    if ftype and ftype != "unknown":
+        return (register_asset_key(rec), ftype)
+    return (register_asset_key(rec), semantic_weakness_key(rec))
 
 
 def _sev_rank(rec: dict[str, Any]) -> int:
@@ -693,7 +801,9 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extras.append(other_desc)
 
 
-def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def dedupe_weaknesses(
+    records: list[dict[str, Any]], drops: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     """Collapse same-issue-same-asset findings. Non-findings pass through in order."""
     out: list[dict[str, Any]] = []
     index: dict[tuple[str, str], dict[str, Any]] = {}
@@ -724,5 +834,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             index[key] = rec
             out.append(rec)
             continue
+        if drops is not None:
+            drops.append({"rec": rec, "survivor": existing})
         _merge_weakness(existing, rec)
     return out
