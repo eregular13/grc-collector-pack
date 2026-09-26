@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
+
+Merged master `f3db646` (#132 estate pages + #139 real parsers) into the
+loader-identity branch. Falco privileged + Kubescape C-0057 still merge
+on `prod-cluster` but `extra.tools` / sources / provenance / POA&M
+`detector_source` keep both scanners. Committed nuclei `exposed-redis`
+on three hosts so `lab_outputs` proves N hosts = N weaknesses.
+Host-lab `assets=84` `findings=103` `vulnerabilities=22` `poam=111`
+`weaknesses=125`. pytest **1082**. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
 ## cycle 191 — loader identity + vendor severity (2026-09-26)
 
 Audit §8.0: same rule on N hosts stays N weaknesses; unknown severity

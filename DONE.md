@@ -8,19 +8,21 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 81,
+  "assets": 84,
   "findings": 103,
-  "vulnerabilities": 19,
+  "vulnerabilities": 22,
   "evidences": 33,
-  "applied_controls": 122,
-  "poam": 108,
-  "risk_scenarios": 122,
-  "incidents": 97,
-  "risks_proposed": 96,
+  "applied_controls": 125,
+  "poam": 111,
+  "risk_scenarios": 125,
+  "incidents": 100,
+  "risks_proposed": 99,
   "ocsf": 103,
-  "canonical": 208,
+  "canonical": 214,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:18:46Z"
+  "generated_at": "2026-09-26T06:28:42Z"
 }
 ```
+
+Cycle 195 restamp after merge-evidence + three-host nuclei fixture (pytest 1082). CoS #48 rails above stand.

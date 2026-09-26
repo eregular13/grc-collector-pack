@@ -1,3 +1,15 @@
+# CRITIC — cycle 195 (MERGE_EVIDENCE_AND_MULTI_HOST_LAB)
+
+Lab this brick: pytest **1082** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=84` `findings=103`
+`vulnerabilities=22` `applied_controls=125` `risk_scenarios=125`
+`poam=111` `severity_unmapped=0` `demo=true`). Cold sample_to_sor +
+farm_drop_to_sor honesty PASS. Zero P0/P1. Merged master #132+#139;
+Falco+Kubescape privileged merge keeps both tools in evidence; three
+Redis hosts are three vulns on the lab gate. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 191 (LOADER_IDENTITY_SEVERITY)
 
 Lab this brick: pytest **1049** passed, 1 skipped. Ten collectors +
