@@ -55,6 +55,7 @@ from shared.io_util import (
 )
 from shared.schema import (
     ASSET_TYPES,
+    canon_severity,
     ciso_finding_severity,
     ciso_vuln_severity,
     control_priority,
@@ -379,6 +380,14 @@ def load() -> dict:
     weaknesses = other_findings + vuln_findings
     sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     poam_ledger = run_ledger(findings, kev_catalog)
+    for item in (poam_ledger.get("items") or {}).values():
+        mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
+        if mapped:
+            item["framework_refs"] = mapped.get("framework_refs") or ""
+    for item in poam_ledger.get("closed") or []:
+        mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
+        if mapped:
+            item["framework_refs"] = mapped.get("framework_refs") or ""
     ledger_by_ref = {
         str(item.get("ref_id") or ""): item for item in (poam_ledger.get("items") or {}).values()
     }
@@ -410,7 +419,7 @@ def load() -> dict:
                     rec.get("ref_id") or "",
                     weakness,
                     assets_s,
-                    ciso_finding_severity(rec.get("severity")),
+                    canon_severity(rec.get("severity")),
                     decision.get("reason") or "unexplained",
                     superseded_by,
                 ]

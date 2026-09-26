@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from shared.finding_types import TYPE_WEAKNESS_NAME, type_remediation
+from shared.framework_class_map import apply_class_mapping
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
 
@@ -568,8 +569,8 @@ def _derive_cpg(n53: list[str]) -> list[str]:
     return out
 
 
-def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
-    """Attach CSF 2.0 + CPG stamps from 800-53 / CIS / topic. Never from severity."""
+def _stamp_csf(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Attach CSF 2.0 function (PR #128) + class subcategory/CPG. Never from severity."""
     n53 = list(mapped.get("nist_800_53") or [])
     cis = list(mapped.get("cis") or [])
     name = str(mapped.get("control_name") or "")
@@ -595,9 +596,9 @@ def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
     mapped["csf"] = stamps
     mapped["csf_function"] = primary
     mapped["csf_functions"] = [fn for fn in CSF_FUNCTIONS if fn in found]
-    mapped["cpg"] = _derive_cpg(n53)
-    refs = list(mapped["cpg"]) + stamps + _n53_tokens(n53) + list(cis)
-    mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
+    # CPG + CSF subcategory come from the weakness-class table, not a
+    # CM-7/SC-7 catch-all and not a function-level csf_PR default.
+    apply_class_mapping(mapped, rec)
     return mapped
 
 
@@ -740,13 +741,23 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
             "finding_type": typed.get("finding_type") or "",
             "weakness_name": str(typed.get("weakness_name") or ""),
             "key_medium": bool(typed.get("key_medium")),
-        }
+        },
+        rec,
     )
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
 
 
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
+    """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
+    mapped = _map_finding_body(rec)
+    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+        mapped = dict(mapped)
+        mapped["include_poam"] = False
+    return mapped
+
+
+def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
@@ -763,7 +774,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
                 "generic": False,
                 "finding_type": check,
                 "weakness_name": MISCONFIG_WEAKNESS.get(check, ""),
-            }
+            },
+            rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
@@ -776,7 +788,8 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             {
                 **play,
                 "cpg": [],
-            }
+            },
+            rec,
         )
         mapped["weakness_name"] = weakness_name_for(rec, mapped)
         return mapped
@@ -804,7 +817,7 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     mapped["cis"] = cis
     mapped.setdefault("generic", False)
     mapped.setdefault("finding_type", "")
-    mapped = _stamp_csf(mapped)
+    mapped = _stamp_csf(mapped, rec)
     mapped["weakness_name"] = weakness_name_for(rec, mapped)
     return mapped
 
@@ -1347,12 +1360,14 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
 
 # Named reasons for POA&M include/exclude. Every weakness gets exactly one.
 # Default plan puts Lows and non-key Mediums on the POA&M. Infos and honeypot
-# stay off. Info-level telemetry is telemetry_info (not one 180-day row per
-# alert). Repeated telemetry lows that share (rule/check id, asset) collapse
-# to one included row; the extras are telemetry_duplicate. A bare nmap-style
-# port-open row on a host+port that already has a specific finding
-# (nuclei/Nessus/testssl/NSE/…) is superseded_by_specific. UDP open|filtered
-# is not_a_weakness (not a confirmed open port). A lighter plan
+# stay off. Aggregated SIEM alerts are telemetry (excluded) unless rule.level
+# is >= 12 or the rule is a known compromise indicator. Info-level telemetry
+# is telemetry_info (not one 180-day row per alert). Repeated included
+# telemetry lows that share (rule/check id, asset) collapse; the extras are
+# telemetry_duplicate. A bare nmap-style port-open row on a host+port that
+# already has a specific finding (nuclei/Nessus/testssl/NSE/…) is
+# superseded_by_specific. UDP open|filtered is not_a_weakness (not a
+# confirmed open port). A lighter plan
 # (GRC_POAM_LIGHTER) restores the old exclude set.
 POAM_INCLUDE_REASONS = frozenset(
     {
@@ -1369,6 +1384,7 @@ POAM_EXCLUDE_REASONS = frozenset(
         "severity_info",
         "severity_low",
         "severity_medium_not_key",
+        "telemetry",
         "telemetry_info",
         "telemetry_duplicate",
         "superseded_by_specific",
@@ -1392,6 +1408,19 @@ def _is_honeypot(rec: dict[str, Any]) -> bool:
         or extra.get("honesty") == "deception-sensor"
         or "deception-sensor" in text
     )
+
+
+def keep_telemetry_on_plan(rec: dict[str, Any]) -> bool:
+    """High Wazuh levels and known compromise indicators stay on the POA&M."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("compromise") is True:
+        return True
+    raw = extra.get("rule_level")
+    try:
+        level = int(raw)
+    except (TypeError, ValueError):
+        level = 0
+    return level >= 12
 
 
 def is_telemetry_finding(rec: dict[str, Any]) -> bool:
@@ -1457,9 +1486,11 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
         return {"include": False, "reason": "honeypot", "severity": sev}
     if extra.get("not_a_weakness") or str(extra.get("exclude_reason") or "") == "not_a_weakness":
         return {"include": False, "reason": "not_a_weakness", "severity": sev}
-    if sev == "info":
-        if is_telemetry_finding(rec):
+    if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
+        if sev == "info":
             return {"include": False, "reason": "telemetry_info", "severity": sev}
+        return {"include": False, "reason": "telemetry", "severity": sev}
+    if sev == "info":
         return {"include": False, "reason": "severity_info", "severity": sev}
     if sev in {"high", "critical"}:
         return {"include": True, "reason": "severity_high_critical", "severity": sev}
@@ -1559,7 +1590,18 @@ def extra_labels(rec: dict[str, Any] | None = None) -> list[str]:
         if mapped.get("csf"):
             stamps.append("nist_csf")
     else:
-        stamps = [CPG_WEAK_SERVICE, CPG_EXPOSURE, "csf_PR", "nist_csf", "cisa_cpg"]
+        stamps = [
+            CPG_WEAK_SERVICE,
+            CPG_EXPOSURE,
+            "csf_PR",
+            "nist_csf",
+            "cisa_cpg",
+            "cpg_3_S",
+            "cpg_2_B",
+            "csf_PR_IR_01",
+            "csf_unmapped",
+            "cpg_unmapped",
+        ]
     out: list[str] = []
     for stamp in stamps:
         if stamp and ":" not in stamp and stamp not in out:

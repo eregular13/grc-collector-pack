@@ -11,16 +11,16 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
   "assets": 78,
   "findings": 104,
   "vulnerabilities": 22,
-  "evidences": 33,
+  "evidences": 32,
   "applied_controls": 126,
-  "poam": 126,
+  "poam": 124,
   "risk_scenarios": 126,
   "ocsf": 104,
   "canonical": 209,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T06:59:35Z"
+  "generated_at": "2026-09-26T07:11:37Z"
 }
 ```
 
-Cycle 198 merge `f8b7ff1` #138 into discovery/web (pytest 1190; host-lab 78 / 104 / 126; farm 48 / 174 / 106). Cycle 197 Metis §11 stands as history. CoS #48 rails above stand.
+Cycle 202 restamp after merging master `9aeb229` (pytest 1235; host-lab assets=78 findings=104 poam=124 excluded=2). CoS #48 rails above stand.
