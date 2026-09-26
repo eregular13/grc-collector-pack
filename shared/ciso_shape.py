@@ -62,6 +62,62 @@ SCENARIO_LEVELS = frozenset({"Low", "Moderate", "High", "Very High"})
 # ASCII-only: Windows cp1252 consoles cannot print U+2260 / U+2192.
 REGISTER_OK_LINE = "REGISTER_SHAPE=ok findings_to_poam != empty paying_day=FAIL"
 
+# Documented count relationship after weakness dedupe:
+#   weaknesses == risk_scenarios == findings.csv + vulnerabilities.csv
+#   POA&M == open_risks (include_poam). findings.csv is non-CVE; vulns are CVE-class.
+
+
+def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Risk register, POA&M, and summary must derive from the same deduped set."""
+    out = resolve_out_dir(ciso_or_out)
+    register = assert_ciso_register(ciso_dir_of(out))
+    poam = assert_poam_for_findings(out, findings_count=int(register.get("findings") or 0))
+    findings_n = int(register.get("findings") or 0)
+    vulns_n = int(register.get("vulnerabilities") or 0)
+    scenarios_n = int(register.get("risk_scenarios") or 0)
+    poam_n = int(poam.get("poam_rows") or 0)
+    weaknesses = findings_n + vulns_n
+    if scenarios_n != weaknesses:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL risk_scenarios={scenarios_n} != "
+            f"findings+vulnerabilities={weaknesses} (deduped weaknesses)"
+        )
+    if summary:
+        if int(summary.get("risk_scenarios") or 0) != scenarios_n:
+            raise RegisterShapeError(
+                f"COUNT_CONSISTENCY_FAIL summary.risk_scenarios={summary.get('risk_scenarios')} "
+                f"!= risk_scenarios.csv={scenarios_n}"
+            )
+        if int(summary.get("poam") or 0) != poam_n:
+            raise RegisterShapeError(
+                f"COUNT_CONSISTENCY_FAIL summary.poam={summary.get('poam')} != poam.csv={poam_n}"
+            )
+        if int(summary.get("findings") or 0) != findings_n:
+            raise RegisterShapeError(
+                f"COUNT_CONSISTENCY_FAIL summary.findings={summary.get('findings')} "
+                f"!= findings.csv={findings_n}"
+            )
+        if "open_risks" in summary and int(summary.get("open_risks") or 0) != poam_n:
+            raise RegisterShapeError(
+                f"COUNT_CONSISTENCY_FAIL summary.open_risks={summary.get('open_risks')} "
+                f"!= poam={poam_n} (POA&M is 1:1 with open risks)"
+            )
+        if "weaknesses" in summary and int(summary.get("weaknesses") or 0) != weaknesses:
+            raise RegisterShapeError(
+                f"COUNT_CONSISTENCY_FAIL summary.weaknesses={summary.get('weaknesses')} "
+                f"!= findings+vulns={weaknesses}"
+            )
+    return {
+        "ok": True,
+        "findings": findings_n,
+        "vulnerabilities": vulns_n,
+        "weaknesses": weaknesses,
+        "risk_scenarios": scenarios_n,
+        "poam": poam_n,
+        "open_risks": poam_n,
+        "relationship": "POA&M is 1:1 with open risks (include_poam); register is 1:1 with weaknesses",
+    }
+
 
 class RegisterShapeError(ValueError):
     """CISO risk register or POA&M is missing, header-wrong, or empty when findings exist."""

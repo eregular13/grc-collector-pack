@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from shared.finding_types import type_remediation
 from shared.schema import canon_severity, csf_function
 
 # CISA CPG 2.x-style stamps already used on the CISO wire (underscore, not colon).
@@ -25,6 +26,8 @@ CSF_STAMP = {
 
 
 def _blob(rec: dict[str, Any]) -> str:
+    """Narrative match blob. Never include ARN/asset names (demo-public-assets
+    used to steal the S3 public-ACL playbook for encryption findings)."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     return " ".join(
         str(x or "")
@@ -37,10 +40,10 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("rule"),
             extra.get("cve"),
             extra.get("check_id"),
-            extra.get("arn"),
             extra.get("id"),
-            extra.get("name"),
             extra.get("control"),
+            extra.get("edge"),
+            extra.get("access"),
         )
     ).lower()
 
@@ -180,6 +183,31 @@ def _n53_tokens(ids: list[str]) -> list[str]:
     return [f"nist80053_{cid}" for cid in ids]
 
 
+def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
+    sev = canon_severity(rec.get("severity"))
+    fn = csf_function(sev)
+    csf = [CSF_STAMP.get(fn, "csf_PR"), f"csf_{fn}"]
+    cpg = [CPG_WEAK_SERVICE]
+    if sev in {"high", "critical"}:
+        cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE]
+    n53 = list(typed.get("nist_800_53") or [])
+    include = sev in {"high", "critical"} or bool(typed.get("key_medium"))
+    refs = cpg + csf + _n53_tokens(n53)
+    return {
+        "control_name": typed["control_name"],
+        "recommended_fix": typed["recommended_fix"],
+        "cpg": cpg,
+        "csf": csf,
+        "csf_function": fn,
+        "include_poam": include,
+        "nist_800_53": n53,
+        "cis": [],
+        "framework_refs": ",".join(dict.fromkeys(refs)),
+        "generic": bool(typed.get("generic")),
+        "finding_type": typed.get("finding_type") or "",
+    }
+
+
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
@@ -200,15 +228,22 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
             "nist_800_53": list(rule["nist_800_53"]),
             "cis": list(rule["cis"]),
             "framework_refs": ",".join(dict.fromkeys(refs)),
+            "generic": False,
+            "finding_type": check,
         }
+    typed = type_remediation(rec)
+    if typed:
+        return _typed_map(rec, typed)
     mapped = _map_finding_legacy(rec)
-    n53 = EXPOSURE_800_53.get(mapped["control_name"], [])
+    n53 = list(mapped.get("nist_800_53") or []) or EXPOSURE_800_53.get(mapped["control_name"], [])
     mapped["nist_800_53"] = list(n53)
-    mapped["cis"] = []
+    mapped["cis"] = mapped.get("cis") or []
     if n53:
         mapped["framework_refs"] = ",".join(
             dict.fromkeys(mapped["framework_refs"].split(",") + _n53_tokens(n53))
         )
+    mapped.setdefault("generic", False)
+    mapped.setdefault("finding_type", "")
     return mapped
 
 
@@ -222,6 +257,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     csf = [CSF_STAMP.get(fn, "csf_PR"), f"csf_{fn}"]
     cpg = [CPG_WEAK_SERVICE]
     key_medium = False
+    generic = False
     source = str(rec.get("source") or "").lower()
     category = str(rec.get("category") or "").lower()
     if (
@@ -243,6 +279,8 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "csf_function": "detect",
             "include_poam": False,
             "framework_refs": ",".join(dict.fromkeys([CPG_EXPOSURE, CSF_STAMP["detect"], "csf_detect"])),
+            "generic": False,
+            "finding_type": "honeypot",
         }
 
     if (
@@ -509,7 +547,12 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Reconnect the agent or enroll the host in Fleet/Wazuh. "
             "This is a coverage finding from a dropped export, not a live query."
         )
-    elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
+    elif (
+        category == "secrets"
+        or "gitleaks" in text
+        or "trufflehog" in text
+        or (source == "code-secrets" and ("secret" in text or "api key" in text))
+    ):
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."
     elif "phishing-resistant" in text and "mfa" in text:
@@ -654,8 +697,14 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         )
         key_medium = port in {"3389", "445"}
     else:
-        name = f"Remediate: {rec.get('name') or rec.get('ref_id')}"
-        fix = str(rec.get("description") or rec.get("name") or "Review and remediate the finding.")
+        ref = rec.get("ref_id") or rec.get("name") or "unknown"
+        extra_id = str(extra.get("check_id") or extra.get("control") or extra.get("id") or ref)
+        name = f"Review and remediate per control {extra_id}"
+        fix = (
+            f"Review and remediate per control {extra_id}. "
+            "Generic fallback — no type-specific playbook is mapped for this finding type."
+        )
+        generic = True
 
     if sev in {"high", "critical"}:
         cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE]
@@ -668,6 +717,8 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         "csf_function": fn,
         "include_poam": include or sev in {"high", "critical"},
         "framework_refs": ",".join(dict.fromkeys(cpg + csf)),
+        "generic": generic,
+        "finding_type": "",
     }
 
 

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from shared.control_map import extra_labels, map_finding
 from shared.evidence import build_evidence_rows
+from shared.finding_types import dedupe_weaknesses
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
@@ -184,7 +185,8 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load() -> dict:
-    records = _dedupe(_load_canonical())
+    # ref_id collapse first (double-loader), then same-issue-same-asset.
+    records = dedupe_weaknesses(_dedupe(_load_canonical()))
     now = iso_now()
     domain = _domain()
     estate = estate_label(records)
@@ -493,12 +495,19 @@ def load() -> dict:
         "applied_controls": len(uniq_controls),
         "poam": len(poam_rows),
         "risk_scenarios": len(scenarios),
+        "weaknesses": len(findings),
+        "open_risks": len(poam_rows),
         "incidents": len(rr_incidents),
         "risks_proposed": len(proposed),
         "ocsf": len(ocsf),
         "canonical": len(records),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
+        "count_basis": (
+            "deduped weaknesses (normalized asset + finding type); "
+            "risk_scenarios == weaknesses == findings + vulnerabilities; "
+            "POA&M is 1:1 with open risks (include_poam)"
+        ),
         "generated_at": now,
     }
     write_json(out_dir() / "summary.json", summary)
