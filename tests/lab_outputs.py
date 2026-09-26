@@ -54,7 +54,14 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    from shared.ciso_shape import EXCLUDED_HEADER, POAM_HEADER, assert_count_consistency
+    from shared.ciso_shape import (
+        EXCLUDED_HEADER,
+        POAM_HEADER,
+        assert_count_consistency,
+        assert_flood_guard,
+        assert_poam_fedramp_identity,
+        assert_unique_weakness_asset,
+    )
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
@@ -99,6 +106,9 @@ def assert_lab() -> None:
         assert row.get("class_uid") == 2003
 
     assert_count_consistency(OUT, summary)
+    assert_unique_weakness_asset(poam)
+    if (OUT / "poam" / "poam_fedramp.csv").is_file():
+        assert_poam_fedramp_identity(OUT)
     assert int(summary.get("risk_scenarios") or 0) == len(scen)
     assert int(summary.get("poam") or 0) == len(poam)
     assert int(summary.get("weaknesses") or 0) == len(findings) + len(vulns)
@@ -118,7 +128,11 @@ def assert_lab() -> None:
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
     assert excluded, "DEMO/lab excluded.csv must not be header-only"
     assert int(summary.get("excluded") or 0) == len(excluded)
-    assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
+    assert_flood_guard(summary)
+    fg = summary["flood_guard"]
+    assert int(fg["findings_in"]) + int(fg.get("pending_carried") or 0) == len(poam) + len(
+        excluded
+    )
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}
     assert reasons & {"honeypot", "severity_info"}, reasons
     for row in excluded:

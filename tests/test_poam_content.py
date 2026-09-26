@@ -8,13 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from collectors.grc_loader import load
+from collectors.grc_loader import _dedupe, load
+from shared.asset_ledger import AssetLedger, attach_asset_uids
 from shared.control_map import (
     map_finding,
     poam_breakdown,
     poam_decision,
     weakness_name_for,
 )
+from shared.finding_types import dedupe_weaknesses
+from shared.hardening_dedup import dedupe_hardening
 from shared.io_util import out_dir, write_canonical
 from shared.poam_fields import SLA_DAYS, SLA_NOTE, poam_fields
 from shared.schema import make_record
@@ -410,32 +413,42 @@ def test_wazuh_multi_alert_lows_are_telemetry_not_poam(
     ]
     write_canonical("host-wazuh", recs)
     summary = load()
-    assert summary["weaknesses_total"] == 5
+    # Level-5 alerts are telemetry (off the plan). Same rule + EGA- asset
+    # still merges; the extras land on excluded.csv as DUPLICATE_INSTANCE.
+    assert summary["weaknesses_total"] == 3
     assert summary["poam_included"] == 0
     assert summary["excluded"] == 5
-    assert summary["weaknesses_total"] == summary["poam_included"] + summary["excluded"]
     assert summary["excluded_by_reason"] == {
-        "telemetry": 4,
+        "telemetry": 2,
         "telemetry_info": 1,
+        "DUPLICATE_INSTANCE": 2,
     }
-    assert summary["weaknesses_total"] == summary["poam_included"] + sum(
-        summary["excluded_by_reason"].values()
+    fg = summary["flood_guard"]
+    assert fg["findings_in"] == 5
+    assert fg["findings_in"] + int(fg.get("pending_carried") or 0) == (
+        fg["poam_rows"] + fg["excluded_rows"]
     )
     with (out_dir() / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    refs = [r["finding_ref_id"] for r in rows]
-    assert refs == []
+    assert [r["finding_ref_id"] for r in rows] == []
     with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
         ex = list(csv.DictReader(fh))
-    by_ref = {row["finding_ref_id"]: row["excluded_reason"] for row in ex}
-    assert by_ref["WAZ-alert-17001"] == "telemetry"
-    assert by_ref["WAZ-alert-17002"] == "telemetry"
-    assert by_ref["WAZ-alert-17003"] == "telemetry"
-    assert by_ref["WAZ-alert-other-host"] == "telemetry"
-    assert by_ref["WAZ-alert-info"] == "telemetry_info"
-    walked = poam_breakdown(recs)
+    by_ref = {row["finding_ref_id"]: row for row in ex}
+    assert by_ref["WAZ-alert-17001"]["excluded_reason"] == "telemetry"
+    assert by_ref["WAZ-alert-other-host"]["excluded_reason"] == "telemetry"
+    assert by_ref["WAZ-alert-info"]["excluded_reason"] == "telemetry_info"
+    assert by_ref["WAZ-alert-17002"]["excluded_reason"] == "DUPLICATE_INSTANCE"
+    assert by_ref["WAZ-alert-17003"]["excluded_reason"] == "DUPLICATE_INSTANCE"
+    walked_recs = [
+        r
+        for r in dedupe_hardening(
+            dedupe_weaknesses(_dedupe(attach_asset_uids(recs, AssetLedger())))
+        )
+        if r.get("kind") == "finding"
+    ]
+    walked = poam_breakdown(walked_recs)
     assert walked["poam_included"] == 0
     assert walked["excluded_by_reason"] == {
-        "telemetry": 4,
+        "telemetry": 2,
         "telemetry_info": 1,
     }
