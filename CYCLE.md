@@ -1,5 +1,14 @@
 # CYCLE log
 
+## cycle 215 — remaster 6a5ebd6 + not_a_weakness case (2026-09-26)
+
+Merged `origin/master` `6a5ebd6` (#172 + #178) as a merge commit; no
+rebase. EGR- rollup kept. Custodian exclude reason canon
+`not_a_weakness`. Pytest **1449**. Host-lab 79 / 107 / poam **123** /
+excluded **6**. SAMPLE 6/8/0 and farm 174/106/68 unchanged. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out. Hold for Metis. Do not squash-merge.
+
 ## cycle 214 — EGR- needs-review rollup + merge 7ebc697 (2026-09-26)
 
 Unknown Custodian tagging/retention policies roll up one `EGR-`

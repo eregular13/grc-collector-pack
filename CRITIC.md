@@ -1,3 +1,16 @@
+# CRITIC — cycle 215 (REMASTER_6A5EBD6 + REASON_CASE)
+
+Lab this brick: pytest **1449** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=107` `poam=123` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `origin/master` `6a5ebd6` (#172 +
+#178) with a normal merge commit. EGR- per-policy+account rollup
+kept. Custodian exclude reason is `not_a_weakness` (old
+`NOT_A_WEAKNESS` still accepted). DEMO/SAMPLE/farm counts unchanged
+vs 2b7157b. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 214 (EGR_NEEDS_REVIEW_ROLLUP)
 
 Lab this brick: pytest **1436** passed, 1 skipped. Ten collectors +
