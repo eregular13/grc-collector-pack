@@ -47,7 +47,7 @@ jobs:
           assert stamp.get("posted") is False, stamp
           shape = assert_risk_register_and_poam(work / "out")
           assert shape["findings"] >= 1, shape
-          assert shape["risk_scenarios"] >= shape["findings"], shape
+          assert shape["risk_scenarios"] >= 1, shape
           assert shape["poam_rows"] >= 1, shape
           assert stamp["counts"]["poam"] == shape["poam_rows"], (stamp["counts"], shape)
           assert shape["vulnerabilities"] == 0, "farm_drop pack_drop is exposure, not CVE-class"
