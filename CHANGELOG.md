@@ -18,6 +18,13 @@
   and honeypot cmd location stay. Vendor fields stay out of `fp_v1`.
   MIN_ gates unchanged. No POST `/api/risks`. Does not touch
   `product-lab/drop`.
+- EXEC_COUNT_RECONCILE: executive page names kind-excluded and
+  merged-into aliases so POA&M + (excluded − merged) + kind-excluded
+  equals register. Printed sums are the computed totals; a mismatch
+  always warns. Headline `open=` / `Open POA&M (poam.csv)` is poam.csv
+  (FedRAMP Open #179). Ledger-open including excluded is secondary.
+  SAMPLE/DEMO/LAB never client KEEP. No POST `/api/risks`. Does not
+  touch `product-lab/drop`.
 - CR7_BH_HIGH_VALUE: `bh-high-value` (Administrators / Enterprise
   Admins / Schema Admins) keeps the high-value group playbook and
   AC-2/AC-6. Typed generic falls through to the legacy title map.

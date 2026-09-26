@@ -664,12 +664,35 @@ def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
     return extra if isinstance(extra, dict) else {}
 
 
+def union_controls(*groups: Any) -> list[str]:
+    """De-duplicated controls, first-seen order (survivor, then merged-away)."""
+    out: list[str] = []
+    for group in groups:
+        if not group:
+            continue
+        for raw in group:
+            token = str(raw or "").strip()
+            if token and token not in out:
+                out.append(token)
+    return out
+
+
+def _mapped_nist_controls(rec: dict[str, Any]) -> list[str]:
+    """Controls already on the row plus the current map_finding stamp."""
+    extra = extra_dict(rec)
+    have = list(extra.get("nist_800_53") or [])
+    from shared.control_map import map_finding
+
+    mapped = map_finding(rec)
+    return union_controls(have, mapped.get("nist_800_53") or [])
+
+
 def _alias_keys(rec: dict[str, Any]) -> list[str]:
     extra = extra_dict(rec)
     # risk_id is not an alias key: unmapped PingCastle RiskIds must fall
     # through to control_map._pingcastle_playbook (#145), not "unknown".
     # Mapped RiskIds are read via _exact_scanner_id / _PINGCASTLE_EXACT.
-    keys = [
+    raw_keys = [
         extra.get("check_id"),
         extra.get("edge"),
         extra.get("control"),
@@ -679,7 +702,22 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("template_id"),
         extra.get("template-id"),
     ]
-    return [norm_type_key(str(k)) for k in keys if k]
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_keys:
+        if not raw:
+            continue
+        text = str(raw).strip()
+        if not text:
+            continue
+        for cand in (text, normalize_osquery_pack_name(text)):
+            n = norm_type_key(cand) if cand else ""
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+    return out
 
 
 def _risk_id_only(rec: dict[str, Any]) -> bool:
@@ -862,7 +900,10 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "ad_smb_null_session"
     if "domain admins" in text:
         return "ad_domain_admins"
-    if "global administrator" in text and ("pim" in text or "standing" in text or "graph" in text):
+    if "not a global administrator" not in text and (
+        "global administrator" in text
+        and ("pim" in text or "standing" in text or "graph" in text)
+    ):
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
@@ -936,7 +977,9 @@ def finding_type(rec: dict[str, Any]) -> str:
     if _risk_id_only(rec) and source in {"identity-ad", ""}:
         return ""
     if guessed and (
-        source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
+        source in TYPED_SOURCES
+        or guessed.startswith(("tls_", "web_", "pc_"))
+        or guessed == "entra_ga_pim"
     ):
         return guessed
     if source not in TYPED_SOURCES:
@@ -1170,12 +1213,41 @@ def finding_identity(rec: dict[str, Any]) -> str:
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
 
 
+def register_asset_key(rec: dict[str, Any]) -> str:
+    """UPN leaf for standing Global Administrator so Scuba/Graph/BH share one row.
+
+    Other types keep ``primary_asset`` so port/path/FQDN identity stays on
+    #170/#177/#180.
+    """
+    if finding_type(rec) == "entra_ga_pim":
+        for raw in rec.get("assets") or []:
+            text = str(raw or "")
+            if "@" in text:
+                return normalize_asset_id(text)
+        return primary_asset(rec)
+    return primary_asset(rec)
+
+
 def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
     """(normalized asset, finding type or full identity). Asset is always in the key."""
     ftype = finding_type(rec)
+    if ftype == "entra_ga_pim":
+        return (register_asset_key(rec), ftype)
     if not ftype or ftype == "unknown":
         ftype = finding_identity(rec) or "finding"
     return (primary_asset(rec), ftype)
+
+
+def _prefer_upn_assets(rec: dict[str, Any]) -> None:
+    """Standing GA is the UPN. Tenant as a second asset fans out a second EGP."""
+    if finding_type(rec) != "entra_ga_pim":
+        return
+    assets = rec.get("assets")
+    if not isinstance(assets, list):
+        return
+    upns = [a for a in assets if a and "@" in str(a)]
+    if upns:
+        rec["assets"] = list(dict.fromkeys(upns))
 
 
 def _sev_rank(rec: dict[str, Any]) -> int:
@@ -1276,6 +1348,7 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     for asset in other.get("assets") or []:
         if asset and asset not in assets:
             assets.append(asset)
+    _prefer_upn_assets(kept)
     if _sev_rank(other) > _sev_rank(kept):
         kept["severity"] = other.get("severity")
     other_desc = str(other.get("description") or "").strip()
@@ -1286,6 +1359,10 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extra["also_descriptions"] = extras = []
         if other_desc not in extras:
             extras.append(other_desc)
+    extra["nist_800_53"] = union_controls(
+        _mapped_nist_controls(kept),
+        _mapped_nist_controls(other),
+    )
 
 
 def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1316,6 +1393,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     ],
                 )
                 _record_tools(extra, rec)
+            _prefer_upn_assets(rec)
             index[key] = rec
             out.append(rec)
             continue
