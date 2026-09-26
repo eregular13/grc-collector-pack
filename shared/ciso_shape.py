@@ -137,6 +137,11 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
             f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
         )
     excluded_n = sum(int(count) for count in excluded.values())
+    if "excluded" in summary and int(summary.get("excluded") or 0) != excluded_n:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL excluded={summary.get('excluded')} != "
+            f"sum(excluded_by_reason)={excluded_n}"
+        )
     if total != included + excluded_n:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
@@ -373,5 +378,11 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         )
         (folder.parent / "poam" / "poam.md").write_text(
             "# POA&M (operator draft)\nSAMPLE stub. Not a client.\n",
+            encoding="utf-8",
+        )
+        (folder.parent / "poam" / "excluded.csv").write_text(
+            "finding_ref_id,weakness,asset,severity,excluded_reason\n"
+            "DEMO-I,sample-info,sample-asset,info,severity_info\n"
+            "DEMO-H,sample-honeypot,sample-asset,high,honeypot\n",
             encoding="utf-8",
         )

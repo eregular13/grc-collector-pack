@@ -18,6 +18,24 @@ from __future__ import annotations
 
 from typing import Any
 
+# Honest CPG only from 800-53 ids that sit in that CPG's scope.
+# 2_W = known-weak / unnecessary service. 1_E = asset/exposure inventory.
+# Do not stamp either from severity. Empty when no control honestly maps.
+_N53_CPG = {
+    "CM-7": "cpg_2_W",
+    "SC-7": "cpg_2_W",
+    "CM-8": "cpg_1_E",
+}
+
+
+def _cpg_from_n53(n53: list[str]) -> str:
+    for cid in n53:
+        tag = _N53_CPG.get(str(cid).split("(")[0])
+        if tag:
+            return tag
+    return ""
+
+
 # Pack control keys already used by shared.control_map (underscore CSF/CPG).
 # Reuse the same keys across OS so (host, control_key) dedupe stays consistent.
 HOST_FIREWALL = "host_firewall"
@@ -47,7 +65,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
         "control_name": "Enable a host firewall",
         "recommended_fix": f"Install and enable a host firewall. {_POSTURE}",
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "cpg_2_W",  # CM-7
         "nist_800_53": ["CM-6", "CM-7"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}4.5"],
     },
@@ -57,7 +75,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"Set PermitRootLogin no and use a named sudo account. {_POSTURE}"
         ),
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # IA-2 / CM-6 do not map to a CPG
         "nist_800_53": ["IA-2", "CM-6"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}5.4"],
     },
@@ -65,7 +83,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
         "control_name": "Disable SSH empty passwords",
         "recommended_fix": f"Set PermitEmptyPasswords no. {_POSTURE}",
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # IA-5 / CM-6 do not map to a CPG
         "nist_800_53": ["IA-5", "CM-6"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}5.2"],
     },
@@ -75,7 +93,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"Set a minimum password length and aging policy. {_POSTURE}"
         ),
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # IA-5 does not map to a CPG
         "nist_800_53": ["IA-5"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}5.2"],
     },
@@ -83,7 +101,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
         "control_name": "Apply security updates",
         "recommended_fix": f"Install outstanding security patches. {_POSTURE}",
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # SI-2 / CM-6 do not map to a CPG
         "nist_800_53": ["SI-2", "CM-6"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}7.3"],
     },
@@ -94,7 +112,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"{_POSTURE}"
         ),
         "csf": "csf_DE",
-        "cpg": "cpg_1_E",
+        "cpg": "",  # AU-8 does not map to a CPG
         "nist_800_53": ["AU-8"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}8.4"],
     },
@@ -105,7 +123,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"password attempts stop. {_POSTURE}"
         ),
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # AC-7 does not map to a CPG
         "nist_800_53": ["AC-7"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}6.2"],
     },
@@ -116,7 +134,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"screensaver). {_POSTURE}"
         ),
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # AC-11 does not map to a CPG
         "nist_800_53": ["AC-11"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}4.3"],
     },
@@ -127,7 +145,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"object access) so events are recorded. {_POSTURE}"
         ),
         "csf": "csf_DE",
-        "cpg": "cpg_1_E",
+        "cpg": "",  # AU-2 / AU-12 do not map to a CPG
         "nist_800_53": ["AU-2", "AU-12"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}8.2"],
     },
@@ -138,7 +156,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"{_POSTURE}"
         ),
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # SI-3 does not map to a CPG
         "nist_800_53": ["SI-3"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}10.1"],
     },
@@ -148,7 +166,7 @@ CONTROL_META: dict[str, dict[str, Any]] = {
             f"Require encrypted remote sessions (RDP / SMB / TLS). {_POSTURE}"
         ),
         "csf": "csf_PR",
-        "cpg": "cpg_2_W",
+        "cpg": "",  # SC-8 does not map to a CPG
         "nist_800_53": ["SC-8"],
         "cis_v8_internal": [f"{CIS_V8_PREFIX}3.10"],
     },
@@ -315,12 +333,14 @@ def extra_control_fields(
     meta = control_meta(key)
     if not key or not meta:
         return {}
+    n53 = list(meta.get("nist_800_53") or [])
     out: dict[str, Any] = {
         "control_key": key,
         "control_name": meta.get("control_name") or "",
         "csf": meta.get("csf") or "csf_PR",
-        "cpg": meta.get("cpg") or "cpg_2_W",
-        "nist_800_53": list(meta.get("nist_800_53") or []),
+        # Derive from 800-53. Never fall back to a blanket cpg_2_W.
+        "cpg": _cpg_from_n53(n53),
+        "nist_800_53": n53,
     }
     if include_cis_internal:
         # INTERNAL-ONLY. Callers must not copy this into client-facing text.

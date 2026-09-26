@@ -95,8 +95,8 @@ FedRAMP POA&M R3.0-style fields (appended; the first nine columns are unchanged)
 - `poam_id` = `POAM-<ref_id>`; `finding_ref_id` links to `findings.csv` `ref_id`.
 - `controls` = SP 800-53 Rev. 5 ids from `control_map` (blank when unmapped, never invented).
 - `weakness_description` = finding description; `detector_source` = collector + tool (e.g. `inventory-nmap (nmap NSE ftp-anon)`); `weakness_source_id` = check/plugin/rule id or blank.
-- `original_detection_date` = first-seen, else scan time (nmap host starttime), else collected_at (UTC date).
-- `scheduled_completion_date` = DEFAULT detection + 30 days (Critical/High), 90 (Moderate), 180 (Low). `due` stays blank until a human commits a date.
+- `original_detection_date` = artifact scan timestamp calendar day (Nessus HOST_START/HOST_END, nmap starttime, SARIF startTimeUtc, Trivy CreatedAt, pack_drop meta generated_at, file-level scan time). Literal `not recorded` when the artifact has none — never the pack run date. Dates keep the recorded timezone (UTC when the artifact is Zulu); poam.md labels the zone. The poam.csv column name is unchanged.
+- `scheduled_completion_date` = Evergreen default schedule: detection + 15 days (Critical), 30 (High), 90 (Moderate), 180 (Low) when a real detection date exists; `pending due date` when detection is `not recorded`. `due` stays blank until a human commits a date. The separate FedRAMP export (`poam_fedramp.csv`) keeps its own template values.
 - `status_date` = run date; `milestones` = three dated defaults (validate, apply fix, rescan to verify).
 - `original_risk_rating` = Low/Moderate/High/Critical (`severity` keeps the legacy low/medium/high/critical vocabulary for existing readers).
 - `point_of_contact` is blank, like `owner`. `cve` = explicit CVE ids or known aliases (Heartbleed -> CVE-2014-0160), else blank.

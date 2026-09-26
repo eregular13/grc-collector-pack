@@ -172,6 +172,9 @@ def parse_file(path: Path) -> list[dict]:
             host = str(row.get("uri") or "unknown")
             add_asset(host)
             rid = str(row.get("rule_id") or "sarif")
+            extra = {"rule": rid, "cve": rid if rid.upper().startswith("CVE") else ""}
+            if row.get("scan_time"):
+                extra["scan_time"] = row.get("scan_time")
             records.append(
                 make_record(
                     kind="finding",
@@ -184,7 +187,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[host],
                     labels=LABELS + ["sarif", str(row.get("tool") or "sarif").lower()],
                     collected_at=now,
-                    extra={"rule": rid, "cve": rid if rid.upper().startswith("CVE") else ""},
+                    extra=extra,
                 )
             )
         return records
@@ -265,6 +268,19 @@ def parse_file(path: Path) -> list[dict]:
             add_asset(host)
             plugin = str(row.get("plugin_id") or "nessus")
             port = str(row.get("port") or "")
+            cves = [str(c).strip() for c in (row.get("cves") or []) if str(c).strip()]
+            extra: dict[str, Any] = {
+                "port": port,
+                "service": row.get("service") or "",
+                "protocol": row.get("protocol") or "",
+                "id": plugin,
+                "tool": "nessus",
+                "cves": cves,
+            }
+            if row.get("scan_time"):
+                extra["scan_time"] = row.get("scan_time")
+            if cves:
+                extra["cve"] = " ".join(cves)
             records.append(
                 make_record(
                     kind="finding",
@@ -280,11 +296,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[host],
                     labels=LABELS + ["nessus"],
                     collected_at=now,
-                    extra={
-                        "port": port,
-                        "service": row.get("service") or "",
-                        "id": plugin,
-                    },
+                    extra=extra,
                 )
             )
         return records
@@ -336,6 +348,11 @@ def parse_file(path: Path) -> list[dict]:
                         "cve": tid if tid.upper().startswith("CVE") else "",
                         "rule": tid,
                         "template_id": tid,
+                        **(
+                            {"scan_time": str(row.get("timestamp") or row.get("time"))}
+                            if (row.get("timestamp") or row.get("time"))
+                            else {}
+                        ),
                     },
                 )
             )
@@ -348,10 +365,16 @@ def parse_file(path: Path) -> list[dict]:
 
     trivy = _trivy_rows(payload)
     if trivy:
+        trivy_created = ""
+        if isinstance(payload, dict):
+            trivy_created = str(payload.get("CreatedAt") or payload.get("created_at") or "")
         for vuln in trivy:
             vid = str(vuln.get("VulnerabilityID") or vuln.get("id") or "CVE-UNKNOWN")
             target = str(vuln.get("_target") or "image")
             add_asset(target)
+            extra = {"cve": vid, "pkg": vuln.get("PkgName")}
+            if trivy_created:
+                extra["scan_time"] = trivy_created
             records.append(
                 make_record(
                     kind="finding",
@@ -364,7 +387,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[target],
                     labels=LABELS + ["trivy"],
                     collected_at=now,
-                    extra={"cve": vid, "pkg": vuln.get("PkgName")},
+                    extra=extra,
                 )
             )
         return records
