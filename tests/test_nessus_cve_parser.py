@@ -33,3 +33,26 @@ def test_vuln_scan_nessus_extra_carries_cves_list() -> None:
     assert "CVE-2021-45046" in extra["cve"]
     assert extra["tool"] == "nessus"
     assert extra["protocol"] == "tcp"
+
+
+def test_nessus_cve_attribute_and_case_normalize() -> None:
+    from shared.nessus import _cves_from_item, iter_nessus_items
+    import xml.etree.ElementTree as ET
+
+    item = ET.fromstring(
+        '<ReportItem cve="cve-2021-44228,CVE-2021-45046" severity="3" '
+        'pluginID="1" pluginName="attr">'
+        "<risk_factor>High</risk_factor>"
+        "<cve>CVE-2021-44228</cve>"
+        "</ReportItem>"
+    )
+    assert _cves_from_item(item) == ["CVE-2021-44228", "CVE-2021-45046"]
+    rows = iter_nessus_items(
+        "<NessusClientData_v2><Report name='t'><ReportHost name='h'>"
+        '<ReportItem port="443" severity="3" pluginID="1" pluginName="attr" '
+        'cve="CVE-2014-0160">'
+        "<risk_factor>High</risk_factor>"
+        "</ReportItem>"
+        "</ReportHost></Report></NessusClientData_v2>"
+    )
+    assert rows[0]["cves"] == ["CVE-2014-0160"]

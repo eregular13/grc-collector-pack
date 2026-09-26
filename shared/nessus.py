@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any  # noqa: F401 — used by _ids_from_props / iter rows
@@ -9,6 +10,11 @@ from typing import Any  # noqa: F401 — used by _ids_from_props / iter rows
 from shared.asset_ids import stamp_ids
 from shared.io_util import read_text
 from shared.scan_time import format_detection_date, parse_scan_datetime
+
+# Same pattern as shared/kev.py (KEV schema). Do not import kev here.
+_CVE_RE = re.compile(r"CVE-\d{4}-\d{4,19}", re.I)
+_CVE_FIELD_TAGS = frozenset({"cve", "cve_id", "cves", "compliance-cve"})
+_CVE_ATTRS = ("cve", "cve_id", "cves")
 
 
 def _tag(el: ET.Element) -> str:
@@ -62,6 +68,27 @@ def _keep_item(item: ET.Element, sev: str) -> bool:
     """Keep every non-info ReportItem. POA&M gating is include_poam, not the parser."""
     del item
     return sev in {"low", "medium", "high", "critical"}
+
+
+def _add_cves(blob: str, found: list[str], seen: set[str]) -> None:
+    for match in _CVE_RE.findall(blob or ""):
+        token = match.strip().upper()
+        if token and token not in seen:
+            seen.add(token)
+            found.append(token)
+
+
+def _cves_from_item(item: ET.Element) -> list[str]:
+    """CVE IDs from explicit Nessus CVE fields. Does not scrape plugin_output."""
+    found: list[str] = []
+    seen: set[str] = set()
+    for key in _CVE_ATTRS:
+        _add_cves(str(item.attrib.get(key) or ""), found, seen)
+    for child in list(item):
+        tag = _tag(child).lower()
+        if tag in _CVE_FIELD_TAGS or tag.endswith("-cve") or tag.endswith(":cve"):
+            _add_cves(child.text or "", found, seen)
+    return found
 
 
 def _host_scan_time(host_el: ET.Element) -> str:
@@ -120,15 +147,11 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             svc = str(item.attrib.get("svc_name") or "")
             proto = str(item.attrib.get("protocol") or "").strip()
             desc = title
-            cves: list[str] = []
+            cves = _cves_from_item(item)
             for child in list(item):
                 tag = _tag(child)
                 if tag == "description" and (child.text or "").strip():
                     desc = (child.text or "").strip()
-                elif tag == "cve":
-                    raw = (child.text or "").strip()
-                    if raw and raw not in cves:
-                        cves.append(raw)
             row: dict[str, Any] = {
                 "host": host,
                 "name": title,

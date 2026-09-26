@@ -38,6 +38,7 @@ BloodHound / Trivy / osquery fixtures below.
 | `nikto/issue_9274.json` | byte-true | DefectDojo `unittests/scans/nikto/issue_9274.json` (Nikto 2.6.1 list-of-hosts JSON) | Untrimmed (already 8 rows). Header noise + BREACH. |
 | `nikto/juice-shop-trim.json` | trimmed real | DefectDojo `unittests/scans/nikto/juice-shop.json` | Header rows, **real** 740001 backup/cert hits, BREACH, `/public/`, NextGEN LFI. Backup hits are kept (medium+). |
 | `nikto/nikto-output-trim.xml` | trimmed real | DefectDojo `unittests/scans/nikto/nikto-output.xml` (Nikto 2.1.5) | X-Frame, PUT, Tomcat examples, XSS, Manager. |
+| `nessus/localpci-trim.nessus` | trimmed real | [bmx0r/python-libnessus](https://github.com/bmx0r/python-libnessus) `@ c631950` `libnessus/test/files/nessus_report_localpci.nessus` (Nessus 5.2.x ClientData) | Host + HostProperties + every ReportItem. Bulky `plugin_output` / `see_also` / `xref` stripped. All **156** `<cve>` children kept. SAMPLE ≠ client KEEP. |
 
 LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.
 
