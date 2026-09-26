@@ -879,7 +879,7 @@ def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
     fed_ids = {r.get("POAM ID") or "" for r in rows if r.get("POAM ID")}
     assert fed_ids == plan_ids
     assert len(rows) == len(plan_ids)
-    # DEMO oddity: plan row count can exceed unique EGP IDs. Open is unique IDs.
+    # #177 fixed DEMO dup-row remints; Open is still unique poam.csv IDs.
     assert len(plan_ids) <= len(plan)
 
 
@@ -1007,14 +1007,19 @@ def test_7ebc697_demo_ledger_upgrade_zero_dup_opens_one_new(
     ]
     with (tmp_path / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
         fed_rows = list(csv.DictReader(fh))
+    with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
+        plan_rows = list(csv.DictReader(fh))
     reseen_ids = {it["poam_id"] for it in open_items}
     ghosts = prior_ids - reseen_ids
     new_ids = reseen_ids - prior_ids
+    plan_ids = {r.get("poam_id") or "" for r in plan_rows if r.get("poam_id")}
+    fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
     assert ghosts == set(), f"ghosts {sorted(ghosts)}"
     assert len(created) == 1, [e.get("poam_id") for e in created]
     assert {e.get("poam_id") for e in created} == new_ids
     assert len(open_items) == 127
-    assert len(fed_rows) == 127
+    assert fed_ids == plan_ids
+    assert len(fed_rows) == len(plan_ids)
     assert prior_ids <= reseen_ids
     assert len({it["poam_id"] for it in open_items}) == 127
     admin_rows = [
