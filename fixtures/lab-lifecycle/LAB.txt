@@ -1,0 +1,5 @@
+LAB/DEMO -- not a client estate.
+Multi-run ledger lifecycle dest_in (Nessus file-drop only).
+Not SAMPLE fixtures. Not SAMPLE keep. Not a client export.
+Operator dest_in for prove --use-existing-in. Ledgers copy out/ → in/ between runs.
+Not a paying-day stamp. LAB/DEMO != SAMPLE != client.
