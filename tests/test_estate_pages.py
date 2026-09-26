@@ -7,8 +7,11 @@ reviewer prose.
 
 from __future__ import annotations
 
+import csv
 import importlib
+import io
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -26,9 +29,17 @@ from shared.estate_pages import (
     SENTENCE_FOR_KIND,
     EstateStamp,
     PageContext,
+    _FIXTURE_MANIFEST_NAME,
     _engagement_window,
+    _manifest_matches,
+    _sha256_bytes,
     assert_client_export_honesty,
+    build_fixture_manifest,
     classify_estate,
+    file_content_fingerprints,
+    fixture_content_hashes,
+    in_dir_fixture_hits,
+    normalize_fixture_bytes,
     parse_out_of_scope_names,
     parse_scope_table_areas,
     write_client_pages,
@@ -618,6 +629,384 @@ def test_fixtures_plus_client_label_is_sample_or_mixed(
         assert SENTENCE_FOR_KIND["CLIENT"] not in blob
     assert SAMPLE_AUTH in trust
     assert "Authorized by: not recorded" not in trust
+
+
+def test_newline_mutated_sample_fixtures_cannot_claim_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CR6-3: one extra newline per SAMPLE file must not print CLIENT: AcmeHealth."""
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "cloud").mkdir(parents=True)
+    txt = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    js = ROOT / "fixtures" / "samples" / "cloud" / "s3-encryption-missing" / "metadata.json"
+    (dest_in / "nmap" / "fping-a.txt").write_bytes(txt.read_bytes() + b"\n")
+    pretty = js.read_text(encoding="utf-8").replace("\n", "\r\n") + " \n"
+    (dest_in / "cloud" / "metadata.json").write_text(pretty, encoding="utf-8")
+    assert (dest_in / "nmap" / "fping-a.txt").read_bytes() != txt.read_bytes()
+
+    hits, others = in_dir_fixture_hits(dest_in)
+    assert "nmap/fping-a.txt" in hits
+    assert "cloud/metadata.json" in hits
+    assert others == ()
+
+    env = {
+        **_CLIENT_AUTH_ENV,
+        "GRC_CLIENT_NAME": "AcmeHealth",
+    }
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env=env,
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+    assert not stamp.label.startswith("CLIENT:")
+    assert stamp.label != "CLIENT: AcmeHealth"
+
+    out = _run_loader(tmp_path, monkeypatch, [_asset(), _finding("f1")], **env)
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    summary = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert summary["estate_kind"] in {"SAMPLE", "MIXED"}
+    assert summary.get("client") is False
+    assert not exec_text.splitlines()[0].startswith("> **CLIENT:")
+    assert "CLIENT: AcmeHealth" not in exec_text
+
+
+def test_normalized_fingerprint_matches_trailing_whitespace() -> None:
+    src = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    raw = src.read_bytes()
+    mutated = raw.rstrip(b"\n") + b"\n\n"
+    assert normalize_fixture_bytes(raw) == normalize_fixture_bytes(mutated)
+    fps = file_content_fingerprints(src)
+    assert _sha256_bytes(normalize_fixture_bytes(mutated)) in fps
+
+
+def test_empty_fixture_catalog_fail_closed_not_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "nmap" / "live.xml").write_text(
+        "<nmaprun unique='unsure-catalog'/>\n", encoding="utf-8"
+    )
+    empty = tmp_path / "no-fixtures"
+    empty.mkdir()
+    hits, others = in_dir_fixture_hits(dest_in, fixtures_root=empty)
+    assert hits
+    assert others == ()
+    monkeypatch.setattr(
+        "shared.estate_pages.fixture_content_hashes", lambda *a, **k: frozenset()
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+    assert not stamp.label.startswith("CLIENT:")
+
+
+def _mut_leading_indent(data: bytes) -> bytes:
+    text = data.decode("utf-8")
+    return "".join("    " + ln + "\n" for ln in text.splitlines()).encode("utf-8")
+
+
+def _mut_mid_blank(data: bytes) -> bytes:
+    text = data.decode("utf-8")
+    lines = text.splitlines()
+    mid = max(1, len(lines) // 2)
+    lines.insert(mid, "")
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+def _mut_spaces_to_tabs(data: bytes) -> bytes:
+    return data.decode("utf-8").replace(" ", "\t").encode("utf-8")
+
+
+def _mut_xml_pretty(data: bytes) -> bytes:
+    root = ET.fromstring(data)
+    ET.indent(root, space="    ")
+    return ET.tostring(root, encoding="utf-8") + b"\n"
+
+
+def _mut_xml_oneline(data: bytes) -> bytes:
+    root = ET.fromstring(data)
+    return ET.tostring(root, encoding="utf-8")
+
+
+def _mut_csv_quote_all(data: bytes) -> bytes:
+    rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
+    buf = io.StringIO()
+    writer = csv.writer(buf, quoting=csv.QUOTE_ALL, lineterminator="\n")
+    for row in rows:
+        writer.writerow(row)
+    return buf.getvalue().encode("utf-8")
+
+
+def _mut_jsonl_reorder(data: bytes) -> bytes:
+    rows = [ln for ln in data.decode("utf-8").splitlines() if ln.strip()]
+    rows.reverse()
+    return ("\n".join(rows) + "\n").encode("utf-8")
+
+
+def _mut_json_array_reorder(data: bytes) -> bytes:
+    obj = json.loads(data.decode("utf-8"))
+    if isinstance(obj, list):
+        obj = list(reversed(obj))
+    elif isinstance(obj, dict):
+        for key, val in obj.items():
+            if isinstance(val, list):
+                obj[key] = list(reversed(val))
+                break
+    return json.dumps(obj, indent=2).encode("utf-8")
+
+
+def _assert_mutated_fixture_not_client(tmp_path: Path, src: Path, mutated: bytes) -> None:
+    assert mutated != src.read_bytes()
+    dest_in = tmp_path / "in"
+    dest_in.mkdir()
+    dest_in.joinpath(src.name).write_bytes(mutated)
+    hits, others = in_dir_fixture_hits(dest_in)
+    assert src.name in hits
+    assert others == ()
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+    assert stamp.label != "CLIENT: AcmeHealth"
+    assert not stamp.label.startswith("CLIENT:")
+
+
+@pytest.mark.parametrize(
+    "rel,mutator",
+    [
+        ("samples/arp-scan.txt", _mut_leading_indent),
+        ("samples/nmap-vulners.xml", _mut_leading_indent),
+        ("samples/nbtscan-s.txt", _mut_mid_blank),
+        ("samples/nmap-vulners.xml", _mut_mid_blank),
+        ("samples/nmap-vulners.xml", _mut_spaces_to_tabs),
+        ("samples/nbtscan-v.txt", _mut_spaces_to_tabs),
+        ("samples/nmap-open-filtered.xml", _mut_xml_pretty),
+        ("samples/nmap-vulners.xml", _mut_xml_oneline),
+        ("samples/smbmap.csv", _mut_csv_quote_all),
+        ("lab-drop-out/ciso-assistant/risk_scenarios.csv", _mut_csv_quote_all),
+        ("lab-drop-out/ciso-assistant/applied_controls.csv", _mut_csv_quote_all),
+        ("samples/fping-j.jsonl", _mut_jsonl_reorder),
+        ("samples/cloud/s3-encryption-missing/resources.json", _mut_json_array_reorder),
+        ("samples/prowler/example_output_aws.ocsf.json", _mut_json_array_reorder),
+    ],
+    ids=[
+        "indent-arp-scan",
+        "indent-nmap-vulners",
+        "blank-nbtscan",
+        "blank-nmap-vulners",
+        "tabs-nmap-vulners",
+        "tabs-nbtscan-v",
+        "xml-pretty",
+        "xml-oneline",
+        "csv-requote",
+        "csv-requote-semicolon",
+        "csv-requote-header-only",
+        "jsonl-reorder",
+        "json-array-s3",
+        "json-array-prowler",
+    ],
+)
+def test_reformat_mutations_of_sample_fixtures_cannot_claim_client(
+    tmp_path: Path, rel: str, mutator
+) -> None:
+    src = ROOT / "fixtures" / rel
+    mutated = mutator(src.read_bytes())
+    _assert_mutated_fixture_not_client(tmp_path, src, mutated)
+
+
+def test_pack_fixture_manifest_matches_on_disk() -> None:
+    fixtures = ROOT / "fixtures"
+    dest = fixtures / _FIXTURE_MANIFEST_NAME
+    assert dest.is_file()
+    expected = json.loads(dest.read_text(encoding="utf-8"))
+    got = build_fixture_manifest(fixtures)
+    assert got["files"] == expected["files"]
+    catalog = fixture_content_hashes()
+    assert catalog
+    assert len(expected["files"]) >= 200
+
+
+def test_unreadable_fixture_in_catalog_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fx = tmp_path / "fx"
+    fx.mkdir()
+    (fx / "keep.txt").write_text("keep-body\n", encoding="utf-8")
+    (fx / "secret.txt").write_text("secret-body\n", encoding="utf-8")
+    real = file_content_fingerprints
+
+    def wrapped(path: Path) -> frozenset[str]:
+        if path.name == "secret.txt" and path.parent == fx:
+            return frozenset()
+        return real(path)
+
+    monkeypatch.setattr("shared.estate_pages.file_content_fingerprints", wrapped)
+    dest_in = tmp_path / "in"
+    dest_in.mkdir()
+    (dest_in / "secret.txt").write_text("secret-body\n", encoding="utf-8")
+    hits, others = in_dir_fixture_hits(dest_in, fixtures_root=fx)
+    assert hits
+    assert others == ()
+    real_hits = in_dir_fixture_hits
+    monkeypatch.setattr(
+        "shared.estate_pages.in_dir_fixture_hits",
+        lambda in_path, fixtures_root=None: real_hits(in_path, fixtures_root=fx),
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+
+
+def test_corrupt_catalog_bytes_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    src = ROOT / "fixtures" / "samples" / "fping-a.txt"
+    fx = tmp_path / "fx"
+    fx.mkdir()
+    (fx / "fping-a.txt").write_bytes(src.read_bytes())
+    (fx / _FIXTURE_MANIFEST_NAME).write_text(
+        json.dumps(build_fixture_manifest(fx), indent=2),
+        encoding="utf-8",
+    )
+    (fx / "fping-a.txt").write_bytes(b"CORRUPTED-NOT-THE-FIXTURE\n")
+    dest_in = tmp_path / "in"
+    dest_in.mkdir()
+    (dest_in / "fping-a.txt").write_bytes(src.read_bytes())
+    hits, others = in_dir_fixture_hits(dest_in, fixtures_root=fx)
+    assert hits
+    assert others == ()
+    real_hits = in_dir_fixture_hits
+    monkeypatch.setattr(
+        "shared.estate_pages.in_dir_fixture_hits",
+        lambda in_path, fixtures_root=None: real_hits(in_path, fixtures_root=fx),
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+
+
+def _mut_bytes_trailing_nl(data: bytes) -> bytes:
+    return data + b"\n"
+
+
+def _mut_bytes_crlf(data: bytes) -> bytes:
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n")
+
+
+def _mut_bytes_bom(data: bytes) -> bytes:
+    return b"\xef\xbb\xbf" + data
+
+
+def _mut_bytes_trailing_space(data: bytes) -> bytes:
+    return data + b"  "
+
+
+def _mut_bytes_leading_indent(data: bytes) -> bytes:
+    lines = data.split(b"\n")
+    return b"\n".join(b"    " + ln for ln in lines)
+
+
+def _mut_bytes_mid_blank(data: bytes) -> bytes:
+    lines = data.split(b"\n")
+    mid = max(1, len(lines) // 2)
+    lines.insert(mid, b"")
+    return b"\n".join(lines)
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        _mut_bytes_trailing_nl,
+        _mut_bytes_crlf,
+        _mut_bytes_bom,
+        _mut_bytes_trailing_space,
+        _mut_bytes_leading_indent,
+        _mut_bytes_mid_blank,
+    ],
+    ids=["bin-nl", "bin-crlf", "bin-bom", "bin-space", "bin-indent", "bin-blank"],
+)
+def test_binary_maester_whitespace_cannot_claim_client(tmp_path: Path, mutator) -> None:
+    src = ROOT / "fixtures" / "keep-stress" / "garbage-binary" / "saas" / "maester.json"
+    mutated = mutator(src.read_bytes())
+    _assert_mutated_fixture_not_client(tmp_path, src, mutated)
+
+
+def test_manifest_stat_permission_error_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fx = tmp_path / "fx"
+    fx.mkdir()
+    (fx / "keep.txt").write_text("keep-body\n", encoding="utf-8")
+    real_is_file = Path.is_file
+
+    def wrapped(self: Path) -> bool:
+        if self.name == _FIXTURE_MANIFEST_NAME:
+            raise PermissionError("chmod 000")
+        return real_is_file(self)
+
+    monkeypatch.setattr(Path, "is_file", wrapped)
+    assert _manifest_matches(fx, required=True) is False
+    dest_in = tmp_path / "in"
+    dest_in.mkdir()
+    (dest_in / "live.xml").write_text(
+        "<nmaprun unique='chmod-000-catalog'/>\n", encoding="utf-8"
+    )
+    hits, others = in_dir_fixture_hits(dest_in, fixtures_root=fx)
+    assert hits
+    assert others == ()
+    real_hits = in_dir_fixture_hits
+    monkeypatch.setattr(
+        "shared.estate_pages.in_dir_fixture_hits",
+        lambda in_path, fixtures_root=None: real_hits(in_path, fixtures_root=fx),
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind in {"SAMPLE", "MIXED"}
+    assert stamp.kind != "CLIENT"
+
+
+def test_unique_live_drop_with_auth_still_client(tmp_path: Path) -> None:
+    dest_in = tmp_path / "in"
+    (dest_in / "nmap").mkdir(parents=True)
+    (dest_in / "nmap" / "live.xml").write_text(
+        "<nmaprun unique='not-a-pack-fixture'/>\n", encoding="utf-8"
+    )
+    stamp = classify_estate(
+        [_finding("f1")],
+        in_dir=dest_in,
+        env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+        client_name="AcmeHealth",
+    )
+    assert stamp.kind == "CLIENT"
+    assert stamp.label == "CLIENT: AcmeHealth"
 
 
 def test_empty_client_without_auth_does_not_claim_client_deliverable(

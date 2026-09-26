@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
+import json
 import os
 import re
 import subprocess
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,6 +76,7 @@ _AUTH_PLACEHOLDERS = frozenset(
     {"", "not recorded", "none", "null", "unknown", "n/a", "na", "-"}
 )
 _FIXTURE_HASH_CACHE: frozenset[str] | None = None
+_FIXTURE_MANIFEST_NAME = "FINGERPRINTS.json"
 _PACK_DEMO_SCOPE = Path("dropbox") / "SCOPE.yaml"
 
 CLIENT_PAGE_FORBIDDEN = (
@@ -338,39 +342,385 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_bytes(blob: bytes) -> str:
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _safe_is_file(path: Path) -> bool:
+    try:
+        return path.is_file()
+    except OSError:
+        return False
+
+
+def _safe_is_dir(path: Path | None) -> bool:
+    if path is None:
+        return False
+    try:
+        return path.is_dir()
+    except OSError:
+        return False
+
+
 def _hashable_file(path: Path) -> bool:
-    if not path.is_file():
+    if not _safe_is_file(path):
         return False
     if path.name.startswith("."):
+        return False
+    if path.name == _FIXTURE_MANIFEST_NAME:
         return False
     return path.name not in _HASH_SKIP_NAMES
 
 
-def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
-    """SHA-256 set of bundled files under fixtures/. Cached for the process."""
-    global _FIXTURE_HASH_CACHE
-    if fixtures_root is None and _FIXTURE_HASH_CACHE is not None:
-        return _FIXTURE_HASH_CACHE
+def _json_dumps(obj: Any) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _canon_json_obj(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {str(k): _canon_json_obj(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        items = [_canon_json_obj(x) for x in obj]
+        try:
+            return sorted(items, key=_json_dumps)
+        except TypeError:
+            return items
+    return obj
+
+
+def _try_canonical_json(text: str) -> bytes | None:
+    stripped = text.lstrip()
+    if not stripped or stripped[0] not in "{[":
+        return None
+    try:
+        obj = json.loads(text)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+    return (_json_dumps(_canon_json_obj(obj)) + "\n").encode("utf-8")
+
+
+def _try_canonical_jsonl(text: str) -> bytes | None:
+    rows = [ln.strip() for ln in text.split("\n") if ln.strip()]
+    if len(rows) < 2:
+        return None
+    dumps: list[str] = []
+    for ln in rows:
+        if ln[0] not in "{[":
+            return None
+        try:
+            dumps.append(_json_dumps(_canon_json_obj(json.loads(ln))))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+    return ("\n".join(sorted(dumps)) + "\n").encode("utf-8")
+
+
+def _collapse_text(text: str) -> str:
+    lines: list[str] = []
+    for ln in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        collapsed = " ".join(ln.split())
+        if collapsed:
+            lines.append(collapsed)
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _try_canonical_xml(data: bytes) -> bytes | None:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return None
+
+    def walk(el: ET.Element) -> None:
+        items = sorted(el.attrib.items())
+        el.attrib.clear()
+        el.attrib.update(items)
+        if el.text is not None:
+            el.text = el.text.strip() or None
+        if el.tail is not None:
+            el.tail = el.tail.strip() or None
+        for child in el:
+            walk(child)
+
+    walk(root)
+    return ET.tostring(root, encoding="utf-8")
+
+
+_CSV_DELIMS = (",", ";", "\t", "|")
+
+
+def _strip_wrapping_csv_quotes(text: str) -> str:
+    """Undo a QUOTE_ALL re-save that wrapped each whole line in quotes."""
+    out: list[str] = []
+    for ln in text.split("\n"):
+        s = ln.strip()
+        if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            out.append(s[1:-1].replace('""', '"'))
+        else:
+            out.append(ln)
+    return "\n".join(out)
+
+
+def _csv_rows(text: str, delim: str) -> list[list[str]] | None:
+    try:
+        rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+    except csv.Error:
+        return None
+    if not rows or all(len(r) <= 1 for r in rows):
+        return None
+    return rows
+
+
+def _try_canonical_csv(text: str) -> bytes | None:
+    if not text.strip():
+        return None
+    texts = [text]
+    already_table = any(_csv_rows(text, d) is not None for d in _CSV_DELIMS if d in text)
+    if not already_table:
+        unquoted = _strip_wrapping_csv_quotes(text)
+        if unquoted != text:
+            texts.append(unquoted)
+    delims = list(_CSV_DELIMS)
+    try:
+        sniffed = csv.Sniffer().sniff(text[:8192], delimiters="".join(_CSV_DELIMS))
+        if sniffed.delimiter in _CSV_DELIMS:
+            delims = [sniffed.delimiter, *[d for d in delims if d != sniffed.delimiter]]
+    except csv.Error:
+        pass
+    best: list[list[str]] | None = None
+    best_score = (-1, -1)
+    for src in texts:
+        for delim in delims:
+            if delim not in src:
+                continue
+            rows = _csv_rows(src, delim)
+            if rows is None:
+                continue
+            score = (max(len(r) for r in rows), len(rows))
+            if score > best_score:
+                best_score = score
+                best = rows
+    if best is None:
+        return None
+    header = [" ".join(c.split()) for c in best[0]]
+    body = sorted(tuple(" ".join(c.split()) for c in r) for r in best[1:])
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(header)
+    for row in body:
+        writer.writerow(row)
+    return buf.getvalue().encode("utf-8")
+
+
+def _edge_normalize_bytes(data: bytes) -> bytes:
+    """BOM / CRLF→LF / trailing whitespace per line. Safe on binary."""
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    body = body.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    lines = [ln.rstrip(b" \t") for ln in body.split(b"\n")]
+    while lines and lines[0] == b"":
+        lines.pop(0)
+    while lines and lines[-1] == b"":
+        lines.pop()
+    return b"\n".join(lines) + (b"\n" if lines else b"")
+
+
+def _collapse_bytes(data: bytes) -> bytes:
+    """Collapse ASCII whitespace runs; drop blank lines. Safe on binary."""
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    body = body.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    lines: list[bytes] = []
+    for ln in body.split(b"\n"):
+        parts = ln.split()
+        if parts:
+            lines.append(b" ".join(parts))
+    return b"\n".join(lines) + (b"\n" if lines else b"")
+
+
+def normalize_fixture_bytes(data: bytes) -> bytes:
+    """Best single canonical form: XML / JSON(L) / CSV, else collapsed bytes."""
+    forms = _normalized_forms(data)
+    if not forms:
+        return data
+    if len(forms) > 2:
+        return forms[2]
+    return forms[-1]
+
+
+def _normalized_forms(data: bytes) -> list[bytes]:
+    """Edge + collapsed bytes always; structured canons when UTF-8."""
+    forms: list[bytes] = []
+    for blob in (_edge_normalize_bytes(data), _collapse_bytes(data)):
+        if blob not in forms:
+            forms.append(blob)
+    if b"\x00" in data[:8192]:
+        return forms
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    xml = _try_canonical_xml(body)
+    if xml is not None:
+        forms.append(xml)
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError:
+        return forms
+    text_eol = text.replace("\r\n", "\n").replace("\r", "\n")
+    for fn in (_try_canonical_json, _try_canonical_jsonl, _try_canonical_csv):
+        canon = fn(text_eol)
+        if canon is not None:
+            forms.append(canon)
+    collapsed = _collapse_text(text_eol).encode("utf-8")
+    if collapsed not in forms:
+        forms.append(collapsed)
+    return forms
+
+
+def fingerprints_from_bytes(data: bytes) -> frozenset[str]:
+    fps = {_sha256_bytes(data)}
+    for form in _normalized_forms(data):
+        fps.add(_sha256_bytes(form))
+    return frozenset(fps)
+
+
+def file_content_fingerprints(path: Path) -> frozenset[str]:
+    """Raw SHA-256 plus every normalized form. Empty if the file is unreadable."""
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return frozenset()
+    return fingerprints_from_bytes(data)
+
+
+def _fixtures_root(fixtures_root: Path | None = None) -> Path | None:
+    if fixtures_root is not None:
+        return fixtures_root
     try:
         from shared.io_util import root_dir
 
-        root = fixtures_root or (root_dir() / "fixtures")
+        return root_dir() / "fixtures"
     except Exception:
-        root = fixtures_root
+        return None
+
+
+def _pack_root() -> Path | None:
+    try:
+        from shared.io_util import root_dir
+
+        return root_dir()
+    except Exception:
+        return None
+
+
+def build_fixture_manifest(fixtures_root: Path) -> dict[str, Any]:
+    files: dict[str, dict[str, str]] = {}
+    try:
+        paths = sorted(fixtures_root.rglob("*"))
+    except OSError as exc:
+        raise OSError(str(exc)) from exc
+    for path in paths:
+        if not _hashable_file(path):
+            continue
+        data = path.read_bytes()
+        rel = str(path.relative_to(fixtures_root)).replace("\\", "/")
+        files[rel] = {
+            "raw": _sha256_bytes(data),
+            "norm": _sha256_bytes(normalize_fixture_bytes(data)),
+        }
+    return {"version": 1, "files": files}
+
+
+def _manifest_files_match(expected: Any, on_disk: dict[str, dict[str, str]]) -> bool:
+    exp_files = expected.get("files") if isinstance(expected, dict) else None
+    return isinstance(exp_files, dict) and bool(exp_files) and exp_files == on_disk
+
+
+def _load_manifest(root: Path) -> dict[str, Any] | None:
+    dest = root / _FIXTURE_MANIFEST_NAME
+    try:
+        if not dest.is_file():
+            return None
+        parsed = json.loads(dest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _manifest_matches(root: Path, *, required: bool) -> bool:
+    """True when on-disk fixtures match FINGERPRINTS.json.
+
+    A missing manifest is allowed only for small custom test trees
+    (`required=False`). Pack fixtures and any copy that still ships
+    the manifest must match exactly or the catalog is untrusted.
+    Stat/read failures (chmod 000) fail closed.
+    """
+    dest = root / _FIXTURE_MANIFEST_NAME
+    try:
+        exists = dest.is_file()
+    except OSError:
+        return False
+    if not exists:
+        return not required
+    try:
+        expected = json.loads(dest.read_text(encoding="utf-8"))
+        got = build_fixture_manifest(root)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return False
+    return _manifest_files_match(expected, got.get("files") if isinstance(got, dict) else None)
+
+
+def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
+    """SHA-256 set of bundled fixture fingerprints. Cached for the process.
+
+    Unreadable fixtures or a pack-manifest mismatch fail closed (empty set)
+    so classify_estate cannot claim CLIENT.
+    """
+    global _FIXTURE_HASH_CACHE
+    use_cache = fixtures_root is None
+    if use_cache and _FIXTURE_HASH_CACHE is not None:
+        return _FIXTURE_HASH_CACHE
+    root = _fixtures_root(fixtures_root)
     found: set[str] = set()
-    if root is not None and root.is_dir():
+    trusted = True
+    if not _safe_is_dir(root):
+        trusted = False
+    else:
+        assert root is not None
+        on_disk: dict[str, dict[str, str]] = {}
         try:
-            for path in root.rglob("*"):
-                if not _hashable_file(path):
-                    continue
-                try:
-                    found.add(_sha256_file(path))
-                except OSError:
-                    continue
+            paths = [p for p in root.rglob("*") if _hashable_file(p)]
         except OSError:
-            pass
-    result = frozenset(found)
-    if fixtures_root is None:
+            paths = []
+            trusted = False
+        for path in paths:
+            try:
+                data = path.read_bytes()
+                rel = str(path.relative_to(root)).replace("\\", "/")
+            except OSError:
+                trusted = False
+                break
+            fps = fingerprints_from_bytes(data)
+            if not fps:
+                trusted = False
+                break
+            found.update(fps)
+            on_disk[rel] = {
+                "raw": _sha256_bytes(data),
+                "norm": _sha256_bytes(normalize_fixture_bytes(data)),
+            }
+        try:
+            pack = _pack_root()
+            pack_fixtures = pack / "fixtures" if pack is not None else None
+            is_pack = bool(
+                pack_fixtures is not None
+                and root.resolve() == pack_fixtures.resolve()
+            )
+        except OSError:
+            is_pack = True
+        expected = _load_manifest(root)
+        if trusted:
+            if expected is None:
+                if is_pack:
+                    trusted = False
+            elif not _manifest_files_match(expected, on_disk):
+                trusted = False
+    result = frozenset(found) if trusted else frozenset()
+    if use_cache:
         _FIXTURE_HASH_CACHE = result
     return result
 
@@ -380,29 +730,40 @@ def in_dir_fixture_hits(
     *,
     fixtures_root: Path | None = None,
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """Return (fixture-matching relative paths, other input relative paths)."""
-    if in_path is None or not in_path.is_dir():
+    """Return (fixture-matching relative paths, other input relative paths).
+
+    Unreadable inputs and an empty/untrusted fixture catalog fail closed:
+    every scanner drop is treated as a fixture hit so classify_estate
+    cannot claim CLIENT.
+    """
+    if in_path is None or not _safe_is_dir(in_path):
         return (), ()
     catalog = fixture_content_hashes(fixtures_root)
-    if not catalog:
-        return (), ()
     hits: list[str] = []
     others: list[str] = []
     try:
-        for path in in_path.rglob("*"):
-            if not _hashable_file(path):
-                continue
-            try:
-                digest = _sha256_file(path)
-                rel = str(path.relative_to(in_path)).replace("\\", "/")
-            except OSError:
-                continue
-            if digest in catalog:
-                hits.append(rel)
-            else:
-                others.append(rel)
+        paths = [p for p in in_path.rglob("*") if _hashable_file(p)]
     except OSError:
-        return (), ()
+        return ("<unreadable>",), ()
+    if not catalog and paths:
+        rels = []
+        for path in paths:
+            try:
+                rels.append(str(path.relative_to(in_path)).replace("\\", "/"))
+            except OSError:
+                rels.append(path.name)
+        return tuple(rels), ()
+    for path in paths:
+        try:
+            rel = str(path.relative_to(in_path)).replace("\\", "/")
+        except OSError:
+            hits.append(path.name)
+            continue
+        fps = file_content_fingerprints(path)
+        if not fps or (fps & catalog):
+            hits.append(rel)
+        else:
+            others.append(rel)
     return tuple(hits), tuple(others)
 
 
