@@ -2,7 +2,7 @@
 
 Benchmark: FedRAMP POA&M Template R3.0 (POAM ID, Controls, Weakness Description,
 Detector Source, Source Identifier, Original Detection Date, Scheduled Completion
-Date (30/90/180 by risk), Status Date, milestones, Original Risk Rating, CVE).
+Date (15/30/90/180 by risk), Status Date, milestones, Original Risk Rating, CVE).
 Existing columns stay in place; owner / point_of_contact stay blank for a human.
 """
 
@@ -94,7 +94,7 @@ def test_row_fields_from_existing_data(tmp_path: Path, monkeypatch: pytest.Monke
 
 @pytest.mark.parametrize(
     ("sev", "days", "rating"),
-    [("critical", 30, "Critical"), ("high", 30, "High"), ("medium", 90, "Moderate"), ("low", 180, "Low")],
+    [("critical", 15, "Critical"), ("high", 30, "High"), ("medium", 90, "Moderate"), ("low", 180, "Low")],
 )
 def test_scheduled_completion_defaults_by_risk(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sev: str, days: int, rating: str
@@ -115,7 +115,8 @@ def test_first_seen_wins_over_scan_time(tmp_path: Path, monkeypatch: pytest.Monk
 
 def test_collected_at_when_no_first_seen_or_scan_time(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rows = _load(tmp_path, monkeypatch, [_rec("R1", "high", extra={"port": "21", "check_id": "nse-ftp-anon"})])
-    assert rows[0]["original_detection_date"] == "2026-09-20"
+    assert rows[0]["original_detection_date"] == "not recorded"
+    assert rows[0]["scheduled_completion_date"] == "pending due date"
 
 
 def test_cve_where_known(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -144,7 +145,8 @@ def test_poam_md_says_dates_are_defaults(tmp_path: Path, monkeypatch: pytest.Mon
     _load(tmp_path, monkeypatch, [_rec("R1", "medium")])
     md = (tmp_path / "out" / "poam" / "poam.md").read_text(encoding="utf-8")
     low = md.lower()
-    assert "default" in low and "30" in md and "90" in md and "180" in md
+    assert "default" in low and "15" in md and "30" in md and "90" in md and "180" in md
+    assert "evergreen default" in low
     assert "point of contact" in low and "blank" in low
     assert "Moderate" in md
     assert "POAM-R1" in md

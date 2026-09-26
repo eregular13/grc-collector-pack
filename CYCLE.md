@@ -24,6 +24,29 @@ stays open. pytest **1084**. Host-lab `assets=81` `findings=104`
 **unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
 stay-out.
 
+## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
+
+Merged master `f3db646` (#132 estate pages + #139 real parsers) into the
+loader-identity branch. Falco privileged + Kubescape C-0057 still merge
+on `prod-cluster` but `extra.tools` / sources / provenance / POA&M
+`detector_source` keep both scanners. Committed nuclei `exposed-redis`
+on three hosts so `lab_outputs` proves N hosts = N weaknesses.
+Host-lab `assets=84` `findings=103` `vulnerabilities=22` `poam=111`
+`weaknesses=125`. Also merged #136 (no `out/riskready`). pytest **1087**.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+
+## cycle 191 — loader identity + vendor severity (2026-09-26)
+
+Audit §8.0: same rule on N hosts stays N weaknesses; unknown severity
+is medium + `severity_unmapped` (counted in summary.json), not silent
+info. Parsers stamp extra.rule/cve/check_id and host in ref_id
+(nuclei/Trivy/Greenbone/SARIF/semgrep/falco/kube-bench/ScubaGear).
+kube-bench scored/WARN, kubescape scoreFactor, checkov null→medium,
+semgrep ERROR/WARNING/INFO. Lab `findings=103` `poam=108` `weaknesses=122`
+(−1 vs #129: Falco privileged now keys the node and merges with
+Kubescape C-0057 on `prod-cluster`). Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 
 §8 collectors that were silently empty or wrong on real tool output.

@@ -1,0 +1,5 @@
+LAB/DEMO -- not a client estate.
+Nuclei multi-host file-drop: same exposed-redis template on three hosts.
+Proves N hosts give N weaknesses. Not a live nuclei scan.
+Not SAMPLE keep. Not a client export.
+LAB != SAMPLE != client. paying_day FAIL.

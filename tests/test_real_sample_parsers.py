@@ -243,10 +243,11 @@ def test_wazuh_alerts_aggregate_by_rule_and_agent(tmp_path: Path) -> None:
     assert ssh_web["extra"]["last_seen"].startswith("2025-09-15T15:49:20")
     assert ssh_db["extra"]["count"] == 1
     assert started["severity"] == "info"
+    assert started["extra"].get("telemetry") is True
     from shared.control_map import poam_decision
 
     assert poam_decision(started)["include"] is False
-    assert poam_decision(started)["reason"] == "severity_info"
+    assert poam_decision(started)["reason"] == "telemetry_info"
 
 
 def test_wazuh_sca_agent_from_path_and_severity_from_rationale(tmp_path: Path) -> None:
@@ -285,6 +286,8 @@ def test_wazuh_sca_agent_from_path_and_severity_from_rationale(tmp_path: Path) -
     assert by_id["19002"]["severity"] == "high"
     assert by_id["19002"]["extra"].get("severity_source") == "rationale"
     assert by_id["19002"]["extra"].get("agent_source") == "path"
+    assert "web-01" in by_id["19002"]["ref_id"]
+    assert "web-01" in by_id["19003"]["ref_id"]
     assert by_id["19003"]["severity"] == "medium"
     assert by_id["19003"]["extra"].get("severity_source") == "default"
 
@@ -343,9 +346,101 @@ def test_prowler_skips_muted_and_manual_keeps_account_identity(tmp_path: Path) -
         findings[1]["ref_id"],
     }
     assert findings[0]["ref_id"] != findings[1]["ref_id"]
+    assert any("111111111111" in r["ref_id"] for r in findings)
+    assert any("222222222222" in r["ref_id"] for r in findings)
     assert all(r["extra"].get("check_id") == "s3_bucket_public_access" for r in findings)
     assert not any(r["extra"].get("check_id") == "iam_root_mfa_enabled" for r in findings)
     assert not any(r["extra"].get("status") == "MANUAL" for r in findings)
+
+
+def test_wazuh_info_alerts_land_in_excluded_as_telemetry_info(tmp_path, monkeypatch) -> None:
+    """Levels 0-3 are info telemetry — excluded.csv names them, never a silent drop."""
+    import csv
+
+    from collectors.grc_loader import load
+    from shared.control_map import poam_decision
+    from shared.io_util import out_dir, write_canonical
+    from shared.schema import canon_severity
+
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"timestamp":"2025-09-15T15:48:20.217+0200","rule":{"level":3,"description":"Wazuh server started.","id":"502"},'
+        '"agent":{"name":"web-01"},"id":"a1"}\n'
+        '{"timestamp":"2025-09-15T15:49:20.217+0200","rule":{"level":2,"description":"PAM: Login session opened.","id":"5501"},'
+        '"agent":{"name":"web-01"},"id":"a2"}\n',
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert findings
+    assert all(r["severity"] == "info" for r in findings)
+    assert all(r["extra"].get("telemetry") is True for r in findings)
+    assert all(poam_decision(r)["reason"] == "telemetry_info" for r in findings)
+    assert all(canon_severity(r["severity"]) == "info" for r in findings)
+
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    write_canonical("host-wazuh", recs)
+    summary = load()
+    assert summary["excluded"] >= 2
+    assert summary["excluded_by_reason"].get("telemetry_info", 0) >= 2
+    with (out_dir() / "poam" / "excluded.csv").open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    reasons = {row["finding_ref_id"]: row["excluded_reason"] for row in rows}
+    assert any(reason == "telemetry_info" for reason in reasons.values())
+    assert all(r["ref_id"] in reasons and reasons[r["ref_id"]] == "telemetry_info" for r in findings)
+
+
+def test_wazuh_prowler_enum4linux_route_canon_severity(tmp_path: Path) -> None:
+    from shared.schema import canon_severity
+
+    dest = tmp_path / "alerts.jsonl"
+    dest.write_text(
+        '{"rule":{"level":8,"description":"warn word","id":"80"},'
+        '"agent":{"name":"web-01"},"severity":"WARNING"}\n'
+        '{"rule":{"level":8,"description":"unknown word","id":"81"},'
+        '"agent":{"name":"web-01"},"severity":"purple-alert"}\n',
+        encoding="utf-8",
+    )
+    recs = host_wazuh.parse_file(dest)
+    by_name = {r["name"]: r for r in recs if r["kind"] == "finding"}
+    assert by_name["warn word"]["severity"] == canon_severity("WARNING") == "medium"
+    assert not by_name["warn word"]["extra"].get("severity_unmapped")
+    assert by_name["unknown word"]["severity"] == canon_severity("purple-alert") == "medium"
+    assert by_name["unknown word"]["extra"].get("severity_unmapped") is True
+
+    prowler = tmp_path / "prowler.json"
+    prowler.write_text(
+        """[
+  {"CheckID": "s3_bucket_public_access", "CheckTitle": "S3 public", "Status": "FAIL",
+   "Severity": "IMPORTANT", "ResourceId": "bucket-a", "AccountId": "111111111111", "ServiceName": "s3"},
+  {"CheckID": "s3_bucket_versioning", "CheckTitle": "S3 versioning", "Status": "FAIL",
+   "Severity": "purple-alert", "ResourceId": "bucket-b", "AccountId": "111111111111", "ServiceName": "s3"}
+]
+""",
+        encoding="utf-8",
+    )
+    precs = [r for r in cloud_prowler.parse_file(prowler) if r["kind"] == "finding"]
+    by_check = {r["extra"].get("check_id"): r for r in precs}
+    assert by_check["s3_bucket_public_access"]["severity"] == canon_severity("IMPORTANT") == "high"
+    assert "111111111111" in by_check["s3_bucket_public_access"]["ref_id"]
+    assert by_check["s3_bucket_versioning"]["severity"] == canon_severity("purple-alert") == "medium"
+    assert by_check["s3_bucket_versioning"]["extra"].get("severity_unmapped") is True
+
+    enum_dest = tmp_path / "enum4linux-ng.json"
+    enum_dest.write_text(
+        """{
+  "target": {"host": "10.0.0.8"},
+  "smb_domain_info": {"NetBIOS computer name": "FS01"},
+  "sessions": {"null": true},
+  "shares": {"DATA": {"access": {"mapping": "ok", "listing": "ok", "writing": "ok"}}}
+}
+""",
+        encoding="utf-8",
+    )
+    erecs = [r for r in identity_ad.parse_file(enum_dest) if r["kind"] == "finding"]
+    assert erecs
+    assert all(r["severity"] == canon_severity(r["severity"]) == "high" for r in erecs)
 
 
 def test_samples_sources_credits_public_fixtures() -> None:

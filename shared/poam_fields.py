@@ -1,16 +1,26 @@
 """FedRAMP R3.0-style POA&M fields derived from data the pack already has.
 
-No invented owners. Scheduled completion dates are *defaults* (30/90/180 days
-from original detection by risk rating), clearly labeled as such; `due` stays
-the human-committed date and is left blank. Dates are UTC calendar dates.
+No invented owners. Scheduled completion dates follow the Evergreen default
+schedule (15/30/90/180 days from original detection by risk rating), clearly
+labeled as such; `due` stays the human-committed date and is left blank.
+Detection dates come from the artifact scan timestamp (labeled UTC / recorded
+offset in poam.md). Missing scan time is the literal ``not recorded`` — never
+the pack run date. The separate FedRAMP export keeps its own template values.
 """
 
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from typing import Any
 
+from shared.scan_time import (  # noqa: F401 — re-exported for callers/tests
+    NOT_RECORDED,
+    PENDING_DUE,
+    artifact_detection,
+    calendar_date,
+    merge_detection,
+)
 from shared.schema import ciso_finding_severity
 
 POAM_EXTRA_FIELDS = (
@@ -30,57 +40,43 @@ POAM_EXTRA_FIELDS = (
 )
 
 RISK_RATING = {"critical": "Critical", "high": "High", "medium": "Moderate", "low": "Low"}
-# FedRAMP POA&M Template R3.0 Instructions A9: High/Critical 30, Moderate 90, Low 180.
-SLA_DAYS = {"Critical": 30, "High": 30, "Moderate": 90, "Low": 180}
-FIRST_MILESTONE_DAYS = {30: 7, 90: 14, 180: 30}
+# Evergreen default schedule. Not a FedRAMP deadline set. Critical 15 / High 30 /
+# Moderate 90 / Low 180. Documented here so the clock is not silent.
+SLA_DAYS = {"Critical": 15, "High": 30, "Moderate": 90, "Low": 180}
+FIRST_MILESTONE_DAYS = {15: 3, 30: 7, 90: 14, 180: 30}
 KNOWN_CVE = (("heartbleed", "CVE-2014-0160"),)
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 SLA_NOTE = (
-    "Scheduled completion dates are DEFAULTS computed from original detection date + risk rating "
-    "(Critical/High 30 days, Moderate 90, Low 180; FedRAMP POA&M R3.0 convention). They are not a "
-    "committed date: `due` stays blank until a human commits one. Owner and point of contact are "
-    "blank for a human to assign. Dates are UTC."
+    "Scheduled completion dates are the Evergreen default schedule, computed from "
+    "original detection date + risk rating (Critical 15 days, High 30, Moderate 90, "
+    "Low 180). They are not a committed date: `due` stays blank until a human commits "
+    "one. Owner and point of contact are blank for a human to assign. Original Detection "
+    "Date is the artifact scan timestamp's calendar day in the recorded timezone (UTC "
+    "when the artifact is Zulu; offset-preserving when the artifact carries one — a "
+    "23:00 PT scan stays that calendar day, not the next UTC day). The poam.csv column "
+    "name is unchanged; this UTC / recorded-zone note lives here. When the artifact has "
+    "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
+    "scheduled / milestone dates stay 'pending due date'."
 )
 
 
 def _to_date(raw: Any) -> date | None:
-    if raw in (None, ""):
-        return None
-    if isinstance(raw, (int, float)) or (isinstance(raw, str) and raw.strip().isdigit()):
-        try:
-            return datetime.fromtimestamp(int(raw), tz=timezone.utc).date()
-        except (OverflowError, OSError, ValueError):
-            return None
-    text = str(raw).strip()
-    try:
-        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
-    except ValueError:
-        try:
-            return date.fromisoformat(text[:10])
-        except ValueError:
-            return None
-    if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc)
-    return dt.date()
+    """Parse a date without converting an offset timestamp onto the next UTC day."""
+    return calendar_date(raw)
 
 
 def risk_rating(severity: Any) -> str:
     return RISK_RATING[ciso_finding_severity(severity)]
 
 
-def detection_date(rec: dict[str, Any], fallback: date) -> date:
-    """first-seen if present, else scan time, else collected_at, else the run date."""
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    for raw in (
-        extra.get("first_seen"), extra.get("firstSeen"), extra.get("first_seen_at"),
-        rec.get("first_seen"), rec.get("firstSeen"),
-        extra.get("scan_time"), extra.get("scan_start"),
-        rec.get("collected_at"),
-    ):
-        got = _to_date(raw)
-        if got:
-            return got
-    return fallback
+def detection_date(rec: dict[str, Any], fallback: date | None = None) -> date | None:
+    """Artifact scan timestamp only. Never collected_at or the pack run date.
+
+    ``fallback`` is accepted for call-site compatibility and ignored.
+    """
+    del fallback
+    detected, _basis, _tz = artifact_detection(rec)
+    return detected
 
 
 def detector_source(rec: dict[str, Any]) -> str:
@@ -88,14 +84,27 @@ def detector_source(rec: dict[str, Any]) -> str:
     source = str(rec.get("source") or "").strip() or "unknown"
     tool = str(extra.get("tool") or extra.get("scanner") or "").strip()
     nse = str(extra.get("nse_script") or "").strip()
+    tools = extra.get("tools") if isinstance(extra.get("tools"), list) else []
+    merged = [str(t).strip() for t in tools if str(t).strip()]
     if nse:
         tool = f"{tool or 'nmap'} NSE {nse}"
+    elif merged:
+        tool = ", ".join(dict.fromkeys(merged))
     return f"{source} ({tool})" if tool else source
 
 
 def source_identifier(rec: dict[str, Any]) -> str:
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    for key in ("check_id", "plugin_id", "pluginID", "template_id", "template-id", "rule", "id"):
+    for key in (
+        "check_id",
+        "plugin_id",
+        "pluginID",
+        "template_id",
+        "template-id",
+        "rule_id",
+        "rule",
+        "id",
+    ):
         val = str(extra.get(key) or "").strip()
         if val:
             return val
@@ -133,9 +142,17 @@ def milestones(control_name: str, detected: date, scheduled: date, days: int) ->
 def poam_fields(rec: dict[str, Any], mapped: dict[str, Any], today: date) -> dict[str, str]:
     rating = risk_rating(rec.get("severity"))
     days = SLA_DAYS[rating]
-    detected = detection_date(rec, today)
-    scheduled = detected + timedelta(days=days)
+    detected = detection_date(rec)
     ref = str(rec.get("ref_id") or "")
+    if detected is None:
+        odd = NOT_RECORDED
+        scheduled_s = PENDING_DUE
+        ms = PENDING_DUE
+    else:
+        scheduled = detected + timedelta(days=days)
+        odd = detected.isoformat()
+        scheduled_s = scheduled.isoformat()
+        ms = milestones(str(mapped.get("control_name") or "remediate"), detected, scheduled, days)
     return {
         "poam_id": f"POAM-{ref}" if ref else "",
         "finding_ref_id": ref,
@@ -143,11 +160,38 @@ def poam_fields(rec: dict[str, Any], mapped: dict[str, Any], today: date) -> dic
         "weakness_description": str(rec.get("description") or rec.get("name") or ""),
         "detector_source": detector_source(rec),
         "weakness_source_id": source_identifier(rec),
-        "original_detection_date": detected.isoformat(),
-        "scheduled_completion_date": scheduled.isoformat(),
+        "original_detection_date": odd,
+        "scheduled_completion_date": scheduled_s,
         "status_date": today.isoformat(),
-        "milestones": milestones(str(mapped.get("control_name") or "remediate"), detected, scheduled, days),
+        "milestones": ms,
         "original_risk_rating": rating,
         "point_of_contact": "",
         "cve": cve_for(rec),
     }
+
+
+def apply_ledger_detection(
+    fields: dict[str, str],
+    item: dict[str, Any],
+    rec: dict[str, Any],
+    mapped: dict[str, Any],
+) -> dict[str, str]:
+    """Stamp ledger-stable original_detection_date onto poam.csv fields."""
+    out = dict(fields)
+    stored = str(item.get("original_detection_date") or NOT_RECORDED)
+    incoming, _basis, _tz = artifact_detection(rec)
+    odd = merge_detection(stored, incoming)
+    out["original_detection_date"] = odd
+    detected = calendar_date(odd) if odd != NOT_RECORDED else None
+    if detected is None:
+        out["scheduled_completion_date"] = PENDING_DUE
+        out["milestones"] = PENDING_DUE
+        return out
+    rating = risk_rating(rec.get("severity"))
+    days = SLA_DAYS[rating]
+    scheduled = detected + timedelta(days=days)
+    out["scheduled_completion_date"] = scheduled.isoformat()
+    out["milestones"] = milestones(
+        str(mapped.get("control_name") or "remediate"), detected, scheduled, days
+    )
+    return out

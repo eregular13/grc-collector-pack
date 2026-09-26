@@ -1,0 +1,5 @@
+{
+  "fp_v1": "750cd066952da3dc48fc45ae51cee72457023ccf257820a041ca99c5a1fcac51",
+  "asset_key": "http://10.0.0.20:445/TCP",
+  "note": "v1|vuln-scan|nessus:42411|http://10.0.0.20:445/TCP"
+}

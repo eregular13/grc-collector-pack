@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<NessusClientData_v2>
+<Report name="all-severities">
+  <ReportHost name="10.0.0.40">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.40</tag>
+      <tag name="HOST_START">Fri Sep 25 23:00:00 2026</tag>
+      <tag name="HOST_END">Sat Sep 26 00:10:00 2026</tag>
+    </HostProperties>
+    <ReportItem port="0" svc_name="general" protocol="tcp" severity="0" pluginID="19506" pluginName="Nessus Scan Information">
+      <risk_factor>None</risk_factor>
+      <description>Scan metadata only.</description>
+    </ReportItem>
+    <ReportItem port="22" svc_name="ssh" protocol="tcp" severity="1" pluginID="70658" pluginName="SSH Server CBC Mode Ciphers Enabled">
+      <risk_factor>Low</risk_factor>
+      <description>SSH prefers CBC ciphers.</description>
+    </ReportItem>
+    <ReportItem port="80" svc_name="www" protocol="tcp" severity="2" pluginID="10107" pluginName="HTTP Server Type and Version">
+      <risk_factor>Medium</risk_factor>
+      <description>Banner only — not a key medium port.</description>
+    </ReportItem>
+    <ReportItem port="445" svc_name="cifs" protocol="tcp" severity="3" pluginID="42411" pluginName="Microsoft Windows SMB Shares Unprivileged Access">
+      <risk_factor>High</risk_factor>
+      <description>SMB file sharing is reachable.</description>
+    </ReportItem>
+    <ReportItem port="443" svc_name="www" protocol="tcp" severity="4" pluginID="156032" pluginName="Apache Log4j Remote Code Execution">
+      <risk_factor>Critical</risk_factor>
+      <description>Log4Shell.</description>
+      <cve>CVE-2021-44228</cve>
+    </ReportItem>
+  </ReportHost>
+</Report>
+</NessusClientData_v2>

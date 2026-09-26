@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.io_util import iso_now, read_json, read_text, run_collector
-from shared.schema import make_record, make_ref
+from shared.schema import make_record, make_ref, map_severity
 
 SOURCE = "cloud-prowler"
 LABELS = ["cloud", "prowler"]
@@ -327,7 +327,8 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
         status = str(item.get("Status") or item.get("status_code") or item.get("status") or "").upper()
         if status == "NEW":
             status = str(item.get("status_code") or "").upper()
-        sev = item.get("Severity") or item.get("severity") or "medium"
+        raw_sev = item.get("Severity") or item.get("severity") or "medium"
+        _mapped_sev, sev_unmapped = map_severity(raw_sev)
         rid = item.get("ResourceId") or item.get("ResourceName") or item.get("resource")
         if not rid:
             res0 = _ocsf_resource(item)
@@ -375,6 +376,9 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
             }
             if account:
                 extra["account_id"] = account
+            if sev_unmapped:
+                extra["severity_unmapped"] = True
+                extra["severity_raw"] = str(raw_sev)
             records.append(
                 make_record(
                     kind="finding",
@@ -382,7 +386,7 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     ref_id=make_ref(SOURCE, ident),
                     name=title,
                     description=desc,
-                    severity=sev,
+                    severity=raw_sev,
                     category="cloud-misconfiguration",
                     assets=[rid],
                     labels=LABELS + [service],

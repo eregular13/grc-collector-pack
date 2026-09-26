@@ -20,7 +20,7 @@ from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
 from shared.osquery_checks import iter_osquery_failures
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref, map_severity
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
@@ -99,21 +99,24 @@ def _alert_level(rule: dict[str, Any]) -> int:
         return 0
 
 
-def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> str:
-    """Wazuh rule levels: 0-3 info (never POA&M), 4-6 low, 7-11 medium, 12-14 high, 15+ critical."""
+def _alert_severity(alert: dict[str, Any], rule: dict[str, Any]) -> tuple[str, bool]:
+    """Wazuh rule levels: 0-3 info (never POA&M), 4-6 low, 7-11 medium, 12-14 high, 15+ critical.
+
+    Vendor words go through map_severity / canon_severity (unknown → medium + unmapped).
+    """
     level = _alert_level(rule)
     if level <= 3:
-        return "info"
+        return "info", False
     raw = alert.get("severity")
     if raw not in (None, ""):
-        return str(raw)
+        return map_severity(raw)
     if level >= 15:
-        return "critical"
+        return "critical", False
     if level >= 12:
-        return "high"
+        return "high", False
     if level >= 7:
-        return "medium"
-    return "low"
+        return "medium", False
+    return "low", False
 
 
 def _alert_agent(alert: dict[str, Any]) -> str:
@@ -137,12 +140,14 @@ def _aggregate_alerts(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rule = rows[0].get("rule") if isinstance(rows[0].get("rule"), dict) else {}
         times = [t for t in (_alert_time(a) for a in rows) if t]
         times.sort()
+        sev, unmapped = _alert_severity(rows[0], rule)
         out.append(
             {
                 "rule_id": rid,
                 "agent": agent,
                 "title": str(rule.get("description") or rows[0].get("id") or "wazuh alert"),
-                "severity": _alert_severity(rows[0], rule),
+                "severity": sev,
+                "severity_unmapped": unmapped,
                 "level": rule.get("level"),
                 "count": len(rows),
                 "first_seen": times[0] if times else "",
@@ -247,7 +252,7 @@ def _sca_agent(payload: Any, path: Path, row: dict[str, Any] | None = None) -> t
 def _sca_severity(row: dict[str, Any]) -> tuple[str, str]:
     raw = row.get("severity")
     if raw not in (None, ""):
-        return str(raw).strip().lower(), "field"
+        return str(raw).strip(), "field"
     parts: list[str] = []
     for key in ("rationale", "compliance", "description", "title", "reason", "remediation"):
         val = row.get(key)
@@ -517,6 +522,7 @@ def _emit_check_rows(
                 extra[key] = row[key]
         if host == UNKNOWN_AGENT:
             extra["agent_unknown"] = True
+        raw_sev = row.get("severity") or "high"
         records.append(
             make_record(
                 kind="finding",
@@ -524,7 +530,7 @@ def _emit_check_rows(
                 ref_id=make_ref(SOURCE, f"{prefix}-{hid}-{host}"),
                 name=title_fmt.format(title=title, id=hid),
                 description=title,
-                severity=str(row.get("severity") or "high"),
+                severity=raw_sev,
                 category="host-posture",
                 assets=[host],
                 labels=LABELS + labels,
@@ -821,14 +827,18 @@ def parse_file(path: Path) -> list[dict]:
     for alert in _aggregate_alerts(_extract_alerts(payload)):
         aname = str(alert["agent"])
         title = str(alert["title"])
-        sev = str(alert["severity"])
+        sev = canon_severity(alert["severity"])
         extra = {
             "rule_id": alert["rule_id"],
             "rule_level": alert["level"],
             "count": alert["count"],
             "first_seen": alert["first_seen"],
             "last_seen": alert["last_seen"],
+            "telemetry": True,
         }
+        if alert.get("severity_unmapped"):
+            extra["severity_unmapped"] = True
+            extra.setdefault("severity_raw", str(alert["severity"]))
         records.append(
             make_record(
                 kind="incident",

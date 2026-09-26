@@ -15,9 +15,9 @@ dropbox_lab: pass
 farm_lab: pass
 farm_toolbin_e2e: pass
 keep_lab: pass
-e2e_assets: 81
-e2e_findings: 104
-e2e_poam: 109
+e2e_assets: 84
+e2e_findings: 103
+e2e_poam: 111
 demo: true
 estate: DEMO — not a client estate
 compose_lab: pass_desktop
