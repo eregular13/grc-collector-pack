@@ -55,3 +55,18 @@ LAB/SAMPLE/DEMO — not a client estate. No invented hostnames or tenants.
   (`open|filtered` is a documented UDP state; MAC `addrtype="mac"`).
 
 Fetched 2026-09-26. Operator file-drop only — parsers never spawn the tools.
+
+# Cloud Custodian real output (Metis §13.4.3–4)
+
+Trimmed, real-shaped `custodian run -s` policy directories. Each leaf is
+`metadata.json` (`policy.name` / `policy.resource` / description / filters)
+plus sibling `resources.json` (provider-native resource array). SAMPLE/DEMO
+fixtures — not a client KEEP drop. No live cloud or cluster calls.
+
+| File | Source | What was trimmed |
+|---|---|---|
+| `custodian/security-context-pods/` | [Cloud Custodian](https://cloudcustodian.io/docs/) k8s pod output (`metadata.json` + `resources.json`). Policy name + `spec.securityContext` filter from the Metis §13 T18a sample. | One Pod (`default/web`) with no `spec.securityContext`. Cluster/UID/ownerRefs dropped. |
+| `custodian/enforce-storage-encryption/` | Same c7n output pair. Metis §13 T18b empty security policy (`encrypt` in name; zero matches). | `resources.json` is `[]`. Azure storage-account encryption filter only. |
+| `custodian/azure-vm-cpu-underutilized/` | Same c7n output pair. Metis §13 T18c cost/ops policy (`cpu` / `underutilized`). Azure VM resource keeps the full ARM `id`. | One VM. Metrics/tags/properties dropped. Leaf `name` is present so the parser must not collapse to it. |
+
+LAB/SAMPLE/DEMO ≠ client KEEP. Never POST `/api/risks`. RiskReady stay-out.

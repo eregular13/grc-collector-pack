@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 from shared.asset_ids import stamp_ids
 from shared.io_util import iso_now, read_json, run_collector
-from shared.schema import make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref
 
 SOURCE = "cloud-prowler"
 LABELS = ["cloud", "prowler"]
@@ -82,7 +83,7 @@ def _iter_findings(payload: Any) -> list[dict[str, Any]]:
     if "GeneratorId" in payload or "Resources" in payload:
         return [_asff_to_prowler(payload)]
     custodian = _custodian_findings(payload)
-    if custodian:
+    if custodian is not None:
         return custodian
     steampipe = _steampipe_findings(payload)
     if steampipe:
@@ -133,36 +134,200 @@ def _scoutsuite_findings(payload: Any) -> list[dict[str, Any]]:
     return out
 
 
-def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
+# Keyword-gate when no operator policy→control map is present (Metis §13.4.3).
+# Hyphens/underscores/camelCase normalize to the same tokens.
+_C7N_SECURITY_KEYWORDS = (
+    "encrypt",
+    "public",
+    "security_context",
+    "privileged",
+    "mfa",
+    "logging",
+    "tls",
+    "iam",
+    "kms",
+)
+_C7N_COST_OPS_KEYWORDS = (
+    "underutilized",
+    "idle",
+    "cpu",
+    "stop",
+    "tag",
+)
+_NOT_A_WEAKNESS = "NOT_A_WEAKNESS"
+_TOKEN_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _c7n_norm(text: str) -> str:
+    return _TOKEN_RE.sub("", str(text or "").lower())
+
+
+def _c7n_flatten(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    if isinstance(value, dict):
+        return " ".join(_c7n_flatten(v) for v in value.values()) + " " + " ".join(
+            str(k) for k in value
+        )
+    if isinstance(value, list):
+        return " ".join(_c7n_flatten(v) for v in value)
+    return str(value)
+
+
+def _c7n_operator_control(policy_name: str) -> str | None:
+    """Optional operator policy→control map. None = no map (keyword-gate)."""
+    del policy_name
+    return None
+
+
+def _c7n_gate(policy: dict[str, Any]) -> str:
+    """security → finding; cost/ops or no match → NOT_A_WEAKNESS."""
+    pname = str(policy.get("name") or "")
+    if _c7n_operator_control(pname):
+        return "security"
+    blob = " ".join(
+        (
+            pname,
+            str(policy.get("description") or ""),
+            _c7n_flatten(policy.get("filters")),
+        )
+    )
+    norm = _c7n_norm(blob)
+    if any(_c7n_norm(kw) in norm for kw in _C7N_SECURITY_KEYWORDS):
+        return "security"
+    return _NOT_A_WEAKNESS
+
+
+def _c7n_policy_from_metadata(payload: Any) -> dict[str, Any] | None:
+    if not isinstance(payload, dict):
+        return None
+    policy = payload.get("policy")
+    if isinstance(policy, dict) and (policy.get("name") or policy.get("resource")):
+        return policy
+    if payload.get("name") and (payload.get("resource") or "resources" in payload):
+        return payload
+    return None
+
+
+def _c7n_resource_type(policy: dict[str, Any]) -> str:
+    resource = str(policy.get("resource") or policy.get("resource_type") or "").strip()
+    return resource
+
+
+def _c7n_severity(policy: dict[str, Any]) -> str:
+    raw = policy.get("severity")
+    if raw is None or str(raw).strip() == "":
+        return "medium"
+    return canon_severity(raw)
+
+
+def _c7n_asset_key(res: dict[str, Any], pname: str) -> tuple[str, str]:
+    """k8s namespace/name; Azure full ARM id; AWS Arn/*Id. Never dir/leaf collapse."""
+    meta = res.get("metadata") if isinstance(res.get("metadata"), dict) else {}
+    mname = str(meta.get("name") or "").strip()
+    if mname:
+        ns = str(meta.get("namespace") or "").strip()
+        rid = f"{ns}/{mname}" if ns else mname
+        return rid, rid
+    arm = str(res.get("id") or "")
+    if arm.startswith("/subscriptions/"):
+        return arm, arm
+    arn = str(res.get("Arn") or res.get("arn") or "").strip()
+    if arn:
+        return arn, arn
+    for key, val in res.items():
+        if (
+            isinstance(key, str)
+            and key.endswith("Id")
+            and key not in {"id", "Id"}
+            and val
+        ):
+            rid = str(val)
+            return rid, rid
+    rid = str(res.get("Name") or res.get("Id") or res.get("id") or pname)
+    return rid, str(res.get("Arn") or res.get("arn") or rid)
+
+
+def _custodian_policy_findings(
+    policy: dict[str, Any], resources: list[Any]
+) -> list[dict[str, Any]]:
+    pname = str(policy.get("name") or "").strip() or "c7n-policy"
+    resource = _c7n_resource_type(policy)
+    gate = _c7n_gate(policy)
+    sev = _c7n_severity(policy)
+    desc = str(policy.get("description") or f"Policy {pname}")
+    out: list[dict[str, Any]] = []
+    for res in resources:
+        if not isinstance(res, dict):
+            continue
+        rid, arn = _c7n_asset_key(res, pname)
+        item: dict[str, Any] = {
+            "CheckID": pname,
+            "CheckTitle": f"Cloud Custodian {pname}",
+            "Status": "FAIL",
+            "Severity": sev,
+            "ResourceId": rid,
+            "ResourceArn": arn,
+            "Description": f"{desc} matched {rid}" if desc else f"Policy {pname} matched {rid}",
+            "ServiceName": resource,
+            "policy_name": pname,
+            "policy_resource": resource,
+            "custodian_gate": gate,
+        }
+        if gate == _NOT_A_WEAKNESS:
+            item["exclude_reason"] = _NOT_A_WEAKNESS
+        out.append(item)
+    return out
+
+
+def _custodian_findings(payload: Any) -> list[dict[str, Any]] | None:
+    if not isinstance(payload, dict):
+        return None
     policies: list[dict[str, Any]] = []
-    if isinstance(payload, dict) and isinstance(payload.get("policies"), list):
+    if isinstance(payload.get("policies"), list):
         policies = [p for p in payload["policies"] if isinstance(p, dict)]
-    elif isinstance(payload, dict) and payload.get("name") and "resources" in payload:
+    elif payload.get("name") and "resources" in payload:
         policies = [payload]
+    else:
+        return None
     out: list[dict[str, Any]] = []
     for pol in policies:
-        pname = str(pol.get("name") or "c7n-policy")
-        resource = str(pol.get("resource") or "cloud")
-        service = resource.split(".")[-1] if resource else "cloud"
         rows = pol.get("resources") if isinstance(pol.get("resources"), list) else []
-        for res in rows:
-            if not isinstance(res, dict):
-                continue
-            rid = str(res.get("Name") or res.get("Id") or res.get("id") or pname)
-            arn = str(res.get("Arn") or res.get("arn") or rid)
-            out.append(
-                {
-                    "CheckID": pname,
-                    "CheckTitle": f"Cloud Custodian {pname}",
-                    "Status": "FAIL",
-                    "Severity": pol.get("severity") or "high",
-                    "ResourceId": rid,
-                    "ResourceArn": arn,
-                    "Description": str(pol.get("description") or f"Policy {pname} matched {rid}"),
-                    "ServiceName": service,
-                }
-            )
+        out.extend(_custodian_policy_findings(pol, rows))
     return out
+
+
+def _custodian_items(path: Path, payload: Any) -> list[dict[str, Any]] | None:
+    """Real c7n drop is metadata.json + sibling resources.json. Demo is policies[]."""
+    if path.name == "metadata.json":
+        policy = _c7n_policy_from_metadata(payload)
+        if policy is None:
+            return None
+        resources: list[Any] = []
+        sibling = path.parent / "resources.json"
+        if sibling.is_file():
+            loaded = read_json(sibling)
+            if isinstance(loaded, list):
+                resources = loaded
+        elif isinstance(payload, dict) and isinstance(payload.get("resources"), list):
+            resources = payload["resources"]
+        return _custodian_policy_findings(policy, resources)
+    sibling_meta = path.parent / "metadata.json"
+    if path.name == "resources.json" or (
+        isinstance(payload, list) and sibling_meta.is_file()
+    ):
+        if not sibling_meta.is_file():
+            return None
+        policy = _c7n_policy_from_metadata(read_json(sibling_meta))
+        if policy is None:
+            return None
+        rows = payload if isinstance(payload, list) else []
+        return _custodian_policy_findings(policy, rows)
+    return _custodian_findings(payload)
 
 
 def _steampipe_findings(payload: Any) -> list[dict[str, Any]]:
@@ -194,7 +359,10 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
     now = iso_now()
     records: list[dict[str, Any]] = []
     seen_assets: set[str] = set()
-    for item in _iter_findings(payload):
+    items = _custodian_items(path, payload)
+    if items is None:
+        items = _iter_findings(payload)
+    for item in items:
         check = str(item.get("CheckID") or item.get("CheckId") or item.get("check_id") or "check")
         title = str(item.get("CheckTitle") or item.get("title") or check)
         status = str(item.get("Status") or item.get("status") or "").upper()
@@ -202,8 +370,20 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
         rid = str(item.get("ResourceId") or item.get("ResourceName") or item.get("resource") or check)
         arn = str(item.get("ResourceArn") or item.get("arn") or rid)
         desc = str(item.get("Description") or item.get("StatusExtended") or title)
-        service = str(item.get("ServiceName") or item.get("service") or "cloud")
-        asset_type = "SP" if service.lower() in {"iam", "identity", "aad"} else "PR"
+        service = str(item.get("ServiceName") or item.get("service") or "")
+        if not service:
+            service = "cloud"
+        asset_type = "SP" if service.lower() in {"iam", "identity", "aad"} or ".iam" in service.lower() else "PR"
+        extra: dict[str, Any] = {
+            "check_id": check,
+            "arn": arn,
+            "status": status or "FAIL",
+            "service": service,
+        }
+        for key in ("policy_name", "policy_resource", "custodian_gate", "exclude_reason"):
+            if item.get(key):
+                extra[key] = item[key]
+        excluded = extra.get("exclude_reason") == _NOT_A_WEAKNESS
         asset_key = rid.lower()
         if asset_key not in seen_assets:
             seen_assets.add(asset_key)
@@ -234,16 +414,11 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                     name=title,
                     description=desc,
                     severity=sev,
-                    category="cloud-misconfiguration",
+                    category="not-a-weakness" if excluded else "cloud-misconfiguration",
                     assets=[rid],
-                    labels=LABELS + [service],
+                    labels=LABELS + [service, "custodian"] if extra.get("policy_name") else LABELS + [service],
                     collected_at=now,
-                    extra={
-                        "check_id": check,
-                        "arn": arn,
-                        "status": status or "FAIL",
-                        "service": service,
-                    },
+                    extra=extra,
                 )
             )
     return records

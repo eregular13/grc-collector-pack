@@ -231,8 +231,14 @@ def test_code_secrets_no_live_scan() -> None:
 
 def test_cloud_custodian() -> None:
     recs = cloud_prowler.parse_file(DEMO / "cloud" / "custodian.json")
-    assert any(r["kind"] == "asset" and r["name"] == "demo-unencrypted-tmp" for r in recs)
-    assert any("Cloud Custodian" in r["name"] for r in recs if r["kind"] == "finding")
+    assert any(
+        r["kind"] == "asset" and r["name"] == "arn:aws:s3:::demo-unencrypted-tmp"
+        for r in recs
+    )
+    findings = [r for r in recs if r["kind"] == "finding"]
+    assert any("Cloud Custodian" in r["name"] for r in findings)
+    assert findings[0]["extra"].get("service") == "aws.s3"
+    assert findings[0]["severity"] == "high"
 
 
 def test_steampipe_rows() -> None:

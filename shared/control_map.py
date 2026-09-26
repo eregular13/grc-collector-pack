@@ -746,9 +746,33 @@ def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
     return mapped
 
 
+def _is_not_a_weakness(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    reason = str(extra.get("exclude_reason") or extra.get("poam_exclude") or "")
+    if reason == "NOT_A_WEAKNESS" or extra.get("not_a_weakness") is True:
+        return True
+    return str(rec.get("category") or "").lower() in {"not-a-weakness", "not_a_weakness"}
+
+
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if _is_not_a_weakness(rec):
+        return _stamp_csf(
+            {
+                "control_name": "Cost or operations signal (not a control weakness)",
+                "recommended_fix": (
+                    "This Cloud Custodian match is a cost/ops or unmapped policy, "
+                    "not a security control failure. Do not open a High POA&M. "
+                    "Map the policy to a control if it should be treated as a finding."
+                ),
+                "cpg": [],
+                "include_poam": False,
+                "generic": False,
+                "finding_type": "not_a_weakness",
+                "weakness_name": "Not a weakness (cost/ops or unmapped Custodian policy)",
+            }
+        )
     check = str(extra.get("check_id") or "")
     rule = MISCONFIG_RULES.get(check)
     if rule:
@@ -1365,6 +1389,7 @@ POAM_INCLUDE_REASONS = frozenset(
 POAM_EXCLUDE_REASONS = frozenset(
     {
         "honeypot",
+        "NOT_A_WEAKNESS",
         "severity_info",
         "severity_low",
         "severity_medium_not_key",
@@ -1435,7 +1460,8 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
 
     Default (full) plan includes every non-info, non-honeypot weakness.
     NSE misconfig is always included. Honeypot / deception-sensor is always
-    excluded. Informational is excluded (telemetry_info for telemetry-only
+    excluded. Cost/ops or unmapped Custodian policies are NOT_A_WEAKNESS.
+    Informational is excluded (telemetry_info for telemetry-only
     rows). Status is not a gate. Repeated telemetry lows are collapsed by
     iter_poam_decisions, not here.
 
@@ -1449,6 +1475,8 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     key_medium = bool(mapped.get("key_medium"))
     if lighter is None:
         lighter = poam_lighter_requested()
+    if _is_not_a_weakness(rec):
+        return {"include": False, "reason": "NOT_A_WEAKNESS", "severity": sev}
     if check in MISCONFIG_RULES:
         return {"include": True, "reason": "nse_misconfig", "severity": sev}
     if _is_honeypot(rec):
