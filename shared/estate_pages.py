@@ -1269,7 +1269,7 @@ def parse_scope_table_areas(trust_text: str) -> list[str]:
             continue
         if line.startswith("Out of scope") or line.startswith("### "):
             break
-        if not line.startswith("|" ) or line.startswith("|---") or "Area |" in line:
+        if not line.startswith("|") or line.startswith("|---") or "Area |" in line:
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if cells and cells[0] and cells[0] != NOT_RECORDED:
