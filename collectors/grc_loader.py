@@ -25,6 +25,7 @@ from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.io_util import (
     in_dir,
     iso_now,
+    load_sensor_coverage,
     out_dir,
     read_jsonl,
     redact,
@@ -524,6 +525,7 @@ def load() -> dict:
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
 
     excluded_poam = max(0, len(other_findings) + len(vuln_findings) - len(poam_rows))
+    sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
         "findings": len(ciso_findings),
@@ -546,6 +548,8 @@ def load() -> dict:
         "estate_kind": estate_kind,
         "client": False if estate_kind != "CLIENT" else True,
         "duplicates_merged": merged_n,
+        "sensors": {row["source"]: row for row in sensor_rows},
+        "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "

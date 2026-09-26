@@ -363,6 +363,26 @@ def _ingest_framework_source(
     return hit_rows
 
 
+def sensor_coverage(out: Path | None = None) -> list[dict]:
+    """Per-sensor parse status from the loader / collector coverage files."""
+    dest = out if out is not None else out_dir()
+    summary = _read_json(dest / "summary.json") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+    coverage = summary.get("coverage") if isinstance(summary.get("coverage"), dict) else {}
+    rows = coverage.get("sensors") if isinstance(coverage, dict) else None
+    if isinstance(rows, list):
+        return [row for row in rows if isinstance(row, dict)]
+    mapped = summary.get("sensors")
+    if isinstance(mapped, dict):
+        return [row for row in mapped.values() if isinstance(row, dict)]
+    try:
+        from shared.io_util import load_sensor_coverage
+    except ImportError:
+        return []
+    return load_sensor_coverage(dest)
+
+
 def framework_coverage(out: Path | None = None) -> dict:
     """Group framework_refs / labels / csf_function into NIST/CIS/ISO-ish counts."""
     dest = out if out is not None else out_dir()
@@ -387,6 +407,7 @@ def framework_coverage(out: Path | None = None) -> dict:
         tokens.values(),
         key=lambda row: (-int(row["total"]), str(row["family"]), str(row["token"])),
     )
+    sensors = sensor_coverage(dest)
     return {
         "families": families,
         "tokens": ranked,
@@ -399,6 +420,7 @@ def framework_coverage(out: Path | None = None) -> dict:
         "scenarios": len(scenarios),
         "poam_rows": len(poam),
         "findings_rows": len(findings),
+        "sensors": sensors,
         "client": False,
     }
 

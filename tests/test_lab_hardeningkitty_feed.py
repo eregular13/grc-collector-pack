@@ -23,6 +23,7 @@ from scripts.prove_ciso import prove_ciso
 from shared.control_map import map_finding
 from shared.drop_manifest import parse_manifest_hashes, write_drop_manifest
 from shared.hardening_dedup import dedupe_hardening
+from shared.io_util import load_sensor_coverage, run_collector
 from shared.hardening_map import (
     CIS_V8_INTERNAL_FIELD,
     CIS_V8_PREFIX,
@@ -252,6 +253,46 @@ def test_lab_hk_ingest_e2e_and_cis_stays_internal(tmp_path: Path) -> None:
     assert mapped.get("cis") == []
     assert CIS_V8_PREFIX not in mapped["framework_refs"]
     assert CIS_V8_INTERNAL_FIELD not in mapped["framework_refs"]
+
+
+def test_lab_hk_run_collector_does_not_fill_demo(tmp_path: Path, monkeypatch) -> None:
+    """LAB dest_in identity loads HK fixtures; never substitutes demo win-dc01."""
+    dest_in = tmp_path / "in"
+    dest_out = tmp_path / "out"
+    dest_out.mkdir(parents=True)
+    stage_lab_drop_dest_in(dest_in)
+    monkeypatch.setenv("IN_DIR", str(dest_in))
+    monkeypatch.setenv("OUT_DIR", str(dest_out))
+    monkeypatch.setenv("FIXTURES_DIR", str(ROOT / "fixtures" / "demo"))
+    monkeypatch.setenv("GRC_ESTATE_LABEL", "LAB")
+    monkeypatch.delenv("DROPBOX_DEMO", raising=False)
+
+    recs = run_collector(
+        identity_ad.SOURCE,
+        (".json", ".xml", ".csv", ".txt"),
+        identity_ad.parse_file,
+        finalize=dedupe_hardening,
+    )
+    assert recs
+    hosts: set[str] = set()
+    for rec in recs:
+        hosts.update(rec.get("assets") or [])
+        if rec.get("kind") == "asset" and rec.get("name"):
+            hosts.add(str(rec["name"]))
+        labels = rec.get("labels") or []
+        assert "demo" not in labels
+        assert LAB_LABEL in labels
+        assert "win-dc01" not in str(rec)
+    assert HOST_A in hosts
+    assert HOST_B in hosts
+    assert "win-dc01" not in hosts
+    assert WINDOWS_HOST_DEFAULT not in hosts
+    status = next(
+        row for row in load_sensor_coverage(dest_out) if row["source"] == identity_ad.SOURCE
+    )
+    assert status["demo"] is False
+    assert status["status"] == "ok"
+    assert status["records"] >= 1
 
 
 def test_lab_hk_cannot_enter_keep_path(tmp_path: Path) -> None:
