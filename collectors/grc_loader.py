@@ -571,6 +571,12 @@ def load() -> dict:
     observed_fps: set[str] = set()
     for rec in weaknesses:
         observed_fps.update(fingerprints_for(rec))
+    # Merged-away rows are still "seen this scan" — do not re-open their old EGP-.
+    for drop in dedupe_drops:
+        rec = drop.get("rec") if isinstance(drop.get("rec"), dict) else {}
+        if rec.get("ref_id"):
+            observed_refs.add(str(rec["ref_id"]))
+        observed_fps.update(fingerprints_for(rec))
     pending_carried = 0
     for item in (poam_ledger.get("items") or {}).values():
         pid = str(item.get("poam_id") or "")

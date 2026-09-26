@@ -1068,6 +1068,10 @@ def register_asset_key(rec: dict[str, Any]) -> str:
     extra = extra_dict(rec)
     ftype = finding_type(rec)
     if ftype == "entra_ga_pim":
+        for raw in rec.get("assets") or []:
+            text = str(raw or "")
+            if "@" in text:
+                return normalize_asset_id(text)
         return primary_asset(rec)
     uid = str(extra.get("asset_uid") or "").strip()
     if uid.startswith("EGA-"):

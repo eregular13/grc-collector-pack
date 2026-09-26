@@ -731,12 +731,40 @@ def test_entra_ga_three_sources_merge_one_egp(
     )
     assert finding_type(scuba) == finding_type(graph) == finding_type(standing) == "entra_ga_pim"
     assert dedupe_key(scuba) == dedupe_key(graph) == dedupe_key(standing)
+    prior = tmp_path / "in" / "poam"
+    prior.mkdir(parents=True)
+    (prior / "poam-ledger.json").write_text(
+        json.dumps(
+            {
+                "items": {
+                    "EGP-OLDGRAPH00": {
+                        "poam_id": "EGP-OLDGRAPH00",
+                        "status": "open",
+                        "ref_id": "SAAS-graph-ga-gacontoso",
+                        "name": "Entra Global Administrator via Graph",
+                        "fp": "deadbeef00",
+                    },
+                    "EGP-OLDSTAND00": {
+                        "poam_id": "EGP-OLDSTAND00",
+                        "status": "open",
+                        "ref_id": "SAAS-standing-admin-gacontoso",
+                        "name": "Standing Global Administrator",
+                        "fp": "deadbeef01",
+                    },
+                }
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     out = _load(tmp_path, monkeypatch, [asset, scuba, graph, standing])
     poam = csv_rows(out / "poam" / "poam.csv")
     fed = csv_rows(out / "poam" / "poam_fedramp.csv")
     ga_rows = [row for row in poam if "administrator" in row["weakness"].lower() or "ga" in row["weakness"].lower()]
     assert len(ga_rows) == 1
     assert ga_rows[0]["poam_id"].startswith("EGP-")
+    assert "EGP-OLDGRAPH00" not in {row["poam_id"] for row in poam}
+    assert "EGP-OLDSTAND00" not in {row["poam_id"] for row in poam}
     assert {row["POAM ID"] for row in fed} == {row["poam_id"] for row in poam}
     excluded = csv_rows(out / "poam" / "excluded.csv")
     assert "poam_id" in excluded[0]
