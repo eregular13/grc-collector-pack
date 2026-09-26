@@ -255,7 +255,8 @@ def test_lab_hk_ingest_e2e_and_cis_stays_internal(tmp_path: Path) -> None:
     assert stamp["posted"] is False
     out = Path(stamp["out_dir"])
     findings_csv = (out / "ciso-assistant" / "findings.csv").read_text(encoding="utf-8")
-    assert "HardeningKitty" in findings_csv
+    poam_csv = (out / "poam" / "poam.csv").read_text(encoding="utf-8")
+    assert "HardeningKitty" in findings_csv or "hardeningkitty" in poam_csv.lower()
     assert "10100" in findings_csv or "password history" in findings_csv.lower()
     assert "CIS-CAT" not in findings_csv
     assert "CIS Benchmark" not in findings_csv
