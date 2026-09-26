@@ -14,9 +14,6 @@ LINE_RE = re.compile(
     r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s+((?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2})"
     r"\s+(\d+)\s+(\d+)\s*(.*)$"
 )
-_VENDOR_TAIL = frozenset(
-    {"inc.", "inc", "ltd.", "ltd", "llc", "llc.", "corp.", "corp", "co.", "gmbh", "sa", "ag", "plc"}
-)
 _BANNERS = (
     "currently scanning",
     "mac vendor / hostname",
@@ -29,17 +26,6 @@ _BANNERS = (
 
 def _named(name: str) -> bool:
     return "netdiscover" in name.lower()
-
-
-def _maybe_hostname(token: str) -> str:
-    raw = token.strip().strip(",")
-    if not raw or raw.lower() in _VENDOR_TAIL:
-        return ""
-    if not any(c.isalpha() for c in raw):
-        return ""
-    if "." in raw or "-" in raw:
-        return raw
-    return ""
 
 
 def _banner(text: str) -> bool:
@@ -151,18 +137,17 @@ def _host_from_line(line: str) -> dict[str, Any] | None:
     if not match:
         return None
     addr, mac, _count, _length, rest = match.groups()
-    hostname = ""
-    vendor = rest.strip()
-    if vendor:
-        tokens = vendor.split()
-        maybe = _maybe_hostname(tokens[-1]) if tokens else ""
-        if maybe:
-            hostname = maybe
-            vendor = " ".join(tokens[:-1]).strip()
-    name = hostname or addr
-    if not name:
+    # Header says "MAC Vendor / Hostname" but rows print vendor only.
+    vendor = " ".join((rest or "").split()).strip()
+    if not addr:
         return None
-    return {"name": name, "addr": addr, "hostname": hostname, "mac": mac, "vendor": vendor, "ports": []}
+    return {"name": addr, "addr": addr, "hostname": "", "mac": mac, "vendor": vendor, "ports": []}
+
+
+def _asset_key(addr: str, mac: str) -> str:
+    if addr and mac:
+        return f"{addr.lower()}|{mac.lower()}"
+    return (addr or mac).lower()
 
 
 def _from_text(text: str) -> list[dict[str, Any]]:
@@ -171,15 +156,12 @@ def _from_text(text: str) -> list[dict[str, Any]]:
         host = _host_from_line(line)
         if host is None:
             continue
-        key = str(host["name"]).lower()
+        key = _asset_key(str(host.get("addr") or ""), str(host.get("mac") or ""))
         slot = grouped.setdefault(key, host)
         if host.get("mac") and not slot.get("mac"):
             slot["mac"] = host["mac"]
         if host.get("vendor") and not slot.get("vendor"):
             slot["vendor"] = host["vendor"]
-        if host.get("hostname") and not slot.get("hostname"):
-            slot["hostname"] = host["hostname"]
-            slot["name"] = host["hostname"]
     return list(grouped.values())
 
 
