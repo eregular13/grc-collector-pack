@@ -1,3 +1,16 @@
+# CRITIC — cycle 218 (SLIM_REGISTER_GA_UPN_ALIAS)
+
+Lab this brick: pytest **1510** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Slim #192 rebased onto `ce67328` (#188):
+GA-by-UPN merge + `aliased_poam_ids` before #184 excluded_reason
+loop (DEMO 2 Graph/Standing IDs aliased, 0 orphans). Exec
+`Open POA&M (poam.csv): 119`. FedRAMP Open follows poam.csv (#179).
+Farm ledger Open **109**. AC-5 left as-is. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 217 (CR7_BH_HIGH_VALUE)
 
 Lab this brick: pytest **1505** passed, 1 skipped. Ten collectors +

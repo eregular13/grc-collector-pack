@@ -1,5 +1,16 @@
 # CYCLE log
 
+## cycle 218 — slim register: GA-by-UPN + alias collapsed IDs (2026-09-26)
+
+Rebased onto master `ce67328` (#188). Type real saas-idp Global
+Administrator as `entra_ga_pim`; merge Scuba/Graph/BloodHound on the
+UPN; alias merged-away EGP- IDs (`merged_away_alias`) before #184's
+excluded_reason loop. Exec names `Open POA&M (poam.csv): N`. No
+FedRAMP rewrite. No port/identity dedupe. AC-5 left as-is. Pytest
+**1510**. Host-lab 79 / 103 / poam 119 / excluded 6. Farm FedRAMP
+Open == poam.csv. Farm ledger Open **109**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 217 — CR7 bh-high-value playbook after #177 (2026-09-26)
 
 `bh-high-value` (Administrators / Enterprise Admins / Schema Admins)
