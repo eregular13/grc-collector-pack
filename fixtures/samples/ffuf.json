@@ -1,0 +1,96 @@
+{
+  "commandline": "ffuf -u http://wave3target/FUZZ -w /work/wordlist.txt -of json -o /work/out_many.json -s",
+  "time": "2026-07-31T00:00:00Z",
+  "results": [
+    {
+      "input": {
+        "FFUFHASH": "d680d5",
+        "FUZZ": "robots.txt"
+      },
+      "position": 5,
+      "status": 200,
+      "length": 49,
+      "words": 4,
+      "lines": 4,
+      "content-type": "text/plain",
+      "redirectlocation": "",
+      "scraper": {},
+      "duration": 5306507,
+      "resultfile": "",
+      "url": "http://wave3target/robots.txt",
+      "host": "wave3target"
+    },
+    {
+      "input": {
+        "FFUFHASH": "d680d4",
+        "FUZZ": ".git"
+      },
+      "position": 4,
+      "status": 301,
+      "length": 169,
+      "words": 5,
+      "lines": 8,
+      "content-type": "text/html",
+      "redirectlocation": "http://wave3target/.git/",
+      "scraper": {},
+      "duration": 7171715,
+      "resultfile": "",
+      "url": "http://wave3target/.git",
+      "host": "wave3target"
+    },
+    {
+      "input": {
+        "FFUFHASH": "d680d3",
+        "FUZZ": "backup"
+      },
+      "position": 3,
+      "status": 301,
+      "length": 169,
+      "words": 5,
+      "lines": 8,
+      "content-type": "text/html",
+      "redirectlocation": "http://wave3target/backup/",
+      "scraper": {},
+      "duration": 7302123,
+      "resultfile": "",
+      "url": "http://wave3target/backup",
+      "host": "wave3target"
+    },
+    {
+      "input": {
+        "FFUFHASH": "d680d1",
+        "FUZZ": "admin"
+      },
+      "position": 1,
+      "status": 301,
+      "length": 169,
+      "words": 5,
+      "lines": 8,
+      "content-type": "text/html",
+      "redirectlocation": "http://wave3target/admin/",
+      "scraper": {},
+      "duration": 7841454,
+      "resultfile": "",
+      "url": "http://wave3target/admin",
+      "host": "wave3target"
+    },
+    {
+      "input": {
+        "FFUFHASH": "d680d6",
+        "FUZZ": "index.html"
+      },
+      "position": 6,
+      "status": 200,
+      "length": 182,
+      "words": 7,
+      "lines": 4,
+      "content-type": "text/html",
+      "redirectlocation": "",
+      "scraper": {},
+      "duration": 8316481,
+      "resultfile": "",
+      "url": "http://wave3target/index.html",
+      "host": "wave3target"
+    }
+  ]
+}

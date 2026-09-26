@@ -17,7 +17,7 @@ from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.nbtscan import parse_nbtscan
-from shared.nmap_nse import nse_findings
+from shared.nmap_nse import nse_findings, vulners_cves
 from shared.netdiscover import parse_netdiscover
 from shared.pack_drop import parse_pack_drop
 from shared.smbmap import parse_smbmap
@@ -59,7 +59,7 @@ def _emit_host(
     name: str,
     addr: str,
     hostname: str,
-    ports: list[tuple[str, str]],
+    ports: list[Any],
     extra: dict[str, Any] | None = None,
     extra_labels: list[str] | None = None,
     samba_ports: set[str] | None = None,
@@ -88,30 +88,46 @@ def _emit_host(
             extra=extra_out,
         )
     )
-    for portid, svc in ports:
-        sev, title = RISKY.get(portid, ("info", f"Open port {portid}/{svc}"))
+    for item in ports:
+        if isinstance(item, (tuple, list)) and item:
+            portid = str(item[0])
+            svc = str(item[1]) if len(item) > 1 else ""
+            proto = str(item[2]) if len(item) > 2 else ""
+        else:
+            portid, svc, proto = str(item), "", ""
+        proto = proto.lower()
+        if proto not in {"tcp", "udp", "sctp"}:
+            proto = svc.lower() if svc.lower() in {"tcp", "udp", "sctp"} else "tcp"
+        sev, title = RISKY.get(portid, ("info", f"Open port {portid}/{svc or proto}"))
         if sev == "info" and portid not in {"80", "443"}:
             sev = "low"
-            title = f"Open port {portid}/{svc or 'unknown'}"
-        if portid == "443":
+            title = f"Open port {portid}/{svc or proto or 'unknown'}"
+        if portid == "443" and proto == "tcp":
             continue
         find_labels = list(LABELS) + [f"port-{portid}"]
         for lab in extra_labels or []:
             if lab not in find_labels:
                 find_labels.append(lab)
+        extra_find: dict[str, Any] = {"port": portid, "service": svc, "protocol": proto, "ip": addr}
+        if extra:
+            if extra.get("cdn"):
+                extra_find["cdn"] = True
+            if extra.get("cdn_name"):
+                extra_find["cdn_name"] = extra["cdn_name"]
+        ref_port = f"{name}-{portid}" if proto == "tcp" else f"{name}-{portid}-{proto}"
         records.append(
             make_record(
                 kind="finding",
                 source=SOURCE,
-                ref_id=make_ref(SOURCE, f"{name}-{portid}"),
+                ref_id=make_ref(SOURCE, ref_port),
                 name=title,
-                description=f"{name} has open TCP/{portid} ({svc or 'unknown'}).",
+                description=f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'}).",
                 severity=sev,
                 category="exposure",
                 assets=[name],
                 labels=find_labels,
                 collected_at=now,
-                extra={"port": portid, "service": svc, "ip": addr},
+                extra=extra_find,
             )
         )
         if portid == "445" and portid not in (samba_ports or set()):
@@ -240,6 +256,11 @@ def parse_file(path: Path) -> list[dict]:
             ports = list(host.get("ports") or [])
             if not ports:
                 continue
+            extra = {}
+            if host.get("cdn"):
+                extra["cdn"] = True
+            if host.get("cdn_name"):
+                extra["cdn_name"] = host.get("cdn_name")
             _emit_host(
                 records,
                 now,
@@ -247,6 +268,8 @@ def parse_file(path: Path) -> list[dict]:
                 str(host.get("addr") or ""),
                 str(host.get("hostname") or ""),
                 ports,
+                extra=extra or None,
+                extra_labels=["naabu"] if extra.get("cdn") else None,
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
@@ -341,6 +364,27 @@ def parse_file(path: Path) -> list[dict]:
                 [],
                 extra_labels=["smbmap"],
             )
+            session = str(host.get("session") or "")
+            if "null session" in session.lower() or "guest session" in session.lower():
+                kind = "NULL" if "null" in session.lower() else "Guest"
+                records.append(
+                    make_record(
+                        kind="finding",
+                        source=SOURCE,
+                        ref_id=make_ref(SOURCE, f"{name}-smb-anon"),
+                        name=f"Anonymous SMB {kind} session on {name}",
+                        description=(
+                            f"{name} smbmap export Status: {session}. "
+                            "NULL/Guest sessions allow unauthenticated share enumeration."
+                        ),
+                        severity="high",
+                        category="exposure",
+                        assets=[name],
+                        labels=LABELS + ["smbmap", "smb", "anonymous"],
+                        collected_at=now,
+                        extra={"port": "445", "service": "smb", "session": session, "ip": addr},
+                    )
+                )
             for share in host.get("shares") or []:
                 if not isinstance(share, dict):
                     continue
@@ -449,9 +493,15 @@ def parse_file(path: Path) -> list[dict]:
         if state_el is not None and state_el.attrib.get("state") == "down":
             continue
         addr = ""
+        mac = ""
+        mac_vendor = ""
         for address in host.findall("address"):
-            if address.attrib.get("addrtype") in {None, "ipv4", "ipv6"}:
+            kind = address.attrib.get("addrtype")
+            if kind in {None, "ipv4", "ipv6"}:
                 addr = address.attrib.get("addr", addr)
+            elif kind == "mac":
+                mac = address.attrib.get("addr", "")
+                mac_vendor = address.attrib.get("vendor", "")
         hostname = ""
         hnames = host.find("hostnames")
         if hnames is not None:
@@ -459,15 +509,21 @@ def parse_file(path: Path) -> list[dict]:
             if hn is not None:
                 hostname = hn.attrib.get("name", "")
         name = hostname or addr or "unknown-host"
-        ports: list[tuple[str, str]] = []
+        ports: list[tuple[str, str, str]] = []
         samba_ports: set[str] = set()
         nse_specs: list[tuple[str, str, dict]] = []
+        vuln_specs: list[tuple[str, str, dict]] = []
         smb_port = ""
         ports_el = host.find("ports")
         if ports_el is not None:
             for port in ports_el.findall("port"):
                 state = port.find("state")
-                if state is None or state.attrib.get("state") != "open":
+                proto = (port.attrib.get("protocol") or "tcp").lower()
+                state_name = state.attrib.get("state") if state is not None else ""
+                keep_state = state_name == "open" or (
+                    state_name == "open|filtered" and proto == "udp"
+                )
+                if not keep_state:
                     continue
                 portid = port.attrib.get("portid", "")
                 service = port.find("service")
@@ -477,20 +533,43 @@ def parse_file(path: Path) -> list[dict]:
                     samba_ports.add(portid)
                 if portid in {"445", "139"} and not smb_port:
                     smb_port = portid
-                ports.append((portid, svc))
+                ports.append((portid, svc, proto))
                 scripts = [
                     (sc.attrib.get("id", ""), sc.attrib.get("output", ""))
                     for sc in port.findall("script")
                 ]
                 for spec in nse_findings(name, addr, portid, svc, product, scripts):
                     nse_specs.append((portid, svc, spec))
+                for sc in port.findall("script"):
+                    if sc.attrib.get("id") != "vulners":
+                        continue
+                    elems = [
+                        (el.attrib.get("key", ""), (el.text or "").strip())
+                        for el in sc.findall(".//elem")
+                    ]
+                    for hit in vulners_cves(sc.attrib.get("output", ""), elems):
+                        vuln_specs.append((portid, svc, hit))
         host_scripts = [
             (sc.attrib.get("id", ""), sc.attrib.get("output", ""))
             for sc in host.findall("hostscript/script")
         ]
         for spec in nse_findings(name, addr, smb_port, "microsoft-ds", "", host_scripts):
             nse_specs.append((smb_port, "microsoft-ds", spec))
-        _emit_host(records, now, name, addr, hostname, ports, samba_ports=samba_ports)
+        host_extra = {}
+        if mac:
+            host_extra["mac"] = mac
+        if mac_vendor:
+            host_extra["vendor"] = mac_vendor
+        _emit_host(
+            records,
+            now,
+            name,
+            addr,
+            hostname,
+            ports,
+            extra=host_extra or None,
+            samba_ports=samba_ports,
+        )
         for portid, svc, spec in nse_specs:
             records.append(
                 make_record(
@@ -515,6 +594,34 @@ def parse_file(path: Path) -> list[dict]:
                     },
                 )
             )
+        for portid, svc, hit in vuln_specs:
+            cve = hit["cve"]
+            records.append(
+                make_record(
+                    kind="finding",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"{name}-{portid or 'host'}-{cve}"),
+                    name=cve,
+                    description=(
+                        f"{name} {svc or 'service'} on {portid or 'host'} matches {cve} "
+                        f"(nmap vulners, cvss={hit.get('cvss') or 'n/a'})."
+                    ),
+                    severity=hit.get("severity") or "medium",
+                    category="vulnerability",
+                    assets=[name],
+                    labels=LABELS + ["nse", "vulners", cve],
+                    collected_at=now,
+                    extra={
+                        "port": portid,
+                        "service": svc,
+                        "ip": addr,
+                        "cve": cve,
+                        "cvss": hit.get("cvss") or "",
+                        "nse_script": "vulners",
+                        "tool": "nmap",
+                    },
+                )
+            )
         if scan_epoch:
             from datetime import datetime, timezone
 
@@ -530,7 +637,7 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json", ".jsonl", ".md"), parse_file)
+    run_collector(SOURCE, (".xml", ".gnmap", ".txt", ".json", ".jsonl", ".csv", ".md"), parse_file)
 
 
 if __name__ == "__main__":

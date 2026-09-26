@@ -14,6 +14,8 @@ _TLS_OLD = ("SSLv2", "SSLv3", "TLSv1.0", "TLSv1.1")
 _WEAK_CIPHER_TOKENS = ("_anon_", "_NULL_", "_EXPORT", "_RC4_", "_DES_", "3DES", "_MD5")
 _GRADE_RE = re.compile(r"least strength:\s*([A-F])")
 _BITS_RE = re.compile(r"Public Key bits:\s*(\d+)")
+_CVE_RE = re.compile(r"(CVE-\d{4}-\d+)", re.I)
+_CVE_CVSS_RE = re.compile(r"(CVE-\d{4}-\d+)\s+([\d.]+)", re.I)
 
 
 def _clip(text: str, limit: int = 240) -> str:
@@ -93,6 +95,51 @@ def _cert(where: str, script: str, out: str) -> list[dict[str, Any]]:
             )
         )
     return specs
+
+
+def _cvss_severity(score: str) -> str:
+    try:
+        value = float(score)
+    except (TypeError, ValueError):
+        return "medium"
+    if value >= 9.0:
+        return "critical"
+    if value >= 7.0:
+        return "high"
+    if value >= 4.0:
+        return "medium"
+    return "low"
+
+
+def vulners_cves(output: str, elems: list[tuple[str, str]] | None = None) -> list[dict[str, str]]:
+    """Extract CVE id + CVSS from a vulners NSE script (elem key=id/cvss or output text)."""
+    found: dict[str, str] = {}
+    pending_cve = ""
+    pending_cvss = ""
+    for key, value in elems or []:
+        low = (key or "").lower()
+        token = (value or "").strip()
+        if low == "id" and token.upper().startswith("CVE-"):
+            pending_cve = token.upper()
+        elif low == "cvss":
+            pending_cvss = token
+        if pending_cve and pending_cvss:
+            found.setdefault(pending_cve, pending_cvss)
+            pending_cve, pending_cvss = "", ""
+        elif pending_cve and low == "type" and token.lower() == "cve":
+            found.setdefault(pending_cve, pending_cvss or "")
+    if pending_cve:
+        found.setdefault(pending_cve, pending_cvss)
+    if not found:
+        for match in _CVE_CVSS_RE.finditer(output or ""):
+            found.setdefault(match.group(1).upper(), match.group(2))
+        if not found:
+            for match in _CVE_RE.finditer(output or ""):
+                found.setdefault(match.group(1).upper(), "")
+    rows = []
+    for cve, cvss in found.items():
+        rows.append({"cve": cve, "cvss": cvss, "severity": _cvss_severity(cvss) if cvss else "medium"})
+    return rows
 
 
 def nse_findings(

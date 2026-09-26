@@ -1,0 +1,12 @@
+NetBIOS Name Table for Host 10.0.0.50
+
+Name             Service          Type
+----------------------------------------
+FILESRV          <00>             UNIQUE
+WORKGROUP        <00>              GROUP
+FILESRV          <20>             UNIQUE
+WORKGROUP        <1e>              GROUP
+JSMITH           <03>             UNIQUE
+
+Adapter address: 00:11:22:33:44:55
+----------------------------------------

@@ -1,0 +1,3 @@
+# fping -e
+10.0.0.50 is alive (0.42 ms)
+10.0.0.51 is unreachable

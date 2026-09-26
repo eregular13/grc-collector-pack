@@ -1,0 +1,7 @@
+[+] IP: 10.0.0.50:445	Name: FILESRV	Status: Guest session
+        Disk                                                    Permissions	Comment
+	----                                              	-----------	-------
+	ADMIN$                                            	[31mNO ACCESS[0m	Remote Admin
+	C$                                                	[32mREAD, WRITE[0m	Default share
+	Company Data                                      	[33mREAD ONLY[0m	Finance share
+	IPC$                                              	[31mNO ACCESS[0m	Remote IPC

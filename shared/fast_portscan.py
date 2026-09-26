@@ -100,7 +100,12 @@ def _is_fast_portscan(payload: Any, name: str) -> bool:
 
 
 def _push(
-    grouped: dict[str, dict[str, Any]], addr: str, hostname: str, portid: str, svc: str
+    grouped: dict[str, dict[str, Any]],
+    addr: str,
+    hostname: str,
+    portid: str,
+    svc: str,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     if not portid:
         return
@@ -108,14 +113,22 @@ def _push(
     if not name:
         return
     key = name.lower()
-    slot = grouped.setdefault(key, {"name": name, "addr": addr, "hostname": hostname, "ports": []})
+    slot = grouped.setdefault(
+        key, {"name": name, "addr": addr, "hostname": hostname, "ports": [], "cdn": False, "cdn_name": ""}
+    )
     if addr and not slot.get("addr"):
         slot["addr"] = addr
     if hostname and not slot.get("hostname"):
         slot["hostname"] = hostname
         slot["name"] = hostname
+    if extra:
+        if extra.get("cdn"):
+            slot["cdn"] = True
+        if extra.get("cdn_name") and not slot.get("cdn_name"):
+            slot["cdn_name"] = extra["cdn_name"]
     ports: list[tuple[str, str]] = slot["ports"]
-    if not any(p == portid for p, _ in ports):
+    proto = svc if svc in {"tcp", "udp", "sctp"} else ""
+    if not any(p == portid and (not proto or s == proto or s == svc) for p, s in ports):
         ports.append((portid, svc))
 
 
@@ -128,7 +141,12 @@ def _from_naabu_row(grouped: dict[str, dict[str, Any]], row: dict[str, Any]) -> 
         if not addr:
             addr = hostname
         hostname = ""
-    _push(grouped, addr, hostname, _port_token(row.get("port") or row.get("portid")), str(row.get("proto") or "tcp"))
+    proto = str(row.get("protocol") or row.get("proto") or "tcp").strip().lower() or "tcp"
+    extra = {
+        "cdn": bool(row.get("cdn") is True or str(row.get("cdn") or "").lower() == "true"),
+        "cdn_name": str(row.get("cdn-name") or row.get("cdn_name") or "").strip(),
+    }
+    _push(grouped, addr, hostname, _port_token(row.get("port") or row.get("portid")), proto, extra=extra)
 
 
 def _from_rustscan_ports(
