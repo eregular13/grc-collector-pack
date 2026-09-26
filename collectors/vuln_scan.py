@@ -21,6 +21,7 @@ from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import canon_severity, make_record, make_ref
 from shared.testssl import human_title as testssl_human_title
 from shared.testssl import is_testssl, iter_testssl_findings
+from shared.vendor_dependency import no_fix_from_scanner_tokens
 
 SOURCE = "vuln-scan"
 LABELS = ["vuln", "scanner"]
@@ -223,6 +224,20 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
     )
 
 
+def _no_fix_extra(*tokens: Any) -> dict[str, Any]:
+    """Stamp solution_type/status plus no_fix_available when the scanner says so."""
+    extra: dict[str, Any] = {}
+    solution_type = str(tokens[0] or "").strip() if tokens else ""
+    status = str(tokens[1] or "").strip() if len(tokens) > 1 else ""
+    if solution_type:
+        extra["solution_type"] = solution_type
+    if status:
+        extra["status"] = status
+    if no_fix_from_scanner_tokens(solution_type, status):
+        extra["no_fix_available"] = True
+    return extra
+
+
 def _greenbone_cves(row: dict[str, Any]) -> list[str]:
     raw = row.get("cves")
     if isinstance(raw, (list, tuple)):
@@ -256,6 +271,7 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
             "port": port,
             "cvss": row.get("cvss") or "",
             "threat": row.get("threat") or "",
+            **_no_fix_extra(row.get("solution_type")),
             **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
         },
     )
@@ -523,6 +539,12 @@ def parse_file(path: Path) -> list[dict]:
                 extra_blob["rule"] = vid
                 extra_blob["check_id"] = vid
             extra = stamp_ids(extra_blob, **ids)
+            extra.update(
+                _no_fix_extra(
+                    "",
+                    vuln.get("Status") or vuln.get("status") or vuln.get("VulnerabilityStatus"),
+                )
+            )
             if trivy_created:
                 extra["scan_time"] = trivy_created
             records.append(
@@ -556,6 +578,13 @@ def parse_file(path: Path) -> list[dict]:
         host = str(row.get("host") or "unknown")
         raw_sev = row.get("severity") or nvt.get("cvss_base") or "medium"
         sev = cvss_band(raw_sev) or str(raw_sev)
+        solution = nvt.get("solution") if isinstance(nvt.get("solution"), dict) else {}
+        solution_type = (
+            row.get("solution_type")
+            or solution.get("type")
+            or nvt.get("solution_type")
+            or ""
+        )
         add_asset(host)
         records.append(
             make_record(
@@ -575,6 +604,7 @@ def parse_file(path: Path) -> list[dict]:
                     "oid": vid,
                     "cve": row.get("cve") or "",
                     "cves": _greenbone_cves(row),
+                    **_no_fix_extra(solution_type),
                 },
             )
         )
