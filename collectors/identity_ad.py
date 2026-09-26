@@ -15,7 +15,11 @@ import xml.etree.ElementTree as ET
 
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.enum4linux import parse_enum4linux
+from shared.hardening_dedup import dedupe_hardening
+from shared.hardening_map import extra_control_fields, hk_control
+from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.schema import make_record, make_ref
 
 SOURCE = "identity-ad"
@@ -269,16 +273,72 @@ def _props(node: dict[str, Any]) -> dict[str, Any]:
     return _fold_props(node)
 
 
-def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
+def _xml_local(tag: str) -> str:
+    return (tag or "").split("}")[-1]
+
+
+def _child_text(el: ET.Element, *names: str) -> str:
+    want = {name.lower() for name in names}
+    for child in list(el):
+        if _xml_local(child.tag).lower() in want:
+            return (child.text or "").strip()
+    return ""
+
+
+def _points_severity(raw: str) -> str:
+    try:
+        points = int(float(str(raw or "0").strip() or "0"))
+    except (TypeError, ValueError):
+        points = 0
+    if points >= 50:
+        return "critical"
+    if points >= 30:
+        return "high"
+    if points >= 10:
+        return "medium"
+    return "low"
+
+
+def _parse_pingcastle_xml(path: Path) -> dict[str, Any]:
+    """Read PingCastle HealthcheckData: RiskRules + case-insensitive groups/accounts."""
     raw = read_text(path)
     root = ET.fromstring(raw)
+    parent = {child: node for node in root.iter() for child in list(node)}
+    domain = _child_text(root, "DomainFQDN", "ForestFQDN", "NetBIOSName")
     nodes: list[dict[str, Any]] = []
+    rules: list[dict[str, Any]] = []
+    if domain:
+        nodes.append(
+            {
+                "kind": "Domain",
+                "label": domain,
+                "properties": {
+                    "name": domain,
+                    "description": f"PingCastle domain {domain}",
+                },
+            }
+        )
     for el in root.iter():
-        tag = el.tag.split("}")[-1]
-        if tag in {"HealthcheckGroupData", "Group", "PrivilegedGroup"}:
+        tag = _xml_local(el.tag).lower()
+        if tag == "healthcheckriskrule":
+            risk_id = _child_text(el, "RiskId") or "pingcastle"
+            rationale = _child_text(el, "Rationale") or risk_id
+            points = _child_text(el, "Points") or "0"
+            rules.append(
+                {
+                    "risk_id": risk_id,
+                    "rationale": rationale,
+                    "points": points,
+                    "severity": _points_severity(points),
+                    "category": _child_text(el, "Category") or "",
+                    "model": _child_text(el, "Model") or "",
+                    "domain": domain or "unknown",
+                }
+            )
+            continue
+        if tag in {"healthcheckgroupdata", "group", "privilegedgroup"}:
             name = (
-                el.findtext("GroupName")
-                or el.findtext("Name")
+                _child_text(el, "GroupName", "Name")
                 or el.attrib.get("name")
                 or ""
             )
@@ -290,67 +350,118 @@ def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
                         "properties": {
                             "name": name,
                             "highvalue": "BACKUP" in name.upper() or "ADMIN" in name.upper(),
-                            "description": el.findtext("Description") or f"PingCastle group {name}",
+                            "description": _child_text(el, "Description") or f"PingCastle group {name}",
                         },
                     }
                 )
-        if tag in {"Account", "PrivilegedAccount", "User"}:
-            name = el.findtext("Name") or el.findtext("SamAccountName") or el.attrib.get("name") or ""
-            if name:
-                props = {
-                    "name": name,
-                    "hasspn": (el.findtext("HasSPN") or "").lower() in {"true", "1"},
-                    "dontreqpreauth": (el.findtext("DontReqPreAuth") or "").lower() in {"true", "1"},
-                    "description": el.findtext("Description") or "",
-                }
-                spn = el.findtext("SPN") or el.findtext("ServicePrincipalName")
-                if spn:
-                    props["serviceprincipalnames"] = [spn]
-                    props["hasspn"] = True
-                nodes.append({"kind": "User", "label": name, "properties": props})
-    return nodes
+            continue
+        if tag in {"account", "privilegedaccount", "user", "healthcheckaccountdetaildata"}:
+            name = (
+                _child_text(el, "Name", "SamAccountName", "SAMAccountName")
+                or el.attrib.get("name")
+                or ""
+            )
+            if not name:
+                continue
+            ancestor_tags = set()
+            cur: ET.Element | None = el
+            for _ in range(6):
+                cur = parent.get(cur) if cur is not None else None
+                if cur is None:
+                    break
+                ancestor_tags.add(_xml_local(cur.tag).lower())
+            preauth_parent = "listnopreauth" in ancestor_tags
+            dont = _child_text(el, "DontReqPreAuth").lower() in {"true", "1"} or preauth_parent
+            props = {
+                "name": name,
+                "hasspn": _child_text(el, "HasSPN").lower() in {"true", "1"},
+                "dontreqpreauth": dont,
+                "description": _child_text(el, "Description") or "",
+            }
+            spn = _child_text(el, "SPN", "ServicePrincipalName")
+            if spn:
+                props["serviceprincipalnames"] = [spn]
+                props["hasspn"] = True
+            nodes.append({"kind": "User", "label": name, "properties": props})
+    return {"nodes": nodes, "rules": rules, "domain": domain}
 
 
-def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
-    """Parse HardeningKitty Audit CSV. Failed/warning rows only. Actual values redacted."""
+def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
+    return list(_parse_pingcastle_xml(path).get("nodes") or [])
+
+
+def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> list[dict]:
+    """Parse HardeningKitty Audit CSV. Failed rows only. Actual values redacted.
+
+    Official HK report (HardeningKitty.psm1 @ da0976073caa): Result is the
+    measured value; TestResult is Passed/Failed. TestResult is
+    authoritative — TestResult=Passed never becomes a finding.
+    Legacy/demo CSVs that put Passed|Failed in Result still parse.
+    Host comes from filename / sidecar / env / optional column — never
+    the invented default windows-host. Never CIS Benchmark / CIS-CAT.
+    """
     records: list[dict] = []
-    sample = text[:4000]
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+    if not lines:
+        return stamp_lab_labels(records, lab=path_is_lab(path))
+    sample = "\n".join(lines[:40])
     dialect = csv.excel
     if "," in sample or ";" in sample or "\t" in sample:
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
         except csv.Error:
             dialect = csv.excel
-    reader = csv.DictReader(StringIO(text), dialect=dialect)
-    host = "windows-host"
+    reader = csv.DictReader(StringIO("\n".join(lines)), dialect=dialect)
     seen_hosts: set[str] = set()
     for row in reader:
         if not row:
             continue
         lower = {str(k).strip().lower().replace(" ", ""): (v or "").strip() for k, v in row.items() if k}
-        host = (
-            lower.get("computername")
-            or lower.get("hostname")
-            or lower.get("computer")
-            or lower.get("system")
-            or host
-        )
-        result = (lower.get("result") or lower.get("status") or lower.get("outcome") or "").lower()
-        if result in {"passed", "pass", "ok", "true", "compliant", "notapplicable", "n/a", "na"}:
-            continue
-        if result not in {"failed", "fail", "warning", "warn", "noncompliant", "error", ""}:
+        host, host_source, unresolved = resolve_hk_host(path, lower)
+        outcome, failed = hk_row_failed(lower)
+        if not failed:
             continue
         hid = lower.get("id") or lower.get("number") or lower.get("name") or "hk"
         name = lower.get("name") or lower.get("title") or hid
-        sev = lower.get("severity") or ("medium" if result in {"warning", "warn"} else "high")
+        category = lower.get("category") or ""
+        sev = (
+            lower.get("severityfinding")
+            or lower.get("severity")
+            or ("medium" if outcome in {"warning", "warn"} else "high")
+        )
+        if str(sev).lower() == "passed":
+            sev = "high"
         recommended = (
             lower.get("recommended")
             or lower.get("recommendedvalue")
             or lower.get("expected")
             or ""
         )
+        control = hk_control(hid, name, category)
+        extra = extra_control_fields(control, include_cis_internal=True)
+        extra.update(
+            {
+                "id": hid,
+                "check_id": hid,
+                "result": outcome or "failed",
+                "name": name,
+                "category": category,
+                "recommended": recommended,
+                "severity": sev,
+                "tool": "hardeningkitty",
+                "baseline": "msft_security_baseline",
+                "host_source": host_source,
+                "host_unresolved": unresolved,
+            }
+        )
+        labels = LABELS + ["hardeningkitty"]
+        if unresolved:
+            labels = labels + ["host-unresolved"]
         if host not in seen_hosts:
             seen_hosts.add(host)
+            asset_extra = {"asset_type": "PR", "tool": "hardeningkitty", "host_source": host_source}
+            if unresolved:
+                asset_extra["host_unresolved"] = True
             records.append(
                 make_record(
                     kind="asset",
@@ -360,9 +471,9 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
                     description=f"Windows host {host}",
                     category="host",
                     assets=[host],
-                    labels=LABELS + ["windows", "hardeningkitty"],
+                    labels=LABELS + ["windows", "hardeningkitty"] + (["host-unresolved"] if unresolved else []),
                     collected_at=now,
-                    extra={"asset_type": "PR"},
+                    extra=asset_extra,
                 )
             )
         records.append(
@@ -371,16 +482,19 @@ def parse_hardeningkitty_csv(text: str, now: str) -> list[dict]:
                 source=SOURCE,
                 ref_id=make_ref(SOURCE, f"hk-{hid}-{host}"),
                 name=f"HardeningKitty {name}",
-                description=f"{name} result={result or 'failed'} recommended={recommended or '[n/a]'} actual=[REDACTED]",
+                description=(
+                    f"{name} result={outcome or 'failed'} "
+                    f"recommended={recommended or '[n/a]'} actual=[REDACTED]"
+                ),
                 severity=sev,
                 category="identity-gap",
                 assets=[host],
-                labels=LABELS + ["hardeningkitty"],
+                labels=labels,
                 collected_at=now,
-                extra={"id": hid, "result": result or "failed", "name": name},
+                extra=extra,
             )
         )
-    return records
+    return stamp_lab_labels(records, lab=path_is_lab(path))
 
 
 def _emit_cis_cat(rows: list[dict[str, str]], now: str) -> list[dict]:
@@ -513,11 +627,15 @@ def _emit_enum4linux(hosts: list[dict[str, Any]], now: str) -> list[dict]:
 
 
 def parse_file(path: Path) -> list[dict]:
+    if path.name in SKIP_INPUT_NAMES:
+        return []
+    if path.suffix.lower() == ".host" or path.name.endswith(".csv.host"):
+        return []
     text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
     payload: Any = {}
     meta_kind = ""
     if path.suffix.lower() == ".csv" or ("," in text[:200] and "Severity" in text[:400]):
-        return parse_hardeningkitty_csv(text, iso_now())
+        return parse_hardeningkitty_csv(text, iso_now(), path=path)
     enum = parse_enum4linux(path, text)
     if enum is not None:
         return _emit_enum4linux(enum, iso_now())
@@ -529,8 +647,11 @@ def parse_file(path: Path) -> list[dict]:
             json_payload = None
     if is_cis_cat(json_payload, name=path.name, text=text):
         return _emit_cis_cat(iter_cis_failures(json_payload, text=text), iso_now())
+    pc_rules: list[dict[str, Any]] = []
     if path.suffix.lower() == ".xml" or text.startswith("<"):
-        nodes = _pingcastle_xml_nodes(path)
+        parsed_pc = _parse_pingcastle_xml(path)
+        nodes = list(parsed_pc.get("nodes") or [])
+        pc_rules = list(parsed_pc.get("rules") or [])
     else:
         payload = json_payload
         if payload is None:
@@ -607,6 +728,29 @@ def parse_file(path: Path) -> list[dict]:
                     extra={"kind": kind},
                 )
             )
+    for rule in pc_rules:
+        risk_id = str(rule.get("risk_id") or "pingcastle")
+        domain = str(rule.get("domain") or "ad-domain")
+        records.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"pc-{risk_id}-{domain}"),
+                name=f"PingCastle {risk_id}",
+                description=str(rule.get("rationale") or risk_id),
+                severity=str(rule.get("severity") or "medium"),
+                category="identity-gap",
+                assets=[domain],
+                labels=LABELS + ["pingcastle", "risk-rule"],
+                collected_at=now,
+                extra={
+                    "risk_id": risk_id,
+                    "points": rule.get("points") or "0",
+                    "category": rule.get("category") or "",
+                    "model": rule.get("model") or "",
+                },
+            )
+        )
     for edge in _edges(payload):
         kind = str(
             edge.get("kind")
@@ -654,7 +798,12 @@ def parse_file(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    run_collector(SOURCE, (".json", ".xml", ".csv", ".txt"), parse_file)
+    run_collector(
+        SOURCE,
+        (".json", ".xml", ".csv", ".txt"),
+        parse_file,
+        finalize=dedupe_hardening,
+    )
 
 
 if __name__ == "__main__":

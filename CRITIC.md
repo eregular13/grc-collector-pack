@@ -1,16 +1,77 @@
-# CRITIC — cycle 189 (REAL-OUTPUT-PARSERS)
+# CRITIC — cycle 195 (MERGE_MASTER_REAL_OUTPUT_PARSERS)
 
-Lab this brick: pytest **1012** passed, 1 skipped. Ten collectors +
+Merge origin/master `5adc8b7` into the real-output parser branch.
+Lab counts recomputed on the merged tree (see lab stamp). Master's
+#133/#132/#139/#136 behavior stays; §9 parser fixes stay; ScubaGear/
+Maester tenant from #139 wins (never invent contoso). Union
+`fixtures/samples/SOURCES.md`. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
+
+Lab this brick: pytest **1068** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+Zero P0/P1. Host-lab counts **unchanged** vs current master 30e5910.
+New findings only when real-shaped files are dropped under
+`fixtures/samples/` (tests) or `in/`. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 191 (MERGE_HK_AND_DEMO_FALLBACK)
+
+Lab this brick: pytest **1045** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+farm_lab not required this tick. sample_to_sor + farm_drop_to_sor
+honesty PASS (cold work dirs). Zero P0/P1. Merged master #130
+HardeningKitty feed into DEMO fallback honesty: LAB dest_in identity
+still loads official Audit CSV (TestResult + filename host; two
+SYNTHETIC hosts) and `run_collector` never fills `fixtures/demo`
+(`win-dc01` stays out). Per-sensor `parse_error` / `no_records` still
+land in summary + `/api/coverage`. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 190 (HK_TESTRESULT_AND_HOST)
+
+Lab this brick: pytest **1036** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`poam=109` `demo=true`; #129 weakness-dedupe counts). Zero P0/P1.
+HardeningKitty ingest now matches official Audit CSV: TestResult
+authoritative; host from filename/sidecar/env; two SYNTHETIC hosts;
+never `windows-host`. CIS v8 INTERNAL-ONLY. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 189 (DEMO_FALLBACK_HONESTY)
+
+Lab this brick: pytest **1030** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+farm_lab PASS demo=true. sample_to_sor + farm_drop_to_sor honesty PASS.
+Zero P0/P1. `run_collector` no longer loads `fixtures/demo` when live
+files fail or a LAB/CLIENT/operator sensor is empty. Per-sensor
+`parse_error` / `no_records` (file + reason) in `out/coverage/sensors/`
+and `summary.json` / `/api/coverage`. DEMO/SAMPLE empty-in still works
+and stays labeled. Catalog **unchanged** **111 / 32 / 30 / 81**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48
+rails below are unchanged.
+
+# CRITIC — cycle 189 (LAB_HARDENINGKITTY_WINDOWS)
+
+Lab this brick: pytest **1004** passed, 1 skipped. Ten collectors +
 `grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=105`
 `applied_controls=124` `risk_scenarios=124` `poam=106` `demo=true`).
-Zero P0/P1. Real-output bricks: Custodian list, Intune enrollment,
-IdP isAdmin, Jamf results[], Powerpipe/Steampipe, Okta/Google detect,
-BloodHound CE v6, Trivy secrets/misconfig, osquery hostIdentifier,
-ScoutSuite danger→high, Maester default medium. Demo lab counts
-unchanged vs cycle 188 critic (findings 105 / poam 106). SAMPLE
-fixtures under `fixtures/samples/` do not enter KEEP. Catalog
-**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
-`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+Zero P0/P1. HardeningKitty MS Security Baseline
+CSV lands on the existing LAB dest_in (`fixtures/lab-drop/identity/`
+beside nmap pack_drop + wazuh Lynis/oscap). Every row labeled LAB.
+LAB cannot enter KEEP. Failed-only. Not CIS Benchmark / CIS-CAT.
+CIS v8 IDs INTERNAL-ONLY. Synthetic fixture (not Seen). Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
+unchanged.
 
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 

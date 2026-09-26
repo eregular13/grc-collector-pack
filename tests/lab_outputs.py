@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import re
 from pathlib import Path
@@ -22,8 +21,6 @@ SCEN_H = "ref_id;assets;threats;name;description;existing_controls;current_impac
 
 FIND_SEV = {"low", "medium", "high", "critical"}
 VULN_SEV = {"Information", "Low", "Medium", "High", "Critical"}
-RR_L = {"RARE", "UNLIKELY", "POSSIBLE", "LIKELY", "ALMOST_CERTAIN"}
-RR_I = {"NEGLIGIBLE", "MINOR", "MODERATE", "MAJOR", "SEVERE"}
 LIVE_KEY = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{20,}")
 
 
@@ -33,11 +30,14 @@ def _read(path: Path) -> str:
 
 
 def _csv_rows(path: Path, expected_header: str, delim: str = ",") -> list[dict]:
+    from shared.ciso_shape import csv_rows, first_nonempty_line
+
     text = _read(path)
-    first = text.splitlines()[0].strip()
+    first = first_nonempty_line(path)
     assert first == expected_header, f"{path.name} header {first!r} != {expected_header!r}"
-    with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delim))
+    assert not text.lstrip().startswith("#"), f"{path.name} import CSV must not start with #"
+    assert first == text.splitlines()[0].strip()
+    return csv_rows(path, delimiter=delim)
 
 
 def _json(path: Path):
@@ -53,28 +53,34 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    from shared.ciso_shape import POAM_HEADER
+    from shared.ciso_shape import POAM_HEADER, assert_count_consistency
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
     sr_path = OUT / "simplerisk" / "poam.csv"
     if sr_path.is_file():
+        sr_raw = sr_path.read_text(encoding="utf-8")
+        assert sr_raw.splitlines()[0].strip() == poam_h
+        assert not any(line.lstrip().startswith("#") for line in sr_raw.splitlines())
         sr = _csv_rows(sr_path, poam_h)
         assert len(sr) == len(poam)
+        estate_txt = OUT / "simplerisk" / "ESTATE.txt"
+        assert estate_txt.is_file()
+        sidecar = estate_txt.read_text(encoding="utf-8")
+        assert sidecar.lstrip().startswith("> **")
+        assert "CLIENT:" not in sidecar.splitlines()[0]
+        assert any(row.get("estate") for row in sr)
 
-    rr_assets = _json(OUT / "riskready" / "assets.json")
-    rr_inc = _json(OUT / "riskready" / "incidents.json")
-    rr_ev = _json(OUT / "riskready" / "evidence.json")
-    proposed = _json(OUT / "riskready" / "risks_proposed.json")
+    rr_dir = OUT / "riskready"
+    assert not rr_dir.exists(), "loader must not write out/riskready"
+    assert not any(OUT.rglob("riskready/*")), "no RiskReady JSON leave-behind"
     ocsf = _json(OUT / "ocsf" / "compliance_findings.json")
     summary = _json(OUT / "summary.json")
 
-    assert isinstance(rr_assets, list) and rr_assets
-    assert isinstance(rr_inc, list) and rr_inc
-    assert isinstance(rr_ev, list) and rr_ev
-    assert isinstance(proposed, list) and proposed
     assert isinstance(ocsf, list) and ocsf
     assert isinstance(summary, dict)
+    assert "incidents" not in summary
+    assert "risks_proposed" not in summary
 
     types = {r["type"] for r in assets}
     assert types <= {"PR", "SP"}, types
@@ -89,20 +95,14 @@ def assert_lab() -> None:
         assert row["severity"] in FIND_SEV, row
     for row in vulns:
         assert row["severity"] in VULN_SEV, row
-    for row in proposed:
-        assert row.get("severity") in {"high", "critical"}, row
-        assert row.get("likelihood") in RR_L, row
-        assert row.get("impact") in RR_I, row
-    for row in rr_assets:
-        assert row.get("status") == "ACTIVE"
-        assert row.get("cloudProvider") in {"AWS", "AZURE", "GCP", "NONE"}
-        assert row.get("inIsmsScope") is True
-    for row in rr_ev:
-        assert row.get("evidenceType") == "TECHNICAL"
-        assert row.get("sourceType") == "SENSOR"
-        assert row.get("status") == "DRAFT"
     for row in ocsf:
         assert row.get("class_uid") == 2003
+
+    assert_count_consistency(OUT, summary)
+    assert int(summary.get("risk_scenarios") or 0) == len(scen)
+    assert int(summary.get("poam") or 0) == len(poam)
+    assert int(summary.get("weaknesses") or 0) == len(findings) + len(vulns)
+    assert int(summary.get("open_risks") or 0) == len(poam)
 
     assert len(assets) >= 20, len(assets)
     assert len(findings) >= 20, len(findings)
@@ -113,6 +113,21 @@ def assert_lab() -> None:
     assert ctrls and scen
     assert poam, "poam.csv empty"
     assert (OUT / "poam" / "poam.md").is_file()
+    exec_sum = OUT / "EXECUTIVE_SUMMARY.md"
+    trust = OUT / "SCOPE_AND_TRUST.md"
+    if exec_sum.is_file() and trust.is_file():
+        exec_text = exec_sum.read_text(encoding="utf-8")
+        trust_text = trust.read_text(encoding="utf-8")
+        assert exec_text.startswith("> **")
+        assert trust_text.startswith("> **")
+        assert "not recorded" in trust_text or "Authorization" in trust_text
+        assert "CoS #" not in exec_text and "CoS #" not in trust_text
+    estate_txt = OUT / "ciso-assistant" / "ESTATE.txt"
+    if estate_txt.is_file():
+        assert (OUT / "poam" / "ESTATE.txt").is_file()
+        assert not (OUT / "ciso-assistant" / "findings.csv").read_text(
+            encoding="utf-8"
+        ).lstrip().startswith("#")
     smb = [r for r in poam if "SMB" in (r.get("weakness") or "") or "445" in (r.get("recommended_fix") or "")]
     assert smb, "SMB/445 exposure must map into POA&M"
     rdp = [r for r in poam if "RDP" in (r.get("weakness") or "") or "3389" in (r.get("recommended_fix") or "")]
@@ -143,7 +158,14 @@ def assert_lab() -> None:
     for row in smb:
         assert "cpg_2_W" in (row.get("framework_refs") or "")
         assert "csf_PR" in (row.get("framework_refs") or "") or "csf_protect" in (row.get("framework_refs") or "")
-        assert "dialect" in (row.get("recommended_fix") or "").lower() or "port" in (row.get("recommended_fix") or "").lower()
+        fix = (row.get("recommended_fix") or "").lower()
+        weak = (row.get("weakness") or "").lower()
+        assert (
+            "dialect" in fix
+            or "port" in fix
+            or "null" in fix
+            or "null" in weak
+        ), (weak, fix)
     for row in poam:
         assert (row.get("owner") or "") == ""
         assert (row.get("due") or "") == ""

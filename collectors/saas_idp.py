@@ -6,8 +6,9 @@ Parse-only. Does not call Microsoft Graph or the Okta API.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from shared.idp_inventory import parse_idp_file
 from shared.io_util import iso_now, read_json, read_jsonl, run_collector
@@ -32,8 +33,17 @@ _PASS = frozenset(
         "notrun",
     }
 )
-_FAIL = frozenset({"fail", "failed", "error", "unsuccessful", "false"})
+_FAIL = frozenset({"fail", "failed", "error", "unsuccessful", "false", "warning", "warn"})
 _LOW = frozenset({"info", "informational", "low"})
+_UNKNOWN_TENANT = "unknown"
+_HTML = re.compile(r"<[^>]+>")
+_CRIT_SEV = {
+    "shall": "high",
+    "must": "high",
+    "should": "medium",
+    "may": "low",
+    "recommendation": "medium",
+}
 
 
 def _load(path: Path) -> Any:
@@ -79,6 +89,82 @@ def _failing(result: Any, passed: Any = None) -> bool:
 
 def _high_enough(sev: Any) -> bool:
     return str(sev or "high").strip().lower() not in _LOW
+
+
+def _strip_html(text: str) -> str:
+    return _HTML.sub("", text or "").strip()
+
+
+def _tenant_from(*sources: Any) -> str:
+    """Use the real tenant from MetaData/row/payload. Never invent contoso."""
+    keys = (
+        "TenantDomain",
+        "tenantDomain",
+        "TenantName",
+        "tenantName",
+        "Tenant",
+        "tenant",
+        "TenantId",
+        "TenantID",
+        "tenantId",
+    )
+    found: list[str] = []
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        for key in keys:
+            val = src.get(key)
+            if val:
+                token = str(val).strip()
+                if token and token.lower() != "m365" and token not in found:
+                    found.append(token)
+    if not found:
+        return _UNKNOWN_TENANT
+    domains = [t for t in found if "." in t]
+    if domains:
+        return domains[0]
+    return found[0]
+
+
+def _criticality_severity(row: dict[str, Any], default: str = "high") -> str:
+    if row.get("Severity") or row.get("severity"):
+        return str(row.get("Severity") or row.get("severity"))
+    crit = str(row.get("Criticality") or row.get("criticality") or "").strip().lower()
+    return _CRIT_SEV.get(crit, default)
+
+
+def _is_group_row(row: dict[str, Any]) -> bool:
+    controls = row.get("Controls") or row.get("controls")
+    return isinstance(controls, list) or bool(row.get("GroupName") or row.get("groupName"))
+
+
+def _iter_scuba_controls(results: Any) -> Iterator[tuple[str, dict[str, Any]]]:
+    if isinstance(results, list):
+        for row in results:
+            if not isinstance(row, dict):
+                continue
+            product = str(row.get("ProductName") or row.get("product") or "")
+            if _is_group_row(row):
+                for ctrl in row.get("Controls") or row.get("controls") or []:
+                    if isinstance(ctrl, dict):
+                        yield product, ctrl
+            else:
+                yield product, row
+        return
+    if isinstance(results, dict):
+        for product, groups in results.items():
+            if not isinstance(groups, list):
+                continue
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                controls = group.get("Controls") or group.get("controls")
+                if isinstance(controls, list) and controls:
+                    for ctrl in controls:
+                        if isinstance(ctrl, dict):
+                            yield str(product), ctrl
+                elif group.get("Result") or group.get("Requirement") or group.get("Control ID"):
+                    yield str(product), group
 
 
 _ASSESS = (
@@ -247,31 +333,46 @@ def parse_file(path: Path) -> list[dict]:
         )
 
     results = payload.get("Results") or payload.get("results")
-    if isinstance(results, list):
-        for row in results:
-            if not isinstance(row, dict):
-                continue
+    meta = payload.get("MetaData") if isinstance(payload.get("MetaData"), dict) else {}
+    if isinstance(results, (list, dict)):
+        for product, row in _iter_scuba_controls(results):
             if not _failing(row.get("Result") or row.get("result") or row.get("Status")):
                 continue
-            sev = row.get("Severity") or row.get("severity") or "high"
+            sev = _criticality_severity(row)
             if not _high_enough(sev):
                 continue
-            tenant = str(row.get("Tenant") or row.get("tenant") or "m365")
+            tenant = _tenant_from(row, meta, payload)
             add_asset(tenant, f"M365/Entra tenant {tenant}", ["m365", "scuba"])
-            req = str(row.get("Requirement") or row.get("name") or "saas-check")
+            req = _strip_html(
+                str(
+                    row.get("Requirement")
+                    or row.get("requirement")
+                    or row.get("Control ID")
+                    or row.get("ControlId")
+                    or row.get("name")
+                    or "saas-check"
+                )
+            )
+            cid = str(row.get("Control ID") or row.get("ControlId") or row.get("id") or "")
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
-                    ref_id=make_ref(SOURCE, req),
+                    ref_id=make_ref(SOURCE, f"{cid or req}-{tenant}"),
                     name=req,
-                    description=str(row.get("Details") or req),
+                    description=str(row.get("Details") or row.get("details") or req),
                     severity=sev,
                     category="cloud-misconfiguration",
                     assets=[tenant],
-                    labels=LABELS + [str(row.get("ProductName") or "aad").lower(), "scuba"],
+                    labels=LABELS
+                    + [str(product or row.get("ProductName") or "aad").lower(), "scuba"],
                     collected_at=now,
-                    extra={"product": row.get("ProductName")},
+                    extra={
+                        "product": product or row.get("ProductName"),
+                        "control_id": cid,
+                        "criticality": row.get("Criticality") or row.get("criticality") or "",
+                        "result": row.get("Result") or row.get("result") or "",
+                    },
                 )
             )
         return records
@@ -283,13 +384,7 @@ def parse_file(path: Path) -> list[dict]:
         or payload.get("Maester")
     )
     if isinstance(maester, list):
-        tenant = str(
-            payload.get("Tenant")
-            or payload.get("tenant")
-            or payload.get("TenantId")
-            or payload.get("tenantId")
-            or "contoso.onmicrosoft.com"
-        )
+        tenant = _tenant_from(payload)
         for row in maester:
             if not isinstance(row, dict):
                 continue
@@ -341,7 +436,7 @@ def parse_file(path: Path) -> list[dict]:
     if isinstance(roles, list) and (
         payload.get("directoryRoles") or "graph.microsoft.com" in graph_ctx or payload.get("graph")
     ):
-        tenant = str(payload.get("tenant") or "contoso.onmicrosoft.com")
+        tenant = _tenant_from(payload)
         for role in roles:
             if not isinstance(role, dict):
                 continue

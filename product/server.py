@@ -7,7 +7,6 @@ Never proxies or POSTs /api/risks. Not an eleventh Compose service.
 
 from __future__ import annotations
 
-import csv
 import io
 import json
 import os
@@ -163,8 +162,9 @@ def assert_loopback_host(host: str) -> str:
 def _read_csv(path: Path, delim: str = ",") -> list[dict]:
     if not path.exists():
         return []
-    with path.open(encoding="utf-8", newline="") as fh:
-        return list(csv.DictReader(fh, delimiter=delim))
+    from shared.ciso_shape import csv_rows
+
+    return csv_rows(path, delimiter=delim)
 
 
 def _read_json(path: Path):
@@ -362,6 +362,26 @@ def _ingest_framework_source(
     return hit_rows
 
 
+def sensor_coverage(out: Path | None = None) -> list[dict]:
+    """Per-sensor parse status from the loader / collector coverage files."""
+    dest = out if out is not None else out_dir()
+    summary = _read_json(dest / "summary.json") or {}
+    if not isinstance(summary, dict):
+        summary = {}
+    coverage = summary.get("coverage") if isinstance(summary.get("coverage"), dict) else {}
+    rows = coverage.get("sensors") if isinstance(coverage, dict) else None
+    if isinstance(rows, list):
+        return [row for row in rows if isinstance(row, dict)]
+    mapped = summary.get("sensors")
+    if isinstance(mapped, dict):
+        return [row for row in mapped.values() if isinstance(row, dict)]
+    try:
+        from shared.io_util import load_sensor_coverage
+    except ImportError:
+        return []
+    return load_sensor_coverage(dest)
+
+
 def framework_coverage(out: Path | None = None) -> dict:
     """Group framework_refs / labels / csf_function into NIST/CIS/ISO-ish counts."""
     dest = out if out is not None else out_dir()
@@ -386,6 +406,7 @@ def framework_coverage(out: Path | None = None) -> dict:
         tokens.values(),
         key=lambda row: (-int(row["total"]), str(row["family"]), str(row["token"])),
     )
+    sensors = sensor_coverage(dest)
     return {
         "families": families,
         "tokens": ranked,
@@ -398,6 +419,7 @@ def framework_coverage(out: Path | None = None) -> dict:
         "scenarios": len(scenarios),
         "poam_rows": len(poam),
         "findings_rows": len(findings),
+        "sensors": sensors,
         "client": False,
     }
 
@@ -960,11 +982,37 @@ def leavebehind_sinks(out: Path | None = None) -> dict:
     }
 
 
+def _count_identity_summary(out: Path, summary: dict) -> dict:
+    """Console KPIs use register + POA&M counts, never RiskReady extras."""
+    data = dict(summary)
+    data.pop("incidents", None)
+    data.pop("risks_proposed", None)
+    poam_n = len(_read_csv(out / "poam" / "poam.csv"))
+    findings_n = len(_read_csv(out / "ciso-assistant" / "findings.csv"))
+    vulns_n = len(_read_csv(out / "ciso-assistant" / "vulnerabilities.csv"))
+    scen_n = len(_read_csv(out / "ciso-assistant" / "risk_scenarios.csv", ";"))
+    if findings_n:
+        data["findings"] = findings_n
+    if vulns_n or (out / "ciso-assistant" / "vulnerabilities.csv").is_file():
+        data["vulnerabilities"] = vulns_n
+    if scen_n:
+        data["risk_scenarios"] = scen_n
+    if poam_n or (out / "poam" / "poam.csv").is_file():
+        data["poam"] = poam_n
+        data["open_risks"] = poam_n
+    elif "open_risks" not in data and "poam" in data:
+        data["open_risks"] = data["poam"]
+    if "findings" in data or "vulnerabilities" in data:
+        data["weaknesses"] = int(data.get("findings") or 0) + int(data.get("vulnerabilities") or 0)
+    return data
+
+
 def estate() -> dict:
     out = out_dir()
     summary = _read_json(out / "summary.json") or {}
     if not isinstance(summary, dict):
         summary = {}
+    summary = _count_identity_summary(out, summary)
     findings = _read_csv(out / "ciso-assistant" / "findings.csv")
     sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for row in findings:
@@ -1022,11 +1070,11 @@ def payload(kind: str):
         "controls": out / "ciso-assistant" / "applied_controls.csv",
         "scenarios": out / "ciso-assistant" / "risk_scenarios.csv",
         "poam": out / "poam" / "poam.csv",
-        "incidents": out / "riskready" / "incidents.json",
-        "proposed": out / "riskready" / "risks_proposed.json",
-        "rr_assets": out / "riskready" / "assets.json",
-        "rr_evidence": out / "riskready" / "evidence.json",
     }
+    if kind in {"proposed", "incidents"}:
+        # Proposed risks are POA&M open risks (count identity). RiskReady
+        # JSON is not generated and is never read.
+        return poam_rows(out) if kind == "proposed" else []
     path = mapping.get(kind)
     if path is None:
         return None

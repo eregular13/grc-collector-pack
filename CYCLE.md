@@ -1,15 +1,99 @@
 # CYCLE log
 
-## cycle 189 — real-output parser bricks (Custodian/IdP/MDM/BH/Trivy/osquery) (2026-09-26)
+## cycle 195 — merge master + real-output parser bricks (2026-09-26)
 
-Fix collectors that were false or empty on real tool output (§8.2 / §9.2):
-Cloud Custodian `resources.json` list, Intune `azureADRegistered` ≠ MDM off,
-Entra/Google `isAdmin` ≠ standing GA, Jamf Pro `results[]`, Powerpipe +
-Steampipe query-without-status, Okta/Google content detect, BloodHound CE v6
-false roast/ACL criticals, Trivy secrets/misconfig, osquery `hostIdentifier`,
-ScoutSuite danger→high, Maester missing severity→medium+flag. Real-shaped
-samples under `fixtures/samples/` + `SOURCES.md`. SAMPLE ≠ client. No POST
-`/api/risks`. Catalog unchanged. paying_day **FAIL**.
+Merge origin/master (`5adc8b7`; #133 DEMO fallback honesty, #132 estate
+pages / header-first import CSVs, #139 real-sample PingCastle/Greenbone/
+ScubaGear/testssl/Nikto, #136 no out/riskready) into
+`cursor/parser-real-output-0dba`. Keep master's behavior everywhere plus
+§9 parser fixes (Custodian list, Intune enrollment, IdP isAdmin, Jamf
+`results[]`, Powerpipe/Steampipe, Okta/Google detect, BloodHound CE v6,
+Trivy secrets/misconfig, osquery `hostIdentifier`, ScoutSuite
+danger→high, Maester default medium). ScubaGear/Maester tenant from #139
+(`_tenant_from`, never invent contoso). Union `SOURCES.md`. Counts
+recomputed on the merged tree after lab. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
+
+§8 collectors that were silently empty or wrong on real tool output.
+PingCastle RiskRules + case-insensitive HealthCheckGroupData. Greenbone
+GMP XML/CSV. ScubaGear v1.8 product-keyed Results; Graph/Maester never
+invent contoso. testssl all list sections, keep LOW+. Nikto 2.6 JSON
+list-of-hosts; header/soft-404 denylist; no hardcoded high. Samples
+under `fixtures/samples/` + SOURCES.md. Host-lab **unchanged** 81 / 104
+/ 109. pytest **1068** (+15 vs master 1053). Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 193 — import CSVs start with exact header (2026-09-26)
+
+CISO Assistant / OpenGRC / spreadsheet importers do not skip `#` comments.
+Machine-imported CSVs now start with the locked importer header (no preamble).
+CISO and OpenGRC omit the extra `estate` column; POA&M keeps it (operator
+draft). Banner lives in EXECUTIVE_SUMMARY.md, SCOPE_AND_TRUST.md, poam.md,
+and `out/<sink>/ESTATE.txt`. Fail-closed classify unchanged. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 192 — rebase estate pages onto master + CI (2026-09-26)
+
+Rebase `cursor/estate-exec-trust-pages-f8c2` onto master after #128/#129/#130.
+Keep weakness dedupe, count consistency, RiskReady JSON drop, HardeningKitty
+LAB feed, and the estate banner / exec / SCOPE_AND_TRUST wiring. CSF loader
+test skips `#` banner comments so DictReader is not poisoned. PR #132 ready,
+not draft. Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+## cycle 191 — estate banner + exec summary + SCOPE_AND_TRUST (2026-09-26)
+
+Argus Part 0 banner on every named export (exec summary, SCOPE_AND_TRUST.md,
+poam.csv/poam.md, CISO CSVs, OpenGRC, Probo) plus an `estate` column on every
+CSV row. Exactly one allowed label; fail closed; SAMPLE/DEMO/LAB and
+product-lab/drop fallback cannot become CLIENT and cannot be suppressed.
+One-page exec summary and SCOPE_AND_TRUST.md generated from the run; missing
+values print "not recorded"; reviewer slots stay placeholders. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 191 — merge #130 HK feed + DEMO fallback honesty (2026-09-26)
+
+Merge master `05a29fd` (#130 HardeningKitty) into the DEMO fallback
+honesty branch. Both behaviors stay: official Audit CSV TestResult +
+filename host on LAB dest_in identity, and `run_collector` never fills
+`fixtures/demo` on LAB/CLIENT/operator parse failure. HK lab-drop
+identity hosts stay `lab-win.lab.internal` / `lab-win-b.lab.internal`
+— never demo `win-dc01`. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`.
+
+## cycle 190 — HK TestResult authority + filename host (2026-09-26)
+
+Fix two HK ingest bugs against real Invoke-HardeningKitty Audit CSV
+(scipag/HardeningKitty.psm1 @ da0976073caa). `TestResult` is
+authoritative (Passed never a finding; Result is the measured value;
+legacy Result=Failed still parses). Host from
+`hardeningkitty-<HOSTNAME>-<timestamp>.csv` / upstream
+`hardeningkitty_report_<hostname>_<list>-<date>.csv` / `.host` sidecar /
+`HARDENINGKITTY_HOST` — never silent `windows-host`. Two SYNTHETIC
+fixtures, official header only. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
+
+## cycle 189 — DEMO fallback honesty (2026-09-26)
+
+Parse failure / empty sensor on LAB, CLIENT, or a live operator drop
+never substitutes `fixtures/demo`. Per-sensor `parse_error` /
+`no_records` land in `summary.json` and `/api/coverage` sensors.
+DEMO/SAMPLE empty-in still loads fixtures and stays labeled. No POST
+`/api/risks`. RiskReady stay-out. Catalog **unchanged**. paying_day
+**FAIL**.
+
+## cycle 189 — LAB HardeningKitty Windows MS baseline feed (2026-09-26)
+
+Extend the existing HardeningKitty CSV parser (Failed/`TestResult=Failed`
+only; official HK report columns) and land a LAB dest_in under
+`fixtures/lab-drop/identity/` beside nmap + Lynis/oscap. MS Security
+Baseline lists only (`finding_list_msft_security_baseline_*`). Synthetic
+schema fixture (not an observed scan). Every row LAB. LAB cannot enter
+KEEP / keep_real. CIS Controls v8 IDs stay INTERNAL-ONLY and never appear
+in CISO / POA&M / client exports. Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`.
 
 ## cycle 188 — LAB Lynis + OpenSCAP hardening feed (2026-09-25)
 

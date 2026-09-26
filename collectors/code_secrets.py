@@ -275,7 +275,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[fpath],
                     labels=LABELS + ["semgrep"],
                     collected_at=now,
-                    extra={},
+                    extra={"check_id": str(hit.get("check_id") or "sast")},
                 )
             )
         if records:

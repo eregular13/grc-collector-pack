@@ -146,4 +146,6 @@ def test_samples_are_not_client_keep() -> None:
     text = (SAMPLES / "SOURCES.md").read_text(encoding="utf-8")
     assert "SAMPLE" in text
     assert "not a client" in text.lower()
-    assert "/api/risks" not in text
+    assert "client KEEP" in text
+    assert "/api/risks" in text
+    assert "RiskReady" in text

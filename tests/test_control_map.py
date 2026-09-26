@@ -486,8 +486,6 @@ def test_extra_labels_wizard_safe_no_colon() -> None:
 
 
 def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) -> None:
-    import csv
-
     from collectors.grc_loader import load
     from shared.io_util import out_dir, write_canonical
 
@@ -507,9 +505,10 @@ def test_loader_writes_poam_with_blank_owner_due(tmp_path: Path, monkeypatch) ->
     write_canonical("inventory-nmap", [rec])
     summary = load()
     assert summary.get("poam", 0) >= 1
+    from shared.ciso_shape import csv_rows
+
     poam = out_dir() / "poam" / "poam.csv"
-    with poam.open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = csv_rows(poam)
     assert rows
     assert any("SMB" in (r.get("weakness") or "") for r in rows)
     for row in rows:
@@ -653,7 +652,7 @@ def test_csf_unmapped_fallback_is_deterministic_not_severity() -> None:
             category="other",
         )
     )
-    assert unk_low["control_name"].startswith("Remediate:")
+    assert unk_low["control_name"].startswith("Review and remediate per control")
     assert unk_low["csf_function"] == unk_crit["csf_function"]
     assert unk_low["csf_function"] == "identify"
     assert "csf_unmapped" in unk_low["csf"]
@@ -662,8 +661,6 @@ def test_csf_unmapped_fallback_is_deterministic_not_severity() -> None:
 
 
 def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypatch) -> None:
-    import csv
-
     from collectors.grc_loader import load
     from shared.io_util import out_dir, write_canonical
 
@@ -704,8 +701,9 @@ def test_loader_csf_column_matches_control_not_severity(tmp_path: Path, monkeypa
     ]
     write_canonical("inventory-nmap", recs)
     load()
-    with (out_dir() / "ciso-assistant" / "applied_controls.csv").open(encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    from shared.ciso_shape import csv_rows
+
+    rows = csv_rows(out_dir() / "ciso-assistant" / "applied_controls.csv")
     by_ref = {r["ref_id"]: r for r in rows}
     assert by_ref["CTL-nmap-tls-a"]["csf_function"] == by_ref["CTL-nmap-tls-b"]["csf_function"] == "protect"
     assert by_ref["CTL-waz-time"]["csf_function"] == "detect"
