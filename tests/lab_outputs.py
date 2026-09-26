@@ -134,6 +134,9 @@ def assert_lab() -> None:
         assert "not recorded" in trust_text or "Authorization" in trust_text
         assert "CoS #" not in exec_text and "CoS #" not in trust_text
         assert "### Coverage gaps" in exec_text and "### Coverage gaps" in trust_text
+        from shared.estate_pages import assert_client_export_honesty
+
+        assert_client_export_honesty(OUT)
     estate_txt = OUT / "ciso-assistant" / "ESTATE.txt"
     if estate_txt.is_file():
         assert (OUT / "poam" / "ESTATE.txt").is_file()

@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-from exporters.model import load_pack_estate
+from exporters.model import load_pack_estate, out_dir
 from exporters.opengrc import write_opengrc
 from exporters.probo import write_probo
 
@@ -50,6 +50,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.sink in {"probo", "all"}:
         path = write_probo(out, estate=estate)
         result["probo"] = str(path)
+    from shared.estate_pages import write_export_manifest
+
+    write_export_manifest(out_dir(out))
     print(json.dumps(result, indent=2, default=str))
     return 0
 
