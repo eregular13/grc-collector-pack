@@ -378,8 +378,7 @@ def _load_cloud_payload(path: Path) -> Any:
         if text.startswith(prefix):
             text = text[len(prefix) :].lstrip()
             break
-    if text.endswith(";"):
-        text = text[:-1].rstrip()
+    text = text.rstrip().rstrip(";")
     return json.loads(text)
 
 

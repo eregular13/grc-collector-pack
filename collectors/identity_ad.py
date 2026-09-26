@@ -34,6 +34,7 @@ _META_KIND = {
 }
 
 _EDGE_FINDINGS = {
+    "HASSESSION": ("high", "BloodHound HasSession", "Session edge can enable credential theft."),
     "HASESSION": ("high", "BloodHound HasSession", "Session edge can enable credential theft."),
     "ADMINTO": ("high", "BloodHound AdminTo", "Principal has local admin on the target."),
     "GENERICALL": ("critical", "BloodHound GenericAll", "Full control over the object."),
@@ -831,7 +832,7 @@ def parse_file(path: Path) -> list[dict]:
             or edge.get("endNode")
             or ""
         )
-        if folded == "HASESSION":
+        if folded in {"HASSESSION", "HASESSION"}:
             acc = session_acc.setdefault(start, {"hosts": [], "count": 0})
             raw_count = edge.get("session_count")
             extra_hosts = edge.get("hosts") if isinstance(edge.get("hosts"), list) else []
@@ -896,7 +897,7 @@ def parse_file(path: Path) -> list[dict]:
         assets = [x for x in (start, end) if x]
         ref_tail = f"{kind}-{start}-{end}"
         detail = f"{desc} {start} -> {end}".strip()
-        if kind.upper().replace(" ", "") == "HASESSION":
+        if kind.upper().replace(" ", "") in {"HASSESSION", "HASESSION"}:
             try:
                 count = int(session_count or len(hosts) or 1)
             except (TypeError, ValueError):

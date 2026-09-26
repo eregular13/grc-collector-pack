@@ -91,7 +91,8 @@ def _is_trivy(payload: Any) -> bool:
         return False
     if payload.get("SchemaVersion") is not None or payload.get("ArtifactName") or payload.get("ArtifactType"):
         return True
-    if isinstance(payload.get("Results") or payload.get("results"), list):
+    # Trivy uses capital Results. Lowercase results is Greenbone / other tools.
+    if isinstance(payload.get("Results"), list):
         return True
     return _is_trivy_k8s(payload)
 
