@@ -39,7 +39,7 @@ from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields
-from shared.poam_ledger import run_ledger
+from shared.poam_ledger import ledger_run_delta, run_ledger
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -407,8 +407,10 @@ def load() -> dict:
             continue
         fields = poam_fields(rec, mapped, today)
         item = ledger_by_ref.get(str(rec.get("ref_id") or ""))
+        status = "open"
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
+            status = str(item.get("status") or "open")
         poam_rows.append(
             [
                 weakness,
@@ -418,7 +420,42 @@ def load() -> dict:
                 mapped["recommended_fix"],
                 "",
                 "",
-                "open",
+                status,
+                estate,
+                *[fields[key] for key in POAM_EXTRA_FIELDS],
+            ]
+        )
+    _pid_idx = poam_header.index("poam_id")
+    listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
+    pending_carried = 0
+    for item in (poam_ledger.get("items") or {}).values():
+        pid = str(item.get("poam_id") or "")
+        status = str(item.get("status") or "")
+        if not pid or pid in listed_ids:
+            continue
+        if status not in {"open", "pending_verification", "reopened"}:
+            continue
+        pending_carried += 1
+        listed_ids.add(pid)
+        fields = {key: "" for key in POAM_EXTRA_FIELDS}
+        fields["poam_id"] = pid
+        fields["finding_ref_id"] = str(item.get("ref_id") or "")
+        fields["weakness_description"] = str(item.get("description") or item.get("name") or "")
+        fields["detector_source"] = str(item.get("source_family") or "")
+        fields["weakness_source_id"] = str(item.get("weakness_key") or "")
+        fields["original_detection_date"] = str(item.get("original_detection_date") or "")
+        fields["status_date"] = str(item.get("status_date") or "")
+        fields["original_risk_rating"] = str(item.get("original_risk_rating") or "")
+        poam_rows.append(
+            [
+                str(item.get("name") or item.get("weakness_key") or ""),
+                str(item.get("display_asset") or item.get("asset_key") or ""),
+                str(item.get("severity") or item.get("current_scanner_rating") or ""),
+                "",
+                "",
+                "",
+                "",
+                status,
                 estate,
                 *[fields[key] for key in POAM_EXTRA_FIELDS],
             ]
@@ -536,7 +573,9 @@ def load() -> dict:
     if leftover_rr.exists():
         shutil.rmtree(leftover_rr)
 
-    excluded_poam = max(0, len(other_findings) + len(vuln_findings) - len(poam_rows))
+    excluded_poam = max(
+        0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
+    )
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
@@ -547,8 +586,9 @@ def load() -> dict:
         "poam": len(poam_rows),
         "risk_scenarios": len(scenarios),
         "weaknesses": len(findings),
-        "weaknesses_total": breakdown["weaknesses_total"],
-        "poam_included": breakdown["poam_included"],
+        "weaknesses_total": int(breakdown["weaknesses_total"]) + pending_carried,
+        "poam_included": int(breakdown["poam_included"]) + pending_carried,
+        "pending_carried": pending_carried,
         "excluded": len(excluded_rows),
         "excluded_by_reason": breakdown["excluded_by_reason"],
         "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
@@ -571,8 +611,8 @@ def load() -> dict:
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
             "risk_scenarios == weaknesses == findings + vulnerabilities; "
-            "POA&M is 1:1 with open risks (poam_decision); "
-            "weaknesses_total == poam_included + excluded == poam_included + sum(excluded_by_reason)"
+            "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
+            "weaknesses_total == poam_included + excluded == weaknesses + pending_carried"
         ),
         "generated_at": now,
     }
@@ -604,6 +644,7 @@ def load() -> dict:
         excluded_poam=excluded_poam,
         in_dir=dest_in,
         generated_at=now,
+        run_delta=ledger_run_delta(poam_ledger),
     )
     write_client_pages(out_dir(), ctx)
     write_text(
