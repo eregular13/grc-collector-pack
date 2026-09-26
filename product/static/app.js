@@ -89,6 +89,7 @@ const ENDPOINTS = {
 };
 
 const FAMILY_LABELS = {
+  nist_800_53: "NIST 800-53",
   nist_csf: "NIST CSF",
   cisa_cpg: "CISA CPG",
   cis: "CIS",
@@ -250,6 +251,7 @@ function renderCoverageKpis(coverage) {
   const el = $("coverage-kpis");
   if (!el) return;
   const families = coverage.families || {};
+  const n53 = (families.nist_800_53 && families.nist_800_53.rows) || 0;
   const nist = (families.nist_csf && families.nist_csf.rows) || 0;
   const cpg = (families.cisa_cpg && families.cisa_cpg.rows) || 0;
   const cis = (families.cis && families.cis.rows) || 0;
@@ -257,6 +259,7 @@ function renderCoverageKpis(coverage) {
   const items = [
     [coverage.controls, "Controls", ""],
     [coverage.scenarios, "Scenarios", ""],
+    [n53, "NIST 800-53", ""],
     [nist, "NIST CSF", ""],
     [cpg, "CISA CPG", ""],
     [cis, "CIS", ""],

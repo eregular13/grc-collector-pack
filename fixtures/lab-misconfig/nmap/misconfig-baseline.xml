@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.95 scan initiated Fri Sep 25 16:38:16 2026 as: nmap -n -Pn -sT -sV -p 21,80,443,445,3306,6379 -oX scans/misconfig-baseline.xml 127.0.10.2-7 -->
+<nmaprun scanner="nmap" args="nmap -n -Pn -sT -sV -p 21,80,443,445,3306,6379 -oX scans/misconfig-baseline.xml 127.0.10.2-7" start="1790379496" startstr="Fri Sep 25 16:38:16 2026" version="7.95" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="6" services="21,80,443,445,3306,6379"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1790379496" endtime="1790379512"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.10.2" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" product="vsftpd" version="3.0.5" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:3.0.5</cpe></service></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="443"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="https" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="microsoft-ds" method="table" conf="3"/></port>
+<port protocol="tcp" portid="3306"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="mysql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="6379"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="redis" method="table" conf="3"/></port>
+</ports>
+<times srtt="59" rttvar="1217" to="100000"/>
+</host>
+<host starttime="1790379496" endtime="1790379512"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.10.3" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="443"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="https" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="microsoft-ds" method="table" conf="3"/></port>
+<port protocol="tcp" portid="3306"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="mysql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="6379"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="redis" product="Redis key-value store" version="8.0.2" method="probed" conf="10"><cpe>cpe:/a:redislabs:redis:8.0.2</cpe></service></port>
+</ports>
+<times srtt="120" rttvar="1240" to="100000"/>
+</host>
+<host starttime="1790379496" endtime="1790379512"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.10.4" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" product="nginx" version="1.26.3" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.26.3</cpe></service></port>
+<port protocol="tcp" portid="443"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="https" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="microsoft-ds" method="table" conf="3"/></port>
+<port protocol="tcp" portid="3306"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="mysql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="6379"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="redis" method="table" conf="3"/></port>
+</ports>
+<times srtt="94" rttvar="1234" to="100000"/>
+</host>
+<host starttime="1790379496" endtime="1790379512"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.10.5" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="443"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" product="nginx" version="1.26.3" tunnel="ssl" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.26.3</cpe></service></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="microsoft-ds" method="table" conf="3"/></port>
+<port protocol="tcp" portid="3306"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="mysql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="6379"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="redis" method="table" conf="3"/></port>
+</ports>
+<times srtt="91" rttvar="1225" to="100000"/>
+</host>
+<host starttime="1790379496" endtime="1790379512"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.10.6" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="443"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="https" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="netbios-ssn" product="Samba smbd" version="3.X - 4.X" extrainfo="workgroup: LAB" hostname="LABSMB" method="probed" conf="10"><cpe>cpe:/a:samba:samba</cpe></service></port>
+<port protocol="tcp" portid="3306"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="mysql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="6379"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="redis" method="table" conf="3"/></port>
+</ports>
+<times srtt="80" rttvar="1224" to="100000"/>
+</host>
+<host starttime="1790379496" endtime="1790379512"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.10.7" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="443"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="https" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="microsoft-ds" method="table" conf="3"/></port>
+<port protocol="tcp" portid="3306"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="mysql" servicefp="SF-Port3306-TCP:V=7.95%I=7%D=9/25%Time=6AB705EE%P=x86_64-pc-linux-gnu%r(NULL,6C,&quot;h\0\0\0\n11\.8\.6-MariaDB-0\+deb13u1\x20from\x20Debian\0\xbc\0\0\0&amp;gVX9Sut\0\xfe\xff-\x02\0\xff\x81\x15\0\0\0\0\0\0=\0\0\0h\+:\&quot;&lt;F\+AG#uH\0mysql_native_password\0&quot;)%r(GenericLines,A4,&quot;h\0\0\0\n11\.8\.6-MariaDB-0\+deb13u1\x20from\x20Debian\0\xbc\0\0\0&amp;gVX9Sut\0\xfe\xff-\x02\0\xff\x81\x15\0\0\0\0\0\0=\0\0\0h\+:\&quot;&lt;F\+AG#uH\0mysql_native_password\x004\0\0\x01\xffj\x04#HY000Proxy\x20header\x20is\x20not\x20accepted\x20from\x20127\.0\.0\.1&quot;)%r(LDAPBindReq,6C,&quot;h\0\0\0\n11\.8\.6-MariaDB-0\+deb13u1\x20from\x20Debian\0\xcd\0\0\0XA~vX5@!\0\xfe\xff-\x02\0\xff\x81\x15\0\0\0\0\0\0=\0\0\0%2lKpuxz{}\&quot;\+\0mysql_native_password\0&quot;)%r(afp,6C,&quot;h\0\0\0\n11\.8\.6-MariaDB-0\+deb13u1\x20from\x20Debian\0\xd7\0\0\0f2c~o2J_\0\xfe\xff-\x02\0\xff\x81\x15\0\0\0\0\0\0=\0\0\0\|tOn\[\]Cs&gt;xa_\0mysql_native_password\0&quot;);" method="table" conf="3"/></port>
+<port protocol="tcp" portid="6379"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="redis" method="table" conf="3"/></port>
+</ports>
+<times srtt="73" rttvar="1220" to="100000"/>
+</host>
+<runstats><finished time="1790379512" timestr="Fri Sep 25 16:38:32 2026" summary="Nmap done at Fri Sep 25 16:38:32 2026; 6 IP addresses (6 hosts up) scanned in 16.21 seconds" elapsed="16.21" exit="success"/><hosts up="6" down="0" total="6"/>
+</runstats>
+</nmaprun>

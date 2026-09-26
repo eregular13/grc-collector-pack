@@ -45,7 +45,174 @@ def _blob(rec: dict[str, Any]) -> str:
     ).lower()
 
 
+# Evidence-backed misconfig rules keyed by extra.check_id (shared/nmap_nse.py).
+# nist_800_53 = SP 800-53 Rev. 5 control ids; cis = CIS Controls v8 safeguards.
+# CSF function is the control's topic (protect), not a severity heuristic.
+MISCONFIG_RULES: dict[str, dict[str, Any]] = {
+    "nse-ftp-anon": {
+        "name": "Disable anonymous FTP access",
+        "fix": (
+            "Set anonymous_enable=NO (vsftpd) or the equivalent, remove world-readable content from the "
+            "anonymous root, and move file transfer to authenticated SFTP or FTPS. Restrict TCP/21 to the "
+            "hosts that need it. Rescan with nmap ftp-anon to verify FTP code 530 for anonymous."
+        ),
+        "nist_800_53": ["AC-3", "AC-14", "CM-7", "IA-2"],
+        "cis": ["cis_4_8", "cis_3_3"],
+    },
+    "nse-redis-noauth": {
+        "name": "Require authentication on Redis",
+        "fix": (
+            "Enable Redis ACL users or requirepass with a strong secret, set protected-mode yes, bind Redis "
+            "to localhost or a private interface only, and firewall TCP/6379. Rename or disable CONFIG, "
+            "MODULE, and DEBUG for application users. Rescan with nmap redis-info to verify INFO is refused."
+        ),
+        "nist_800_53": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
+        "cis": ["cis_4_1", "cis_4_8", "cis_5_2"],
+    },
+    "nse-http-dirlist": {
+        "name": "Disable web server directory listing",
+        "fix": (
+            "Turn off auto-indexing (nginx autoindex off; Apache Options -Indexes; IIS directoryBrowse "
+            "enabled=false), remove backups and other sensitive files from the web root, and serve an "
+            "explicit index or 403. Rescan with nmap http-enum to verify no 'directory listing' paths."
+        ),
+        "nist_800_53": ["CM-7", "CM-6", "AC-3"],
+        "cis": ["cis_4_1", "cis_3_3"],
+    },
+    "nse-tls-deprecated-protocol": {
+        "name": "Disable deprecated TLS protocols",
+        "fix": (
+            "Disable SSLv3, TLS 1.0, and TLS 1.1 and require TLS 1.2 or TLS 1.3 (e.g. nginx ssl_protocols "
+            "TLSv1.2 TLSv1.3; Windows SCHANNEL registry or IIS Crypto). Confirm client compatibility first. "
+            "Rescan with nmap ssl-enum-ciphers to verify only TLSv1.2/1.3 are listed."
+        ),
+        "nist_800_53": ["SC-8", "SC-8(1)", "SC-13", "CM-6"],
+        "cis": ["cis_3_10", "cis_4_1"],
+    },
+    "nse-tls-weak-cipher": {
+        "name": "Remove weak TLS cipher suites",
+        "fix": (
+            "Remove anonymous (aNULL), NULL, EXPORT, RC4, DES/3DES, and MD5 suites and prefer ECDHE with "
+            "AES-GCM or CHACHA20-POLY1305 (e.g. Mozilla 'intermediate' profile). Rescan with nmap "
+            "ssl-enum-ciphers and target least strength A."
+        ),
+        "nist_800_53": ["SC-8", "SC-8(1)", "SC-13", "CM-6"],
+        "cis": ["cis_3_10", "cis_4_1"],
+    },
+    "nse-tls-self-signed": {
+        "name": "Replace self-signed TLS certificate with a trusted CA certificate",
+        "fix": (
+            "Issue a certificate from the organization's internal CA or a public CA with the full chain, "
+            "matching hostnames (SAN), and a tracked expiry. Self-signed certificates train users to click "
+            "through warnings and allow undetected interception. Rescan with nmap ssl-cert to verify "
+            "issuer != subject."
+        ),
+        "nist_800_53": ["SC-17", "SC-23", "SC-8"],
+        "cis": ["cis_3_10"],
+    },
+    "nse-tls-weak-key": {
+        "name": "Reissue TLS certificate with a strong key",
+        "fix": (
+            "Reissue the certificate with RSA 2048-bit or larger (3072 preferred) or ECDSA P-256, and revoke "
+            "the old key. Rescan with nmap ssl-cert to verify Public Key bits >= 2048."
+        ),
+        "nist_800_53": ["SC-12", "SC-13", "SC-17"],
+        "cis": ["cis_3_10"],
+    },
+    "nse-smb-signing-not-required": {
+        "name": "Require SMB message signing",
+        "fix": (
+            "Require SMB signing: Windows GPO 'Microsoft network server: Digitally sign communications "
+            "(always)' = Enabled (and client), or Samba 'server signing = mandatory'. Disable SMBv1 and "
+            "restrict TCP/445 to required hosts. Unsigned SMB enables NTLM relay. Rescan with nmap "
+            "smb2-security-mode to verify 'enabled and required'."
+        ),
+        "nist_800_53": ["SC-8", "SC-8(1)", "SC-23", "CM-6"],
+        "cis": ["cis_4_1", "cis_3_10"],
+    },
+    "nse-smb-guest": {
+        "name": "Disable SMB guest access",
+        "fix": (
+            "Set 'map to guest = Never' and remove 'guest ok' shares (Samba) or disable the Guest account and "
+            "insecure guest logons (Windows GPO). Require authenticated, least-privilege share access. "
+            "Rescan with nmap smb-security-mode to verify account_used is not guest."
+        ),
+        "nist_800_53": ["AC-3", "AC-14", "IA-2", "AC-6"],
+        "cis": ["cis_3_3", "cis_4_7"],
+    },
+    "nse-db-empty-password": {
+        "name": "Set strong credentials on database accounts",
+        "fix": (
+            "Set a strong unique password or socket/auth-plugin-only login for root and every account with an "
+            "empty password, remove anonymous users and the test database (mysql_secure_installation), set "
+            "bind-address to localhost or a private interface, and firewall TCP/3306. Rotate any secrets the "
+            "database held. Rescan with nmap mysql-empty-password to verify."
+        ),
+        "nist_800_53": ["IA-5", "IA-5(1)", "IA-2", "AC-2", "CM-6"],
+        "cis": ["cis_4_7", "cis_5_2"],
+    },
+    "nse-default-credentials": {
+        "name": "Remove vendor default credentials",
+        "fix": (
+            "Change or disable the vendor default account immediately, set a strong unique password, restrict "
+            "the admin interface to the management network or VPN, and enable MFA where supported. Review "
+            "logs for prior use of the default login. Rescan with nmap http-default-accounts to verify."
+        ),
+        "nist_800_53": ["IA-5", "IA-5(1)", "AC-2", "CM-6", "AC-17"],
+        "cis": ["cis_4_7", "cis_5_2"],
+    },
+}
+
+# Port/exposure rules that already had specific control names: real 800-53 ids.
+EXPOSURE_800_53: dict[str, list[str]] = {
+    "Restrict Windows admin shares": ["AC-3", "AC-6", "CM-7"],
+    "Harden or restrict SMB file sharing": ["CM-7", "SC-7"],
+    "Disable Telnet; require encrypted remote admin": ["CM-7", "SC-8", "AC-17"],
+    "Disable or lock down cleartext FTP": ["CM-7", "SC-8"],
+    "Restrict RDP to approved paths": ["AC-17", "SC-7"],
+    "Disable TLS 1.0": ["SC-8", "SC-8(1)", "SC-13"],
+    "Harden TLS on the exposed service": ["SC-8", "SC-8(1)", "SC-13"],
+    "Remediate Heartbleed-vulnerable TLS": ["SI-2", "SC-8", "RA-5"],
+}
+
+
+def _n53_tokens(ids: list[str]) -> list[str]:
+    return [f"nist80053_{cid}" for cid in ids]
+
+
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
+    """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    check = str(extra.get("check_id") or "")
+    rule = MISCONFIG_RULES.get(check)
+    if rule:
+        sev = canon_severity(rec.get("severity"))
+        cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE] if sev in {"high", "critical"} else [CPG_WEAK_SERVICE]
+        csf = [CSF_STAMP["protect"], "csf_protect"]
+        refs = cpg + csf + _n53_tokens(rule["nist_800_53"]) + list(rule["cis"])
+        return {
+            "control_name": rule["name"],
+            "recommended_fix": rule["fix"],
+            "cpg": cpg,
+            "csf": csf,
+            "csf_function": "protect",
+            "include_poam": True,
+            "nist_800_53": list(rule["nist_800_53"]),
+            "cis": list(rule["cis"]),
+            "framework_refs": ",".join(dict.fromkeys(refs)),
+        }
+    mapped = _map_finding_legacy(rec)
+    n53 = EXPOSURE_800_53.get(mapped["control_name"], [])
+    mapped["nist_800_53"] = list(n53)
+    mapped["cis"] = []
+    if n53:
+        mapped["framework_refs"] = ",".join(
+            dict.fromkeys(mapped["framework_refs"].split(",") + _n53_tokens(n53))
+        )
+    return mapped
+
+
+def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     port = str(extra.get("port") or "")

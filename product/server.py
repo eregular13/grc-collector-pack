@@ -253,6 +253,7 @@ def poam_summary(out: Path | None = None, rows: list[dict] | None = None) -> dic
 
 
 FRAMEWORK_FAMILIES = (
+    ("nist_800_53", ("nist80053_",)),
     ("cisa_cpg", ("cpg_", "cisa_")),
     ("nist_csf", ("csf_", "nist_")),
     ("cis", ("cis_",)),

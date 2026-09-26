@@ -1,0 +1,8 @@
+LAB/DEMO -- not a client estate.
+Real nmap 7.95 output against deliberately misconfigured LAB services on an
+isolated loopback lab (127.0.10.2-7): anonymous vsftpd, Redis without auth,
+nginx autoindex, nginx TLSv1.0/1.1 + anon ciphers + self-signed RSA-1024 cert,
+Samba with signing disabled + guest, MariaDB root with empty password.
+misconfig-nse.xml = -sV + NSE (ftp-anon, ssl-enum-ciphers, ssl-cert,
+smb2-security-mode, smb-security-mode, redis-info, http-enum, http-title,
+mysql-empty-password). misconfig-baseline.xml = -sV only. Not client data.
