@@ -137,7 +137,7 @@ def test_lynis_oscap_dedupe_same_host_control() -> None:
     assets = [r for r in merged if r["kind"] == "asset"]
     assert len(assets) == 1
     assert assets[0]["name"] == "lab-jump.lab.internal"
-    keys = [r["extra"].get("control_key") for r in findings}
+    keys = [r["extra"].get("control_key") for r in findings]
     assert keys.count("ssh_root_login") == 1
     assert keys.count("host_firewall") == 1
     assert keys.count("ssh_empty_passwords") == 1
