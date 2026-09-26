@@ -2,7 +2,8 @@
 """Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
 
 RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
-is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+is findings + vulnerabilities + kind_excluded == risk_scenarios; POA&M ==
+open_risks (poam.csv). kind:excluded rows stay on the register as accept.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from shared.control_map import (
 from shared.estate_pages import (
     PageContext,
     classify_estate,
+    is_merged_into_alias,
     write_client_pages,
     write_csv_with_estate,
     write_estate_sidecar,
@@ -706,6 +708,12 @@ def load() -> dict:
     excluded_poam = max(
         0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
     )
+    reason_idx = EXCLUDED_FIELDS.index("excluded_reason")
+    merged_aliases = sum(
+        1
+        for row in excluded_rows
+        if is_merged_into_alias(row[reason_idx] if len(row) > reason_idx else "")
+    )
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
@@ -777,9 +785,11 @@ def load() -> dict:
         poam_n=len(poam_rows),
         merged=str(merged_n),
         excluded_poam=excluded_poam,
+        kind_excluded=len(pre_excluded),
+        merged_aliases=merged_aliases,
         in_dir=dest_in,
         generated_at=now,
-        run_delta=ledger_run_delta(poam_ledger),
+        run_delta=ledger_run_delta(poam_ledger, plan_ids=listed_ids),
         sensor_rows=sensor_rows,
     )
     write_client_pages(out_dir(), ctx)
