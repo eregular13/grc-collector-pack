@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--masscan v1.3.2 scan-->
-<nmaprun scanner="masscan" start="1700000000" version="1.3.2" xmloutputversion="1.03">
-<host endtime="1700000001">
+<nmaprun scanner="masscan" start="1789041660" startstr="Thu Sep 10 12:01:00 2026" version="1.3.2" xmloutputversion="1.03">
+<host endtime="1789041661">
 <address addr="10.0.0.50" addrtype="ipv4"/>
 <hostnames><hostname name="filesrv.corp.local"/></hostnames>
 <ports>
@@ -9,7 +9,7 @@
 </ports>
 </host>
 <runstats>
-<finished time="1700000001" timestr="Thu Jan 1 00:00:01 1970" elapsed="1"/>
+<finished time="1789041661" timestr="Thu Sep 10 12:01:01 2026" elapsed="1"/>
 <hosts up="1" down="0" total="1"/>
 </runstats>
 </nmaprun>

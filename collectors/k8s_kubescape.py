@@ -206,6 +206,11 @@ def parse_file(path: Path) -> list[dict]:
                         "pod": pod,
                         "namespace": fields.get("k8s.ns.name"),
                         "rule": rule,
+                        **(
+                            {"scan_time": str(ev.get("time"))}
+                            if ev.get("time")
+                            else {}
+                        ),
                     },
                 )
             )

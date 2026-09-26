@@ -1,6 +1,6 @@
-{"host":"vpn.example.com","url":"https://vpn.example.com","status_code":200,"title":"SSL VPN TLS weak cipher","tech":["ivanti","tls-weak-cipher"]}
-{"host":"dev-api.example.com","url":"https://dev-api.example.com","status_code":200,"title":"Dev API","tech":["nginx"]}
-{"host":"www.example.com","url":"https://www.example.com","status_code":200,"title":"Example","tech":["cloudflare"]}
-{"host":"mail.example.com","url":"https://mail.example.com","status_code":200,"title":"Webmail","tech":["owa"]}
-{"host":"staging.example.com","url":"https://staging.example.com","status_code":401,"title":"Staging","tech":["k8s"]}
-{"host":"admin.example.com","url":"https://admin.example.com","status_code":200,"title":"Admin","tech":["okta"]}
+{"host":"vpn.example.com","url":"https://vpn.example.com","status_code":200,"title":"SSL VPN TLS weak cipher","tech":["ivanti","tls-weak-cipher"],"timestamp":"2026-09-08T10:00:00Z"}
+{"host":"dev-api.example.com","url":"https://dev-api.example.com","status_code":200,"title":"Dev API","tech":["nginx"],"timestamp":"2026-09-08T10:00:00Z"}
+{"host":"www.example.com","url":"https://www.example.com","status_code":200,"title":"Example","tech":["cloudflare"],"timestamp":"2026-09-08T10:00:00Z"}
+{"host":"mail.example.com","url":"https://mail.example.com","status_code":200,"title":"Webmail","tech":["owa"],"timestamp":"2026-09-08T10:00:00Z"}
+{"host":"staging.example.com","url":"https://staging.example.com","status_code":401,"title":"Staging","tech":["k8s"],"timestamp":"2026-09-08T10:00:00Z"}
+{"host":"admin.example.com","url":"https://admin.example.com","status_code":200,"title":"Admin","tech":["okta"],"timestamp":"2026-09-08T10:00:00Z"}

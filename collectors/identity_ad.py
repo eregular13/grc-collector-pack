@@ -412,6 +412,7 @@ def _parse_pingcastle_xml(path: Path) -> dict[str, Any]:
     root = ET.fromstring(raw)
     parent = {child: node for node in root.iter() for child in list(node)}
     domain = _child_text(root, "DomainFQDN", "ForestFQDN", "NetBIOSName")
+    scan_time = _child_text(root, "GenerationDate")
     nodes: list[dict[str, Any]] = []
     rules: list[dict[str, Any]] = []
     if domain:
@@ -491,7 +492,7 @@ def _parse_pingcastle_xml(path: Path) -> dict[str, Any]:
                 props["serviceprincipalnames"] = [spn]
                 props["hasspn"] = True
             nodes.append({"kind": "User", "label": name, "properties": props})
-    return {"nodes": nodes, "rules": rules, "domain": domain}
+    return {"nodes": nodes, "rules": rules, "domain": domain, "scan_time": scan_time}
 
 
 def _pingcastle_xml_nodes(path: Path) -> list[dict[str, Any]]:
@@ -781,10 +782,12 @@ def parse_file(path: Path) -> list[dict]:
     if is_cis_cat(json_payload, name=path.name, text=text):
         return _emit_cis_cat(iter_cis_failures(json_payload, text=text), iso_now())
     pc_rules: list[dict[str, Any]] = []
+    pc_scan_time = ""
     if path.suffix.lower() == ".xml" or text.startswith("<"):
         parsed_pc = _parse_pingcastle_xml(path)
         nodes = list(parsed_pc.get("nodes") or [])
         pc_rules = list(parsed_pc.get("rules") or [])
+        pc_scan_time = str(parsed_pc.get("scan_time") or "")
     else:
         payload = json_payload
         if payload is None:
@@ -871,6 +874,7 @@ def parse_file(path: Path) -> list[dict]:
                     extra={
                         "kind": kind,
                         "check_id": _BH_NODE_CHECK.get(title, f"bh-{slug(title, maxlen=None)}"),
+                        **({"scan_time": pc_scan_time} if pc_scan_time else {}),
                     },
                 )
             )
@@ -908,6 +912,7 @@ def parse_file(path: Path) -> list[dict]:
                     "points": rule.get("points") or "0",
                     "category": rule.get("category") or "",
                     "model": rule.get("model") or "",
+                    **({"scan_time": pc_scan_time} if pc_scan_time else {}),
                 },
             )
         )
