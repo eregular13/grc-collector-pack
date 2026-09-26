@@ -166,12 +166,15 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         )
     pending_carried = int(summary.get("pending_carried") or 0)
     if "weaknesses" in summary:
-        expected = int(summary.get("weaknesses") or 0) + pending_carried
+        fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+        merges = int(fg.get("duplicates_merged") or 0)
+        expected = int(summary.get("weaknesses") or 0) + pending_carried + merges
         if total != expected:
             raise RegisterShapeError(
                 f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
                 f"weaknesses={summary.get('weaknesses')}"
                 + (f" + pending_carried={pending_carried}" if pending_carried else "")
+                + (f" + duplicates_merged={merges}" if merges else "")
             )
     fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
     if fg and int(fg.get("UNEXPLAINED") or 0) != 0:
@@ -187,7 +190,7 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
-    """§12.6: UNEXPLAINED==0; FedRAMP Open POAM IDs == poam.csv (G0)."""
+    """§12.6: findings_in == members + excluded; UNEXPLAINED==0; G0 FedRAMP."""
     out = resolve_out_dir(ciso_or_out)
     if summary is None:
         summary_path = out / "summary.json"
@@ -202,10 +205,12 @@ def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None)
     if isinstance(excluded, dict):
         unexplained += int(excluded.get("unexplained") or 0) + int(excluded.get("UNEXPLAINED") or 0)
     excluded_path = out / "poam" / "excluded.csv"
+    excluded_rows: list[dict[str, str]] = []
     if excluded_path.is_file() and excluded_path.read_text(encoding="utf-8").strip():
         first = first_nonempty_line(excluded_path)
         if first == EXCLUDED_HEADER:
-            for row in csv_rows(excluded_path):
+            excluded_rows = csv_rows(excluded_path)
+            for row in excluded_rows:
                 reason = str(row.get("excluded_reason") or "").strip()
                 code = str(row.get("reason_code") or "").strip()
                 if reason in {"", "unexplained", "UNEXPLAINED"} or code in {
@@ -213,8 +218,40 @@ def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None)
                     "unexplained",
                 }:
                     unexplained += 1
+                if code and code not in REASON_CODES:
+                    raise RegisterShapeError(
+                        f"FLOOD_GUARD_FAIL unknown reason_code={code}"
+                    )
     if unexplained:
         raise RegisterShapeError(f"FLOOD_GUARD_FAIL UNEXPLAINED={unexplained} (must be 0)")
+    members_path = out / "poam" / "poam_members.csv"
+    member_rows: list[dict[str, str]] = []
+    if members_path.is_file() and members_path.read_text(encoding="utf-8").strip():
+        member_rows = csv_rows(members_path)
+    if fg:
+        findings_in = int(fg.get("findings_in") or 0)
+        members_n = int(fg.get("poam_members") or 0)
+        excluded_n = int(fg.get("excluded") or 0)
+        if findings_in and findings_in != members_n + excluded_n:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL findings_in={findings_in} != "
+                f"poam_members={members_n} + excluded={excluded_n}"
+            )
+        if excluded_n and excluded_n != len(excluded_rows) and excluded_rows:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL flood_guard.excluded={excluded_n} != "
+                f"excluded.csv={len(excluded_rows)}"
+            )
+        if members_n and members_n != len(member_rows) and member_rows:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL flood_guard.poam_members={members_n} != "
+                f"poam_members.csv={len(member_rows)}"
+            )
+        budget = fg.get("budget") if isinstance(fg.get("budget"), dict) else {}
+        if budget.get("status") not in {"", None, "ok", "exceeded"}:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL budget.status={budget.get('status')}"
+            )
     poam = poam_path_of(out)
     fed = out / "poam" / "poam_fedramp.csv"
     if poam.is_file() and fed.is_file() and first_nonempty_line(poam) == POAM_HEADER:

@@ -25,6 +25,7 @@ from shared.control_map import (
 )
 from shared.poam_rollup import (
     POAM_MEMBERS_FIELDS,
+    collect_finding_merges,
     flood_guard_summary,
     reason_code_of,
 )
@@ -267,9 +268,17 @@ def load() -> dict:
     if overrides.is_file():
         asset_ledger.apply_overrides(overrides)
     raw = attach_asset_uids(_load_canonical(), asset_ledger)
+    findings_in_n = sum(1 for rec in raw if rec.get("kind") == "finding")
     deduped = _dedupe(raw)
     merge_rows = list(getattr(deduped, "merges", []) or [])
-    records = dedupe_hardening(dedupe_weaknesses(deduped))
+    after_weakness = dedupe_weaknesses(deduped)
+    merge_rows.extend(
+        collect_finding_merges(deduped, after_weakness, detail="dedupe_weaknesses")
+    )
+    records = dedupe_hardening(after_weakness)
+    merge_rows.extend(
+        collect_finding_merges(after_weakness, records, detail="dedupe_hardening")
+    )
     merged_n = max(0, len(raw) - len(records))
     now = iso_now()
     try:
@@ -444,6 +453,15 @@ def load() -> dict:
         ),
     )
     breakdown = poam_breakdown(ranked, lighter=lighter)
+    if merge_rows:
+        reasons = dict(breakdown.get("excluded_by_reason") or {})
+        reasons["DUPLICATE_INSTANCE"] = int(reasons.get("DUPLICATE_INSTANCE") or 0) + len(
+            merge_rows
+        )
+        breakdown["excluded_by_reason"] = reasons
+        breakdown["weaknesses_total"] = int(breakdown.get("weaknesses_total") or 0) + len(
+            merge_rows
+        )
     decision_pairs = iter_poam_decisions(
         ranked, lighter=lighter, ledger=poam_ledger, assets_n=len(ciso_assets)
     )
@@ -486,18 +504,6 @@ def load() -> dict:
                     detail,
                 ]
             )
-            if superseded_by or winner_ref:
-                member_rows.append(
-                    [
-                        rec.get("ref_id") or "",
-                        winner_ref,
-                        str((ledger_by_ref.get(str(rec.get("ref_id") or "")) or {}).get("poam_id") or ""),
-                        superseded_by,
-                        code,
-                        source,
-                        detail,
-                    ]
-                )
             continue
         fields = poam_fields(rec, mapped, today)
         item = ledger_by_ref.get(str(rec.get("ref_id") or ""))
@@ -517,6 +523,16 @@ def load() -> dict:
                 status,
                 estate,
                 *[fields[key] for key in POAM_EXTRA_FIELDS],
+            ]
+        )
+        pid = str(fields.get("poam_id") or "")
+        member_rows.append(
+            [
+                pid,
+                rec.get("ref_id") or "",
+                pid,
+                assets_s,
+                ciso_finding_severity(rec.get("severity")),
             ]
         )
     _pid_idx = poam_header.index("poam_id")
@@ -582,13 +598,18 @@ def load() -> dict:
         kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "")
         kept_item = ledger_by_ref.get(kept_ref) if kept_ref else None
         parent_id = str((kept_item or {}).get("poam_id") or "")
-        member_rows.append(
+        mapped = mapped_by_ref.get(str(rec.get("ref_id") or "")) or map_finding(rec)
+        assets_s = "|".join(rec.get("assets") or [])
+        excluded_rows.append(
             [
                 rec.get("ref_id") or "",
-                kept_ref,
-                "",
+                weakness_name_for(rec, mapped),
+                assets_s,
+                canon_severity(rec.get("severity")),
+                "DUPLICATE_INSTANCE",
                 parent_id,
                 "DUPLICATE_INSTANCE",
+                parent_id or kept_ref,
                 rec.get("source") or "",
                 str(merge.get("detail") or "dedupe"),
             ]
@@ -744,6 +765,10 @@ def load() -> dict:
             assets_n=len(ciso_assets),
             merges_n=len(merge_rows),
             members_n=len(member_rows),
+            findings_in=findings_in_n,
+            poam_rows=len(poam_rows),
+            excluded_n=len(excluded_rows),
+            lighter=lighter,
         ),
         "sensors": {row["source"]: row for row in sensor_rows},
         "coverage": {"sensors": sensor_rows},

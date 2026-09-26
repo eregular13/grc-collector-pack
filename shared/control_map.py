@@ -1518,6 +1518,12 @@ POAM_EXCLUDE_REASONS = frozenset(
         "FALSE_POSITIVE_CANDIDATE",
         "MANUAL_CHECK",
         "MUTED",
+        "HONEYPOT",
+        "LIGHTER_LOW",
+        "LIGHTER_MEDIUM",
+        "ACCEPTED_RISK",
+        "UNVERIFIED_BANNER_CVE",
+        "NOT_YET_LATE",
         "unexplained",
         "UNEXPLAINED",
     }
@@ -1620,7 +1626,7 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
         return {
             "include": include,
             "reason": reason,
-            "reason_code": reason_code_of(reason),
+            "reason_code": reason_code_of(reason, include=include),
             "severity": sev,
             "klass": klass,
             "rollup_key": rk,
@@ -1636,6 +1642,12 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
         return _done(False, "MANUAL_CHECK")
     if token == "NOT_A_WEAKNESS":
         return _done(False, "not_a_weakness")
+    if token == "ACCEPTED_RISK":
+        return _done(False, "ACCEPTED_RISK")
+    if token == "UNVERIFIED_BANNER_CVE":
+        return _done(False, "UNVERIFIED_BANNER_CVE")
+    if token == "HONEYPOT":
+        return _done(False, "honeypot")
     if check in MISCONFIG_RULES:
         return _done(True, "nse_misconfig")
     if _is_honeypot(rec):

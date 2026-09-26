@@ -23,6 +23,8 @@ from shared.poam_fedramp import write_fedramp_poam
 from shared.poam_ledger import apply_ledger, apply_rollups, fp_v1
 from shared.poam_rollup import (
     REASON_CODES as ROLLUP_CODES,
+    budget_source_cap,
+    budget_target,
     classify,
     escalate_budget,
     extra_exclude_token,
@@ -62,6 +64,12 @@ def test_reason_codes_cover_spec_minimum() -> None:
         "FALSE_POSITIVE_CANDIDATE",
         "MANUAL_CHECK",
         "MUTED",
+        "HONEYPOT",
+        "LIGHTER_LOW",
+        "LIGHTER_MEDIUM",
+        "ACCEPTED_RISK",
+        "UNVERIFIED_BANNER_CVE",
+        "NOT_YET_LATE",
     }
     assert needed <= REASON_CODES
     assert needed <= ROLLUP_CODES
@@ -69,7 +77,13 @@ def test_reason_codes_cover_spec_minimum() -> None:
     assert reason_code_of("severity_info") == "INFO_ONLY"
     assert reason_code_of("telemetry") == "TELEMETRY"
     assert reason_code_of("telemetry_duplicate") == "DUPLICATE_INSTANCE"
+    assert reason_code_of("honeypot") == "HONEYPOT"
+    assert reason_code_of("severity_low") == "LIGHTER_LOW"
+    assert reason_code_of("severity_low", include=True) == "severity_low"
+    assert reason_code_of("severity_medium_not_key") == "LIGHTER_MEDIUM"
     assert reason_code_of("") == "UNEXPLAINED"
+    # Vocab only — E4 never assigned.
+    assert reason_code_of("NOT_YET_LATE") == "NOT_YET_LATE"
 
 
 def test_classify_extra_exclude_tokens() -> None:
@@ -129,9 +143,25 @@ def test_build_rejects_e4_late_only() -> None:
         build([(rec, poam_decision(rec))], profile="late-only", assets_n=1)
 
 
-def test_escalate_budget_keeps_small_estates() -> None:
-    assert escalate_budget("full", 10) >= 200
-    assert escalate_budget("full", 80) >= 200
+def test_escalate_budget_is_report_only_spec_t() -> None:
+    assert budget_target(10) == 25
+    assert budget_target(80) == 40
+    assert budget_target(150) == 75
+    assert budget_source_cap(10) == 10
+    assert budget_source_cap(80) == 12
+    assert budget_source_cap(150) == 23
+    assert escalate_budget("full", 10) == 25
+    assert escalate_budget("full", 80) == 40
+
+
+def test_budget_does_not_remove_rows() -> None:
+    from shared.poam_rollup import build
+
+    rows = [_finding(ref_id=f"NMAP-{i}", extra={"port": str(22 + i), "check_id": f"p{i}"}) for i in range(30)]
+    pairs = [(rec, poam_decision(rec)) for rec in rows]
+    out = build(pairs, profile="full", assets_n=10)
+    assert sum(1 for _r, d in out if d.get("include")) == 30
+    assert all(d.get("budget_status") == "exceeded" for _r, d in out)
 
 
 def test_dedupe_returns_merges() -> None:
@@ -209,7 +239,8 @@ def test_loader_g0_and_flood_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     by_ref = {row["finding_ref_id"]: row for row in rows}
     assert by_ref["NMAP-info"]["excluded_reason"] == "severity_info"
     assert by_ref["NMAP-info"]["reason_code"] == "INFO_ONLY"
-    assert by_ref["HPOT-1"]["reason_code"] == "NOT_A_WEAKNESS"
+    assert by_ref["HPOT-1"]["reason_code"] == "HONEYPOT"
+    assert by_ref["HPOT-1"]["excluded_reason"] == "honeypot"
     assert by_ref["CLD-cost"]["reason_code"] == "NOT_A_WEAKNESS"
     assert (tmp_path / "poam" / "poam_members.csv").is_file()
     with (tmp_path / "poam" / "poam.csv").open(encoding="utf-8", newline="") as fh:
@@ -289,3 +320,49 @@ def test_flood_guard_summary_counts_unexplained() -> None:
     pairs = [(rec, {"include": False, "reason": "", "reason_code": "UNEXPLAINED"})]
     fg = flood_guard_summary(pairs, profile="full", assets_n=1)
     assert fg["UNEXPLAINED"] == 1
+    assert fg["excluded_by_code"]["UNEXPLAINED"] == 1
+    assert set(fg) >= {
+        "findings_in",
+        "duplicates_merged",
+        "poam_rows",
+        "poam_members",
+        "excluded",
+        "excluded_by_code",
+        "rollup_level_by_source",
+        "budget",
+        "profile",
+        "lighter",
+    }
+    assert fg["budget"]["status"] in {"ok", "exceeded"}
+    assert fg["e4_late_only"] is False
+
+
+def test_c5_merges_land_in_excluded_and_reconcile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    a = _finding(ref_id="NMAP-keep", extra={"port": "22", "check_id": "ssh", "id": "ssh-open"})
+    b = _finding(ref_id="NMAP-dup", extra={"port": "22", "check_id": "ssh", "id": "ssh-open"})
+    write_canonical("inventory-nmap", [a, b])
+    summary = load()
+    fg = summary["flood_guard"]
+    assert fg["duplicates_merged"] == 1
+    assert fg["findings_in"] == fg["poam_members"] + fg["excluded"]
+    assert summary["excluded_by_reason"].get("DUPLICATE_INSTANCE") == 1
+    excluded = csv_rows(tmp_path / "poam" / "excluded.csv")
+    assert any(row["finding_ref_id"] == "NMAP-dup" and row["reason_code"] == "DUPLICATE_INSTANCE" for row in excluded)
+    members = csv_rows(tmp_path / "poam" / "poam_members.csv")
+    assert any(row["finding_ref_id"] == "NMAP-keep" for row in members)
+    assert all(row["finding_ref_id"] != "NMAP-dup" for row in members)
+    assert_flood_guard(tmp_path, summary)
+
+
+def test_accepted_risk_and_unverified_banner_codes() -> None:
+    ao = _finding(extra={"exclude_reason": "ACCEPTED_RISK", "port": "22"})
+    assert extra_exclude_token(ao) == "ACCEPTED_RISK"
+    assert poam_decision(ao)["include"] is False
+    assert poam_decision(ao)["reason_code"] == "ACCEPTED_RISK"
+
+    banner = _finding(extra={"exclude_reason": "UNVERIFIED_BANNER_CVE", "port": "22"})
+    assert poam_decision(banner)["reason_code"] == "UNVERIFIED_BANNER_CVE"
