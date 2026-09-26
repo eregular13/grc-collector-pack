@@ -10,9 +10,10 @@ ScubaGear/testssl/Nikto, #136 no out/riskready) into
 `results[]`, Powerpipe/Steampipe, Okta/Google detect, BloodHound CE v6,
 Trivy secrets/misconfig, osquery `hostIdentifier`, ScoutSuite
 danger→high, Maester default medium). ScubaGear/Maester tenant from #139
-(`_tenant_from`, never invent contoso). Union `SOURCES.md`. Counts
-recomputed on the merged tree after lab. Catalog **unchanged**.
-paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+(`_tenant_from`, never invent contoso). Union `SOURCES.md`. Host-lab
+**unchanged** 81 / 104 / 109. pytest **1087** (+19 vs master 1068).
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
 
 ## cycle 194 — real PingCastle / Greenbone / Scuba / testssl / Nikto (2026-09-26)
 

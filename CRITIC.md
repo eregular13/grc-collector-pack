@@ -1,12 +1,16 @@
 # CRITIC — cycle 195 (MERGE_MASTER_REAL_OUTPUT_PARSERS)
 
-Merge origin/master `5adc8b7` into the real-output parser branch.
-Lab counts recomputed on the merged tree (see lab stamp). Master's
-#133/#132/#139/#136 behavior stays; §9 parser fixes stay; ScubaGear/
-Maester tenant from #139 wins (never invent contoso). Union
-`fixtures/samples/SOURCES.md`. Catalog **unchanged**
-**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
-RiskReady stay-out. CoS #48 rails below are unchanged.
+Lab this brick: pytest **1087** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=81` `findings=104`
+`applied_controls=123` `risk_scenarios=123` `poam=109` `demo=true`).
+sample_to_sor + farm_drop_to_sor honesty PASS (cold work dirs).
+Zero P0/P1. Host-lab counts **unchanged** vs master `5adc8b7` /
+cycle 194 (81 / 104 / 109). Pytest **1087** = master 1068 plus the
+§9 real-output parser tests. Merge origin/master (`#133` `#132`
+`#139` `#136`) into the parser branch; ScubaGear/Maester tenant from
+#139 wins (never invent contoso). Union `SOURCES.md`. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
 
 # CRITIC — cycle 194 (REAL_SAMPLE_PARSERS)
 
