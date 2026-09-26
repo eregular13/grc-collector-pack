@@ -30,6 +30,7 @@ from shared.estate_pages import (
     EstateStamp,
     PageContext,
     _FIXTURE_MANIFEST_NAME,
+    _LEGACY_SAMPLE_KEY,
     _engagement_window,
     _manifest_matches,
     _sha256_bytes,
@@ -885,9 +886,54 @@ def test_pack_fixture_manifest_matches_on_disk() -> None:
     expected = json.loads(dest.read_text(encoding="utf-8"))
     got = build_fixture_manifest(fixtures)
     assert got["files"] == expected["files"]
+    # files[] is the exact on-disk check; legacy hashes are preserved, not compared.
+    assert got.get(_LEGACY_SAMPLE_KEY) == expected.get(_LEGACY_SAMPLE_KEY)
+    legacy = expected.get(_LEGACY_SAMPLE_KEY) or []
+    assert isinstance(legacy, list)
+    assert len(legacy) >= 32
     catalog = fixture_content_hashes()
     assert catalog
     assert len(expected["files"]) >= 200
+    assert catalog.issuperset({str(h).lower() for h in legacy})
+
+
+_PRIOR_SAMPLE_DIR = ROOT / "tests" / "data" / "prior_sample_5e6e591"
+
+
+def test_prior_release_restamped_fixtures_still_classify_sample(tmp_path: Path) -> None:
+    """5e6e591 bytes of restamped fixtures stay SAMPLE under CLIENT settings.
+
+    Testdata is `git show 5e6e591:fixtures/<path>` for the 32 restamped
+    files. CI checkouts are shallow and do not have that commit.
+    """
+    import shared.estate_pages as ep
+
+    ep._FIXTURE_HASH_CACHE = None
+    paths = sorted(p for p in _PRIOR_SAMPLE_DIR.rglob("*") if p.is_file())
+    assert len(paths) == 32
+    kinds = {p.relative_to(_PRIOR_SAMPLE_DIR).parts[0] for p in paths}
+    assert {"demo", "lab-drop", "samples"} <= kinds
+    catalog = fixture_content_hashes()
+    for src in paths:
+        rel = str(src.relative_to(_PRIOR_SAMPLE_DIR)).replace("\\", "/")
+        blob = src.read_bytes()
+        dest_in = tmp_path / rel.replace("/", "_")
+        dest_in.mkdir()
+        dest_in.joinpath(src.name).write_bytes(blob)
+        hits, others = in_dir_fixture_hits(dest_in)
+        assert src.name in hits, rel
+        assert others == (), rel
+        stamp = classify_estate(
+            [_finding("f1")],
+            in_dir=dest_in,
+            env={**_CLIENT_AUTH_ENV, "GRC_CLIENT_NAME": "AcmeHealth"},
+            client_name="AcmeHealth",
+        )
+        assert stamp.kind == "SAMPLE", (rel, stamp.kind, stamp.label)
+        assert stamp.kind not in {"CLIENT", "MIXED"}
+        assert not stamp.label.startswith("CLIENT:")
+        fps = file_content_fingerprints(dest_in / src.name)
+        assert fps & catalog, rel
 
 
 def test_unreadable_fixture_in_catalog_fail_closed(

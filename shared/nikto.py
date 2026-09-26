@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterator
@@ -224,8 +225,26 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
     return out
 
 
+_NIKTO_GMT = re.compile(r"^(.*?)\s*\(\s*GMT\s*([+-]?\d+)\s*\)\s*$", re.I)
+
+
+def _nikto_start_time(raw: str) -> str:
+    """Nikto ``2026-09-04 17:00:00 (GMT0)`` / ``(GMT-7)`` → offset datetime."""
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    match = _NIKTO_GMT.match(text)
+    if not match:
+        return text
+    body = match.group(1).strip()
+    off = int(match.group(2))
+    sign = "+" if off >= 0 else "-"
+    return f"{body}{sign}{abs(off):02d}:00"
+
+
 def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
     host = "unknown"
+    start = ""
     for line in text.splitlines():
         raw = line.strip()
         if not raw.startswith("+"):
@@ -237,6 +256,9 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
             continue
         if low.startswith("target ip") and host in {"unknown", ""}:
             host = rest.split(":", 1)[-1].strip() or host
+            continue
+        if low.startswith("start time"):
+            start = _nikto_start_time(rest.split(":", 1)[-1] if ":" in rest else "")
             continue
         if ":" not in rest:
             continue
@@ -252,7 +274,10 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
                 url = "/"
         elif not left.startswith("/"):
             continue
-        yield {"host": host, "url": url, "msg": msg, "id": left}
+        row = {"host": host, "url": url, "msg": msg, "id": left}
+        if start:
+            row["scan_time"] = start
+        yield row
 
 
 def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:

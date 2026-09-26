@@ -75,6 +75,7 @@ def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         or item.get("Id")
         or "asff"
     )
+    created = str(item.get("CreatedAt") or item.get("UpdatedAt") or "").strip()
     return {
         "CheckID": check_id,
         "CheckTitle": item.get("Title") or item.get("GeneratorId") or "asff",
@@ -86,6 +87,7 @@ def _asff_to_prowler(item: dict[str, Any]) -> dict[str, Any]:
         "ServiceName": service,
         "AccountId": str(item.get("AwsAccountId") or ""),
         "Muted": _is_muted(item),
+        **({"scan_time": created} if created else {}),
     }
 
 
@@ -556,7 +558,7 @@ def _iter_findings(payload: Any, path: Path | None = None) -> list[dict[str, Any
         return [_ocsf_to_prowler(payload)]
     if "GeneratorId" in payload or "Resources" in payload:
         return [_asff_to_prowler(payload)]
-    custodian = _custodian_findings(payload)
+    custodian = _custodian_findings(payload, path)
     if custodian:
         return custodian
     powerpipe = _powerpipe_findings(payload)
@@ -618,11 +620,64 @@ def _read_prowler_csv(path: Path) -> list[dict[str, Any]]:
     return out
 
 
+def _scoutsuite_last_run(payload: Any) -> str:
+    """ScoutSuite ``last_run.time`` — e.g. ``2026-09-22 14:00:00+0000``."""
+    if not isinstance(payload, dict):
+        return ""
+    last = payload.get("last_run")
+    if not isinstance(last, dict):
+        return ""
+    raw = str(last.get("time") or "").strip()
+    if not raw:
+        return ""
+    if raw.endswith(" UTC"):
+        raw = raw[:-4] + "+00:00"
+    if len(raw) >= 5 and raw[-5] in "+-" and raw[-3] != ":":
+        raw = raw[:-2] + ":" + raw[-2:]
+    return raw
+
+
+def _execution_start(src: Any) -> Any:
+    """Cloud Custodian ``execution.start`` — keep the raw float epoch or ISO."""
+    if not isinstance(src, dict):
+        return ""
+    exe = src.get("execution")
+    if isinstance(exe, dict) and exe.get("start") not in (None, ""):
+        return exe["start"]
+    return ""
+
+
+def _custodian_execution_start(payload: Any, path: Path | None) -> Any:
+    hit = _execution_start(payload)
+    if hit not in (None, ""):
+        return hit
+    if path is None:
+        return ""
+    meta = path.parent / "metadata.json"
+    if not meta.is_file():
+        return ""
+    try:
+        doc = json.loads(meta.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    return _execution_start(doc)
+
+
+def _stamp_scan_time(items: list[dict[str, Any]], stamp: Any) -> list[dict[str, Any]]:
+    if stamp in (None, ""):
+        return items
+    for item in items:
+        if item.get("scan_time") in (None, ""):
+            item["scan_time"] = stamp
+    return items
+
+
 def _scoutsuite_findings(payload: Any) -> list[dict[str, Any]]:
     services = payload.get("services") if isinstance(payload, dict) else None
     if not isinstance(services, dict):
         return []
     out: list[dict[str, Any]] = []
+    stamp = _scoutsuite_last_run(payload)
     for svc_name, svc in services.items():
         if not isinstance(svc, dict):
             continue
@@ -644,28 +699,30 @@ def _scoutsuite_findings(payload: Any) -> list[dict[str, Any]]:
             # ScoutSuite only has danger/warning — danger is high, not a critical tier.
             sev = {"danger": "high", "warning": "medium", "info": "low"}.get(level, "high")
             for rid in items:
-                out.append(
-                    {
-                        "CheckID": str(fid),
-                        "CheckTitle": f"ScoutSuite {svc_name}: {item.get('description') or fid}",
-                        "Status": "FAIL",
-                        "Severity": sev,
-                        "ResourceId": str(rid),
-                        "ResourceArn": str(rid),
-                        "Description": f"{svc_name} {item.get('description') or fid}",
-                        "ServiceName": str(svc_name),
-                    }
-                )
+                row = {
+                    "CheckID": str(fid),
+                    "CheckTitle": f"ScoutSuite {svc_name}: {item.get('description') or fid}",
+                    "Status": "FAIL",
+                    "Severity": sev,
+                    "ResourceId": str(rid),
+                    "ResourceArn": str(rid),
+                    "Description": f"{svc_name} {item.get('description') or fid}",
+                    "ServiceName": str(svc_name),
+                }
+                if stamp:
+                    row["scan_time"] = stamp
+                out.append(row)
     return out
 
 
-def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
+def _custodian_findings(payload: Any, path: Path | None = None) -> list[dict[str, Any]]:
     policies: list[dict[str, Any]] = []
     if isinstance(payload, dict) and isinstance(payload.get("policies"), list):
         policies = [p for p in payload["policies"] if isinstance(p, dict)]
     elif isinstance(payload, dict) and payload.get("name") and "resources" in payload:
         policies = [payload]
     out: list[dict[str, Any]] = []
+    stamp = _custodian_execution_start(payload, path)
     for pol in policies:
         pname = str(pol.get("name") or "c7n-policy")
         resource = str(pol.get("resource") or "cloud")
@@ -746,7 +803,7 @@ def _custodian_findings(payload: Any) -> list[dict[str, Any]]:
             elif klass == "security":
                 item["Classification"] = "security"
             out.append(item)
-    return out
+    return _stamp_scan_time(out, stamp)
 
 
 def _custodian_from_resources(rows: list[dict[str, Any]], path: Path | None) -> list[dict[str, Any]]:
@@ -761,7 +818,8 @@ def _custodian_from_resources(rows: list[dict[str, Any]], path: Path | None) -> 
             "filters": meta.get("filters") or [],
             "resources": rows,
             "_path": path,
-        }
+        },
+        path=path,
     )
     sev, sev_source = _custodian_severity(pname, meta, path)
     for item in findings:
@@ -1019,8 +1077,15 @@ def parse_file(path: Path) -> list[dict[str, Any]]:
                 extra["resources"] = list(affected_rids)
             if account:
                 extra["account_id"] = account
-            scan_time = str(item.get("scan_time") or item.get("Timestamp") or item.get("time_dt") or "")
-            if scan_time and not is_placeholder_id(scan_time):
+            scan_time = (
+                item.get("scan_time")
+                if item.get("scan_time") not in (None, "")
+                else item.get("Timestamp")
+                or item.get("timestamp")
+                or item.get("time_dt")
+                or ""
+            )
+            if scan_time not in (None, "") and not is_placeholder_id(str(scan_time)):
                 extra["scan_time"] = scan_time
             if sev_unmapped:
                 extra["severity_unmapped"] = True

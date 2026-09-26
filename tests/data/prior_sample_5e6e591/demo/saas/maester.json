@@ -1,0 +1,19 @@
+{
+  "Tenant": "contoso.onmicrosoft.com",
+  "TestResults": [
+    {
+      "Id": "MT.1035",
+      "Name": "MT.1035",
+      "Result": "Failed",
+      "Severity": "high",
+      "Description": "Privileged users should have phishing-resistant MFA"
+    },
+    {
+      "Id": "MT.1001",
+      "Name": "MT.1001",
+      "Result": "Passed",
+      "Severity": "medium",
+      "Description": "Security defaults documented"
+    }
+  ]
+}

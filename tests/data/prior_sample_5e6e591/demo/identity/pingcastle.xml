@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HealthcheckData>
+  <PrivilegedGroups>
+    <HealthcheckGroupData>
+      <GroupName>Backup Operators</GroupName>
+      <Description>PingCastle privileged group</Description>
+    </HealthcheckGroupData>
+    <HealthcheckGroupData>
+      <GroupName>Domain Admins</GroupName>
+      <Description>Built-in Domain Admins</Description>
+    </HealthcheckGroupData>
+  </PrivilegedGroups>
+  <PrivilegedAccounts>
+    <Account>
+      <Name>SVC-KRBTGT-ROAST</Name>
+      <HasSPN>true</HasSPN>
+      <SPN>MSSQLSvc/sql2.corp.local</SPN>
+      <DontReqPreAuth>true</DontReqPreAuth>
+      <Description>AS-REP + kerberoastable</Description>
+    </Account>
+  </PrivilegedAccounts>
+</HealthcheckData>

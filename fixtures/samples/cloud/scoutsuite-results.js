@@ -1,4 +1,7 @@
 scoutsuite_results = {
+  "last_run": {
+    "time": "2026-09-22 14:00:00+0000"
+  },
   "services": {
     "s3": {
       "findings": {

@@ -342,7 +342,10 @@ def _gobuster_rows(text: str) -> list[dict[str, Any]]:
 
 
 def _path_exposure_records(
-    now: str, rows: list[dict[str, Any]], labels_extra: list[str]
+    now: str,
+    rows: list[dict[str, Any]],
+    labels_extra: list[str],
+    scan_time: str = "",
 ) -> list[dict]:
     records: list[dict] = []
     seen_assets: set[str] = set()
@@ -400,6 +403,7 @@ def _path_exposure_records(
                     "url": url,
                     "path": path,
                     "check_id": f"path-exposure-{slug(path, maxlen=None)}",
+                    **({"scan_time": scan_time} if scan_time else {}),
                 },
             )
         )
@@ -509,7 +513,12 @@ def parse_file(path: Path) -> list[dict]:
             return records
 
         if _is_ffuf(payload, path):
-            return _path_exposure_records(now, _ffuf_rows(payload), labels_extra=["ffuf"])
+            stamp = ""
+            if isinstance(payload, dict):
+                stamp = str(payload.get("time") or "")
+            return _path_exposure_records(
+                now, _ffuf_rows(payload), labels_extra=["ffuf"], scan_time=stamp
+            )
 
     text = read_text(path)
     if path.suffix.lower() in {".txt", ".log"} or "gobuster" in path.name.lower():
@@ -589,7 +598,14 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=labels,
                     collected_at=now,
-                    extra={"check_id": "sensitive-hostname"},
+                    extra={
+                        "check_id": "sensitive-hostname",
+                        **(
+                            {"timestamp": str(meta.get("timestamp") or meta.get("time") or "")}
+                            if (meta.get("timestamp") or meta.get("time"))
+                            else {}
+                        ),
+                    },
                 )
             )
         seen_urls: set[str] = set()
@@ -641,6 +657,11 @@ def parse_file(path: Path) -> list[dict]:
                             if admin_ui
                             else f"httpx-url-{slug(path_s or url, maxlen=None)}"
                         ),
+                        **(
+                            {"timestamp": str(row.get("timestamp") or row.get("time") or "")}
+                            if (row.get("timestamp") or row.get("time"))
+                            else {}
+                        ),
                     },
                 )
             )
@@ -661,6 +682,11 @@ def parse_file(path: Path) -> list[dict]:
                         "port": "443",
                         "service": "https",
                         "check_id": "tls-weak-cipher",
+                        **(
+                            {"timestamp": str(meta.get("timestamp") or meta.get("time") or "")}
+                            if (meta.get("timestamp") or meta.get("time"))
+                            else {}
+                        ),
                     },
                 )
             )

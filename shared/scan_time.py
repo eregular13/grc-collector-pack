@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +74,16 @@ _NESSUS_EN = re.compile(
 )
 
 _TZ_NAME = re.compile(r"([+-])(\d{2}):?(\d{2})$")
+# Cloud Custodian writes execution.start as time.time() (float). Digit-only
+# strings were already epochs; float strings were not.
+_EPOCH_NUM = re.compile(r"^-?\d+(?:\.\d+)?$")
+_EPOCH_MIN_DATE = date(2000, 1, 1)
+
+
+def _plausible_epoch_date(d: date) -> bool:
+    """Reject 1970-from-tiny-epoch and far-future noise."""
+    today = datetime.now(timezone.utc).date()
+    return _EPOCH_MIN_DATE <= d <= today + timedelta(days=1)
 
 
 def parse_scan_datetime(raw: Any) -> tuple[datetime, str] | None:
@@ -91,13 +101,25 @@ def parse_scan_datetime(raw: Any) -> tuple[datetime, str] | None:
         return dt, _zone_label(dt)
     if isinstance(raw, date) and not isinstance(raw, datetime):
         return datetime(raw.year, raw.month, raw.day), "artifact-local"
-    if isinstance(raw, (int, float)) or (isinstance(raw, str) and raw.strip().isdigit()):
+    if isinstance(raw, bool):
+        return None
+    epoch_raw: float | None = None
+    if isinstance(raw, (int, float)):
+        epoch_raw = float(raw)
+    elif isinstance(raw, str) and _EPOCH_NUM.fullmatch(raw.strip()):
         try:
-            epoch = int(raw)
-            if epoch >= 10**11:
-                epoch //= 1000
-            dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
+            epoch_raw = float(raw.strip())
+        except ValueError:
+            epoch_raw = None
+    if epoch_raw is not None:
+        try:
+            epoch = epoch_raw
+            if abs(epoch) >= 10**11:
+                epoch /= 1000.0
+            dt = datetime.fromtimestamp(int(epoch), tz=timezone.utc)
         except (OverflowError, OSError, ValueError):
+            return None
+        if not _plausible_epoch_date(dt.date()):
             return None
         return dt, "UTC"
     text = str(raw).strip()

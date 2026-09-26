@@ -1,4 +1,7 @@
 {
+  "execution": {
+    "start": 1790262000.123
+  },
   "policies": [
     {
       "name": "s3-encryption-missing",

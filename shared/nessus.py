@@ -104,8 +104,9 @@ def _cwes_from_item(item: ET.Element) -> list[str]:
 
 
 def _host_scan_time(host_el: ET.Element) -> str:
-    """HOST_START, else HOST_END, from ReportHost HostProperties tags."""
+    """HOST_START, else HOST_START_TIMESTAMP, else HOST_END."""
     start = ""
+    start_ts = ""
     end = ""
     for child in list(host_el):
         if _tag(child) != "HostProperties":
@@ -119,9 +120,11 @@ def _host_scan_time(host_el: ET.Element) -> str:
                 continue
             if name in {"HOST_START", "host_start"}:
                 start = val
-            elif name in {"HOST_END", "host_end"}:
+            elif name in {"HOST_START_TIMESTAMP", "host_start_timestamp"}:
+                start_ts = val
+            elif name in {"HOST_END", "host_end", "HOST_END_TIMESTAMP", "host_end_timestamp"}:
                 end = val
-    raw = start or end
+    raw = start or start_ts or end
     if not raw:
         return ""
     parsed = parse_scan_datetime(raw)

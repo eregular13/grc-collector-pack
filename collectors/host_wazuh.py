@@ -433,6 +433,7 @@ _LYNIS_STAR = re.compile(r"^\*\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
 _LYNIS_DAT = re.compile(r"^(warning|suggestion)\[\]=([^|]+)\|(.+)$", re.I)
 _LYNIS_HOST = re.compile(r"(?im)^(?:hostname\s*[:=]\s*|hostname\s+)(\S+)")
 _LYNIS_INDEX = re.compile(r"(?im)^hardening_index\s*[:=]\s*(\d+)")
+_LYNIS_DT = re.compile(r"(?im)^report_datetime_start\s*[:=]\s*(.+)$")
 
 
 def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[dict]:
@@ -448,6 +449,8 @@ def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[di
         host = mhost.group(1).strip().strip("\"'")
     index_match = _LYNIS_INDEX.search(text)
     hardening_index = int(index_match.group(1)) if index_match else None
+    dt_match = _LYNIS_DT.search(text)
+    lynis_stamp = dt_match.group(1).strip().strip("\"'") if dt_match else ""
     rows: list[tuple[str, str, str]] = []
     for line in text.splitlines():
         raw = line.strip()
@@ -514,6 +517,8 @@ def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[di
         seen.add(key)
         extra = extra_control_fields(control)
         extra.update({"check_id": cid, "id": cid, "lynis_kind": kind, "tool": "lynis"})
+        if lynis_stamp:
+            extra["scan_time"] = lynis_stamp
         records.append(
             make_record(
                 kind="finding",

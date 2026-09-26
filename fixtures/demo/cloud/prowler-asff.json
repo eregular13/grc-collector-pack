@@ -7,6 +7,8 @@
       "Description": "ASFF export: encryption not enforced on demo-public-assets.",
       "Severity": {"Label": "HIGH"},
       "Compliance": {"Status": "FAILED"},
+      "CreatedAt": "2026-09-14T16:30:00.000Z",
+      "UpdatedAt": "2026-09-14T16:30:00.000Z",
       "Resources": [
         {"Id": "arn:aws:s3:::demo-public-assets", "Type": "AwsS3Bucket"}
       ]
@@ -23,6 +25,8 @@
         "ProwlerServiceName": "s3",
         "Provider": "aws"
       },
+      "CreatedAt": "2026-09-14T16:30:00.000Z",
+      "UpdatedAt": "2026-09-14T16:30:00.000Z",
       "Resources": [
         {"Id": "arn:aws:s3:::demo-asff-open", "Type": "AwsS3Bucket"}
       ]

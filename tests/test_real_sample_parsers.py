@@ -1005,6 +1005,14 @@ def test_poam_status_date_is_utc_across_exports() -> None:
     assert len(fields["status_date"]) == 10
 
 
+def test_pingcastle_generation_date_feeds_detection_date() -> None:
+    recs = identity_ad.parse_file(SAMPLES / "pingcastle" / "one.xml")
+    hit = next(r for r in _findings(recs) if r["extra"].get("risk_id") == "A-MinPwdLen")
+    assert hit["extra"].get("scan_time") == "2024-06-06T13:01:09+02:00"
+    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    assert fields["original_detection_date"] == "2024-06-06"
+
+
 def test_pingcastle_rule_specific_remediation() -> None:
     recs = identity_ad.parse_file(SAMPLES / "pingcastle" / "one.xml")
     minpwd = next(r for r in _findings(recs) if r["extra"].get("risk_id") == "A-MinPwdLen")

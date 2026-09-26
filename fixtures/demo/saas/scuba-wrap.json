@@ -1,5 +1,12 @@
 {
   "data": {
+    "MetaData": {
+      "TenantId": "11111111-2222-3333-4444-555555555555",
+      "DisplayName": "Contoso",
+      "DomainName": "contoso.onmicrosoft.com",
+      "TimestampZulu": "2026-09-16T11:05:00.043Z",
+      "Tool": "ScubaGear"
+    },
     "Results": [
       {
         "Tenant": "contoso.onmicrosoft.com",

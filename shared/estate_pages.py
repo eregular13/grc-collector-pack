@@ -78,6 +78,9 @@ _AUTH_PLACEHOLDERS = frozenset(
 _FIXTURE_HASH_CACHE: frozenset[str] | None = None
 _BYTES_FP_CACHE: dict[str, frozenset[str]] = {}
 _FIXTURE_MANIFEST_NAME = "FINGERPRINTS.json"
+# Prior-release hashes of restamped fixtures. The classifier accepts these
+# as SAMPLE; the exact on-disk files[] check ignores them.
+_LEGACY_SAMPLE_KEY = "legacy_sample_sha256"
 _PACK_DEMO_SCOPE = Path("dropbox") / "SCOPE.yaml"
 
 CLIENT_PAGE_FORBIDDEN = (
@@ -618,6 +621,30 @@ def _pack_root() -> Path | None:
         return None
 
 
+def _legacy_sample_hashes(manifest: Any) -> frozenset[str]:
+    """Accepted SAMPLE fingerprints from a prior release (not on-disk files[])."""
+    if not isinstance(manifest, dict):
+        return frozenset()
+    raw = manifest.get(_LEGACY_SAMPLE_KEY)
+    out: set[str] = set()
+    if isinstance(raw, list):
+        for item in raw:
+            text = str(item or "").strip().lower()
+            if len(text) == 64 and all(c in "0123456789abcdef" for c in text):
+                out.add(text)
+        return frozenset(out)
+    if isinstance(raw, dict):
+        for val in raw.values():
+            if isinstance(val, dict):
+                for key in ("raw", "norm"):
+                    text = str(val.get(key) or "").strip().lower()
+                    if len(text) == 64 and all(c in "0123456789abcdef" for c in text):
+                        out.add(text)
+            elif isinstance(val, list):
+                out.update(_legacy_sample_hashes({_LEGACY_SAMPLE_KEY: val}))
+    return frozenset(out)
+
+
 def build_fixture_manifest(fixtures_root: Path) -> dict[str, Any]:
     files: dict[str, dict[str, str]] = {}
     try:
@@ -633,7 +660,12 @@ def build_fixture_manifest(fixtures_root: Path) -> dict[str, Any]:
             "raw": _sha256_bytes(data),
             "norm": _sha256_bytes(normalize_fixture_bytes(data)),
         }
-    return {"version": 1, "files": files}
+    out: dict[str, Any] = {"version": 1, "files": files}
+    existing = _load_manifest(fixtures_root)
+    legacy = existing.get(_LEGACY_SAMPLE_KEY) if isinstance(existing, dict) else None
+    if legacy not in (None, "", [], {}):
+        out[_LEGACY_SAMPLE_KEY] = legacy
+    return out
 
 
 def _manifest_files_match(expected: Any, on_disk: dict[str, dict[str, str]]) -> bool:
@@ -736,6 +768,8 @@ def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
                     trusted = False
             elif not _manifest_files_match(expected, on_disk):
                 trusted = False
+            else:
+                found.update(_legacy_sample_hashes(expected))
     result = frozenset(found) if trusted else frozenset()
     if use_cache:
         _FIXTURE_HASH_CACHE = result
