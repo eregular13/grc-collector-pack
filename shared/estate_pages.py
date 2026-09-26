@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import os
+import re
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -74,7 +75,43 @@ CLIENT_PAGE_FORBIDDEN = (
     "overnight",
     "pytest",
     "E2E_PROVEN",
+    "list every collector folder",
+    "if no one did, print",
+    'print "not human-reviewed"',
+    "print 'not human-reviewed'",
+    "fell back to fixtures, by name",
 )
+
+# Generator instructions / unfilled template holes. [reviewer: …] slots stay.
+INSTRUCTION_LEAKS = (
+    "list every collector folder",
+    "if no one did, print",
+    'print "not human-reviewed"',
+    "print 'not human-reviewed'",
+    "fell back to fixtures, by name",
+    "collected by not recorded",
+    "[insert ",
+    "[fill in",
+    "{{",
+    "todo:",
+    "fixme",
+)
+
+CLIENT_FACING_RELS = (
+    "EXECUTIVE_SUMMARY.md",
+    "SCOPE_AND_TRUST.md",
+    "poam/poam.md",
+    "poam/ESTATE.txt",
+    "ciso-assistant/ESTATE.txt",
+    "opengrc/ESTATE.txt",
+    "opengrc/README.md",
+    "probo/ESTATE.txt",
+    "probo/README.md",
+    "MANIFEST",
+)
+
+# GNU coreutils: "<hash><two spaces><path>" (text) or "<hash><space>*<path>" (binary).
+SHA256SUM_LINE = re.compile(r"^([0-9a-f]{64}) [ *](.+)$")
 
 COLLECTOR_AREAS = {
     "cloud": "Cloud configuration",
@@ -113,13 +150,16 @@ SEV_TABLE = ("critical", "high", "medium", "low")
 MAX_EXEC_BODY_ROWS = {
     "top_n": 5,
     "areas": 4,
-    "scope": 8,
 }
 # One printed page: keep banner + limits; cut table rows if needed.
 MAX_PAGE_LINES = 58
+MAX_COVERAGE_GAP_ROWS = 4
+COVERAGE_GAPS_NONE = "None. Every sensor that received input was assessed."
+COVERAGE_GAPS_HEADING = "### Coverage gaps"
 
 EXPORT_CSV_REL = (
     "poam/poam.csv",
+    "poam/excluded.csv",
     "ciso-assistant/assets.csv",
     "ciso-assistant/applied_controls.csv",
     "ciso-assistant/evidences.csv",
@@ -587,80 +627,106 @@ def _frameworks_used(mapped_by_ref: dict[str, dict]) -> str:
     return ", ".join(names) if names else NOT_RECORDED
 
 
-def _uncovered_folders(in_dir: Path | None, records: list[dict]) -> list[str]:
-    folders = (
-        "cloud",
-        "nmap",
-        "vuln",
-        "wazuh",
-        "identity",
-        "easm",
-        "k8s",
-        "code",
-        "saas",
-        "honeypot",
-        "dns_email",
-    )
-    sources = {str(r.get("source") or "") for r in records}
-    demo_sources = {
-        str(r.get("source") or "")
-        for r in records
-        if "demo" in [str(x).strip().lower() for x in (r.get("labels") or [])]
-    }
-    missing: list[str] = []
-    for folder in folders:
-        area = COLLECTOR_AREAS.get(folder, folder)
-        has_live = False
-        if in_dir is not None and in_dir.is_dir():
-            slot = in_dir / folder
-            if slot.is_dir():
-                for path in slot.rglob("*"):
-                    if path.is_file() and path.name not in {".gitkeep", ".DS_Store", "LAB.txt", "SAMPLE.txt", "README.md"}:
-                        # Fixture fallback still counts as "no client data".
-                        if folder in demo_sources or any(folder in s for s in demo_sources):
-                            has_live = False
-                        else:
-                            has_live = True
-                        break
-        else:
-            has_live = any(folder in s or COLLECTOR_AREAS.get(s) == area for s in sources - demo_sources)
-        if not has_live:
-            if area not in missing:
-                missing.append(area if area != folder else folder)
-    return missing
-
-
-def _scope_rows(
-    records: list[dict],
-    in_dir: Path | None,
-    stamp: EstateStamp,
-) -> list[dict[str, str]]:
+def _records_by_source(records: list[dict] | None) -> dict[str, list[dict]]:
     by_source: dict[str, list[dict]] = {}
-    for rec in records:
-        src = str(rec.get("source") or "").strip() or NOT_RECORDED
+    for rec in records or []:
+        src = str(rec.get("source") or "").strip()
+        if not src:
+            continue
         by_source.setdefault(src, []).append(rec)
+    return by_source
+
+
+def coverage_scope_rows(
+    sensor_rows: list[dict] | None,
+    records: list[dict] | None = None,
+) -> list[dict[str, str]]:
+    """One row per coverage sensor. In-scope iff that row has records.
+
+    sensor_rows is the single source of truth. When collectors did not
+    write coverage (loader-only tests), synthesize equivalent rows from
+    the same record sources so in/out still partition one list.
+    Fixtures with records are in scope (labelled SAMPLE/DEMO).
+    """
+    recs_by = _records_by_source(records)
+    raw_rows = [row for row in (sensor_rows or []) if isinstance(row, dict) and row.get("source")]
+    if not raw_rows:
+        raw_rows = [
+            {
+                "source": src,
+                "status": "ok",
+                "records": len(items),
+                "demo": any(
+                    str(x).strip().lower() in {"demo", "sample"}
+                    for x in (items[0].get("labels") or [])
+                ),
+            }
+            for src, items in sorted(recs_by.items())
+        ]
+    seen: set[str] = set()
     rows: list[dict[str, str]] = []
-    for src, recs in sorted(by_source.items()):
-        extra0 = recs[0].get("extra") if isinstance(recs[0].get("extra"), dict) else {}
-        tool = recorded(extra0.get("tool") or extra0.get("scanner") or src)
-        version = recorded(extra0.get("version") or extra0.get("tool_version"))
-        collected = _artifact_scan_stamp(recs[0])
-        labels = [str(x).strip().lower() for x in (recs[0].get("labels") or [])]
-        if "demo" in labels or "sample" in labels:
+    for raw in raw_rows:
+        src = str(raw.get("source") or "").strip()
+        if not src or src in seen:
+            continue
+        seen.add(src)
+        recs = recs_by.get(src, [])
+        try:
+            n_rec = int(raw.get("records"))
+        except (TypeError, ValueError):
+            n_rec = len(recs)
+        extra0 = recs[0].get("extra") if recs and isinstance(recs[0].get("extra"), dict) else {}
+        labels = [str(x).strip().lower() for x in ((recs[0].get("labels") if recs else None) or [])]
+        demo = bool(raw.get("demo")) or "demo" in labels or "sample" in labels
+        if n_rec > 0 and demo:
             targets = "bundled sample / fixture"
+        elif n_rec > 0:
+            targets = recorded(
+                extra0.get("target") or extra0.get("targets") or "file supplied by client"
+            )
         else:
-            targets = recorded(extra0.get("target") or extra0.get("targets") or "file supplied by client")
+            targets = recorded(None)
         rows.append(
             {
+                "source": src,
                 "area": COLLECTOR_AREAS.get(src, src),
                 "targets": targets,
-                "tool": tool,
-                "version": version,
-                "collected": collected,
-                "records": str(len(recs)),
+                "tool": recorded(extra0.get("tool") or extra0.get("scanner") or src),
+                "version": recorded(extra0.get("version") or extra0.get("tool_version")),
+                "collected": _artifact_scan_stamp(recs[0]) if recs else NOT_RECORDED,
+                "records": str(n_rec),
+                "in_scope": "true" if n_rec > 0 else "false",
+                "status": str(raw.get("status") or ("ok" if n_rec else "empty")),
             }
         )
-    return rows[: MAX_EXEC_BODY_ROWS["scope"]]
+    return rows
+
+
+def partition_scope(
+    rows: list[dict[str, str]],
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Disjoint in-scope / out-of-scope from the same coverage rows."""
+    inside = [row for row in rows if row.get("in_scope") == "true"]
+    outside = [row for row in rows if row.get("in_scope") != "true"]
+    return inside, outside
+
+
+def _out_of_scope_phrase(rows: list[dict[str, str]], outside: list[dict[str, str]]) -> str:
+    if not rows:
+        return NOT_RECORDED
+    if not outside:
+        return "none"
+    names: list[str] = []
+    for row in outside:
+        name = row.get("area") or row.get("source") or ""
+        if name and name not in names:
+            names.append(name)
+    return ", ".join(names) if names else NOT_RECORDED
+
+
+def _dated_counts(records: list[dict]) -> tuple[int, int]:
+    dated = sum(1 for rec in records if _artifact_scan_stamp(rec) != NOT_RECORDED)
+    return dated, len(records)
 
 
 def _reconcile(
@@ -722,6 +788,64 @@ def _engagement_window(records: list[dict]) -> tuple[str, str]:
     return recorded(start), recorded(end)
 
 
+def coverage_gap_rows(sensor_rows: list[dict] | None) -> list[dict[str, str]]:
+    """Failed or empty sensors: name, files, reason. ok/demo are not gaps."""
+    from shared.io_util import SENSOR_GAP_STATUSES, UNRECOGNIZED_STATUS
+
+    gaps: list[dict[str, str]] = []
+    for row in sensor_rows or []:
+        if not isinstance(row, dict):
+            continue
+        status = str(row.get("status") or "").strip()
+        if status in {"ok", "demo"}:
+            continue
+        issues = row.get("issues") if isinstance(row.get("issues"), list) else []
+        files: list[str] = []
+        reasons: list[str] = []
+        for item in issues:
+            if not isinstance(item, dict):
+                continue
+            item_status = str(item.get("status") or "").strip()
+            if item_status not in SENSOR_GAP_STATUSES and item_status != UNRECOGNIZED_STATUS:
+                continue
+            name = str(item.get("file") or "").strip() or "(no file)"
+            files.append(name)
+            reasons.append(str(item.get("reason") or item_status or status))
+        if not files:
+            if status not in SENSOR_GAP_STATUSES:
+                continue
+            files = ["(no file)"]
+            reasons = [status]
+        gaps.append(
+            {
+                "source": str(row.get("source") or "sensor"),
+                "status": status or "empty",
+                "files": ", ".join(files),
+                "reason": reasons[0] if len(set(reasons)) == 1 else "; ".join(reasons),
+            }
+        )
+    return gaps
+
+
+def format_coverage_gaps(sensor_rows: list[dict] | None) -> list[str]:
+    """Short Coverage gaps block. Long lists collapse to a count + out/coverage."""
+    gaps = coverage_gap_rows(sensor_rows)
+    lines = [COVERAGE_GAPS_HEADING]
+    if not gaps:
+        lines.append(COVERAGE_GAPS_NONE)
+        return lines
+    if len(gaps) > MAX_COVERAGE_GAP_ROWS:
+        lines.append(
+            f"{len(gaps)} sensors were not assessed (failed or empty). See `out/coverage`."
+        )
+        return lines
+    for gap in gaps:
+        lines.append(
+            f"- {gap['source']}: {gap['files']} ({gap['status']} — {gap['reason']})"
+        )
+    return lines
+
+
 @dataclass
 class PageContext:
     stamp: EstateStamp
@@ -738,6 +862,7 @@ class PageContext:
     in_dir: Path | None = None
     generated_at: str = ""
     run_delta: dict[str, int] = field(default_factory=dict)
+    sensor_rows: list[dict] = field(default_factory=list)
 
 
 def build_executive_summary(ctx: PageContext) -> str:
@@ -748,6 +873,7 @@ def build_executive_summary(ctx: PageContext) -> str:
         else recorded(stamp.client_name if stamp.client_name != NOT_RECORDED else None)
     )
     scan_start, scan_end = _engagement_window(ctx.records)
+    dated_n, dated_total = _dated_counts(ctx.records)
     find_sev = _count_severities(ctx.findings)
     poam_sev = _count_severities(ctx.poam_rows)
     # Duplicates merged are recorded only when the loader supplied a count.
@@ -759,7 +885,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{stamp.label}**. {org}. Assessment window {scan_start} to {scan_end}.",
+        f"**{stamp.label}**. {org}. Assessment window {scan_start} to {scan_end} ({dated_n} of {dated_total} rows dated).",
         "",
         "### What we found",
         REVIEWER_WHAT_WE_FOUND,
@@ -848,8 +974,9 @@ def build_executive_summary(ctx: PageContext) -> str:
             lines.append(f"{area}: {len(recs)} findings, mapped to {ref_s}.")
     lines.append("")
 
-    uncovered = _uncovered_folders(ctx.in_dir, ctx.records)
-    uncovered_s = ", ".join(uncovered) if uncovered else NOT_RECORDED
+    coverage_rows = coverage_scope_rows(ctx.sensor_rows, ctx.records)
+    _, outside = partition_scope(coverage_rows)
+    uncovered_s = _out_of_scope_phrase(coverage_rows, outside)
     owner_who = (
         "the client"
         if stamp.kind == "CLIENT"
@@ -862,6 +989,8 @@ def build_executive_summary(ctx: PageContext) -> str:
             "- This is a point-in-time review of scanner artifacts. It is not a penetration test and not continuous monitoring.",
             f"- Owners and due dates in the POA&M are blank until {owner_who} assigns them.",
             "",
+            *format_coverage_gaps(ctx.sensor_rows),
+            "",
             "### Next step",
             REVIEWER_NEXT_STEP,
             "",
@@ -869,7 +998,15 @@ def build_executive_summary(ctx: PageContext) -> str:
             "",
         ]
     )
-    return _fit_one_page("\n".join(lines), keep_tails=("### What this does not tell you", "### Next step", "Companion files:"))
+    return _fit_one_page(
+        "\n".join(lines),
+        keep_tails=(
+            "### What this does not tell you",
+            COVERAGE_GAPS_HEADING,
+            "### Next step",
+            "Companion files:",
+        ),
+    )
 
 
 def build_scope_and_trust(ctx: PageContext) -> str:
@@ -898,23 +1035,23 @@ def build_scope_and_trust(ctx: PageContext) -> str:
             "|---|---|---|---|---|---|",
         ]
     )
-    scope_rows = _scope_rows(ctx.records, ctx.in_dir, stamp)
-    if not scope_rows:
+    coverage_rows = coverage_scope_rows(ctx.sensor_rows, ctx.records)
+    inside, outside = partition_scope(coverage_rows)
+    if not inside:
         lines.append(
             f"| {NOT_RECORDED} | {NOT_RECORDED} | {NOT_RECORDED} | {NOT_RECORDED} | {NOT_RECORDED} | {NOT_RECORDED} |"
         )
     else:
-        for row in scope_rows:
+        for row in inside:
             lines.append(
                 f"| {row['area']} | {row['targets']} | {row['tool']} | {row['version']} | {row['collected']} | {row['records']} |"
             )
-    uncovered = _uncovered_folders(ctx.in_dir, ctx.records)
     lines.append("")
     lines.append(
-        "Out of scope, or no data supplied: "
-        + (", ".join(uncovered) if uncovered else NOT_RECORDED)
-        + ". List every collector folder that was empty or fell back to fixtures, by name."
+        "Out of scope, or no data supplied: " + _out_of_scope_phrase(coverage_rows, outside) + "."
     )
+    lines.append("")
+    lines.extend(format_coverage_gaps(ctx.sensor_rows))
     lines.append("")
     who = recorded(_env(None, "GRC_COLLECTED_BY"))
     merged = recorded(ctx.merged if ctx.merged != "0" else ctx.merged)
@@ -922,27 +1059,31 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     reviewer = recorded(_env(None, "GRC_REVIEWER"))
     if reviewer == NOT_RECORDED:
         reviewer = REVIEWER_NOT_REVIEWED
+    if who == NOT_RECORDED:
+        method_1 = (
+            "1. Scanner output was supplied as files. The pack parses files only. "
+            "It does not run exploits, log in to client systems, or call client APIs."
+        )
+    else:
+        method_1 = (
+            f"1. Scanner output was supplied as files, or collected by {who} "
+            "under the authorization above. The pack parses files only. "
+            "It does not run exploits, log in to client systems, or call client APIs."
+        )
     lines.extend(
         [
             "### Method",
-            f"1. Scanner output was supplied as files, or collected by {who} under the authorization above. The pack parses files only. It does not run exploits, log in to client systems, or call client APIs.",
+            method_1,
             f"2. Each result is normalized, and duplicates are merged ({merged} merged).",
-            f"3. Each finding is mapped to controls ({frameworks}) using a per-finding rule table (`per-finding control mapping table`), not by severity.",
+            f"3. Each finding is mapped to controls ({frameworks}) using a per-finding rule table, not by severity.",
             "4. Severity is taken from the source tool and adjusted only where noted in the finding's `severity_rationale`.",
-            f"5. A human reviewer ({reviewer}) checked the top findings and the recommended actions before release. If no one did, print \"not human-reviewed\".",
+            f"5. A human reviewer ({reviewer}) checked the top findings and the recommended actions before release.",
             "",
             "### What the labels mean",
-            "- **CLIENT**: derived only from scanner output collected under the authorization above.",
-            "- **LAB**: derived from an Evergreen-controlled test environment. It proves the pipeline works, not anything about your organization.",
-            "- **SAMPLE / DEMO**: bundled example data used to show the output format. Any hostnames, accounts, or findings in it are fictional.",
-            "- **MIXED**: some outputs fell back to bundled sample files. Treat the whole package as not client-ready.",
+            "CLIENT is authorized scanner output. LAB is an Evergreen test environment. SAMPLE/DEMO is bundled example data. MIXED includes bundled sample files and is not client-ready.",
             "",
             "### Limits (read before relying on this)",
-            "- The review covers only what the listed scanners could see, at the collection time shown. A clean area means no data or no detection, not proof of safety.",
-            "- No exploitation or verification testing was performed unless a row says otherwise.",
-            "- Control mappings are advisory. They show which control would most directly address each weakness, not an audit opinion or a compliance attestation.",
-            "- Secrets found in code are redacted in every output. Rotation must be confirmed by the client.",
-            "- Nothing was uploaded to any GRC platform. The OpenGRC, Probo, and CISO Assistant files are for the client to import.",
+            "Covers only the listed scanners at collection time. A clean area is not proof of safety. Control mappings are advisory, not an audit. Secrets are redacted. Nothing was uploaded to a GRC platform.",
             "",
             "### Integrity and traceability",
             "- Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.",
@@ -953,46 +1094,102 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     )
     return _fit_one_page(
         "\n".join(lines),
-        keep_tails=("### Limits (read before relying on this)", "### Integrity and traceability", "### What the labels mean"),
+        keep_tails=(
+            COVERAGE_GAPS_HEADING,
+            "### Limits (read before relying on this)",
+            "### Integrity and traceability",
+            "### What the labels mean",
+        ),
     )
+
+
+def _scope_table_indexes(lines: list[str]) -> set[int]:
+    """Banner + in-scope table + out-of-scope line. Never drop these to fit a page."""
+    protected: set[int] = set()
+    in_table = False
+    for i, line in enumerate(lines):
+        if line.startswith("> **") or line.startswith("> Run `"):
+            protected.add(i)
+        if line.startswith("### What was in scope"):
+            in_table = True
+            protected.add(i)
+            continue
+        if in_table:
+            protected.add(i)
+            if line.startswith("Out of scope") or (
+                line.startswith("### ") and not line.startswith("### What was in scope")
+            ):
+                in_table = False
+        elif line.startswith("Out of scope"):
+            protected.add(i)
+    return protected
 
 
 def _fit_one_page(text: str, *, keep_tails: tuple[str, ...]) -> str:
     lines = text.splitlines()
     if len(lines) <= MAX_PAGE_LINES:
         return text if text.endswith("\n") else text + "\n"
-    keep_idx = []
+    protected = _scope_table_indexes(lines)
+    keep_idx: set[int] = set(protected)
     for needle in keep_tails:
         for i, line in enumerate(lines):
             if line.startswith(needle):
-                keep_idx.append(i)
+                keep_idx.add(i)
                 break
-    # Drop extra table rows (lines starting with '| ' that are not the header/sep), never the banner.
+    # Shrink non-sensor sections first. Never cut in-scope sensor rows.
     body: list[str] = []
     table_rows_kept = 0
-    banner_done = False
+    in_scope_table = False
     for i, line in enumerate(lines):
-        if line.startswith("> **") or (line.startswith("> Run `")):
-            body.append(line)
-            banner_done = True
-            continue
-        if line.startswith("| ") and not line.startswith("|---") and "Severity" not in line and "Weakness" not in line and "Area |" not in line:
-            # data row
+        if line.startswith("### What was in scope"):
+            in_scope_table = True
+        elif in_scope_table and (
+            line.startswith("Out of scope")
+            or (line.startswith("### ") and not line.startswith("### What was in scope"))
+        ):
+            in_scope_table = False
+        is_data_row = (
+            line.startswith("| ")
+            and not line.startswith("|---")
+            and "Severity" not in line
+            and "Weakness" not in line
+            and "Area |" not in line
+        )
+        if is_data_row and not in_scope_table:
             if table_rows_kept >= 12 and i not in keep_idx:
                 continue
             table_rows_kept += 1
         body.append(line)
         if len(body) >= MAX_PAGE_LINES:
-            # Ensure tails still present.
             rest = lines[i + 1 :]
+            # Pull any remaining protected scope rows that have not been copied.
+            for j in range(i + 1, len(lines)):
+                if j in protected and lines[j] not in body:
+                    body.append(lines[j])
             for needle in keep_tails:
                 if any(x.startswith(needle) for x in body):
                     continue
-                for j, extra in enumerate(rest):
+                for extra in rest:
                     if extra.startswith(needle):
-                        body.extend(rest[j : j + 8])
+                        body.append(extra)
                         break
             break
+    # If still over, drop non-sensor detail lines (never banner, table, or OOS).
+    while len(body) > MAX_PAGE_LINES:
+        drop_at = None
+        for idx, line in enumerate(body):
+            if line.startswith("> **") or line.startswith("> Run `"):
+                continue
+            if line.startswith("### ") or line.startswith("Out of scope"):
+                continue
+            if line.startswith("|"):
+                continue
+            drop_at = idx
+            if line.strip() == "":
+                break
+        if drop_at is None:
+            break
+        body.pop(drop_at)
     out = "\n".join(body)
     return out if out.endswith("\n") else out + "\n"
 
@@ -1014,29 +1211,165 @@ def write_client_pages(out: Path, ctx: PageContext) -> dict[str, str]:
     return {"executive_summary": str(exec_path), "scope_and_trust": str(trust_path)}
 
 
-def write_export_manifest(out: Path, stamp: EstateStamp) -> Path:
+def write_export_manifest(out: Path, stamp: EstateStamp | None = None) -> Path:
+    """Write `out/MANIFEST` last in GNU sha256sum format. Never list itself."""
     dest = Path(out)
     dest.mkdir(parents=True, exist_ok=True)
+    manifest_path = dest / "MANIFEST"
+    if manifest_path.is_file():
+        manifest_path.unlink()
     rels = list(EXPORT_CSV_REL) + list(EXPORT_MD_REL) + list(EXPORT_OTHER_REL)
-    lines = [
-        stamp.banner_md(),
-        "",
-        "# MANIFEST",
-        "",
-        "SHA-256 of exported files. Verify with `sha256sum -c MANIFEST` after stripping the banner lines, or hash each path below.",
-        "",
-        "| File | SHA-256 |",
-        "|---|---|",
-    ]
+    lines: list[str] = []
     for rel in rels:
-        path = dest / rel
+        rel_posix = str(rel).replace("\\", "/")
+        if rel_posix == "MANIFEST" or Path(rel_posix).name == "MANIFEST":
+            continue
+        path = dest / rel_posix
         if not path.is_file():
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        lines.append(f"| `{rel}` | `{digest}` |")
-    path = dest / "MANIFEST"
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return path
+        lines.append(f"{digest}  {rel_posix}")
+    manifest_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    return manifest_path
+
+
+def parse_scope_table_areas(trust_text: str) -> list[str]:
+    areas: list[str] = []
+    in_table = False
+    for line in trust_text.splitlines():
+        if line.startswith("### What was in scope"):
+            in_table = True
+            continue
+        if not in_table:
+            continue
+        if line.startswith("Out of scope") or line.startswith("### "):
+            break
+        if not line.startswith("|") or line.startswith("|---") or "Area |" in line:
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if cells and cells[0] and cells[0] != NOT_RECORDED:
+            areas.append(cells[0])
+    return areas
+
+
+def parse_out_of_scope_names(trust_text: str) -> list[str]:
+    for line in trust_text.splitlines():
+        if not line.startswith("Out of scope"):
+            continue
+        payload = line.split(":", 1)[-1].strip().rstrip(".")
+        if payload in {NOT_RECORDED, "none", ""}:
+            return []
+        return [part.strip() for part in payload.split(",") if part.strip()]
+    return []
+
+
+def iter_client_facing_texts(out: Path) -> list[tuple[str, str]]:
+    dest = Path(out)
+    found: list[tuple[str, str]] = []
+    for rel in CLIENT_FACING_RELS:
+        path = dest / rel
+        if path.is_file():
+            found.append((rel, path.read_text(encoding="utf-8")))
+    return found
+
+
+def assert_no_instruction_text(out: Path) -> None:
+    for rel, text in iter_client_facing_texts(out):
+        low = text.lower()
+        for phrase in INSTRUCTION_LEAKS:
+            if phrase.lower() in low:
+                raise AssertionError(f"{rel} leaked instruction text: {phrase}")
+
+
+def assert_scope_from_coverage(out: Path, sensor_rows: list[dict] | None = None) -> None:
+    dest = Path(out)
+    trust_path = dest / "SCOPE_AND_TRUST.md"
+    if not trust_path.is_file():
+        raise AssertionError("SCOPE_AND_TRUST.md missing")
+    trust = trust_path.read_text(encoding="utf-8")
+    if len(trust.splitlines()) > MAX_PAGE_LINES:
+        raise AssertionError(
+            f"SCOPE_AND_TRUST.md exceeds one printed page: {len(trust.splitlines())} > {MAX_PAGE_LINES}"
+        )
+    inside_areas = parse_scope_table_areas(trust)
+    outside_names = parse_out_of_scope_names(trust)
+    overlap = set(inside_areas) & set(outside_names)
+    if overlap:
+        raise AssertionError(f"scope contradiction: {sorted(overlap)} listed in and out of scope")
+    rows = list(sensor_rows or [])
+    if not rows:
+        cov = dest / "coverage" / "sensors"
+        if cov.is_dir():
+            from shared.io_util import load_sensor_coverage
+
+            rows = load_sensor_coverage(dest)
+    if not rows:
+        return
+    derived = coverage_scope_rows(rows)
+    want_in = [COLLECTOR_AREAS.get(r["source"], r["source"]) for r in derived if r["in_scope"] == "true"]
+    want_out = [COLLECTOR_AREAS.get(r["source"], r["source"]) for r in derived if r["in_scope"] != "true"]
+    if set(inside_areas) != set(want_in):
+        raise AssertionError(
+            f"in-scope table {inside_areas} != coverage rows {want_in}"
+        )
+    if set(outside_names) != set(want_out):
+        raise AssertionError(
+            f"out-of-scope {outside_names} != coverage rows {want_out}"
+        )
+    for src in ("vuln-scan", "saas-idp"):
+        match = next((r for r in derived if r["source"] == src), None)
+        if match is None:
+            continue
+        area = match["area"]
+        if match["in_scope"] == "true" and area not in inside_areas:
+            raise AssertionError(f"{src} produced records but was cut from the scope table")
+        if match["in_scope"] != "true" and area not in outside_names:
+            raise AssertionError(f"{src} has no records but is missing from out of scope")
+
+
+def assert_manifest_sha256sum(out: Path) -> None:
+    dest = Path(out)
+    manifest = dest / "MANIFEST"
+    if not manifest.is_file():
+        raise AssertionError("MANIFEST missing")
+    text = manifest.read_text(encoding="utf-8")
+    parsed: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        match = SHA256SUM_LINE.match(line)
+        if not match:
+            raise AssertionError(f"MANIFEST is not sha256sum format: {line!r}")
+        digest, rel = match.group(1), match.group(2)
+        if rel.startswith("/") or ".." in Path(rel).parts:
+            raise AssertionError(f"MANIFEST path must be relative: {rel!r}")
+        if rel == "MANIFEST" or Path(rel).name == "MANIFEST":
+            raise AssertionError("MANIFEST must not list itself")
+        parsed.append((digest, rel))
+    if not parsed:
+        raise AssertionError("MANIFEST has no checksum lines")
+    try:
+        proc = subprocess.run(
+            ["sha256sum", "-c", "MANIFEST"],
+            cwd=str(dest),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AssertionError(f"sha256sum -c MANIFEST could not run: {exc}") from exc
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise AssertionError(f"sha256sum -c MANIFEST failed: {detail}")
+
+
+def assert_client_export_honesty(out: Path, sensor_rows: list[dict] | None = None) -> None:
+    """Four cold-review locks: partition, no instructions, all sensors, MANIFEST."""
+    dest = Path(out)
+    assert_scope_from_coverage(dest, sensor_rows)
+    assert_no_instruction_text(dest)
+    assert_manifest_sha256sum(dest)
 
 
 def stamp_text_file(path: Path, stamp: EstateStamp, body: str) -> None:

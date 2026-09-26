@@ -26,6 +26,9 @@ def export_keep_sinks(out: Path, *, sample: bool = True) -> dict[str, Any]:
     estate.source = "ciso-assistant"
     opengrc = write_opengrc(out, estate=estate)
     probo = write_probo(out, estate=estate)
+    from shared.estate_pages import write_export_manifest
+
+    write_export_manifest(out)
     return {
         "posted": False,
         "http": False,

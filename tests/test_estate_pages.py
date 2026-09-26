@@ -15,13 +15,18 @@ import pytest
 
 from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, csv_rows
 from shared.estate_pages import (
+    COLLECTOR_AREAS,
     LABEL_FOR_KIND,
+    MAX_PAGE_LINES,
     NOT_RECORDED,
     REVIEWER_NEXT_STEP,
     REVIEWER_WHAT_WE_FOUND,
     REVIEWER_WHY_IT_MATTERS,
     EstateStamp,
+    assert_client_export_honesty,
     classify_estate,
+    parse_out_of_scope_names,
+    parse_scope_table_areas,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -368,3 +373,136 @@ def test_exporters_stamp_opengrc_and_probo(tmp_path: Path, monkeypatch: pytest.M
     readme = (out / "probo" / "README.md").read_text(encoding="utf-8")
     assert readme.startswith("> **")
     assert LABEL_FOR_KIND["SAMPLE"] in readme
+
+
+def _write_sensor_coverage(out: Path, source: str, records_n: int, *, demo: bool = True) -> None:
+    dest = out / "coverage" / "sensors"
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / f"{source}.json").write_text(
+        json.dumps(
+            {
+                "source": source,
+                "status": "demo" if records_n and demo else ("ok" if records_n else "empty"),
+                "demo": bool(demo and records_n),
+                "files": 1 if records_n else 0,
+                "records": records_n,
+                "unread": [],
+                "issues": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_scope_in_and_out_from_same_coverage_and_lists_every_sensor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from shared.io_util import SENSOR_IN
+
+    in_scope_src = [
+        "inventory-nmap",
+        "cloud-prowler",
+        "host-wazuh",
+        "identity-ad",
+        "easm",
+        "k8s-kubescape",
+        "code-secrets",
+        "vuln-scan",
+        "saas-idp",
+    ]
+    out_scope_src = [src for src in SENSOR_IN if src not in in_scope_src]
+    assert "vuln-scan" in in_scope_src and "saas-idp" in in_scope_src
+    assert out_scope_src
+
+    out = tmp_path / "out"
+    (out / "canonical").mkdir(parents=True)
+    records: list[dict] = [_asset(), _finding("f1", labels=["nmap", "demo"])]
+    with (out / "canonical" / "inventory-nmap.jsonl").open("w", encoding="utf-8") as fh:
+        for rec in records:
+            fh.write(json.dumps(rec) + "\n")
+    _write_sensor_coverage(out, "inventory-nmap", 2)
+    for src in in_scope_src:
+        if src == "inventory-nmap":
+            continue
+        rec = {
+            "kind": "finding",
+            "source": src,
+            "ref_id": f"{src}-1",
+            "name": f"{src} finding",
+            "description": f"{src} fixture finding",
+            "severity": "high",
+            "category": src,
+            "assets": ["host-a"],
+            "labels": ["demo"],
+            "extra": {},
+        }
+        with (out / "canonical" / f"{src}.jsonl").open("w", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")
+        _write_sensor_coverage(out, src, 1)
+    for src in out_scope_src:
+        _write_sensor_coverage(out, src, 0, demo=False)
+
+    monkeypatch.setenv("OUT_DIR", str(out))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    monkeypatch.setenv("GRC_ESTATE_LABEL", "SAMPLE")
+    import collectors.grc_loader as loader
+
+    importlib.reload(loader)
+    loader.load()
+
+    trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    inside = parse_scope_table_areas(trust)
+    outside = parse_out_of_scope_names(trust)
+    assert set(inside) & set(outside) == set()
+    for src in in_scope_src:
+        assert COLLECTOR_AREAS[src] in inside, src
+    for src in out_scope_src:
+        assert COLLECTOR_AREAS[src] in outside, src
+    assert "Vulnerability scan" in inside
+    assert "SaaS / identity" in inside
+    assert "List every collector folder" not in trust
+    assert "If no one did, print" not in trust
+    assert "collected by not recorded" not in trust
+    assert "print \"not human-reviewed\"" not in trust
+    assert len(trust.splitlines()) <= MAX_PAGE_LINES
+    assert "rows dated" in exec_text
+    assert_client_export_honesty(out)
+
+
+def test_generated_pages_have_no_instruction_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [_asset(), _finding("f1")],
+        GRC_ESTATE_LABEL="SAMPLE",
+    )
+    trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    for blob in (trust, exec_text):
+        assert "List every collector folder" not in blob
+        assert "If no one did, print" not in blob
+        assert "collected by not recorded" not in blob
+        assert "[insert " not in blob.lower()
+        assert "{{" not in blob
+    assert_client_export_honesty(out)
+
+
+def test_manifest_verifies_with_sha256sum_c(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [_asset(), _finding("f1")],
+        GRC_ESTATE_LABEL="LAB",
+    )
+    manifest = (out / "MANIFEST").read_text(encoding="utf-8")
+    assert manifest
+    assert not manifest.lstrip().startswith(">")
+    assert "| File |" not in manifest
+    assert "MANIFEST" not in {line.split()[-1] for line in manifest.splitlines() if line.strip()}
+    assert_client_export_honesty(out)
