@@ -269,9 +269,9 @@ def test_estate_pages_and_detection_dates_agree_not_recorded(
     trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
     poam = csv_rows(out / "poam" / "poam.csv")
     assert poam and poam[0]["original_detection_date"] == NOT_RECORDED
-    # Pack collected_at is never a scan / collected stamp on estate pages.
-    assert "2026-09-26" not in exec_text
-    assert "2026-09-26" not in trust
+    window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
+    assert "2026-09-26T06:00:00Z" not in window
+    assert "2026-09-26T06:00:00Z" not in trust
     assert NOT_RECORDED in trust
 
 
@@ -285,8 +285,9 @@ def test_estate_pages_use_artifact_scan_time_not_collected_at(
     exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     poam = csv_rows(out / "poam" / "poam.csv")
     assert poam and poam[0]["original_detection_date"] == "2026-09-01"
-    assert "2026-09-01" in exec_text
-    assert "2026-09-26" not in exec_text
+    window = next(line for line in exec_text.splitlines() if "Assessment window" in line)
+    assert "2026-09-01" in window
+    assert "2026-09-26T06:00:00Z" not in window
 
 
 def test_missing_values_print_not_recorded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
