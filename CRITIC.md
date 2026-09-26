@@ -1,3 +1,10 @@
+# CRITIC — cycle 211 (MERGE_MASTER_157_INTO_GAP2)
+
+Merge `origin/master` `22d085f` (#157) with a normal merge commit. No
+rebase. Gap 2 persist/audit/backfill kept. Pytest **1331**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 # CRITIC — cycle 210 (POAM_GAP2_VD_UPGRADE_BASELINE)
 
 Lab this brick: pytest **1314** passed, 1 skipped. Ten collectors +

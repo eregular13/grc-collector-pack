@@ -1,5 +1,13 @@
 # CYCLE log
 
+## cycle 211 — merge master 22d085f (#157) into Gap 2 (2026-09-26)
+
+Normal merge of `origin/master` `22d085f` (#157 B6 playbooks; after
+`befc7d0` #162). No rebase. Vendor backfill baseline kept. Pytest
+**1331**. Host-lab unchanged (79 / 107 / poam 124 / excluded 5).
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
 ## cycle 210 — pre-#160 vendor backfill is not a field change (2026-09-26)
 
 Upgrade run over a ledger without O/P/Q fills No/default as a schema
