@@ -14,6 +14,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from shared.asset_ledger import AssetLedger, attach_asset_uids
 from shared.control_map import extra_labels, map_finding, poam_breakdown
 from shared.estate_pages import (
     PageContext,
@@ -26,7 +27,7 @@ from shared.estate_pages import (
 from shared.evidence import build_evidence_rows
 from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.hardening_dedup import dedupe_hardening
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
+from shared.iiw import write_iiw
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -38,6 +39,7 @@ from shared.io_util import (
     write_json,
     write_text,
 )
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.schema import (
     ASSET_TYPES,
     ciso_finding_severity,
@@ -132,8 +134,13 @@ def _dedupe(records: list[dict]) -> list[dict]:
     for rec in records:
         kind = rec.get("kind")
         if kind == "asset":
+            extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+            uid = str(extra.get("asset_uid") or "").strip()
             name = str(rec.get("name") or "").strip().lower()
-            key = name or _stable_hash(str(rec.get("source") or ""), str(rec.get("ref_id") or rec.get("name") or ""))
+            key = uid or name or _stable_hash(
+                str(rec.get("source") or ""),
+                str(rec.get("ref_id") or rec.get("name") or ""),
+            )
             if key not in assets:
                 assets[key] = rec
             continue
@@ -202,10 +209,14 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load() -> dict:
-    # ref_id collapse, then same-issue-same-asset, then HK/Lynis/oscap keys.
-    raw_records = _load_canonical()
-    records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw_records)))
-    merged_n = max(0, len(raw_records) - len(records))
+    # Asset UIDs first (EGA- ledger), then ref_id collapse, weakness, HK keys.
+    ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
+    overrides = in_dir() / "assets" / "assets-overrides.csv"
+    if overrides.is_file():
+        ledger.apply_overrides(overrides)
+    raw = attach_asset_uids(_load_canonical(), ledger)
+    records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw)))
+    merged_n = max(0, len(raw) - len(records))
     now = iso_now()
     domain = _domain()
     try:
@@ -491,6 +502,10 @@ def load() -> dict:
         "generated_at": now,
     }
     write_json(out_dir() / "summary.json", summary)
+    families = {str(r.get("source") or "") for r in records if r.get("source")}
+    ledger.close_run(now=now, source_families=families)
+    ledger.save(out_dir() / "assets" / "asset-ledger.json")
+    write_iiw(ledger, dest_dir=out_dir() / "iiw", observed=set(ledger._observed))
     poam_dicts = [
         {
             "severity": str(row[2] or "").lower(),

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
+from typing import Any  # noqa: F401 — used by _ids_from_props / iter rows
 
+from shared.asset_ids import stamp_ids
 from shared.io_util import read_text
 
 _KEY_MEDIUM_PORTS = frozenset({"445", "3389", "23", "21"})
@@ -101,17 +102,11 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
         if _tag(host_el) != "ReportHost":
             continue
         host = str(host_el.attrib.get("name") or "").strip()
+        props = _host_properties(host_el)
         if not host:
-            for child in list(host_el):
-                if _tag(child) != "HostProperties":
-                    continue
-                for tag_el in list(child):
-                    if _tag(tag_el) == "tag" and tag_el.attrib.get("name") in {
-                        "host-fqdn",
-                        "host-ip",
-                    }:
-                        host = (tag_el.text or "").strip() or host
+            host = str(props.get("host-fqdn") or props.get("host-ip") or "").strip()
         host = host or "unknown"
+        ids = _ids_from_props(props)
         for item in list(host_el):
             if _tag(item) != "ReportItem":
                 continue
@@ -121,6 +116,7 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             title = str(item.attrib.get("pluginName") or item.attrib.get("pluginID") or "Nessus finding")
             plugin = str(item.attrib.get("pluginID") or "")
             port = str(item.attrib.get("port") or "")
+            proto = str(item.attrib.get("protocol") or "")
             svc = str(item.attrib.get("svc_name") or "")
             desc = title
             for child in list(item):
@@ -134,11 +130,56 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
                     "description": desc,
                     "severity": sev,
                     "port": port,
+                    "protocol": proto,
                     "service": svc,
                     "plugin_id": plugin,
+                    "ids": ids,
+                    "host_start": props.get("HOST_START") or "",
+                    "id_quality": ids.get("id_quality") or "",
                 }
             )
     return rows
+
+
+def _host_properties(host_el: ET.Element) -> dict[str, str]:
+    props: dict[str, str] = {}
+    for child in list(host_el):
+        if _tag(child) != "HostProperties":
+            continue
+        for tag_el in list(child):
+            if _tag(tag_el) != "tag":
+                continue
+            name = str(tag_el.attrib.get("name") or "").strip()
+            if not name:
+                continue
+            props[name] = (tag_el.text or "").strip()
+    return props
+
+
+def _ids_from_props(props: dict[str, str]) -> dict[str, Any]:
+    macs = []
+    for key in ("mac-address", "mac-macAddress", "mac"):
+        if props.get(key):
+            macs.extend(props[key].replace("\r", "\n").split("\n"))
+    quality = ""
+    if props.get("local-checks-proto") or props.get("LastAuthenticatedResults") or props.get(
+        "Credentialed_Scan", ""
+    ).lower() in {"yes", "true", "1"}:
+        quality = "credentialed"
+    elif props:
+        quality = "uncredentialed"
+    extra = stamp_ids(
+        {},
+        uuid=props.get("host-uuid") or props.get("tenable-uuid") or "",
+        bios_uuid=props.get("bios-uuid") or "",
+        mac=macs,
+        netbios=props.get("netbios-name") or "",
+        fqdn=props.get("host-fqdn") or "",
+        ip=props.get("host-ip") or "",
+        hostname=props.get("hostname") or "",
+        id_quality=quality,
+    )
+    return extra.get("ids") or {}
 
 
 def parse_nessus(path: Path) -> list[dict[str, Any]] | None:
