@@ -9,11 +9,13 @@ import os
 import re
 from typing import Any
 
-from shared.finding_types import TYPE_WEAKNESS_NAME, has_xss_signal, type_remediation
+from shared.finding_types import TYPE_WEAKNESS_NAME, finding_type, has_xss_signal, type_remediation
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
+    REDIS_AUTH_TEMPLATE_IDS,
     apply_class_mapping,
     csf_cpg_tag_set,
+    redis_auth_template_ids,
 )
 from shared.schema import canon_severity
 from shared.poam_fields import _CVE_RE
@@ -267,6 +269,8 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("port"),
             extra.get("service"),
             extra.get("rule"),
+            extra.get("template_id"),
+            extra.get("template-id"),
             extra.get("cve"),
             extra.get("check_id"),
             extra.get("id"),
@@ -294,9 +298,10 @@ MISCONFIG_RULES: dict[str, dict[str, Any]] = {
     "nse-redis-noauth": {
         "name": "Require authentication on Redis",
         "fix": (
-            "Enable Redis ACL users or requirepass with a strong secret, set protected-mode yes, bind Redis "
-            "to localhost or a private interface only, and firewall TCP/6379. Rename or disable CONFIG, "
-            "MODULE, and DEBUG for application users. Rescan with nmap redis-info to verify INFO is refused."
+            "Enable Redis ACL users (ACL SETUSER default -@dangerous or an app user without "
+            "CONFIG/MODULE/DEBUG) or requirepass with a strong secret, set protected-mode yes, "
+            "bind Redis to localhost or a private interface only, and firewall TCP/6379. "
+            "Rescan with nmap redis-info to verify INFO is refused."
         ),
         "nist_800_53": ["IA-2", "AC-3", "CM-6", "CM-7", "SC-7"],
         "cis": ["cis_4_1", "cis_4_8", "cis_5_2"],
@@ -798,15 +803,7 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
 
 def _is_unauth_redis(rec: dict[str, Any]) -> bool:
     """Nuclei exposed-redis / nmap redis-info — auth gap, not a patch finding."""
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    tid = str(
-        extra.get("check_id")
-        or extra.get("template_id")
-        or extra.get("rule")
-        or extra.get("template-id")
-        or ""
-    ).lower()
-    if tid in {"exposed-redis", "nse-redis-noauth"}:
+    if any(tid in REDIS_AUTH_TEMPLATE_IDS for tid in redis_auth_template_ids(rec)):
         return True
     text = _blob(rec)
     if "redis" not in text:
@@ -845,7 +842,9 @@ def _map_finding_body(rec: dict[str, Any]) -> dict[str, Any]:
             rec,
         )
     check = str(extra.get("check_id") or "")
-    if _is_unauth_redis(rec):
+    # Nuclei extra.rule/template_id is exposed-redis; extra.check_id may be a
+    # CVE or matcher id. Alias + every extra id must still reach this class.
+    if _is_unauth_redis(rec) or finding_type(rec) in REDIS_AUTH_TEMPLATE_IDS:
         check = "nse-redis-noauth"
     rule = MISCONFIG_RULES.get(check)
     if rule:

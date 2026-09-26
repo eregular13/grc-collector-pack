@@ -103,6 +103,11 @@ TYPE_ALIASES: dict[str, str] = {
     "p_delegated": "pc_delegated",
     "p_unconstraineddelegation": "ad_unconstrained_delegation",
     "a_dsheuristicsldapsecurity": "pc_dsheuristics",
+    # Nuclei / nmap Redis-without-auth → existing nse-redis-noauth class.
+    "exposed_redis": "nse-redis-noauth",
+    "nse_redis_noauth": "nse-redis-noauth",
+    "redis_noauth": "nse-redis-noauth",
+    "redis_unauth": "nse-redis-noauth",
 }
 
 # Type-specific remediations. Distinct types must not share identical fix text
@@ -577,6 +582,7 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "pc_krbtgt": "krbtgt password has not been rotated",
     "pc_delegated": "Privileged account is not marked sensitive / Protected Users",
     "pc_dsheuristics": "dSHeuristics LDAP security flags are not set",
+    "nse-redis-noauth": "Redis accepts unauthenticated access",
 }
 
 # Distinct types may share remediations only with an explicit reason.
@@ -609,6 +615,8 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("id"),
         extra.get("control_key"),
         extra.get("rule"),
+        extra.get("template_id"),
+        extra.get("template-id"),
     ]
     return [norm_type_key(str(k)) for k in keys if k]
 
