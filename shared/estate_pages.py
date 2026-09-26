@@ -145,7 +145,7 @@ AREA_HINTS = (
 )
 
 SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-SEV_TABLE = ("critical", "high", "medium", "low")
+SEV_TABLE = ("critical", "high", "medium", "low", "info")
 
 MAX_EXEC_BODY_ROWS = {
     "top_n": 5,
@@ -564,7 +564,7 @@ def assert_banner_present(text: str, stamp: EstateStamp | None = None) -> None:
 def _sev(rec: dict) -> str:
     raw = str(rec.get("severity") or "").strip().lower()
     if raw in SEV_RANK:
-        return "low" if raw == "info" else raw
+        return raw
     return "low"
 
 
@@ -588,8 +588,6 @@ def _count_severities(items: Iterable[dict], key: str = "severity") -> dict[str,
     out = {s: 0 for s in SEV_TABLE}
     for item in items:
         sev = str(item.get(key) or "").strip().lower()
-        if sev == "info":
-            sev = "low"
         if sev in out:
             out[sev] += 1
     return out

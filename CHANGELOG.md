@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /
+  `scripts/lab.ps1` / CI lab job) now run `collectors/honeypot.py` so DEMO
+  `fixtures/demo/honeypot*` land in `poam/excluded.csv` (not header-only).
+  `severity_info` rows keep canonical `severity=info` on excluded.csv — they
+  are not labeled `low`. Exec summary counts info as its own bucket, not as
+  dropped Lows. CISO `findings.csv` still maps info→low for the importer.
+  Farm identity unchanged (findings=174 / poam=106 / excluded=68). Not a
+  12th compose service. No POST `/api/risks`. Does not touch `product-lab/drop`.
 - PORT_ONLY_FOLD: when a specific finding (nuclei / Nessus / testssl / NSE / CVE)
   already names a host+port, the bare nmap-style "port open" row is folded into
   that finding as evidence (source + `nmap` label/tools) and listed in

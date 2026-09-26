@@ -244,6 +244,10 @@ def test_lows_on_full_plan_infos_and_honeypot_excluded(tmp_path: Path, monkeypat
         ex = list(csv.DictReader(fh))
     assert {row["finding_ref_id"] for row in ex} == {"NMAP-info", "HPOT-1"}
     assert {row["excluded_reason"] for row in ex} == {"severity_info", "honeypot"}
+    by_ref = {row["finding_ref_id"]: row for row in ex}
+    assert by_ref["NMAP-info"]["severity"] == "info"
+    assert by_ref["NMAP-info"]["severity"] != "low"
+    assert by_ref["HPOT-1"]["severity"] == "high"
     md = (out_dir() / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "full" in md.lower()

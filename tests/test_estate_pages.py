@@ -347,6 +347,31 @@ def test_exec_and_trust_generated_from_run_counts(
     assert summary.get("client") is False
 
 
+def test_exec_counts_info_as_own_bucket_not_dropped_low(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _run_loader(
+        tmp_path,
+        monkeypatch,
+        [
+            _asset(),
+            _finding("f-low", sev="low"),
+            _finding("f-info", sev="info"),
+        ],
+        GRC_ESTATE_LABEL="LAB",
+    )
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    low_line = next(line for line in exec_text.splitlines() if line.startswith("| Low |"))
+    info_line = next(line for line in exec_text.splitlines() if line.startswith("| Info |"))
+    assert "| 1 |" in low_line
+    assert "| 1 |" in info_line
+    assert "| 0 |" in info_line.split("|")[3]
+    excluded = csv_rows(out / "poam" / "excluded.csv")
+    info_ex = [row for row in excluded if row.get("finding_ref_id") == "f-info"]
+    assert info_ex and info_ex[0]["severity"] == "info"
+    assert info_ex[0]["excluded_reason"] == "severity_info"
+
+
 def test_exporters_stamp_opengrc_and_probo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from exporters.opengrc import write_opengrc
     from exporters.probo import write_probo
