@@ -9,8 +9,9 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from shared.control_map import extra_labels, map_finding
+from shared.control_map import extra_labels, map_finding, poam_breakdown
 from shared.evidence import build_evidence_rows
+from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, poam_fields
 from shared.io_util import iso_now, out_dir, read_jsonl, redact, stable_hash as _stable_hash, write_json, write_text
 from shared.schema import (
@@ -96,8 +97,14 @@ def _asset_type(rec: dict) -> str:
 
 
 def _dedupe(records: list[dict]) -> list[dict]:
+    """Collapse exact dupes. Findings key on full identity + normalized asset.
+
+    SARIF/Trivy (and any source that stamps the same rule/CVE into ref_id via
+    ``slug(..., maxlen=48)``) must not drop a second host. Display slugs stay
+    truncated; this key uses the full extra.rule / extra.cve / check_id.
+    """
     assets: dict[str, dict] = {}
-    others: dict[tuple[str, str], dict] = {}
+    others: dict[tuple[str, ...], dict] = {}
     leftover: list[dict] = []
     for rec in records:
         kind = rec.get("kind")
@@ -108,6 +115,11 @@ def _dedupe(records: list[dict]) -> list[dict]:
                 assets[key] = rec
             continue
         ref = str(rec.get("ref_id") or "")
+        if kind == "finding" and (ref or finding_identity(rec)):
+            slot = (str(kind), finding_identity(rec) or ref.lower(), primary_asset(rec))
+            if slot not in others:
+                others[slot] = rec
+            continue
         if kind and ref:
             slot = (str(kind), ref.lower())
             if slot not in others:
@@ -183,7 +195,8 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load() -> dict:
-    records = _dedupe(_load_canonical())
+    # ref_id collapse first (double-loader), then same-issue-same-asset.
+    records = dedupe_weaknesses(_dedupe(_load_canonical()))
     now = iso_now()
     domain = _domain()
     estate = estate_label(records)
@@ -316,6 +329,7 @@ def load() -> dict:
         *POAM_EXTRA_FIELDS,
     ]
     today = datetime.now(timezone.utc).date()
+    breakdown = poam_breakdown(other_findings + vuln_findings)
     poam_rows: list[list] = []
     for rec in other_findings + vuln_findings:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
@@ -492,12 +506,23 @@ def load() -> dict:
         "applied_controls": len(uniq_controls),
         "poam": len(poam_rows),
         "risk_scenarios": len(scenarios),
+        "weaknesses": len(findings),
+        "weaknesses_total": breakdown["weaknesses_total"],
+        "poam_included": breakdown["poam_included"],
+        "excluded_by_reason": breakdown["excluded_by_reason"],
+        "open_risks": len(poam_rows),
         "incidents": len(rr_incidents),
         "risks_proposed": len(proposed),
         "ocsf": len(ocsf),
         "canonical": len(records),
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
+        "count_basis": (
+            "deduped weaknesses (normalized asset + finding type); "
+            "risk_scenarios == weaknesses == findings + vulnerabilities; "
+            "POA&M is 1:1 with open risks (include_poam); "
+            "weaknesses_total == poam_included + sum(excluded_by_reason)"
+        ),
         "generated_at": now,
     }
     write_json(out_dir() / "summary.json", summary)

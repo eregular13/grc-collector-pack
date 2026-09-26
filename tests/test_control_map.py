@@ -653,7 +653,7 @@ def test_csf_unmapped_fallback_is_deterministic_not_severity() -> None:
             category="other",
         )
     )
-    assert unk_low["control_name"].startswith("Remediate:")
+    assert unk_low["control_name"].startswith("Review and remediate per control")
     assert unk_low["csf_function"] == unk_crit["csf_function"]
     assert unk_low["csf_function"] == "identify"
     assert "csf_unmapped" in unk_low["csf"]

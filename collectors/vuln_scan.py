@@ -361,7 +361,7 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["greenbone"],
                 collected_at=now,
-                extra={},
+                extra={"id": vid},
             )
         )
     return records

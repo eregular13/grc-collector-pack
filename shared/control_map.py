@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from shared.finding_types import type_remediation
 from shared.schema import canon_severity
 
 # CISA CPG 2.x-style stamps already used on the CISO wire (underscore, not colon).
@@ -96,6 +97,8 @@ TOPIC_CSF = {
 
 
 def _blob(rec: dict[str, Any]) -> str:
+    """Narrative match blob. Never include ARN/asset names (demo-public-assets
+    used to steal the S3 public-ACL playbook for encryption findings)."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     return " ".join(
         str(x or "")
@@ -108,10 +111,10 @@ def _blob(rec: dict[str, Any]) -> str:
             extra.get("rule"),
             extra.get("cve"),
             extra.get("check_id"),
-            extra.get("arn"),
             extra.get("id"),
-            extra.get("name"),
             extra.get("control"),
+            extra.get("edge"),
+            extra.get("access"),
         )
     ).lower()
 
@@ -252,17 +255,25 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Tighten SPF softfail (~all)": ["SI-8", "SC-8"],
     "Publish DKIM for the listed selector": ["SI-8", "SC-8"],
     "Block public object-storage access": ["AC-3", "AC-6", "SC-7"],
+    "Block public object-storage ACL and policy": ["AC-3", "AC-6", "SC-7"],
     "Remove standing IAM AdministratorAccess": ["AC-2", "AC-6"],
     "Require MFA on the cloud root account": ["IA-2", "IA-2(1)"],
     "Restrict security-group ingress from the internet": ["SC-7", "AC-17"],
     "Disable public accessibility on RDS": ["SC-7", "AC-3"],
     "Enable encryption at rest on cloud storage": ["SC-28", "SC-13"],
+    "Enable S3 default encryption (SSE-S3 or SSE-KMS)": ["SC-28", "SC-13"],
+    "Enable EBS volume encryption": ["SC-28", "SC-13"],
+    "Require MFA on IAM users": ["IA-2", "IA-2(1)"],
+    "Enable multi-region CloudTrail logging": ["AU-2", "AU-3", "AU-12"],
     "Stop SQL injection in the application": ["SI-10", "SA-11"],
     "Stop OS command injection": ["SI-10", "SA-11"],
     "Patch Log4Shell-vulnerable services": ["SI-2", "RA-5"],
     "Stop remote code execution": ["SI-2", "SI-10"],
     "Stop cross-site scripting": ["SI-10", "SA-11"],
     "Remove non-DC DCSync rights": ["AC-6", "AC-2"],
+    "Remove non-DC DCSync / replication rights": ["AC-6", "AC-2", "AC-3"],
+    "Remove standing local-admin (AdminTo) rights": ["AC-6", "AC-2"],
+    "Disable SMB null / anonymous sessions": ["AC-14", "AC-3", "IA-2"],
     "Remove GenericAll on privileged objects": ["AC-6", "AC-2"],
     "Require Kerberos preauthentication": ["IA-2", "AC-2"],
     "Harden kerberoastable service accounts": ["IA-5", "AC-6"],
@@ -289,6 +300,7 @@ CONTROL_800_53: dict[str, list[str]] = {
     "Disable anonymous Kubernetes API access": ["AC-3", "IA-2"],
     "Block Kubernetes privilege escalation": ["AC-6"],
     "Avoid hostNetwork on Kubernetes workloads": ["SC-7", "CM-7"],
+    "Stop writes under container binary directories": ["SI-7", "CM-6", "AC-3"],
     "Restrict exposed admin interfaces": ["AC-17", "SC-7"],
     "Lock down sensitive perimeter hostnames": ["CM-8"],
 }
@@ -412,6 +424,28 @@ def _stamp_csf(mapped: dict[str, Any]) -> dict[str, Any]:
     return mapped
 
 
+def _typed_map(rec: dict[str, Any], typed: dict[str, Any]) -> dict[str, Any]:
+    """Type-specific remediations; CSF from 800-53 family/topic, not severity."""
+    sev = canon_severity(rec.get("severity"))
+    cpg = [CPG_WEAK_SERVICE]
+    if sev in {"high", "critical"}:
+        cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE]
+    n53 = list(typed.get("nist_800_53") or [])
+    include = sev in {"high", "critical"} or bool(typed.get("key_medium"))
+    return _stamp_csf(
+        {
+            "control_name": typed["control_name"],
+            "recommended_fix": typed["recommended_fix"],
+            "cpg": cpg,
+            "include_poam": include,
+            "nist_800_53": n53,
+            "cis": [],
+            "generic": bool(typed.get("generic")),
+            "finding_type": typed.get("finding_type") or "",
+        }
+    )
+
+
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
@@ -428,12 +462,19 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
                 "include_poam": True,
                 "nist_800_53": list(rule["nist_800_53"]),
                 "cis": list(rule["cis"]),
+                "generic": False,
+                "finding_type": check,
             }
         )
+    typed = type_remediation(rec)
+    if typed:
+        return _typed_map(rec, typed)
     mapped = _map_finding_legacy(rec)
     n53, cis = _lookup_control_ids(mapped["control_name"])
     mapped["nist_800_53"] = n53
     mapped["cis"] = cis
+    mapped.setdefault("generic", False)
+    mapped.setdefault("finding_type", "")
     return _stamp_csf(mapped)
 
 
@@ -445,6 +486,7 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     sev = canon_severity(rec.get("severity"))
     cpg = [CPG_WEAK_SERVICE]
     key_medium = False
+    generic = False
     source = str(rec.get("source") or "").lower()
     category = str(rec.get("category") or "").lower()
     if (
@@ -463,6 +505,8 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             ),
             "cpg": [CPG_EXPOSURE],
             "include_poam": False,
+            "generic": False,
+            "finding_type": "honeypot",
         }
 
     if (
@@ -729,7 +773,12 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Reconnect the agent or enroll the host in Fleet/Wazuh. "
             "This is a coverage finding from a dropped export, not a live query."
         )
-    elif "secret" in text or "gitleaks" in text or "trufflehog" in text:
+    elif (
+        category == "secrets"
+        or "gitleaks" in text
+        or "trufflehog" in text
+        or (source == "code-secrets" and ("secret" in text or "api key" in text))
+    ):
         name = "Rotate and revoke exposed credentials"
         fix = "Rotate the secret, revoke the old value, and remove it from the repo. The pack redacts secret material."
     elif "phishing-resistant" in text and "mfa" in text:
@@ -874,8 +923,14 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         )
         key_medium = port in {"3389", "445"}
     else:
-        name = f"Remediate: {rec.get('name') or rec.get('ref_id')}"
-        fix = str(rec.get("description") or rec.get("name") or "Review and remediate the finding.")
+        ref = rec.get("ref_id") or rec.get("name") or "unknown"
+        extra_id = str(extra.get("check_id") or extra.get("control") or extra.get("id") or ref)
+        name = f"Review and remediate per control {extra_id}"
+        fix = (
+            f"Review and remediate per control {extra_id}. "
+            "Generic fallback — no type-specific playbook is mapped for this finding type."
+        )
+        generic = True
 
     if sev in {"high", "critical"}:
         cpg = [CPG_WEAK_SERVICE, CPG_EXPOSURE]
@@ -885,6 +940,81 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
         "recommended_fix": fix,
         "cpg": cpg,
         "include_poam": include or sev in {"high", "critical"},
+        "generic": generic,
+        "finding_type": "",
+    }
+
+
+# Named reasons for POA&M include/exclude. Every weakness gets exactly one.
+# Gate is include_poam from map_finding — status / accepted are not consulted.
+POAM_INCLUDE_REASONS = frozenset({"nse_misconfig", "severity_high_critical", "key_medium"})
+POAM_EXCLUDE_REASONS = frozenset(
+    {"honeypot", "severity_info", "severity_low", "severity_medium_not_key"}
+)
+
+
+def _is_honeypot(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    source = str(rec.get("source") or "").lower()
+    category = str(rec.get("category") or "").lower()
+    text = _blob(rec)
+    return (
+        source in {"honeypot", "honeypot-sensor"}
+        or category in {"honeypot", "deception-sensor"}
+        or extra.get("honesty") == "deception-sensor"
+        or "deception-sensor" in text
+    )
+
+
+def poam_decision(rec: dict[str, Any]) -> dict[str, Any]:
+    """Why this weakness is on or off the POA&M. Never a silent drop.
+
+    include_poam is true when any of:
+    - extra.check_id is an NSE misconfig rule (always)
+    - severity is high or critical (except honeypot)
+    - key_medium topic (SMB/445, RDP/3389, admin shares, TLS/443, missing
+      DMARC/SPF/DKIM, SPF +all, or a typed key_medium playbook)
+    Honeypot / deception-sensor is always excluded. Status is not a gate.
+    Informational maps to info and is below threshold unless key_medium/NSE.
+    """
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    check = str(extra.get("check_id") or "")
+    sev = canon_severity(rec.get("severity"))
+    included = bool(map_finding(rec).get("include_poam"))
+    if check in MISCONFIG_RULES:
+        reason = "nse_misconfig"
+    elif _is_honeypot(rec):
+        reason = "honeypot"
+    elif included and sev in {"high", "critical"}:
+        reason = "severity_high_critical"
+    elif included:
+        reason = "key_medium"
+    elif sev == "info":
+        reason = "severity_info"
+    elif sev == "low":
+        reason = "severity_low"
+    elif sev == "medium":
+        reason = "severity_medium_not_key"
+    else:
+        reason = "unexplained"
+    return {"include": included, "reason": reason, "severity": sev}
+
+
+def poam_breakdown(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    """weaknesses_total == poam_included + sum(excluded_by_reason)."""
+    excluded: dict[str, int] = {}
+    included = 0
+    for rec in findings:
+        decision = poam_decision(rec)
+        if decision["include"]:
+            included += 1
+            continue
+        reason = str(decision["reason"] or "unexplained")
+        excluded[reason] = excluded.get(reason, 0) + 1
+    return {
+        "weaknesses_total": len(findings),
+        "poam_included": included,
+        "excluded_by_reason": excluded,
     }
 
 
