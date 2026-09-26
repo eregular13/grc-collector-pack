@@ -169,6 +169,10 @@ def assert_lab() -> None:
         if closed.is_file():
             first = closed.read_text(encoding="utf-8").splitlines()[0]
             assert not first.lstrip().startswith("#"), "poam_fedramp_closed.csv header-first"
+            closed_rows = _csv_rows(closed, ",".join(FEDRAMP_CSV_HEADERS))
+            assert not any(
+                (r.get("Vendor Dependency") or "").strip() == "Yes" for r in closed_rows
+            ), "spec §2.2: vendor-dependent Yes stays off the Closed tab"
         for rel in ("poam-ledger.json", "kev_provenance.json"):
             path = OUT / "poam" / rel
             if path.is_file():
