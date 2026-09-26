@@ -394,6 +394,9 @@ def parse_file(path: Path) -> list[dict]:
                 continue
             host = str(row.get("host") or "unknown")
             add_asset(host)
+            extra = {"url": url, "id": rid}
+            if row.get("scan_time"):
+                extra["scan_time"] = row.get("scan_time")
             records.append(
                 make_record(
                     kind="finding",
@@ -408,7 +411,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[host],
                     labels=LABELS + ["nikto"],
                     collected_at=now,
-                    extra={"url": url, "id": rid},
+                    extra=extra,
                 )
             )
         return records

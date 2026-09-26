@@ -224,8 +224,19 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
     return out
 
 
+def _nikto_start_time(raw: str) -> str:
+    """Nikto text ``+ Start Time: 2026-09-04 17:00:00 (GMT0)`` → datetime token."""
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    if " (" in text:
+        text = text.split(" (", 1)[0].strip()
+    return text
+
+
 def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
     host = "unknown"
+    start = ""
     for line in text.splitlines():
         raw = line.strip()
         if not raw.startswith("+"):
@@ -237,6 +248,9 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
             continue
         if low.startswith("target ip") and host in {"unknown", ""}:
             host = rest.split(":", 1)[-1].strip() or host
+            continue
+        if low.startswith("start time"):
+            start = _nikto_start_time(rest.split(":", 1)[-1] if ":" in rest else "")
             continue
         if ":" not in rest:
             continue
@@ -252,7 +266,10 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
                 url = "/"
         elif not left.startswith("/"):
             continue
-        yield {"host": host, "url": url, "msg": msg, "id": left}
+        row = {"host": host, "url": url, "msg": msg, "id": left}
+        if start:
+            row["scan_time"] = start
+        yield row
 
 
 def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:

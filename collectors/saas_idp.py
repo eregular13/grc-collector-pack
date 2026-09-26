@@ -446,6 +446,7 @@ def parse_file(path: Path) -> list[dict]:
                 continue
             add_asset(tenant, f"Maester tenant {tenant}", ["maester"])
             name = str(row.get("Name") or row.get("Id") or row.get("id") or row.get("title") or "maester")
+            stamp = str(row.get("ExecutedAt") or payload.get("ExecutedAt") or "").strip()
             records.append(
                 make_record(
                     kind="finding",
@@ -462,6 +463,7 @@ def parse_file(path: Path) -> list[dict]:
                         "result": "failed",
                         "id": row.get("Id") or row.get("id") or name,
                         "severity_source": sev_source,
+                        **({"scan_time": stamp} if stamp else {}),
                     },
                 )
             )

@@ -1,5 +1,6 @@
 {
   "Tenant": "contoso.onmicrosoft.com",
+  "ExecutedAt": "2026-09-23T15:00:00Z",
   "TestResults": [
     {
       "Id": "MT.1035",

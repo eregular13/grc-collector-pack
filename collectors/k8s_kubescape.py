@@ -246,6 +246,7 @@ def parse_file(path: Path) -> list[dict]:
         sev: Any,
         labels: list[str],
         asset: str | None = None,
+        scan_time: str = "",
     ) -> None:
         host = str(asset or cluster or "cluster").strip() or "cluster"
         key = f"{(cid.lower() or name.lower())}|{host.lower()}"
@@ -276,12 +277,19 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=labels,
                 collected_at=now,
-                extra={"control": cid, "id": cid, "rule": cid},
+                extra={
+                    "control": cid,
+                    "id": cid,
+                    "rule": cid,
+                    **({"scan_time": scan_time} if scan_time else {}),
+                },
             )
         )
 
     add_cluster()
+    ks_stamp = ""
     if isinstance(payload, dict):
+        ks_stamp = str(payload.get("generationTime") or payload.get("GenerationTime") or "").strip()
         summary = payload.get("summaryDetails") or {}
         controls = summary.get("controls") if isinstance(summary, dict) else {}
         if isinstance(controls, dict):
@@ -297,6 +305,7 @@ def parse_file(path: Path) -> list[dict]:
                     str(ctrl.get("description") or name),
                     _kubescape_item_severity(ctrl),
                     LABELS,
+                    scan_time=ks_stamp,
                 )
         for row in _kubescape_result_rows(payload):
             status = row.get("status") or row.get("Status")
@@ -312,6 +321,7 @@ def parse_file(path: Path) -> list[dict]:
                 str(row.get("description") or row.get("remediation") or name),
                 _kubescape_item_severity(row),
                 LABELS,
+                scan_time=ks_stamp,
             )
         for res in payload.get("resources") or []:
             if not isinstance(res, dict):

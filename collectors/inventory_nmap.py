@@ -447,6 +447,8 @@ def parse_file(path: Path) -> list[dict]:
                 extra["cdn"] = True
             if host.get("cdn_name"):
                 extra["cdn_name"] = host.get("cdn_name")
+            if host.get("scan_time"):
+                extra["scan_time"] = host.get("scan_time")
             _emit_host(
                 records,
                 now,

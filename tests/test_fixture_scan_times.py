@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import importlib
+import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -43,7 +44,10 @@ TODAY = datetime.now(timezone.utc).date().isoformat()
 # Calendar days stamped on lab/demo fixtures this brick. Not the pack run date.
 FIXTURE_DATES = frozenset(
     {
+        "2026-09-04",  # nikto Start Time
+        "2026-09-07",  # ffuf time
         "2026-09-08",  # httpx
+        "2026-09-09",  # naabu timestamp
         "2026-09-10",  # nmap / gnmap / masscan / nessus
         "2026-09-11",  # nuclei
         "2026-09-12",  # trivy / testssl
@@ -54,23 +58,160 @@ FIXTURE_DATES = frozenset(
         "2026-09-17",  # lynis report_datetime_start
         "2026-09-18",  # falco time
         "2026-09-19",  # PingCastle GenerationDate
+        "2026-09-20",  # kubescape generationTime
         "2026-09-21",  # lab-drop nmap pack_drop generated_at
+        "2026-09-22",  # ScoutSuite last_run.time
+        "2026-09-23",  # Maester ExecutedAt
+        "2026-09-24",  # Cloud Custodian execution.start
         "2026-09-25",  # OpenSCAP TestResult start-time
     }
 )
 
-# Tools whose real output has no scan-time field. Rows stay 'not recorded'.
+# Tools whose real output has no scan-level clock, or were not verified.
+# Parsed this brick: kubescape generationTime, ScoutSuite last_run.time,
+# Maester ExecutedAt, naabu timestamp, Custodian execution.start, nikto
+# Start Time, ffuf time.
 NO_TIMESTAMP_TOOLS = (
     "fping / arp-scan / netdiscover / zmap / unicornscan / nbtscan / smbmap "
     "(stdout; no scan clock)",
-    "whatweb / sslscan / naabu / nikto text / enum4linux (no scan-time field)",
+    "whatweb / sslscan XML (elapsed-ms time= only) / enum4linux-ng JSON "
+    "(no timestamp; classic text header is not this pack's fixture format)",
     "hardeningkitty CSV (filename clock is pack convention, not a CSV column)",
-    "kube-bench / kubescape JSON (no scan timestamp in the exported schema)",
+    "kube-bench JSON (Controls struct has no time field)",
     "checkov / gitleaks / trufflehog / semgrep JSON (non-SARIF)",
-    "scoutsuite / steampipe / custodian / maester / okta / graph / entra / jamf / intune",
-    "amass / subfinder / ffuf / bloodhound JSON (no scan-level time)",
+    "steampipe / okta / graph / entra / jamf / intune (not verified in depth)",
+    "amass / subfinder / bloodhound JSON (no scan-level time / not verified)",
     "osquery inventory demo (no unixTime/calendarTime on these rows)",
     "honeypot events (ts is event time; rows stay excluded telemetry)",
+)
+
+# Fresh DEMO poam.csv EGP IDs on master ac06bdc. ArtifactName was dropped
+# so this set and the asset-ledger count stay exactly as on master.
+MASTER_DEMO_ASSET_LEDGER = 80
+MASTER_DEMO_EGP_IDS = frozenset(
+    {
+        "EGP-01A7E0C096",
+        "EGP-0361A3226F",
+        "EGP-03DE2375BD",
+        "EGP-04F1E588B0",
+        "EGP-05BE5CCE95",
+        "EGP-0682485128",
+        "EGP-06AA325F5E",
+        "EGP-089D0D23BF",
+        "EGP-09B17D457B",
+        "EGP-0AF7CB2826",
+        "EGP-0C9060D676",
+        "EGP-0CD518B10D",
+        "EGP-1216DA041C",
+        "EGP-124FDB7417",
+        "EGP-15AD69F129",
+        "EGP-1868797036",
+        "EGP-18F6139776",
+        "EGP-1B99193A54",
+        "EGP-210A7BC0AE",
+        "EGP-22A5685F02",
+        "EGP-249A9C4377",
+        "EGP-27458F6B45",
+        "EGP-2AE478D2A9",
+        "EGP-2ED9ACA78F",
+        "EGP-2F9B53617E",
+        "EGP-38702B2F4D",
+        "EGP-38ED15393B",
+        "EGP-39348737E9",
+        "EGP-394AAC793B",
+        "EGP-3A05A7B4C5",
+        "EGP-3ACA3100FE",
+        "EGP-3CACDC27B2",
+        "EGP-3D3C6C703A",
+        "EGP-3F2616BFEB",
+        "EGP-4010401CDB",
+        "EGP-404EF5A7B6",
+        "EGP-43DA96FE7C",
+        "EGP-445A4362DA",
+        "EGP-452E20FDD5",
+        "EGP-460F30CDC5",
+        "EGP-470D8E6BC5",
+        "EGP-476574DDAC",
+        "EGP-48F4BD4DB7",
+        "EGP-4BA874FC56",
+        "EGP-4C075D5324",
+        "EGP-4D166DC411",
+        "EGP-4EBC78720E",
+        "EGP-4EEEE5EE04",
+        "EGP-5422E0C6EF",
+        "EGP-55CA11BC46",
+        "EGP-5846F7C0DD",
+        "EGP-591DBD3BA9",
+        "EGP-5BA9098A6F",
+        "EGP-5C35746A8A",
+        "EGP-5C40B48DB9",
+        "EGP-647DE09109",
+        "EGP-65380FA86F",
+        "EGP-667BD345E8",
+        "EGP-66C6794A18",
+        "EGP-6AC29500A4",
+        "EGP-6AE827EABE",
+        "EGP-6E2C561DC3",
+        "EGP-6F936711D9",
+        "EGP-6FE30228A9",
+        "EGP-715049DEA3",
+        "EGP-7726E46AF1",
+        "EGP-779757A7FF",
+        "EGP-77D7ADC49C",
+        "EGP-8A3AE2E3B4",
+        "EGP-8AA3A720F9",
+        "EGP-8BF0FD466C",
+        "EGP-8C0E1B1BDB",
+        "EGP-8F1A843A26",
+        "EGP-916954FE99",
+        "EGP-921A461C91",
+        "EGP-9669766F6B",
+        "EGP-973D7948A6",
+        "EGP-98052F0CBE",
+        "EGP-983ABF17E7",
+        "EGP-98AE62B10D",
+        "EGP-9CD3850AD7",
+        "EGP-A3038CD302",
+        "EGP-A499CB9619",
+        "EGP-A9699FDD7B",
+        "EGP-AAC630CCE4",
+        "EGP-AB11671FFA",
+        "EGP-AB1B4DF038",
+        "EGP-AC949F573B",
+        "EGP-AEAAADBC1F",
+        "EGP-AF110EE4A0",
+        "EGP-AF83F05236",
+        "EGP-B09502BD02",
+        "EGP-B57CE7F3B7",
+        "EGP-B69B84EE98",
+        "EGP-B867338F75",
+        "EGP-BB7125EC27",
+        "EGP-BC9939439E",
+        "EGP-BD8368985C",
+        "EGP-BF0609A3D0",
+        "EGP-C0595DF5F2",
+        "EGP-C07EF796F5",
+        "EGP-C0D7472C4D",
+        "EGP-C26D472FE3",
+        "EGP-C84FA935DD",
+        "EGP-CB0C07B186",
+        "EGP-CB4A3A6DD9",
+        "EGP-D100D44047",
+        "EGP-D16DD1023F",
+        "EGP-D3A958743B",
+        "EGP-D43775CB27",
+        "EGP-D4C1B8A8D7",
+        "EGP-D8920D895C",
+        "EGP-DCA63D5B12",
+        "EGP-E006BF4DC0",
+        "EGP-E1558E18BC",
+        "EGP-E5A5AF0149",
+        "EGP-E6A90AAF66",
+        "EGP-E94D21F9AB",
+        "EGP-EA662AB81B",
+        "EGP-EBC76F1F2A",
+        "EGP-F18CA5E082",
+    }
 )
 
 COLLECTORS = (
@@ -233,6 +374,41 @@ def test_httpx_timestamp() -> None:
     assert "2026-09-08" in _scan_dates(recs)
 
 
+def test_nikto_start_time() -> None:
+    recs = vuln_scan.parse_file(DEMO / "vuln" / "nikto.txt")
+    assert _scan_dates(recs) == {"2026-09-04"}
+
+
+def test_naabu_timestamp() -> None:
+    recs = inventory_nmap.parse_file(DEMO / "nmap" / "naabu.jsonl")
+    assert _scan_dates(recs) == {"2026-09-09"}
+
+
+def test_ffuf_time() -> None:
+    recs = easm.parse_file(DEMO / "easm" / "ffuf.json")
+    assert _scan_dates(recs) == {"2026-09-07"}
+
+
+def test_kubescape_generation_time() -> None:
+    recs = k8s_kubescape.parse_file(DEMO / "k8s" / "kubescape.json")
+    assert _scan_dates(recs) == {"2026-09-20"}
+
+
+def test_scoutsuite_last_run_time() -> None:
+    recs = cloud_prowler.parse_file(DEMO / "cloud" / "scoutsuite.json")
+    assert _scan_dates(recs) == {"2026-09-22"}
+
+
+def test_maester_executed_at() -> None:
+    recs = saas_idp.parse_file(DEMO / "saas" / "maester.json")
+    assert _scan_dates(recs) == {"2026-09-23"}
+
+
+def test_custodian_execution_start() -> None:
+    recs = cloud_prowler.parse_file(DEMO / "cloud" / "custodian.json")
+    assert _scan_dates(recs) == {"2026-09-24"}
+
+
 def test_lab_drop_nmap_meta_generated_at() -> None:
     recs = inventory_nmap.parse_file(LAB_DROP / "nmap" / "pack_drop" / "findings.jsonl")
     assert "2026-09-21" in _scan_dates(recs)
@@ -261,14 +437,22 @@ def _run_demo_pack(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_demo_pack_run_detection_dates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     poam = _run_demo_pack(tmp_path, monkeypatch)
     real, missing, dates = _poam_date_counts(poam)
-    # Before (older 109-row plan): 4 real / 105 not recorded.
-    # After this brick on the current 121-row demo plan:
+    # Measured on master ac06bdc: 9 real / 112 not recorded of 121.
+    # After fixtures + parser reads on this branch:
     assert real + missing == 121
-    assert real == 52
-    assert missing == 69
+    assert real == 61
+    assert missing == 60
     unknown = set(dates) - FIXTURE_DATES
     assert not unknown, f"POA&M dates not from fixtures: {sorted(unknown)}"
     assert TODAY not in dates
+    with poam.open(encoding="utf-8", newline="") as fh:
+        egps = {row["poam_id"] for row in csv.DictReader(fh)}
+    assert egps == MASTER_DEMO_EGP_IDS
+    ledger = json.loads((poam.parent.parent / "assets" / "asset-ledger.json").read_text(encoding="utf-8"))
+    assert len(ledger.get("assets") or {}) == MASTER_DEMO_ASSET_LEDGER
+    assert "EGA-4E81C2EC3D" not in (ledger.get("assets") or {})
+    assert "EGP-22A5685F02" in egps
+    assert "EGP-6FE30228A9" in egps
 
 
 def test_lab_drop_run_detection_dates(tmp_path: Path) -> None:
@@ -277,6 +461,7 @@ def test_lab_drop_run_detection_dates(tmp_path: Path) -> None:
     stamp = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
     poam = Path(stamp["out_dir"]) / "poam" / "poam.csv"
     real, missing, dates = _poam_date_counts(poam)
+    # Measured on master ac06bdc: 15 real / 34 not recorded of 49.
     assert real + missing == 49
     assert real == 23
     assert missing == 26
@@ -291,7 +476,7 @@ def test_farm_drop_detection_date_counts(tmp_path: Path) -> None:
     stamp = prove_ciso(root=ROOT, dest=dest)
     poam = Path(stamp["out_dir"]) / "poam" / "poam.csv"
     real, missing, dates = _poam_date_counts(poam)
-    # Farm fixtures were not rewritten. Current full-plan farm_drop is 73 rows.
+    # Farm is unchanged by this PR. Measured on master ac06bdc: 69 / 4 of 73.
     # Dates come from pack_drop meta.json generated_at (2026-09-08).
     assert real + missing == 73
     assert real == 69

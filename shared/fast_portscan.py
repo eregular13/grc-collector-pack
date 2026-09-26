@@ -114,7 +114,16 @@ def _push(
         return
     key = name.lower()
     slot = grouped.setdefault(
-        key, {"name": name, "addr": addr, "hostname": hostname, "ports": [], "cdn": False, "cdn_name": ""}
+        key,
+        {
+            "name": name,
+            "addr": addr,
+            "hostname": hostname,
+            "ports": [],
+            "cdn": False,
+            "cdn_name": "",
+            "scan_time": "",
+        },
     )
     if addr and not slot.get("addr"):
         slot["addr"] = addr
@@ -126,6 +135,8 @@ def _push(
             slot["cdn"] = True
         if extra.get("cdn_name") and not slot.get("cdn_name"):
             slot["cdn_name"] = extra["cdn_name"]
+        if extra.get("scan_time") and not slot.get("scan_time"):
+            slot["scan_time"] = extra["scan_time"]
     ports: list[tuple[str, str]] = slot["ports"]
     proto = svc if svc in {"tcp", "udp", "sctp"} else ""
     if not any(p == portid and (not proto or s == proto or s == svc) for p, s in ports):
@@ -146,6 +157,9 @@ def _from_naabu_row(grouped: dict[str, dict[str, Any]], row: dict[str, Any]) -> 
         "cdn": bool(row.get("cdn") is True or str(row.get("cdn") or "").lower() == "true"),
         "cdn_name": str(row.get("cdn-name") or row.get("cdn_name") or "").strip(),
     }
+    stamp = row.get("timestamp") or row.get("Timestamp")
+    if stamp not in (None, ""):
+        extra["scan_time"] = str(stamp)
     _push(grouped, addr, hostname, _port_token(row.get("port") or row.get("portid")), proto, extra=extra)
 
 
