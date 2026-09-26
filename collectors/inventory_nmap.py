@@ -32,6 +32,8 @@ LABELS = ["nmap", "inventory"]
 _CDN_EDGE_PORTS = frozenset({"80", "443", "8080", "8443"})
 _VULNERS_SOLO_CVSS = 7.0
 # Keyed by (port, proto). tcp/445 is SMB; udp/445 is not.
+# Design (Metis §15): SNMP 161/udp open = medium; TFTP 69/udp open = high.
+# Open non-risky UDP is not_a_weakness (info). open|filtered is never a weakness.
 RISKY = {
     ("23", "tcp"): ("critical", "Telnet exposed"),
     ("21", "tcp"): ("high", "FTP exposed"),
@@ -42,6 +44,7 @@ RISKY = {
     ("161", "udp"): ("medium", "SNMP 161/udp exposed"),
     ("69", "udp"): ("high", "TFTP 69/udp exposed"),
 }
+NMAP_PORT_CHECK_PREFIX = "nmap-port-"
 RISKY_TCP = {port: val for (port, proto), val in RISKY.items() if proto == "tcp"}
 # Confirmed-open UDP only. open|filtered never uses this table.
 RISKY_UDP = {port: val for (port, proto), val in RISKY.items() if proto == "udp"}
@@ -225,9 +228,12 @@ def _emit_host(
             sev, title = "info", f"UDP {portid} open|filtered (not confirmed open)"
             not_a_weakness = True
         elif proto == "udp" and state == "open":
-            sev, title = RISKY_UDP.get(
-                portid, ("info", f"Open UDP port {portid}/{svc or 'udp'}")
-            )
+            if portid in RISKY_UDP:
+                sev, title = RISKY_UDP[portid]
+            else:
+                # Design: confirmed-open but not in RISKY_UDP → not a weakness.
+                sev, title = "info", f"Open UDP port {portid}/{svc or 'udp'}"
+                not_a_weakness = True
         elif proto == "tcp":
             sev, title = RISKY_TCP.get(portid, ("info", f"Open port {portid}/{svc or proto}"))
             if sev == "info" and portid not in {"80", "443"}:
@@ -241,7 +247,15 @@ def _emit_host(
         for lab in extra_labels or []:
             if lab not in find_labels:
                 find_labels.append(lab)
-        extra_find: dict[str, Any] = {"port": portid, "service": svc, "protocol": proto, "ip": addr}
+        extra_find: dict[str, Any] = {
+            "port": portid,
+            "service": svc,
+            "protocol": proto,
+            "ip": addr,
+            # Stable ledger id; display title may change without reminting EGP-.
+            "check_id": f"{NMAP_PORT_CHECK_PREFIX}{portid}/{proto}",
+            "tool": "nmap",
+        }
         if state and state != "open":
             extra_find["state"] = state
         if not_a_weakness:

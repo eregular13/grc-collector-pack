@@ -37,7 +37,8 @@ def _by_check(recs: list[dict]) -> dict[tuple[str, str], dict]:
     out = {}
     for rec in recs:
         check = str(rec["extra"].get("check_id") or "")
-        if check:
+        # Port-identity check_ids are not NSE misconfig evidence.
+        if check and not check.startswith("nmap-port-"):
             out[(rec["extra"]["ip"], check)] = rec
     return out
 

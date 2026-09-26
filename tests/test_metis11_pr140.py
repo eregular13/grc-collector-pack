@@ -217,12 +217,22 @@ def test_real_udp_scan_no_tcp_rule_on_udp_snmp_two_hosts() -> None:
     assert all(r["ref_id"].endswith("-161-udp") for r in included)
     assert all("UDP/161" in r["description"] for r in included)
     assert len(excluded) == 135
+    assert all(poam_decision(r)["reason"] == "not_a_weakness" for r in excluded)
     of_rows = [r for r in findings if (r.get("extra") or {}).get("state") == "open|filtered"]
     assert len(of_rows) == 101
-    assert all(poam_decision(r)["include"] is False for r in of_rows)
-    assert all(poam_decision(r)["reason"] == "not_a_weakness" for r in of_rows)
+    open_non_risky = [
+        r
+        for r in findings
+        if (r.get("extra") or {}).get("protocol") == "udp"
+        and (r.get("extra") or {}).get("state") in {None, "open"}
+        and (r.get("extra") or {}).get("port") != "161"
+    ]
+    assert len(open_non_risky) == 34
+    assert all(poam_decision(r)["reason"] == "not_a_weakness" for r in open_non_risky)
     udp445 = [r for r in findings if (r.get("extra") or {}).get("port") == "445"]
     assert udp445
     assert all((r.get("extra") or {}).get("protocol") == "udp" for r in udp445)
     assert all(r["severity"] == canon_severity("info") for r in udp445)
     assert all(not poam_decision(r)["include"] for r in udp445)
+    assert all("SMB" not in r["name"] for r in udp445)
+    assert not any("Administrative share" in r["name"] for r in findings)
