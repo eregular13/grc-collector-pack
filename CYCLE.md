@@ -1,5 +1,19 @@
 # CYCLE log
 
+## cycle 196 — merge master 1f8d347 #137 into discovery/web (#140) (2026-09-26)
+
+Normal merge of `origin/master` `1f8d347` (#137 same-rule per asset +
+vendor severities; also #135/#131). No rebase. Discovery/web parsers
+kept; loader/severity/dedupe from master. Recomputed host-lab: pytest
+**1154** (1 skipped); assets **85** findings **104** vulnerabilities
+**22** poam **126** (`applied_controls=126` `risk_scenarios=126`
+`severity_unmapped=0` `poam_plan=full` `demo=true`). Vs master STATUS
+84/103/111: +1 asset `10.0.0.50` (L2/NBT no invented hostname), +1
+httpx admin URL, POA&M +15 because default full plan includes the
+Lows/non-key Mediums #135 already put on the register (14) plus the
+new httpx row. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 195 — merge evidence + multi-host lab fixture (2026-09-26)
 
 Merged master `f3db646` (#132 estate pages + #139 real parsers) into the
