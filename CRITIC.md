@@ -1,6 +1,6 @@
 # CRITIC — cycle 204 (METIS14_REFS_C7N_ANNOTATIONS)
 
-Lab this brick: pytest **1276** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1277** passed, 1 skipped. Ten collectors +
 `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=107`
 `vulnerabilities=22` `applied_controls=129` `risk_scenarios=129`
 `poam=124` `excluded=5` `severity_unmapped=0` `demo=true`). Excluded:

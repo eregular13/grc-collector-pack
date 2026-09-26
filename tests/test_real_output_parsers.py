@@ -275,6 +275,25 @@ def test_osquery_it_compliance_predicates_on_filebeat_and_msticpy() -> None:
     mstic = host_wazuh.parse_file(SAMPLES / "osquery" / "msticpy.osqueryd.results.log")
     assert not any(r["kind"] == "finding" for r in mstic)
     assert all((r.get("extra") or {}).get("exclude_reason") == "unmapped" for r in mstic if r.get("kind") == "excluded")
+    excluded = [r for r in mstic if r.get("kind") == "excluded"]
+    assert len(excluded) >= 11
+    assert len({r["ref_id"] for r in excluded}) == len(excluded)
+    assert "osquery-host" not in {r.get("name") for r in mstic}
+    assert not any(str(r.get("name") or "").startswith("pack_") for r in mstic)
+    assert not any("pack_" in str(r.get("name") or "") for r in ubuntu + mac)
+
+
+def test_osquery_pack_config_is_not_results() -> None:
+    from shared.io_util import UnrecognizedShape
+
+    path = SAMPLES / "osquery" / "it-compliance.conf"
+    try:
+        recs = host_wazuh.parse_file(path)
+    except UnrecognizedShape as exc:
+        assert "pack config" in exc.reason
+        return
+    assert recs == []
+    assert not any(r.get("name") == "osquery-host" for r in recs)
 
 
 def test_make_ref_keeps_full_azure_vm_identity() -> None:
@@ -284,6 +303,7 @@ def test_make_ref_keeps_full_azure_vm_identity() -> None:
     recs = cloud_prowler.parse_file(SAMPLES / "cloud" / "stop-underutilized-azure-vms" / "resources.json")
     assets = [r for r in recs if r["kind"] == "asset"]
     assert len(assets) == 8
+    assert all("/subscriptions/" in a["name"] for a in assets)
     refs = [r["ref_id"] for r in recs if r.get("kind") in {"finding", "excluded"}]
     assert len(refs) == 8
     assert len(set(refs)) == 8

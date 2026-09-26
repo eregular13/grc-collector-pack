@@ -5,7 +5,7 @@
 `make_ref` no longer truncates identity slugs. Custodian SnapshotId /
 VolumeId / DBInstanceIdentifier + `c7n:` / `c7n.` annotations;
 unparseable `resources.json` → `unrecognized_shape`. Merged remote
-`#151`/`#152`. pytest **1276**. Host-lab `assets=79` `findings=107`
+`#151`/`#152`. pytest **1277**. Host-lab `assets=79` `findings=107`
 `poam=124` `excluded=5`. SAMPLE→SoR 6/8/2. farm_drop→SoR 174/106/0
 excluded=68. Catalog **unchanged**. paying_day **FAIL**. No POST
 `/api/risks`. RiskReady stay-out.

@@ -23,4 +23,4 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 }
 ```
 
-Cycle 204 Metis §14 + merge #151/#152 (pytest 1276; host-lab assets=79 findings=107 poam=124 excluded=5). Cycle 203 merge origin/master `51bba3c` stands as history. CoS #48 rails above stand.
+Cycle 204 Metis §14 + merge #151/#152 (pytest 1277; host-lab assets=79 findings=107 poam=124 excluded=5). Cycle 203 merge origin/master `51bba3c` stands as history. CoS #48 rails above stand.
