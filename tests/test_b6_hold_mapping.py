@@ -229,3 +229,53 @@ def test_b6_classes_have_short_source_field() -> None:
             assert meta.get("source") == "nikto", ftype
         elif ftype.startswith("pc_"):
             assert meta.get("source") == "pingcastle", ftype
+
+
+def test_unmapped_pingcastle_risk_id_keeps_145_playbook() -> None:
+    recs = [
+        r
+        for r in identity_ad.parse_file(SAMPLES / "pingcastle" / "synthetic_group_membership.xml")
+        if r["kind"] == "finding"
+    ]
+    schema = next(r for r in recs if r["extra"].get("risk_id") == "P-SchemaAdmins")
+    zero = next(r for r in recs if r["extra"].get("risk_id") == "A-ZeroPoint")
+    assert finding_type(schema) == ""
+    assert finding_type(zero) == ""
+    smap = map_finding(schema)
+    zmap = map_finding(zero)
+    assert smap.get("generic") is False
+    assert zmap.get("generic") is False
+    assert "generic fallback" not in smap["recommended_fix"].lower()
+    assert "generic fallback" not in zmap["recommended_fix"].lower()
+    assert smap["control_name"] == "Restrict Schema Admins membership"
+    assert "schema update" in smap["recommended_fix"].lower()
+    assert zmap["control_name"] == "Review informational PingCastle finding"
+    assert "no score" in zmap["recommended_fix"].lower()
+    domain = _rec(
+        source="identity-ad",
+        name="PingCastle P-DomainAdmins",
+        extra={"risk_id": "P-DomainAdmins"},
+    )
+    assert finding_type(domain) == ""
+    dmap = map_finding(domain)
+    assert dmap.get("generic") is False
+    assert dmap["control_name"] == "Restrict Domain Admins membership"
+    assert "generic fallback" not in dmap["recommended_fix"].lower()
+
+
+def test_allowed_http_methods_requires_write_method() -> None:
+    get_only = _rec(
+        name="Nikto: Allowed HTTP Methods: GET, HEAD, OPTIONS",
+        description="Allowed HTTP Methods are GET HEAD OPTIONS url=/",
+        labels=["nikto"],
+        extra={"id": "999979", "url": "/"},
+    )
+    assert finding_type(get_only) != "web_http_methods"
+
+
+def test_human_title_covers_remaining_testssl_ids() -> None:
+    assert human_title("TLS1_2") == "TLS 1.2 is not offered"
+    assert human_title("TLS1_3") == "TLS 1.3 is not offered"
+    assert "wildcard" in human_title("cert_trust_wildcard").lower()
+    assert "caa" in human_title("DNS_CAArecord").lower()
+    assert human_title("TLS1_2") != "TLS1_2"

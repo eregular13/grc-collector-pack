@@ -17,8 +17,12 @@ TESTSSL_TITLES: dict[str, str] = {
     "heartbleed": "TLS stack is vulnerable to Heartbleed",
     "TLS1": "TLS 1.0 is offered",
     "TLS1_1": "TLS 1.1 is offered",
+    "TLS1_2": "TLS 1.2 is not offered",
+    "TLS1_3": "TLS 1.3 is not offered",
     "SSLv3": "SSLv3 is offered",
     "SSLv2": "SSLv2 is offered",
+    "cert_trust_wildcard": "Wildcard certificate trust is too broad",
+    "DNS_CAArecord": "CAA DNS record is missing or invalid",
 }
 
 _SKIP_SEV = frozenset({"ok", "info", "information", "debug", "warnok"})

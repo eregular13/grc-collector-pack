@@ -518,10 +518,10 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
     "pc_dsheuristics": {
         "control_name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
         "recommended_fix": (
-            "Apply the dSHeuristics LDAP security flags from KB5008383 "
-            "(CVE-2021-42291) so computer objects cannot be created or renamed "
-            "without authorization. This is PingCastle A-DsHeuristicsLDAPSecurity "
-            "from a file-drop, not a live directory call."
+            "Turn on the KB5008383 dSHeuristics LDAP authorization checks "
+            "(CVE-2021-42291) so adding or renaming a computer object requires "
+            "Create Computer Objects. PingCastle A-DsHeuristicsLDAPSecurity from "
+            "a file-drop, not a live directory call."
         ),
         "nist_800_53": ["AC-3", "AC-6", "SI-2"],
         "key_medium": True,
@@ -599,6 +599,9 @@ def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
 
 def _alias_keys(rec: dict[str, Any]) -> list[str]:
     extra = extra_dict(rec)
+    # risk_id is not an alias key: unmapped PingCastle RiskIds must fall
+    # through to control_map._pingcastle_playbook (#145), not "unknown".
+    # Mapped RiskIds are read via _exact_scanner_id / _PINGCASTLE_EXACT.
     keys = [
         extra.get("check_id"),
         extra.get("edge"),
@@ -606,9 +609,18 @@ def _alias_keys(rec: dict[str, Any]) -> list[str]:
         extra.get("id"),
         extra.get("control_key"),
         extra.get("rule"),
-        extra.get("risk_id"),
     ]
     return [norm_type_key(str(k)) for k in keys if k]
+
+
+def _risk_id_only(rec: dict[str, Any]) -> bool:
+    extra = extra_dict(rec)
+    if not str(extra.get("risk_id") or "").strip():
+        return False
+    return not any(
+        extra.get(k)
+        for k in ("check_id", "edge", "control", "id", "control_key", "rule")
+    )
 
 
 def _match_blob(rec: dict[str, Any]) -> str:
@@ -678,11 +690,12 @@ _NIKTO_BREACH_IDS = frozenset({"999966"})
 def _nikto_http_methods(msg: str, extra_id: str) -> bool:
     if extra_id in _NIKTO_METHOD_IDS:
         return True
+    write_method = _has_word(msg, "put", "delete") or "webdav" in msg
+    if not write_method:
+        return False
     if "allowed http methods" in msg:
         return True
-    if _has_word(msg, "put", "delete") and (
-        _has_word(msg, "method", "methods") or ("allow" in msg and "header" in msg)
-    ):
+    if _has_word(msg, "method", "methods") or ("allow" in msg and "header" in msg):
         return True
     return False
 
@@ -800,6 +813,12 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
 
 def finding_type(rec: dict[str, Any]) -> str:
     """Stable type id. Empty string = leave the row to the legacy narrative map."""
+    extra = extra_dict(rec)
+    risk_key = norm_type_key(str(extra.get("risk_id") or "").strip())
+    if risk_key:
+        mapped_risk = TYPE_ALIASES.get(risk_key) or _PINGCASTLE_EXACT.get(risk_key)
+        if mapped_risk:
+            return mapped_risk
     keys = _alias_keys(rec)
     for key in keys:
         mapped = TYPE_ALIASES.get(key)
@@ -807,6 +826,9 @@ def finding_type(rec: dict[str, Any]) -> str:
             return mapped
     guessed = _heuristic_type(rec)
     source = str(rec.get("source") or "")
+    # Unmapped PingCastle RiskId-only rows stay untyped so #145 playbooks win.
+    if _risk_id_only(rec) and source in {"identity-ad", ""}:
+        return ""
     if guessed and (
         source in TYPED_SOURCES or guessed.startswith(("tls_", "web_", "pc_"))
     ):

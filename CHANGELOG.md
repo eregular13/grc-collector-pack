@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- B6_PLAYBOOKS: unmapped PingCastle RiskIds (A-ZeroPoint, P-SchemaAdmins,
+  group-operator rules) fall through to the #145 playbook instead of the
+  generic fallback. Mapped ids (SSLv2, P-Delegated, S-NoPreAuth*) stay typed.
 - B6_PLAYBOOKS: per-type remediations for Nikto web-app findings, TLS
   side-channels (BREACH / LUCKY13), and PingCastle RiskIds. HOLD remap:
   testssl exact `SSLv2`; PingCastle `P-Delegated` is Protected Users (not

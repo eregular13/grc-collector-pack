@@ -897,8 +897,9 @@ _PINGCASTLE_RULES: dict[str, dict[str, str]] = {
     "A-DsHeuristicsLDAPSecurity": {
         "name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
         "fix": (
-            "Apply the dSHeuristics LDAP security flags from KB5008383 "
-            "(CVE-2021-42291). Never cite a placeholder CVE. File-drop only."
+            "Turn on the KB5008383 dSHeuristics LDAP authorization checks "
+            "(CVE-2021-42291) so adding or renaming a computer object requires "
+            "Create Computer Objects. File-drop only."
         ),
     },
     "A-ZeroPoint": {
