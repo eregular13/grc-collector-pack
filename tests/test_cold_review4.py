@@ -1282,3 +1282,112 @@ def test_wazuh_short_name_and_fqdn_upgrade_from_29c4c3e_both_directions() -> Non
         assert open_items[0]["poam_id"] == "EGP-SHORTFQDN1"
         assert created == []
         assert ghosts == []
+
+
+def _seed_29c4c3e_wazuh(host: str, ip: str, poam_id: str) -> tuple[str, dict]:
+    from shared.poam_ledger import _weakness_key_core
+
+    rec = _wazuh_disconnected(host)
+    stamped = attach_asset_uids(
+        [_wazuh_host_asset(host, ip=ip), rec], AssetLedger(), now=NOW
+    )
+    finding = next(r for r in stamped if r.get("kind") == "finding")
+    old_fp = fp_v1(finding, weakness_key_fn=_weakness_key_core)
+    item = {
+        "poam_id": poam_id,
+        "fp": old_fp,
+        "source_family": "host-wazuh",
+        "weakness_key": _weakness_key_core(finding),
+        "asset_key": finding["extra"]["asset_uid"],
+        "display_asset": host,
+        "name": rec["name"],
+        "description": rec["description"],
+        "ref_id": finding["ref_id"],
+        "original_detection_date": "2026-08-01",
+        "first_seen": "2026-08-01T00:00:00Z",
+        "last_seen": "2026-08-01T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    return old_fp, item
+
+
+def _x2dom_hosts() -> tuple[tuple[str, str, str], tuple[str, str, str]]:
+    return (
+        ("web01.corp-a.local", "10.1.0.10", "EGP-1D468451C2"),
+        ("web01.corp-b.local", "10.2.0.20", "EGP-D9A5F91ED9"),
+    )
+
+
+def _apply_x2dom(prior: dict, hosts: list[tuple[str, str]]) -> dict:
+    records: list[dict] = []
+    for host, ip in hosts:
+        records.append(_wazuh_host_asset(host, ip=ip))
+        records.append(_wazuh_disconnected(host))
+    stamped = attach_asset_uids(records, AssetLedger(), now=NOW)
+    findings = [r for r in stamped if r.get("kind") == "finding"]
+    return apply_ledger(
+        findings,
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-02T00:00:00Z"),
+        ledger_in=prior,
+        prior_existed=True,
+    )
+
+
+def test_x2dom_both_hosts_both_runs_keep_two_egps() -> None:
+    """web01.corp-a and web01.corp-b stay two EGPs on upgrade, either order."""
+    from shared.poam_ledger import _wazuh_hostless_item_matches
+
+    a, b = _x2dom_hosts()
+    assert not _wazuh_hostless_item_matches(
+        _wazuh_disconnected(b[0]), {"display_asset": a[0]}
+    )
+    for order in ((a, b), (b, a)):
+        prior = empty_ledger()
+        for host, ip, pid in order:
+            fp, item = _seed_29c4c3e_wazuh(host, ip, pid)
+            prior["items"][fp] = item
+        out = _apply_x2dom(prior, [(h, ip) for h, ip, _pid in order])
+        open_items = [
+            it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+        ]
+        ids = {it["poam_id"] for it in open_items}
+        aliases = {x for it in open_items for x in (it.get("aliased_poam_ids") or [])}
+        remaps = [
+            e for e in (out.get("events_this_run") or []) if e.get("kind") == "migrated"
+        ]
+        stolen = [
+            e
+            for e in (out.get("events_this_run") or [])
+            if e.get("kind") == "migrated_alias"
+        ]
+        assert ids == {a[2], b[2]}, (order[0][0], ids)
+        assert not aliases
+        assert stolen == []
+        assert {e.get("poam_id") for e in remaps} <= {a[2], b[2]}
+
+
+def test_x2dom_a_then_b_does_not_steal_egp() -> None:
+    """corp-a only on 29c4c3e, corp-b only on upgrade: both IDs, no steal."""
+    a, b = _x2dom_hosts()
+    prior = empty_ledger()
+    fp, item = _seed_29c4c3e_wazuh(a[0], a[1], a[2])
+    prior["items"][fp] = item
+    out = _apply_x2dom(prior, [(b[0], b[1])])
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    assert a[2] in ids
+    assert len(ids) == 2
+    assert a[2] not in {
+        it["poam_id"]
+        for it in open_items
+        if str(it.get("display_asset") or "") == b[0]
+    }
+    b_row = next(it for it in open_items if str(it.get("display_asset") or "") == b[0])
+    assert b_row["poam_id"] != a[2]
+    assert b_row["poam_id"].startswith("EGP-")

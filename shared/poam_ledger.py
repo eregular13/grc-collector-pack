@@ -324,22 +324,34 @@ def _wazuh_host_segment(raw: str) -> str:
     return token.split(".", 1)[0]
 
 
-def _wazuh_host_token(rec: dict[str, Any]) -> str:
-    """Finding's own host/agent — first name segment, not a ledger-merged hostname."""
+def _wazuh_raw_host(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent string before first-segment fold."""
     extra = extra_dict(rec)
     assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
     if assets:
-        return _wazuh_host_segment(assets[0])
+        return assets[0].split()[0].lower().rstrip(".")
     for key in ("agent", "hostname", "host"):
         val = _extra_field(extra, key)
         if val:
-            return _wazuh_host_segment(val)
+            return val.split()[0].lower().rstrip(".")
     ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
     for key in ("agent", "hostname"):
         val = str(ids.get(key) or "").strip()
         if val:
-            return _wazuh_host_segment(val)
+            return val.split()[0].lower().rstrip(".")
     return ""
+
+
+def _is_dns_fqdn(raw: str) -> bool:
+    token = str(raw or "").strip().lower().rstrip(".").split()[0]
+    if not token or token[0].isdigit() or ":" in token:
+        return False
+    return "." in token
+
+
+def _wazuh_host_token(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent — first name segment, not a ledger-merged hostname."""
+    return _wazuh_host_segment(_wazuh_raw_host(rec))
 
 
 def _stored_wazuh_hosts(item: dict[str, Any]) -> set[str]:
@@ -352,11 +364,19 @@ def _stored_wazuh_hosts(item: dict[str, Any]) -> set[str]:
 
 
 def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> bool:
-    """True only when the stored host-less Wazuh row is this incoming host."""
-    incoming = _wazuh_host_token(rec)
-    if not incoming:
+    """True only when the stored host-less Wazuh row is this incoming host.
+
+    First-segment match covers short↔FQDN (``hosta`` / ``hosta.corp.local``).
+    When both stored display and incoming host are FQDNs, require the full
+    name so ``web01.corp-a.local`` cannot absorb ``web01.corp-b.local``.
+    """
+    incoming = _wazuh_raw_host(rec)
+    stored = str(item.get("display_asset") or "").strip().split()[0].lower().rstrip(".")
+    if not incoming or not stored:
         return False
-    return incoming in _stored_wazuh_hosts(item)
+    if _is_dns_fqdn(incoming) and _is_dns_fqdn(stored):
+        return incoming == stored
+    return _wazuh_host_segment(incoming) == _wazuh_host_segment(stored)
 
 
 def _find_stored_wazuh_by_display(
