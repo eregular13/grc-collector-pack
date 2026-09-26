@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 194 — discovery/web collectors stop inventing assets (2026-09-26)
+
+§9.2 / §8.2 bricks: arp-scan/netdiscover key by IP+MAC (vendor is an
+attribute; no Ltd collapse); fping ignores `-c` timeouts and parses
+`-e`/`-a`/`-J`; nbtscan keys by IP and parses `-s`/`-v`; httpx keeps
+each URL; smbmap Status/CSV/grepable/spaces/ANSI; naabu protocol+CDN;
+ffuf path-class severity; nmap vulners CVEs + UDP `open|filtered` + MAC.
+Real-shaped samples under `fixtures/samples/` (SOURCES.md). Host-lab:
+assets **82** (+1 `10.0.0.50` from L2/NBT, no longer a fake hostname),
+findings **105** (+1 second admin URL on the demo httpx pair), poam
+**110** (+1). Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
 ## cycle 193 — import CSVs start with exact header (2026-09-26)
 
 CISO Assistant / OpenGRC / spreadsheet importers do not skip `#` comments.

@@ -52,6 +52,19 @@ CIS v8 IDs INTERNAL-ONLY. Synthetic fixture (not Seen). Catalog
 No POST `/api/risks`. RiskReady stay-out. CoS #48 rails below are
 unchanged.
 
+# CRITIC — cycle 194 (DISCOVERY_WEB_SAMPLES)
+
+Lab this brick: pytest **1066** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=82` `findings=105`
+`applied_controls=124` `risk_scenarios=124` `poam=110` `demo=true`).
+Zero P0/P1. Discovery/web parsers no longer invent `Ltd` hosts, merge
+`<unknown>` NetBIOS, count fping timeouts, drop httpx `.git/config`,
+or ignore smbmap NULL/Guest / spaced shares. Count delta vs master
+STATUS: assets 81→82, findings 104→105, poam 109→110 — explained in
+CYCLE 194. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 188 (LAB_LYNIS_OPENSCAP)
 
 Lab this brick: pytest **932** passed, 1 skipped. Ten collectors +
