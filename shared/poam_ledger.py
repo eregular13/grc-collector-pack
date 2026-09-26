@@ -329,6 +329,40 @@ def _wazuh_host_token(rec: dict[str, Any]) -> str:
     return ""
 
 
+def _stored_wazuh_hosts(item: dict[str, Any]) -> set[str]:
+    """Host/agent names on a carried Wazuh ledger item (display, title, ref)."""
+    hosts: set[str] = set()
+    display = str(item.get("display_asset") or "").strip()
+    if display:
+        hosts.add(display.split()[0].rstrip(".").lower())
+    name = str(item.get("name") or "")
+    if ":" in name:
+        tail = name.rsplit(":", 1)[-1].strip()
+        if tail:
+            hosts.add(tail.split()[0].rstrip(".").lower())
+    on_host = re.search(r"\s+on\s+([A-Za-z0-9_.-]+)\s*$", name, re.I)
+    if on_host:
+        hosts.add(on_host.group(1).lower())
+    ref = str(item.get("ref_id") or "")
+    for prefix in ("coverage-", "diskenc-", "asset-"):
+        idx = ref.lower().rfind(prefix)
+        if idx >= 0:
+            hosts.add(ref[idx + len(prefix) :].lower())
+    desc = str(item.get("description") or "")
+    endp = re.search(r"\bendpoint\s+([A-Za-z0-9_.-]+)\b", desc, re.I)
+    if endp:
+        hosts.add(endp.group(1).lower())
+    return {h for h in hosts if h}
+
+
+def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> bool:
+    """True only when the stored host-less Wazuh row is this incoming host."""
+    incoming = _wazuh_host_token(rec)
+    if not incoming:
+        return False
+    return incoming in _stored_wazuh_hosts(item)
+
+
 def _attach_wazuh_host(rec: dict[str, Any], key: str) -> str:
     """Keep host/agent on Wazuh coverage keys so IP-joined EGAs stay two EGPs."""
     if _tool_tag(rec) != "wazuh":
@@ -1016,7 +1050,10 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
     found: dict[str, tuple[dict[str, Any], str]] = {}
     for old_fp, reason in _legacy_fps_for(rec):
         if old_fp != new_fp and old_fp in items:
-            found[old_fp] = (items[old_fp], reason)
+            item = items[old_fp]
+            if reason == "wazuh_add_host" and not _wazuh_hostless_item_matches(rec, item):
+                continue
+            found[old_fp] = (item, reason)
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):

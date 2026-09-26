@@ -1083,3 +1083,85 @@ def test_wazuh_ip_reuse_keeps_two_egps() -> None:
         weakness_key(fa),
         weakness_key(fb),
     }
+
+
+def test_wazuh_ip_reuse_upgrade_keeps_hosta_egp() -> None:
+    """29c4c3e hosta ledger + hostb same IP: hosta keeps EGP-946F27C7C3, hostb is new."""
+    from shared.poam_ledger import _weakness_key_core
+
+    hosta_egp = "EGP-946F27C7C3"
+    hosta = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hosta"),
+        name="hosta",
+        category="host",
+        assets=["hosta"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hosta", ip="10.5.0.5"),
+    )
+    hostb = make_record(
+        kind="asset",
+        source="host-wazuh",
+        ref_id=make_ref("host-wazuh", "asset-hostb"),
+        name="hostb",
+        category="host",
+        assets=["hostb"],
+        labels=["wazuh"],
+        collected_at=NOW,
+        extra=stamp_ids({}, hostname="hostb", ip="10.5.0.5"),
+    )
+    fa = _wazuh_disconnected("hosta")
+    fb = _wazuh_disconnected("hostb")
+    first = AssetLedger()
+    stamped_a = attach_asset_uids([hosta, fa], first, now=NOW)
+    fa1 = next(r for r in stamped_a if r.get("kind") == "finding")
+    old_fp = fp_v1(fa1, weakness_key_fn=_weakness_key_core)
+    prior = empty_ledger()
+    prior["items"][old_fp] = {
+        "poam_id": hosta_egp,
+        "fp": old_fp,
+        "source_family": "host-wazuh",
+        "weakness_key": _weakness_key_core(fa1),
+        "asset_key": fa1["extra"]["asset_uid"],
+        "display_asset": "hosta",
+        "name": "Wazuh agent disconnected: hosta",
+        "description": "Endpoint hosta is disconnected; coverage gap.",
+        "ref_id": fa1["ref_id"],
+        "original_detection_date": "2026-08-01",
+        "first_seen": "2026-08-01T00:00:00Z",
+        "last_seen": "2026-08-01T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    for order in ((fb, fa), (fa, fb)):
+        second = AssetLedger()
+        stamped = attach_asset_uids([hosta, hostb, fa, fb], second, now=NOW)
+        by_host = {
+            str((r.get("assets") or [""])[0]): r
+            for r in stamped
+            if r.get("kind") == "finding"
+        }
+        incoming = [by_host["hostb"] if rec is fb else by_host["hosta"] for rec in order]
+        out = apply_ledger(
+            incoming,
+            catalog=_unevaluated(),
+            run_at=_run("2026-09-02T00:00:00Z"),
+            ledger_in=prior,
+            prior_existed=True,
+        )
+        open_items = [
+            it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+        ]
+        assert len(open_items) == 2, order[0]["assets"]
+        by_wk = {it["weakness_key"]: it for it in open_items}
+        assert weakness_key(fa) in by_wk
+        assert weakness_key(fb) in by_wk
+        assert by_wk[weakness_key(fa)]["poam_id"] == hosta_egp
+        assert by_wk[weakness_key(fa)]["original_detection_date"] == "2026-08-01"
+        hostb_id = by_wk[weakness_key(fb)]["poam_id"]
+        assert hostb_id != hosta_egp
+        assert hostb_id.startswith("EGP-")
