@@ -200,7 +200,7 @@ def test_cost_policy_tag_public_filter_is_not_a_weakness() -> None:
 
 
 def test_stop_idle_admin_workstations_is_not_a_weakness() -> None:
-    """Cost tokens (stop/idle) win the tie against security token 'admin'."""
+    """Operator cost map is authority — A4 stays NOT_A_WEAKNESS."""
     pol = {
         "description": "Stop idle admin workstations after hours",
         "resource": "aws.ec2",
@@ -217,6 +217,88 @@ def test_stop_idle_admin_workstations_is_not_a_weakness() -> None:
     assert recs
     assert recs[0].get("ExcludeReason") == "NOT_A_WEAKNESS"
     assert recs[0]["Status"] == "EXCLUDED"
+
+
+def test_e1_stop_public_ssh_instances_stays_finding() -> None:
+    """Keyword conflict: stop + public/ssh — security wins. Not in operator maps."""
+    pol = {
+        "description": "SSH open to 0.0.0.0/0",
+        "resource": "aws.ec2",
+        "filters": [{"type": "ingress", "CidrIp": "0.0.0.0/0", "FromPort": 22}],
+    }
+    assert "stop-public-ssh-instances" not in cloud_prowler._C7N_SECURITY_NAMES
+    assert "stop-public-ssh-instances" not in cloud_prowler._C7N_COST_NAMES
+    assert cloud_prowler._custodian_is_security("stop-public-ssh-instances", pol) is True
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "stop-public-ssh-instances",
+            **pol,
+            "resources": [{"InstanceId": "i-ssh01"}],
+        }
+    )
+    assert recs
+    assert recs[0].get("ExcludeReason") != "NOT_A_WEAKNESS"
+    assert recs[0]["Status"] == "FAIL"
+    assert recs[0]["ResourceId"] == "i-ssh01"
+    assert poam_decision(
+        {
+            "kind": "finding",
+            "source": "cloud-prowler",
+            "name": recs[0]["CheckTitle"],
+            "severity": "medium",
+            "assets": [recs[0]["ResourceId"]],
+            "extra": {"exclude_reason": recs[0].get("ExcludeReason")},
+        }
+    )["include"] is True
+
+
+def test_e2_iam_unused_access_keys_stays_finding() -> None:
+    """Keyword conflict: unused + iam/cis — security wins. Not in operator maps."""
+    pol = {
+        "description": "CIS unused credentials — IAM access keys not rotated",
+        "resource": "aws.iam-user",
+        "filters": [{"type": "access-key", "key": "Status", "value": "Active"}],
+    }
+    assert "iam-unused-access-keys" not in cloud_prowler._C7N_SECURITY_NAMES
+    assert "iam-unused-access-keys" not in cloud_prowler._C7N_COST_NAMES
+    assert cloud_prowler._custodian_is_security("iam-unused-access-keys", pol) is True
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "iam-unused-access-keys",
+            **pol,
+            "resources": [
+                {
+                    "UserName": "alice",
+                    "Arn": "arn:aws:iam::111122223333:user/alice",
+                }
+            ],
+        }
+    )
+    assert recs
+    assert recs[0].get("ExcludeReason") != "NOT_A_WEAKNESS"
+    assert recs[0]["Status"] == "FAIL"
+    assert recs[0]["ResourceId"] == "arn:aws:iam::111122223333:user/alice"
+
+
+def test_iam_user_prefers_arn_over_username() -> None:
+    recs = cloud_prowler._custodian_findings(
+        {
+            "name": "iam-unused-access-keys",
+            "resource": "aws.iam-user",
+            "description": "CIS unused credentials",
+            "filters": [],
+            "resources": [
+                {"UserName": "alice", "Arn": "arn:aws:iam::111122223333:user/alice"},
+                {"UserName": "alice", "Arn": "arn:aws:iam::444455556666:user/alice"},
+            ],
+        }
+    )
+    ids = [r["ResourceId"] for r in recs]
+    assert ids == [
+        "arn:aws:iam::111122223333:user/alice",
+        "arn:aws:iam::444455556666:user/alice",
+    ]
+    assert len(set(ids)) == 2
 
 
 def test_n_security_groups_give_n_distinct_refs() -> None:

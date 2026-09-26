@@ -332,8 +332,9 @@ def _c7n_has_token(tokens: set[str], keyword: str) -> bool:
 def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
     """Operator map first. Else whole-token on name / description / resource.
 
-    Filters (including tag values) are not gated. When both security and
-    cost/ops tokens match, ``_C7N_NOT_WEAKNESS`` wins — not a finding.
+    Filters (including tag values) are not gated. On keyword conflict,
+    security wins (master behavior). Cost-only or no match → off.
+    Named cost policies stay off via ``_C7N_COST_NAMES``.
     """
     low = pname.lower()
     if low in _C7N_SECURITY_NAMES:
@@ -351,9 +352,11 @@ def _custodian_is_security(pname: str, pol: dict[str, Any]) -> bool:
     has_special = any(special in blob for special in _C7N_SECURITY_SPECIALS)
     has_security = has_special or any(_c7n_has_token(tokens, kw) for kw in _C7N_SECURITY)
     has_cost = any(_c7n_has_token(tokens, kw) for kw in _C7N_NOT_WEAKNESS)
+    if has_security:
+        return True
     if has_cost:
         return False
-    return has_security
+    return False
 
 
 def _custodian_generic_id(res: dict[str, Any]) -> str:
@@ -412,10 +415,16 @@ def _custodian_resource_id(res: dict[str, Any], resource: str) -> str:
         if lb:
             return str(lb)
     if kind in {"iam-user", "user"}:
+        arn = res.get("Arn") or res.get("arn")
+        if arn:
+            return str(arn)
         user = res.get("UserName")
         if user:
             return str(user)
     if kind in {"iam-role", "role"}:
+        arn = res.get("Arn") or res.get("arn")
+        if arn:
+            return str(arn)
         role = res.get("RoleName")
         if role:
             return str(role)
