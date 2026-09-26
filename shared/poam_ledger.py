@@ -359,6 +359,35 @@ def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> b
     return incoming in _stored_wazuh_hosts(item)
 
 
+def _find_stored_wazuh_by_display(
+    rec: dict[str, Any], items: dict[str, Any]
+) -> list[tuple[str, dict[str, Any]]]:
+    """Host-less Wazuh rows whose stored display first-segment is this host.
+
+    29c4c3e keyed host-less; a later short-name vs FQDN observation may land on a
+    different EGA. Match ``display_asset`` only — never title — so hostb cannot
+    steal hosta's EGP.
+    """
+    extra = extra_dict(rec)
+    if extra.get("agent_status") in (None, "") and extra.get("disk_encryption_enabled") in (
+        None,
+        "",
+    ):
+        return []
+    hostless = _weakness_key_core(rec)
+    if not hostless or hostless == weakness_key(rec):
+        return []
+    out: list[tuple[str, dict[str, Any]]] = []
+    for old_fp, item in items.items():
+        if str(item.get("status") or "") == "closed":
+            continue
+        if str(item.get("weakness_key") or "") != hostless:
+            continue
+        if _wazuh_hostless_item_matches(rec, item):
+            out.append((old_fp, item))
+    return out
+
+
 def _attach_wazuh_host(rec: dict[str, Any], key: str) -> str:
     """Keep host/agent on Wazuh coverage keys so IP-joined EGAs stay two EGPs."""
     if _tool_tag(rec) != "wazuh":
@@ -1050,6 +1079,10 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
             if reason == "wazuh_add_host" and not _wazuh_hostless_item_matches(rec, item):
                 continue
             found[old_fp] = (item, reason)
+    if _tool_tag(rec) == "wazuh":
+        for old_fp, item in _find_stored_wazuh_by_display(rec, items):
+            if old_fp not in found:
+                found[old_fp] = (item, "wazuh_add_host")
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):
