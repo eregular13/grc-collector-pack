@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 214 — EGR- needs-review rollup + merge 7ebc697 (2026-09-26)
+
+Unknown Custodian tagging/retention policies roll up one `EGR-`
+POA&M row per policy+account (affected-resource count + resource
+list in the row detail). ID keyed on policy name and account, not
+resource order. Known security stays per resource. Merged
+`origin/master` `7ebc697` (#169 + #175) as a merge commit; no
+rebase. Pytest **1436**. Host-lab 79 / 107 / poam **123** /
+excluded **6**. SAMPLE 6/8/0 and farm 174/106/68 unchanged. Real
+samples poam 6 / excluded 28 after collapse. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 213 — fail-closed Custodian/Prowler/osquery accounting (2026-09-26)
 
 Unknown Custodian policies go on the POA&M as needs-review (never
