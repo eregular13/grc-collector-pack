@@ -1,0 +1,241 @@
+"""Same-title fallback rows stay distinct when path/url/file/line/user/evidence differ.
+
+Metis FOLLOW-UP from #161: DEMO easm "Exposed admin interface" on two URLs
+must not share one EGP. Upgrade from a pre-location ledger rematches — no
+ghosts and no new EGPs for a row that only gained a discriminator.
+
+LAB/SAMPLE/DEMO ≠ client KEEP. No POST /api/risks.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+
+from shared.kev import KevCatalog
+from shared.poam_ledger import (
+    apply_ledger,
+    empty_ledger,
+    fingerprints_for,
+    fp_v1,
+    legacy_pre_location_weakness_key,
+    payload_sha256,
+    weakness_key,
+)
+from shared.schema import make_ref
+
+ROOT = Path(__file__).resolve().parents[1]
+NOW = "2026-09-01T00:00:00Z"
+
+
+def _unevaluated() -> KevCatalog:
+    return KevCatalog(kev_evaluated=False, reason="snapshot_missing")
+
+
+def _run(when: str) -> datetime:
+    return datetime.fromisoformat(when.replace("Z", "+00:00"))
+
+
+def _easm_admin(path: str, url: str, ref: str) -> dict:
+    return {
+        "kind": "finding",
+        "source": "easm",
+        "ref_id": make_ref("easm", ref),
+        "name": "Exposed admin interface on admin.example.com",
+        "description": f"admin.example.com presents {path or url}.",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["admin.example.com"],
+        "labels": ["easm", "admin-ui", "demo"],
+        "collected_at": NOW,
+        "extra": {"path": path, "url": url},
+    }
+
+
+def test_demo_exposed_admin_dual_url_keys_are_distinct() -> None:
+    """DEMO httpx: /login and https://admin.example.com stay two weaknesses."""
+    from collectors import easm
+
+    recs = easm.parse_file(ROOT / "fixtures" / "demo" / "easm" / "httpx.json")
+    recs += easm.parse_file(ROOT / "fixtures" / "demo" / "easm" / "httpx.jsonl")
+    admins = [
+        r
+        for r in recs
+        if r.get("kind") == "finding"
+        and str(r.get("name") or "").startswith("Exposed admin interface on")
+        and "admin.example.com" in (r.get("assets") or [])
+    ]
+    assert len(admins) >= 2, [r.get("ref_id") for r in admins]
+    keys = {weakness_key(r) for r in admins}
+    fps = {fp_v1(r) for r in admins}
+    assert len(keys) == len(admins), keys
+    assert len(fps) == len(admins)
+    cores = {legacy_pre_location_weakness_key(r) for r in admins}
+    assert len(cores) == 1, cores
+    assert all("url:" in weakness_key(r) or "path:" in weakness_key(r) for r in admins)
+
+
+def test_synthetic_nikto_same_title_different_urls() -> None:
+    host = "legacy.corp.local"
+    a = {
+        "source": "vuln-scan",
+        "name": "Retrieved access-control list",
+        "assets": [host],
+        "labels": ["nikto"],
+        "extra": {
+            "plugin_id": "001021",
+            "url": f"https://{host}/admin/",
+            "path": "/admin/",
+            "tool": "nikto",
+        },
+    }
+    b = {
+        "source": "vuln-scan",
+        "name": "Retrieved access-control list",
+        "assets": [host],
+        "labels": ["nikto"],
+        "extra": {
+            "plugin_id": "001021",
+            "url": f"https://{host}/login",
+            "path": "/login",
+            "tool": "nikto",
+        },
+    }
+    assert weakness_key(a) != weakness_key(b)
+    assert legacy_pre_location_weakness_key(a) == legacy_pre_location_weakness_key(b)
+    assert weakness_key(a).startswith("nikto:001021")
+
+
+def test_synthetic_secret_two_files_without_rule_id() -> None:
+    a = {
+        "source": "code-secrets",
+        "name": "Generic API key",
+        "assets": ["repo"],
+        "extra": {"file": "deploy.sh", "line": "12"},
+    }
+    b = {
+        "source": "code-secrets",
+        "name": "Generic API key",
+        "assets": ["repo"],
+        "extra": {"file": "ci.yml", "line": "4"},
+    }
+    assert weakness_key(a) != weakness_key(b)
+    assert "file:deploy.sh" in weakness_key(a)
+    assert "file:ci.yml" in weakness_key(b)
+    assert legacy_pre_location_weakness_key(a) == legacy_pre_location_weakness_key(b)
+
+
+def test_synthetic_ad_alice_vs_bob_on_domain_asset() -> None:
+    domain = "corp.local"
+    alice = {
+        "source": "identity-ad",
+        "name": "Kerberoastable account",
+        "assets": [domain],
+        "extra": {"user": "alice", "edge": "HasSPN"},
+    }
+    bob = {
+        "source": "identity-ad",
+        "name": "Kerberoastable account",
+        "assets": [domain],
+        "extra": {"user": "bob", "edge": "HasSPN"},
+    }
+    assert weakness_key(alice) != weakness_key(bob)
+    assert "user:alice" in weakness_key(alice)
+    assert "user:bob" in weakness_key(bob)
+
+
+def test_synthetic_two_services_without_port() -> None:
+    host = "app.corp.local"
+    http = {
+        "source": "inventory-nmap",
+        "name": "Service exposed",
+        "assets": [host],
+        "extra": {"service": "http"},
+    }
+    ssh = {
+        "source": "inventory-nmap",
+        "name": "Service exposed",
+        "assets": [host],
+        "extra": {"service": "ssh"},
+    }
+    assert weakness_key(http) != weakness_key(ssh)
+    assert "service:http" in weakness_key(http)
+    assert "service:ssh" in weakness_key(ssh)
+
+
+def test_pre_location_upgrade_no_new_egp_no_ghost() -> None:
+    """Two URL rows that shared one #161 key rematch one EGP on upgrade."""
+    login = _easm_admin("/login", "https://admin.example.com/login", "url-login")
+    apex = _easm_admin(
+        "https://admin.example.com", "https://admin.example.com", "url-apex"
+    )
+    assert weakness_key(login) != weakness_key(apex)
+    old_fp = fp_v1(login, weakness_key_fn=legacy_pre_location_weakness_key)
+    assert old_fp == fp_v1(apex, weakness_key_fn=legacy_pre_location_weakness_key)
+    seeded = empty_ledger()
+    seeded["items"][old_fp] = {
+        "poam_id": "EGP-KEEPADMIN",
+        "fp": old_fp,
+        "source_family": "easm",
+        "weakness_key": legacy_pre_location_weakness_key(login),
+        "asset_key": "admin.example.com",
+        "ref_id": login["ref_id"],
+        "name": login["name"],
+        "original_detection_date": "2024-01-15",
+        "first_seen": "2024-01-15T00:00:00Z",
+        "status": "open",
+        "severity": "high",
+        "missed_covered_runs": 0,
+        "kev_comments": [],
+    }
+    seeded["sha256"] = payload_sha256(seeded)
+    out = apply_ledger(
+        [login, apex],
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-20T00:00:00Z"),
+        ledger_in=seeded,
+        prior_existed=True,
+    )
+    created = [e for e in out.get("events_this_run") or [] if e.get("kind") == "created"]
+    open_items = [
+        it for it in out["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    ids = {it["poam_id"] for it in open_items}
+    assert created == [], [e.get("poam_id") for e in created]
+    assert ids == {"EGP-KEEPADMIN"}
+    assert len(open_items) == 1
+    fresh = apply_ledger(
+        [login, apex],
+        catalog=_unevaluated(),
+        run_at=_run("2026-09-20T00:00:00Z"),
+        ledger_in=empty_ledger(),
+        prior_existed=False,
+    )
+    fresh_open = [
+        it for it in fresh["items"].values() if str(it.get("status") or "") != "closed"
+    ]
+    assert len(fresh_open) == 2
+    assert {it["poam_id"] for it in fresh_open} != {"EGP-KEEPADMIN"}
+
+
+def test_cve_key_does_not_grow_file_location() -> None:
+    rec = {
+        "source": "vuln-scan",
+        "name": "xz-utils supply chain backdoor",
+        "assets": ["app:latest"],
+        "labels": ["trivy"],
+        "extra": {
+            "cve": "CVE-2024-3094",
+            "pkg": "xz-utils",
+            "file": "liblzma.so",
+            "class": "vuln",
+            "tool": "trivy",
+        },
+    }
+    assert weakness_key(rec) == "cve:CVE-2024-3094"
+    assert weakness_key(rec) == legacy_pre_location_weakness_key(rec)
+    assert any(
+        fp == fp_v1(rec, weakness_key_fn=legacy_pre_location_weakness_key)
+        for fp in fingerprints_for(rec)
+    )
+

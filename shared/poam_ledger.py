@@ -311,8 +311,47 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
     return ""
 
 
-def weakness_key(rec: dict[str, Any]) -> str:
-    """Stable weakness identity: scanner id, share, port+class, then a discriminator."""
+_LOCATION_KEYS = (
+    "path",
+    "url",
+    "file",
+    "line",
+    "user",
+    "evidence",
+    "evidence_ref",
+    "cmd",
+    "command",
+)
+
+
+def _location_suffix(rec: dict[str, Any]) -> str:
+    """Path/url/file/line/user/evidence (and cmd/service) when present.
+
+    Same-title fallback rows on one asset stay distinct. CVE keys omit this.
+    """
+    extra = extra_dict(rec)
+    bits: list[str] = []
+    seen: set[str] = set()
+    for key in _LOCATION_KEYS:
+        val = _extra_field(extra, key)
+        if not val:
+            continue
+        token = f"{key}:{val.lower()}"
+        if token not in seen:
+            seen.add(token)
+            bits.append(token)
+    port = _extra_field(extra, "port")
+    if not port or port == "0":
+        svc = _extra_field(extra, "service")
+        if svc:
+            token = f"service:{svc.lower()}"
+            if token not in seen:
+                bits.append(token)
+    return "|".join(bits)
+
+
+def _weakness_key_core(rec: dict[str, Any]) -> str:
+    """Pre-location key (#161). Migration source when only a discriminator was added."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id"):
@@ -367,6 +406,22 @@ def weakness_key(rec: dict[str, Any]) -> str:
     if ref:
         return f"{tool}:ref:{ref}"
     return f"{tool}:unkeyed"
+
+
+def legacy_pre_location_weakness_key(rec: dict[str, Any]) -> str:
+    """#161 fallback key before path/url/file/line/user/evidence. Migration only."""
+    return _weakness_key_core(rec)
+
+
+def weakness_key(rec: dict[str, Any]) -> str:
+    """Stable weakness identity: scanner id, share, port+class, then location."""
+    core = _weakness_key_core(rec)
+    if core.startswith("cve:"):
+        return core
+    loc = _location_suffix(rec)
+    if loc:
+        return f"{core}:{loc}"
+    return core
 
 
 def fp_v1(
@@ -922,6 +977,17 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
     if fp and fp not in seen:
         seen.add(fp)
         out.append((fp, "title_master_ega"))
+    # Pre-location fallback (#161): same title on one asset, no path/url/file.
+    for fn, reason in (
+        (asset_key, "pre_location_to_location"),
+        (legacy_master_asset_key, "pre_location_master_ega"),
+        (legacy_asset_id_port_key, "pre_location_asset_id"),
+        (legacy_name_asset_key, "pre_location_name"),
+    ):
+        fp = fp_v1(rec, asset_key_fn=fn, weakness_key_fn=legacy_pre_location_weakness_key)
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append((fp, reason))
     return out
 
 
@@ -954,6 +1020,16 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
     """
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
+    # Sibling that only gained a location discriminator: stay on the migrated EGP.
+    rematch_from = {old_fp for old_fp, _reason in _legacy_fps_for(rec) if old_fp}
+    rematch_from.add(fp_v1(rec, weakness_key_fn=legacy_pre_location_weakness_key))
+    rematch_from.discard("")
+    if new_fp not in items:
+        for row in ledger.get("fp_migrations") or []:
+            src = str(row.get("from") or "")
+            dest = str(row.get("to") or "")
+            if src in rematch_from and dest in items:
+                return dest
     found: dict[str, tuple[dict[str, Any], str]] = {}
     for old_fp, reason in _legacy_fps_for(rec):
         if old_fp != new_fp and old_fp in items:
