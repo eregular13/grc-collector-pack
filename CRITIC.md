@@ -1,3 +1,20 @@
+# CRITIC — cycle 204 (METIS14_REFS_C7N_ANNOTATIONS)
+
+Lab this brick: pytest **1276** passed, 1 skipped. Ten collectors +
+`grc_loader` + `tests/lab_outputs.py` PASS (`assets=79` `findings=107`
+`vulnerabilities=22` `applied_controls=129` `risk_scenarios=129`
+`poam=124` `excluded=5` `severity_unmapped=0` `demo=true`). Excluded:
+3 honeypot + telemetry + `superseded_by_specific`. Cold SAMPLE→SoR
+findings=6 poam=8 vulns=2. Cold farm_drop→SoR findings=174 poam=106
+vulns=0 excluded=68. `make_ref` keeps full identity (8 Azure ARM ids
+stay distinct). Custodian accepts `c7n:CrossAccountViolations` /
+`c7n.metrics`; SnapshotId asset; unparseable `resources.json` is
+`unrecognized_shape`. Assets **79** / findings **107** is #134 OCSF/CSV
+on demo Prowler plus #151 visible honeypot excludes (poam stays **124**).
+Zero P0/P1. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 203 (MERGE_MASTER_134_147_140_144)
 
 Merge `origin/master` `51bba3c` (#134 Prowler/Wazuh/XCCDF/SARIF/enum4linux

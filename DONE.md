@@ -8,19 +8,19 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 78,
-  "findings": 104,
+  "assets": 79,
+  "findings": 107,
   "vulnerabilities": 22,
-  "evidences": 32,
-  "applied_controls": 126,
+  "evidences": 34,
+  "applied_controls": 129,
   "poam": 124,
-  "risk_scenarios": 126,
-  "ocsf": 104,
-  "canonical": 209,
+  "risk_scenarios": 129,
+  "ocsf": 107,
+  "canonical": 214,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:11:37Z"
+  "generated_at": "2026-09-26T07:26:12Z"
 }
 ```
 
-Cycle 203 merge origin/master `51bba3c` (#134+#147+#140+#144) into parser-real-output; keep Metis §11 + asset_uid + unrecognized_shape (pytest 1235; host-lab assets=78 findings=104 poam=124 excluded=2). Cycle 202 restamp after merging master `9aeb229` stands as history. CoS #48 rails above stand.
+Cycle 204 Metis §14 + merge #151/#152 (pytest 1276; host-lab assets=79 findings=107 poam=124 excluded=5). Cycle 203 merge origin/master `51bba3c` stands as history. CoS #48 rails above stand.
