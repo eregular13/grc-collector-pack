@@ -1,6 +1,6 @@
 # CRITIC — cycle 207 (METIS_FLOOD_GUARD)
 
-Lab this brick: pytest **1292** passed, 1 skipped. Ten collectors +
+Lab this brick: pytest **1303** passed, 1 skipped. Ten collectors +
 honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
 `findings=107` `vulnerabilities=22` `applied_controls=129`
 `risk_scenarios=129` `poam=124` `excluded=5` `severity_unmapped=0`
