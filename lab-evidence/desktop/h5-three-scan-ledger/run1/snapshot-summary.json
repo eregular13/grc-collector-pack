@@ -1,0 +1,32 @@
+{
+  "run": "run1",
+  "counts": {
+    "poam_csv": 754,
+    "poam_fedramp_open": 754,
+    "poam_fedramp_closed": 0,
+    "findings_csv": 63,
+    "assets_csv": 58,
+    "ledger_items": 768,
+    "ega": 58
+  },
+  "ledger_warnings": [
+    "LEDGER_LOST"
+  ],
+  "detection_dates": {
+    "2026-09-27": 706,
+    "not recorded": 48
+  },
+  "blank_carried_rows": {
+    "Point of Contact": 754,
+    "Resources Required": 754,
+    "Scheduled Completion Date": 754,
+    "Overall Remediation Plan": 0
+  },
+  "ghost_fedramp_not_on_poam_n": 0,
+  "ghost_poam_not_on_fedramp_n": 0,
+  "ega_n": 58,
+  "posted": false,
+  "lab": true,
+  "sample": false,
+  "client": false
+}

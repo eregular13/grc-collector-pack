@@ -1,0 +1,2 @@
+H5 skips nuclei. H1 blocker 2026-09-26: templates missing then hung empty jsonl.
+Queue: never loop on the same failure. See lab-evidence/desktop/h1-real-scanner-lab/raw/nuclei-BLOCKED.txt.

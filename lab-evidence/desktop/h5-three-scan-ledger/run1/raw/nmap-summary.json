@@ -1,0 +1,823 @@
+{
+  "stamp": "20260926-212350",
+  "files": [
+    {
+      "file": "lab-nmap-labnet-20260926-212350.xml",
+      "bytes": 661299,
+      "hosts": 28,
+      "scripts": 53
+    },
+    {
+      "file": "lab-nmap-labnet2-20260926-212350.xml",
+      "bytes": 444730,
+      "hosts": 20,
+      "scripts": 38
+    }
+  ],
+  "hosts_up": 48,
+  "open_ports": 51,
+  "ports": {
+    "80": 28,
+    "21": 1,
+    "2222": 2,
+    "1025": 1,
+    "8025": 1,
+    "27017": 2,
+    "3306": 2,
+    "139": 2,
+    "445": 2,
+    "5432": 2,
+    "6379": 8
+  },
+  "scripts": {
+    "http-title": 29,
+    "http-server-header": 18,
+    "ssl-enum-ciphers": 2,
+    "ssl-cert": 2,
+    "smb2-security-mode": 2,
+    "redis-info": 8,
+    "http-enum": 10,
+    "http-trane-info": 10,
+    "fingerprint-strings": 10
+  },
+  "addrs": [
+    "172.28.10.10",
+    "172.28.10.11",
+    "172.28.10.12",
+    "172.28.10.13",
+    "172.28.10.14",
+    "172.28.10.15",
+    "172.28.10.16",
+    "172.28.10.17",
+    "172.28.10.18",
+    "172.28.10.19",
+    "172.28.10.21",
+    "172.28.10.22",
+    "172.28.10.25",
+    "172.28.10.27",
+    "172.28.10.33",
+    "172.28.10.50",
+    "172.28.10.54",
+    "172.28.10.63",
+    "172.28.10.64",
+    "172.28.10.65",
+    "172.28.10.66",
+    "172.28.10.67",
+    "172.28.10.80",
+    "172.28.10.81",
+    "172.28.10.82",
+    "172.28.10.83",
+    "172.28.10.84",
+    "172.28.10.85",
+    "172.28.11.10",
+    "172.28.11.11",
+    "172.28.11.12",
+    "172.28.11.13",
+    "172.28.11.14",
+    "172.28.11.15",
+    "172.28.11.16",
+    "172.28.11.17",
+    "172.28.11.25",
+    "172.28.11.27",
+    "172.28.11.33",
+    "172.28.11.50",
+    "172.28.11.54",
+    "172.28.11.63",
+    "172.28.11.64",
+    "172.28.11.65",
+    "172.28.11.80",
+    "172.28.11.81",
+    "172.28.11.82",
+    "172.28.11.83"
+  ],
+  "script_hits": [
+    {
+      "addr": "172.28.10.10",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.10",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.11",
+      "port": "80",
+      "service": "http",
+      "product": "Apache httpd",
+      "script": "http-server-header",
+      "out": "Apache/2.4.68 (Unix)"
+    },
+    {
+      "addr": "172.28.10.11",
+      "port": "80",
+      "service": "http",
+      "product": "Apache httpd",
+      "script": "http-title",
+      "out": "It works! Apache httpd"
+    },
+    {
+      "addr": "172.28.10.12",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.12",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.13",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.13",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.14",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.14",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.15",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.15",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.16",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.16",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.17",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.17",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.18",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.18",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.19",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.10.19",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.10.25",
+      "port": "8025",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "MailHog"
+    },
+    {
+      "addr": "172.28.10.33",
+      "port": "3306",
+      "service": "mysql",
+      "product": "MySQL",
+      "script": "ssl-enum-ciphers",
+      "out": "TLSv1.2: ciphers: TLS_DHE_RSA_WITH_AES_128_CCM (dh 2048) - A TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 (dh 2048) - A TLS_DHE_RSA_WITH_AES_256_CCM (dh 2048) - A TLS_DHE_RSA_WITH_AES_256_G"
+    },
+    {
+      "addr": "172.28.10.33",
+      "port": "3306",
+      "service": "mysql",
+      "product": "MySQL",
+      "script": "ssl-cert",
+      "out": "Subject: commonName=MySQL_Server_8.4.11_Auto_Generated_Server_Certificate Issuer: commonName=MySQL_Server_8.4.11_Auto_Generated_CA_Certificate Public Key type: rsa Public Key bits:"
+    },
+    {
+      "addr": "172.28.10.50",
+      "port": "",
+      "service": "host",
+      "product": "",
+      "script": "smb2-security-mode",
+      "out": "3.1.1: Message signing enabled but not required"
+    },
+    {
+      "addr": "172.28.10.63",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 9.628813 Used CPU (user): 68.194962 Connected c"
+    },
+    {
+      "addr": "172.28.10.64",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.442793 Used CPU (user): 64.787894 Connected "
+    },
+    {
+      "addr": "172.28.10.65",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.488983 Used CPU (user): 64.913114 Connected "
+    },
+    {
+      "addr": "172.28.10.66",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.241430 Used CPU (user): 65.193289 Connected "
+    },
+    {
+      "addr": "172.28.10.67",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.437333 Used CPU (user): 64.842171 Connected "
+    },
+    {
+      "addr": "172.28.10.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.10.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.10.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.10.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:23:57 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: 8873792597e3 127.0.0.1 172.28.10.80 Rem"
+    },
+    {
+      "addr": "172.28.10.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.10.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.10.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:23:57 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: 8c14201bfb56 127.0.0.1 172.28.10.81 Rem"
+    },
+    {
+      "addr": "172.28.10.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.10.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.10.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.10.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.10.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:23:57 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: af50d689a65e 127.0.0.1 172.28.10.82 Rem"
+    },
+    {
+      "addr": "172.28.10.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.10.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.10.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.10.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:23:57 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: d1b04cd5ca98 127.0.0.1 172.28.10.83 Rem"
+    },
+    {
+      "addr": "172.28.10.84",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.10.84",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.10.84",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.10.84",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:23:57 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: 1f08b15eccf5 127.0.0.1 172.28.10.84 Rem"
+    },
+    {
+      "addr": "172.28.10.85",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.10.85",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:23:57 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: f45e37aa4f1f 127.0.0.1 172.28.10.85 Rem"
+    },
+    {
+      "addr": "172.28.10.85",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.10.85",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.11.10",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.10",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.11",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.11",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.12",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.12",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.13",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.13",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.14",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.14",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.15",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.15",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.16",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.16",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.17",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-server-header",
+      "out": "nginx/1.27.5"
+    },
+    {
+      "addr": "172.28.11.17",
+      "port": "80",
+      "service": "http",
+      "product": "nginx",
+      "script": "http-title",
+      "out": "Welcome to nginx!"
+    },
+    {
+      "addr": "172.28.11.33",
+      "port": "3306",
+      "service": "mysql",
+      "product": "MySQL",
+      "script": "ssl-cert",
+      "out": "Subject: commonName=MySQL_Server_8.4.11_Auto_Generated_Server_Certificate Issuer: commonName=MySQL_Server_8.4.11_Auto_Generated_CA_Certificate Public Key type: rsa Public Key bits:"
+    },
+    {
+      "addr": "172.28.11.33",
+      "port": "3306",
+      "service": "mysql",
+      "product": "MySQL",
+      "script": "ssl-enum-ciphers",
+      "out": "TLSv1.2: ciphers: TLS_DHE_RSA_WITH_AES_128_CCM (dh 2048) - A TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 (dh 2048) - A TLS_DHE_RSA_WITH_AES_256_CCM (dh 2048) - A TLS_DHE_RSA_WITH_AES_256_G"
+    },
+    {
+      "addr": "172.28.11.50",
+      "port": "",
+      "service": "host",
+      "product": "",
+      "script": "smb2-security-mode",
+      "out": "3.1.1: Message signing enabled but not required"
+    },
+    {
+      "addr": "172.28.11.63",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.328891 Used CPU (user): 65.740457 Connected "
+    },
+    {
+      "addr": "172.28.11.64",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.212264 Used CPU (user): 65.170608 Connected "
+    },
+    {
+      "addr": "172.28.11.65",
+      "port": "6379",
+      "service": "redis",
+      "product": "Redis key-value store",
+      "script": "redis-info",
+      "out": "Version: 7.4.11 Operating System: Linux 6.18.33.1-microsoft-standard-WSL2 x86_64 Architecture: 64 bits Process ID: 1 Used CPU (sys): 10.686449 Used CPU (user): 65.051842 Connected "
+    },
+    {
+      "addr": "172.28.11.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.11.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.11.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:24:50 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: 13de5df611de 127.0.0.1 172.28.11.80 Rem"
+    },
+    {
+      "addr": "172.28.11.80",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.11.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:24:50 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: 30f51528345e 127.0.0.1 172.28.11.81 Rem"
+    },
+    {
+      "addr": "172.28.11.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.11.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.11.81",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.11.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.11.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.11.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.11.82",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:24:50 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: be4df783b6c4 127.0.0.1 172.28.11.82 Rem"
+    },
+    {
+      "addr": "172.28.11.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-enum",
+      "out": "/blog/: Blog /weblog/: Blog /weblogs/: Blog /wordpress/: Blog /wiki/: Wiki /mediawiki/: Wiki /wiki/Main_Page: Wiki /tikiwiki/: Tikiwiki /cgi-bin/mj_wwwusr: Majordomo2 Mailing List "
+    },
+    {
+      "addr": "172.28.11.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-trane-info",
+      "out": "Problem with XML parsing of /evox/about"
+    },
+    {
+      "addr": "172.28.11.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "http-title",
+      "out": "Site doesn't have a title (text/plain; charset=utf-8)."
+    },
+    {
+      "addr": "172.28.11.83",
+      "port": "80",
+      "service": "http",
+      "product": "Golang net/http server",
+      "script": "fingerprint-strings",
+      "out": "FourOhFourRequest: HTTP/1.0 200 OK Date: Sun, 27 Sep 2026 04:24:50 GMT Content-Length: 204 Content-Type: text/plain; charset=utf-8 Hostname: a8dee0cea9c2 127.0.0.1 172.28.11.83 Rem"
+    }
+  ]
+}
