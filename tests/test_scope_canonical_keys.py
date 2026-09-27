@@ -70,6 +70,8 @@ def _mixed(canonical: str) -> str:
 def key_variants(canonical: str) -> list[tuple[str, str]]:
     """Non-canonical spellings. Exact quoted ``'ports_allowed'`` is YAML
     syntax for the canonical name (#199) and is not a variant here.
+    The ``nbsp`` case is a *quoted* NBSP key (unquoted NBSP is yaml_lite
+    whitespace and is read as the canonical key).
     """
     return [
         ("upper", canonical.upper()),
@@ -79,6 +81,59 @@ def key_variants(canonical: str) -> list[tuple[str, str]]:
         ("quoted", f"'{canonical} '"),
         ("quoted_upper", f"'{canonical.upper()}'"),
     ]
+
+
+# Dual-location restriction keys. A fixture that sets both root and
+# engagement copies cannot fail if the loader stops refusing the variant:
+# the other location still carries the restriction.
+_DUAL_RESTRICTION_KEYS = frozenset({"ports_allowed", "status", "revoked"})
+
+# Pinned catalog of every documented SCOPE key. Adding or removing a key
+# in ``_SCOPE_KEYS`` must update this list — comparing the allowlist to
+# itself can never fail.
+CANONICAL_SCOPE_KEYS: tuple[tuple[str, str], ...] = (
+    ("", "allow_tools"),
+    ("", "byo"),
+    ("", "client"),
+    ("", "consent"),
+    ("", "engagement"),
+    ("", "external"),
+    ("", "internal"),
+    ("", "orchestrator"),
+    ("", "ports_allowed"),
+    ("", "revoked"),
+    ("", "status"),
+    ("client", "name"),
+    ("consent", "attestation_path"),
+    ("consent", "attestation_sha256"),
+    ("engagement", "end"),
+    ("engagement", "ports_allowed"),
+    ("engagement", "revoked"),
+    ("engagement", "start"),
+    ("engagement", "status"),
+    ("internal", "cidrs"),
+    ("internal", "hosts"),
+    ("external", "domains"),
+    ("external", "hosts"),
+    ("external", "ips"),
+    ("orchestrator", "deepen_batch"),
+    ("orchestrator", "deepen_hosts"),
+    ("orchestrator", "discover_prefix"),
+    ("orchestrator", "host_timeout_sec"),
+    ("orchestrator", "max_live_shards"),
+    ("orchestrator", "max_workers"),
+    ("orchestrator", "stage_tools"),
+    ("orchestrator", "stages"),
+    ("orchestrator.stages", "deepen"),
+    ("orchestrator.stages", "discover"),
+    ("orchestrator.stages", "external"),
+    ("orchestrator.stage_tools", "deepen"),
+    ("orchestrator.stage_tools", "discover"),
+    ("byo[]", "args"),
+    ("byo[]", "name"),
+    ("byo[]", "sensor"),
+    ("byo[]", "timeout"),
+)
 
 
 def _scalar(value: object) -> str:
@@ -216,13 +271,58 @@ def _stored_key(yaml_key: str) -> str:
     return text
 
 
+def _apply_single_location_restriction(
+    tree: dict[str, object], section: str, key: str
+) -> None:
+    """Keep the restriction only on ``(section, key)``.
+
+    Root and engagement both used to carry ``ports_allowed`` / ``status`` /
+    ``revoked``. A misspelled copy then could not open an out-of-scope
+    connect: the other location still blocked :22 (or the sibling
+    status/revoked still authorized the run). Drop every dual-location
+    copy except the variant.
+
+    ``ports_allowed`` keeps ``[443]`` so a reverted refuse has no port
+    limit and would connect :22. ``status`` / ``revoked`` stay
+    authorized / false: ``_ci_values`` still case-folds those keys, so
+    an ``expired`` / ``true`` variant would refuse on revert via the
+    value path and the test could not fail. Omitting ``ports_allowed``
+    is what lets :22 proceed if the loader stops refusing the spelling.
+    """
+    if key not in _DUAL_RESTRICTION_KEYS or section not in {"", "engagement"}:
+        return
+    for dual in ("ports_allowed", "status", "revoked"):
+        if (section, key) != ("", dual):
+            tree.pop(dual, None)
+        engagement = tree.get("engagement")
+        if isinstance(engagement, dict) and (section, key) != ("engagement", dual):
+            engagement.pop(dual, None)
+    value: object
+    if key == "ports_allowed":
+        value = [443]
+    elif key == "status":
+        value = "authorized"
+    else:
+        value = False
+    if section == "":
+        tree[key] = value
+    else:
+        engagement = tree.setdefault("engagement", {})
+        if isinstance(engagement, dict):
+            engagement[key] = value
+
+
 def write_scope_with_key(
     tmp_path: Path,
     section: str,
     key: str,
     yaml_key: str,
+    *,
+    single_location: bool = False,
 ) -> Path:
     tree = _full_scope_tree(tmp_path)
+    if single_location:
+        _apply_single_location_restriction(tree, section, key)
     lines: list[str] = []
     _emit_mapping(lines, tree, 0, "", section, key, yaml_key)
     path = tmp_path / "SCOPE.yaml"
@@ -290,12 +390,15 @@ VARIANT_CASES = _variant_cases()
 
 
 def test_allowlisted_scope_keys_covers_every_section_key() -> None:
-    """Catalog test: adding an allowlisted key without this list fails."""
+    """Catalog test: adding or removing an allowlisted key requires a deliberate edit."""
     listed = set(allowlisted_scope_keys())
-    expected = {(section, name) for section, names in _SCOPE_KEYS.items() for name in names}
+    expected = set(CANONICAL_SCOPE_KEYS)
+    assert len(CANONICAL_SCOPE_KEYS) == 41
+    assert len(expected) == 41
     assert listed == expected
     assert listed, "allowlist must not be empty"
     assert ("engagement", "begin") not in listed
+    assert ("engagement", "begin") not in expected
 
 
 @pytest.mark.parametrize(
@@ -309,7 +412,7 @@ def test_allowlisted_scope_keys_covers_every_section_key() -> None:
 def test_allowlisted_key_variant_refuses_load(
     tmp_path: Path, section: str, key: str, label: str, yaml_key: str
 ) -> None:
-    """Every allowlisted key refuses upper / mixed / space / NBSP / quoted / quoted+upper."""
+    """Every allowlisted key refuses upper / mixed / space / quoted-NBSP / quoted / quoted+upper."""
     folder = tmp_path / f"{section or 'root'}_{key}_{label}"
     folder.mkdir()
     with pytest.raises(GateError, match="non-canonical key|BOM|non-ASCII|unknown key"):
@@ -324,10 +427,16 @@ def test_allowlisted_key_variant_refuses_load(
 def test_security_key_variant_never_connects_out_of_scope(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, section: str, key: str
 ) -> None:
-    """Misspelled security keys must not load and must never open a socket."""
+    """Misspelled security keys must not load and must never open a socket.
+
+    Dual-location keys use a single-location fixture: only the variant
+    carries the restriction. A reverted refuse would then connect :22.
+    """
     recorded = _record_sockets(monkeypatch)
     yaml_key = key.upper()
-    path = write_scope_with_key(tmp_path, section, key, yaml_key)
+    path = write_scope_with_key(
+        tmp_path, section, key, yaml_key, single_location=True
+    )
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     (tmp_path / "out").mkdir()
     with pytest.raises((GateError, LiveRefuse)):
@@ -342,7 +451,9 @@ def test_uppercase_ports_allowed_refuses_live_port_22(
 ) -> None:
     """PORTS_ALLOWED: [443] must not load with no port limit."""
     recorded = _record_sockets(monkeypatch)
-    path = write_scope_with_key(tmp_path, "", "ports_allowed", "PORTS_ALLOWED")
+    path = write_scope_with_key(
+        tmp_path, "", "ports_allowed", "PORTS_ALLOWED", single_location=True
+    )
     with pytest.raises((GateError, LiveRefuse), match="canonical: ports_allowed"):
         run_live(scope_path=path, target="192.0.2.10", ports=[22])
     assert not any(p == 22 and not str(h).startswith("gai:") for h, p in recorded)
@@ -353,7 +464,13 @@ def test_engagement_mixed_ports_allowed_refuses_live_port_22(
 ) -> None:
     """engagement.Ports_Allowed must not load with no port limit."""
     recorded = _record_sockets(monkeypatch)
-    path = write_scope_with_key(tmp_path, "engagement", "ports_allowed", "Ports_Allowed")
+    path = write_scope_with_key(
+        tmp_path,
+        "engagement",
+        "ports_allowed",
+        "Ports_Allowed",
+        single_location=True,
+    )
     with pytest.raises((GateError, LiveRefuse), match="canonical: ports_allowed"):
         run_live(scope_path=path, target="192.0.2.10", ports=[22])
     assert not any(p == 22 and not str(h).startswith("gai:") for h, p in recorded)
@@ -364,7 +481,9 @@ def test_quoted_spaced_ports_allowed_refuses_live_port_22(
 ) -> None:
     """' ports_allowed ' must not load with no port limit."""
     recorded = _record_sockets(monkeypatch)
-    path = write_scope_with_key(tmp_path, "", "ports_allowed", "' ports_allowed '")
+    path = write_scope_with_key(
+        tmp_path, "", "ports_allowed", "' ports_allowed '", single_location=True
+    )
     with pytest.raises((GateError, LiveRefuse), match="canonical: ports_allowed"):
         run_live(scope_path=path, target="192.0.2.10", ports=[22])
     assert not any(p == 22 and not str(h).startswith("gai:") for h, p in recorded)
@@ -382,6 +501,17 @@ def test_canonical_full_scope_still_loads(tmp_path: Path) -> None:
     assert scope.ports_allowed == [443]
     assert not scope.allows_port(22)
     assert scope.allows_port(443)
+
+
+def test_unquoted_nbsp_ports_allowed_is_canonical_and_honoured(tmp_path: Path) -> None:
+    """Unquoted NBSP is yaml_lite whitespace; the key is canonical and the value holds."""
+    path = write_scope_with_key(
+        tmp_path, "", "ports_allowed", f"{NBSP}ports_allowed", single_location=True
+    )
+    scope = load_scope(path)
+    assert scope.ports_allowed == [443]
+    assert scope.allows_port(443)
+    assert not scope.allows_port(22)
 
 
 def test_engagement_begin_is_not_allowlisted() -> None:
