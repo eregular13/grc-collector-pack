@@ -22,8 +22,11 @@ opens a socket and does not need SCOPE.
    copy_context().run) count as nested binds; isolation still holds.
    Quoted mapping keys are unquoted before lookup. Keys must be spelled
    exactly as documented (lower-case, no surrounding whitespace);
-   PORTS_ALLOWED, Status, ' ports_allowed ', NBSP, and BOM keys refuse.
-   Unknown keys and non-ASCII keys refuse at every section.
+   PORTS_ALLOWED, Status, ' ports_allowed ', quoted NBSP keys, and BOM
+   keys refuse. An unquoted NBSP around a documented spelling is stripped
+   as YAML whitespace and the key is read as canonical — its value is
+   honoured. Unknown keys and other non-ASCII keys refuse at every
+   section.
 2. A current engagement window (`engagement.start` / `engagement.end` contain now).
 3. Engagement status is an **allowlist**. Absent, `active`, `authorized`, or
    `approved` (any case) load. Anything else refuses: `expired`, `on-hold`,
@@ -65,7 +68,8 @@ the system of record; SimpleRisk is leave-behind only.
 |---|---|
 | No `--scope` / missing SCOPE | refuse, nonzero |
 | Pack DEMO `dropbox/SCOPE.yaml`, DEMO consent digest, or DEMO `client.name` (case/dash/NBSP) | refuse, nonzero |
-| Unknown, non-canonical, BOM, or non-ASCII SCOPE key | refuse, nonzero |
+| Unknown, non-canonical, BOM, quoted-NBSP, or non-ASCII SCOPE key | refuse, nonzero |
+| Unquoted NBSP around a documented key | stripped as whitespace; value honoured |
 | Second concurrent live SCOPE bind | refuse, nonzero |
 | Expired engagement window | refuse, nonzero |
 | Status outside `{active, authorized, approved, absent}` | refuse, nonzero |
