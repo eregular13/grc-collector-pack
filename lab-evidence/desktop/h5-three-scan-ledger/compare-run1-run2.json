@@ -1,0 +1,70 @@
+{
+  "from_run": "run1",
+  "to_run": "run2",
+  "lab": true,
+  "sample": false,
+  "client": false,
+  "posted": false,
+  "ids_kept": 754,
+  "ids_new": 0,
+  "ids_gone_from_open": 0,
+  "closed_new": 0,
+  "closed_still": 0,
+  "reopened_into_open": 0,
+  "ghost_fedramp_not_on_poam_from": 0,
+  "ghost_fedramp_not_on_poam_to": 0,
+  "ghost_poam_not_on_fedramp_from": 0,
+  "ghost_poam_not_on_fedramp_to": 0,
+  "detection_dates_changed": 0,
+  "ega_kept": 58,
+  "ega_new": 0,
+  "ega_lost": 0,
+  "counts_from": {
+    "poam_csv": 754,
+    "poam_fedramp_open": 754,
+    "poam_fedramp_closed": 0,
+    "findings_csv": 63,
+    "assets_csv": 58,
+    "ledger_items": 768,
+    "ega": 58
+  },
+  "counts_to": {
+    "poam_csv": 754,
+    "poam_fedramp_open": 754,
+    "poam_fedramp_closed": 0,
+    "findings_csv": 63,
+    "assets_csv": 58,
+    "ledger_items": 768,
+    "ega": 58
+  },
+  "ledger_warnings_from": [
+    "LEDGER_LOST"
+  ],
+  "ledger_warnings_to": [],
+  "detection_dates_from": {
+    "2026-09-27": 706,
+    "not recorded": 48
+  },
+  "detection_dates_to": {
+    "2026-09-27": 706,
+    "not recorded": 48
+  },
+  "blank_from": {
+    "Point of Contact": 754,
+    "Resources Required": 754,
+    "Scheduled Completion Date": 754,
+    "Overall Remediation Plan": 0
+  },
+  "blank_to": {
+    "Point of Contact": 754,
+    "Resources Required": 754,
+    "Scheduled Completion Date": 754,
+    "Overall Remediation Plan": 0
+  },
+  "new_ids_sample": [],
+  "gone_ids_sample": [],
+  "newly_closed_sample": [],
+  "date_changed_sample": [],
+  "ega_new_sample": [],
+  "ega_lost_sample": []
+}

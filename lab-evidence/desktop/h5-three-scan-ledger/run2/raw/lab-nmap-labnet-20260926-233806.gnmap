@@ -1,0 +1,58 @@
+# Nmap 7.98 scan initiated Sun Sep 27 06:38:07 2026 as: /usr/bin/nmap -sT -sV -T4 --open --max-retries 1 --host-timeout 60s --script-timeout 20s -p 21,22,25,80,110,139,143,443,445,1025,1433,2222,3306,5432,6379,8025,8080,27017 --script ftp-anon,redis-info,mysql-empty-password,smb2-security-mode,ssl-enum-ciphers,ssl-cert,http-enum,http-title -iL /out/targets-labnet.txt -oX /out/lab-nmap-labnet-20260926-233806.xml -oN /out/lab-nmap-labnet-20260926-233806.nmap -oG /out/lab-nmap-labnet-20260926-233806.gnmap
+Host: 172.28.10.10 (evergreen-lab-web-nginx-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.10 (evergreen-lab-web-nginx-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.11 (evergreen-lab-web-httpd-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.11 (evergreen-lab-web-httpd-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Apache httpd 2.4.68 ((Unix))/	Ignored State: closed (17)
+Host: 172.28.10.12 (evergreen-lab-web0-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.12 (evergreen-lab-web0-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.13 (evergreen-lab-web1-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.13 (evergreen-lab-web1-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.14 (evergreen-lab-web2-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.14 (evergreen-lab-web2-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.15 (evergreen-lab-web3-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.15 (evergreen-lab-web3-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.16 (evergreen-lab-web4-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.16 (evergreen-lab-web4-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.17 (evergreen-lab-web5-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.17 (evergreen-lab-web5-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.18 (evergreen-lab-web6-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.18 (evergreen-lab-web6-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.19 (evergreen-lab-web7-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.19 (evergreen-lab-web7-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//nginx 1.27.5/	Ignored State: closed (17)
+Host: 172.28.10.21 (evergreen-lab-ftp-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.21 (evergreen-lab-ftp-1.evergreen-lab_labnet)	Ports: 21/open/tcp//ftp//Pure-FTPd/	Ignored State: closed (17)
+Host: 172.28.10.22 (evergreen-lab-ssh-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.22 (evergreen-lab-ssh-1.evergreen-lab_labnet)	Ports: 2222/open/tcp//ssh//OpenSSH 10.3 (protocol 2.0)/	Ignored State: closed (17)
+Host: 172.28.10.25 (evergreen-lab-mailhog-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.25 (evergreen-lab-mailhog-1.evergreen-lab_labnet)	Ports: 1025/open/tcp//smtp//MailHog smtpd/, 8025/open/tcp//http//Golang net|http server (Go-IPFS json-rpc or InfluxDB API)/	Ignored State: closed (16)
+Host: 172.28.10.27 (evergreen-lab-mongo-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.27 (evergreen-lab-mongo-1.evergreen-lab_labnet)	Ports: 27017/open/tcp//mongodb//MongoDB 6.1 or later/	Ignored State: closed (17)
+Host: 172.28.10.33 (evergreen-lab-mysql-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.33 (evergreen-lab-mysql-1.evergreen-lab_labnet)	Ports: 3306/open/tcp//mysql//MySQL 8.4.11/	Ignored State: closed (17)
+Host: 172.28.10.50 (evergreen-lab-samba-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.50 (evergreen-lab-samba-1.evergreen-lab_labnet)	Ports: 139/open/tcp//netbios-ssn//Samba smbd 4/, 445/open/tcp//netbios-ssn//Samba smbd 4/	Ignored State: closed (16)
+Host: 172.28.10.54 (evergreen-lab-postgres-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.54 (evergreen-lab-postgres-1.evergreen-lab_labnet)	Ports: 5432/open/tcp//postgresql//PostgreSQL DB 9.6.0 or later/	Ignored State: closed (17)
+Host: 172.28.10.63 (evergreen-lab-redis-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.63 (evergreen-lab-redis-1.evergreen-lab_labnet)	Ports: 6379/open/tcp//redis//Redis key-value store 7.4.11 (64 bits)/	Ignored State: closed (17)
+Host: 172.28.10.64 (evergreen-lab-redis0-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.64 (evergreen-lab-redis0-1.evergreen-lab_labnet)	Ports: 6379/open/tcp//redis//Redis key-value store 7.4.11 (64 bits)/	Ignored State: closed (17)
+Host: 172.28.10.65 (evergreen-lab-redis1-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.65 (evergreen-lab-redis1-1.evergreen-lab_labnet)	Ports: 6379/open/tcp//redis//Redis key-value store 7.4.11 (64 bits)/	Ignored State: closed (17)
+Host: 172.28.10.66 (evergreen-lab-redis2-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.66 (evergreen-lab-redis2-1.evergreen-lab_labnet)	Ports: 6379/open/tcp//redis//Redis key-value store 7.4.11 (64 bits)/	Ignored State: closed (17)
+Host: 172.28.10.67 (evergreen-lab-redis3-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.67 (evergreen-lab-redis3-1.evergreen-lab_labnet)	Ports: 6379/open/tcp//redis//Redis key-value store 7.4.11 (64 bits)/	Ignored State: closed (17)
+Host: 172.28.10.80 (evergreen-lab-whoami-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.80 (evergreen-lab-whoami-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Golang net|http server/	Ignored State: closed (17)
+Host: 172.28.10.81 (evergreen-lab-whoami0-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.81 (evergreen-lab-whoami0-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Golang net|http server/	Ignored State: closed (17)
+Host: 172.28.10.82 (evergreen-lab-whoami1-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.82 (evergreen-lab-whoami1-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Golang net|http server/	Ignored State: closed (17)
+Host: 172.28.10.83 (evergreen-lab-whoami2-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.83 (evergreen-lab-whoami2-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Golang net|http server/	Ignored State: closed (17)
+Host: 172.28.10.84 (evergreen-lab-whoami3-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.84 (evergreen-lab-whoami3-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Golang net|http server/	Ignored State: closed (17)
+Host: 172.28.10.85 (evergreen-lab-whoami4-1.evergreen-lab_labnet)	Status: Up
+Host: 172.28.10.85 (evergreen-lab-whoami4-1.evergreen-lab_labnet)	Ports: 80/open/tcp//http//Golang net|http server/	Ignored State: closed (17)
+# Nmap done at Sun Sep 27 06:38:57 2026 -- 28 IP addresses (28 hosts up) scanned in 50.55 seconds

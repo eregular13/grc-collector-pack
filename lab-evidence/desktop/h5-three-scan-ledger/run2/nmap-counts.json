@@ -1,0 +1,31 @@
+{
+  "hosts_up": 48,
+  "open_ports": 51,
+  "ports": {
+    "80": 28,
+    "21": 1,
+    "2222": 2,
+    "1025": 1,
+    "8025": 1,
+    "27017": 2,
+    "3306": 2,
+    "139": 2,
+    "445": 2,
+    "5432": 2,
+    "6379": 8
+  },
+  "nse": {
+    "http-title": 29,
+    "http-server-header": 18,
+    "ssl-cert": 2,
+    "ssl-enum-ciphers": 2,
+    "smb2-security-mode": 2,
+    "redis-info": 8,
+    "http-enum": 10,
+    "fingerprint-strings": 10,
+    "http-trane-info": 10
+  },
+  "lab": true,
+  "sample": false,
+  "client": false
+}

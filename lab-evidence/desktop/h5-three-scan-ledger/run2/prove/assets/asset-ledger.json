@@ -1,0 +1,4494 @@
+{
+  "schema": "evergreen.asset_ledger.v1",
+  "prev_sha256": "1cb7d99affa4b5d927ec6e19971b693b4626851fdfe068b134e4a7d5c189c204",
+  "assets": {
+    "EGA-D829EB019B": {
+      "asset_uid": "EGA-D829EB019B",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web-nginx-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap",
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web-nginx-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.10",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap",
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-D829EB019B",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web-nginx-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web-nginx-1.evergreen-lab_labnet"
+    },
+    "EGA-E3B532007C": {
+      "asset_uid": "EGA-E3B532007C",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web-httpd-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web-httpd-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.11",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-E3B532007C",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web-httpd-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web-httpd-1.evergreen-lab_labnet"
+    },
+    "EGA-CF265DF1F1": {
+      "asset_uid": "EGA-CF265DF1F1",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web0-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web0-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.12",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-CF265DF1F1",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web0-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web0-1.evergreen-lab_labnet"
+    },
+    "EGA-D7B9E94326": {
+      "asset_uid": "EGA-D7B9E94326",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web1-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web1-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.13",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-D7B9E94326",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web1-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web1-1.evergreen-lab_labnet"
+    },
+    "EGA-283FE3E340": {
+      "asset_uid": "EGA-283FE3E340",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web2-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web2-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.14",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-283FE3E340",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web2-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web2-1.evergreen-lab_labnet"
+    },
+    "EGA-D4D5F7F3FC": {
+      "asset_uid": "EGA-D4D5F7F3FC",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web3-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web3-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.15",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-D4D5F7F3FC",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web3-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web3-1.evergreen-lab_labnet"
+    },
+    "EGA-39A5A906BE": {
+      "asset_uid": "EGA-39A5A906BE",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web4-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web4-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.16",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-39A5A906BE",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web4-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web4-1.evergreen-lab_labnet"
+    },
+    "EGA-EDF0510ED6": {
+      "asset_uid": "EGA-EDF0510ED6",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web5-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web5-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.17",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-EDF0510ED6",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web5-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web5-1.evergreen-lab_labnet"
+    },
+    "EGA-F71DA999D2": {
+      "asset_uid": "EGA-F71DA999D2",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web6-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web6-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.18",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-F71DA999D2",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web6-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web6-1.evergreen-lab_labnet"
+    },
+    "EGA-A7E744549B": {
+      "asset_uid": "EGA-A7E744549B",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web7-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-web7-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.19",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-A7E744549B",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-web7-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-web7-1.evergreen-lab_labnet"
+    },
+    "EGA-5DC5757CB4": {
+      "asset_uid": "EGA-5DC5757CB4",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-ftp-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-ftp-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.21",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-5DC5757CB4",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-ftp-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-ftp-1.evergreen-lab_labnet"
+    },
+    "EGA-96AD822F50": {
+      "asset_uid": "EGA-96AD822F50",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-ssh-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-ssh-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.22",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-96AD822F50",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-ssh-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-ssh-1.evergreen-lab_labnet"
+    },
+    "EGA-398A287298": {
+      "asset_uid": "EGA-398A287298",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mailhog-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-mailhog-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.25",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-398A287298",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-mailhog-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-mailhog-1.evergreen-lab_labnet"
+    },
+    "EGA-1E56ED5EDE": {
+      "asset_uid": "EGA-1E56ED5EDE",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mongo-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-mongo-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.27",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-1E56ED5EDE",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-mongo-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-mongo-1.evergreen-lab_labnet"
+    },
+    "EGA-C4EB3A8F8B": {
+      "asset_uid": "EGA-C4EB3A8F8B",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mysql-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-mysql-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.33",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-C4EB3A8F8B",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-mysql-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-mysql-1.evergreen-lab_labnet"
+    },
+    "EGA-B5844AC905": {
+      "asset_uid": "EGA-B5844AC905",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-samba-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-samba-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.50",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-B5844AC905",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-samba-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-samba-1.evergreen-lab_labnet"
+    },
+    "EGA-006EC5FF8F": {
+      "asset_uid": "EGA-006EC5FF8F",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-postgres-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-postgres-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.54",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-006EC5FF8F",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-postgres-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-postgres-1.evergreen-lab_labnet"
+    },
+    "EGA-6FC0500350": {
+      "asset_uid": "EGA-6FC0500350",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-redis-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.63",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-6FC0500350",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-redis-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-redis-1.evergreen-lab_labnet"
+    },
+    "EGA-A698DA95FC": {
+      "asset_uid": "EGA-A698DA95FC",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis0-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-redis0-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.64",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-A698DA95FC",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-redis0-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-redis0-1.evergreen-lab_labnet"
+    },
+    "EGA-3CA83216F6": {
+      "asset_uid": "EGA-3CA83216F6",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis1-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-redis1-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.65",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-3CA83216F6",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-redis1-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-redis1-1.evergreen-lab_labnet"
+    },
+    "EGA-E530884917": {
+      "asset_uid": "EGA-E530884917",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis2-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-redis2-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.66",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-E530884917",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-redis2-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-redis2-1.evergreen-lab_labnet"
+    },
+    "EGA-F8AACD15F2": {
+      "asset_uid": "EGA-F8AACD15F2",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis3-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-redis3-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.67",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-F8AACD15F2",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-redis3-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-redis3-1.evergreen-lab_labnet"
+    },
+    "EGA-40AA82617A": {
+      "asset_uid": "EGA-40AA82617A",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-whoami-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.80",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-40AA82617A",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-whoami-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-whoami-1.evergreen-lab_labnet"
+    },
+    "EGA-B9B216FBC2": {
+      "asset_uid": "EGA-B9B216FBC2",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami0-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-whoami0-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.81",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-B9B216FBC2",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-whoami0-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-whoami0-1.evergreen-lab_labnet"
+    },
+    "EGA-440CC404F5": {
+      "asset_uid": "EGA-440CC404F5",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami1-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-whoami1-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.82",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-440CC404F5",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-whoami1-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-whoami1-1.evergreen-lab_labnet"
+    },
+    "EGA-91BAC9D08C": {
+      "asset_uid": "EGA-91BAC9D08C",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami2-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-whoami2-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.83",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-91BAC9D08C",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-whoami2-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-whoami2-1.evergreen-lab_labnet"
+    },
+    "EGA-F3FC5C2F60": {
+      "asset_uid": "EGA-F3FC5C2F60",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami3-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-whoami3-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.84",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-F3FC5C2F60",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-whoami3-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-whoami3-1.evergreen-lab_labnet"
+    },
+    "EGA-4FF7B3E87B": {
+      "asset_uid": "EGA-4FF7B3E87B",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami4-1.evergreen-lab_labnet"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-whoami4-1.evergreen-lab_labnet",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.10.85",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-4FF7B3E87B",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-whoami4-1.evergreen-lab_labnet"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-whoami4-1.evergreen-lab_labnet"
+    },
+    "EGA-B02D92DE52": {
+      "asset_uid": "EGA-B02D92DE52",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web0-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web0-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.10",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-B02D92DE52",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web0-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web0-1.evergreen-lab_labnet2"
+    },
+    "EGA-01D1D8917E": {
+      "asset_uid": "EGA-01D1D8917E",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web1-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web1-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.11",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-01D1D8917E",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web1-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web1-1.evergreen-lab_labnet2"
+    },
+    "EGA-8E435E0D04": {
+      "asset_uid": "EGA-8E435E0D04",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.12",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-8E435E0D04",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web2-1.evergreen-lab_labnet2"
+    },
+    "EGA-88FA4E9CD0": {
+      "asset_uid": "EGA-88FA4E9CD0",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web3-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web3-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.13",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-88FA4E9CD0",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web3-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web3-1.evergreen-lab_labnet2"
+    },
+    "EGA-14C4E58E9C": {
+      "asset_uid": "EGA-14C4E58E9C",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web4-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web4-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.14",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-14C4E58E9C",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web4-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web4-1.evergreen-lab_labnet2"
+    },
+    "EGA-F466194DF1": {
+      "asset_uid": "EGA-F466194DF1",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web5-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web5-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.15",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-F466194DF1",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web5-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web5-1.evergreen-lab_labnet2"
+    },
+    "EGA-96648AAB1C": {
+      "asset_uid": "EGA-96648AAB1C",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web6-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web6-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.16",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-96648AAB1C",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web6-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web6-1.evergreen-lab_labnet2"
+    },
+    "EGA-9704FA3A2C": {
+      "asset_uid": "EGA-9704FA3A2C",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web7-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2web7-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.17",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-9704FA3A2C",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2web7-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2web7-1.evergreen-lab_labnet2"
+    },
+    "EGA-0EC5C652D9": {
+      "asset_uid": "EGA-0EC5C652D9",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-ssh2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-ssh2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.25",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-0EC5C652D9",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-ssh2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-ssh2-1.evergreen-lab_labnet2"
+    },
+    "EGA-C8644C6BE1": {
+      "asset_uid": "EGA-C8644C6BE1",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mongo2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-mongo2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.27",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-C8644C6BE1",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-mongo2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-mongo2-1.evergreen-lab_labnet2"
+    },
+    "EGA-A39FD2EBCD": {
+      "asset_uid": "EGA-A39FD2EBCD",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mysql2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-mysql2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.33",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-A39FD2EBCD",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-mysql2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-mysql2-1.evergreen-lab_labnet2"
+    },
+    "EGA-6BCFDF9A9B": {
+      "asset_uid": "EGA-6BCFDF9A9B",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-samba2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-samba2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.50",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-6BCFDF9A9B",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-samba2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-samba2-1.evergreen-lab_labnet2"
+    },
+    "EGA-5B449ECA36": {
+      "asset_uid": "EGA-5B449ECA36",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-postgres2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-postgres2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.54",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-5B449ECA36",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-postgres2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-postgres2-1.evergreen-lab_labnet2"
+    },
+    "EGA-2ECB532AF8": {
+      "asset_uid": "EGA-2ECB532AF8",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2redis0-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2redis0-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.63",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-2ECB532AF8",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2redis0-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2redis0-1.evergreen-lab_labnet2"
+    },
+    "EGA-BC949F27B0": {
+      "asset_uid": "EGA-BC949F27B0",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2redis1-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2redis1-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.64",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-BC949F27B0",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2redis1-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2redis1-1.evergreen-lab_labnet2"
+    },
+    "EGA-CB07837ABE": {
+      "asset_uid": "EGA-CB07837ABE",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2redis2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2redis2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.65",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-CB07837ABE",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2redis2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2redis2-1.evergreen-lab_labnet2"
+    },
+    "EGA-705C174C68": {
+      "asset_uid": "EGA-705C174C68",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami0-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2whoami0-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.80",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-705C174C68",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2whoami0-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2whoami0-1.evergreen-lab_labnet2"
+    },
+    "EGA-E5CBD81C28": {
+      "asset_uid": "EGA-E5CBD81C28",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami1-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2whoami1-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.81",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-E5CBD81C28",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2whoami1-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2whoami1-1.evergreen-lab_labnet2"
+    },
+    "EGA-E986F16BD2": {
+      "asset_uid": "EGA-E986F16BD2",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami2-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2whoami2-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.82",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-E986F16BD2",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2whoami2-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2whoami2-1.evergreen-lab_labnet2"
+    },
+    "EGA-E61CE429CB": {
+      "asset_uid": "EGA-E61CE429CB",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami3-1.evergreen-lab_labnet2"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": false,
+      "class_uid": "",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "inventory-nmap"
+      ],
+      "aliases": [
+        {
+          "type": "fqdn",
+          "value": "evergreen-lab-n2whoami3-1.evergreen-lab_labnet2",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        },
+        {
+          "type": "ip",
+          "value": "172.28.11.83",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "inventory-nmap"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-E61CE429CB",
+          "anchor": {
+            "type": "fqdn",
+            "value": "evergreen-lab-n2whoami3-1.evergreen-lab_labnet2"
+          }
+        }
+      ],
+      "uai": "evergreen-lab-n2whoami3-1.evergreen-lab_labnet2"
+    },
+    "EGA-24C08C2288": {
+      "asset_uid": "EGA-24C08C2288",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "dperson/samba:latest"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-CB59EC7BC1",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "dperson/samba:latest",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "dperson/samba@sha256:66088b78a19810dd1457a8f39340e95e663c728083efa5fe7dc0d40b2478e869",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:66468d2ce877545f103972661792a84976cdaac71f8fcbd324e595784011e038",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:66088b78a19810dd1457a8f39340e95e663c728083efa5fe7dc0d40b2478e869",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "name",
+          "value": "dperson/samba:latest (alpine 3.12.0)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-24C08C2288",
+          "anchor": {
+            "type": "image_ref",
+            "value": "dperson/samba:latest"
+          }
+        }
+      ],
+      "uai": "dperson/samba:latest"
+    },
+    "EGA-D73E8D676B": {
+      "asset_uid": "EGA-D73E8D676B",
+      "created": "2026-09-27T04:33:11Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "httpd:2.4-alpine"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-FCC54222B3",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "httpd:2.4-alpine",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "httpd@sha256:1b766f17b84026429b7cb243317b142921b24432336e798bc881c43f45ed9567",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:fe5a6624bf962446c9c7a8a3c588a6b34e791b51499e5b31b1c28099b4ec3591",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:1b766f17b84026429b7cb243317b142921b24432336e798bc881c43f45ed9567",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "httpd:2.4-alpine (alpine 3.24.1)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:11Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:11Z",
+          "kind": "created",
+          "asset_uid": "EGA-D73E8D676B",
+          "anchor": {
+            "type": "image_ref",
+            "value": "httpd:2.4-alpine"
+          }
+        }
+      ],
+      "uai": "httpd:2.4-alpine"
+    },
+    "EGA-F8B8F6DAE2": {
+      "asset_uid": "EGA-F8B8F6DAE2",
+      "created": "2026-09-27T04:33:12Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "mailhog/mailhog:v1.0.1"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-E8D02665B3",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "mailhog/mailhog:v1.0.1",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "mailhog/mailhog@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:0629fc30072dbbad43eb17fd75df9d6d9a983e9847a22ad706e883b116a87998",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "name",
+          "value": "mailhog/mailhog:v1.0.1 (alpine 3.12.0)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/BIN/MAILHOG",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/BIN/GO",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/BIN/GOFMT",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/ADDR2LINE",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/API",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/ASM",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/BUILDID",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/CGO",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/COMPILE",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/COVER",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/DIST",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/DOC",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/FIX",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/LINK",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/NM",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/OBJDUMP",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/PACK",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/PPROF",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/TEST2JSON",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/TRACE",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/GO/PKG/TOOL/LINUX_AMD64/VET",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:11Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:12Z",
+          "kind": "created",
+          "asset_uid": "EGA-F8B8F6DAE2",
+          "anchor": {
+            "type": "image_ref",
+            "value": "mailhog/mailhog:v1.0.1"
+          }
+        }
+      ],
+      "uai": "mailhog/mailhog:v1.0.1"
+    },
+    "EGA-1C3964D4E0": {
+      "asset_uid": "EGA-1C3964D4E0",
+      "created": "2026-09-27T04:33:12Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "mongo:7"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-8B84CEDD1B",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "mongo:7",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "mongo@sha256:9854f7139445d766a9523571d6f047530c45547460ffcf8259eb2bf4264632ca",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:4047cdc05a5036eede4c17c2e2dba3268d0aaa6231824aa46fe6508c04659b4c",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:9854f7139445d766a9523571d6f047530c45547460ffcf8259eb2bf4264632ca",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "mongo:7 (ubuntu 22.04)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T04:33:12Z",
+          "valid_to": "2026-09-27T04:33:12Z",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "node.js",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T04:33:12Z",
+          "valid_to": "2026-09-27T06:47:12Z",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/BSONDUMP",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGODUMP",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGOEXPORT",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGOFILES",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGOIMPORT",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGORESTORE",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGOSTAT",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/BIN/MONGOTOP",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/BIN/GOSU",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "mongo:7 (ubuntu 22.04)",
+          "scope": "",
+          "first_seen": "2026-09-27T06:47:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "2026-09-27T06:47:12Z",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "node.js",
+          "scope": "",
+          "first_seen": "2026-09-27T06:47:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:12Z",
+          "kind": "created",
+          "asset_uid": "EGA-1C3964D4E0",
+          "anchor": {
+            "type": "image_ref",
+            "value": "mongo:7"
+          }
+        },
+        {
+          "at": "2026-09-27T04:33:12Z",
+          "kind": "fqdn_renamed",
+          "asset_uid": "EGA-1C3964D4E0",
+          "old": "mongo:7 (ubuntu 22.04)",
+          "new": "node.js"
+        },
+        {
+          "at": "2026-09-27T06:47:12Z",
+          "kind": "fqdn_renamed",
+          "asset_uid": "EGA-1C3964D4E0",
+          "old": "node.js",
+          "new": "mongo:7 (ubuntu 22.04)"
+        },
+        {
+          "at": "2026-09-27T06:47:12Z",
+          "kind": "fqdn_renamed",
+          "asset_uid": "EGA-1C3964D4E0",
+          "old": "mongo:7 (ubuntu 22.04)",
+          "new": "node.js"
+        }
+      ],
+      "uai": "mongo:7"
+    },
+    "EGA-FC87CCC2DA": {
+      "asset_uid": "EGA-FC87CCC2DA",
+      "created": "2026-09-27T04:33:12Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "mysql:8.4"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-00A5551692",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "mysql:8.4",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "mysql@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:64af2d1e899790203761a3549d82b51aa5ae24d65b0abde68ebc7550b95b963e",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "mysql:8.4 (oracle 9.8)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "hostname",
+          "value": "python",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/BIN/GOSU",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:12Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:12Z",
+          "kind": "created",
+          "asset_uid": "EGA-FC87CCC2DA",
+          "anchor": {
+            "type": "image_ref",
+            "value": "mysql:8.4"
+          }
+        }
+      ],
+      "uai": "mysql:8.4"
+    },
+    "EGA-C7B132B6DE": {
+      "asset_uid": "EGA-C7B132B6DE",
+      "created": "2026-09-27T04:33:13Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "nginx:1.27-alpine"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-7EBF5C3741",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "nginx:1.27-alpine",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:233be43934a22c74b1157840d58243eafa60198ccf26b10f5f939ec0bff1b5bd",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "nginx:1.27-alpine (alpine 3.21.3)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:13Z",
+          "kind": "created",
+          "asset_uid": "EGA-C7B132B6DE",
+          "anchor": {
+            "type": "image_ref",
+            "value": "nginx:1.27-alpine"
+          }
+        }
+      ],
+      "uai": "nginx:1.27-alpine"
+    },
+    "EGA-618A6558DC": {
+      "asset_uid": "EGA-618A6558DC",
+      "created": "2026-09-27T04:33:13Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "postgres:16-alpine"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-AFC54958BF",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "postgres:16-alpine",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:b5167ed522ebf9f0484b78b9eddf9aa164d52cce00dde7bd8da2f40b56045137",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "postgres:16-alpine (alpine 3.24.1)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "netbios",
+          "value": "USR/LOCAL/BIN/GOSU",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:13Z",
+          "kind": "created",
+          "asset_uid": "EGA-618A6558DC",
+          "anchor": {
+            "type": "image_ref",
+            "value": "postgres:16-alpine"
+          }
+        }
+      ],
+      "uai": "postgres:16-alpine"
+    },
+    "EGA-54FAEE9F3A": {
+      "asset_uid": "EGA-54FAEE9F3A",
+      "created": "2026-09-27T04:33:13Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "redis:7-alpine"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-BD32A00FF5",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "redis:7-alpine",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:a84c2489279909dcee3eeec7334415757355b69eb31a0bdbc12dc7ef6e6402c3",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "fqdn",
+          "value": "redis:7-alpine (alpine 3.21.7)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:13Z",
+          "kind": "created",
+          "asset_uid": "EGA-54FAEE9F3A",
+          "anchor": {
+            "type": "image_ref",
+            "value": "redis:7-alpine"
+          }
+        }
+      ],
+      "uai": "redis:7-alpine"
+    },
+    "EGA-49F8CE43A2": {
+      "asset_uid": "EGA-49F8CE43A2",
+      "created": "2026-09-27T04:33:13Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "stilliard/pure-ftpd:latest"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-A1F6C50562",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "stilliard/pure-ftpd:latest",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "stilliard/pure-ftpd@sha256:6275c1cf4e30c305ae2aa5077ec825ee8c2b2eb936e1634487213ee6ce4073ed",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:d68e94672da67cd8173ec4ad789b0cb977ff08d11303ec15b7dad8eabcb038be",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:6275c1cf4e30c305ae2aa5077ec825ee8c2b2eb936e1634487213ee6ce4073ed",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "name",
+          "value": "stilliard/pure-ftpd:latest (debian 13.6)",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:13Z",
+          "kind": "created",
+          "asset_uid": "EGA-49F8CE43A2",
+          "anchor": {
+            "type": "image_ref",
+            "value": "stilliard/pure-ftpd:latest"
+          }
+        }
+      ],
+      "uai": "stilliard/pure-ftpd:latest"
+    },
+    "EGA-432A49376A": {
+      "asset_uid": "EGA-432A49376A",
+      "created": "2026-09-27T04:33:13Z",
+      "anchor": {
+        "type": "image_ref",
+        "value": "traefik/whoami:v1.10"
+      },
+      "status": "active",
+      "merged_into": "",
+      "replaces": "",
+      "ephemeral": true,
+      "class_uid": "EGA-6827A44ADB",
+      "poam_status": "open",
+      "absent_covered_runs": 0,
+      "sources": [
+        "vuln-scan"
+      ],
+      "aliases": [
+        {
+          "type": "image_ref",
+          "value": "traefik/whoami:v1.10",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_digest",
+          "value": "traefik/whoami@sha256:1699d99cb4b9acc17f74ca670b3d8d0b7ba27c948b3445f0593b58ebece92f04",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "artifact_id",
+          "value": "sha256:96561223b6c8dfe5b38cca68e25a7ac23c43a379c6afe4cf13e7a2ca145eb636",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "image_id",
+          "value": "sha256:1699d99cb4b9acc17f74ca670b3d8d0b7ba27c948b3445f0593b58ebece92f04",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        },
+        {
+          "type": "hostname",
+          "value": "whoami",
+          "scope": "",
+          "first_seen": "2026-09-27T04:33:13Z",
+          "last_seen": "2026-09-27T06:47:12Z",
+          "valid_to": "",
+          "sources": [
+            "vuln-scan"
+          ]
+        }
+      ],
+      "iiw": {},
+      "events": [
+        {
+          "at": "2026-09-27T04:33:13Z",
+          "kind": "created",
+          "asset_uid": "EGA-432A49376A",
+          "anchor": {
+            "type": "image_ref",
+            "value": "traefik/whoami:v1.10"
+          }
+        }
+      ],
+      "uai": "traefik/whoami:v1.10"
+    }
+  },
+  "events": [
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-D829EB019B",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web-nginx-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-E3B532007C",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web-httpd-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-CF265DF1F1",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web0-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-D7B9E94326",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web1-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-283FE3E340",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web2-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-D4D5F7F3FC",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web3-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-39A5A906BE",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web4-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-EDF0510ED6",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web5-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-F71DA999D2",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web6-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-A7E744549B",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-web7-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-5DC5757CB4",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-ftp-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-96AD822F50",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-ssh-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-398A287298",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mailhog-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-1E56ED5EDE",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mongo-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-C4EB3A8F8B",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mysql-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-B5844AC905",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-samba-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-006EC5FF8F",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-postgres-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-6FC0500350",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-A698DA95FC",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis0-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-3CA83216F6",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis1-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-E530884917",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis2-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-F8AACD15F2",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-redis3-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-40AA82617A",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-B9B216FBC2",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami0-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-440CC404F5",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami1-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-91BAC9D08C",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami2-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-F3FC5C2F60",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami3-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-4FF7B3E87B",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-whoami4-1.evergreen-lab_labnet"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-B02D92DE52",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web0-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-01D1D8917E",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web1-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-8E435E0D04",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-88FA4E9CD0",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web3-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-14C4E58E9C",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web4-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-F466194DF1",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web5-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-96648AAB1C",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web6-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-9704FA3A2C",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2web7-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-0EC5C652D9",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-ssh2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-C8644C6BE1",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mongo2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-A39FD2EBCD",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-mysql2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-6BCFDF9A9B",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-samba2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-5B449ECA36",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-postgres2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-2ECB532AF8",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2redis0-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-BC949F27B0",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2redis1-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-CB07837ABE",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2redis2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-705C174C68",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami0-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-E5CBD81C28",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami1-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-E986F16BD2",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami2-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-E61CE429CB",
+      "anchor": {
+        "type": "fqdn",
+        "value": "evergreen-lab-n2whoami3-1.evergreen-lab_labnet2"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-24C08C2288",
+      "anchor": {
+        "type": "image_ref",
+        "value": "dperson/samba:latest"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:11Z",
+      "kind": "created",
+      "asset_uid": "EGA-D73E8D676B",
+      "anchor": {
+        "type": "image_ref",
+        "value": "httpd:2.4-alpine"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:12Z",
+      "kind": "created",
+      "asset_uid": "EGA-F8B8F6DAE2",
+      "anchor": {
+        "type": "image_ref",
+        "value": "mailhog/mailhog:v1.0.1"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:12Z",
+      "kind": "created",
+      "asset_uid": "EGA-1C3964D4E0",
+      "anchor": {
+        "type": "image_ref",
+        "value": "mongo:7"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:12Z",
+      "kind": "fqdn_renamed",
+      "asset_uid": "EGA-1C3964D4E0",
+      "old": "mongo:7 (ubuntu 22.04)",
+      "new": "node.js"
+    },
+    {
+      "at": "2026-09-27T04:33:12Z",
+      "kind": "created",
+      "asset_uid": "EGA-FC87CCC2DA",
+      "anchor": {
+        "type": "image_ref",
+        "value": "mysql:8.4"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:13Z",
+      "kind": "created",
+      "asset_uid": "EGA-C7B132B6DE",
+      "anchor": {
+        "type": "image_ref",
+        "value": "nginx:1.27-alpine"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:13Z",
+      "kind": "created",
+      "asset_uid": "EGA-618A6558DC",
+      "anchor": {
+        "type": "image_ref",
+        "value": "postgres:16-alpine"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:13Z",
+      "kind": "created",
+      "asset_uid": "EGA-54FAEE9F3A",
+      "anchor": {
+        "type": "image_ref",
+        "value": "redis:7-alpine"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:13Z",
+      "kind": "created",
+      "asset_uid": "EGA-49F8CE43A2",
+      "anchor": {
+        "type": "image_ref",
+        "value": "stilliard/pure-ftpd:latest"
+      }
+    },
+    {
+      "at": "2026-09-27T04:33:13Z",
+      "kind": "created",
+      "asset_uid": "EGA-432A49376A",
+      "anchor": {
+        "type": "image_ref",
+        "value": "traefik/whoami:v1.10"
+      }
+    },
+    {
+      "at": "2026-09-27T06:47:12Z",
+      "kind": "fqdn_renamed",
+      "asset_uid": "EGA-1C3964D4E0",
+      "old": "node.js",
+      "new": "mongo:7 (ubuntu 22.04)"
+    },
+    {
+      "at": "2026-09-27T06:47:12Z",
+      "kind": "fqdn_renamed",
+      "asset_uid": "EGA-1C3964D4E0",
+      "old": "mongo:7 (ubuntu 22.04)",
+      "new": "node.js"
+    }
+  ],
+  "warnings": [],
+  "collisions": [],
+  "fp_migrations": [],
+  "sha256": "80d3344bb3550c596d2b15d8554dd207b1729bbd70640418c5726c0fade1ee86"
+}
