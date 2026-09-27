@@ -1,0 +1,54 @@
+{
+  "applied": false,
+  "pre": {
+    "evergreen_lab_up": 48,
+    "lab": true,
+    "sample": false,
+    "client": false
+  },
+  "post": {
+    "evergreen_lab_up": 47,
+    "extra_nginx": true,
+    "ftp_up": false,
+    "redis_noauth": "NOAUTH Authentication required.",
+    "redis_auth": "PONG",
+    "nginx_ip": "172.28.10.90",
+    "lab": true,
+    "sample": false,
+    "client": false
+  },
+  "reverted": {
+    "evergreen_lab_up": 48,
+    "ftp_up": true,
+    "extra_nginx": false,
+    "redis_ping": "PONG",
+    "lab": true,
+    "sample": false,
+    "client": false
+  },
+  "new_poam": [
+    {
+      "poam_id": "EGP-C3A3194C96",
+      "weakness": "HTTP directory listing enabled",
+      "asset": "h5-delta-nginx-autoindex.evergreen-lab_labnet (80/TCP)"
+    },
+    {
+      "poam_id": "EGP-5AD2119A2A",
+      "weakness": "Open port 6379/redis",
+      "asset": "evergreen-lab-redis-1.evergreen-lab_labnet (6379/TCP)"
+    }
+  ],
+  "kept_despite_delta": [
+    {
+      "poam_id": "EGP-AE21306146",
+      "weakness": "Redis accessible without authentication",
+      "note": "requirepass was set; redis-info NSE dropped; row stayed open"
+    },
+    {
+      "poam_id": "EGP-F94CC7EBF6",
+      "weakness": "FTP exposed",
+      "note": "ftp container stopped; tcp/21 absent; row stayed open"
+    }
+  ],
+  "ega_new": ["EGA-F4067CE3BD"]
+}

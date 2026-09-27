@@ -1,0 +1,57 @@
+[
+  {
+    "image": "nginx:1.27-alpine",
+    "rc": 0,
+    "out": "trivy-nginx_1.27-alpine.json"
+  },
+  {
+    "image": "httpd:2.4-alpine",
+    "rc": 0,
+    "out": "trivy-httpd_2.4-alpine.json"
+  },
+  {
+    "image": "stilliard/pure-ftpd:latest",
+    "rc": 0,
+    "out": "trivy-stilliard_pure-ftpd_latest.json"
+  },
+  {
+    "image": "lscr.io/linuxserver/openssh-server:latest",
+    "rc": 0,
+    "out": "trivy-lscr.io_linuxserver_openssh-server_latest.json"
+  },
+  {
+    "image": "mailhog/mailhog:v1.0.1",
+    "rc": 0,
+    "out": "trivy-mailhog_mailhog_v1.0.1.json"
+  },
+  {
+    "image": "mongo:7",
+    "rc": 0,
+    "out": "trivy-mongo_7.json"
+  },
+  {
+    "image": "mysql:8.4",
+    "rc": 0,
+    "out": "trivy-mysql_8.4.json"
+  },
+  {
+    "image": "dperson/samba:latest",
+    "rc": 0,
+    "out": "trivy-dperson_samba_latest.json"
+  },
+  {
+    "image": "postgres:16-alpine",
+    "rc": 0,
+    "out": "trivy-postgres_16-alpine.json"
+  },
+  {
+    "image": "traefik/whoami:v1.10",
+    "rc": 0,
+    "out": "trivy-traefik_whoami_v1.10.json"
+  },
+  {
+    "image": "redis:7-alpine",
+    "rc": 0,
+    "out": "trivy-redis_7-alpine.json"
+  }
+]
