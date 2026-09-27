@@ -48,7 +48,7 @@ def _signed_scope(
     end = end or (today + timedelta(days=30)).isoformat()
     path = tmp_path / "SCOPE.yaml"
     path.write_text(
-        "client:\n  name: DEMO — not a client estate\nconsent:\n"
+        "client:\n  name: lab-client\nconsent:\n"
         f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
         f"engagement:\n  start: {start}\n  end: {end}\n{extra_eng}"
         f"{extra_root}"

@@ -280,3 +280,46 @@ def test_engagement_Revoked_true_refuses_load(tmp_path: Path) -> None:
 def test_status_Revoked_refuses_load(tmp_path: Path) -> None:
     with pytest.raises(GateError, match="revoked"):
         load_scope(_write_scope(tmp_path, "  Status: Revoked\n"))
+
+
+def test_status_AUTHORIZED_loads(tmp_path: Path) -> None:
+    scope = load_scope(_write_scope(tmp_path, "  status: AUTHORIZED\n"))
+    require_not_revoked(scope)
+    require_live_probe(scope, "127.0.0.1", [80])
+
+
+def test_status_Active_trailing_space_loads(tmp_path: Path) -> None:
+    scope = load_scope(_write_scope(tmp_path, "  status: 'Active '\n"))
+    require_not_revoked(scope)
+    require_live_probe(scope, "127.0.0.1", [80])
+
+
+def test_duplicate_status_key_revoked_then_active_refuses_load(tmp_path: Path) -> None:
+    """Hand-added status: revoked above status: active must not last-win."""
+    with pytest.raises(GateError, match="duplicate"):
+        load_scope(_write_scope(tmp_path, "  status: revoked\n  status: active\n"))
+
+
+def test_duplicate_Status_status_keys_refuse_load(tmp_path: Path) -> None:
+    """Case-insensitive twins in one mapping are duplicates (#197 fold)."""
+    with pytest.raises(GateError, match="duplicate"):
+        load_scope(_write_scope(tmp_path, "  Status: authorized\n  status: authorized\n"))
+
+
+def test_nested_duplicate_mapping_key_refuses_load(tmp_path: Path) -> None:
+    att, digest = _consent(tmp_path)
+    today = date.today()
+    path = tmp_path / "SCOPE.yaml"
+    path.write_text(
+        "client:\n  name: lab-client\nconsent:\n"
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        f"  attestation_path: {att}\n"
+        f"engagement:\n  start: {today.isoformat()}\n"
+        f"  end: {(today + timedelta(days=2)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="duplicate"):
+        load_scope(path)

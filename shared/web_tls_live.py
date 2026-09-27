@@ -4,9 +4,10 @@ Collectors never import this module. Tests monkeypatch transports — no interne
 
 Every connect is fail-closed: bare host/IP target, parsed URLs only (http/https,
 no userinfo), port in 1..65535 and in SCOPE, resolved IP re-checked and pinned.
-Redirects are never followed. Pack DEMO SCOPE (path or DEMO consent digest)
-is refused. The gate lives on the shared connect path so ``build_snapshot``
-cannot skip it. SCOPE is re-read before every connect.
+Redirects are never followed. Pack DEMO SCOPE (path, DEMO consent digest,
+or the pack DEMO client.name) is refused. The gate lives on the shared
+connect path so ``build_snapshot`` cannot skip it. SCOPE is re-read
+before every connect. Direct ``authorize_endpoint`` calls unbind after.
 """
 
 from __future__ import annotations
@@ -39,6 +40,9 @@ _ACTIVE_SCOPE = None
 # LF SHA-256 of dropbox/consent/DEMO-WRITTEN-CONSENT.md (also stamped on
 # dropbox/SCOPE.yaml). Live mode refuses this digest regardless of filename.
 PACK_DEMO_CONSENT_SHA256 = "ab5fb87300b944e1a95216ffa65f9ab697e5daba01012c23019b3608a2bc207c"
+# Exact client.name from dropbox/SCOPE.yaml (em dash). Live mode refuses it
+# even when the consent digest/path are not the pack DEMO files.
+PACK_DEMO_CLIENT_NAME = "DEMO — not a client estate"
 
 
 class LiveRefuse(SystemExit):
@@ -140,6 +144,9 @@ def _refuse_demo_scope(path: Path) -> None:
         return
     if not isinstance(data, dict):
         return
+    client = data.get("client") if isinstance(data.get("client"), dict) else {}
+    if str(client.get("name") or "").strip() == PACK_DEMO_CLIENT_NAME:
+        raise LiveRefuse("refuses pack DEMO SCOPE")
     consent = data.get("consent") if isinstance(data.get("consent"), dict) else {}
     declared = str(consent.get("attestation_sha256") or "").strip().lower()
     if _digest_is_demo(declared):
@@ -182,6 +189,8 @@ def _require_bound_scope(scope: Any = None) -> Any:
         raise LiveRefuse(f"cannot re-read SCOPE: {exc}") from exc
     except Exception as exc:  # noqa: BLE001
         raise LiveRefuse(f"cannot re-read SCOPE: {exc}") from exc
+    if str(getattr(fresh, "client_name", "") or "").strip() == PACK_DEMO_CLIENT_NAME:
+        raise LiveRefuse("refuses pack DEMO SCOPE")
     if _digest_is_demo(getattr(fresh, "consent_sha256", "")):
         raise LiveRefuse("refuses pack DEMO SCOPE")
     try:
@@ -217,11 +226,21 @@ def resolve_authorized(scope: Any, host: str, port: int) -> str:
 
 
 def authorize_endpoint(scope: Any, host: str, port: int) -> str:
-    """Gate one (host, port). Always re-reads the SCOPE file first."""
-    current = _require_bound_scope(scope)
-    if not is_bare_host(host) and not _is_ip(host):
-        raise LiveRefuse(f"target must be a bare host or IP, not {host!r}")
-    return resolve_authorized(current, host, port)
+    """Gate one (host, port). Always re-reads the SCOPE file first.
+
+    Direct calls do not leave ``_ACTIVE_SCOPE`` bound afterwards,
+    including when the gate raises. A caller that already bound a
+    SCOPE (``run_live`` / ``_bind_scope``) is restored to that binding.
+    """
+    global _ACTIVE_SCOPE
+    prev = _ACTIVE_SCOPE
+    try:
+        current = _require_bound_scope(scope)
+        if not is_bare_host(host) and not _is_ip(host):
+            raise LiveRefuse(f"target must be a bare host or IP, not {host!r}")
+        return resolve_authorized(current, host, port)
+    finally:
+        _ACTIVE_SCOPE = prev
 
 
 def tcp_open(host: str, port: int, timeout: float = 2.0) -> bool:
