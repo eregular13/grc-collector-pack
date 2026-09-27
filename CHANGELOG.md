@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- SCOPE_GATE_HARDEN: live SCOPE status is an allowlist (`active` /
+  `authorized` / `approved` / absent; keys case-insensitive). Nested or
+  top-level unknown status, `REVOKED` / `Revoked`, and mid-run revoke or
+  read error fail closed — the SCOPE file (and consent digest) is
+  re-read before every connect. Live mode refuses the pack DEMO consent
+  digest regardless of filename. `build_snapshot()` requires a bound
+  SCOPE. Helper test compares TYPE_REMEDIATIONS independently (not the
+  sensor map). No POST `/api/risks`. RiskReady stay-out.
 - WEB_TLS_LIVE_GATE: live probes never follow redirects; `--target` is a
   bare host/IP; URLs are `urlsplit` (http/https, no userinfo); every
   (host, port) including implicit 80/443 is gated; default URLs only for

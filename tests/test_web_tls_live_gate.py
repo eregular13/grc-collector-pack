@@ -11,9 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from dropbox.scope import GateError
+from dropbox.scope import GateError, attestation_digest
 from shared.web_tls_live import (
     LiveRefuse,
+    PACK_DEMO_CONSENT_SHA256,
     default_http_urls,
     is_bare_host,
     parse_http_url,
@@ -198,22 +199,117 @@ def test_ports_outside_1_65535_refused_without_allowlist(
 
 
 def test_resolved_ip_is_rechecked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    recorded: list[tuple[str, int]] = []
+    recorded_connects: list[tuple[str, int]] = []
     real_gai = socket.getaddrinfo
+    real_cc = socket.create_connection
 
     def wrap_gai(host, port, *args, **kwargs):
-        recorded.append((str(host), int(port or 0)))
         if str(host) == "vpn.example.invalid":
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.51.100.7", int(port or 0)))]
         return real_gai(host, port, *args, **kwargs)
 
+    def wrap_cc(addr, timeout=None, *args, **kwargs):
+        host, port = addr[0], addr[1]
+        recorded_connects.append((str(host), int(port)))
+        if str(host) in {"127.0.0.1", "::1"}:
+            return real_cc(addr, timeout, *args, **kwargs)
+        raise OSError(f"blocked connect {host}:{port}")
+
     monkeypatch.setattr(socket, "getaddrinfo", wrap_gai)
+    monkeypatch.setattr(socket, "create_connection", wrap_cc)
     scope = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 443\n")
     with pytest.raises(LiveRefuse, match="resolved IP"):
         run_live(scope_path=scope, target="vpn.example.invalid", ports=[443])
-    assert not any(h == "198.51.100.7" for h, _p in recorded)
+    assert recorded_connects == []
+    assert not any(h == "198.51.100.7" for h, _p in recorded_connects)
 
 
 def test_live_refuses_pack_demo_scope(tmp_path: Path) -> None:
     with pytest.raises(LiveRefuse, match="DEMO SCOPE"):
         run_live(scope_path=ROOT / "dropbox" / "SCOPE.yaml", target="127.0.0.1", ports=[80])
+
+
+def _stamp_revoked(scope_path: Path) -> None:
+    text = scope_path.read_text(encoding="utf-8")
+    if not text.lower().startswith("revoked:"):
+        scope_path.write_text("revoked: true\n" + text, encoding="utf-8")
+
+
+def test_revocation_reread_before_every_connect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorded: list[tuple[str, int]] = []
+    scope = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n  - 443\n")
+
+    def wrap_cc(addr, timeout=None, *args, **kwargs):
+        host, port = addr[0], addr[1]
+        recorded.append((str(host), int(port)))
+        _stamp_revoked(scope)
+        raise OSError(f"blocked connect {host}:{port}")
+
+    monkeypatch.setattr(socket, "create_connection", wrap_cc)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    (tmp_path / "out").mkdir()
+    with pytest.raises(LiveRefuse, match="revoked"):
+        run_live(scope_path=scope, target="192.0.2.10", ports=[80, 443], http_urls=[])
+    assert len(recorded) == 1
+
+
+def test_scope_read_error_mid_run_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorded: list[tuple[str, int]] = []
+    scope = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n  - 443\n")
+
+    def wrap_cc(addr, timeout=None, *args, **kwargs):
+        host, port = addr[0], addr[1]
+        recorded.append((str(host), int(port)))
+        scope.unlink()
+        raise OSError(f"blocked connect {host}:{port}")
+
+    monkeypatch.setattr(socket, "create_connection", wrap_cc)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    (tmp_path / "out").mkdir()
+    with pytest.raises(LiveRefuse):
+        run_live(scope_path=scope, target="192.0.2.10", ports=[80, 443], http_urls=[])
+    assert len(recorded) == 1
+    assert not scope.is_file()
+
+
+def test_live_refuses_demo_consent_digest_regardless_of_filename(tmp_path: Path) -> None:
+    demo_consent = ROOT / "dropbox" / "consent" / "DEMO-WRITTEN-CONSENT.md"
+    copied = tmp_path / "CLIENT-SIGNED-CONSENT.md"
+    copied.write_bytes(demo_consent.read_bytes())
+    digest = attestation_digest(copied.read_bytes())
+    assert digest == PACK_DEMO_CONSENT_SHA256
+    today = date.today()
+    path = tmp_path / "client-SCOPE.yaml"
+    path.write_text(
+        "client:\n  name: lab-client\nconsent:\n"
+        f"  attestation_path: {copied}\n  attestation_sha256: {digest}\n"
+        f"engagement:\n  start: {(today - timedelta(days=1)).isoformat()}\n"
+        f"  end: {(today + timedelta(days=30)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n  cidrs:\n    - 192.0.2.0/24\n"
+        "external:\n  hosts:\n    - vpn.example.invalid\n  ips:\n    - 192.0.2.10\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    assert "demo-written-consent" not in path.read_text(encoding="utf-8").lower()
+    with pytest.raises(LiveRefuse, match="DEMO SCOPE"):
+        run_live(scope_path=path, target="127.0.0.1", ports=[80])
+
+
+def test_pack_demo_consent_digest_matches_repo_file() -> None:
+    demo = ROOT / "dropbox" / "consent" / "DEMO-WRITTEN-CONSENT.md"
+    assert attestation_digest(demo.read_bytes()) == PACK_DEMO_CONSENT_SHA256
+
+
+def test_build_snapshot_without_bound_scope_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    from shared.web_tls_live import build_snapshot
+
+    recorded = _record_sockets(monkeypatch)
+    with pytest.raises(LiveRefuse, match="bound signed SCOPE"):
+        build_snapshot("example.invalid", ports=[443])
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []
+    assert not any("example.invalid" in str(h) for h, _p in connects)

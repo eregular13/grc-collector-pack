@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from shared.control_map import map_finding
 from shared.framework_class_map import (
     CIS_V8_PREFIX,
@@ -127,18 +129,42 @@ def test_one_map_helper_is_the_800_53_source() -> None:
     )
 
 
-def test_helper_matches_poam_controls_for_web_tls_sensors() -> None:
+def test_helper_matches_poam_controls_for_web_tls_sensors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Helper must follow TYPE_REMEDIATIONS (POA&M), not the sensor map.
+
+    Comparing only to ``nist_800_53_ids(sensor=)`` / ENV_EVAL_SENSOR_RULES
+    is a no-op once those tables were realigned. This test looks up
+    TYPE_REMEDIATIONS independently and then patches one entry so a helper
+    that skips the POA&M path fails.
+    """
+    from shared.finding_types import TYPE_REMEDIATIONS, finding_type, type_remediation
+
     recs = parse_file(SAMPLES / "probe-cleartext-http.json")
     recs += parse_file(SAMPLES / "probe-https-weak.json")
     seen: set[str] = set()
+    sentinel_rec = None
     for rec in recs:
         sensor = str((rec.get("extra") or {}).get("sensor") or "")
         if not sensor or sensor in seen:
             continue
         seen.add(sensor)
-        mapped = map_finding(rec)
-        assert nist_800_53_ids(rec) == list(mapped.get("nist_800_53") or [])
-        assert nist_800_53_ids(rec) == nist_800_53_ids(sensor=sensor)
+        ftype = finding_type(rec)
+        assert ftype, sensor
+        typed = type_remediation(rec)
+        assert typed is not None
+        independent = list(TYPE_REMEDIATIONS[ftype].get("nist_800_53") or [])
+        assert independent == list(typed.get("nist_800_53") or [])
+        assert nist_800_53_ids(rec) == independent
+        if sentinel_rec is None and independent:
+            sentinel_rec = rec
+    assert sentinel_rec is not None
+    ftype = finding_type(sentinel_rec)
+    patched = dict(TYPE_REMEDIATIONS[ftype])
+    patched["nist_800_53"] = ["XX-99-SENTINEL"]
+    monkeypatch.setitem(TYPE_REMEDIATIONS, ftype, patched)
+    assert nist_800_53_ids(sentinel_rec) == ["XX-99-SENTINEL"]
 
 
 def test_env_eval_csf_ids_are_official_csf20() -> None:

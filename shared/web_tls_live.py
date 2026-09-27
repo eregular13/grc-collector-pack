@@ -4,7 +4,9 @@ Collectors never import this module. Tests monkeypatch transports — no interne
 
 Every connect is fail-closed: bare host/IP target, parsed URLs only (http/https,
 no userinfo), port in 1..65535 and in SCOPE, resolved IP re-checked and pinned.
-Redirects are never followed. Pack DEMO SCOPE is refused.
+Redirects are never followed. Pack DEMO SCOPE (path or DEMO consent digest)
+is refused. The gate lives on the shared connect path so ``build_snapshot``
+cannot skip it. SCOPE is re-read before every connect.
 """
 
 from __future__ import annotations
@@ -21,11 +23,22 @@ from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import urlsplit
 
-from dropbox.scope import GateError, load_scope, require_live_probe
+from dropbox.scope import (
+    GateError,
+    attestation_digest,
+    load_scope,
+    require_live_probe,
+    resolve_attestation_path,
+)
+from dropbox.yaml_lite import load_yaml
 from shared.io_util import estate_hint, root_dir, write_canonical, write_json
 from shared.web_tls import SOURCE, parse_snapshot
 
 _ACTIVE_SCOPE = None
+
+# LF SHA-256 of dropbox/consent/DEMO-WRITTEN-CONSENT.md (also stamped on
+# dropbox/SCOPE.yaml). Live mode refuses this digest regardless of filename.
+PACK_DEMO_CONSENT_SHA256 = "ab5fb87300b944e1a95216ffa65f9ab697e5daba01012c23019b3608a2bc207c"
 
 
 class LiveRefuse(SystemExit):
@@ -101,7 +114,12 @@ def _is_ip(host: str) -> bool:
         return False
 
 
+def _digest_is_demo(value: str) -> bool:
+    return str(value or "").strip().lower() == PACK_DEMO_CONSENT_SHA256
+
+
 def _refuse_demo_scope(path: Path) -> None:
+    """Refuse the pack DEMO SCOPE by path, text, or consent digest."""
     try:
         demo = (root_dir() / "dropbox" / "SCOPE.yaml").resolve()
         if path.resolve() == demo:
@@ -111,11 +129,71 @@ def _refuse_demo_scope(path: Path) -> None:
     except OSError:
         pass
     try:
-        blob = path.read_text(encoding="utf-8").lower()
+        blob = path.read_text(encoding="utf-8")
     except OSError:
         return
-    if "demo-written-consent" in blob:
+    if "demo-written-consent" in blob.lower():
         raise LiveRefuse("refuses pack DEMO SCOPE")
+    try:
+        data = load_yaml(blob)
+    except (ValueError, TypeError):
+        return
+    if not isinstance(data, dict):
+        return
+    consent = data.get("consent") if isinstance(data.get("consent"), dict) else {}
+    declared = str(consent.get("attestation_sha256") or "").strip().lower()
+    if _digest_is_demo(declared):
+        raise LiveRefuse("refuses pack DEMO SCOPE")
+    att_rel = str(consent.get("attestation_path") or "").strip()
+    if not att_rel:
+        return
+    try:
+        att_path = resolve_attestation_path(att_rel)
+        if att_path.is_file() and _digest_is_demo(attestation_digest(att_path.read_bytes())):
+            raise LiveRefuse("refuses pack DEMO SCOPE")
+    except LiveRefuse:
+        raise
+    except OSError:
+        return
+
+
+def _require_bound_scope(scope: Any = None) -> Any:
+    """Re-read + re-validate SCOPE (incl. consent digest) before every connect.
+
+    Fail closed when no scope is bound, the file cannot be read, or load_scope
+    refuses (revoked / expired / hash mismatch / unknown status).
+    """
+    global _ACTIVE_SCOPE
+    current = _ACTIVE_SCOPE if _ACTIVE_SCOPE is not None else scope
+    if current is None:
+        raise LiveRefuse("live probe requires a bound signed SCOPE")
+    path = getattr(current, "path", None)
+    if path is None:
+        raise LiveRefuse("live probe requires a bound signed SCOPE")
+    scope_path = Path(path)
+    try:
+        _refuse_demo_scope(scope_path)
+        fresh = load_scope(scope_path)
+    except LiveRefuse:
+        raise
+    except GateError as exc:
+        raise LiveRefuse(str(exc)) from exc
+    except OSError as exc:
+        raise LiveRefuse(f"cannot re-read SCOPE: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise LiveRefuse(f"cannot re-read SCOPE: {exc}") from exc
+    if _digest_is_demo(getattr(fresh, "consent_sha256", "")):
+        raise LiveRefuse("refuses pack DEMO SCOPE")
+    try:
+        consent_path = Path(fresh.consent_path)
+        if _digest_is_demo(attestation_digest(consent_path.read_bytes())):
+            raise LiveRefuse("refuses pack DEMO SCOPE")
+    except LiveRefuse:
+        raise
+    except OSError as exc:
+        raise LiveRefuse(f"cannot re-read SCOPE consent: {exc}") from exc
+    _ACTIVE_SCOPE = fresh
+    return fresh
 
 
 def resolve_authorized(scope: Any, host: str, port: int) -> str:
@@ -139,15 +217,15 @@ def resolve_authorized(scope: Any, host: str, port: int) -> str:
 
 
 def authorize_endpoint(scope: Any, host: str, port: int) -> str:
+    """Gate one (host, port). Always re-reads the SCOPE file first."""
+    current = _require_bound_scope(scope)
     if not is_bare_host(host) and not _is_ip(host):
         raise LiveRefuse(f"target must be a bare host or IP, not {host!r}")
-    return resolve_authorized(scope, host, port)
+    return resolve_authorized(current, host, port)
 
 
 def tcp_open(host: str, port: int, timeout: float = 2.0) -> bool:
-    dest = host
-    if _ACTIVE_SCOPE is not None:
-        dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
     try:
         with socket.create_connection((dest, port), timeout=timeout):
             return True
@@ -166,15 +244,24 @@ def http_exchange(
     """GET/HEAD/OPTIONS only. Redirects are never followed."""
     del follow_redirects  # never follow; Location is recorded only
     try:
+        _require_bound_scope()
+    except LiveRefuse:
+        raise
+    try:
         host, port, scheme, path = parse_http_url(url)
     except LiveRefuse as exc:
         return {"error": str(exc)}
     dest = host
-    if _ACTIVE_SCOPE is not None:
-        try:
-            dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
-        except LiveRefuse as exc:
-            return {"error": str(exc)}
+    try:
+        dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    except LiveRefuse as exc:
+        msg = str(exc)
+        if any(
+            tok in msg.lower()
+            for tok in ("revoked", "cannot re-read", "demo scope", "consent", "bound signed")
+        ):
+            raise
+        return {"error": msg}
     req_headers = {"User-Agent": "grc-collector-pack-web-tls/1.0", "Host": host}
     if headers:
         req_headers.update(headers)
@@ -206,9 +293,7 @@ def http_exchange(
 
 
 def tls_probe(host: str, port: int = 443, timeout: float = 5.0) -> dict[str, Any]:
-    dest = host
-    if _ACTIVE_SCOPE is not None:
-        dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
     if not tcp_open(host, port, timeout=2.0):
         return {"open": False, "port": port}
     ctx = ssl.create_default_context()
@@ -242,9 +327,7 @@ def tls_probe(host: str, port: int = 443, timeout: float = 5.0) -> dict[str, Any
 
 
 def ssh_banner(host: str, port: int = 22, timeout: float = 3.0) -> dict[str, Any]:
-    dest = host
-    if _ACTIVE_SCOPE is not None:
-        dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
     if not tcp_open(host, port, timeout=2.0):
         return {}
     try:
@@ -276,6 +359,10 @@ def build_snapshot(
     ports: list[int] | None = None,
     http_urls: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Record a live snapshot. Requires a bound signed SCOPE (run_live)."""
+    _require_bound_scope()
+    if not is_bare_host(target) and not _is_ip(target):
+        raise LiveRefuse(f"target must be a bare host or IP, not {target!r}")
     ports = list(ports or DEFAULT_PORTS)
     urls = list(http_urls) if http_urls else default_http_urls(target, ports)
     open_ports = [p for p in ports if tcp_open(target, p)]
@@ -387,8 +474,8 @@ def run_live(
     except GateError as exc:
         raise LiveRefuse(str(exc)) from exc
     want_ports = list(ports or DEFAULT_PORTS)
-    _preflight(scope, str(target).strip(), want_ports, http_urls)
     with _bind_scope(scope):
+        _preflight(scope, str(target).strip(), want_ports, http_urls)
         snapshot = build_snapshot(target, ports=want_ports, http_urls=http_urls)
     records = _stamp_honesty(parse_snapshot(snapshot), live=True)
     payload = {

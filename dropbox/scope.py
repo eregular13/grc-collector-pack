@@ -311,9 +311,29 @@ def _as_bool(value, default: bool) -> bool:
 
 _REVOKED_TRUE = frozenset({"true", "yes", "1", "on", "y"})
 _REVOKED_FALSE = frozenset({"false", "no", "0", "off", "n", ""})
-_STATUS_REVOKED = frozenset(
-    {"revoked", "revoke", "terminated", "suspended", "cancelled", "canceled"}
-)
+# Absent status, or one of these tokens, is the only live-valid set.
+# Docs (SCOPE.example.yaml) name ``authorized``; Metis/operator also use
+# ``active`` / ``approved``. Everything else (expired, on-hold, withdrawn,
+# revoked-by-client, terminated, nested mappings, …) refuses.
+_STATUS_ALLOWED = frozenset({"", "active", "authorized", "approved"})
+
+
+def _ci_values(mapping: Any, key: str) -> list[Any]:
+    """All values whose key case-folds to ``key`` (YAML keys are case-sensitive)."""
+    if not isinstance(mapping, dict):
+        return []
+    want = str(key).strip().lower()
+    out: list[Any] = []
+    for raw_key, value in mapping.items():
+        if str(raw_key).strip().lower() == want:
+            out.append(value)
+    return out
+
+
+def _ci_get(mapping: Any, key: str) -> Any:
+    """First case-insensitive hit, or None when the key is absent."""
+    rows = _ci_values(mapping, key)
+    return rows[0] if rows else None
 
 
 def _flag_is_revoked(raw: Any) -> bool | None:
@@ -330,14 +350,36 @@ def _flag_is_revoked(raw: Any) -> bool | None:
     raise GateError(f"invalid revoked value {raw!r}")
 
 
+def _status_is_allowed(raw: Any) -> bool:
+    """True only for absent or allowlisted status. Nested / unknown refuse."""
+    if raw is None:
+        return True
+    if isinstance(raw, (dict, list, bool)):
+        return False
+    text = str(raw).split("#", 1)[0].strip().lower()
+    return text in _STATUS_ALLOWED
+
+
 def _engagement_is_revoked(data: dict, eng: dict) -> bool:
-    """Top-level or engagement revoked flag, plus revoked/terminated/suspended status."""
-    for raw in (data.get("revoked"), eng.get("revoked")):
+    """Revoked flags or any status outside the allowlist, keys case-insensitive.
+
+    Looks at top-level and engagement ``revoked`` / ``status`` (any case),
+    plus a case-folded ``engagement`` section so ``Engagement:`` still gates.
+    Nested ``status: {state: …}`` refuses. Absent status is allowed.
+    """
+    eng_ci = eng if isinstance(eng, dict) else {}
+    if not _ci_values(eng_ci, "status") and not _ci_values(eng_ci, "revoked"):
+        found = _ci_get(data, "engagement")
+        if isinstance(found, dict):
+            eng_ci = found
+    for raw in (*_ci_values(data, "revoked"), *_ci_values(eng_ci, "revoked")):
         flag = _flag_is_revoked(raw)
         if flag is True:
             return True
-    status = str(eng.get("status") or "").split("#", 1)[0].strip().lower()
-    return status in _STATUS_REVOKED
+    for raw in (*_ci_values(eng_ci, "status"), *_ci_values(data, "status")):
+        if not _status_is_allowed(raw):
+            return True
+    return False
 
 
 def _as_list(value) -> list:
