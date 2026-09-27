@@ -1,3 +1,15 @@
+# CRITIC — cycle 222 (SCOPE_CANONICAL_KEY_REFUSE)
+
+Lab this brick: pytest **2058** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Non-canonical SCOPE keys refuse at the
+loader; `engagement.begin` removed; BOM keys refuse; nested
+`copy_context().run` binds documented. DEMO / SAMPLE / farm
+`poam.csv` byte-identical to master `a7dd5a3` (119 / 8 / 73). Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 221 (SCOPE_GATE_QUOTED_KEYS_BIND_DEMO)
 
 Lab this brick: pytest **1783** passed, 1 skipped. Ten collectors +
