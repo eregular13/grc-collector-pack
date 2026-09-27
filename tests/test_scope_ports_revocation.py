@@ -191,3 +191,92 @@ def test_live_probe_refuses_target_outside_scope(tmp_path: Path) -> None:
     scope = load_scope(_write_scope(tmp_path, "ports_allowed:\n  - 80\n"))
     with pytest.raises(GateError, match="outside authorized SCOPE"):
         require_live_probe(scope, "8.8.8.8", [80])
+
+
+def test_status_authorized_loads(tmp_path: Path) -> None:
+    scope = load_scope(_write_scope(tmp_path, "  status: authorized\n"))
+    require_not_revoked(scope)
+    require_live_probe(scope, "127.0.0.1", [80])
+
+
+def test_status_active_loads(tmp_path: Path) -> None:
+    scope = load_scope(_write_scope(tmp_path, "  status: active\n"))
+    require_not_revoked(scope)
+
+
+def test_status_approved_loads(tmp_path: Path) -> None:
+    scope = load_scope(_write_scope(tmp_path, "  status: approved\n"))
+    require_not_revoked(scope)
+
+
+def test_status_expired_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status: expired\n"))
+
+
+def test_status_on_hold_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status: on-hold\n"))
+
+
+def test_status_withdrawn_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status: withdrawn\n"))
+
+
+def test_status_revoked_by_client_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status: revoked-by-client\n"))
+
+
+def test_nested_status_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status:\n    state: revoked\n"))
+
+
+def test_toplevel_status_revoked_refuses_load(tmp_path: Path) -> None:
+    att, digest = _consent(tmp_path)
+    today = date.today()
+    path = tmp_path / "SCOPE.yaml"
+    path.write_text(
+        "client:\n  name: DEMO — not a client estate\nconsent:\n"
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        "status: revoked\n"
+        f"engagement:\n  start: {today.isoformat()}\n"
+        f"  end: {(today + timedelta(days=2)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(path)
+
+
+def test_toplevel_REVOKED_true_refuses_load(tmp_path: Path) -> None:
+    att, digest = _consent(tmp_path)
+    today = date.today()
+    path = tmp_path / "SCOPE.yaml"
+    path.write_text(
+        "client:\n  name: DEMO — not a client estate\nconsent:\n"
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        "REVOKED: true\n"
+        f"engagement:\n  start: {today.isoformat()}\n"
+        f"  end: {(today + timedelta(days=2)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(path)
+
+
+def test_engagement_Revoked_true_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  Revoked: true\n"))
+
+
+def test_status_Revoked_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  Status: Revoked\n"))

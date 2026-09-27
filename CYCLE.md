@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 220 — SCOPE gate harden (Metis #196 follow-up) (2026-09-27)
+
+Live SCOPE status is an allowlist (`active` / `authorized` / `approved` /
+absent; keys case-insensitive). Nested or top-level unknown status,
+`REVOKED` / `Revoked`, and mid-run revoke or read error fail closed —
+the SCOPE file and consent digest are re-read before every connect.
+Live mode refuses the pack DEMO consent digest regardless of filename.
+`build_snapshot()` requires a bound SCOPE. Helper test compares
+TYPE_REMEDIATIONS independently. Pytest **1760**. Host-lab 79 / 103 /
+poam 119 / excluded 6. DEMO / SAMPLE / farm `poam.csv` byte-identical
+to master `5c6ac7b`. Catalog **unchanged**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 219 — slim register: alias-merge control union + AC-5 (2026-09-26)
 
 Owner decision on #192: when alias/weakness merge folds rows, the
