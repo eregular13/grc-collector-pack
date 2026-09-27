@@ -1156,6 +1156,10 @@
       "norm": "6774edc6fab840f1de859b978bbc83b5d56682d4fe9440a55965df45cc48a751",
       "raw": "d7cfe7467e6c44cb2d0f4bdc2e957d5c95724150ac7fbde375b2b13a67cb19b3"
     },
+    "samples/web_tls/probe-uncovered-emit.json": {
+      "norm": "fbca84a91f57e5bcede50089e8ea21647db47dddbe43679760381020da7eaa47",
+      "raw": "3cd875ea873beea969d2f03a4112b628b55c4cb201ef7d368b5911e27fcbdfaa"
+    },
     "samples/xccdf/rule-results.xml": {
       "norm": "87a540761c84092617bd0b22c5aea663df21793de0a3e725e619dc152c55678f",
       "raw": "09d1af18d985d13932245b8a619f4777df71a324ccdcb545f2d050811518118b"

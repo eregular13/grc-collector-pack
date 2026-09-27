@@ -323,6 +323,44 @@ def test_make_ref_stable_key_scheme() -> None:
     assert make_ref("web-tls", "sense-tls-192-0-2-10-443") == "WEB-sense-tls-192-0-2-10-443"
 
 
+def test_uncovered_emit_sites_from_fixture() -> None:
+    recs = parse_file(SAMPLES / "probe-uncovered-emit.json")
+    sensors = {str((r.get("extra") or {}).get("sensor")) for r in recs}
+    assert "sense-tls" in sensors
+    assert "sense-ssh-banner" in sensors
+    assert "sense-cleartext-ftp" in sensors
+    assert any("trust" in r["name"].lower() or r["extra"].get("variant") == "trust" for r in recs)
+    assert any(r["extra"].get("variant") == "error" for r in recs)
+    assert any(r["extra"]["sensor"] == "sense-ssh-banner" and r["severity"] == "low" for r in recs)
+    assert any(r["extra"]["sensor"] == "sense-cleartext-ftp" for r in recs)
+
+
+def test_tls_no_listener_and_ok_have_distinct_ids() -> None:
+    closed = parse_snapshot(
+        {
+            "schema": "web_tls.probe.v1",
+            "target": "192.0.2.10",
+            "ports": [443],
+            "open_ports": [],
+            "tls": {"443": {"open": False, "port": 443}},
+        }
+    )
+    ok = parse_snapshot(
+        {
+            "schema": "web_tls.probe.v1",
+            "target": "192.0.2.10",
+            "ports": [443],
+            "open_ports": [443],
+            "tls": {"443": {"open": True, "tls": True, "port": 443, "cert_present": True}},
+        }
+    )
+    c = next(r for r in closed if r["extra"]["sensor"] == "sense-tls")
+    o = next(r for r in ok if r["extra"]["sensor"] == "sense-tls")
+    assert c["ref_id"] != o["ref_id"]
+    assert c["extra"].get("variant") == "no-listener"
+    assert o["extra"].get("variant") == "ok"
+
+
 def test_info_tls_ok_is_off_poam_preview() -> None:
     recs = parse_file(SAMPLES / "probe-info-only.json")
     info = [r for r in recs if r["severity"] == "info"]

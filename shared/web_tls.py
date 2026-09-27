@@ -118,6 +118,7 @@ def _finding(
             extra.get("service"),
             extra.get("disclosure"),
             extra.get("fingerprint"),
+            extra.get("variant"),
         ),
         name=name,
         description=f"{description} {HONEST}",
@@ -265,7 +266,7 @@ def sense_tls(host: str, port: int, row: dict[str, Any]) -> list[dict[str, Any]]
                 description="Port closed or filtered. If HTTPS is expected, service may be HTTP-only.",
                 severity="medium",
                 category="tls",
-                extra={"port": port, "open": False},
+                extra={"port": port, "open": False, "variant": "no-listener"},
                 labels=["tls", "availability"],
             )
         ]
@@ -279,7 +280,7 @@ def sense_tls(host: str, port: int, row: dict[str, Any]) -> list[dict[str, Any]]
                 description=verify,
                 severity="high",
                 category="tls",
-                extra={"port": port, "error": verify},
+                extra={"port": port, "error": verify, "variant": "trust"},
                 labels=["tls", "certificate"],
             )
         ]
@@ -293,7 +294,7 @@ def sense_tls(host: str, port: int, row: dict[str, Any]) -> list[dict[str, Any]]
                 description=err,
                 severity="medium",
                 category="tls",
-                extra={"port": port, "error": err},
+                extra={"port": port, "error": err, "variant": "error"},
                 labels=["tls", "error"],
             )
         ]
@@ -305,7 +306,7 @@ def sense_tls(host: str, port: int, row: dict[str, Any]) -> list[dict[str, Any]]
             description=f"Handshake OK. subject={row.get('subject') or 'n/a'}",
             severity="info",
             category="tls",
-            extra={"port": port, "open": True, "tls": True, "cert_present": bool(row.get("cert_present", True))},
+            extra={"port": port, "open": True, "tls": True, "cert_present": bool(row.get("cert_present", True)), "variant": "ok"},
             labels=["tls", "ok"],
         )
     ]
