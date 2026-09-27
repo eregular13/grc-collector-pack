@@ -100,6 +100,7 @@ PREFIX = {
     "saas-idp": "SAAS",
     "honeypot": "HPOT",
     "dns-email": "DNS",
+    "web-tls": "WEB",
 }
 
 
