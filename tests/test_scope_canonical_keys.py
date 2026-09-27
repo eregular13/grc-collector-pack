@@ -278,10 +278,16 @@ def _apply_single_location_restriction(
 
     Root and engagement both used to carry ``ports_allowed`` / ``status`` /
     ``revoked``. A misspelled copy then could not open an out-of-scope
-    connect: the other location still blocked :22. Drop every dual-location
-    copy except the variant, and put a real restriction on that variant
-    (``[443]`` / ``expired`` / ``true``) so a reverted refuse would load
-    without the restriction and connect.
+    connect: the other location still blocked :22 (or the sibling
+    status/revoked still authorized the run). Drop every dual-location
+    copy except the variant.
+
+    ``ports_allowed`` keeps ``[443]`` so a reverted refuse has no port
+    limit and would connect :22. ``status`` / ``revoked`` stay
+    authorized / false: ``_ci_values`` still case-folds those keys, so
+    an ``expired`` / ``true`` variant would refuse on revert via the
+    value path and the test could not fail. Omitting ``ports_allowed``
+    is what lets :22 proceed if the loader stops refusing the spelling.
     """
     if key not in _DUAL_RESTRICTION_KEYS or section not in {"", "engagement"}:
         return
@@ -295,9 +301,9 @@ def _apply_single_location_restriction(
     if key == "ports_allowed":
         value = [443]
     elif key == "status":
-        value = "expired"
+        value = "authorized"
     else:
-        value = True
+        value = False
     if section == "":
         tree[key] = value
     else:
