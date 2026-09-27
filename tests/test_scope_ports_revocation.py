@@ -55,7 +55,16 @@ def test_absent_ports_allowed_keeps_current_behavior(tmp_path: Path) -> None:
     assert scope.ports_allowed is None
     assert scope.allows_port(22)
     assert scope.allows_port(65535)
+    assert not scope.allows_port(0)
+    assert not scope.allows_port(-1)
+    assert not scope.allows_port(65536)
     require_authorized_ports(scope, [22, 3389, 1])
+    with pytest.raises(GateError, match="out of range"):
+        require_authorized_ports(scope, [0])
+    with pytest.raises(GateError, match="out of range"):
+        require_authorized_ports(scope, [-1])
+    with pytest.raises(GateError, match="out of range"):
+        require_authorized_ports(scope, [65536])
     demo = load_scope(ROOT / "dropbox" / "SCOPE.yaml")
     assert demo.ports_allowed is None
     assert demo.allows_port(445)
@@ -112,6 +121,45 @@ def test_revoked_status_refuses_load(tmp_path: Path) -> None:
 def test_revoked_flag_refuses_load(tmp_path: Path) -> None:
     with pytest.raises(GateError, match="revoked"):
         load_scope(_write_scope(tmp_path, "  revoked: true\n"))
+
+
+def test_revoked_on_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  revoked: on\n"))
+
+
+def test_revoked_y_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  revoked: y\n"))
+
+
+def test_status_terminated_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status: terminated\n"))
+
+
+def test_status_suspended_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  status: suspended\n"))
+
+
+def test_toplevel_revoked_true_refuses_load(tmp_path: Path) -> None:
+    att, digest = _consent(tmp_path)
+    today = date.today()
+    path = tmp_path / "SCOPE.yaml"
+    path.write_text(
+        "client:\n  name: DEMO — not a client estate\nconsent:\n"
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        "revoked: true\n"
+        f"engagement:\n  start: {today.isoformat()}\n"
+        f"  end: {(today + timedelta(days=2)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n"
+        "external:\n  hosts:\n    - vpn.example.com\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(path)
 
 
 def test_require_not_revoked_on_constructed_scope() -> None:

@@ -8,6 +8,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 from dropbox.yaml_lite import load_yaml
 
@@ -182,17 +183,22 @@ class Scope:
         return self.allows_internal_target(target) or self.allows_external_target(target)
 
     def allows_port(self, port: int) -> bool:
-        """True when port is in ports_allowed, or when that list is absent.
+        """True when port is in 1..65535 and (if set) in ports_allowed.
 
-        Absent ``ports_allowed`` keeps pre-port-list behavior (any port on an
-        in-scope host). An explicit empty list denies every port.
+        Absent ``ports_allowed`` keeps pre-port-list behavior (any valid
+        TCP port on an in-scope host). Out-of-range ports always deny.
+        An explicit empty list denies every port.
         """
-        if self.ports_allowed is None:
-            return True
         try:
+            if isinstance(port, bool):
+                return False
             num = int(port)
         except (TypeError, ValueError):
             return False
+        if not 1 <= num <= 65535:
+            return False
+        if self.ports_allowed is None:
+            return True
         return num in self.ports_allowed
 
 
@@ -218,19 +224,23 @@ def require_not_revoked(scope: Scope) -> None:
 
 
 def require_authorized_ports(scope: Scope, ports: list[int]) -> None:
-    """Fail closed when any requested port is outside SCOPE.ports_allowed.
+    """Fail closed when any requested port is outside 1..65535 or SCOPE.
 
-    Absent ports_allowed is a no-op (current behavior). An explicit list
-    refuses every port not named, including an empty allow-list.
+    Ports outside 1..65535 always refuse, even when ports_allowed is
+    absent. An explicit list then refuses every port not named,
+    including an empty allow-list.
     """
     rows: list[int] = []
     for item in ports or []:
+        if isinstance(item, bool):
+            raise GateError(f"invalid port {item!r}")
         try:
-            rows.append(int(item))
+            num = int(item)
         except (TypeError, ValueError) as exc:
             raise GateError(f"invalid port {item!r}") from exc
-    if scope.ports_allowed is None:
-        return
+        if not 1 <= num <= 65535:
+            raise GateError(f"port out of range: {item!r}")
+        rows.append(num)
     missing = [p for p in rows if not scope.allows_port(p)]
     if missing:
         shown = ", ".join(str(p) for p in missing)
@@ -297,6 +307,37 @@ def _as_bool(value, default: bool) -> bool:
     if text in {"false", "no", "0"}:
         return False
     return default
+
+
+_REVOKED_TRUE = frozenset({"true", "yes", "1", "on", "y"})
+_REVOKED_FALSE = frozenset({"false", "no", "0", "off", "n", ""})
+_STATUS_REVOKED = frozenset(
+    {"revoked", "revoke", "terminated", "suspended", "cancelled", "canceled"}
+)
+
+
+def _flag_is_revoked(raw: Any) -> bool | None:
+    """True / False / None (absent). Unknown tokens fail closed."""
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).split("#", 1)[0].strip().lower()
+    if text in _REVOKED_TRUE:
+        return True
+    if text in _REVOKED_FALSE:
+        return False
+    raise GateError(f"invalid revoked value {raw!r}")
+
+
+def _engagement_is_revoked(data: dict, eng: dict) -> bool:
+    """Top-level or engagement revoked flag, plus revoked/terminated/suspended status."""
+    for raw in (data.get("revoked"), eng.get("revoked")):
+        flag = _flag_is_revoked(raw)
+        if flag is True:
+            return True
+    status = str(eng.get("status") or "").split("#", 1)[0].strip().lower()
+    return status in _STATUS_REVOKED
 
 
 def _as_list(value) -> list:
@@ -442,9 +483,7 @@ def load_scope(path: Path | None = None) -> Scope:
     today = date.today()
     if today < start or today > end:
         raise GateError(f"today {today.isoformat()} is outside engagement window {start}..{end}")
-    status = str(eng.get("status") or "").strip().lower()
-    revoked = _as_bool(eng.get("revoked"), False) or status == "revoked"
-    if revoked:
+    if _engagement_is_revoked(data, eng):
         raise GateError("engagement is revoked")
 
     ports_raw = data.get("ports_allowed")
@@ -454,6 +493,8 @@ def load_scope(path: Path | None = None) -> Scope:
     if ports_raw is not None:
         ports_allowed = []
         for item in _as_list(ports_raw):
+            if isinstance(item, bool):
+                raise GateError(f"invalid ports_allowed item {item!r}")
             try:
                 num = int(item)
             except (TypeError, ValueError) as exc:
