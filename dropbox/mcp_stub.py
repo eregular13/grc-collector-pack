@@ -2142,6 +2142,7 @@ def run_live_collectors(
     isolated dest_in (never pack in/). Tests monkeypatch this — it must not
     run when SCOPE or live estate/net gates refuse.
     """
+    from dropbox.lab_estate_docker_nmap import run_lab_estate_docker_nmap
     from dropbox import runners
 
     dest_in = Path(dest_in)
@@ -2157,8 +2158,9 @@ def run_live_collectors(
     os.environ["DROPBOX_DEMO"] = "0"
     os.environ["DROPBOX_LIVE"] = "1"
     try:
-        # Internal profile only — gated lab-estate targets, not external/client.
-        runners.write_inventory(restricted, demo=False)
+        # Docker-network nmap on LAB_ESTATE_NETWORKS only. Never host nmap.
+        # Never synthetic ss/ip gnmap (that plants 22/80 on the Windows hostname).
+        run_lab_estate_docker_nmap(gated, dest_in)
         runners.write_lynis(restricted, demo=False)
     finally:
         for key, val in saved.items():
