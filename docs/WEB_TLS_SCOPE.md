@@ -12,8 +12,14 @@ opens a socket and does not need SCOPE.
    The pack DEMO `dropbox/SCOPE.yaml` is refused, as is any SCOPE whose
    consent file hashes to the DEMO digest
    `ab5fb87300b944e1a95216ffa65f9ab697e5daba01012c23019b3608a2bc207c`
-   (filename/path do not matter). `build_snapshot()` is gated the same way
-   as `--live` — a missing bound SCOPE refuses before any socket.
+   (filename/path do not matter) or whose `client.name` normalizes to
+   `DEMO — not a client estate` (casefold, NFKC, collapsed whitespace,
+   unicode dashes as `-`). Unrelated names such as `DEMO` or
+   `Demo Industries Inc` are not the pack DEMO estate. `build_snapshot()`
+   is gated the same way as `--live` — a missing bound SCOPE refuses
+   before any socket. A second concurrent live bind in another thread
+   refuses (fail closed). Quoted mapping keys are unquoted before
+   lookup; unknown keys and non-ASCII keys refuse at every section.
 2. A current engagement window (`engagement.start` / `engagement.end` contain now).
 3. Engagement status is an **allowlist**. Absent, `active`, `authorized`, or
    `approved` (any case) load. Anything else refuses: `expired`, `on-hold`,
@@ -53,7 +59,9 @@ the system of record; SimpleRisk is leave-behind only.
 | Case | Result |
 |---|---|
 | No `--scope` / missing SCOPE | refuse, nonzero |
-| Pack DEMO `dropbox/SCOPE.yaml` or DEMO consent digest | refuse, nonzero |
+| Pack DEMO `dropbox/SCOPE.yaml`, DEMO consent digest, or DEMO `client.name` (case/dash/NBSP) | refuse, nonzero |
+| Unknown or non-ASCII SCOPE key | refuse, nonzero |
+| Second concurrent live SCOPE bind | refuse, nonzero |
 | Expired engagement window | refuse, nonzero |
 | Status outside `{active, authorized, approved, absent}` | refuse, nonzero |
 | Nested / top-level / any-case `status` or `REVOKED` | refuse, nonzero |
