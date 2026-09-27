@@ -1,3 +1,15 @@
+# CRITIC — cycle 220 (SCOPE_GATE_HARDEN)
+
+Lab this brick: pytest **1760** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Metis #196 follow-up: status allowlist,
+per-connect re-read, DEMO consent digest refuse, `build_snapshot`
+gated. DEMO / SAMPLE / farm `poam.csv` byte-identical to master
+`5c6ac7b`. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
 # CRITIC — cycle 219 (SLIM_REGISTER_ALIAS_CONTROL_UNION)
 
 Lab this brick: pytest **1525** passed, 1 skipped. Ten collectors +
