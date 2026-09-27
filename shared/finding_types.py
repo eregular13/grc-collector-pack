@@ -123,6 +123,41 @@ TYPE_ALIASES: dict[str, str] = {
     "nse_redis_noauth": "nse-redis-noauth",
     "redis_noauth": "nse-redis-noauth",
     "redis_unauth": "nse-redis-noauth",
+    # Live web/TLS env-eval sensors (shared.web_tls).
+    "sense_http_headers": "web_security_headers",
+    "sense-http-headers": "web_security_headers",
+    "sense_cookie_flags": "web_cookie_flags",
+    "sense-cookie-flags": "web_cookie_flags",
+    "sense_cors": "web_cors",
+    "sense-cors": "web_cors",
+    "sense_cleartext_http": "web_cleartext_http",
+    "sense-cleartext-http": "web_cleartext_http",
+    "sense_cleartext_ftp": "web_cleartext_ftp",
+    "sense-cleartext-ftp": "web_cleartext_ftp",
+    "sense_git_exposed": "web_sensitive_file",
+    "sense-git-exposed": "web_sensitive_file",
+    "sense_dir_listing": "web_dir_listing",
+    "sense-dir-listing": "web_dir_listing",
+    "sense_http_methods": "web_http_methods",
+    "sense-http-methods": "web_http_methods",
+    "sense_tls_expiry": "tls_cert_expiration",
+    "sense-tls-expiry": "tls_cert_expiration",
+    "sense_default_page": "web_default_page",
+    "sense-default-page": "web_default_page",
+    "sense_http_https_redirect": "web_http_redirect",
+    "sense-http-https-redirect": "web_http_redirect",
+    "sense_service_exposure": "web_service_exposure",
+    "sense-service-exposure": "web_service_exposure",
+    "sense_tech_disclosure": "web_tech_disclosure",
+    "sense-tech-disclosure": "web_tech_disclosure",
+    "sense_http_info": "web_tech_disclosure",
+    "sense-http-info": "web_tech_disclosure",
+    "sense_surface": "web_surface",
+    "sense-surface": "web_surface",
+    "sense_ssh_banner": "web_ssh_banner",
+    "sense-ssh-banner": "web_ssh_banner",
+    "sense_tls": "web_tls_service",
+    "sense-tls": "web_tls_service",
 }
 
 # Type-specific remediations. Distinct types must not share identical fix text
@@ -602,6 +637,120 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "key_medium": True,
         "source": "pingcastle",
     },
+    "web_security_headers": {
+        "control_name": "Deploy baseline HTTP security headers",
+        "recommended_fix": (
+            "Add HSTS (HTTPS), CSP, X-Frame-Options or frame-ancestors, "
+            "X-Content-Type-Options, Referrer-Policy, and Permissions-Policy. "
+            "This is a signed-SCOPE live web/TLS finding, not a Nikto file-drop."
+        ),
+        "nist_800_53": ["SC-7", "SC-18"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_cookie_flags": {
+        "control_name": "Set Secure HttpOnly SameSite cookie flags",
+        "recommended_fix": (
+            "Set HttpOnly, Secure on HTTPS, and SameSite=Lax or Strict on session cookies. "
+            "This is a signed-SCOPE live web/TLS finding, not a live login."
+        ),
+        "nist_800_53": ["SC-23", "AC-12"],
+        "source": "web-tls",
+    },
+    "web_cors": {
+        "control_name": "Allowlist CORS origins",
+        "recommended_fix": (
+            "Replace Access-Control-Allow-Origin * with an explicit allowlist; "
+            "never combine * with credentials. Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["AC-3", "SC-7"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_cleartext_http": {
+        "control_name": "Terminate TLS and redirect HTTP to HTTPS",
+        "recommended_fix": (
+            "Enable HTTPS, 301 HTTP to HTTPS, and HSTS. "
+            "This is a signed-SCOPE live web/TLS finding, not a file-drop."
+        ),
+        "nist_800_53": ["SC-8", "SC-7"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_cleartext_ftp": {
+        "control_name": "Disable or lock down cleartext FTP",
+        "recommended_fix": (
+            "Disable FTP; use SFTP or managed transfer. "
+            "Signed-SCOPE live connect-only finding, not a credential test."
+        ),
+        "nist_800_53": ["SC-8"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_default_page": {
+        "control_name": "Replace default web welcome or error pages",
+        "recommended_fix": (
+            "Replace default welcome/error pages with intentional production content. "
+            "Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["CM-2", "CM-6"],
+        "source": "web-tls",
+    },
+    "web_http_redirect": {
+        "control_name": "Redirect HTTP to HTTPS",
+        "recommended_fix": (
+            "Configure the edge to 301/308 HTTP to HTTPS and enable HSTS after validation. "
+            "Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["SC-8", "SC-7"],
+        "source": "web-tls",
+    },
+    "web_service_exposure": {
+        "control_name": "Remove public exposure of data and admin services",
+        "recommended_fix": (
+            "Bind DB/cache/RDP/SMB/admin listeners to private networks and require auth. "
+            "Signed-SCOPE TCP-connect finding, not an exploit."
+        ),
+        "nist_800_53": ["SC-7", "CM-7"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_tech_disclosure": {
+        "control_name": "Strip Server and X-Powered-By version tokens",
+        "recommended_fix": (
+            "Strip or generalize Server/X-Powered-By at the reverse proxy. "
+            "Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["CM-7"],
+        "source": "web-tls",
+    },
+    "web_surface": {
+        "control_name": "Inventory listeners and close unused ports",
+        "recommended_fix": (
+            "Close unused listeners; restrict admin ports to jump hosts or VPN. "
+            "Signed-SCOPE TCP-connect finding, not a port scan spray."
+        ),
+        "nist_800_53": ["CM-7", "CM-8"],
+        "source": "web-tls",
+    },
+    "web_ssh_banner": {
+        "control_name": "Restrict SSH to management networks",
+        "recommended_fix": (
+            "Limit SSH to jump hosts/VPN; disable password auth; keep OpenSSH current. "
+            "Banner read only — no auth attempted."
+        ),
+        "nist_800_53": ["CM-7", "AC-17"],
+        "source": "web-tls",
+    },
+    "web_tls_service": {
+        "control_name": "Ensure TLS is present where HTTPS is expected",
+        "recommended_fix": (
+            "Enable TLS on public web endpoints; disable weak protocols/ciphers. "
+            "Signed-SCOPE live TLS handshake, not a cipher brute."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "source": "web-tls",
+    },
 }
 
 # Failure-oriented weakness names. Check titles that read as passes
@@ -659,6 +808,18 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "pc_delegated": "Privileged account is not marked sensitive / Protected Users",
     "pc_dsheuristics": "dSHeuristics LDAP security flags are not set",
     "nse-redis-noauth": "Redis accepts unauthenticated access",
+    "web_security_headers": "Required HTTP security headers are missing",
+    "web_cookie_flags": "Session cookies lack Secure/HttpOnly/SameSite",
+    "web_cors": "CORS allow-origin is overly permissive",
+    "web_cleartext_http": "HTTP is exposed without HTTPS",
+    "web_cleartext_ftp": "FTP listener is reachable",
+    "web_default_page": "Default or verbose error page is published",
+    "web_http_redirect": "HTTP does not redirect to HTTPS",
+    "web_service_exposure": "Sensitive service port is reachable",
+    "web_tech_disclosure": "Server or framework version is disclosed",
+    "web_surface": "Unauthorized or undocumented listeners are open",
+    "web_ssh_banner": "SSH banner is reachable on the network",
+    "web_tls_service": "TLS listener is missing, untrusted, or informational",
 }
 
 # Distinct types may share remediations only with an explicit reason.

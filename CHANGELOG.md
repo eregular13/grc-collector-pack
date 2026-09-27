@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- WEB_TLS_LIVE_GATE: live probes never follow redirects; `--target` is a
+  bare host/IP; URLs are `urlsplit` (http/https, no userinfo); every
+  (host, port) including implicit 80/443 is gated; default URLs only for
+  allowed ports; ports outside 1..65535 refuse even without
+  `ports_allowed`; resolved IP is re-checked and pinned; pack DEMO
+  SCOPE is refused. Revocation also honors `revoked: on`/`y`,
+  `status: terminated`/`suspended`, and top-level `revoked: true`.
+  `nist_800_53_ids(rec, *, finding_type, sensor, title, description)`
+  follows POA&M `TYPE_REMEDIATIONS`. CSF 1.1 PR.AC-05 → PR.IR-01.
+  TLS no-listener vs accepted IDs are distinct. No POST `/api/risks`.
+- HERMES_FREEDOM45_PORT: live-only web/TLS collector (`in/web_tls/`,
+  `shared.web_tls` parse-only, `shared.web_tls_live` behind `--live` +
+  signed SCOPE). 24 non-destructive check types from the frozen
+  freedom45 env-eval sensors. Fail-closed with no / expired / revoked
+  SCOPE or any target/port outside scope. No `fixtures/demo` fallback —
+  DEMO lab.sh / compose do not run it, so existing DEMO `poam.csv` is
+  unchanged unless an operator drops snapshots. Scope doc:
+  `docs/WEB_TLS_SCOPE.md`. IDs use `make_ref` (never salted `hash()`).
+  Informational findings stay off the POA&M. No POST `/api/risks`.
+  RiskReady stay-out.
+- SCOPE_PORTS_REVOCATION: `dropbox.scope` accepts optional
+  `ports_allowed` (absent = current any-port-on-host behavior) and
+  engagement revocation (`status: revoked` / `revoked: true`).
+  Backward compatible with existing SCOPE files.
+- FRAMEWORK_ENV_EVAL: freedom45 control-map heuristics folded into
+  `framework_class_map` (not imported wholesale). CPG 2.0 stays the
+  client-facing spine. CIS v8 is internal-only under
+  `extra.cis_v8_internal`. Mixed CSF 1.1 IDs normalize to CSF 2.0.
+  `nist_800_53_ids` is the single helper for a content pipeline — no
+  second map. Title heuristics are gated to web-tls / `sense-*` so
+  DEMO nmap classifications stay unchanged.
 - CR6_2_SECRET_LINE_STABLE: secret-class findings (gitleaks / TruffleHog /
   category secrets) drop line/evidence/cmd from the weakness and
   identity discriminator when Secret/Match/Raw is usable. They key

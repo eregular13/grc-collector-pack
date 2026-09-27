@@ -1144,6 +1144,22 @@
       "norm": "907b4cc373c9c9a128efecd4023dacca409261e0b80c32ae51cf8733e1d0be3d",
       "raw": "66bde4e7e12c1519c419ef888017dd8bbcde18872615b32ec1f1fe71446a324e"
     },
+    "samples/web_tls/probe-cleartext-http.json": {
+      "norm": "f32be2bd5f2257789ad1338fe7f15b906bdbc50813d74fa48d6673897509aab5",
+      "raw": "8a0a0094a104d896b73c9ffd13b8f444e9f61d81f75aeb3d6b8a835de7883095"
+    },
+    "samples/web_tls/probe-https-weak.json": {
+      "norm": "93924f8d0bddb28270e49180ed7b7ed1feb8d03ca8f50b7f67816ab614ebf2cd",
+      "raw": "7cf348757a3dbe02f06468c6716a08de8f6136ede6331cd34d1f39c4eb07cf43"
+    },
+    "samples/web_tls/probe-info-only.json": {
+      "norm": "6774edc6fab840f1de859b978bbc83b5d56682d4fe9440a55965df45cc48a751",
+      "raw": "d7cfe7467e6c44cb2d0f4bdc2e957d5c95724150ac7fbde375b2b13a67cb19b3"
+    },
+    "samples/web_tls/probe-uncovered-emit.json": {
+      "norm": "fbca84a91f57e5bcede50089e8ea21647db47dddbe43679760381020da7eaa47",
+      "raw": "3cd875ea873beea969d2f03a4112b628b55c4cb201ef7d368b5911e27fcbdfaa"
+    },
     "samples/xccdf/rule-results.xml": {
       "norm": "87a540761c84092617bd0b22c5aea663df21793de0a3e725e619dc152c55678f",
       "raw": "09d1af18d985d13932245b8a619f4777df71a324ccdcb545f2d050811518118b"

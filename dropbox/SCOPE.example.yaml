@@ -8,6 +8,13 @@ consent:
 engagement:
   start: "YYYY-MM-DD"
   end: "YYYY-MM-DD"
+  # Optional. status: revoked (or revoked: true) fails closed at load_scope.
+  # status: authorized
+# Optional per-port allow-list. Absent = any port on an in-scope host
+# (current behavior). An explicit list is fail-closed.
+# ports_allowed:
+#   - 80
+#   - 443
 internal:
   cidrs:
     - "10.0.0.0/8"
