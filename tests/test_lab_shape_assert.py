@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import skip_unless_bash
 from scripts.prove_ciso import (
     LAB_SHAPE_FAIL,
     LabShapeError,
@@ -155,6 +156,7 @@ def test_prove_use_existing_in_fail_closed_on_rustscan_sibling(tmp_path: Path) -
     assert not (dest / "prove-ciso.json").exists()
 
 
+@skip_unless_bash
 def test_lab_shape_fail_cli_and_wrapper_are_stable(tmp_path: Path) -> None:
     dest = tmp_path / "prove"
     dest_in = dest / "in"

@@ -1,0 +1,573 @@
+{
+  "phase": "baseline",
+  "stamp": "2026-09-26T19:05:14-07:00",
+  "cwd": "C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250",
+  "python": "C:\\Python314\\python.exe",
+  "python_version": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "os_name": "nt",
+  "cmd": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "tests",
+    "-q",
+    "--tb=line",
+    "--junitxml=C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250\\lab-evidence\\desktop\\h4-windows-pytest\\baseline\\junit.xml"
+  ],
+  "exit_code": 1,
+  "elapsed_sec": 93.8,
+  "passed": 1424,
+  "failed": 91,
+  "errors": 0,
+  "skipped": 1,
+  "total": 1516,
+  "failures": [
+    {
+      "nodeid": "tests.test_adapter_contract::test_allowlisted_live_discover_invokes_stub",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'plan' == 'live'"
+    },
+    {
+      "nodeid": "tests.test_adapter_contract::test_curl_and_testssl_byo_stubs",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert ('curl' == 'curl'"
+    },
+    {
+      "nodeid": "tests.test_cold_review4::test_farm_fedramp_open_matches_poam",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31473 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_cold_review4::test_farm_fedramp_open_stays_109",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31476 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_dns_email::test_live_requires_scope_and_allowlist",
+      "file": "",
+      "kind": "failure",
+      "message": "dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 7a7a48e8beaccbd927705eb60bb85fac6d59b480bc4d7cb9eaa121637fd185ee got 17097b49950ed4c811fc7f8907c0298dc3b077cd53461b76b16a2e0084dcc826"
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_attest_write_stamps_hash_then_gate_passes",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_gate_has_no_skip_hash",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert ('unrecognized' in 'python was not found; run without arguments to install from the microsoft store, or disable this shortcut from settings > apps > advanced app settings > app execution aliases.\\n' or 'invalid' in 'python was not found; run without arguments to install from the microsoft store, or disable this shortcut from settings > apps > advanced app settings > app execution aliases.\\n' or 'error' in 'python was not found; run without arguments to install from the mic"
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_gate_missing_external",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_gate_forbidden_allow_tool",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_external_scope_refuses_wildcard_and_cidr",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_cli_gate_and_missing",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_dropbox::test_dropbox_lab_cli_uses_work_in",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_estate_pages::test_scope_in_and_out_from_same_coverage_and_lists_every_sensor",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\\r': No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_estate_pages::test_generated_pages_have_no_instruction_text",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\\r': No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_estate_pages::test_manifest_verifies_with_sha256sum_c",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\\r': No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_farm_adapters::test_wired_slots_invoke_path_stubs",
+      "file": "",
+      "kind": "failure",
+      "message": "dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 8d8a6a8fa432044fc4587734631ca10509212037ef6de7b8cab5d5c5eea09333 got 8f435f2cb1a5dad334fa0ad6fff2d232e0f38c8eabab67c720e0b6ffdfc33173"
+    },
+    {
+      "nodeid": "tests.test_farm_adapters::test_plan_only_when_live_false",
+      "file": "",
+      "kind": "failure",
+      "message": "assert False is True"
+    },
+    {
+      "nodeid": "tests.test_farm_drop_to_sor::test_verify_only_stdout_encodes_under_cp1252",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31756 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_farm_drop_to_sor::test_farm_drop_to_sor_verify_only_fail_closed",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31759 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_farm_drop_to_sor::test_farm_drop_to_sor_sh_isolated_prove",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31762 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_farm_lab::test_farm_lab_demo_path_does_not_use_pack_in",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'farm/work' in 'C:\\\\Users\\\\R\\\\Desktop\\\\EvergreenOps\\\\cold-path-gate\\\\grc-collector-pack-20260919-230250\\\\farm\\\\work\\\\in'"
+    },
+    {
+      "nodeid": "tests.test_farm_orch::test_live_discover_uses_path_invoke_only",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'plan' == 'live'"
+    },
+    {
+      "nodeid": "tests.test_farm_orch::test_live_deepen_only_deepen_invoke_on_named_hosts",
+      "file": "",
+      "kind": "failure",
+      "message": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_live_deepen_only_deepen_i0\\\\invoked.txt'"
+    },
+    {
+      "nodeid": "tests.test_farm_ship_gate::test_farm_ship_surface_cli_writes_github_output",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_farm_ship_gate::test_assert_farm_ship_sor_ok_and_fail_closed",
+      "file": "",
+      "kind": "failure",
+      "message": "shared.farm_ship.FarmShipError: FARM_SHIP_FAIL sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\\r': No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_farm_ship_gate::test_wipe_clone_script_fail_closed_on_partial_checkout",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert ('incomplete' in '<3>WSL (31765 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n' or 'missing' in '<3>WSL (31765 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n')"
+    },
+    {
+      "nodeid": "tests.test_farm_ship_gate::test_wipe_clone_then_farm_drop_emits_register_shape",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31768 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_makes_plan_will_run",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert False"
+    },
+    {
+      "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_dry_invoke_writes_work_out_no_network",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+    },
+    {
+      "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_dry_invoke_deepen_external_adjacent",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+    },
+    {
+      "nodeid": "tests.test_farm_tool_bin::test_farm_toolbin_lab_script_asserts_nmap_curl",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\\\Python314\\\\python.exe' -> 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_farm_toolbin_lab_script_a0\\\\hermetic-bin\\\\python3'"
+    },
+    {
+      "nodeid": "tests.test_farm_toolbin_e2e::test_farm_toolbin_e2e_quiet_to_loud_under_farm_work",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: {"
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_require_keep_package_fails_closed_when_required_file_missing[keep/__main__.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_require_keep_package_fails_closed_when_required_file_missing[keep/lab.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_require_keep_package_fails_closed_when_required_file_missing[keep/adapters.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_sample_to_sor_sh_fails_closed_on_partial_clone[keep/__main__.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'keep/__main__.py' in '<3>WSL (31771 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n'"
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_sample_to_sor_sh_fails_closed_on_partial_clone[keep/lab.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'keep/lab.py' in '<3>WSL (31774 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n'"
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_sample_to_sor_sh_fails_closed_on_partial_clone[keep/adapters.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'keep/adapters.py' in '<3>WSL (31777 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n'"
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing[keep/__main__.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing[keep/lab.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keep_package_preflight::test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing[keep/adapters.py]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keepmin_scheduler::test_schedule_live_refused_without_live_ready",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_keepmin_scheduler::test_schedule_cli_refuses_vanity_and_demo_live",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_keepmin_scheduler::test_ciso_cli_sor_posted_false_riskready_no_http",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_keepmin_scheduler::test_schedule_cli_scope_and_keep_samples",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_keepmin_scheduler::test_schedule_cli_never_writes_pack_in",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_lab_drop_to_sor::test_lab_drop_to_sor_sh_uses_existing_in",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31780 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_lab_drop_to_sor::test_lab_drop_verify_only_after_prove",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31783 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_lab_prove_lock::test_lab_drop_to_sor_on_lab_drop_fixture",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31786 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_lab_prove_lock::test_use_existing_in_fail_closed_on_empty_in",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'EXISTING_IN_FAIL' in '<3>WSL (31789 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n'"
+    },
+    {
+      "nodeid": "tests.test_lab_shape_assert::test_lab_shape_fail_cli_and_wrapper_are_stable",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'LAB_SHAPE_FAIL' in '<3>WSL (31792 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\\n'"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_cross_wire_cli_and_jsonrpc_fail_closed",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_mcp_cli_scope_status",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\\\Python314\\\\python.exe' -> 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_mcp_cli_scope_status0\\\\hermetic-bin\\\\python3'"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_scope_status_and_status_tools",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\\\Python314\\\\python.exe' -> 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_scope_status_and_status_t0\\\\hermetic-bin\\\\python3'"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_stage_deepen_requires_flag",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_mcp_serve_lists_tools_no_hexstrike",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_jsonrpc_invokes_plan_status_and_farm_slots",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\\\Python314\\\\python.exe' -> 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_jsonrpc_invokes_plan_stat0\\\\hermetic-bin\\\\python3'"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_farm_toolbin_status_lab_env",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'tool-bin/lab/' in 'C:\\\\Users\\\\R\\\\Desktop\\\\EvergreenOps\\\\cold-path-gate\\\\grc-collector-pack-20260919-230250\\\\farm\\\\tool-bin\\\\lab\\\\nmap'"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_farm_toolbin_status_live_ready_needs_non_demo_scope",
+      "file": "",
+      "kind": "failure",
+      "message": "dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 6ec1abceb26d50fbb329ff6f87ae86a024c993ceed539194e9d66cf9e5d3ce53 got ea8d5fda057a034d83bb51374a2653f820440a0b5e6e24031a03a692f65c4c57"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_farm_toolbin_status_file_drop_only_never_live_ready",
+      "file": "",
+      "kind": "failure",
+      "message": "dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 57d607dc6734ff5b29ffd8f56278584831aa533521116c9ed83fd9fd83978747 got d1e278488e0d37d66663bb3373bfcfe564a6290986f9c1a7b0344b2bd8efc86e"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_host_nmap_on_path_does_not_flip_isolated_toolbin_status",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert None"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_tools_call_is_plan_only_even_if_arguments_live",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\\\Python314\\\\python.exe' -> 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_tools_call_is_plan_only_e0\\\\hermetic-bin\\\\python3'"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_empty_scope_refuses_live",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap",
+      "file": "",
+      "kind": "failure",
+      "message": "dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_unsigned_scope_refuses_live",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_open_internet_cidr_refuses_live",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_live_deepen_without_stage_flag_exits_nonzero",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_deepen_batch_enforced_at_gate",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_orch_brakes::test_status_cli_prints_stops_and_demo_label",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_orchestrator::test_orchestrate_cli_plan_only",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+    },
+    {
+      "nodeid": "tests.test_orchestrator::test_orchestrate_requires_scope_gate",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 9009 == 2"
+    },
+    {
+      "nodeid": "tests.test_orchestrator::test_open_internet_cidr_refused_at_gate",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match."
+    },
+    {
+      "nodeid": "tests.test_orchestrator::test_missing_stages_deepen_defaults_false",
+      "file": "",
+      "kind": "failure",
+      "message": "dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    },
+    {
+      "nodeid": "tests.test_pack_drop_scan_density::test_farm_drop_prove_register_is_denser_and_exposure_only",
+      "file": "",
+      "kind": "failure",
+      "message": "shared.farm_ship.FarmShipError: FARM_SHIP_FAIL sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\\r': No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_parsers::test_lab_stub_gnmap_parses",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+    },
+    {
+      "nodeid": "tests.test_poam_breakdown::test_poam_breakdown_identity_sample",
+      "file": "",
+      "kind": "failure",
+      "message": "subprocess.CalledProcessError: Command '['bash', 'C:\\\\Users\\\\R\\\\Desktop\\\\EvergreenOps\\\\cold-path-gate\\\\grc-collector-pack-20260919-230250\\\\scripts\\\\sample_to_sor.sh', '--work', 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_poam_breakdown_identity_s0\\\\sample-work']' returned non-zero exit status 1."
+    },
+    {
+      "nodeid": "tests.test_poam_breakdown::test_poam_breakdown_identity_farm_drop",
+      "file": "",
+      "kind": "failure",
+      "message": "subprocess.CalledProcessError: Command '['bash', 'C:\\\\Users\\\\R\\\\Desktop\\\\EvergreenOps\\\\cold-path-gate\\\\grc-collector-pack-20260919-230250\\\\scripts\\\\farm_drop_to_sor.sh', '--work', 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1160\\\\test_poam_breakdown_identity_f0\\\\farm-work']' returned non-zero exit status 1."
+    },
+    {
+      "nodeid": "tests.test_profiles_e2e::test_internal_external_scripts_leave_demo_artifacts",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31801 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_sample_to_sor::test_sample_to_sor_verify_only_fail_closed",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31844 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_sample_to_sor::test_sample_to_sor_sh_isolated_keep_lab",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31847 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_sample_to_sor::test_sample_to_sor_sh_isolated_keep_lab_exporters",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31850 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_sample_to_sor::test_sample_to_sor_wipe_work_then_sample_to_sor_emits_ciso_csvs",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (31853 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_refuses_expired_scope",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'outside engagement window' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22'"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_live_refuses_missing_or_expired_scope[expired]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert ('outside engagement window' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22' or ('SCOPE_EXPIRED' == 'SCOPE_UNSIGNED'"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_live_refuses_non_lab_estate",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'live mode refuses estate' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22'"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_live_refuses_target_outside_lab_estate_networks[legacy-192-168-64]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'outside lab-estate networks' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22'"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_live_happy_path_mocked_collector[labnet]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_live_happy_path_mocked_collector[labnet2]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    },
+    {
+      "nodeid": "tests.test_scan_to_sor::test_scan_to_sor_live_happy_path_mocked_collector[misconfig]",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    },
+    {
+      "nodeid": "tests.test_wrap_lock::test_riskready_push_1_is_review_only",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: <3>WSL (32097 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory"
+    }
+  ]
+}

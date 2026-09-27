@@ -45,7 +45,7 @@ def test_farm_tool_bin_makes_plan_will_run(
     monkeypatch.delenv("PATH", raising=False)
     monkeypatch.setenv("PATH", "/nonexistent-farm-lab-path")
     assert farm_which("nmap")
-    assert farm_which("nmap").endswith("/lab/nmap")
+    assert Path(farm_which("nmap")).as_posix().endswith("/lab/nmap")
     assert farm_which("curl")
     assert farm_which("nuclei") is None
     scope = load_scope(ROOT / "dropbox" / "SCOPE.yaml")

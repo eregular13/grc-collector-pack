@@ -11,7 +11,8 @@ import pytest
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import deepen_stage, discover_stage, ingest_stage, orchestrate
 from dropbox.orchestrator.shard import batch_hosts, shard_cidrs
-from dropbox.scope import GateError, load_scope
+from dropbox.scope import GateError, load_scope, attestation_digest
+from tests.cli_python import PYTHON
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -104,7 +105,7 @@ def test_orchestrate_cli_plan_only(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     monkeypatch.setenv("PYTHONPATH", str(ROOT))
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [PYTHON, "-m", "dropbox", "orchestrate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -123,7 +124,7 @@ def test_orchestrate_cli_plan_only(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 def test_orchestrate_requires_scope_gate(tmp_path: Path) -> None:
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--scope", str(tmp_path / "none.yaml")],
+        [PYTHON, "-m", "dropbox", "orchestrate", "--scope", str(tmp_path / "none.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -243,7 +244,7 @@ def test_open_internet_cidr_refused_at_gate(tmp_path: Path) -> None:
 
     att = tmp_path / "consent.md"
     att.write_text("ok\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: X\nconsent:\n  attestation_path: "
@@ -262,7 +263,7 @@ def test_missing_stages_deepen_defaults_false(tmp_path: Path) -> None:
 
     att = tmp_path / "consent.md"
     att.write_text("ok\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: X\nconsent:\n  attestation_path: "

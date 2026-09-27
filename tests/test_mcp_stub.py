@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 
 from dropbox.mcp_stub import OPERATOR_TOOLS, dispatch, refuse_attack_name
-from dropbox.scope import GateError
+from dropbox.scope import GateError, attestation_digest
 from tests.hermetic_path import isolate_farm_path
+from tests.cli_python import PYTHON
 
 ROOT = Path(__file__).resolve().parents[1]
 SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
@@ -160,7 +161,7 @@ def test_cross_wire_cli_and_jsonrpc_fail_closed() -> None:
     from dropbox.mcp_stub import handle_jsonrpc
 
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "mcp", "check_scope", "--scope", str(SCOPE)],
+        [PYTHON, "-m", "dropbox", "mcp", "check_scope", "--scope", str(SCOPE)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -193,7 +194,7 @@ def test_mcp_cli_scope_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     isolate_farm_path(monkeypatch, tmp_path)
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "mcp", "scope_status", "--scope", str(SCOPE)],
+        [PYTHON, "-m", "dropbox", "mcp", "scope_status", "--scope", str(SCOPE)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -232,7 +233,7 @@ def test_stage_deepen_requires_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     att = tmp_path / "consent.md"
     att.write_text("ok\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: X\nconsent:\n  attestation_path: "
@@ -251,7 +252,7 @@ def test_mcp_serve_lists_tools_no_hexstrike() -> None:
     import subprocess
 
     proc = subprocess.run(
-        ["python3", "-m", "dropbox.mcp_stub", "serve"],
+        [PYTHON, "-m", "dropbox.mcp_stub", "serve"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -264,7 +265,7 @@ def test_mcp_serve_lists_tools_no_hexstrike() -> None:
     assert data["hexstrike"] is False
     assert data["exploit_api"] is False
     cli = subprocess.run(
-        ["python3", "-m", "dropbox", "mcp", "serve", "--scope", str(SCOPE)],
+        [PYTHON, "-m", "dropbox", "mcp", "serve", "--scope", str(SCOPE)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -404,7 +405,7 @@ def test_farm_toolbin_status_lab_env(monkeypatch: pytest.MonkeyPatch) -> None:
         assert by_slot[name]["live_ready"] is False, name
     for name in ("nmap", "nessus", "nessuscli", "curl", "testssl", "lynis"):
         assert by_slot[name]["state"] == "demo_stub", name
-        assert "tool-bin/lab/" in by_slot[name]["path"]
+        assert "tool-bin/lab/" in Path(by_slot[name]["path"]).as_posix()
         assert by_slot[name]["allowlisted"] is True, name
         assert by_slot[name]["will_run"] is True, name
         assert by_slot[name]["live_ready"] is False, name
@@ -444,7 +445,7 @@ def test_farm_toolbin_status_live_ready_needs_non_demo_scope(
 
     att = tmp_path / "consent.md"
     att.write_text("signed keep-eval farm handoff\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: Contoso Labs\nconsent:\n  attestation_path: "
@@ -499,7 +500,7 @@ def test_farm_toolbin_status_file_drop_only_never_live_ready(
 
     att = tmp_path / "consent.md"
     att.write_text("signed file-drop honesty\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: Contoso Labs\nconsent:\n  attestation_path: "
@@ -664,14 +665,14 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
     import subprocess
 
     init = _rpc_once(
-        ["python3", "-m", "dropbox.mcp_stub", "serve", "--once"],
+        [PYTHON, "-m", "dropbox.mcp_stub", "serve", "--once"],
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
     )
     assert init["result"]["serverInfo"]["name"] == "dropbox-operator-mcp"
     assert "hexstrike" not in json.dumps(init).lower()
 
     listed = _rpc_once(
-        ["python3", "-m", "dropbox.mcp_stub", "serve", "--once"],
+        [PYTHON, "-m", "dropbox.mcp_stub", "serve", "--once"],
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
     )
     names = [t["name"] for t in listed["result"]["tools"]]
@@ -687,7 +688,7 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
         assert banned not in names
 
     stdio = subprocess.run(
-        ["python3", "-m", "dropbox.mcp_stub", "serve", "--stdio"],
+        [PYTHON, "-m", "dropbox.mcp_stub", "serve", "--stdio"],
         input=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n",
         cwd=str(ROOT),
         capture_output=True,
@@ -710,7 +711,7 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
     call = {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "scope_status"}}
     for scope in (empty, unsigned):
         body = _rpc_once(
-            ["python3", "-m", "dropbox", "mcp", "serve", "--once", "--scope", str(scope)],
+            [PYTHON, "-m", "dropbox", "mcp", "serve", "--once", "--scope", str(scope)],
             call,
         )
         assert body.get("error"), body

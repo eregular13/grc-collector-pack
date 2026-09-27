@@ -12,6 +12,7 @@ import pytest
 from dropbox.runners import refuse_offscope_external, write_inventory, write_lynis, write_tls_headers
 from dropbox.scope import FORBIDDEN_TOOLS, GateError, attestation_digest, load_scope
 from dropbox.yaml_lite import load_yaml
+from tests.cli_python import PYTHON
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -100,7 +101,7 @@ def test_attest_write_stamps_hash_then_gate_passes(tmp_path: Path) -> None:
     with pytest.raises(GateError, match="hash mismatch"):
         load_scope(scope)
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "attest", "--write", "--scope", str(scope)],
+        [PYTHON, "-m", "dropbox", "attest", "--write", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -113,7 +114,7 @@ def test_attest_write_stamps_hash_then_gate_passes(tmp_path: Path) -> None:
     assert digest in scope.read_text(encoding="utf-8")
     load_scope(scope)
     gate = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--scope", str(scope)],
+        [PYTHON, "-m", "dropbox", "gate", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -128,7 +129,7 @@ def test_gate_has_no_skip_hash() -> None:
     help_text = build_parser().format_help()
     assert "--skip-hash" not in help_text
     refused = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--skip-hash"],
+        [PYTHON, "-m", "dropbox", "gate", "--skip-hash"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -175,7 +176,7 @@ def test_gate_hash_mismatch(tmp_path: Path) -> None:
 def test_gate_missing_external(tmp_path: Path) -> None:
     att = tmp_path / "consent.md"
     att.write_text("ok\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: X\nconsent:\n  attestation_path: "
@@ -191,7 +192,7 @@ def test_gate_missing_external(tmp_path: Path) -> None:
 def test_gate_forbidden_allow_tool(tmp_path: Path) -> None:
     att = tmp_path / "consent.md"
     att.write_text("ok\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: X\nconsent:\n  attestation_path: "
@@ -224,7 +225,7 @@ def test_external_scope_refuses_wildcard_and_cidr(tmp_path: Path) -> None:
 
     att = tmp_path / "consent.md"
     att.write_text("ok\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     header = (
         "client:\n  name: X\nconsent:\n  attestation_path: "
         + str(att)
@@ -283,7 +284,7 @@ def test_demo_ingest_writes_existing_formats(tmp_path: Path, monkeypatch: pytest
 
 def test_cli_gate_and_missing(tmp_path: Path) -> None:
     default_ok = subprocess.run(
-        ["python3", "-m", "dropbox", "gate"],
+        [PYTHON, "-m", "dropbox", "gate"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -292,7 +293,7 @@ def test_cli_gate_and_missing(tmp_path: Path) -> None:
     assert default_ok.returncode == 0, default_ok.stderr
     assert "SCOPE gate OK" in default_ok.stdout
     ok = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [PYTHON, "-m", "dropbox", "gate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -301,7 +302,7 @@ def test_cli_gate_and_missing(tmp_path: Path) -> None:
     assert ok.returncode == 0, ok.stderr
     assert "SCOPE gate OK" in ok.stdout
     bad = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--scope", str(tmp_path / "nope.yaml")],
+        [PYTHON, "-m", "dropbox", "gate", "--scope", str(tmp_path / "nope.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -335,7 +336,7 @@ def test_dropbox_lab_cli_uses_work_in(tmp_path: Path, monkeypatch: pytest.Monkey
     work = tmp_path / "work-in"
     monkeypatch.setenv("DROPBOX_WORK_IN", str(work))
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "lab", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [PYTHON, "-m", "dropbox", "lab", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

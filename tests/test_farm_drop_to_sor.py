@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import skip_unless_bash
 from scripts.prove_ciso import (
     CISO_CSVS,
     HONESTY_OK_LINE,
@@ -145,6 +146,7 @@ def test_farm_drop_honesty_ok_line_is_ascii_cp1252() -> None:
                 assert "\u2192" not in stripped
 
 
+@skip_unless_bash
 def test_verify_only_stdout_encodes_under_cp1252(tmp_path: Path) -> None:
     work = tmp_path / "work"
     _honest_prove(work)
@@ -218,6 +220,7 @@ def test_verify_farm_drop_sor_fail_closed_when_findings_without_poam(tmp_path: P
         verify_farm_drop_sor(dest)
 
 
+@skip_unless_bash
 def test_farm_drop_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
     work = tmp_path / "work"
     _honest_prove(work)
@@ -258,6 +261,7 @@ def test_farm_drop_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
     assert "FARM_DROP_HONESTY_FAIL" in blob or "paying_day" in blob
 
 
+@skip_unless_bash
 def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
     work = tmp_path / "prove-work"
     env = os.environ.copy()

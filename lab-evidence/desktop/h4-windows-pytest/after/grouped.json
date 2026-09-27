@@ -1,0 +1,75 @@
+{
+  "phase": "after",
+  "passed": 1481,
+  "failed": 11,
+  "errors": 0,
+  "skipped": 24,
+  "total": 1516,
+  "groups": {
+    "other": [
+      {
+        "nodeid": "tests.test_adapter_contract::test_allowlisted_live_discover_invokes_stub",
+        "message": "AssertionError: assert 'plan' == 'live'"
+      },
+      {
+        "nodeid": "tests.test_adapter_contract::test_curl_and_testssl_byo_stubs",
+        "message": "AssertionError: assert ('curl' == 'curl'"
+      },
+      {
+        "nodeid": "tests.test_farm_adapters::test_wired_slots_invoke_path_stubs",
+        "message": "AssertionError: {'client': 'DEMO \u2014 adapter contract', 'invoke': True, 'mode': 'plan', 'output_glob': 'in/nmap/*.gnmap', ...}"
+      },
+      {
+        "nodeid": "tests.test_farm_adapters::test_plan_only_when_live_false",
+        "message": "assert False is True"
+      },
+      {
+        "nodeid": "tests.test_farm_orch::test_live_discover_uses_path_invoke_only",
+        "message": "AssertionError: assert 'plan' == 'live'"
+      },
+      {
+        "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_dry_invoke_writes_work_out_no_network",
+        "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+      },
+      {
+        "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_dry_invoke_deepen_external_adjacent",
+        "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+      },
+      {
+        "nodeid": "tests.test_farm_toolbin_e2e::test_farm_toolbin_e2e_quiet_to_loud_under_farm_work",
+        "message": "AssertionError: {"
+      },
+      {
+        "nodeid": "tests.test_mcp_stub::test_host_nmap_on_path_does_not_flip_isolated_toolbin_status",
+        "message": "AssertionError: assert None"
+      },
+      {
+        "nodeid": "tests.test_parsers::test_lab_stub_gnmap_parses",
+        "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+      }
+    ],
+    "path_sep": [
+      {
+        "nodeid": "tests.test_farm_orch::test_live_deepen_only_deepen_invoke_on_named_hosts",
+        "message": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1162\\\\test_live_deepen_only_deepen_i0\\\\invoked.txt'"
+      }
+    ]
+  },
+  "group_counts": {
+    "other": 10,
+    "path_sep": 1
+  },
+  "failed_stdout_lines": [
+    "FAILED tests/test_adapter_contract.py::test_allowlisted_live_discover_invokes_stub",
+    "FAILED tests/test_adapter_contract.py::test_curl_and_testssl_byo_stubs - Asse...",
+    "FAILED tests/test_farm_adapters.py::test_wired_slots_invoke_path_stubs - Asse...",
+    "FAILED tests/test_farm_adapters.py::test_plan_only_when_live_false - assert F...",
+    "FAILED tests/test_farm_orch.py::test_live_discover_uses_path_invoke_only - As...",
+    "FAILED tests/test_farm_orch.py::test_live_deepen_only_deepen_invoke_on_named_hosts",
+    "FAILED tests/test_farm_tool_bin.py::test_farm_tool_bin_dry_invoke_writes_work_out_no_network",
+    "FAILED tests/test_farm_tool_bin.py::test_farm_tool_bin_dry_invoke_deepen_external_adjacent",
+    "FAILED tests/test_farm_toolbin_e2e.py::test_farm_toolbin_e2e_quiet_to_loud_under_farm_work",
+    "FAILED tests/test_mcp_stub.py::test_host_nmap_on_path_does_not_flip_isolated_toolbin_status",
+    "FAILED tests/test_parsers.py::test_lab_stub_gnmap_parses - OSError: [WinError..."
+  ]
+}

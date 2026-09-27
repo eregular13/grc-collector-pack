@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from dropbox.scope import attestation_digest
 from dropbox.mcp_stub import (
     LAB_ESTATE_NETWORKS,
     OPERATOR_TOOLS,
@@ -29,7 +30,7 @@ SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
 def _consent(tmp_path: Path, text: str = "ok\n") -> tuple[Path, str]:
     att = tmp_path / "consent.md"
     att.write_text(text, encoding="utf-8")
-    return att, hashlib.sha256(att.read_bytes()).hexdigest()
+    return att, attestation_digest(att.read_bytes())
 
 
 def _write_scope(tmp_path: Path, body: str) -> Path:

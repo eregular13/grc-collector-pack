@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from dropbox.scope import FORBIDDEN_TOOLS, GateError
+from dropbox.scope import FORBIDDEN_TOOLS, GateError, attestation_digest
 from farm.adapters.catalog import (
     FILE_DROP_ONLY,
     LAYER_C_SENSORS,
@@ -33,7 +33,7 @@ FARM = ROOT / "farm"
 def _signed_scope(tmp_path: Path, allow_tools: list[str]) -> Path:
     att = tmp_path / "consent.md"
     att.write_text("adapter-contract consent\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     tools = "\n".join(f"  - {name}" for name in allow_tools)
     path = tmp_path / "SCOPE.yaml"
     path.write_text(

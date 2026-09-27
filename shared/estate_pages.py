@@ -1470,7 +1470,11 @@ def write_export_manifest(out: Path, stamp: EstateStamp | None = None) -> Path:
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         lines.append(f"{digest}  {rel_posix}")
-    manifest_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    manifest_path.write_text(
+        "\n".join(lines) + ("\n" if lines else ""),
+        encoding="utf-8",
+        newline="\n",
+    )
     return manifest_path
 
 

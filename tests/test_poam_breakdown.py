@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import skip_unless_bash
 from collectors.grc_loader import _dedupe, load
 from shared.ciso_shape import assert_poam_breakdown
 from shared.control_map import (
@@ -208,6 +209,7 @@ def test_poam_breakdown_identity_lab(tmp_path: Path, monkeypatch: pytest.MonkeyP
     _assert_walk_matches_summary(tmp_path, summary)
 
 
+@skip_unless_bash
 def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
     script = ROOT / "scripts" / "sample_to_sor.sh"
     if not script.is_file():
@@ -230,6 +232,7 @@ def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
     _assert_walk_matches_summary(work / "out", summary)
 
 
+@skip_unless_bash
 def test_poam_breakdown_identity_farm_drop(tmp_path: Path) -> None:
     script = ROOT / "scripts" / "farm_drop_to_sor.sh"
     if not script.is_file():

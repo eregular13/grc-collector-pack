@@ -7,6 +7,7 @@ import re
 import stat
 import subprocess
 from pathlib import Path
+from tests.cli_python import skip_unless_bash
 
 ROOT = Path(__file__).resolve().parents[1]
 RR = ROOT / "push_riskready.sh"
@@ -46,6 +47,7 @@ def test_riskready_script_has_no_http_client() -> None:
         assert path not in code, f"wrap path in executable line: {path}"
 
 
+@skip_unless_bash
 def test_riskready_push_1_is_review_only(tmp_path: Path) -> None:
     """RISKREADY_PUSH=1 stays fail-closed: no login, no HTTP, no POST."""
     markers: dict[str, Path] = {}

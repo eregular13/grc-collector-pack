@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from collectors import dns_email
+from dropbox.scope import attestation_digest
 from shared.control_map import map_finding
 from shared.dns_email import SOURCE, parse_file, parse_payload, parse_text
 from shared.schema import make_record
@@ -156,7 +157,7 @@ def test_live_requires_scope_and_allowlist(tmp_path: Path) -> None:
         main(["--live"])
     att = tmp_path / "consent.md"
     att.write_text("dns-email live consent\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: DEMO — dns-email live\nconsent:\n"

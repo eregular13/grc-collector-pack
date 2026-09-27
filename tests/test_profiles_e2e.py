@@ -12,10 +12,12 @@ from collectors.easm import parse_file as parse_easm
 from collectors.grc_loader import load
 from collectors.inventory_nmap import parse_file as parse_nmap
 from shared.io_util import write_canonical
+from tests.cli_python import skip_unless_bash
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@skip_unless_bash
 def test_internal_external_scripts_leave_demo_artifacts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

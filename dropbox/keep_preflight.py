@@ -76,7 +76,7 @@ def missing_keep_package_files(root: Path) -> list[str]:
     for rel in KEEP_PACKAGE_FILES:
         path = root / rel
         if not path.is_file():
-            missing.append(str(path))
+            missing.append(Path(rel).as_posix())
     return missing
 
 

@@ -1,0 +1,208 @@
+F.....F................................................................. [  4%]
+.................................FF....................s................ [  9%]
+........................................................................ [ 14%]
+.......................................F...........FF...FF.F.F.F........ [ 18%]
+.....FFF...........................................F..F........F...FFF.. [ 23%]
+.........FF................FFF.F.FF..F...FF............................. [ 28%]
+.......................................FFF....FFF...FFF................. [ 33%]
+..........................................F.FFF.F..............FF....... [ 37%]
+..............................FF.........F.............................. [ 42%]
+.......FFFFF.FFFFFF..F.................................................. [ 47%]
+.......F..FFFFF....F..........FF.......FF............................... [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+..........................................................F............. [ 66%]
+.............................................F.......................... [ 71%]
+........................................................................ [ 75%]
+......................FF................................................ [ 80%]
+........................................................................ [ 85%]
+..............................F......................................... [ 90%]
+........................................................................ [ 94%]
+..........FFFF...F......FF.F.FFF.....................................F.. [ 99%]
+....                                                                     [100%]
+================================== FAILURES ===================================
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_adapter_contract.py:46: AssertionError: assert 'plan' == 'live'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_adapter_contract.py:179: AssertionError: assert ('curl' == 'curl'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_cold_review4.py:915: AssertionError: <3>WSL (31473 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_cold_review4.py:915: AssertionError: <3>WSL (31476 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\dropbox\scope.py:382: dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 7a7a48e8beaccbd927705eb60bb85fac6d59b480bc4d7cb9eaa121637fd185ee got 17097b49950ed4c811fc7f8907c0298dc3b077cd53461b76b16a2e0084dcc826
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:109: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:139: AssertionError: assert ('unrecognized' in 'python was not found; run without arguments to install from the microsoft store, or disable this shortcut from settings > apps > advanced app settings > app execution aliases.\n' or 'invalid' in 'python was not found; run without arguments to install from the microsoft store, or disable this shortcut from settings > apps > advanced app settings > app execution aliases.\n' or 'error' in 'python was not found; run without arguments to install from the microsoft store, or disable this shortcut from settings > apps > advanced app settings > app execution aliases.\n')
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:187: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:204: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:236: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:292: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_dropbox.py:344: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\shared\estate_pages.py:1605: AssertionError: sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\r': No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\shared\estate_pages.py:1605: AssertionError: sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\r': No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\shared\estate_pages.py:1605: AssertionError: sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\r': No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\dropbox\scope.py:382: dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 8d8a6a8fa432044fc4587734631ca10509212037ef6de7b8cab5d5c5eea09333 got 8f435f2cb1a5dad334fa0ad6fff2d232e0f38c8eabab67c720e0b6ffdfc33173
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_farm_adapters.py:334: assert False is True
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_drop_to_sor.py:164: AssertionError: <3>WSL (31756 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_drop_to_sor.py:236: AssertionError: <3>WSL (31759 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_drop_to_sor.py:278: AssertionError: <3>WSL (31762 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_farm_lab.py:23: AssertionError: assert 'farm/work' in 'C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250\\farm\\work\\in'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_farm_orch.py:150: AssertionError: assert 'plan' == 'live'
+C:\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_live_deepen_only_deepen_i0\\invoked.txt'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_ship_gate.py:273: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\shared\farm_ship.py:280: shared.farm_ship.FarmShipError: FARM_SHIP_FAIL sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\r': No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_ship_gate.py:333: AssertionError: assert ('incomplete' in '<3>WSL (31765 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n' or 'missing' in '<3>WSL (31765 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n')
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_ship_gate.py:393: AssertionError: <3>WSL (31768 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_farm_tool_bin.py:48: AssertionError: assert False
+C:\Python314\Lib\subprocess.py:1553: OSError: [WinError 193] %1 is not a valid Win32 application
+C:\Python314\Lib\subprocess.py:1553: OSError: [WinError 193] %1 is not a valid Win32 application
+C:\Python314\Lib\pathlib\__init__.py:1213: OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\Python314\\python.exe' -> 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_farm_toolbin_lab_script_a0\\hermetic-bin\\python3'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_farm_toolbin_e2e.py:30: AssertionError: {
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:63: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:63: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:63: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:142: AssertionError: assert 'keep/__main__.py' in '<3>WSL (31771 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:142: AssertionError: assert 'keep/lab.py' in '<3>WSL (31774 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:142: AssertionError: assert 'keep/adapters.py' in '<3>WSL (31777 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:200: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:200: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keep_package_preflight.py:200: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keepmin_scheduler.py:118: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keepmin_scheduler.py:169: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keepmin_scheduler.py:236: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keepmin_scheduler.py:258: AssertionError: assert 9009 == 2
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_keepmin_scheduler.py:343: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_lab_drop_to_sor.py:93: AssertionError: <3>WSL (31780 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_lab_drop_to_sor.py:139: AssertionError: <3>WSL (31783 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_lab_prove_lock.py:369: AssertionError: <3>WSL (31786 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_lab_prove_lock.py:421: AssertionError: assert 'EXISTING_IN_FAIL' in '<3>WSL (31789 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_lab_shape_assert.py:198: AssertionError: assert 'LAB_SHAPE_FAIL' in '<3>WSL (31792 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory\n'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_mcp_stub.py:169: AssertionError: assert 9009 == 2
+C:\Python314\Lib\pathlib\__init__.py:1213: OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\Python314\\python.exe' -> 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_mcp_cli_scope_status0\\hermetic-bin\\python3'
+C:\Python314\Lib\pathlib\__init__.py:1213: OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\Python314\\python.exe' -> 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_scope_status_and_status_t0\\hermetic-bin\\python3'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_mcp_stub.py:246: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_mcp_stub.py:260: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Python314\Lib\pathlib\__init__.py:1213: OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\Python314\\python.exe' -> 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_jsonrpc_invokes_plan_stat0\\hermetic-bin\\python3'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_mcp_stub.py:407: AssertionError: assert 'tool-bin/lab/' in 'C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250\\farm\\tool-bin\\lab\\nmap'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\dropbox\scope.py:382: dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 6ec1abceb26d50fbb329ff6f87ae86a024c993ceed539194e9d66cf9e5d3ce53 got ea8d5fda057a034d83bb51374a2653f820440a0b5e6e24031a03a692f65c4c57
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\dropbox\scope.py:382: dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 57d607dc6734ff5b29ffd8f56278584831aa533521116c9ed83fd9fd83978747 got d1e278488e0d37d66663bb3373bfcfe564a6290986f9c1a7b0344b2bd8efc86e
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_mcp_stub.py:545: AssertionError: assert None
+C:\Python314\Lib\pathlib\__init__.py:1213: OSError: [WinError 1314] A required privilege is not held by the client: 'C:\\Python314\\python.exe' -> 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_tools_call_is_plan_only_e0\\hermetic-bin\\python3'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_mcp_stub.py:657: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_orch_brakes.py:63: AssertionError: assert 9009 == 2
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\dropbox\scope.py:382: dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_orch_brakes.py:197: AssertionError: assert 9009 == 2
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_orch_brakes.py:218: AssertionError: assert 9009 == 2
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_orch_brakes.py:231: AssertionError: assert 9009 == 2
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_orch_brakes.py:238: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_orch_brakes.py:304: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_orchestrator.py:113: AssertionError: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_orchestrator.py:132: AssertionError: assert 9009 == 2
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\current\tests\test_orchestrator.py:256: AssertionError: Regex pattern did not match.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\dropbox\scope.py:382: dropbox.scope.GateError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\shared\farm_ship.py:280: shared.farm_ship.FarmShipError: FARM_SHIP_FAIL sha256sum -c MANIFEST failed: sha256sum: 'poam/poam.csv'$'\r': No such file or directory
+C:\Python314\Lib\subprocess.py:1553: OSError: [WinError 193] %1 is not a valid Win32 application
+C:\Python314\Lib\subprocess.py:578: subprocess.CalledProcessError: Command '['bash', 'C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250\\scripts\\sample_to_sor.sh', '--work', 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_poam_breakdown_identity_s0\\sample-work']' returned non-zero exit status 1.
+C:\Python314\Lib\subprocess.py:578: subprocess.CalledProcessError: Command '['bash', 'C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250\\scripts\\farm_drop_to_sor.sh', '--work', 'C:\\Users\\R\\AppData\\Local\\Temp\\pytest-of-R\\pytest-1160\\test_poam_breakdown_identity_f0\\farm-work']' returned non-zero exit status 1.
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_profiles_e2e.py:44: AssertionError: <3>WSL (31801 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_sample_to_sor.py:269: AssertionError: <3>WSL (31844 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_sample_to_sor.py:325: AssertionError: <3>WSL (31847 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_sample_to_sor.py:325: AssertionError: <3>WSL (31850 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_sample_to_sor.py:325: AssertionError: <3>WSL (31853 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:149: AssertionError: assert 'outside engagement window' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:375: AssertionError: assert ('outside engagement window' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22' or ('SCOPE_EXPIRED' == 'SCOPE_UNSIGNED'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:406: AssertionError: assert 'live mode refuses estate' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:455: AssertionError: assert 'outside lab-estate networks' in 'SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22'
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:531: AssertionError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:531: AssertionError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_scan_to_sor.py:531: AssertionError: SCOPE gate: consent attestation hash mismatch expected 9f2a59a60e65fbcd5a3e1b7248adf92890ce3a32b19e43fb4751c2657196de13 got dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22
+C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\tests\test_wrap_lock.py:76: AssertionError: <3>WSL (32097 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+- generated xml file: C:\Users\R\Desktop\EvergreenOps\cold-path-gate\grc-collector-pack-20260919-230250\lab-evidence\desktop\h4-windows-pytest\baseline\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/test_adapter_contract.py::test_allowlisted_live_discover_invokes_stub
+FAILED tests/test_adapter_contract.py::test_curl_and_testssl_byo_stubs - Asse...
+FAILED tests/test_cold_review4.py::test_farm_fedramp_open_matches_poam - Asse...
+FAILED tests/test_cold_review4.py::test_farm_fedramp_open_stays_109 - Asserti...
+FAILED tests/test_dns_email.py::test_live_requires_scope_and_allowlist - drop...
+FAILED tests/test_dropbox.py::test_attest_write_stamps_hash_then_gate_passes
+FAILED tests/test_dropbox.py::test_gate_has_no_skip_hash - AssertionError: as...
+FAILED tests/test_dropbox.py::test_gate_missing_external - AssertionError: Re...
+FAILED tests/test_dropbox.py::test_gate_forbidden_allow_tool - AssertionError...
+FAILED tests/test_dropbox.py::test_external_scope_refuses_wildcard_and_cidr
+FAILED tests/test_dropbox.py::test_cli_gate_and_missing - AssertionError: Pyt...
+FAILED tests/test_dropbox.py::test_dropbox_lab_cli_uses_work_in - AssertionEr...
+FAILED tests/test_estate_pages.py::test_scope_in_and_out_from_same_coverage_and_lists_every_sensor
+FAILED tests/test_estate_pages.py::test_generated_pages_have_no_instruction_text
+FAILED tests/test_estate_pages.py::test_manifest_verifies_with_sha256sum_c - ...
+FAILED tests/test_farm_adapters.py::test_wired_slots_invoke_path_stubs - drop...
+FAILED tests/test_farm_adapters.py::test_plan_only_when_live_false - assert F...
+FAILED tests/test_farm_drop_to_sor.py::test_verify_only_stdout_encodes_under_cp1252
+FAILED tests/test_farm_drop_to_sor.py::test_farm_drop_to_sor_verify_only_fail_closed
+FAILED tests/test_farm_drop_to_sor.py::test_farm_drop_to_sor_sh_isolated_prove
+FAILED tests/test_farm_lab.py::test_farm_lab_demo_path_does_not_use_pack_in
+FAILED tests/test_farm_orch.py::test_live_discover_uses_path_invoke_only - As...
+FAILED tests/test_farm_orch.py::test_live_deepen_only_deepen_invoke_on_named_hosts
+FAILED tests/test_farm_ship_gate.py::test_farm_ship_surface_cli_writes_github_output
+FAILED tests/test_farm_ship_gate.py::test_assert_farm_ship_sor_ok_and_fail_closed
+FAILED tests/test_farm_ship_gate.py::test_wipe_clone_script_fail_closed_on_partial_checkout
+FAILED tests/test_farm_ship_gate.py::test_wipe_clone_then_farm_drop_emits_register_shape
+FAILED tests/test_farm_tool_bin.py::test_farm_tool_bin_makes_plan_will_run - ...
+FAILED tests/test_farm_tool_bin.py::test_farm_tool_bin_dry_invoke_writes_work_out_no_network
+FAILED tests/test_farm_tool_bin.py::test_farm_tool_bin_dry_invoke_deepen_external_adjacent
+FAILED tests/test_farm_tool_bin.py::test_farm_toolbin_lab_script_asserts_nmap_curl
+FAILED tests/test_farm_toolbin_e2e.py::test_farm_toolbin_e2e_quiet_to_loud_under_farm_work
+FAILED tests/test_keep_package_preflight.py::test_require_keep_package_fails_closed_when_required_file_missing[keep/__main__.py]
+FAILED tests/test_keep_package_preflight.py::test_require_keep_package_fails_closed_when_required_file_missing[keep/lab.py]
+FAILED tests/test_keep_package_preflight.py::test_require_keep_package_fails_closed_when_required_file_missing[keep/adapters.py]
+FAILED tests/test_keep_package_preflight.py::test_sample_to_sor_sh_fails_closed_on_partial_clone[keep/__main__.py]
+FAILED tests/test_keep_package_preflight.py::test_sample_to_sor_sh_fails_closed_on_partial_clone[keep/lab.py]
+FAILED tests/test_keep_package_preflight.py::test_sample_to_sor_sh_fails_closed_on_partial_clone[keep/adapters.py]
+FAILED tests/test_keep_package_preflight.py::test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing[keep/__main__.py]
+FAILED tests/test_keep_package_preflight.py::test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing[keep/lab.py]
+FAILED tests/test_keep_package_preflight.py::test_keep_status_and_keep_ciso_fail_closed_when_keep_package_missing[keep/adapters.py]
+FAILED tests/test_keepmin_scheduler.py::test_schedule_live_refused_without_live_ready
+FAILED tests/test_keepmin_scheduler.py::test_schedule_cli_refuses_vanity_and_demo_live
+FAILED tests/test_keepmin_scheduler.py::test_ciso_cli_sor_posted_false_riskready_no_http
+FAILED tests/test_keepmin_scheduler.py::test_schedule_cli_scope_and_keep_samples
+FAILED tests/test_keepmin_scheduler.py::test_schedule_cli_never_writes_pack_in
+FAILED tests/test_lab_drop_to_sor.py::test_lab_drop_to_sor_sh_uses_existing_in
+FAILED tests/test_lab_drop_to_sor.py::test_lab_drop_verify_only_after_prove
+FAILED tests/test_lab_prove_lock.py::test_lab_drop_to_sor_on_lab_drop_fixture
+FAILED tests/test_lab_prove_lock.py::test_use_existing_in_fail_closed_on_empty_in
+FAILED tests/test_lab_shape_assert.py::test_lab_shape_fail_cli_and_wrapper_are_stable
+FAILED tests/test_mcp_stub.py::test_cross_wire_cli_and_jsonrpc_fail_closed - ...
+FAILED tests/test_mcp_stub.py::test_mcp_cli_scope_status - OSError: [WinError...
+FAILED tests/test_mcp_stub.py::test_scope_status_and_status_tools - OSError: ...
+FAILED tests/test_mcp_stub.py::test_stage_deepen_requires_flag - AssertionErr...
+FAILED tests/test_mcp_stub.py::test_mcp_serve_lists_tools_no_hexstrike - Asse...
+FAILED tests/test_mcp_stub.py::test_jsonrpc_invokes_plan_status_and_farm_slots
+FAILED tests/test_mcp_stub.py::test_farm_toolbin_status_lab_env - AssertionEr...
+FAILED tests/test_mcp_stub.py::test_farm_toolbin_status_live_ready_needs_non_demo_scope
+FAILED tests/test_mcp_stub.py::test_farm_toolbin_status_file_drop_only_never_live_ready
+FAILED tests/test_mcp_stub.py::test_host_nmap_on_path_does_not_flip_isolated_toolbin_status
+FAILED tests/test_mcp_stub.py::test_tools_call_is_plan_only_even_if_arguments_live
+FAILED tests/test_mcp_stub.py::test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope
+FAILED tests/test_orch_brakes.py::test_empty_scope_refuses_live - AssertionEr...
+FAILED tests/test_orch_brakes.py::test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap
+FAILED tests/test_orch_brakes.py::test_unsigned_scope_refuses_live - Assertio...
+FAILED tests/test_orch_brakes.py::test_open_internet_cidr_refuses_live - Asse...
+FAILED tests/test_orch_brakes.py::test_live_deepen_without_stage_flag_exits_nonzero
+FAILED tests/test_orch_brakes.py::test_deepen_batch_enforced_at_gate - Assert...
+FAILED tests/test_orch_brakes.py::test_status_cli_prints_stops_and_demo_label
+FAILED tests/test_orchestrator.py::test_orchestrate_cli_plan_only - Assertion...
+FAILED tests/test_orchestrator.py::test_orchestrate_requires_scope_gate - Ass...
+FAILED tests/test_orchestrator.py::test_open_internet_cidr_refused_at_gate - ...
+FAILED tests/test_orchestrator.py::test_missing_stages_deepen_defaults_false
+FAILED tests/test_pack_drop_scan_density.py::test_farm_drop_prove_register_is_denser_and_exposure_only
+FAILED tests/test_parsers.py::test_lab_stub_gnmap_parses - OSError: [WinError...
+FAILED tests/test_poam_breakdown.py::test_poam_breakdown_identity_sample - su...
+FAILED tests/test_poam_breakdown.py::test_poam_breakdown_identity_farm_drop
+FAILED tests/test_profiles_e2e.py::test_internal_external_scripts_leave_demo_artifacts
+FAILED tests/test_sample_to_sor.py::test_sample_to_sor_verify_only_fail_closed
+FAILED tests/test_sample_to_sor.py::test_sample_to_sor_sh_isolated_keep_lab
+FAILED tests/test_sample_to_sor.py::test_sample_to_sor_sh_isolated_keep_lab_exporters
+FAILED tests/test_sample_to_sor.py::test_sample_to_sor_wipe_work_then_sample_to_sor_emits_ciso_csvs
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_refuses_expired_scope - As...
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_live_refuses_missing_or_expired_scope[expired]
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_live_refuses_non_lab_estate
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_live_refuses_target_outside_lab_estate_networks[legacy-192-168-64]
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_live_happy_path_mocked_collector[labnet]
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_live_happy_path_mocked_collector[labnet2]
+FAILED tests/test_scan_to_sor.py::test_scan_to_sor_live_happy_path_mocked_collector[misconfig]
+FAILED tests/test_wrap_lock.py::test_riskready_push_1_is_review_only - Assert...
+91 failed, 1424 passed, 1 skipped in 92.93s (0:01:32)

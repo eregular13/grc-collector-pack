@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import skip_unless_bash
 from dropbox.keep_preflight import (
     KEEP_PACKAGE_CLONE,
     KEEP_PACKAGE_FILES,
@@ -119,6 +120,7 @@ def test_sample_to_sor_scripts_name_keep_files_and_full_clone() -> None:
 
 
 @pytest.mark.parametrize("skip", KEEP_PACKAGE_FILES)
+@skip_unless_bash
 def test_sample_to_sor_sh_fails_closed_on_partial_clone(tmp_path: Path, skip: str) -> None:
     scripts = tmp_path / "scripts"
     scripts.mkdir()

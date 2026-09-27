@@ -1,0 +1,4 @@
+LAB — desktop testbed H4 Windows pytest triage.
+Not a client estate. SAMPLE != LAB != client.
+posted=false. No /api/risks. RiskReady stay-out.
+Do not flip client_facing_ready.

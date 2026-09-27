@@ -20,7 +20,7 @@ def test_farm_lab_demo_path_does_not_use_pack_in(monkeypatch) -> None:
     assert stamp["counts"]["findings"] >= 20
     assert stamp["counts"]["evidences"] >= 8
     assert stamp["counts"]["poam"] >= 8
-    assert "farm/work" in stamp["in_dir"]
+    assert "farm/work" in Path(stamp["in_dir"]).as_posix()
     pack_files = [p for p in (ROOT / "in").rglob("*") if p.is_file() and p.name != ".gitkeep"]
     assert pack_files == []
     assert Path(stamp["poam"]).is_file()

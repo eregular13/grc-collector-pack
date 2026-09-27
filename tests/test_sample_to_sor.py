@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import skip_unless_bash
 from keep.ciso_import import (
     CISO_REQUIRED,
     SampleHonestyError,
@@ -250,6 +251,7 @@ def test_verify_sample_sor_fail_closed_when_findings_without_poam(tmp_path: Path
         verify_sample_sor(folder)
 
 
+@skip_unless_bash
 def test_sample_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
     work = tmp_path / "work"
     ciso = work / "out" / "ciso-assistant"
@@ -348,15 +350,18 @@ def _run_sample_to_sor_isolated(
     return proc
 
 
+@skip_unless_bash
 def test_sample_to_sor_sh_isolated_keep_lab(tmp_path: Path) -> None:
     _run_sample_to_sor_isolated(tmp_path, exporters=False)
 
 
+@skip_unless_bash
 def test_sample_to_sor_sh_isolated_keep_lab_exporters(tmp_path: Path) -> None:
     proc = _run_sample_to_sor_isolated(tmp_path, exporters=True)
     assert "exporters" in proc.stdout.lower() or "opengrc" in proc.stdout
 
 
+@skip_unless_bash
 def test_sample_to_sor_wipe_work_then_sample_to_sor_emits_ciso_csvs(tmp_path: Path) -> None:
     """DESKTOP stranger path: sample_to_sor → wipe keep/work → sample_to_sor still emits CSVs."""
     from keep.wipe import wipe_tree

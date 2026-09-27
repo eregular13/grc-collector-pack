@@ -10,6 +10,7 @@ from pathlib import Path
 from scripts.prove_ciso import LAB_HONESTY_OK_LINE, prove_ciso
 from shared.ciso_shape import assert_risk_register_and_poam
 from tests.test_lab_prove_lock import stage_lab_drop_dest_in
+from tests.cli_python import skip_unless_bash
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "lab_drop_to_sor.sh"
@@ -70,6 +71,7 @@ def test_lab_honesty_ok_line_is_ascii_cp1252() -> None:
                 assert "\u2192" not in stripped
 
 
+@skip_unless_bash
 def test_lab_drop_to_sor_sh_uses_existing_in(tmp_path: Path) -> None:
     work = tmp_path / "lab-work"
     dest_in = work / "in"
@@ -118,6 +120,7 @@ def test_lab_drop_to_sor_sh_uses_existing_in(tmp_path: Path) -> None:
     assert LAB_HONESTY_OK_LINE in blob or "LAB_DROP_HONESTY=ok" in blob
 
 
+@skip_unless_bash
 def test_lab_drop_verify_only_after_prove(tmp_path: Path) -> None:
     work = tmp_path / "lab-work"
     stage_lab_drop_dest_in(work / "in")

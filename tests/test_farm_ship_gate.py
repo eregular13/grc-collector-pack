@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import PYTHON, skip_unless_bash
 from shared.ciso_shape import CISO_HEADERS, POAM_HEADER, write_minimal_register
 from shared.farm_ship import (
     FARM_SHIP_OK_LINE,
@@ -256,7 +257,7 @@ def test_farm_ship_surface_cli_writes_github_output(tmp_path: Path) -> None:
     env_path = tmp_path / "gha.env"
     proc = subprocess.run(
         [
-            "python3",
+            PYTHON,
             str(SURFACE),
             "--root",
             str(repo),
@@ -301,6 +302,7 @@ def test_assert_farm_ship_sor_ok_and_fail_closed(tmp_path: Path) -> None:
         assert_farm_ship_sor(work)
 
 
+@skip_unless_bash
 def test_wipe_clone_script_fail_closed_on_partial_checkout(tmp_path: Path) -> None:
     repo = tmp_path / "partial"
     repo.mkdir()
@@ -346,6 +348,7 @@ def test_wipe_clone_script_echoes_are_ascii_cp1252() -> None:
             assert "\u2192" not in stripped
 
 
+@skip_unless_bash
 def test_wipe_clone_then_farm_drop_emits_register_shape(tmp_path: Path) -> None:
     """True wipe/clone of a committed pack snapshot, then farm_drop→SoR."""
     dest = tmp_path / "pack"

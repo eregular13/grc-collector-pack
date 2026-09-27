@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from tests.cli_python import skip_unless_bash
 from shared.asset_ids import classify_name, is_placeholder_id, stamp_ids
 from shared.asset_key import legacy_name_asset_key
 from shared.asset_ledger import AssetLedger, asset_uid, attach_asset_uids
@@ -916,6 +917,7 @@ def _farm_drop_out(tmp_path: Path) -> Path:
     return work / "out"
 
 
+@skip_unless_bash
 def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     out = _farm_drop_out(tmp_path)
     poam = out / "poam" / "poam.csv"
@@ -931,6 +933,7 @@ def test_farm_fedramp_open_matches_poam(tmp_path: Path) -> None:
     assert len(rows) == len(plan_ids)
 
 
+@skip_unless_bash
 def test_farm_fedramp_open_stays_109(tmp_path: Path) -> None:
     """#180 farm lock: pack_drop fold leaves farm ledger Open at 109.
 

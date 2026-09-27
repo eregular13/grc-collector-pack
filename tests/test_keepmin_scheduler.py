@@ -12,7 +12,8 @@ import pytest
 from dropbox.orchestrator.keepmin import KEEP_MINIMUM, VANITY_SCHEDULE, refuse_vanity
 from dropbox.orchestrator.permissions import classify, may_ingest, may_invoke
 from dropbox.orchestrator.scheduler import schedule
-from dropbox.scope import GateError
+from dropbox.scope import GateError, attestation_digest
+from tests.cli_python import PYTHON
 
 ROOT = Path(__file__).resolve().parents[1]
 SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
@@ -21,7 +22,7 @@ SCOPE = ROOT / "dropbox" / "SCOPE.yaml"
 def _signed_scope(tmp_path: Path, name: str = "Contoso Labs") -> Path:
     att = tmp_path / "consent.md"
     att.write_text("signed keep-minimum\n", encoding="utf-8")
-    digest = hashlib.sha256(att.read_bytes()).hexdigest()
+    digest = attestation_digest(att.read_bytes())
     scope = tmp_path / "SCOPE.yaml"
     scope.write_text(
         "client:\n  name: "
@@ -148,7 +149,7 @@ def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
     out = tmp_path / "sched-out"
     proc = subprocess.run(
         [
-            "python3",
+            PYTHON,
             "-m",
             "dropbox",
             "schedule",
@@ -179,7 +180,7 @@ def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
     assert data["plan_only"] is True
     live = subprocess.run(
         [
-            "python3",
+            PYTHON,
             "-m",
             "dropbox",
             "schedule",
@@ -216,7 +217,7 @@ def test_ciso_cli_sor_posted_false_riskready_no_http(tmp_path: Path) -> None:
     env["DROPBOX_LIVE"] = "0"
     proc = subprocess.run(
         [
-            "python3",
+            PYTHON,
             "-m",
             "dropbox",
             "ciso",
@@ -249,7 +250,7 @@ def test_schedule_cli_scope_and_keep_samples(tmp_path: Path) -> None:
     empty = tmp_path / "empty.yaml"
     empty.write_text("", encoding="utf-8")
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "schedule", "--scope", str(empty)],
+        [PYTHON, "-m", "dropbox", "schedule", "--scope", str(empty)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -260,7 +261,7 @@ def test_schedule_cli_scope_and_keep_samples(tmp_path: Path) -> None:
     out = tmp_path / "sched-out"
     proc = subprocess.run(
         [
-            "python3",
+            PYTHON,
             "-m",
             "dropbox",
             "schedule",
@@ -322,7 +323,7 @@ def test_schedule_cli_never_writes_pack_in(tmp_path: Path) -> None:
     before = fingerprint(pack)
     proc = subprocess.run(
         [
-            "python3",
+            PYTHON,
             "-m",
             "dropbox",
             "schedule",

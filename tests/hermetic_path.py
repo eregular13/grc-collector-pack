@@ -9,6 +9,8 @@ symlinks and nothing else.
 
 from __future__ import annotations
 
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -32,17 +34,28 @@ def isolate_farm_path(
     hermetic.mkdir(parents=True, exist_ok=True)
     if keep_python:
         exe = Path(sys.executable).resolve()
-        for name in ("python3", "python"):
-            dest = hermetic / name
-            if dest.exists() or dest.is_symlink():
-                dest.unlink()
-            dest.symlink_to(exe)
+        if os.name == "nt":
+            for name in ("python3.exe", "python.exe"):
+                dest = hermetic / name
+                if dest.exists() or dest.is_symlink():
+                    dest.unlink()
+                shutil.copy2(exe, dest)
+        else:
+            for name in ("python3", "python"):
+                dest = hermetic / name
+                if dest.exists() or dest.is_symlink():
+                    dest.unlink()
+                dest.symlink_to(exe)
     if extra_bins:
         for name, src in extra_bins.items():
             dest = hermetic / name
             if dest.exists() or dest.is_symlink():
                 dest.unlink()
-            dest.symlink_to(Path(src))
+            src_path = Path(src)
+            if os.name == "nt":
+                shutil.copy2(src_path, dest)
+            else:
+                dest.symlink_to(src_path)
     if farm_tool_bin is None:
         monkeypatch.delenv("FARM_TOOL_BIN", raising=False)
     else:

@@ -14,9 +14,10 @@ from dropbox.orchestrator import byo
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import deepen_stage, orchestrate
 from dropbox.orchestrator.shard import batch_hosts
-from dropbox.scope import GateError, load_scope
+from dropbox.scope import GateError, load_scope, attestation_digest
 from farm.adapters.catalog import brakes_defaults
 from farm.adapters.stubs import run_slot
+from tests.cli_python import PYTHON
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,7 +31,7 @@ def _write_scope(tmp_path: Path, body: str) -> Path:
 def _consent(tmp_path: Path, text: str = "ok\n") -> tuple[Path, str]:
     att = tmp_path / "consent.md"
     att.write_text(text, encoding="utf-8")
-    return att, hashlib.sha256(att.read_bytes()).hexdigest()
+    return att, attestation_digest(att.read_bytes())
 
 
 def _valid_scope(tmp_path: Path, extra_orch: str = "", cidrs: str | None = None) -> Path:
@@ -54,7 +55,7 @@ def test_empty_scope_refuses_live(tmp_path: Path) -> None:
     empty = tmp_path / "SCOPE.yaml"
     empty.write_text("", encoding="utf-8")
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--live", "--scope", str(empty)],
+        [PYTHON, "-m", "dropbox", "orchestrate", "--live", "--scope", str(empty)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -169,7 +170,7 @@ def test_run_slot_and_cli_refuse_empty_unsigned_and_unsigned_nmap(
     for scope in (empty, unsigned):
         for extra in cmds:
             proc = subprocess.run(
-                ["python3", "-m", "dropbox", *extra, "--scope", str(scope)],
+                [PYTHON, "-m", "dropbox", *extra, "--scope", str(scope)],
                 cwd=str(ROOT),
                 capture_output=True,
                 text=True,
@@ -188,7 +189,7 @@ def test_unsigned_scope_refuses_live(tmp_path: Path) -> None:
         "external:\n  hosts:\n    - vpn.example.com\n",
     )
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--live", "--scope", str(scope)],
+        [PYTHON, "-m", "dropbox", "orchestrate", "--live", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -209,7 +210,7 @@ def test_open_internet_cidr_refuses_live(tmp_path: Path) -> None:
         "external:\n  hosts:\n    - vpn.example.com\n",
     )
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--live", "--scope", str(scope)],
+        [PYTHON, "-m", "dropbox", "orchestrate", "--live", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -222,7 +223,7 @@ def test_open_internet_cidr_refuses_live(tmp_path: Path) -> None:
 def test_live_deepen_without_stage_flag_exits_nonzero(tmp_path: Path) -> None:
     scope = _valid_scope(tmp_path, extra_orch="  stages:\n    discover: true\n    deepen: false\n")
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--live", "--scope", str(scope)],
+        [PYTHON, "-m", "dropbox", "orchestrate", "--live", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -295,7 +296,7 @@ def test_byo_adapter_never_fetches() -> None:
 
 def test_status_cli_prints_stops_and_demo_label() -> None:
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "status", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [PYTHON, "-m", "dropbox", "status", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

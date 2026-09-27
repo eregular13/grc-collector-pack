@@ -1,0 +1,93 @@
+{
+  "phase": "after",
+  "stamp": "2026-09-26T19:15:37-07:00",
+  "cwd": "C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250",
+  "python": "C:\\Python314\\python.exe",
+  "python_version": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "os_name": "nt",
+  "cmd": [
+    "C:\\Python314\\python.exe",
+    "-m",
+    "pytest",
+    "tests",
+    "-q",
+    "--tb=line",
+    "--junitxml=C:\\Users\\R\\Desktop\\EvergreenOps\\cold-path-gate\\grc-collector-pack-20260919-230250\\lab-evidence\\desktop\\h4-windows-pytest\\after\\junit.xml"
+  ],
+  "exit_code": 1,
+  "elapsed_sec": 95.4,
+  "passed": 1481,
+  "failed": 11,
+  "errors": 0,
+  "skipped": 24,
+  "total": 1516,
+  "failures": [
+    {
+      "nodeid": "tests.test_adapter_contract::test_allowlisted_live_discover_invokes_stub",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'plan' == 'live'"
+    },
+    {
+      "nodeid": "tests.test_adapter_contract::test_curl_and_testssl_byo_stubs",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert ('curl' == 'curl'"
+    },
+    {
+      "nodeid": "tests.test_farm_adapters::test_wired_slots_invoke_path_stubs",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: {'client': 'DEMO \u2014 adapter contract', 'invoke': True, 'mode': 'plan', 'output_glob': 'in/nmap/*.gnmap', ...}"
+    },
+    {
+      "nodeid": "tests.test_farm_adapters::test_plan_only_when_live_false",
+      "file": "",
+      "kind": "failure",
+      "message": "assert False is True"
+    },
+    {
+      "nodeid": "tests.test_farm_orch::test_live_discover_uses_path_invoke_only",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert 'plan' == 'live'"
+    },
+    {
+      "nodeid": "tests.test_farm_orch::test_live_deepen_only_deepen_invoke_on_named_hosts",
+      "file": "",
+      "kind": "failure",
+      "message": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\R\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-R\\\\pytest-1162\\\\test_live_deepen_only_deepen_i0\\\\invoked.txt'"
+    },
+    {
+      "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_dry_invoke_writes_work_out_no_network",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+    },
+    {
+      "nodeid": "tests.test_farm_tool_bin::test_farm_tool_bin_dry_invoke_deepen_external_adjacent",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+    },
+    {
+      "nodeid": "tests.test_farm_toolbin_e2e::test_farm_toolbin_e2e_quiet_to_loud_under_farm_work",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: {"
+    },
+    {
+      "nodeid": "tests.test_mcp_stub::test_host_nmap_on_path_does_not_flip_isolated_toolbin_status",
+      "file": "",
+      "kind": "failure",
+      "message": "AssertionError: assert None"
+    },
+    {
+      "nodeid": "tests.test_parsers::test_lab_stub_gnmap_parses",
+      "file": "",
+      "kind": "failure",
+      "message": "OSError: [WinError 193] %1 is not a valid Win32 application"
+    }
+  ]
+}

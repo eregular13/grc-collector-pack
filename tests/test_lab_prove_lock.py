@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.cli_python import skip_unless_bash
 from collectors import inventory_nmap
 from scripts.prove_ciso import (
     ExistingInError,
@@ -346,6 +347,7 @@ def test_lab_dest_in_prove_writes_opengrc_probo_file_true(tmp_path: Path) -> Non
     assert Path(str(stamp["probo"])).is_file()
 
 
+@skip_unless_bash
 def test_lab_drop_to_sor_on_lab_drop_fixture(tmp_path: Path) -> None:
     work = tmp_path / "lab-work"
     dest_in = work / "in"
@@ -382,6 +384,7 @@ def test_lab_drop_to_sor_on_lab_drop_fixture(tmp_path: Path) -> None:
     assert "did not reseed" in blob.lower() or "fixtures/pack_drop" in blob
 
 
+@skip_unless_bash
 def test_use_existing_in_fail_closed_on_empty_in(tmp_path: Path) -> None:
     dest = tmp_path / "empty"
     dest_in = dest / "in"
