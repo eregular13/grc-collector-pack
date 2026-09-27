@@ -15,6 +15,13 @@ Sources
 CPG version used: **CPG 2.0** (CISA's current published set; CPG 1.0.1
 1.E / 2.W are not current).
 
+Env-eval / web-TLS NIST 800-53 IDs live in this same map. Call
+``nist_800_53_ids`` from a content pipeline — do not keep a second
+control map. CIS v8 tokens stay under ``extra.cis_v8_internal`` via
+``cis_v8_internal_ids`` and never on client-facing ``framework_refs``.
+``normalize_csf20_id`` remaps mixed CSF 1.1 (PR.AC / PR.PT / PR.IP) to
+CSF 2.0.
+
 CSF function on the CISO wire stays the PR #128 stamp (800-53 / CIS / topic).
 The subcategory is chosen under that function. When a class has two honest
 subcategories (vuln → ID.RA-01 or PR.PS-02), the stamped function picks.
@@ -37,6 +44,11 @@ from __future__ import annotations
 import ipaddress
 import re
 from typing import Any
+
+# Same token as shared.hardening_map.CIS_V8_PREFIX. Do not import that
+# module here — it imports this file.
+CIS_V8_INTERNAL_FIELD = "cis_v8_internal"
+CIS_V8_PREFIX = "CIS-v8-"
 
 # NIST CSF 2.0 subcategory IDs that this pack may stamp. Every id was checked
 # against NIST CSWP 29 Appendix A. Withdrawn 1.1 ids (PR.DS-03..09, DE.CM-04
@@ -463,6 +475,17 @@ CONTROL_CLASS: dict[str, str] = {
     "Stop web-app local file inclusion": "config_benchmark",
     "Mark privileged accounts sensitive and cannot be delegated": "identity_privilege",
     "Set dSHeuristics LDAP security (CVE-2021-42291)": "identity_auth",
+    "Deploy baseline HTTP security headers": "config_benchmark",
+    "Set Secure HttpOnly SameSite cookie flags": "tls_crypto",
+    "Allowlist CORS origins": "exposure_access",
+    "Terminate TLS and redirect HTTP to HTTPS": "tls_crypto",
+    "Replace default web welcome or error pages": "config_benchmark",
+    "Redirect HTTP to HTTPS": "tls_crypto",
+    "Remove public exposure of data and admin services": "exposure_network",
+    "Strip Server and X-Powered-By version tokens": "config_benchmark",
+    "Inventory listeners and close unused ports": "exposure_network",
+    "Restrict SSH to management networks": "exposure_network",
+    "Ensure TLS is present where HTTPS is expected": "tls_crypto",
 }
 
 FINDING_TYPE_CLASS: dict[str, str] = {
@@ -531,6 +554,18 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "pc_krbtgt": "identity_credential",
     "pc_delegated": "identity_privilege",
     "pc_dsheuristics": "identity_auth",
+    "web_security_headers": "config_benchmark",
+    "web_cookie_flags": "tls_crypto",
+    "web_cors": "exposure_access",
+    "web_cleartext_http": "tls_crypto",
+    "web_cleartext_ftp": "exposure_network",
+    "web_default_page": "config_benchmark",
+    "web_http_redirect": "tls_crypto",
+    "web_service_exposure": "exposure_network",
+    "web_tech_disclosure": "config_benchmark",
+    "web_surface": "exposure_network",
+    "web_ssh_banner": "exposure_network",
+    "web_tls_service": "tls_crypto",
 }
 
 
@@ -616,10 +651,381 @@ def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
     return any(tok in blob for tok in _REDIS_AUTH_BLOB_TOKS)
 
 
+# NIST CSF 1.1 subcategory ids (and unpadded 2.0-style twins) → CSF 2.0.
+# PR.AC → PR.AA, PR.PT/PR.IP → PR.PS. Official 2.0 ids pass through.
+CSF11_TO_20: dict[str, str] = {
+    "PR.AC-1": "PR.AA-01",
+    "PR.AC-01": "PR.AA-01",
+    "PR.AC-3": "PR.AA-05",
+    "PR.AC-03": "PR.AA-05",
+    "PR.AC-4": "PR.AA-05",
+    "PR.AC-04": "PR.AA-05",
+    "PR.AC-5": "PR.AA-05",
+    "PR.AC-05": "PR.AA-05",
+    "PR.PT-3": "PR.PS-01",
+    "PR.PT-03": "PR.PS-01",
+    "PR.IP-1": "PR.PS-01",
+    "PR.IP-01": "PR.PS-01",
+    "PR.DS-1": "PR.DS-01",
+    "PR.DS-2": "PR.DS-02",
+    "ID.AM-1": "ID.AM-01",
+    "DE.CM-1": "DE.CM-01",
+}
+
+
+def normalize_csf20_id(raw: str) -> str:
+    """Normalize mixed NIST CSF 1.1 / 2.0 tokens to a CSF 2.0 subcategory id.
+
+    Returns ``unmapped`` when the token is not a known 2.0 subcategory after
+    the 1.1 remap. CPG 2.0 stays the client-facing spine; this helper only
+    touches CSF ids.
+    """
+    text = str(raw or "").strip()
+    if not text:
+        return UNMAPPED
+    for prefix in ("NIST.CSF.", "NIST_CSF:", "NIST_CSF.", "csf_"):
+        if text.upper().startswith(prefix.upper()) or text.startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    text = text.replace("_", ".").strip()
+    # csf_PR_DS_02 → PR.DS.02 then restore hyphen form
+    parts = text.split(".")
+    if len(parts) >= 3 and parts[1].isalpha() and parts[2].isdigit():
+        text = f"{parts[0]}.{parts[1]}-{parts[2].zfill(2)}"
+    elif "-" in text:
+        fam, num = text.split("-", 1)
+        if num.isdigit():
+            text = f"{fam}-{num.zfill(2)}"
+    text = CSF11_TO_20.get(text, text)
+    if text in CSF20_SUBCATEGORIES:
+        return text
+    return UNMAPPED
+
+
+def _norm_sensor(raw: str) -> str:
+    return str(raw or "").strip().lower().replace("_", "-")
+
+
+def _cis_v8_token(raw: str) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    for prefix in ("CIS.", "CIS-", "CIS_"):
+        if text.upper().startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    if text.upper().startswith("V8-") or text.upper().startswith("V8."):
+        text = text[3:]
+    if text.startswith(CIS_V8_PREFIX):
+        return text
+    return f"{CIS_V8_PREFIX}{text}"
+
+
+# Folded from frozen freedom45 control_map.py (sensor + title heuristics).
+# CIS v8 tokens are internal-only. CPG 2.0 is stamped via WEAKNESS_CLASS_MAP.
+ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
+    "sense-cleartext-http": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-7"),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-cleartext-ftp": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("SC-8",),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-http-https-redirect": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8",),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-http-headers": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("SC-7", "SC-18"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-cookie-flags": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-23"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-cors": {
+        "weakness_class": "exposure_access",
+        "nist_800_53": ("AC-3", "AC-4"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.AA-05",
+    },
+    "sense-ssh-banner": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("CM-7", "AC-17"),
+        "cis_v8_internal": ("5.2", "12.2"),
+        "csf20": "PR.AA-05",
+    },
+    "sense-surface": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("CM-7", "CM-8"),
+        "cis_v8_internal": ("16.2",),
+        "csf20": "ID.AM-01",
+    },
+    "sense-tls": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-13"),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-tls-expiry": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-17",),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-service-exposure": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("SC-7", "CM-7"),
+        "cis_v8_internal": ("16.2", "12.2"),
+        "csf20": "PR.AA-05",
+    },
+    "sense-dir-listing": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7", "AC-3"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.DS-01",
+    },
+    "sense-git-exposed": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("AC-3", "CM-7"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.DS-01",
+    },
+    "sense-tech-disclosure": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7",),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-http-info": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7",),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-default-page": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-2", "CM-6"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-http-methods": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7", "SC-7"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+}
+
+ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
+    (
+        re.compile(r"smbv?1|smb\s*v1", re.I),
+        {
+            "rule_id": "smb-v1",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("CM-7",),
+            "cis_v8_internal": ("5.1",),
+            "csf20": "PR.AA-01",
+        },
+    ),
+    (
+        re.compile(r"s3.*public|public.*bucket|block public access", re.I),
+        {
+            "rule_id": "s3-public",
+            "weakness_class": "exposure_access",
+            "nist_800_53": ("AC-3",),
+            "cis_v8_internal": ("3.3",),
+            "csf20": "PR.DS-01",
+        },
+    ),
+    (
+        re.compile(r"rdp|3389|remote desktop", re.I),
+        {
+            "rule_id": "rdp",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("AC-17",),
+            "cis_v8_internal": ("12.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"\bredis\b|\b6379\b", re.I),
+        {
+            "rule_id": "redis",
+            "weakness_class": "exposure_access",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"mongodb|27017", re.I),
+        {
+            "rule_id": "mongodb",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"mysql|3306|postgres|5432", re.I),
+        {
+            "rule_id": "sql-db",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"elasticsearch|9200|kibana", re.I),
+        {
+            "rule_id": "elastic",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"memcached|11211", re.I),
+        {
+            "rule_id": "memcached",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"telnet|\b23\b", re.I),
+        {
+            "rule_id": "telnet",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-8",),
+            "cis_v8_internal": ("3.3",),
+            "csf20": "PR.DS-02",
+        },
+    ),
+    (
+        re.compile(r"\bvnc\b|5900", re.I),
+        {
+            "rule_id": "vnc",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("AC-17",),
+            "cis_v8_internal": ("12.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"weak cipher|sslv3|tlsv1\.0|tls 1\.0|heartbleed", re.I),
+        {
+            "rule_id": "weak-tls",
+            "weakness_class": "tls_crypto",
+            "nist_800_53": ("SC-8", "SC-13"),
+            "cis_v8_internal": ("3.3",),
+            "csf20": "PR.DS-02",
+        },
+    ),
+    (
+        re.compile(r"open.?relay|smtp captur|anonymous bind", re.I),
+        {
+            "rule_id": "insecure-service",
+            "weakness_class": "exposure_access",
+            "nist_800_53": ("AC-3",),
+            "cis_v8_internal": ("5.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"world.?writ|0?777|permissions too open", re.I),
+        {
+            "rule_id": "perms",
+            "weakness_class": "config_benchmark",
+            "nist_800_53": ("AC-3",),
+            "cis_v8_internal": ("5.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+]
+
+
+def _lookup_env_eval_rule(
+    *,
+    sensor: str = "",
+    title: str = "",
+    description: str = "",
+    finding_type: str = "",
+) -> dict[str, Any] | None:
+    sid = _norm_sensor(sensor)
+    if sid in ENV_EVAL_SENSOR_RULES:
+        return {"sensor": sid, **ENV_EVAL_SENSOR_RULES[sid]}
+    ftype = _norm_sensor(finding_type)
+    if ftype.startswith("sense-") and ftype in ENV_EVAL_SENSOR_RULES:
+        return {"sensor": ftype, **ENV_EVAL_SENSOR_RULES[ftype]}
+    blob = " ".join(x for x in (title, description, finding_type, sensor) if x)
+    for pat, hit in ENV_EVAL_HEURISTICS:
+        if pat.search(blob):
+            return dict(hit)
+    return None
+
+
+def nist_800_53_ids(
+    *,
+    sensor: str = "",
+    title: str = "",
+    description: str = "",
+    finding_type: str = "",
+) -> list[str]:
+    """NIST SP 800-53 Rev.5 IDs from the same env-eval / weakness map.
+
+    Content pipelines should call this helper instead of keeping a second
+    control map. CPG 2.0 remains the client-facing spine; CIS v8 is not
+    returned here (see ``cis_v8_internal_ids``).
+    """
+    rule = _lookup_env_eval_rule(
+        sensor=sensor, title=title, description=description, finding_type=finding_type
+    )
+    if not rule:
+        return []
+    return [str(x) for x in (rule.get("nist_800_53") or ()) if x]
+
+
+def cis_v8_internal_ids(
+    *,
+    sensor: str = "",
+    title: str = "",
+    description: str = "",
+    finding_type: str = "",
+) -> list[str]:
+    """CIS Controls v8 tokens for extra.cis_v8_internal only — never client-facing."""
+    rule = _lookup_env_eval_rule(
+        sensor=sensor, title=title, description=description, finding_type=finding_type
+    )
+    if not rule:
+        return []
+    return [_cis_v8_token(str(x)) for x in (rule.get("cis_v8_internal") or ()) if x]
+
+
 def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> str:
     """Pick one class from control name, finding type, then light heuristics."""
     rec = rec or {}
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    sensor = _norm_sensor(str(extra.get("sensor") or extra.get("finding_id") or ""))
+    if sensor in ENV_EVAL_SENSOR_RULES:
+        return str(ENV_EVAL_SENSOR_RULES[sensor]["weakness_class"])
     ftype = str(
         mapped.get("finding_type")
         or extra.get("check_id")
@@ -649,6 +1055,18 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
             return "vuln_patch"
     if cat in {"honeypot", "deception-sensor"}:
         return "detect_telemetry"
+    # Freedom45 title heuristics only for env-eval / web-tls rows so DEMO
+    # nmap/easm classifications stay byte-identical.
+    env_eval = str(rec.get("source") or "") == "web-tls" or sensor.startswith("sense-")
+    if env_eval:
+        rule = _lookup_env_eval_rule(
+            sensor=sensor,
+            title=str(mapped.get("control_name") or rec.get("name") or ""),
+            description=str(rec.get("description") or ""),
+            finding_type=ftype,
+        )
+        if rule and rule.get("weakness_class"):
+            return str(rule["weakness_class"])
     return UNMAPPED
 
 

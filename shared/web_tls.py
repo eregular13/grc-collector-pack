@@ -97,6 +97,12 @@ def _finding(
         "finding_id": sensor,
         **extra,
     }
+    if not extra_out.get("cis_v8_internal"):
+        from shared.framework_class_map import cis_v8_internal_ids
+
+        cis = cis_v8_internal_ids(sensor=sensor, title=name, description=description)
+        if cis:
+            extra_out["cis_v8_internal"] = cis
     labs = list(LABELS)
     for item in labels or []:
         if item and item not in labs:
