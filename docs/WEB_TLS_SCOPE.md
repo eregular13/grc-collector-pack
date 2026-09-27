@@ -18,15 +18,20 @@ opens a socket and does not need SCOPE.
    `Demo Industries Inc` are not the pack DEMO estate. `build_snapshot()`
    is gated the same way as `--live` — a missing bound SCOPE refuses
    before any socket. A second concurrent live bind in another thread
-   refuses (fail closed). Quoted mapping keys are unquoted before
-   lookup; unknown keys and non-ASCII keys refuse at every section.
+   refuses (fail closed). Context-copied threads (asyncio.to_thread,
+   copy_context().run) count as nested binds; isolation still holds.
+   Quoted mapping keys are unquoted before lookup. Keys must be spelled
+   exactly as documented (lower-case, no surrounding whitespace);
+   PORTS_ALLOWED, Status, ' ports_allowed ', NBSP, and BOM keys refuse.
+   Unknown keys and non-ASCII keys refuse at every section.
 2. A current engagement window (`engagement.start` / `engagement.end` contain now).
 3. Engagement status is an **allowlist**. Absent, `active`, `authorized`, or
    `approved` (any case) load. Anything else refuses: `expired`, `on-hold`,
    `withdrawn`, `revoked-by-client`, `terminated`, `REVOKED` / `Revoked`, a
    nested `status: {state: …}`, or a top-level `status`. `revoked: true` /
-   `yes` / `on` / `y` (engagement or top-level, any key case) also refuses.
-   Keys are read case-insensitively. The SCOPE file is **re-read and
+   `yes` / `on` / `y` (engagement or top-level) also refuses. Keys must
+   match the documented spelling exactly; values for status/revoked stay
+   case-insensitive. The SCOPE file is **re-read and
    re-validated (including the consent digest) before every connect**; a
    mid-run revoke or a read error fails closed.
 4. `--target` is a **bare host or IP** (no URL, userinfo, path, or `host:port`).
@@ -60,7 +65,7 @@ the system of record; SimpleRisk is leave-behind only.
 |---|---|
 | No `--scope` / missing SCOPE | refuse, nonzero |
 | Pack DEMO `dropbox/SCOPE.yaml`, DEMO consent digest, or DEMO `client.name` (case/dash/NBSP) | refuse, nonzero |
-| Unknown or non-ASCII SCOPE key | refuse, nonzero |
+| Unknown, non-canonical, BOM, or non-ASCII SCOPE key | refuse, nonzero |
 | Second concurrent live SCOPE bind | refuse, nonzero |
 | Expired engagement window | refuse, nonzero |
 | Status outside `{active, authorized, approved, absent}` | refuse, nonzero |

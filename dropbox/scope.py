@@ -75,7 +75,9 @@ DEEPEN_STAGE_TOOLS = frozenset({"nessus", "nessuscli"})
 
 # Explicit allowlist of known keys per section. Derived from Scope / load_scope,
 # committed dropbox/SCOPE.yaml + SCOPE.example.yaml, and OPERATOR / WEB_TLS docs.
-# Comparison is case-insensitive. Unknown keys and any non-ASCII key refuse.
+# Comparison is exact: lower-case, no surrounding whitespace, as documented.
+# Non-canonical spellings (PORTS_ALLOWED, ' ports_allowed ', NBSP, BOM) refuse.
+# Unknown keys and any non-ASCII key refuse. engagement.begin is not an alias.
 _SCOPE_KEYS: dict[str, frozenset[str]] = {
     "": frozenset(
         {
@@ -95,7 +97,7 @@ _SCOPE_KEYS: dict[str, frozenset[str]] = {
     "client": frozenset({"name"}),
     "consent": frozenset({"attestation_path", "attestation_sha256"}),
     "engagement": frozenset(
-        {"start", "begin", "end", "status", "revoked", "ports_allowed"}
+        {"start", "end", "status", "revoked", "ports_allowed"}
     ),
     "internal": frozenset({"cidrs", "hosts"}),
     "external": frozenset({"hosts", "domains", "ips"}),
@@ -404,11 +406,12 @@ def _status_is_allowed(raw: Any) -> bool:
 
 
 def _engagement_is_revoked(data: dict, eng: dict) -> bool:
-    """Revoked flags or any status outside the allowlist, keys case-insensitive.
+    """Revoked flags or any status outside the allowlist.
 
-    Looks at top-level and engagement ``revoked`` / ``status`` (any case),
-    plus a case-folded ``engagement`` section so ``Engagement:`` still gates.
-    Nested ``status: {state: …}`` refuses. Absent status is allowed.
+    The loader boundary already refused non-canonical keys, so YAML
+    mappings only carry documented spellings. Helpers still fold case
+    for constructed (non-YAML) mappings. Nested ``status: {state: …}``
+    refuses. Absent status is allowed.
     """
     eng_ci = eng if isinstance(eng, dict) else {}
     if not _ci_values(eng_ci, "status") and not _ci_values(eng_ci, "revoked"):
@@ -537,12 +540,36 @@ def _where(path: str) -> str:
     return path if path else "root"
 
 
-def refuse_unknown_scope_keys(data: Any, path: str = "") -> None:
-    """Refuse non-ASCII keys and keys outside the per-section allowlist.
+def _canonical_for(allowed: frozenset[str], key: str) -> str | None:
+    """Documented spelling if ``key`` case-folds and strips to an allowlisted name."""
+    fold = str(key).strip().lower()
+    for name in allowed:
+        if name == fold:
+            return name
+    return None
 
-    Walks every mapping section that has an allowlist. A known scalar field
-    whose value is a mapping (nested ``status: {state: …}``) is left to the
-    existing status/revocation check — that path is not a section.
+
+def allowlisted_scope_keys() -> list[tuple[str, str]]:
+    """Every allowlisted (section, key) pair. Tests parametrize over this."""
+    rows: list[tuple[str, str]] = []
+    for section, names in _SCOPE_KEYS.items():
+        for name in sorted(names):
+            rows.append((section, name))
+    return rows
+
+
+def refuse_unknown_scope_keys(data: Any, path: str = "") -> None:
+    """Refuse non-canonical, unknown, non-ASCII, and BOM keys at the loader.
+
+    Keys must be spelled exactly as documented (lower-case, no surrounding
+    whitespace). Refusing is preferred over silently normalising so a
+    misspelled ``PORTS_ALLOWED`` cannot load as an absent port limit.
+    Downstream readers never see a non-canonical key.
+
+    A leading UTF-8 BOM on a key is refused. Walks every mapping section
+    that has an allowlist. A known scalar field whose value is a mapping
+    (nested ``status: {state: …}``) is left to the existing
+    status/revocation check — that path is not a section.
     """
     if isinstance(data, list):
         item_path = f"{path}[]" if path else "[]"
@@ -560,15 +587,20 @@ def refuse_unknown_scope_keys(data: Any, path: str = "") -> None:
     allowed = _SCOPE_KEYS.get(path)
     if allowed is None:
         raise GateError(f"unexpected mapping at {_where(path)}")
-    want = {name.lower() for name in allowed}
     for raw_key, value in data.items():
         key = str(raw_key)
-        if not _key_is_ascii(key):
-            raise GateError(f"non-ASCII mapping key {key!r} at {_where(path)}")
-        fold = key.strip().lower()
-        if fold not in want:
+        if "\ufeff" in key:
+            raise GateError(f"BOM mapping key {key!r} at {_where(path)}")
+        if key not in allowed:
+            canon = _canonical_for(allowed, key)
+            if canon is not None:
+                raise GateError(
+                    f"non-canonical key {key!r} at {_where(path)} (canonical: {canon})"
+                )
+            if not _key_is_ascii(key):
+                raise GateError(f"non-ASCII mapping key {key!r} at {_where(path)}")
             raise GateError(f"unknown key {key!r} at {_where(path)}")
-        child = f"{path}.{fold}" if path else fold
+        child = f"{path}.{key}" if path else key
         if isinstance(value, dict) and child in _SCOPE_KEYS:
             refuse_unknown_scope_keys(value, child)
         elif isinstance(value, list):
@@ -576,9 +608,15 @@ def refuse_unknown_scope_keys(data: Any, path: str = "") -> None:
 
 
 def _load_scope_mapping(scope_path: Path) -> dict:
-    """Parse SCOPE YAML. Duplicate / unknown / non-ASCII keys fail closed."""
+    """Parse SCOPE YAML. Duplicate / non-canonical / unknown / BOM keys fail closed."""
     try:
-        data = load_yaml(scope_path.read_text(encoding="utf-8"))
+        text = scope_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise GateError(f"cannot read SCOPE: {exc}") from exc
+    if "\ufeff" in text:
+        raise GateError("BOM mapping key refused")
+    try:
+        data = load_yaml(text)
     except ValueError as exc:
         raise GateError(str(exc)) from exc
     if not isinstance(data, dict) or not data:
@@ -615,7 +653,7 @@ def load_scope(path: Path | None = None) -> Scope:
         )
 
     eng = data.get("engagement") if isinstance(data.get("engagement"), dict) else {}
-    start = _parse_day(eng.get("start") or eng.get("begin"), "engagement.start")
+    start = _parse_day(eng.get("start"), "engagement.start")
     end = _parse_day(eng.get("end"), "engagement.end")
     if end < start:
         raise GateError("engagement window ends before it starts")

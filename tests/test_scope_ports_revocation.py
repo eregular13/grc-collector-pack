@@ -280,7 +280,7 @@ def test_engagement_Revoked_true_refuses_load(tmp_path: Path) -> None:
 
 
 def test_status_Revoked_refuses_load(tmp_path: Path) -> None:
-    with pytest.raises(GateError, match="revoked"):
+    with pytest.raises(GateError, match="non-canonical key 'Status'|revoked"):
         load_scope(_write_scope(tmp_path, "  Status: Revoked\n"))
 
 

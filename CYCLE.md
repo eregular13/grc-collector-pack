@@ -1,5 +1,17 @@
 # CYCLE log
 
+## cycle 222 — SCOPE canonical-key refuse (2026-09-27)
+
+Loader boundary refuses any SCOPE key that is not spelled exactly as
+documented (lower-case, no surrounding whitespace). `PORTS_ALLOWED`,
+`engagement.Ports_Allowed`, and `' ports_allowed '` no longer load as
+an absent port limit. Near-miss errors name the canonical spelling.
+`engagement.begin` removed (unused). BOM keys refuse. Context-copied
+threads count as nested binds. Pytest **2058**. Host-lab 79 / 103 /
+poam 119 / excluded 6. DEMO / SAMPLE / farm `poam.csv` byte-identical
+to master `a7dd5a3` (119 / 8 / 73). Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 221 — SCOPE quoted keys, bind isolation, DEMO name (2026-09-27)
 
 yaml_lite strips matching quotes from mapping keys so `'status'` and
