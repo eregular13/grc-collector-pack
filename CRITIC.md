@@ -1,3 +1,16 @@
+# CRITIC — cycle 221 (SCOPE_GATE_QUOTED_KEYS_BIND_DEMO)
+
+Lab this brick: pytest **1783** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Quoted SCOPE keys participate in lookup and
+duplicate detection; unknown / non-ASCII keys refuse; live bind is a
+contextvar plus a lock that refuses a second concurrent bind; DEMO
+`client.name` normalizes case/dash/NBSP. DEMO / SAMPLE / farm
+`poam.csv` byte-identical to master `b67de6f` (119 / 8 / 73). Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 220 (SCOPE_GATE_HARDEN)
 
 Lab this brick: pytest **1760** passed, 1 skipped. Ten collectors +
