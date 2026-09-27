@@ -8,8 +8,10 @@ Redirects are never followed. Pack DEMO SCOPE (path, DEMO consent digest,
 or a normalized pack DEMO client.name) is refused. The gate lives on the
 shared connect path so ``build_snapshot`` cannot skip it. SCOPE is
 re-read before every connect. Binding is per-context; a second
-concurrent live bind refuses. Direct ``authorize_endpoint`` calls
-unbind after.
+concurrent live bind refuses. Context-copied threads
+(``asyncio.to_thread``, ``copy_context().run``) count as nested binds
+— isolation still holds. Direct ``authorize_endpoint`` calls unbind
+after.
 """
 
 from __future__ import annotations
@@ -100,7 +102,13 @@ def client_name_is_pack_demo(name: str) -> bool:
 
 @contextmanager
 def _bind_scope(scope: Any) -> Iterator[None]:
-    """Bind SCOPE for this context. A second concurrent bind refuses (fail closed)."""
+    """Bind SCOPE for this context. A second concurrent bind refuses (fail closed).
+
+    Context-copied threads (``asyncio.to_thread``, ``copy_context().run``)
+    inherit ``_BIND_HELD`` and take the nested-bind path. Isolation still
+    holds: they do not acquire a second process lock or leak the bind to
+    an unbound thread.
+    """
     if _BIND_HELD.get():
         token = _ACTIVE_SCOPE.set(scope)
         try:
