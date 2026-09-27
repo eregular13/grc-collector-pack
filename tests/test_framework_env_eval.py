@@ -22,8 +22,8 @@ SAMPLES = ROOT / "fixtures" / "samples" / "web_tls"
 
 
 def test_normalize_csf11_to_csf20() -> None:
-    assert normalize_csf20_id("PR.AC-5") == "PR.AA-05"
-    assert normalize_csf20_id("PR.AC-05") == "PR.AA-05"
+    assert normalize_csf20_id("PR.AC-5") == "PR.IR-01"
+    assert normalize_csf20_id("PR.AC-05") == "PR.IR-01"
     assert normalize_csf20_id("NIST.CSF.PR.PT-03") == "PR.PS-01"
     assert normalize_csf20_id("PR.IP-1") == "PR.PS-01"
     assert normalize_csf20_id("PR.DS-2") == "PR.DS-02"
@@ -66,6 +66,9 @@ def test_heuristics_smb_s3_rdp_weak_tls() -> None:
     assert nist_800_53_ids(title="S3 bucket public access") == ["AC-3"]
     assert nist_800_53_ids(title="RDP 3389 exposed") == ["AC-17"]
     assert "SC-8" in nist_800_53_ids(title="weak cipher TLSv1.0")
+    assert nist_800_53_ids(title="WordPress site") == []
+    assert nist_800_53_ids(title="Apache 2.4.23") == []
+    assert nist_800_53_ids(title="Build 19200") == []
     assert len(ENV_EVAL_HEURISTICS) >= 8
 
 
@@ -111,7 +114,8 @@ def test_heuristics_do_not_remap_demo_nmap_titles() -> None:
 
 def test_one_map_helper_is_the_800_53_source() -> None:
     git = nist_800_53_ids(sensor="sense-git-exposed")
-    assert "AC-3" in git and "CM-7" in git
+    assert git == ["CM-7", "AC-3", "SI-12"]
+    assert nist_800_53_ids(finding_type="web_cors") == ["AC-3", "SC-7"]
     assert nist_800_53_ids(sensor="sense-unknown-xyz") == []
     # Same map as classify: sensor wins over title.
     assert (
@@ -121,6 +125,20 @@ def test_one_map_helper_is_the_800_53_source() -> None:
         )
         == ENV_EVAL_SENSOR_RULES["sense-git-exposed"]["weakness_class"]
     )
+
+
+def test_helper_matches_poam_controls_for_web_tls_sensors() -> None:
+    recs = parse_file(SAMPLES / "probe-cleartext-http.json")
+    recs += parse_file(SAMPLES / "probe-https-weak.json")
+    seen: set[str] = set()
+    for rec in recs:
+        sensor = str((rec.get("extra") or {}).get("sensor") or "")
+        if not sensor or sensor in seen:
+            continue
+        seen.add(sensor)
+        mapped = map_finding(rec)
+        assert nist_800_53_ids(rec) == list(mapped.get("nist_800_53") or [])
+        assert nist_800_53_ids(rec) == nist_800_53_ids(sensor=sensor)
 
 
 def test_env_eval_csf_ids_are_official_csf20() -> None:

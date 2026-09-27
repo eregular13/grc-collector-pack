@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from collections.abc import Mapping
 from typing import Any
 
 # Same token as shared.hardening_map.CIS_V8_PREFIX. Do not import that
@@ -660,8 +661,8 @@ CSF11_TO_20: dict[str, str] = {
     "PR.AC-03": "PR.AA-05",
     "PR.AC-4": "PR.AA-05",
     "PR.AC-04": "PR.AA-05",
-    "PR.AC-5": "PR.AA-05",
-    "PR.AC-05": "PR.AA-05",
+    "PR.AC-5": "PR.IR-01",
+    "PR.AC-05": "PR.IR-01",
     "PR.PT-3": "PR.PS-01",
     "PR.PT-03": "PR.PS-01",
     "PR.IP-1": "PR.PS-01",
@@ -738,7 +739,7 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
     },
     "sense-http-https-redirect": {
         "weakness_class": "tls_crypto",
-        "nist_800_53": ("SC-8",),
+        "nist_800_53": ("SC-8", "SC-7"),
         "cis_v8_internal": ("3.3",),
         "csf20": "PR.DS-02",
     },
@@ -750,13 +751,13 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
     },
     "sense-cookie-flags": {
         "weakness_class": "tls_crypto",
-        "nist_800_53": ("SC-8", "SC-23"),
+        "nist_800_53": ("SC-23", "AC-12"),
         "cis_v8_internal": ("5.2",),
         "csf20": "PR.DS-02",
     },
     "sense-cors": {
         "weakness_class": "exposure_access",
-        "nist_800_53": ("AC-3", "AC-4"),
+        "nist_800_53": ("AC-3", "SC-7"),
         "cis_v8_internal": ("5.2",),
         "csf20": "PR.AA-05",
     },
@@ -764,7 +765,7 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
         "weakness_class": "exposure_network",
         "nist_800_53": ("CM-7", "AC-17"),
         "cis_v8_internal": ("5.2", "12.2"),
-        "csf20": "PR.AA-05",
+        "csf20": "PR.IR-01",
     },
     "sense-surface": {
         "weakness_class": "exposure_network",
@@ -780,7 +781,7 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
     },
     "sense-tls-expiry": {
         "weakness_class": "tls_crypto",
-        "nist_800_53": ("SC-17",),
+        "nist_800_53": ("SC-8", "SC-17"),
         "cis_v8_internal": ("3.3",),
         "csf20": "PR.DS-02",
     },
@@ -788,17 +789,17 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
         "weakness_class": "exposure_network",
         "nist_800_53": ("SC-7", "CM-7"),
         "cis_v8_internal": ("16.2", "12.2"),
-        "csf20": "PR.AA-05",
+        "csf20": "PR.IR-01",
     },
     "sense-dir-listing": {
         "weakness_class": "config_benchmark",
-        "nist_800_53": ("CM-7", "AC-3"),
+        "nist_800_53": ("CM-6", "AC-3"),
         "cis_v8_internal": ("5.2",),
         "csf20": "PR.DS-01",
     },
     "sense-git-exposed": {
         "weakness_class": "config_benchmark",
-        "nist_800_53": ("AC-3", "CM-7"),
+        "nist_800_53": ("CM-7", "AC-3", "SI-12"),
         "cis_v8_internal": ("5.2",),
         "csf20": "PR.DS-01",
     },
@@ -822,7 +823,7 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
     },
     "sense-http-methods": {
         "weakness_class": "config_benchmark",
-        "nist_800_53": ("CM-7", "SC-7"),
+        "nist_800_53": ("CM-7", "AC-3"),
         "cis_v8_internal": ("5.2",),
         "csf20": "PR.PS-01",
     },
@@ -850,67 +851,67 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
         },
     ),
     (
-        re.compile(r"rdp|3389|remote desktop", re.I),
+        re.compile(r"\brdp\b|(?<!\d)3389(?!\d)|remote desktop", re.I),
         {
             "rule_id": "rdp",
             "weakness_class": "exposure_network",
             "nist_800_53": ("AC-17",),
             "cis_v8_internal": ("12.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
-        re.compile(r"\bredis\b|\b6379\b", re.I),
+        re.compile(r"\bredis\b|(?<!\d)6379(?!\d)", re.I),
         {
             "rule_id": "redis",
             "weakness_class": "exposure_access",
             "nist_800_53": ("SC-7",),
             "cis_v8_internal": ("16.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
-        re.compile(r"mongodb|27017", re.I),
+        re.compile(r"\bmongodb\b|(?<!\d)27017(?!\d)", re.I),
         {
             "rule_id": "mongodb",
             "weakness_class": "exposure_network",
             "nist_800_53": ("SC-7",),
             "cis_v8_internal": ("16.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
-        re.compile(r"mysql|3306|postgres|5432", re.I),
+        re.compile(r"\bmysql\b|(?<!\d)3306(?!\d)|\bpostgres(?:ql)?\b|(?<!\d)5432(?!\d)", re.I),
         {
             "rule_id": "sql-db",
             "weakness_class": "exposure_network",
             "nist_800_53": ("SC-7",),
             "cis_v8_internal": ("16.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
-        re.compile(r"elasticsearch|9200|kibana", re.I),
+        re.compile(r"\belasticsearch\b|(?<!\d)9200(?!\d)|\bkibana\b", re.I),
         {
             "rule_id": "elastic",
             "weakness_class": "exposure_network",
             "nist_800_53": ("SC-7",),
             "cis_v8_internal": ("16.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
-        re.compile(r"memcached|11211", re.I),
+        re.compile(r"\bmemcached\b|(?<!\d)11211(?!\d)", re.I),
         {
             "rule_id": "memcached",
             "weakness_class": "exposure_network",
             "nist_800_53": ("SC-7",),
             "cis_v8_internal": ("16.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
-        re.compile(r"telnet|\b23\b", re.I),
+        re.compile(r"\btelnet\b", re.I),
         {
             "rule_id": "telnet",
             "weakness_class": "exposure_network",
@@ -920,13 +921,13 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
         },
     ),
     (
-        re.compile(r"\bvnc\b|5900", re.I),
+        re.compile(r"\bvnc\b|(?<!\d)5900(?!\d)", re.I),
         {
             "rule_id": "vnc",
             "weakness_class": "exposure_network",
             "nist_800_53": ("AC-17",),
             "cis_v8_internal": ("12.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.IR-01",
         },
     ),
     (
@@ -982,25 +983,65 @@ def _lookup_env_eval_rule(
     return None
 
 
+def _dedupe_ids(ids: Any) -> list[str]:
+    out: list[str] = []
+    for raw in ids or ():
+        token = str(raw or "").strip()
+        if token and token not in out:
+            out.append(token)
+    return out
+
+
 def nist_800_53_ids(
+    rec: Mapping[str, Any] | None = None,
     *,
+    finding_type: str = "",
     sensor: str = "",
     title: str = "",
     description: str = "",
-    finding_type: str = "",
 ) -> list[str]:
-    """NIST SP 800-53 Rev.5 IDs from the same env-eval / weakness map.
+    """NIST SP 800-53 Rev.5 IDs via the same path as POA&M Controls.
 
-    Content pipelines should call this helper instead of keeping a second
-    control map. CPG 2.0 remains the client-facing spine; CIS v8 is not
-    returned here (see ``cis_v8_internal_ids``).
+    Prefer ``TYPE_REMEDIATIONS`` (finding type / alias). sense-* rules are
+    a fallback only when no type map hits. Title heuristics use word
+    boundaries and do not match version numbers (WordPress, Apache 2.4.23).
+    Returns an ordered de-duplicated list. CIS v8 is not returned
+    (see ``cis_v8_internal_ids``).
     """
-    rule = _lookup_env_eval_rule(
-        sensor=sensor, title=title, description=description, finding_type=finding_type
+    from shared.finding_types import (
+        TYPE_ALIASES,
+        TYPE_REMEDIATIONS,
+        finding_type as resolve_type,
+        norm_type_key,
+        type_remediation,
     )
-    if not rule:
-        return []
-    return [str(x) for x in (rule.get("nist_800_53") or ()) if x]
+
+    extra: dict[str, Any] = {}
+    if rec and isinstance(rec.get("extra"), dict):
+        extra = rec["extra"]  # type: ignore[assignment]
+    sensor = sensor or str(extra.get("sensor") or extra.get("check_id") or extra.get("finding_id") or "")
+    title = title or str((rec or {}).get("name") or "")
+    description = description or str((rec or {}).get("description") or "")
+    ftype = str(finding_type or "").strip()
+    if rec and not ftype:
+        mapped = type_remediation(dict(rec))
+        if mapped and mapped.get("nist_800_53"):
+            return _dedupe_ids(mapped.get("nist_800_53"))
+        ftype = resolve_type(dict(rec)) or ""
+    if not ftype:
+        key = norm_type_key(sensor)
+        ftype = TYPE_ALIASES.get(key) or TYPE_ALIASES.get(sensor) or ""
+    if ftype and ftype in TYPE_REMEDIATIONS:
+        return _dedupe_ids(TYPE_REMEDIATIONS[ftype].get("nist_800_53"))
+    rule = ENV_EVAL_SENSOR_RULES.get(_norm_sensor(sensor))
+    if rule:
+        return _dedupe_ids(rule.get("nist_800_53"))
+    blob = " ".join(x for x in (title, description) if x)
+    if blob:
+        for pat, hit in ENV_EVAL_HEURISTICS:
+            if pat.search(blob):
+                return _dedupe_ids(hit.get("nist_800_53"))
+    return []
 
 
 def cis_v8_internal_ids(
