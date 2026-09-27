@@ -5,19 +5,25 @@ Collectors never import this module. Tests monkeypatch transports — no interne
 Every connect is fail-closed: bare host/IP target, parsed URLs only (http/https,
 no userinfo), port in 1..65535 and in SCOPE, resolved IP re-checked and pinned.
 Redirects are never followed. Pack DEMO SCOPE (path, DEMO consent digest,
-or the pack DEMO client.name) is refused. The gate lives on the shared
-connect path so ``build_snapshot`` cannot skip it. SCOPE is re-read
-before every connect. Direct ``authorize_endpoint`` calls unbind after.
+or a normalized pack DEMO client.name) is refused. The gate lives on the
+shared connect path so ``build_snapshot`` cannot skip it. SCOPE is
+re-read before every connect. Binding is per-context; a second
+concurrent live bind refuses. Direct ``authorize_endpoint`` calls
+unbind after.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextvars
 import http.client
 import ipaddress
+import re
 import socket
 import ssl
 import sys
+import threading
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,14 +41,36 @@ from dropbox.yaml_lite import load_yaml
 from shared.io_util import estate_hint, root_dir, write_canonical, write_json
 from shared.web_tls import SOURCE, parse_snapshot
 
-_ACTIVE_SCOPE = None
+_ACTIVE_SCOPE: contextvars.ContextVar[Any] = contextvars.ContextVar(
+    "web_tls_active_scope", default=None
+)
+_BIND_LOCK = threading.Lock()
+_BIND_HELD: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "web_tls_bind_held", default=False
+)
 
 # LF SHA-256 of dropbox/consent/DEMO-WRITTEN-CONSENT.md (also stamped on
 # dropbox/SCOPE.yaml). Live mode refuses this digest regardless of filename.
 PACK_DEMO_CONSENT_SHA256 = "ab5fb87300b944e1a95216ffa65f9ab697e5daba01012c23019b3608a2bc207c"
 # Exact client.name from dropbox/SCOPE.yaml (em dash). Live mode refuses it
-# even when the consent digest/path are not the pack DEMO files.
+# even when the consent digest/path are not the pack DEMO files. Comparison
+# is casefold + NFKC + collapsed whitespace + unicode dashes → "-".
 PACK_DEMO_CLIENT_NAME = "DEMO — not a client estate"
+
+_DASH_TO_HYPHEN = str.maketrans(
+    {
+        "\u2010": "-",
+        "\u2011": "-",
+        "\u2012": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2015": "-",
+        "\u2212": "-",
+        "\ufe58": "-",
+        "\ufe63": "-",
+        "\uff0d": "-",
+    }
+)
 
 
 class LiveRefuse(SystemExit):
@@ -57,15 +85,39 @@ HTTP_SCHEMES = frozenset({"http", "https"})
 SCHEME_DEFAULT_PORT = {"http": 80, "https": 443}
 
 
+def normalize_client_name(name: str) -> str:
+    """casefold, NFKC, unicode dashes as '-', collapse whitespace."""
+    text = unicodedata.normalize("NFKC", str(name or ""))
+    text = text.translate(_DASH_TO_HYPHEN)
+    text = text.casefold()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def client_name_is_pack_demo(name: str) -> bool:
+    """True only for the pack DEMO estate name, including case/dash/NBSP variants."""
+    return normalize_client_name(name) == normalize_client_name(PACK_DEMO_CLIENT_NAME)
+
+
 @contextmanager
 def _bind_scope(scope: Any) -> Iterator[None]:
-    global _ACTIVE_SCOPE
-    prev = _ACTIVE_SCOPE
-    _ACTIVE_SCOPE = scope
+    """Bind SCOPE for this context. A second concurrent bind refuses (fail closed)."""
+    if _BIND_HELD.get():
+        token = _ACTIVE_SCOPE.set(scope)
+        try:
+            yield
+        finally:
+            _ACTIVE_SCOPE.reset(token)
+        return
+    if not _BIND_LOCK.acquire(blocking=False):
+        raise LiveRefuse("refuses concurrent live SCOPE binding")
+    held = _BIND_HELD.set(True)
+    token = _ACTIVE_SCOPE.set(scope)
     try:
         yield
     finally:
-        _ACTIVE_SCOPE = prev
+        _ACTIVE_SCOPE.reset(token)
+        _BIND_HELD.reset(held)
+        _BIND_LOCK.release()
 
 
 def is_bare_host(target: str) -> bool:
@@ -145,7 +197,7 @@ def _refuse_demo_scope(path: Path) -> None:
     if not isinstance(data, dict):
         return
     client = data.get("client") if isinstance(data.get("client"), dict) else {}
-    if str(client.get("name") or "").strip() == PACK_DEMO_CLIENT_NAME:
+    if client_name_is_pack_demo(str(client.get("name") or "")):
         raise LiveRefuse("refuses pack DEMO SCOPE")
     consent = data.get("consent") if isinstance(data.get("consent"), dict) else {}
     declared = str(consent.get("attestation_sha256") or "").strip().lower()
@@ -170,8 +222,9 @@ def _require_bound_scope(scope: Any = None) -> Any:
     Fail closed when no scope is bound, the file cannot be read, or load_scope
     refuses (revoked / expired / hash mismatch / unknown status).
     """
-    global _ACTIVE_SCOPE
-    current = _ACTIVE_SCOPE if _ACTIVE_SCOPE is not None else scope
+    current = _ACTIVE_SCOPE.get()
+    if current is None:
+        current = scope
     if current is None:
         raise LiveRefuse("live probe requires a bound signed SCOPE")
     path = getattr(current, "path", None)
@@ -189,7 +242,7 @@ def _require_bound_scope(scope: Any = None) -> Any:
         raise LiveRefuse(f"cannot re-read SCOPE: {exc}") from exc
     except Exception as exc:  # noqa: BLE001
         raise LiveRefuse(f"cannot re-read SCOPE: {exc}") from exc
-    if str(getattr(fresh, "client_name", "") or "").strip() == PACK_DEMO_CLIENT_NAME:
+    if client_name_is_pack_demo(str(getattr(fresh, "client_name", "") or "")):
         raise LiveRefuse("refuses pack DEMO SCOPE")
     if _digest_is_demo(getattr(fresh, "consent_sha256", "")):
         raise LiveRefuse("refuses pack DEMO SCOPE")
@@ -201,7 +254,7 @@ def _require_bound_scope(scope: Any = None) -> Any:
         raise
     except OSError as exc:
         raise LiveRefuse(f"cannot re-read SCOPE consent: {exc}") from exc
-    _ACTIVE_SCOPE = fresh
+    _ACTIVE_SCOPE.set(fresh)
     return fresh
 
 
@@ -228,23 +281,22 @@ def resolve_authorized(scope: Any, host: str, port: int) -> str:
 def authorize_endpoint(scope: Any, host: str, port: int) -> str:
     """Gate one (host, port). Always re-reads the SCOPE file first.
 
-    Direct calls do not leave ``_ACTIVE_SCOPE`` bound afterwards,
+    Direct calls do not leave the context-local SCOPE bound afterwards,
     including when the gate raises. A caller that already bound a
     SCOPE (``run_live`` / ``_bind_scope``) is restored to that binding.
     """
-    global _ACTIVE_SCOPE
-    prev = _ACTIVE_SCOPE
+    prev = _ACTIVE_SCOPE.get()
     try:
         current = _require_bound_scope(scope)
         if not is_bare_host(host) and not _is_ip(host):
             raise LiveRefuse(f"target must be a bare host or IP, not {host!r}")
         return resolve_authorized(current, host, port)
     finally:
-        _ACTIVE_SCOPE = prev
+        _ACTIVE_SCOPE.set(prev)
 
 
 def tcp_open(host: str, port: int, timeout: float = 2.0) -> bool:
-    dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    dest = authorize_endpoint(_ACTIVE_SCOPE.get(), host, port)
     try:
         with socket.create_connection((dest, port), timeout=timeout):
             return True
@@ -272,12 +324,19 @@ def http_exchange(
         return {"error": str(exc)}
     dest = host
     try:
-        dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+        dest = authorize_endpoint(_ACTIVE_SCOPE.get(), host, port)
     except LiveRefuse as exc:
         msg = str(exc)
         if any(
             tok in msg.lower()
-            for tok in ("revoked", "cannot re-read", "demo scope", "consent", "bound signed")
+            for tok in (
+                "revoked",
+                "cannot re-read",
+                "demo scope",
+                "consent",
+                "bound signed",
+                "concurrent",
+            )
         ):
             raise
         return {"error": msg}
@@ -312,7 +371,7 @@ def http_exchange(
 
 
 def tls_probe(host: str, port: int = 443, timeout: float = 5.0) -> dict[str, Any]:
-    dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    dest = authorize_endpoint(_ACTIVE_SCOPE.get(), host, port)
     if not tcp_open(host, port, timeout=2.0):
         return {"open": False, "port": port}
     ctx = ssl.create_default_context()
@@ -346,7 +405,7 @@ def tls_probe(host: str, port: int = 443, timeout: float = 5.0) -> dict[str, Any
 
 
 def ssh_banner(host: str, port: int = 22, timeout: float = 3.0) -> dict[str, Any]:
-    dest = authorize_endpoint(_ACTIVE_SCOPE, host, port)
+    dest = authorize_endpoint(_ACTIVE_SCOPE.get(), host, port)
     if not tcp_open(host, port, timeout=2.0):
         return {}
     try:

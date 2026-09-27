@@ -8,6 +8,7 @@ import threading
 from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -16,6 +17,7 @@ from shared.web_tls_live import (
     LiveRefuse,
     PACK_DEMO_CLIENT_NAME,
     PACK_DEMO_CONSENT_SHA256,
+    client_name_is_pack_demo,
     default_http_urls,
     is_bare_host,
     parse_http_url,
@@ -324,10 +326,10 @@ def test_authorize_endpoint_unbinds_scope_after_return(
     recorded = _record_sockets(monkeypatch)
     scope_path = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n")
     scope = load_scope(scope_path)
-    live._ACTIVE_SCOPE = None
+    live._ACTIVE_SCOPE.set(None)
     dest = live.authorize_endpoint(scope, "192.0.2.10", 80)
     assert dest == "192.0.2.10"
-    assert live._ACTIVE_SCOPE is None
+    assert live._ACTIVE_SCOPE.get() is None
     with pytest.raises(LiveRefuse, match="bound signed SCOPE"):
         live.build_snapshot("192.0.2.10", ports=[80])
     connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
@@ -342,10 +344,10 @@ def test_authorize_endpoint_unbinds_scope_on_exception(
     recorded = _record_sockets(monkeypatch)
     scope_path = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n")
     scope = load_scope(scope_path)
-    live._ACTIVE_SCOPE = None
+    live._ACTIVE_SCOPE.set(None)
     with pytest.raises(LiveRefuse, match="bare host"):
         live.authorize_endpoint(scope, "http://evil.example/", 80)
-    assert live._ACTIVE_SCOPE is None
+    assert live._ACTIVE_SCOPE.get() is None
     with pytest.raises(LiveRefuse, match="bound signed SCOPE"):
         live.build_snapshot("192.0.2.10", ports=[80])
     connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
@@ -382,3 +384,130 @@ def test_pack_demo_client_name_matches_repo_file() -> None:
 
     data = load_yaml((ROOT / "dropbox" / "SCOPE.yaml").read_text(encoding="utf-8"))
     assert data["client"]["name"] == PACK_DEMO_CLIENT_NAME
+
+
+def _write_named_scope(tmp_path: Path, client_name: str) -> Path:
+    att, digest = _consent(tmp_path)
+    today = date.today()
+    path = tmp_path / "named-SCOPE.yaml"
+    path.write_text(
+        f'client:\n  name: "{client_name}"\nconsent:\n'
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        f"engagement:\n  start: {(today - timedelta(days=1)).isoformat()}\n"
+        f"  end: {(today + timedelta(days=30)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n  cidrs:\n    - 192.0.2.0/24\n"
+        "external:\n  hosts:\n    - vpn.example.invalid\n  ips:\n    - 192.0.2.10\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_live_refuses_demo_client_name_case_dash_nbsp_variants(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """casefold / NFKC / dash / NBSP variants of the pack DEMO name refuse."""
+    recorded = _record_sockets(monkeypatch)
+    variants = (
+        "demo — not a client estate",
+        "DEMO - not a client estate",
+        "DEMO \u2013 not a client estate",
+        "DEMO\u00a0—\u00a0not a client estate",
+        "DEMO  —  not a client estate",
+    )
+    for idx, name in enumerate(variants):
+        folder = tmp_path / f"v{idx}"
+        folder.mkdir()
+        path = _write_named_scope(folder, name)
+        assert name != PACK_DEMO_CLIENT_NAME
+        assert client_name_is_pack_demo(name)
+        with pytest.raises(LiveRefuse, match="DEMO SCOPE"):
+            run_live(scope_path=path, target="127.0.0.1", ports=[80])
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []
+
+
+def test_live_allows_unrelated_client_names_that_are_not_pack_demo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """'Demo Industries Inc' and bare 'DEMO' are not the pack DEMO estate."""
+    recorded = _record_sockets(monkeypatch)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
+    (tmp_path / "out").mkdir()
+    from shared import web_tls_live as live
+
+    monkeypatch.setattr(live, "tcp_open", lambda host, port, timeout=2.0: False)
+    monkeypatch.setattr(live, "http_exchange", lambda url, **_k: {"status": 200, "headers": {}})
+    monkeypatch.setattr(live, "tls_probe", lambda host, port=443, timeout=5.0: {"open": False, "port": port})
+    monkeypatch.setattr(live, "ssh_banner", lambda host, port=22, timeout=3.0: {})
+    for idx, name in enumerate(("Demo Industries Inc", "DEMO")):
+        assert not client_name_is_pack_demo(name)
+        folder = tmp_path / f"ok{idx}"
+        folder.mkdir()
+        path = _write_named_scope(folder, name)
+        payload = run_live(scope_path=path, target="127.0.0.1", ports=[80])
+        assert payload["target"] == "127.0.0.1"
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []
+
+
+def test_second_concurrent_live_binding_refuses() -> None:
+    """Process-global bind would let a second live run steal the first SCOPE."""
+    from shared import web_tls_live as live
+
+    ready = threading.Event()
+    release = threading.Event()
+    holder_err: list[BaseException] = []
+
+    def holder() -> None:
+        try:
+            with live._bind_scope(object()):
+                ready.set()
+                if not release.wait(5):
+                    raise TimeoutError("release not signaled")
+        except BaseException as exc:  # noqa: BLE001
+            holder_err.append(exc)
+
+    thread = threading.Thread(target=holder)
+    thread.start()
+    assert ready.wait(5)
+    with pytest.raises(LiveRefuse, match="concurrent"):
+        with live._bind_scope(object()):
+            raise AssertionError("second concurrent bind must refuse")
+    release.set()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert holder_err == []
+
+
+def test_unbound_thread_cannot_see_other_context_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A thread that did not bind must not inherit another thread's SCOPE."""
+    from shared import web_tls_live as live
+
+    recorded = _record_sockets(monkeypatch)
+    scope_path = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n")
+    scope = load_scope(scope_path)
+    seen: list[Any] = []
+    ready = threading.Event()
+    release = threading.Event()
+
+    def holder() -> None:
+        with live._bind_scope(scope):
+            seen.append(live._ACTIVE_SCOPE.get())
+            ready.set()
+            release.wait(5)
+
+    thread = threading.Thread(target=holder)
+    thread.start()
+    assert ready.wait(5)
+    assert live._ACTIVE_SCOPE.get() is None
+    with pytest.raises(LiveRefuse, match="bound signed SCOPE"):
+        live.build_snapshot("192.0.2.10", ports=[80])
+    release.set()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert seen and seen[0] is scope
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []

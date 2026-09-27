@@ -362,3 +362,16 @@ def test_yaml_lite_refuses_duplicate_mapping_keys_any_nesting() -> None:
     ok = load_yaml("a:\n  k: 1\nb:\n  k: 2\n")
     assert ok["a"]["k"] == 1
     assert ok["b"]["k"] == 2
+
+
+def test_yaml_lite_strips_quotes_from_mapping_keys() -> None:
+    """Quoted keys must participate in lookup and case-insensitive dups."""
+    data = load_yaml("'status': revoked\n\"revoked\": true\n")
+    assert data["status"] == "revoked"
+    assert data["revoked"] is True
+    assert "'status'" not in data
+    assert '"revoked"' not in data
+    with pytest.raises(ValueError, match="duplicate mapping key"):
+        load_yaml("'status': revoked\nstatus: active\n")
+    with pytest.raises(ValueError, match="duplicate mapping key"):
+        load_yaml("\"Status\": authorized\nstatus: authorized\n")

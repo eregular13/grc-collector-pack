@@ -11,10 +11,12 @@ import pytest
 from dropbox.scope import (
     GateError,
     load_scope,
+    refuse_unknown_scope_keys,
     require_authorized_ports,
     require_live_probe,
     require_not_revoked,
 )
+from dropbox.yaml_lite import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -323,3 +325,90 @@ def test_nested_duplicate_mapping_key_refuses_load(tmp_path: Path) -> None:
     )
     with pytest.raises(GateError, match="duplicate"):
         load_scope(path)
+
+
+def test_quoted_status_revoked_refuses_load(tmp_path: Path) -> None:
+    """'status': revoked must not be an unknown key that is silently ignored."""
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, "  'status': revoked\n"))
+
+
+def test_quoted_revoked_true_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="revoked"):
+        load_scope(_write_scope(tmp_path, '  "revoked": true\n'))
+
+
+def test_quoted_status_duplicate_of_bare_status_refuses_load(tmp_path: Path) -> None:
+    """Quoted + bare status in one mapping is a duplicate, not last-win."""
+    with pytest.raises(GateError, match="duplicate"):
+        load_scope(_write_scope(tmp_path, "  'status': revoked\n  status: active\n"))
+
+
+def test_quoted_ports_allowed_applies_limit(tmp_path: Path) -> None:
+    """'ports_allowed': [443] must not load with no port limit."""
+    scope = load_scope(_write_scope(tmp_path, "'ports_allowed':\n  - 443\n"))
+    assert scope.ports_allowed == [443]
+    assert scope.allows_port(443)
+    assert not scope.allows_port(80)
+    with pytest.raises(GateError, match="port"):
+        require_authorized_ports(scope, [80])
+
+
+def test_unknown_top_level_key_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="unknown key"):
+        load_scope(_write_scope(tmp_path, "not_a_real_scope_key: 1\n"))
+
+
+def test_unknown_nested_key_refuses_load(tmp_path: Path) -> None:
+    with pytest.raises(GateError, match="unknown key"):
+        load_scope(_write_scope(tmp_path, "  surprise_engagement_field: 1\n"))
+
+
+def test_non_ascii_key_refuses_load(tmp_path: Path) -> None:
+    """Cyrillic lookalike 's' (U+0455) in a status key must refuse."""
+    with pytest.raises(GateError, match="non-ASCII"):
+        load_scope(_write_scope(tmp_path, "  \u0455tatus: revoked\n"))
+
+
+def test_committed_scope_files_load_like_master() -> None:
+    """Every committed SCOPE file still parses to the same mapping as master."""
+    demo_path = ROOT / "dropbox" / "SCOPE.yaml"
+    example_path = ROOT / "dropbox" / "SCOPE.example.yaml"
+    demo = load_yaml(demo_path.read_text(encoding="utf-8"))
+    example = load_yaml(example_path.read_text(encoding="utf-8"))
+    refuse_unknown_scope_keys(demo)
+    refuse_unknown_scope_keys(example)
+    assert demo["client"]["name"] == "DEMO — not a client estate"
+    assert demo["internal"]["cidrs"] == ["10.20.30.0/23", "192.168.10.0/24"]
+    assert demo["internal"]["hosts"] == [
+        "127.0.0.1",
+        "dropbox-lab.local",
+        "app-01.demo.internal",
+        "app-02.demo.internal",
+        "db-01.demo.internal",
+    ]
+    assert demo["external"]["hosts"] == ["vpn.example.com", "staging.example.com"]
+    assert demo["external"]["domains"] == ["example.com"]
+    assert demo["external"]["ips"] == ["192.0.2.10"]
+    assert demo["allow_tools"] == [
+        "lynis",
+        "ss",
+        "ip",
+        "curl",
+        "nmap",
+        "nessus",
+        "nessuscli",
+        "testssl",
+    ]
+    assert demo["orchestrator"]["stages"]["deepen"] is True
+    assert demo["orchestrator"]["stages"]["external"] is False
+    assert demo["byo"] == []
+    assert demo.get("ports_allowed") is None
+    scope = load_scope(demo_path)
+    assert scope.client_name == "DEMO — not a client estate"
+    assert scope.ports_allowed is None
+    assert scope.stage_deepen is True
+    assert scope.internal_cidrs == ["10.20.30.0/23", "192.168.10.0/24"]
+    assert example["client"]["name"] == "CLIENT LEGAL NAME"
+    assert example["orchestrator"]["stages"]["deepen"] is False
+    assert "nmap" not in [str(t).lower() for t in (example.get("allow_tools") or [])]

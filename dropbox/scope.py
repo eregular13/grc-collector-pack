@@ -73,6 +73,49 @@ EXTERNAL_STAGE_TOOLS = frozenset({"curl", "testssl", "testssl.sh"})
 DISCOVER_STAGE_TOOLS = frozenset({"nmap"})
 DEEPEN_STAGE_TOOLS = frozenset({"nessus", "nessuscli"})
 
+# Explicit allowlist of known keys per section. Derived from Scope / load_scope,
+# committed dropbox/SCOPE.yaml + SCOPE.example.yaml, and OPERATOR / WEB_TLS docs.
+# Comparison is case-insensitive. Unknown keys and any non-ASCII key refuse.
+_SCOPE_KEYS: dict[str, frozenset[str]] = {
+    "": frozenset(
+        {
+            "client",
+            "consent",
+            "engagement",
+            "revoked",
+            "status",
+            "ports_allowed",
+            "internal",
+            "external",
+            "allow_tools",
+            "orchestrator",
+            "byo",
+        }
+    ),
+    "client": frozenset({"name"}),
+    "consent": frozenset({"attestation_path", "attestation_sha256"}),
+    "engagement": frozenset(
+        {"start", "begin", "end", "status", "revoked", "ports_allowed"}
+    ),
+    "internal": frozenset({"cidrs", "hosts"}),
+    "external": frozenset({"hosts", "domains", "ips"}),
+    "orchestrator": frozenset(
+        {
+            "discover_prefix",
+            "deepen_batch",
+            "max_live_shards",
+            "max_workers",
+            "host_timeout_sec",
+            "stages",
+            "deepen_hosts",
+            "stage_tools",
+        }
+    ),
+    "orchestrator.stages": frozenset({"discover", "deepen", "external"}),
+    "orchestrator.stage_tools": frozenset({"discover", "deepen"}),
+    "byo[]": frozenset({"name", "args", "sensor", "timeout"}),
+}
+
 
 class GateError(SystemExit):
     """SCOPE gate failed. Exit non-zero."""
@@ -486,14 +529,61 @@ def write_attestation_hash(scope_path: Path, digest: str) -> None:
     scope_path.write_text("".join(out), encoding="utf-8")
 
 
+def _key_is_ascii(key: str) -> bool:
+    return all(ord(ch) < 128 for ch in key)
+
+
+def _where(path: str) -> str:
+    return path if path else "root"
+
+
+def refuse_unknown_scope_keys(data: Any, path: str = "") -> None:
+    """Refuse non-ASCII keys and keys outside the per-section allowlist.
+
+    Walks every mapping section that has an allowlist. A known scalar field
+    whose value is a mapping (nested ``status: {state: …}``) is left to the
+    existing status/revocation check — that path is not a section.
+    """
+    if isinstance(data, list):
+        item_path = f"{path}[]" if path else "[]"
+        allowed = _SCOPE_KEYS.get(item_path)
+        for item in data:
+            if isinstance(item, dict):
+                if allowed is None:
+                    raise GateError(f"unexpected mapping item under {_where(path)}")
+                refuse_unknown_scope_keys(item, item_path)
+            elif isinstance(item, list):
+                refuse_unknown_scope_keys(item, item_path)
+        return
+    if not isinstance(data, dict):
+        return
+    allowed = _SCOPE_KEYS.get(path)
+    if allowed is None:
+        raise GateError(f"unexpected mapping at {_where(path)}")
+    want = {name.lower() for name in allowed}
+    for raw_key, value in data.items():
+        key = str(raw_key)
+        if not _key_is_ascii(key):
+            raise GateError(f"non-ASCII mapping key {key!r} at {_where(path)}")
+        fold = key.strip().lower()
+        if fold not in want:
+            raise GateError(f"unknown key {key!r} at {_where(path)}")
+        child = f"{path}.{fold}" if path else fold
+        if isinstance(value, dict) and child in _SCOPE_KEYS:
+            refuse_unknown_scope_keys(value, child)
+        elif isinstance(value, list):
+            refuse_unknown_scope_keys(value, child)
+
+
 def _load_scope_mapping(scope_path: Path) -> dict:
-    """Parse SCOPE YAML. Duplicate keys (any nest, any case) fail closed."""
+    """Parse SCOPE YAML. Duplicate / unknown / non-ASCII keys fail closed."""
     try:
         data = load_yaml(scope_path.read_text(encoding="utf-8"))
     except ValueError as exc:
         raise GateError(str(exc)) from exc
     if not isinstance(data, dict) or not data:
         raise GateError("SCOPE.yaml is empty or not a mapping")
+    refuse_unknown_scope_keys(data)
     return data
 
 

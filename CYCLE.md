@@ -1,5 +1,18 @@
 # CYCLE log
 
+## cycle 221 — SCOPE quoted keys, bind isolation, DEMO name (2026-09-27)
+
+yaml_lite strips matching quotes from mapping keys so `'status'` and
+`status` share lookup and case-insensitive duplicate detection.
+SCOPE loader allowlists known keys per section and refuses unknown or
+non-ASCII keys. Live SCOPE bind is a contextvar; a second concurrent
+bind refuses. Pack DEMO `client.name` comparison is casefold + NFKC +
+collapsed whitespace + unicode dashes as `-`. Pytest **1783**. Host-lab
+79 / 103 / poam 119 / excluded 6. DEMO / SAMPLE / farm `poam.csv`
+byte-identical to master `b67de6f` (119 / 8 / 73). Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
 ## cycle 220 — SCOPE gate harden (Metis #196 follow-up) (2026-09-27)
 
 Live SCOPE status is an allowlist (`active` / `authorized` / `approved` /
