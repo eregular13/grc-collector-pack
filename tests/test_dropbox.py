@@ -352,3 +352,13 @@ def test_yaml_lite_round_trip_scope() -> None:
     data = load_yaml((ROOT / "dropbox" / "SCOPE.yaml").read_text(encoding="utf-8"))
     assert data["client"]["name"].startswith("DEMO")
     assert "10.20.30.0/23" in data["internal"]["cidrs"]
+
+
+def test_yaml_lite_refuses_duplicate_mapping_keys_any_nesting() -> None:
+    with pytest.raises(ValueError, match="duplicate mapping key"):
+        load_yaml("k: 1\nk: 2\n")
+    with pytest.raises(ValueError, match="duplicate mapping key"):
+        load_yaml("a:\n  b: 1\n  B: 2\n")
+    ok = load_yaml("a:\n  k: 1\nb:\n  k: 2\n")
+    assert ok["a"]["k"] == 1
+    assert ok["b"]["k"] == 2

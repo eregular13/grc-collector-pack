@@ -1,4 +1,8 @@
-"""Minimal YAML subset loader for SCOPE files. No PyYAML dependency."""
+"""Minimal YAML subset loader for SCOPE files. No PyYAML dependency.
+
+Duplicate mapping keys fail closed at every nesting level. Comparison is
+case-insensitive (``Status`` and ``status`` in the same mapping are dups).
+"""
 
 from __future__ import annotations
 
@@ -33,6 +37,10 @@ def load_yaml(text: str) -> Any:
         rest = rest.strip()
         if not isinstance(parent, dict):
             raise ValueError(f"mapping entry without mapping parent: {stripped}")
+        fold = key.lower()
+        for existing in parent:
+            if str(existing).strip().lower() == fold:
+                raise ValueError(f"duplicate mapping key {key!r}")
         if rest == "":
             nxt = _next_significant(lines, i)
             if nxt is not None and nxt.lstrip().startswith("- "):

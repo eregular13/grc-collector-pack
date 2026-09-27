@@ -11,9 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from dropbox.scope import GateError, attestation_digest
+from dropbox.scope import GateError, attestation_digest, load_scope
 from shared.web_tls_live import (
     LiveRefuse,
+    PACK_DEMO_CLIENT_NAME,
     PACK_DEMO_CONSENT_SHA256,
     default_http_urls,
     is_bare_host,
@@ -313,3 +314,71 @@ def test_build_snapshot_without_bound_scope_refuses(monkeypatch: pytest.MonkeyPa
     connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
     assert connects == []
     assert not any("example.invalid" in str(h) for h, _p in connects)
+
+
+def test_authorize_endpoint_unbinds_scope_after_return(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from shared import web_tls_live as live
+
+    recorded = _record_sockets(monkeypatch)
+    scope_path = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n")
+    scope = load_scope(scope_path)
+    live._ACTIVE_SCOPE = None
+    dest = live.authorize_endpoint(scope, "192.0.2.10", 80)
+    assert dest == "192.0.2.10"
+    assert live._ACTIVE_SCOPE is None
+    with pytest.raises(LiveRefuse, match="bound signed SCOPE"):
+        live.build_snapshot("192.0.2.10", ports=[80])
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []
+
+
+def test_authorize_endpoint_unbinds_scope_on_exception(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from shared import web_tls_live as live
+
+    recorded = _record_sockets(monkeypatch)
+    scope_path = _signed_scope(tmp_path, extra_root="ports_allowed:\n  - 80\n")
+    scope = load_scope(scope_path)
+    live._ACTIVE_SCOPE = None
+    with pytest.raises(LiveRefuse, match="bare host"):
+        live.authorize_endpoint(scope, "http://evil.example/", 80)
+    assert live._ACTIVE_SCOPE is None
+    with pytest.raises(LiveRefuse, match="bound signed SCOPE"):
+        live.build_snapshot("192.0.2.10", ports=[80])
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []
+
+
+def test_live_refuses_demo_client_name_regardless_of_consent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorded = _record_sockets(monkeypatch)
+    att, digest = _consent(tmp_path)
+    assert digest != PACK_DEMO_CONSENT_SHA256
+    today = date.today()
+    path = tmp_path / "client-SCOPE.yaml"
+    path.write_text(
+        f"client:\n  name: {PACK_DEMO_CLIENT_NAME}\nconsent:\n"
+        f"  attestation_path: {att}\n  attestation_sha256: {digest}\n"
+        f"engagement:\n  start: {(today - timedelta(days=1)).isoformat()}\n"
+        f"  end: {(today + timedelta(days=30)).isoformat()}\n"
+        "internal:\n  hosts:\n    - 127.0.0.1\n  cidrs:\n    - 192.0.2.0/24\n"
+        "external:\n  hosts:\n    - vpn.example.invalid\n  ips:\n    - 192.0.2.10\n"
+        "allow_tools:\n  - curl\n",
+        encoding="utf-8",
+    )
+    assert "demo-written-consent" not in path.read_text(encoding="utf-8").lower()
+    with pytest.raises(LiveRefuse, match="DEMO SCOPE"):
+        run_live(scope_path=path, target="127.0.0.1", ports=[80])
+    connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
+    assert connects == []
+
+
+def test_pack_demo_client_name_matches_repo_file() -> None:
+    from dropbox.yaml_lite import load_yaml
+
+    data = load_yaml((ROOT / "dropbox" / "SCOPE.yaml").read_text(encoding="utf-8"))
+    assert data["client"]["name"] == PACK_DEMO_CLIENT_NAME

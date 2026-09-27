@@ -437,9 +437,7 @@ def consent_file_from_scope(scope_path: Path) -> tuple[Path, str]:
     """Resolve attestation path + declared hash. Does not verify the hash (attest uses this)."""
     if not scope_path.is_file():
         raise GateError(f"no SCOPE file at {scope_path}")
-    data = load_yaml(scope_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or not data:
-        raise GateError("SCOPE.yaml is empty or not a mapping")
+    data = _load_scope_mapping(scope_path)
     consent = data.get("consent") if isinstance(data.get("consent"), dict) else {}
     att_rel = str(consent.get("attestation_path") or "").strip()
     att_hash = str(consent.get("attestation_sha256") or "").strip().lower()
@@ -488,13 +486,22 @@ def write_attestation_hash(scope_path: Path, digest: str) -> None:
     scope_path.write_text("".join(out), encoding="utf-8")
 
 
+def _load_scope_mapping(scope_path: Path) -> dict:
+    """Parse SCOPE YAML. Duplicate keys (any nest, any case) fail closed."""
+    try:
+        data = load_yaml(scope_path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise GateError(str(exc)) from exc
+    if not isinstance(data, dict) or not data:
+        raise GateError("SCOPE.yaml is empty or not a mapping")
+    return data
+
+
 def load_scope(path: Path | None = None) -> Scope:
     scope_path = Path(path) if path else default_scope_path()
     if not scope_path.is_file():
         raise GateError(f"no SCOPE file at {scope_path}")
-    data = load_yaml(scope_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or not data:
-        raise GateError("SCOPE.yaml is empty or not a mapping")
+    data = _load_scope_mapping(scope_path)
 
     client = data.get("client") if isinstance(data.get("client"), dict) else {}
     name = str(client.get("name") or "").strip()
