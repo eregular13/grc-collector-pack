@@ -260,8 +260,12 @@ def _nikto_frac_minutes(frac: float) -> int | None:
 
 
 def _nikto_offset_in_range(sign: str, hours: int, minutes: int) -> bool:
-    """+14:00 and −12:00 are in; minutes past +14 or below −12 are out."""
-    if minutes >= 60:
+    """+14:00 and −12:00 are in; minutes past +14 or below −12 are out.
+
+    ``{0, 30, 45}`` applies to decimal, hhmm, and colon forms so
+    ``GMT0559`` / ``GMT+5:15`` are rejected the same way as ``GMT5.25``.
+    """
+    if minutes not in _NIKTO_VALID_MINUTES:
         return False
     total = hours * 60 + minutes
     if sign == "-":
