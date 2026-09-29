@@ -205,23 +205,45 @@ EXPORT_OTHER_REL = (
 )
 
 
+# ZWSP / BOM are invisible padding, not joiners. Strip them from display
+# the way #206 did. Other Cf (ZWNJ, ZWJ, word joiner, soft hyphen) stay
+# in the displayed name so Persian / Hindi / emoji sequences keep shape.
+_ZWSP_BOM = dict.fromkeys(map(ord, "\ufeff\u200b"), None)
+
+
 def _strip_format_chars(text: str) -> str:
     """Drop Unicode category Cf (ZWSP, BOM, ZWNJ, ZWJ, word joiner, soft hyphen)."""
     return "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
 
 
+def _trim_edges_and_zwsp(text: str) -> str:
+    """Display form: drop ZWSP/BOM, then leading/trailing whitespace and Cf."""
+    text = text.translate(_ZWSP_BOM)
+    text = text.strip()
+    while text and unicodedata.category(text[0]) == "Cf":
+        text = text[1:]
+    while text and unicodedata.category(text[-1]) == "Cf":
+        text = text[:-1]
+    return text.strip()
+
+
 def engagement_name(value: Any) -> str:
-    """Client / engagement display name. Empty or placeholder → '' (not quotes)."""
+    """Client / engagement display name. Empty or placeholder → '' (not quotes).
+
+    Emptiness uses the all-Cf-stripped copy. The returned display name keeps
+    joiners (ZWNJ/ZWJ) and only drops ZWSP/BOM plus edge Cf.
+    """
     if value is None:
         return ""
-    text = _strip_format_chars(str(value)).strip()
-    if not text:
+    raw = str(value)
+    emptied = _strip_format_chars(raw).strip()
+    if not emptied:
         return ""
-    if text == NOT_RECORDED:
+    if emptied == NOT_RECORDED:
         return ""
-    if text.lower() in _AUTH_PLACEHOLDERS:
+    if emptied.lower() in _AUTH_PLACEHOLDERS:
         return ""
-    return text
+    return _trim_edges_and_zwsp(raw)
 
 
 def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", client_name: Any = None) -> str:

@@ -227,6 +227,17 @@ def test_cipher_mentioning_caa_record_is_not_sc17() -> None:
     assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
 
 
+def test_cipherlist_mentioning_caa_is_not_sc17() -> None:
+    rec = _rec(
+        name="cipherlist_3DES_IDEA",
+        description="offered; CAA record ok; certificate issuer DigiCert",
+        labels=["testssl"],
+        extra={"id": "cipherlist_3DES_IDEA"},
+    )
+    assert is_pki_certificate_finding(rec) is False
+    assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
 def test_passing_cert_trust_is_not_sc17() -> None:
     rec = _rec(
         name="cert_trust",
@@ -234,6 +245,52 @@ def test_passing_cert_trust_is_not_sc17() -> None:
         labels=["testssl"],
         extra={"id": "cert_trust", "severity": "ok", "finding": "OK"},
     )
+    assert is_pki_certificate_finding(rec) is False
+    assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_high_cert_trust_via_cn_not_san_keeps_sc17() -> None:
+    """Text 'Ok via SAN' must not override HIGH. Kills the no-severity-gate mutant."""
+    rec = _rec(
+        name="cert_trust",
+        description="via CN, but not SAN (w/o SNI: Ok via SAN)",
+        severity="high",
+        labels=["testssl"],
+        extra={"id": "cert_trust"},
+    )
+    assert is_pki_certificate_finding(rec) is True
+    assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_medium_cert_trust_ok_via_san_keeps_sc17() -> None:
+    rec = _rec(
+        name="cert_trust",
+        description="via CN only (w/o SNI: Ok via SAN wildcard)",
+        severity="medium",
+        labels=["testssl"],
+        extra={"id": "cert_trust"},
+    )
+    assert is_pki_certificate_finding(rec) is True
+    assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_cert_trust_without_severity_ok_text_is_not_sc17() -> None:
+    """No-severity OK text is passing. Kills a mutant that drops the text branch.
+
+    Built by hand so make_record cannot rewrite empty severity to info.
+    """
+    rec = {
+        "kind": "finding",
+        "source": "vuln-scan",
+        "ref_id": "R5-9",
+        "name": "cert_trust",
+        "description": "OK — certificate is trusted",
+        "severity": "",
+        "category": "vulnerability",
+        "assets": ["vpn.example.com"],
+        "labels": ["testssl"],
+        "extra": {"id": "cert_trust"},
+    }
     assert is_pki_certificate_finding(rec) is False
     assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
 
@@ -261,8 +318,38 @@ def test_non_tls_keyword_rows_do_not_gain_sc17() -> None:
         source="cloud-prowler",
         name="ACM certificate is expiring",
         description="certificate is expiring",
-        extra={},
+        labels=["acm"],
+        extra={"service": "acm"},
     )
     for rec in (code, kubelet, saml, acm):
         assert is_pki_certificate_finding(rec) is False
         assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_tls_cert_on_saml_or_acm_host_keeps_sc17() -> None:
+    saml_host = _rec(
+        source="vuln-scan",
+        name="TLS certificate expired",
+        description="certificate expired on saml.example.test",
+        extra={},
+    )
+    acm_host = _rec(
+        source="vuln-scan",
+        name="Self-signed certificate",
+        description="self-signed certificate on acm.corp.test",
+        extra={},
+    )
+    for rec in (saml_host, acm_host):
+        assert is_pki_certificate_finding(rec) is True
+        assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_prowler_elb_expired_cert_keeps_sc17() -> None:
+    rec = _rec(
+        source="cloud-prowler",
+        name="ELB listener certificate expired",
+        description="certificate expired on the load balancer listener",
+        extra={},
+    )
+    assert is_pki_certificate_finding(rec) is True
+    assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])

@@ -12,6 +12,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import os
 from pathlib import Path
 
 import pytest
@@ -176,6 +177,81 @@ def test_symlinked_riskready_dir_inside_out_is_skipped(tmp_path: Path) -> None:
     assert (inner / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
     assert (inner / "notes.txt").read_text(encoding="utf-8") == "keep-inner\n"
     assert (out / "riskready").is_symlink()
+
+
+def _force_windows_like_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No dir_fd, no O_NOFOLLOW: os.open on a directory raises PermissionError."""
+    monkeypatch.setattr(os, "supports_dir_fd", frozenset())
+    monkeypatch.setattr(os, "supports_fd", frozenset())
+    monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
+    real_open = os.open
+
+    def win_open(path, flags, mode=0o777, *, dir_fd=None):
+        if dir_fd is not None:
+            raise NotImplementedError("dir_fd")
+        target = os.fspath(path)
+        if os.path.isdir(target):
+            raise PermissionError(13, "Access is denied", target)
+        return real_open(path, flags, mode)
+
+    monkeypatch.setattr(os, "open", win_open)
+
+
+def test_windows_like_fallback_removes_pack_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _force_windows_like_cleanup(monkeypatch)
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+    removed = clean_retired_pack_outputs(out)
+    assert set(removed) >= {
+        "riskready/assets.json",
+        "riskready/incidents.json",
+        "riskready/evidence.json",
+        "riskready/risks_proposed.json",
+        "riskready",
+    }
+    assert not (out / "riskready").exists()
+    assert (out / "operator-notes.txt").read_text(encoding="utf-8") == "keep me\n"
+
+
+def test_windows_like_fallback_skips_symlinked_riskready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _force_windows_like_cleanup(monkeypatch)
+    victim = tmp_path / "project" / "riskready"
+    victim.mkdir(parents=True)
+    (victim / "assets.json").write_bytes(pack_shaped_bytes("assets.json"))
+    (victim / "src.py").write_text("print(1)\n", encoding="utf-8")
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "riskready").symlink_to(victim)
+    clean_retired_pack_outputs(out)
+    assert (victim / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (victim / "src.py").read_text(encoding="utf-8") == "print(1)\n"
+    assert (out / "riskready").is_symlink()
+
+
+def test_missing_riskready_is_silent(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    caplog.set_level(logging.WARNING)
+    assert clean_retired_pack_outputs(out) == []
+    assert not any("riskready" in r.getMessage().lower() for r in caplog.records)
+
+
+def test_cleanup_notimplemented_does_not_raise(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shared.pack_outputs as pack_outputs
+
+    def boom(_out):
+        raise NotImplementedError("dir_fd")
+
+    monkeypatch.setattr(pack_outputs, "_clean_retired_pack_outputs", boom)
+    assert pack_outputs.clean_retired_pack_outputs(tmp_path) == []
 
 
 def test_known_name_without_pack_json_is_kept(tmp_path: Path) -> None:

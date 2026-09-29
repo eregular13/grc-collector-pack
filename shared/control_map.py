@@ -1077,6 +1077,8 @@ def _is_tls_protocol_or_cipher(rec: dict[str, Any]) -> bool:
     ids = _extra_ids(rec)
     if ids & _TLS_PROTOCOL_CIPHER_IDS:
         return True
+    if any(i.startswith("cipherlist_") or i.startswith("cipherlist-") for i in ids):
+        return True
     ftype = finding_type(rec)
     return ftype in _TLS_PROTOCOL_CIPHER_TYPES
 
@@ -1084,29 +1086,30 @@ def _is_tls_protocol_or_cipher(rec: dict[str, Any]) -> bool:
 _PASS_CERT_SEV = frozenset({"ok", "info", "information", "pass", "passed", "debug", "warnok"})
 _NON_TLS_KEYWORD_SOURCES = frozenset(
     {
-        "code-secrets",
         "code_secrets",
-        "k8s-kubescape",
         "k8s_kubescape",
-        "saas-idp",
         "saas_idp",
-        "cloud-prowler",
-        "cloud_prowler",
-        "identity-ad",
         "identity_ad",
     }
 )
 
 
 def _is_passing_cert_trust(rec: dict[str, Any]) -> bool:
-    """testssl cert_trust OK/INFO is not a PKI failure."""
+    """testssl cert_trust OK/INFO is not a PKI failure.
+
+    The pack parser already drops OK/INFO rows. A HIGH/MEDIUM ``cert_trust``
+    finding that mentions ``Ok via SAN`` is still a failure. The text
+    heuristic runs only when the row has no severity.
+    """
     ids = _extra_ids(rec)
     if "cert_trust" not in ids:
         return False
     extra = extra_dict(rec)
-    sev = str(extra.get("severity") or rec.get("severity") or "").strip().lower()
-    if sev in _PASS_CERT_SEV:
-        return True
+    extra_sev = str(extra.get("severity") or "").strip().lower()
+    rec_sev = str(rec.get("severity") or "").strip().lower()
+    sev = extra_sev or rec_sev
+    if sev:
+        return sev in _PASS_CERT_SEV
     blob = f"{rec.get('name') or ''} {rec.get('description') or ''} {extra.get('finding') or ''}".lower()
     fail = re.search(r"\b(fail|mismatch|untrusted|not trusted|wrong hostname|expired)\b", blob)
     ok = re.search(r"\b(ok|pass(?:ed)?|trusted|matches)\b", blob)
@@ -1114,14 +1117,21 @@ def _is_passing_cert_trust(rec: dict[str, Any]) -> bool:
 
 
 def _blocks_keyword_sc17(rec: dict[str, Any]) -> bool:
-    """Non-TLS sensors must not pick up SC-17 from 'self-signed' / issuer text."""
+    """Non-TLS sensors must not pick up SC-17 from 'self-signed' / issuer text.
+
+    Match source / tool / labels / check id only — not host names in the
+    description (``saml.example.test``, ``acm.corp.test``). cloud-prowler
+    is not a blanket block so an ELB expired-cert row can still be PKI.
+    """
     source = str(rec.get("source") or "").strip().lower().replace("-", "_")
     if source in _NON_TLS_KEYWORD_SOURCES:
         return True
     extra = extra_dict(rec)
     tool = str(extra.get("tool") or "").strip().lower()
     labels = " ".join(str(x) for x in (rec.get("labels") or [])).lower()
-    blob = f"{source} {tool} {labels} {rec.get('name') or ''} {rec.get('description') or ''}".lower()
+    ids = " ".join(sorted(_extra_ids(rec)))
+    service = str(extra.get("service") or extra.get("product") or "").strip().lower()
+    blob = f"{source} {tool} {labels} {ids} {service}"
     return bool(
         re.search(r"\b(kubelet|saml|gitleaks|trufflehog)\b", blob)
         or re.search(r"\bacm\b", blob)
