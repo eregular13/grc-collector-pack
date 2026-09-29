@@ -38,6 +38,7 @@ from shared.scan_time import (
     NOT_RECORDED,
     _RUN_CLOCK,
     bind_run_clock,
+    earlier_scan_raw,
     epoch_cutoff_date,
     extra_scan_raw,
     format_detection_date,
@@ -519,6 +520,122 @@ def test_naabu_full_tie_raw_stamp_is_order_independent(tmp_path: Path) -> None:
         assert hosts[0]["scan_time"] == expected
 
 
+def test_naabu_epoch_vs_negative_offset_keeps_earlier_local_date(tmp_path: Path) -> None:
+    """Same instant: epoch 09-02 03:00Z vs 20:00-07:00. Local date 09-01 wins.
+
+    Lex of the raw strings would pick the epoch (``1788318000`` < ISO),
+    so this case is not masked by the raw-string tie. Removing the
+    local-date rule would store 09-02.
+    """
+    epoch = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 22,
+        "protocol": "tcp",
+        "timestamp": 1_788_318_000,  # 2026-09-02T03:00:00Z
+    }
+    evening = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 80,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T20:00:00-07:00",
+    }
+    assert str(epoch["timestamp"]) < evening["timestamp"]
+    for i, rows in enumerate(((epoch, evening), (evening, epoch))):
+        dest = tmp_path / f"naabu-epoch-local-{i}.jsonl"
+        dest.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        hosts = parse_fast_portscan(dest)
+        assert hosts and len(hosts) == 1
+        assert hosts[0]["scan_time"] == evening["timestamp"]
+        assert format_detection_date(hosts[0]["scan_time"]) == "2026-09-01"
+        recs = inventory_nmap.parse_file(dest)
+        assert _dates(recs) == {"2026-09-01"}
+
+
+def test_naabu_later_lex_smaller_stamp_does_not_win(tmp_path: Path) -> None:
+    """Later 12:30-07:00 sorts before 19:00Z; earlier stamp wins both orders."""
+    later = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 22,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T12:30:00-07:00",  # 19:30Z
+    }
+    earlier = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 80,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T19:00:00Z",
+    }
+    assert later["timestamp"] < earlier["timestamp"]
+    for i, rows in enumerate(((later, earlier), (earlier, later))):
+        dest = tmp_path / f"naabu-lex-later-{i}.jsonl"
+        dest.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        hosts = parse_fast_portscan(dest)
+        assert hosts and len(hosts) == 1
+        assert hosts[0]["scan_time"] == earlier["timestamp"]
+
+
+def test_naabu_full_tie_prefers_zoned_stamp_over_naive(tmp_path: Path) -> None:
+    """Same instant: keep Z / offset, not the zoneless string (artifact-local)."""
+    naive = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 22,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T19:00:00",
+    }
+    zulu = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 80,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T19:00:00Z",
+    }
+    assert naive["timestamp"] < zulu["timestamp"]
+    assert earlier_scan_raw(naive["timestamp"], zulu["timestamp"]) == zulu["timestamp"]
+    assert earlier_scan_raw(zulu["timestamp"], naive["timestamp"]) == zulu["timestamp"]
+    for i, rows in enumerate(((naive, zulu), (zulu, naive))):
+        dest = tmp_path / f"naabu-zoned-tie-{i}.jsonl"
+        dest.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        hosts = parse_fast_portscan(dest)
+        assert hosts and len(hosts) == 1
+        assert hosts[0]["scan_time"] == zulu["timestamp"]
+        assert zone_for(hosts[0]["scan_time"]) == "UTC"
+
+
+def test_unparseable_incoming_does_not_replace_parseable(tmp_path: Path) -> None:
+    """#205: garbage / empty never overwrites a dated stamp (either order)."""
+    good = "2026-09-02T00:00:00Z"
+    assert earlier_scan_raw(good, "not-a-clock") == good
+    assert earlier_scan_raw(good, "xyz") == good
+    assert earlier_scan_raw("garbage", good) == good
+    parseable = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 22,
+        "protocol": "tcp",
+        "timestamp": good,
+    }
+    junk = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 80,
+        "protocol": "tcp",
+        "timestamp": "not-a-clock",
+    }
+    for i, rows in enumerate(((parseable, junk), (junk, parseable))):
+        dest = tmp_path / f"naabu-garbage-{i}.jsonl"
+        dest.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        hosts = parse_fast_portscan(dest)
+        assert hosts and len(hosts) == 1
+        assert hosts[0]["scan_time"] == good
+        recs = inventory_nmap.parse_file(dest)
+        assert _dates(recs) == {"2026-09-02"}
+
+
 def test_seven_tools_malformed_values_are_not_recorded(tmp_path: Path) -> None:
     cases = [
         (
@@ -767,6 +884,10 @@ def test_nikto_offset_range_guards() -> None:
         f"{body} (GMT+5:60)",
         f"{body} (GMT+5:99)",
         f"{body} (GMT5.25)",
+        f"{body} (GMT0559)",
+        f"{body} (GMT1259)",
+        f"{body} (GMT0515)",
+        f"{body} (GMT+5:15)",
         f"{body} (GMT14.5)",
         f"{body} (GMT14.25)",
         f"{body} (GMT+1430)",
@@ -872,10 +993,16 @@ def test_run_clock_thread_isolation() -> None:
 
 
 def test_future_epoch_cutoff_naive_clock_is_utc(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Naive now= is UTC. TZ=PT + naive 20:00 would be next-day UTC if local."""
+    """Naive now= is UTC. TZ=PT + naive 20:00 would be next-day UTC if local.
+
+    ``time.tzset`` is POSIX-only. On Windows the TZ pin is skipped; the
+    naive=UTC and aware-PT assertions still run.
+    """
+    has_tzset = hasattr(time, "tzset")
     prev_tz = os.environ.get("TZ")
-    monkeypatch.setenv("TZ", "America/Los_Angeles")
-    time.tzset()
+    if has_tzset:
+        monkeypatch.setenv("TZ", "America/Los_Angeles")
+        time.tzset()
     try:
         naive = datetime(2020, 1, 1, 20, 0, 0)  # no tzinfo — 20:00 UTC, not PT
         mid_2026 = 1_777_719_763
@@ -892,9 +1019,11 @@ def test_future_epoch_cutoff_naive_clock_is_utc(monkeypatch: pytest.MonkeyPatch)
         assert epoch_cutoff_date(evening_pt) == date(2026, 9, 30)
         assert format_detection_date(mid_2026, now=evening_pt) == "2026-05-02"
     finally:
-        if prev_tz is None:
-            os.environ.pop("TZ", None)
-        else:
-            os.environ["TZ"] = prev_tz
-        time.tzset()
+        if has_tzset:
+            if prev_tz is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = prev_tz
+            time.tzset()
+
 
