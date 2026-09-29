@@ -263,8 +263,10 @@ def cmp_scan_dt(left: datetime, right: datetime) -> int:
 def earlier_scan_raw(current: Any, incoming: Any, *, now: datetime | date | None = None) -> Any:
     """Keep the earliest parseable observation. File order does not win.
 
-    Exact UTC-instant + local-date ties break on the raw stamp string so
-    the stored value is deterministic (lexicographically smaller wins).
+    Exact UTC-instant + local-date ties prefer a zoned stamp (``Z`` or
+    offset) over a zoneless string so the zone label stays UTC, then
+    break on the raw stamp string (lexicographically smaller wins).
+    An unparseable stamp never replaces a parseable one.
     """
     if incoming in (None, ""):
         return current
@@ -278,6 +280,10 @@ def earlier_scan_raw(current: Any, incoming: Any, *, now: datetime | date | None
             return incoming
         if order > 0:
             return current
+        in_zoned = parsed_in[0].tzinfo is not None
+        cur_zoned = parsed_cur[0].tzinfo is not None
+        if in_zoned != cur_zoned:
+            return incoming if in_zoned else current
         in_s, cur_s = str(incoming), str(current)
         return incoming if in_s < cur_s else current
     if parsed_in:
