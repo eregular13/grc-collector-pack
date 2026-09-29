@@ -104,28 +104,43 @@ PACK_JSON_KEYS: dict[str, frozenset[str]] = {
 _MAX_PACK_JSON_BYTES = 8 * 1024 * 1024
 _FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 _CLEANUP_EXC = (OSError, NotImplementedError)
+_WARNED: set[str] = set()
+_EACCES = getattr(__import__("errno"), "EACCES", 13)
+_EPERM = getattr(__import__("errno"), "EPERM", 1)
+
+
+def _warn_once(key: str, msg: str, *args: object) -> None:
+    if key in _WARNED:
+        return
+    _WARNED.add(key)
+    log.warning(msg, *args)
 
 
 def _dir_flags() -> int:
-    return os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_DIRECTORY", 0)
+    return os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY
 
 
 def _file_flags() -> int:
-    return os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    return os.O_RDONLY | os.O_NOFOLLOW
 
 
 def dir_fd_cleanup_supported() -> bool:
-    """True only when the fd-relative path can refuse a symlink mid-run."""
+    """True only when the fd-relative path can refuse a symlink mid-run.
+
+    Uses flag presence and the *names* in ``supports_dir_fd`` / ``supports_fd``,
+    not function identity, so monkeypatching ``os.open`` cannot flip the gate.
+    """
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        return False
     supports = getattr(os, "supports_dir_fd", None)
     if not supports:
         return False
-    needed = (os.open, os.stat, os.unlink, os.rmdir)
-    if any(fn not in supports for fn in needed):
+    names = {getattr(fn, "__name__", "") for fn in supports}
+    if not {"open", "stat", "unlink", "rmdir"} <= names:
         return False
-    fd_supports = getattr(os, "supports_fd", frozenset())
-    if os.listdir not in fd_supports:
-        return False
-    return hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")
+    fd_supports = getattr(os, "supports_fd", None) or frozenset()
+    fd_names = {getattr(fn, "__name__", "") for fn in fd_supports}
+    return "listdir" in fd_names
 
 
 def _norm_rel(rel_posix: str) -> str:
@@ -272,6 +287,8 @@ def _under_root(path: Path, root_resolved: Path) -> bool:
 
 
 def _clean_via_dir_fd(root: Path) -> list[str]:
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise NotImplementedError("O_NOFOLLOW and O_DIRECTORY required")
     try:
         dir_fd = os.open(os.fspath(root / RETIRED_PACK_OWNED_DIR), _dir_flags())
     except FileNotFoundError:
@@ -404,9 +421,17 @@ def _clean_retired_pack_outputs(out: Path) -> list[str]:
             return _clean_via_dir_fd(root)
         except FileNotFoundError:
             return []
-        except _CLEANUP_EXC as exc:
-            log.warning(
-                "retired-output cleanup: dir_fd path failed, using lstat: %s",
+        except NotImplementedError as exc:
+            _warn_once(
+                "notimplemented",
+                "retired-output cleanup: dir_fd unavailable, using lstat: %s",
                 exc,
             )
+            return _clean_via_path(root)
+        except OSError as exc:
+            # ELOOP / ENOTDIR / EACCES: skip. Do not path-walk (22bF).
+            err = getattr(exc, "errno", None)
+            key = "eacces" if err in {_EACCES, _EPERM} else "dir_fd_oserror"
+            _warn_once(key, "retired-output cleanup: skip out/riskready/: %s", exc)
+            return []
     return _clean_via_path(root)

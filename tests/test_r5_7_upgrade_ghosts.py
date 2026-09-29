@@ -13,6 +13,7 @@ import importlib
 import json
 import logging
 import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,7 @@ from shared.pack_outputs import (
     RETIRED_PACK_OWNED_DIRS,
     RETIRED_PACK_OWNED_FILES,
     clean_retired_pack_outputs,
+    dir_fd_cleanup_supported,
     is_retired_pack_owned,
     looks_like_pack_json,
     pack_shaped_bytes,
@@ -462,3 +464,364 @@ def test_loader_does_not_delete_unrelated_tree(
     assert other.read_bytes() == b"operator"
     assert (out / "operator-notes.txt").is_file()
     assert (out / "risks_proposed.json").is_file()
+
+
+def _force_path_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use the path walk without flipping O_NOFOLLOW / os.open together."""
+    import shared.pack_outputs as pack_outputs
+
+    monkeypatch.setattr(pack_outputs, "dir_fd_cleanup_supported", lambda: False)
+
+
+def _plant_outside_victim(tmp_path: Path) -> Path:
+    victim = tmp_path / "project" / "riskready"
+    victim.mkdir(parents=True)
+    for name in _PACK_JSON:
+        (victim / name).write_bytes(pack_shaped_bytes(name))
+    (victim / "src.py").write_text("print(1)\n", encoding="utf-8")
+    return victim
+
+
+def test_dir_fd_open_oserror_does_not_fallback_walk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """22bF: OSError on the dir_fd open must skip, not path-walk.
+
+    PermissionError/ELOOP on a supporting platform used to fall through to
+    the path walk and reopen a #206-style race. Victims outside out/ stay.
+    """
+    import errno
+    import shared.pack_outputs as pack_outputs
+
+    assert dir_fd_cleanup_supported()
+    victim = _plant_outside_victim(tmp_path)
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+
+    real_open = os.open
+
+    def open_oserror(path, flags, mode=0o777, *, dir_fd=None):
+        target = os.fspath(path)
+        if dir_fd is None and Path(target).name == "riskready":
+            raise PermissionError(errno.EACCES, "Permission denied", target)
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    walked: list[Path] = []
+    real_path = pack_outputs._clean_via_path
+
+    def spy_path(root):
+        walked.append(root)
+        return real_path(root)
+
+    monkeypatch.setattr(os, "open", open_oserror)
+    monkeypatch.setattr(pack_outputs, "_clean_via_path", spy_path)
+    # Monkeypatching os.open must not flip the capability gate (item 3).
+    assert dir_fd_cleanup_supported()
+
+    removed = clean_retired_pack_outputs(out)
+    assert removed == []
+    assert walked == []
+    assert (victim / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (victim / "src.py").read_text(encoding="utf-8") == "print(1)\n"
+    assert (out / "riskready" / "assets.json").read_bytes() == pack_shaped_bytes(
+        "assets.json"
+    )
+
+
+def test_dir_fd_open_eloop_does_not_fallback_walk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ELOOP on the dir_fd open (symlinked riskready) skips; no path walk."""
+    import errno
+    import shared.pack_outputs as pack_outputs
+
+    victim = _plant_outside_victim(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "riskready").symlink_to(victim)
+
+    real_open = os.open
+
+    def open_eloop(path, flags, mode=0o777, *, dir_fd=None):
+        target = os.fspath(path)
+        if dir_fd is None and Path(target).name == "riskready":
+            raise OSError(errno.ELOOP, "Too many levels of symbolic links", target)
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    walked: list[Path] = []
+
+    def spy_path(root):
+        walked.append(root)
+        return []
+
+    monkeypatch.setattr(os, "open", open_eloop)
+    monkeypatch.setattr(pack_outputs, "_clean_via_path", spy_path)
+    assert dir_fd_cleanup_supported()
+    removed = clean_retired_pack_outputs(out)
+    assert removed == []
+    assert walked == []
+    assert (victim / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (out / "riskready").is_symlink()
+
+
+def test_capability_not_flipped_by_monkeypatching_os_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before = dir_fd_cleanup_supported()
+    assert before is True
+
+    def fake_open(*_a, **_k):
+        raise AssertionError("capability must not call os.open")
+
+    monkeypatch.setattr(os, "open", fake_open)
+    assert dir_fd_cleanup_supported() is True
+
+
+def test_fallback_skips_reparse_point_via_st_file_attributes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dropping ``st_file_attributes & 0x400`` walks a junction and deletes."""
+    import shared.pack_outputs as pack_outputs
+
+    _force_path_fallback(monkeypatch)
+    monkeypatch.setattr(os.path, "isjunction", lambda _p: False)
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+    rr = out / "riskready"
+    rr_key = os.path.normpath(os.fspath(rr))
+    real_lstat = os.lstat
+
+    def lstat_reparse(path, *args, **kwargs):
+        st = real_lstat(path, *args, **kwargs)
+        if os.path.normpath(os.fspath(path)) == rr_key:
+            return _stat_with_attrs(st, 0x400)
+        return st
+
+    monkeypatch.setattr(os, "lstat", lstat_reparse)
+    monkeypatch.setattr(pack_outputs.os, "lstat", lstat_reparse)
+    removed = clean_retired_pack_outputs(out)
+    assert "riskready/assets.json" not in removed
+    assert (rr / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (out / "operator-notes.txt").read_text(encoding="utf-8") == "keep me\n"
+
+
+def test_fallback_skips_junction_via_isjunction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _force_path_fallback(monkeypatch)
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+    rr = out / "riskready"
+
+    def isj(path):
+        try:
+            return Path(path).resolve() == rr.resolve()
+        except OSError:
+            return False
+
+    monkeypatch.setattr(os.path, "isjunction", isj)
+    removed = clean_retired_pack_outputs(out)
+    assert "riskready/assets.json" not in removed
+    assert (rr / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert rr.is_dir()
+
+
+def test_only_o_nofollow_missing_does_not_delete_symlink_victims(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
+    assert dir_fd_cleanup_supported() is False
+    victim = _plant_outside_victim(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "riskready").symlink_to(victim)
+    clean_retired_pack_outputs(out)
+    assert (victim / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (victim / "src.py").read_text(encoding="utf-8") == "print(1)\n"
+    assert (out / "riskready").is_symlink()
+
+
+def test_capability_forced_true_without_nofollow_skips_victims(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shared.pack_outputs as pack_outputs
+
+    monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
+    monkeypatch.setattr(pack_outputs, "dir_fd_cleanup_supported", lambda: True)
+    victim = _plant_outside_victim(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "riskready").symlink_to(victim)
+    clean_retired_pack_outputs(out)
+    assert (victim / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (victim / "incidents.json").read_bytes() == pack_shaped_bytes(
+        "incidents.json"
+    )
+    assert (out / "riskready").is_symlink()
+
+
+def test_notimplemented_at_switch_cleans_ghosts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """NotImplementedError from the dir_fd path must fall through to the walk."""
+    import shared.pack_outputs as pack_outputs
+
+    monkeypatch.setattr(pack_outputs, "dir_fd_cleanup_supported", lambda: True)
+
+    def boom(_root):
+        raise NotImplementedError("dir_fd")
+
+    monkeypatch.setattr(pack_outputs, "_clean_via_dir_fd", boom)
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+    removed = clean_retired_pack_outputs(out)
+    assert set(removed) >= {
+        "riskready/assets.json",
+        "riskready/incidents.json",
+        "riskready/evidence.json",
+        "riskready/risks_proposed.json",
+        "riskready",
+    }
+    assert not (out / "riskready").exists()
+    assert (out / "operator-notes.txt").read_text(encoding="utf-8") == "keep me\n"
+
+
+def test_fallback_keeps_non_pack_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _force_path_fallback(monkeypatch)
+    out = tmp_path / "out"
+    rr = out / "riskready"
+    rr.mkdir(parents=True)
+    (rr / "assets.json").write_text('[{"foo": 1}]\n', encoding="utf-8")
+    clean_retired_pack_outputs(out)
+    assert (rr / "assets.json").read_text(encoding="utf-8") == '[{"foo": 1}]\n'
+    assert rr.is_dir()
+
+
+def test_fallback_size_cap_does_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _force_path_fallback(monkeypatch)
+    out = tmp_path / "out"
+    rr = out / "riskready"
+    rr.mkdir(parents=True)
+    big = rr / "assets.json"
+    fd = os.open(os.fspath(big), os.O_CREAT | os.O_WRONLY, 0o644)
+    try:
+        os.ftruncate(fd, 8 * 1024 * 1024 + 1)
+    finally:
+        os.close(fd)
+    reads: list[Path] = []
+    real_read = Path.read_bytes
+
+    def spy_read(self):
+        reads.append(self)
+        return real_read(self)
+
+    monkeypatch.setattr(Path, "read_bytes", spy_read)
+    clean_retired_pack_outputs(out)
+    assert reads == []
+    assert big.exists()
+    assert big.stat().st_size == 8 * 1024 * 1024 + 1
+    assert rr.is_dir()
+
+
+def test_fallback_fifo_does_not_hang(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import signal
+
+    if not hasattr(os, "mkfifo") or not hasattr(signal, "SIGALRM"):
+        pytest.skip("mkfifo/SIGALRM required")
+    _force_path_fallback(monkeypatch)
+    out = tmp_path / "out"
+    rr = out / "riskready"
+    rr.mkdir(parents=True)
+    os.mkfifo(os.fspath(rr / "assets.json"))
+
+    def _timeout(_signum, _frame):
+        raise TimeoutError("FIFO hang: cleanup opened a non-regular file")
+
+    old = signal.signal(signal.SIGALRM, _timeout)
+    signal.alarm(2)
+    try:
+        clean_retired_pack_outputs(out)
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
+    assert (rr / "assets.json").exists()
+    assert stat.S_ISFIFO(os.lstat(rr / "assets.json").st_mode)
+    assert rr.is_dir()
+
+
+def test_notimplemented_warns_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    import shared.pack_outputs as pack_outputs
+
+    pack_outputs._WARNED.clear()
+    monkeypatch.setattr(pack_outputs, "dir_fd_cleanup_supported", lambda: True)
+
+    def boom(_root):
+        raise NotImplementedError("dir_fd")
+
+    monkeypatch.setattr(pack_outputs, "_clean_via_dir_fd", boom)
+    out = tmp_path / "out"
+    out.mkdir()
+    caplog.set_level(logging.WARNING)
+    assert clean_retired_pack_outputs(out) == []
+    assert clean_retired_pack_outputs(out) == []
+    msgs = [r.getMessage() for r in caplog.records if "dir_fd unavailable" in r.getMessage()]
+    assert len(msgs) == 1
+
+
+def test_mode_000_warns_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """EACCES/mode-000 on the dir_fd open warns once, not every call."""
+    import errno
+    import shared.pack_outputs as pack_outputs
+
+    pack_outputs._WARNED.clear()
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+    real_open = os.open
+
+    def open_eacces(path, flags, mode=0o777, *, dir_fd=None):
+        target = os.fspath(path)
+        if dir_fd is None and Path(target).name == "riskready":
+            raise PermissionError(errno.EACCES, "Permission denied", target)
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(os, "open", open_eacces)
+    caplog.set_level(logging.WARNING)
+    assert clean_retired_pack_outputs(out) == []
+    assert clean_retired_pack_outputs(out) == []
+    msgs = [
+        r.getMessage()
+        for r in caplog.records
+        if "skip out/riskready/" in r.getMessage()
+    ]
+    assert len(msgs) == 1
+    assert (out / "riskready" / "assets.json").is_file()
+
+
+def _stat_with_attrs(st, attrs: int):
+    """Copy a stat_result and attach Windows ``st_file_attributes``."""
+
+    class _St:
+        def __init__(self, inner, file_attributes):
+            self._inner = inner
+            self.st_file_attributes = file_attributes
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+    return _St(st, attrs)
