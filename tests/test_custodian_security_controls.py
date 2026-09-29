@@ -444,6 +444,7 @@ def test_rdp_gateway_public_is_rd_gateway_exposed() -> None:
         assert want <= set(mapped.get("nist_800_53") or [])
         assert mapped["csf_subcategory"] == "PR.AA-03"
         assert "csf_PR_IR_01" in mapped["framework_refs"]
+        assert "csf_PR_IR_01" in mapped["csf"]
         assert "csf 2.0" not in mapped["recommended_fix"].lower()
         assert "primary" not in mapped["recommended_fix"].lower()
         assert "secondary" not in mapped["recommended_fix"].lower()
@@ -469,6 +470,7 @@ def test_rdgatewaypublic_non_alias_is_rd_gateway_exposed() -> None:
     mapped = map_finding(rec)
     assert mapped["csf_subcategory"] == "PR.AA-03"
     assert "csf_PR_IR_01" in mapped["framework_refs"]
+    assert "csf_PR_IR_01" in mapped["csf"]
 
 
 def test_rd_gateway_without_exposure_is_not_typed() -> None:
@@ -514,6 +516,46 @@ def test_standard_dashboard_card_gateway_phrases_are_not_rd_gateway() -> None:
         assert got != "rd_gateway_exposed", (check_id, desc, got)
         if want:
             assert got == want, (check_id, desc, got)
+
+
+def test_standard_dashboard_card_gateway_ids_are_not_rd_gateway() -> None:
+    """Compact regex on concatenated id+name must not type rd+gateway substrings."""
+    cases = (
+        "vpc-standard-gateway-open",
+        "dashboard-gateway-public",
+        "payment-card-gateway-open",
+        "onboard-gateway-rdp-open",
+        "standard_gateway_open",
+    )
+    for check_id in cases:
+        rec = _custodian_finding(
+            name=f"Cloud Custodian {check_id}",
+            description="published on the internet",
+            extra={"check_id": check_id, "classification": "security"},
+        )
+        got = finding_type(rec)
+        assert got != "rd_gateway_exposed", (check_id, got)
+
+
+def test_rd_gateway_snake_and_name_phrase_are_rd_gateway_exposed() -> None:
+    snake = _custodian_finding(
+        name="Cloud Custodian rd_gateway_public",
+        description="published on the internet",
+        extra={"check_id": "rd_gateway_public", "classification": "security"},
+    )
+    assert finding_type(snake) == "rd_gateway_exposed"
+    named = _custodian_finding(
+        name="RD Gateway",
+        description="published on the internet",
+        extra={"check_id": "cloud-policy-public", "classification": "security"},
+    )
+    assert finding_type(named) == "rd_gateway_exposed"
+    compact = _custodian_finding(
+        name="Cloud Custodian rdgateway-open",
+        description="published on the internet",
+        extra={"check_id": "rdgateway-open", "classification": "security"},
+    )
+    assert finding_type(compact) == "rd_gateway_exposed"
 
 
 def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:
@@ -613,14 +655,25 @@ def test_plural_security_groups_check_id_is_sg_ingress() -> None:
 
 
 def test_nested_arm_nsg_securityrules_is_sg_ingress() -> None:
+    """resource_type kind split only — check_id/name stay off nsg/sg tokens."""
     rec = _custodian_finding(
-        name="Cloud Custodian azure-nsg-rule-open",
-        description="ingress from 0.0.0.0/0",
+        name="Cloud Custodian open-ingress",
+        description="ingress from the internet",
         extra={
-            "check_id": "azure-nsg-rule-open",
+            "check_id": "open-ingress",
             "classification": "security",
             "resource_type": "microsoft.network/networksecuritygroups/securityrules",
         },
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+
+
+def test_description_only_network_security_group_is_sg_ingress() -> None:
+    """Mutant-kill m110: description phrase alone types SG ingress."""
+    rec = _custodian_finding(
+        name="Cloud Custodian policy-open",
+        description="Network security group allows ingress",
+        extra={"check_id": "policy-open", "classification": "security"},
     )
     assert finding_type(rec) == "sg_ingress_open"
 

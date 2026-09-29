@@ -943,20 +943,24 @@ _SG_COMPOUND_ID_RE = re.compile(
 )
 _APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
 _APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
-_RD_GATEWAY_COMPACT_RE = re.compile(r"rdpgateway|rdgateway", re.I)
-_RD_GATEWAY_PHRASE_RE = re.compile(r"\brd\s+gateway\b", re.I)
+_RD_GATEWAY_TOKENS = frozenset({"rdgateway", "rdpgateway"})
+_RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
 
 
-def _policy_tokens(*parts: str) -> set[str]:
-    """Whole tokens from policy text. Never feed a resource id into this."""
-    words: set[str] = set()
+def _policy_token_seq(*parts: str) -> list[str]:
+    """Ordered camel/digit tokens from policy text. Never feed a resource id."""
+    tokens: list[str] = []
     for part in parts:
         text = str(part or "")
         if not text:
             continue
-        for tok in _CAMEL_DIGIT_RE.findall(text):
-            words.add(tok.lower())
-    return words
+        tokens.extend(tok.lower() for tok in _CAMEL_DIGIT_RE.findall(text))
+    return tokens
+
+
+def _policy_tokens(*parts: str) -> set[str]:
+    """Whole tokens from policy text. Never feed a resource id into this."""
+    return set(_policy_token_seq(*parts))
 
 
 def _authored_policy_description(rec: dict[str, Any]) -> str:
@@ -1012,16 +1016,21 @@ def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False
 
 
 def _is_rd_gateway(check_id: str, title: str) -> bool:
-    """RD Gateway from check id/name only.
+    """RD Gateway from tokenized check id/name only.
 
-    A bare 'gateway' or a word ending in 'rd' plus 'gateway' in free text
-    (standard gateway, dashboard gateway, payment card gateway) is not enough.
+    Compact rdgateway / rdpgateway must be a whole camel-split token, not a
+    substring of the concatenated id+name (standard+gateway, dashboard+
+    gateway, onboard+gateway). Adjacent rd/rdp + gateway tokens still match
+    (RDPGatewayPublic camel-splits to rdp, gateway). A bare gateway is not
+    enough.
     """
-    id_name = f"{check_id} {title}"
-    if _RD_GATEWAY_COMPACT_RE.search(re.sub(r"[\s_\-]+", "", id_name)):
+    tokens = _policy_token_seq(check_id, title)
+    if any(tok in _RD_GATEWAY_TOKENS for tok in tokens):
         return True
-    spaced = re.sub(r"[\s_\-]+", " ", id_name)
-    return bool(_RD_GATEWAY_PHRASE_RE.search(spaced))
+    for i, tok in enumerate(tokens[:-1]):
+        if tok in _RD_GATEWAY_LEAD_TOKENS and tokens[i + 1] == "gateway":
+            return True
+    return False
 
 
 def _has_sg_id_token(words: set[str]) -> bool:
