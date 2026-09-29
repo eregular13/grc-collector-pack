@@ -835,9 +835,12 @@ def test_reformat_mutations_of_sample_fixtures_cannot_claim_client(
 
 
 def test_planted_tmp_grc_estate_fp_has_no_effect(tmp_path: Path) -> None:
-    """A file under /tmp/grc-estate-fp must not change SAMPLE/CLIENT."""
+    """A planted hashes file must not change SAMPLE/CLIENT.
+
+    Uses pytest tmp_path so nothing persists outside the test temp dir
+    (Metis #186 planted under /tmp/grc-estate-fp and left planted.hashes).
+    """
     import hashlib
-    import tempfile
 
     import shared.estate_pages as ep
 
@@ -848,8 +851,8 @@ def test_planted_tmp_grc_estate_fp_has_no_effect(tmp_path: Path) -> None:
 
     live = b"<nmaprun unique='planted-cache-must-not-hit'/>\n"
     live_hash = hashlib.sha256(live).hexdigest()
-    planted = Path(tempfile.gettempdir()) / "grc-estate-fp"
-    planted.mkdir(parents=True, exist_ok=True)
+    planted = tmp_path / "grc-estate-fp"
+    planted.mkdir()
     (planted / "planted.hashes").write_text(live_hash + "\n" + "00" * 32 + "\n")
     (planted / "planted.hashes.tmp").write_text(live_hash + "\n")
 

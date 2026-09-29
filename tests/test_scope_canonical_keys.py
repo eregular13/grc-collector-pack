@@ -19,6 +19,8 @@ import pytest
 from dropbox.scope import (
     GateError,
     _SCOPE_KEYS,
+    _ci_values,
+    _engagement_is_revoked,
     allowlisted_scope_keys,
     load_scope,
     refuse_unknown_scope_keys,
@@ -87,6 +89,25 @@ def key_variants(canonical: str) -> list[tuple[str, str]]:
 # engagement copies cannot fail if the loader stops refusing the variant:
 # the other location still carries the restriction.
 _DUAL_RESTRICTION_KEYS = frozenset({"ports_allowed", "status", "revoked"})
+
+# Security keys that are not dual-location restrictions. The full tree
+# still carries ports_allowed: [443], so a :22 probe is denied by the
+# port list even if the variant spelling is accepted — the
+# create_connection assertion would pass for the wrong reason. Probe
+# 443 (an allowed port) so a reverted refuse would attempt a connect.
+_ALLOWED_PORT_PROBE_KEYS = frozenset(
+    {
+        ("engagement", "start"),
+        ("engagement", "end"),
+        ("internal", "hosts"),
+        ("internal", "cidrs"),
+        ("external", "hosts"),
+        ("external", "ips"),
+        ("external", "domains"),
+        ("consent", "attestation_sha256"),
+        ("consent", "attestation_path"),
+    }
+)
 
 # Pinned catalog of every documented SCOPE key. Adding or removing a key
 # in ``_SCOPE_KEYS`` must update this list — comparing the allowlist to
@@ -431,6 +452,14 @@ def test_security_key_variant_never_connects_out_of_scope(
 
     Dual-location keys use a single-location fixture: only the variant
     carries the restriction. A reverted refuse would then connect :22.
+
+    internal.* / external.* / consent.* / start / end keep the rest of
+    the tree, including ports_allowed [443]. Probing :22 is then
+    vacuous (the port list blocks :22 even if the variant is accepted).
+    Those cases probe 443 so a reverted refuse would attempt a connect
+    to an allowed port. Consent variants that are ignored (not folded)
+    still fail closed on the missing required field — match proves the
+    refuse reason is non-canonical, not a later missing-field error.
     """
     recorded = _record_sockets(monkeypatch)
     yaml_key = key.upper()
@@ -439,11 +468,14 @@ def test_security_key_variant_never_connects_out_of_scope(
     )
     monkeypatch.setenv("OUT_DIR", str(tmp_path / "out"))
     (tmp_path / "out").mkdir()
-    with pytest.raises((GateError, LiveRefuse)):
-        run_live(scope_path=path, target="192.0.2.10", ports=[22])
+    probe_ports = [443] if (section, key) in _ALLOWED_PORT_PROBE_KEYS else [22]
+    with pytest.raises((GateError, LiveRefuse), match="non-canonical"):
+        run_live(scope_path=path, target="192.0.2.10", ports=probe_ports)
     connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
     assert connects == []
-    assert not any(p == 22 and not str(h).startswith("gai:") for h, p in recorded)
+    assert not any(
+        p in probe_ports and not str(h).startswith("gai:") for h, p in recorded
+    )
 
 
 def test_uppercase_ports_allowed_refuses_live_port_22(
@@ -487,6 +519,48 @@ def test_quoted_spaced_ports_allowed_refuses_live_port_22(
     with pytest.raises((GateError, LiveRefuse), match="canonical: ports_allowed"):
         run_live(scope_path=path, target="192.0.2.10", ports=[22])
     assert not any(p == 22 and not str(h).startswith("gai:") for h, p in recorded)
+
+
+def test_engagement_is_revoked_and_ci_values_casefold() -> None:
+    """Direct unit test for ``_engagement_is_revoked`` / ``_ci_values``.
+
+    Status/revoked values like ``EXPIRED`` / ``' True '`` refuse; allow-list
+    tokens pass after strip+case-fold. Keys such as ``STATUS`` / ``' Revoked '``
+    are still found. Removing the ``.lower()`` fold on either helper fails
+    this test (allow-values would refuse, or refuse-values would be missed).
+    """
+    assert _ci_values({"STATUS": "EXPIRED"}, "status") == ["EXPIRED"]
+    assert _ci_values({" Revoked ": " True "}, "revoked") == [" True "]
+    assert _ci_values({"status": "authorized"}, "STATUS") == ["authorized"]
+
+    refuse_rows: list[tuple[dict, dict]] = [
+        ({"status": "EXPIRED"}, {}),
+        ({"status": "expired"}, {}),
+        ({"revoked": " True "}, {}),
+        ({"revoked": "TRUE"}, {}),
+        ({"STATUS": "EXPIRED"}, {}),
+        ({}, {"status": "EXPIRED"}),
+        ({}, {"REVOKED": " True "}),
+        ({"revoked": " Yes "}, {}),
+    ]
+    for data, eng in refuse_rows:
+        assert _engagement_is_revoked(data, eng) is True, (data, eng)
+
+    allow_rows: list[tuple[dict, dict]] = [
+        ({"status": "authorized"}, {}),
+        ({"status": "AUTHORIZED"}, {}),
+        ({"status": " Active "}, {}),
+        ({"status": "APPROVED"}, {}),
+        ({"revoked": False}, {}),
+        ({"revoked": "false"}, {}),
+        ({"revoked": " FALSE "}, {}),
+        ({"revoked": "no"}, {}),
+        ({"STATUS": "authorized"}, {}),
+        ({}, {"status": "AUTHORIZED"}),
+        ({}, {}),
+    ]
+    for data, eng in allow_rows:
+        assert _engagement_is_revoked(data, eng) is False, (data, eng)
 
 
 def test_noncanonical_error_names_canonical_spelling(tmp_path: Path) -> None:
