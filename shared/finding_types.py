@@ -943,20 +943,28 @@ _SG_COMPOUND_ID_RE = re.compile(
 )
 _APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
 _APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
-_RD_GATEWAY_COMPACT_RE = re.compile(r"rdpgateway|rdgateway", re.I)
-_RD_GATEWAY_PHRASE_RE = re.compile(r"\brd\s+gateway\b", re.I)
+_RD_GATEWAY_COMPACT = ("rdpgateway", "rdgateway")
+_RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
+_RD_GATEWAY_TRAIL_TOKENS = frozenset({"gateway", "gateways"})
+# Compact openrdgateway / publicrdgateway / exposedrdgateway. Not a contains
+# scan — *rd+gateway compounds (birdgateway, onboardgateway) stay off.
+_RD_GATEWAY_COMPACT_PREFIXES = ("open", "public", "exposed")
 
 
-def _policy_tokens(*parts: str) -> set[str]:
-    """Whole tokens from policy text. Never feed a resource id into this."""
-    words: set[str] = set()
+def _policy_token_seq(*parts: str) -> list[str]:
+    """Ordered camel/digit tokens from policy text. Never feed a resource id."""
+    tokens: list[str] = []
     for part in parts:
         text = str(part or "")
         if not text:
             continue
-        for tok in _CAMEL_DIGIT_RE.findall(text):
-            words.add(tok.lower())
-    return words
+        tokens.extend(tok.lower() for tok in _CAMEL_DIGIT_RE.findall(text))
+    return tokens
+
+
+def _policy_tokens(*parts: str) -> set[str]:
+    """Whole tokens from policy text. Never feed a resource id into this."""
+    return set(_policy_token_seq(*parts))
 
 
 def _authored_policy_description(rec: dict[str, Any]) -> str:
@@ -1011,17 +1019,72 @@ def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False
     return bool(compound.search(compact))
 
 
-def _is_rd_gateway(check_id: str, title: str) -> bool:
-    """RD Gateway from check id/name only.
+def _policy_token_marks(text: str) -> list[tuple[str, bool]]:
+    """Camel/digit tokens plus whether each token is glued to a preceding digit.
 
-    A bare 'gateway' or a word ending in 'rd' plus 'gateway' in free text
-    (standard gateway, dashboard gateway, payment card gateway) is not enough.
+    3rdGateway / 3rdgateway → ('rd'/'rdgateway', True). 2019 RD / vm01-rd /
+    site2-rdgateway keep False: the digit is separated by space or hyphen.
     """
-    id_name = f"{check_id} {title}"
-    if _RD_GATEWAY_COMPACT_RE.search(re.sub(r"[\s_\-]+", "", id_name)):
+    marks: list[tuple[str, bool]] = []
+    raw = str(text or "")
+    for match in _CAMEL_DIGIT_RE.finditer(raw):
+        glued = match.start() > 0 and raw[match.start() - 1].isdigit()
+        marks.append((match.group(0).lower(), glued))
+    return marks
+
+
+def _is_rd_gateway_compact_token(tok: str) -> bool:
+    """True when a camel-split token starts with rdgateway/rdpgateway.
+
+    Allowlisted prefixes (open/public/exposed) restore openrdgateway.
+    A contains scan is not used — birdgateway / onboardgateway stay off.
+    Both rdgateway and rdpgateway use this same rule.
+    """
+    for needle in _RD_GATEWAY_COMPACT:
+        if tok.startswith(needle):
+            return True
+        if any(tok.startswith(prefix + needle) for prefix in _RD_GATEWAY_COMPACT_PREFIXES):
+            return True
+    return False
+
+
+def _field_is_rd_gateway(text: str) -> bool:
+    """Adjacent rd/rdp + gateway(s), or a compact rdgateway/rdpgateway token.
+
+    Skip 'rd' (or a compact rdgateway* token) only when a digit is glued
+    directly to it in the source (3rd, 3rdGateway, 3rdgateway). A separated
+    number (2019 RD, vm01-rd-gateway, 3389 RD Gateway) still matches.
+    """
+    marks = _policy_token_marks(text)
+    tokens = [tok for tok, _ in marks]
+    for tok, glued in marks:
+        if not _is_rd_gateway_compact_token(tok):
+            continue
+        if glued:
+            continue
         return True
-    spaced = re.sub(r"[\s_\-]+", " ", id_name)
-    return bool(_RD_GATEWAY_PHRASE_RE.search(spaced))
+    for i, tok in enumerate(tokens[:-1]):
+        if tok not in _RD_GATEWAY_LEAD_TOKENS:
+            continue
+        if tokens[i + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
+            continue
+        if tok == "rd" and marks[i][1]:
+            continue
+        return True
+    return False
+
+
+def _is_rd_gateway(check_id: str, title: str) -> bool:
+    """RD Gateway from tokenized check id/name only.
+
+    Id and title are tokenized separately so a trailing 'rd' on the id
+    cannot pair with a leading 'gateway' on the title. Compact
+    rdgateway / rdpgateway must start the token (rdgatewaypublic) or
+    follow an allowlisted prefix (openrdgateway). Adjacent rd/rdp +
+    gateway(s) still match. A glued digit+'rd' (3rdGateway) does not.
+    A bare gateway is not enough.
+    """
+    return _field_is_rd_gateway(check_id) or _field_is_rd_gateway(title)
 
 
 def _has_sg_id_token(words: set[str]) -> bool:
