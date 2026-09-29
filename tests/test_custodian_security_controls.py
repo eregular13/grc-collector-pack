@@ -12,6 +12,8 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from collectors import cloud_prowler
 from shared.control_map import map_finding, poam_decision
 from shared.finding_types import finding_type
@@ -556,6 +558,128 @@ def test_rd_gateway_snake_and_name_phrase_are_rd_gateway_exposed() -> None:
         extra={"check_id": "rdgateway-open", "classification": "security"},
     )
     assert finding_type(compact) == "rd_gateway_exposed"
+
+
+# Compact / plural forms that typed on master 12de24e and regressed on the
+# whole-token matcher. rdp-gateways-open must not fall to sg_ingress_open.
+_RD_GATEWAY_RESTORED_IDS = (
+    "rdgatewaypublic",
+    "RDGATEWAYPUBLIC",
+    "openrdgateway",
+    "rdgatewayserver",
+    "rdgateways",
+    "rd-gateways",
+    "RDGateways",
+    "rdp-gateways-open",
+)
+_RD_GATEWAY_ID_NEGATIVES = (
+    "vpc-standard-gateway-open",
+    "dashboard-gateway-public",
+    "payment-card-gateway-open",
+    "onboard-gateway-rdp-open",
+    "standard_gateway_open",
+    "standardGatewayOpen",
+    "DashboardGatewayPublic",
+    "ONBOARDGATEWAY",
+    "thingsboard-gateway",
+)
+
+
+@pytest.mark.parametrize("check_id", _RD_GATEWAY_RESTORED_IDS)
+def test_rd_gateway_restored_compact_and_plural_ids(check_id: str) -> None:
+    rec = _custodian_finding(
+        name=f"Cloud Custodian {check_id}",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) == "rd_gateway_exposed", check_id
+
+
+def test_rd_gateways_plural_title_is_rd_gateway_exposed() -> None:
+    rec = _custodian_finding(
+        name="RD Gateways should not be publicly accessible",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "policy-open", "classification": "security"},
+    )
+    assert finding_type(rec) == "rd_gateway_exposed"
+
+
+@pytest.mark.parametrize("check_id", _RD_GATEWAY_ID_NEGATIVES)
+def test_rd_gateway_id_false_positives_stay_untyped(check_id: str) -> None:
+    rec = _custodian_finding(
+        name=f"Cloud Custodian {check_id}",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) != "rd_gateway_exposed", check_id
+
+
+def test_description_only_rd_gateway_stays_untyped() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian policy-open",
+        description="RD Gateway published on the internet",
+        extra={"check_id": "policy-open", "classification": "security"},
+    )
+    assert finding_type(rec) != "rd_gateway_exposed"
+
+
+def test_rdpgateway_whole_token_is_rd_gateway_exposed() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian RDPGATEWAY",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "RDPGATEWAY", "classification": "security"},
+    )
+    assert finding_type(rec) == "rd_gateway_exposed"
+
+
+def test_rdp_gateway_name_phrase_is_rd_gateway_exposed() -> None:
+    """Non-alias name 'RDP Gateway' — not TYPE_ALIASES openrdpgateway/rdpgatewaypublic."""
+    rec = _custodian_finding(
+        name="RDP Gateway",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "elb-public-open", "classification": "security"},
+    )
+    assert finding_type(rec) == "rd_gateway_exposed"
+
+
+def test_rd_gateway_title_without_embedded_id_is_rd_gateway_exposed() -> None:
+    rec = _custodian_finding(
+        name="RD Gateway servers should not be public",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "cloud-policy-public", "classification": "security"},
+    )
+    assert "cloud-policy-public" not in rec["name"]
+    assert finding_type(rec) == "rd_gateway_exposed"
+
+
+def test_rd_gateway_id_without_embedded_in_name_is_rd_gateway_exposed() -> None:
+    rec = _custodian_finding(
+        name="Cloud policy exposure",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "rd-gateway-elb", "classification": "security"},
+    )
+    assert "rd-gateway-elb" not in rec["name"]
+    assert finding_type(rec) == "rd_gateway_exposed"
+
+
+@pytest.mark.parametrize(
+    "check_id,name",
+    (
+        ("3rdGateway", "Cloud Custodian 3rdGateway"),
+        ("payment-3rd-gateway-open", "Cloud Custodian payment-3rd-gateway-open"),
+        ("vpc-3rd", "Gateway public"),
+        ("policy-rd", "Gateway public"),
+    ),
+)
+def test_digit_split_and_cross_field_rd_is_not_rd_gateway(
+    check_id: str, name: str
+) -> None:
+    rec = _custodian_finding(
+        name=name,
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) != "rd_gateway_exposed", (check_id, name)
 
 
 def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:

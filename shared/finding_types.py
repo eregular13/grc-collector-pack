@@ -943,8 +943,20 @@ _SG_COMPOUND_ID_RE = re.compile(
 )
 _APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
 _APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
-_RD_GATEWAY_TOKENS = frozenset({"rdgateway", "rdpgateway"})
+_RD_GATEWAY_COMPACT = ("rdpgateway", "rdgateway")
 _RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
+_RD_GATEWAY_TRAIL_TOKENS = frozenset({"gateway", "gateways"})
+# *rd stems that glue onto 'gateway' and form a false 'rdgateway' substring
+# (onboard+gateway → onboardgateway). Used only for compact ALLCAPS / lowercase.
+_RD_GATEWAY_OVERLAP_STEMS = (
+    "onboard",
+    "standard",
+    "dashboard",
+    "card",
+    "board",
+    "third",
+    "thingsboard",
+)
 
 
 def _policy_token_seq(*parts: str) -> list[str]:
@@ -1015,22 +1027,59 @@ def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False
     return bool(compound.search(compact))
 
 
+def _is_rd_gateway_compact_token(tok: str) -> bool:
+    """True when a camel-split token is, starts with, or contains rdgateway/rdpgateway.
+
+    startswith restores rdgatewaypublic / rdgatewayserver / rdgateways.
+    contains restores openrdgateway. Overlap stems reject ONBOARDGATEWAY
+    (onboard+gateway) and the same *rd+gateway compact class.
+    """
+    if "rdpgateway" in tok:
+        return True
+    idx = tok.find("rdgateway")
+    if idx < 0:
+        return False
+    prefix_through_rd = tok[: idx + 2]
+    return not any(prefix_through_rd.endswith(stem) for stem in _RD_GATEWAY_OVERLAP_STEMS)
+
+
+def _tokens_are_rd_gateway(tokens: list[str]) -> bool:
+    """Adjacent rd/rdp + gateway(s), or a compact rdgateway/rdpgateway token.
+
+    A digit-split 'rd' (3rdGateway → 3, rd, gateway) is not a lead token.
+    A compact token that follows a digit (3rdgateway → 3, rdgateway) is the
+    same 3rd+gateway overlap and is not counted.
+    """
+    for i, tok in enumerate(tokens):
+        if not _is_rd_gateway_compact_token(tok):
+            continue
+        if tok.startswith("rdgateway") and i > 0 and tokens[i - 1].isdigit():
+            continue
+        return True
+    for i, tok in enumerate(tokens[:-1]):
+        if tok not in _RD_GATEWAY_LEAD_TOKENS:
+            continue
+        if tokens[i + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
+            continue
+        if tok == "rd" and i > 0 and tokens[i - 1].isdigit():
+            continue
+        return True
+    return False
+
+
 def _is_rd_gateway(check_id: str, title: str) -> bool:
     """RD Gateway from tokenized check id/name only.
 
-    Compact rdgateway / rdpgateway must be a whole camel-split token, not a
-    substring of the concatenated id+name (standard+gateway, dashboard+
-    gateway, onboard+gateway). Adjacent rd/rdp + gateway tokens still match
-    (RDPGatewayPublic camel-splits to rdp, gateway). A bare gateway is not
-    enough.
+    Id and title are tokenized separately so a trailing 'rd' on the id
+    cannot pair with a leading 'gateway' on the title. Compact
+    rdgateway / rdpgateway may be a whole token, a prefix
+    (rdgatewaypublic), or contained (openrdgateway). Adjacent rd/rdp +
+    gateway(s) still match. A digit-split 'rd' (3rdGateway) does not.
+    A bare gateway is not enough.
     """
-    tokens = _policy_token_seq(check_id, title)
-    if any(tok in _RD_GATEWAY_TOKENS for tok in tokens):
-        return True
-    for i, tok in enumerate(tokens[:-1]):
-        if tok in _RD_GATEWAY_LEAD_TOKENS and tokens[i + 1] == "gateway":
-            return True
-    return False
+    return _tokens_are_rd_gateway(_policy_token_seq(check_id)) or _tokens_are_rd_gateway(
+        _policy_token_seq(title)
+    )
 
 
 def _has_sg_id_token(words: set[str]) -> bool:
