@@ -1063,6 +1063,71 @@ def cis_v8_internal_ids(
     return [_cis_v8_token(str(x)) for x in (rule.get("cis_v8_internal") or ()) if x]
 
 
+_WEB_APP_INJECTION_TYPES = frozenset({"web_xss", "web_lfi"})
+_WEB_APP_INJECTION_CONTROLS = frozenset(
+    {
+        "Stop reflected web-app cross-site scripting",
+        "Stop web-app local file inclusion",
+        "Stop cross-site scripting",
+    }
+)
+_THIRD_PARTY_PRODUCT_TOKS = (
+    "nextgen gallery",
+    "nextgen-gallery",
+    "myphpnuke",
+)
+_CVE_TOKEN_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
+_OSVDB_TOKEN_RE = re.compile(r"\bosvdb[- ]?\d+", re.I)
+_CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b")
+
+
+def _is_web_xss_or_lfi(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> bool:
+    rec = rec or {}
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    ftype = str(
+        mapped.get("finding_type")
+        or extra.get("check_id")
+        or extra.get("template_id")
+        or extra.get("rule")
+        or ""
+    )
+    if ftype in _WEB_APP_INJECTION_TYPES:
+        return True
+    return str(mapped.get("control_name") or "") in _WEB_APP_INJECTION_CONTROLS
+
+
+def _looks_third_party_app_finding(
+    mapped: dict[str, Any], rec: dict[str, Any] | None = None
+) -> bool:
+    """True when the finding names a CVE, advisory, or known third-party product.
+
+    In-house / unattributed web_xss and web_lfi stay app_secure_dev (PR.PS-06).
+    """
+    rec = rec or {}
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    parts: list[Any] = [
+        mapped.get("control_name"),
+        mapped.get("weakness_name"),
+        rec.get("name"),
+        rec.get("description"),
+        extra.get("cve"),
+        extra.get("osvdb"),
+        extra.get("advisory"),
+        extra.get("url"),
+        extra.get("references"),
+    ]
+    cves = extra.get("cves")
+    if isinstance(cves, (list, tuple)):
+        parts.extend(cves)
+    blob = " ".join(str(x or "") for x in parts)
+    if _CVE_TOKEN_RE.search(blob) or _OSVDB_TOKEN_RE.search(blob) or _CERT_ADV_RE.search(blob):
+        return True
+    if "/advisories/" in blob.lower():
+        return True
+    low = blob.lower()
+    return any(tok in low for tok in _THIRD_PARTY_PRODUCT_TOKS)
+
+
 def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> str:
     """Pick one class from control name, finding type, then light heuristics."""
     rec = rec or {}
@@ -1078,7 +1143,14 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
         or ""
     )
     if ftype in FINDING_TYPE_CLASS:
-        return FINDING_TYPE_CLASS[ftype]
+        cls = FINDING_TYPE_CLASS[ftype]
+        if (
+            cls == "app_secure_dev"
+            and ftype in _WEB_APP_INJECTION_TYPES
+            and _looks_third_party_app_finding(mapped, rec)
+        ):
+            return "vuln_patch"
+        return cls
     for tid in redis_auth_template_ids(rec, mapped):
         if tid in FINDING_TYPE_CLASS:
             return FINDING_TYPE_CLASS[tid]
@@ -1086,7 +1158,14 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
         return "exposure_access"
     name = str(mapped.get("control_name") or "")
     if name in CONTROL_CLASS:
-        return CONTROL_CLASS[name]
+        cls = CONTROL_CLASS[name]
+        if (
+            cls == "app_secure_dev"
+            and name in _WEB_APP_INJECTION_CONTROLS
+            and _looks_third_party_app_finding(mapped, rec)
+        ):
+            return "vuln_patch"
+        return cls
     if name.startswith("Reduce unnecessary network exposure"):
         return "exposure_network"
     if name.startswith("Patch ") or name.startswith("Apply security") or name.startswith("Apply vulnerability"):
@@ -1157,17 +1236,20 @@ def _host_from_url_or_token(raw: str) -> str:
         if end != -1:
             return token[1:end]
     if "://" in token or token.startswith("//"):
-        parsed = urlsplit(token if "://" in token else f"//{token.lstrip('/')}")
-        if parsed.hostname:
-            return parsed.hostname
-        netloc = parsed.netloc or ""
-        if netloc.startswith("[") and "]" in netloc:
-            return netloc[1 : netloc.index("]")]
-        if "@" in netloc:
-            netloc = netloc.rsplit("@", 1)[-1]
-        if netloc.count(":") == 1 and netloc.rsplit(":", 1)[-1].isdigit():
-            netloc = netloc.rsplit(":", 1)[0]
-        return netloc
+        try:
+            parsed = urlsplit(token if "://" in token else f"//{token.lstrip('/')}")
+            if parsed.hostname:
+                return parsed.hostname
+            netloc = parsed.netloc or ""
+            if netloc.startswith("[") and "]" in netloc:
+                return netloc[1 : netloc.index("]")]
+            if "@" in netloc:
+                netloc = netloc.rsplit("@", 1)[-1]
+            if netloc.count(":") == 1 and netloc.rsplit(":", 1)[-1].isdigit():
+                netloc = netloc.rsplit(":", 1)[0]
+            return netloc
+        except ValueError:
+            return ""
     if "@" in token:
         token = token.rsplit("@", 1)[-1]
     token = token.split("/", 1)[0]
@@ -1317,6 +1399,15 @@ def apply_class_mapping(mapped: dict[str, Any], rec: dict[str, Any] | None = Non
     mapped["class_source_note"] = tags["source_note"]
     mapped["cpg"] = [tags["cpg_stamp"]]
     n53 = list(mapped.get("nist_800_53") or [])
+    if (
+        cls == "vuln_patch"
+        and _is_web_xss_or_lfi(mapped, rec)
+        and _looks_third_party_app_finding(mapped, rec)
+    ):
+        if "SI-2" not in n53:
+            n53.append("SI-2")
+        n53 = [cid for cid in n53 if cid != "SC-18"]
+        mapped["nist_800_53"] = n53
     cis = list(mapped.get("cis") or [])
     n53_tokens = [f"nist80053_{cid}" for cid in n53]
     refs = [tags["cpg_stamp"], tags["csf_stamp"]] + n53_tokens + list(cis)

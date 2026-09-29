@@ -249,7 +249,9 @@ OSCAP_FAMILY_PREFIXES: tuple[tuple[str, str], ...] = (
     ("service_auditd", AUDIT_LOGGING),
     ("package_audit", AUDIT_LOGGING),
     ("auditd_", AUDIT_LOGGING),
-    ("accounts_password", PASSWORD_POLICY),
+    # faillock before accounts_password_ — lockout (AC-7), not IA-5.
+    ("accounts_passwords_pam_faillock", ACCOUNT_LOCKOUT),
+    ("accounts_password_", PASSWORD_POLICY),
     ("sshd_disable_root", SSH_ROOT_LOGIN),
     ("sshd_permit_root", SSH_ROOT_LOGIN),
     ("sshd_disable_empty_password", SSH_EMPTY_PASSWORDS),

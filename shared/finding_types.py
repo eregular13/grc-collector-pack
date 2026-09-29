@@ -575,7 +575,7 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
             "This is a Nikto web-app finding, not a source-code static-analysis "
             "row and not a live HTTP probe."
         ),
-        "nist_800_53": ["SI-10", "SC-18", "CM-6"],
+        "nist_800_53": ["SI-10", "SA-11", "CM-6"],
         "key_medium": True,
         "source": "nikto",
     },
@@ -586,7 +586,7 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
             "files off the public tree. This is a Nikto web-app finding, not a "
             "listener-protocol or remote-desktop exposure and not a live HTTP probe."
         ),
-        "nist_800_53": ["SI-10", "AC-3", "CM-7"],
+        "nist_800_53": ["SI-10", "SA-11", "AC-3", "CM-7"],
         "key_medium": True,
         "source": "nikto",
     },
