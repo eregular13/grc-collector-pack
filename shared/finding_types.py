@@ -946,17 +946,9 @@ _APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
 _RD_GATEWAY_COMPACT = ("rdpgateway", "rdgateway")
 _RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
 _RD_GATEWAY_TRAIL_TOKENS = frozenset({"gateway", "gateways"})
-# *rd stems that glue onto 'gateway' and form a false 'rdgateway' substring
-# (onboard+gateway → onboardgateway). Used only for compact ALLCAPS / lowercase.
-_RD_GATEWAY_OVERLAP_STEMS = (
-    "onboard",
-    "standard",
-    "dashboard",
-    "card",
-    "board",
-    "third",
-    "thingsboard",
-)
+# Compact openrdgateway / publicrdgateway / exposedrdgateway. Not a contains
+# scan — *rd+gateway compounds (birdgateway, onboardgateway) stay off.
+_RD_GATEWAY_COMPACT_PREFIXES = ("open", "public", "exposed")
 
 
 def _policy_token_seq(*parts: str) -> list[str]:
@@ -1027,33 +1019,48 @@ def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False
     return bool(compound.search(compact))
 
 
-def _is_rd_gateway_compact_token(tok: str) -> bool:
-    """True when a camel-split token is, starts with, or contains rdgateway/rdpgateway.
+def _policy_token_marks(text: str) -> list[tuple[str, bool]]:
+    """Camel/digit tokens plus whether each token is glued to a preceding digit.
 
-    startswith restores rdgatewaypublic / rdgatewayserver / rdgateways.
-    contains restores openrdgateway. Overlap stems reject ONBOARDGATEWAY
-    (onboard+gateway) and the same *rd+gateway compact class.
+    3rdGateway / 3rdgateway → ('rd'/'rdgateway', True). 2019 RD / vm01-rd /
+    site2-rdgateway keep False: the digit is separated by space or hyphen.
     """
-    if "rdpgateway" in tok:
-        return True
-    idx = tok.find("rdgateway")
-    if idx < 0:
-        return False
-    prefix_through_rd = tok[: idx + 2]
-    return not any(prefix_through_rd.endswith(stem) for stem in _RD_GATEWAY_OVERLAP_STEMS)
+    marks: list[tuple[str, bool]] = []
+    raw = str(text or "")
+    for match in _CAMEL_DIGIT_RE.finditer(raw):
+        glued = match.start() > 0 and raw[match.start() - 1].isdigit()
+        marks.append((match.group(0).lower(), glued))
+    return marks
 
 
-def _tokens_are_rd_gateway(tokens: list[str]) -> bool:
+def _is_rd_gateway_compact_token(tok: str) -> bool:
+    """True when a camel-split token starts with rdgateway/rdpgateway.
+
+    Allowlisted prefixes (open/public/exposed) restore openrdgateway.
+    A contains scan is not used — birdgateway / onboardgateway stay off.
+    Both rdgateway and rdpgateway use this same rule.
+    """
+    for needle in _RD_GATEWAY_COMPACT:
+        if tok.startswith(needle):
+            return True
+        if any(tok.startswith(prefix + needle) for prefix in _RD_GATEWAY_COMPACT_PREFIXES):
+            return True
+    return False
+
+
+def _field_is_rd_gateway(text: str) -> bool:
     """Adjacent rd/rdp + gateway(s), or a compact rdgateway/rdpgateway token.
 
-    A digit-split 'rd' (3rdGateway → 3, rd, gateway) is not a lead token.
-    A compact token that follows a digit (3rdgateway → 3, rdgateway) is the
-    same 3rd+gateway overlap and is not counted.
+    Skip 'rd' (or a compact rdgateway* token) only when a digit is glued
+    directly to it in the source (3rd, 3rdGateway, 3rdgateway). A separated
+    number (2019 RD, vm01-rd-gateway, 3389 RD Gateway) still matches.
     """
-    for i, tok in enumerate(tokens):
+    marks = _policy_token_marks(text)
+    tokens = [tok for tok, _ in marks]
+    for tok, glued in marks:
         if not _is_rd_gateway_compact_token(tok):
             continue
-        if tok.startswith("rdgateway") and i > 0 and tokens[i - 1].isdigit():
+        if glued:
             continue
         return True
     for i, tok in enumerate(tokens[:-1]):
@@ -1061,7 +1068,7 @@ def _tokens_are_rd_gateway(tokens: list[str]) -> bool:
             continue
         if tokens[i + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
             continue
-        if tok == "rd" and i > 0 and tokens[i - 1].isdigit():
+        if tok == "rd" and marks[i][1]:
             continue
         return True
     return False
@@ -1072,14 +1079,12 @@ def _is_rd_gateway(check_id: str, title: str) -> bool:
 
     Id and title are tokenized separately so a trailing 'rd' on the id
     cannot pair with a leading 'gateway' on the title. Compact
-    rdgateway / rdpgateway may be a whole token, a prefix
-    (rdgatewaypublic), or contained (openrdgateway). Adjacent rd/rdp +
-    gateway(s) still match. A digit-split 'rd' (3rdGateway) does not.
+    rdgateway / rdpgateway must start the token (rdgatewaypublic) or
+    follow an allowlisted prefix (openrdgateway). Adjacent rd/rdp +
+    gateway(s) still match. A glued digit+'rd' (3rdGateway) does not.
     A bare gateway is not enough.
     """
-    return _tokens_are_rd_gateway(_policy_token_seq(check_id)) or _tokens_are_rd_gateway(
-        _policy_token_seq(title)
-    )
+    return _field_is_rd_gateway(check_id) or _field_is_rd_gateway(title)
 
 
 def _has_sg_id_token(words: set[str]) -> bool:

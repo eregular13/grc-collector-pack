@@ -665,8 +665,12 @@ def test_rd_gateway_id_without_embedded_in_name_is_rd_gateway_exposed() -> None:
 @pytest.mark.parametrize(
     "check_id,name",
     (
+        ("3rd", "Cloud Custodian 3rd"),
+        ("2rd", "Cloud Custodian 2rd"),
         ("3rdGateway", "Cloud Custodian 3rdGateway"),
+        ("3rdgateway", "Cloud Custodian 3rdgateway"),
         ("payment-3rd-gateway-open", "Cloud Custodian payment-3rd-gateway-open"),
+        ("policy-open", "2rd gateway public"),
         ("vpc-3rd", "Gateway public"),
         ("policy-rd", "Gateway public"),
     ),
@@ -680,6 +684,59 @@ def test_digit_split_and_cross_field_rd_is_not_rd_gateway(
         extra={"check_id": check_id, "classification": "security"},
     )
     assert finding_type(rec) != "rd_gateway_exposed", (check_id, name)
+
+
+# Separated number + RD Gateway typed on master and v1; glued-digit skip
+# must not drop them. 3389 RD Gateway must not fall to sg_ingress_open.
+_RD_GATEWAY_SEPARATED_DIGIT_CASES = (
+    ("policy-open", "Server 2019 RD Gateway public"),
+    ("policy-open", "Tier 2 RD Gateway servers public"),
+    ("vm01-rd-gateway-public", "Cloud Custodian vm01-rd-gateway-public"),
+    ("prod-2-rd-gateway", "Cloud Custodian prod-2-rd-gateway"),
+    ("site2-rdgateway-open", "Cloud Custodian site2-rdgateway-open"),
+    ("az1-rdgateway", "Cloud Custodian az1-rdgateway"),
+    ("rdgw01-rd-gateway", "Cloud Custodian rdgw01-rd-gateway"),
+    ("policy-open", "3389 RD Gateway open"),
+)
+
+
+@pytest.mark.parametrize("check_id,name", _RD_GATEWAY_SEPARATED_DIGIT_CASES)
+def test_separated_digit_rd_gateway_still_types(check_id: str, name: str) -> None:
+    rec = _custodian_finding(
+        name=name,
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) == "rd_gateway_exposed", (check_id, name)
+    if "3389" in name:
+        mapped = map_finding(rec)
+        assert finding_type(rec) != "sg_ingress_open"
+        assert SG_INGRESS_FIX not in mapped["recommended_fix"]
+
+
+_RD_GATEWAY_COMPACT_STEM_NEGATIVES = (
+    "birdgateway",
+    "discordgateway",
+    "passwordgateway",
+    "guardgateway",
+    "recordgateway",
+    "forwardgateway",
+    "leopardgateway",
+    "standardgateway",
+    "cardgateway",
+    "thirdgateway",
+    "boardgateway",
+)
+
+
+@pytest.mark.parametrize("check_id", _RD_GATEWAY_COMPACT_STEM_NEGATIVES)
+def test_compact_rd_stem_gateway_stays_untyped(check_id: str) -> None:
+    rec = _custodian_finding(
+        name=f"Cloud Custodian {check_id}",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) != "rd_gateway_exposed", check_id
 
 
 def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:
