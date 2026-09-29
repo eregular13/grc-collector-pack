@@ -92,9 +92,12 @@ _DUAL_RESTRICTION_KEYS = frozenset({"ports_allowed", "status", "revoked"})
 
 # Security keys that are not dual-location restrictions. The full tree
 # still carries ports_allowed: [443], so a :22 probe is denied by the
-# port list even if the variant spelling is accepted — the
-# create_connection assertion would pass for the wrong reason. Probe
-# 443 (an allowed port) so a reverted refuse would attempt a connect.
+# port list even if the variant spelling is accepted.
+# internal.* / external.*: probe 443 so a reverted refuse would attempt
+# a connect to an allowed port.
+# consent.* / start / end: also probe 443, but a reverted refuse that
+# ignores the variant hits a missing-field error first — those cases
+# are caught by match='non-canonical' only.
 _ALLOWED_PORT_PROBE_KEYS = frozenset(
     {
         ("engagement", "start"),
@@ -453,13 +456,15 @@ def test_security_key_variant_never_connects_out_of_scope(
     Dual-location keys use a single-location fixture: only the variant
     carries the restriction. A reverted refuse would then connect :22.
 
-    internal.* / external.* / consent.* / start / end keep the rest of
-    the tree, including ports_allowed [443]. Probing :22 is then
-    vacuous (the port list blocks :22 even if the variant is accepted).
-    Those cases probe 443 so a reverted refuse would attempt a connect
-    to an allowed port. Consent variants that are ignored (not folded)
-    still fail closed on the missing required field — match proves the
-    refuse reason is non-canonical, not a later missing-field error.
+    internal.* / external.* keep the rest of the tree, including
+    ports_allowed [443]. Probing :22 is then vacuous (the port list
+    blocks :22 even if the variant is accepted). Those cases probe 443
+    so a reverted refuse would attempt a connect to an allowed port.
+
+    consent.* / start / end also keep ports_allowed [443] and probe
+    443, but a reverted refuse that ignores the variant fails closed
+    on the missing required field before any connect. Those four
+    cases are caught by match='non-canonical' only.
     """
     recorded = _record_sockets(monkeypatch)
     yaml_key = key.upper()
