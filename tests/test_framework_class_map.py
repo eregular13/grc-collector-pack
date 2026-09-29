@@ -11,7 +11,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from collectors import vuln_scan
+from collectors import code_secrets, vuln_scan
 from shared.control_map import extra_labels, map_finding
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
@@ -1021,6 +1021,152 @@ def test_trivy_sarif_jquery_xss_cve_is_vuln_patch(tmp_path: Path) -> None:
     assert mapped["csf_subcategory"] == "PR.PS-02"
     assert "SI-2" in (mapped.get("nist_800_53") or [])
     assert "csf_PR_PS_06" not in mapped["framework_refs"].split(",")
+
+
+def test_trivy_cve_in_code_secrets_lane_is_vuln_patch(tmp_path: Path) -> None:
+    """Mutant-kill: removing structured-CVE-first leaves code-secrets in-house."""
+    path = tmp_path / "trivy-jquery-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Trivy",
+                rule_id="CVE-2020-11022",
+                message="jquery: XSS in htmlPrefilter (CVE-2020-11022)",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in code_secrets.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    assert rec["source"] == "code-secrets"
+    assert rec["extra"].get("rule", "").upper().startswith("CVE-")
+    assert not rec["extra"].get("cve")
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+    assert "SI-2" in (mapped.get("nist_800_53") or [])
+
+
+def test_codeql_cve_ruleid_is_vuln_patch(tmp_path: Path) -> None:
+    """Structured CVE in ruleId wins over the CodeQL in-house driver."""
+    path = tmp_path / "codeql-cve-ruleid.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="CodeQL",
+                rule_id="CVE-2020-11022",
+                message="Untrusted data written to the DOM (CWE-79).",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_snyk_code_spaced_driver_is_in_house(tmp_path: Path) -> None:
+    path = tmp_path / "snyk-code-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Snyk Code",
+                rule_id="js/xss",
+                message="Untrusted data written to the DOM (CWE-79).",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+
+
+def test_semgrep_supply_chain_is_third_party(tmp_path: Path) -> None:
+    path = tmp_path / "semgrep-sc-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Semgrep Supply Chain",
+                rule_id="ssc-jquery-xss",
+                message="Untrusted data written to the DOM (CWE-79).",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_ghsa_only_unknown_driver_is_third_party(tmp_path: Path) -> None:
+    path = tmp_path / "unknown-ghsa.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="trivyfork",
+                rule_id="GHSA-jfh8-c2jp-5v3q",
+                message="jquery XSS advisory",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
 
 
 def test_codeql_and_semgrep_sarif_xss_stay_in_house(tmp_path: Path) -> None:
