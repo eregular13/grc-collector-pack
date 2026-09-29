@@ -261,7 +261,11 @@ def cmp_scan_dt(left: datetime, right: datetime) -> int:
 
 
 def earlier_scan_raw(current: Any, incoming: Any, *, now: datetime | date | None = None) -> Any:
-    """Keep the earliest parseable observation. File order does not win."""
+    """Keep the earliest parseable observation. File order does not win.
+
+    Exact UTC-instant + local-date ties break on the raw stamp string so
+    the stored value is deterministic (lexicographically smaller wins).
+    """
     if incoming in (None, ""):
         return current
     if current in (None, ""):
@@ -269,7 +273,13 @@ def earlier_scan_raw(current: Any, incoming: Any, *, now: datetime | date | None
     parsed_in = parse_scan_datetime(incoming, now=now)
     parsed_cur = parse_scan_datetime(current, now=now)
     if parsed_in and parsed_cur:
-        return incoming if cmp_scan_dt(parsed_in[0], parsed_cur[0]) < 0 else current
+        order = cmp_scan_dt(parsed_in[0], parsed_cur[0])
+        if order < 0:
+            return incoming
+        if order > 0:
+            return current
+        in_s, cur_s = str(incoming), str(current)
+        return incoming if in_s < cur_s else current
     if parsed_in:
         return incoming
     return current
