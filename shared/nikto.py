@@ -227,30 +227,46 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
 
 # Real Nikto prints ``(GMT$offset)`` from ``gmt_offset()`` hours as a
 # decimal, often with no ``+``: ``(GMT5.5)`` Kolkata, ``(GMT-2.5)``,
-# ``(GMT5.75)``, ``(GMT13.75)``. Also keep ``(GMT0)`` / ``(GMT-7)`` and
-# the colon / hhmm forms already accepted.
+# ``(GMT5.75)``, ``(GMT13.75)``. Also keep ``(GMT0)`` / ``(GMT-7)``,
+# colon / hhmm, and unsigned hhmm ``(GMT0530)``. ``re.ASCII`` so ``\d``
+# is [0-9] only (Unicode digits stay unparsed).
 _NIKTO_GMT = re.compile(
     r"""
     ^(?P<body>.*?)\s*\(\s*GMT\s*
     (?:
-        (?P<sign_hhmm>[+-])(?P<hhmm>\d{4})
+        (?P<sign_hhmm>[+-])?(?P<hhmm>\d{4})
         | (?P<sign_dec>[+-])?(?P<dec>\d{1,2}\.\d+)
         | (?P<sign>[+-])?(?P<h>\d{1,2})(?::(?P<m>\d{2}))?
     )
     \s*\)\s*$
     """,
-    re.I | re.X,
+    re.I | re.X | re.ASCII,
 )
 _NIKTO_MAX_HOURS = 14
-_NIKTO_VALID_MINUTES = frozenset({0, 15, 30, 45})
+_NIKTO_MIN_HOURS = -12
+# Real zones use :00 / :30 / :45. :15 (GMT5.25) is not a real offset.
+_NIKTO_VALID_MINUTES = frozenset({0, 30, 45})
 
 
 def _nikto_frac_minutes(frac: float) -> int | None:
-    """Map a fractional hour to 0/15/30/45. Other fractions are invalid."""
-    minutes = int(round(abs(frac) * 60))
+    """Exact quarter-hour only (no round() ±30s). 0 / 30 / 45."""
+    scaled = abs(frac) * 4
+    if scaled != int(scaled):
+        return None
+    minutes = int(scaled) * 15
     if minutes not in _NIKTO_VALID_MINUTES:
         return None
     return minutes
+
+
+def _nikto_offset_in_range(sign: str, hours: int, minutes: int) -> bool:
+    """+14:00 and −12:00 are in; minutes past +14 or below −12 are out."""
+    if minutes >= 60:
+        return False
+    total = hours * 60 + minutes
+    if sign == "-":
+        total = -total
+    return _NIKTO_MIN_HOURS * 60 <= total <= _NIKTO_MAX_HOURS * 60
 
 
 def _nikto_start_time(raw: str) -> str:
@@ -277,7 +293,7 @@ def _nikto_start_time(raw: str) -> str:
         hours = int(match.group("h") or 0)
         minutes = int(match.group("m") or 0)
         sign = match.group("sign") or "+"
-    if minutes >= 60 or hours > _NIKTO_MAX_HOURS:
+    if not _nikto_offset_in_range(sign, hours, minutes):
         return text
     return f"{body}{sign}{hours:02d}:{minutes:02d}"
 

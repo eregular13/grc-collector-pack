@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 import threading
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -491,6 +493,32 @@ def test_naabu_same_utc_instant_breaks_tie_on_local_date(tmp_path: Path) -> None
         assert hosts[0]["scan_time"] == "2026-09-01T19:00:00Z"
 
 
+def test_naabu_full_tie_raw_stamp_is_order_independent(tmp_path: Path) -> None:
+    """Same instant + same local date: lexicographically smaller raw stamp wins."""
+    zulu = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 22,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T12:00:00Z",
+    }
+    offset = {
+        "ip": "10.0.0.50",
+        "host": "filesrv.corp.local",
+        "port": 80,
+        "protocol": "tcp",
+        "timestamp": "2026-09-01T12:00:00+00:00",
+    }
+    expected = min(zulu["timestamp"], offset["timestamp"])
+    assert expected == "2026-09-01T12:00:00+00:00"
+    for i, rows in enumerate(((zulu, offset), (offset, zulu))):
+        dest = tmp_path / f"naabu-raw-tie-{i}.jsonl"
+        dest.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        hosts = parse_fast_portscan(dest)
+        assert hosts and len(hosts) == 1
+        assert hosts[0]["scan_time"] == expected
+
+
 def test_seven_tools_malformed_values_are_not_recorded(tmp_path: Path) -> None:
     cases = [
         (
@@ -658,6 +686,7 @@ _NIKTO_OFFSET_CASES = (
     ("(GMT+5:30)", "UTC+05:30", "+05:30"),
     ("(GMT+05:30)", "UTC+05:30", "+05:30"),
     ("(GMT+0530)", "UTC+05:30", "+05:30"),
+    ("(GMT0530)", "UTC+05:30", "+05:30"),
     ("(GMT-3:30)", "UTC-03:30", "-03:30"),
     ("(GMT-03:30)", "UTC-03:30", "-03:30"),
     ("(GMT+5:45)", "UTC+05:45", "+05:45"),
@@ -726,7 +755,7 @@ def test_nikto_real_decimal_hour_offsets(tmp_path: Path) -> None:
 
 
 def test_nikto_offset_range_guards() -> None:
-    """hours > 14 and invalid fractions stay unparsed (artifact-local later)."""
+    """hours > 14, minutes at +14, below −12, and invalid fractions stay raw."""
     body = "2026-09-04 17:00:00"
     rejected = (
         f"{body} (GMT15)",
@@ -737,13 +766,28 @@ def test_nikto_offset_range_guards() -> None:
         f"{body} (GMT-2.3)",
         f"{body} (GMT+5:60)",
         f"{body} (GMT+5:99)",
+        f"{body} (GMT5.25)",
+        f"{body} (GMT14.5)",
+        f"{body} (GMT14.25)",
+        f"{body} (GMT+1430)",
+        f"{body} (GMT+14:30)",
+        f"{body} (GMT-14)",
+        f"{body} (GMT-12.5)",
+        f"{body} (GMT5.749)",
+        f"{body} (GMT5.751)",
+        f"{body} (GMT5.٥)",
+        f"{body} (GMT５.5)",
     )
     for raw in rejected:
-        assert _nikto_start_time(raw) == raw
+        assert _nikto_start_time(raw) == raw, raw
         assert zone_for(_nikto_start_time(raw)) == "artifact-local"
     assert _nikto_start_time(f"{body} (GMT14)") == f"{body}+14:00"
+    assert _nikto_start_time(f"{body} (GMT-12)") == f"{body}-12:00"
     assert _nikto_start_time(f"{body} (GMT5.5)") == f"{body}+05:30"
     assert _nikto_start_time(f"{body} (GMT-2.5)") == f"{body}-02:30"
+    assert _nikto_start_time(f"{body} (GMT0530)") == f"{body}+05:30"
+    assert _nikto_start_time(f"{body} (GMT+0530)") == f"{body}+05:30"
+    assert zone_for(_nikto_start_time(f"{body} (GMT0530)")) == "UTC+05:30"
 
 
 # --- run-clock lifetime (kills never-reset / set(None) / no-finally / no-bind) ---
@@ -827,13 +871,30 @@ def test_run_clock_thread_isolation() -> None:
     assert _RUN_CLOCK.get() is None
 
 
-def test_future_epoch_cutoff_naive_clock_is_utc() -> None:
-    """Naive now= is UTC midnight-or-wall of that naive value, not local."""
-    naive = datetime(2020, 1, 1, 12, 0, 0)  # no tzinfo
-    mid_2026 = 1_777_719_763
-    assert format_detection_date(mid_2026, now=naive) == NOT_RECORDED
-    assert epoch_cutoff_date(naive) == date(2020, 1, 2)
-    pt = timezone(timedelta(hours=-7))
-    evening_pt = datetime(2026, 9, 28, 22, 50, tzinfo=pt)  # 05:50Z on 09-29
-    assert epoch_cutoff_date(evening_pt) == date(2026, 9, 30)
-    assert format_detection_date(mid_2026, now=evening_pt) == "2026-05-02"
+def test_future_epoch_cutoff_naive_clock_is_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Naive now= is UTC. TZ=PT + naive 20:00 would be next-day UTC if local."""
+    prev_tz = os.environ.get("TZ")
+    monkeypatch.setenv("TZ", "America/Los_Angeles")
+    time.tzset()
+    try:
+        naive = datetime(2020, 1, 1, 20, 0, 0)  # no tzinfo — 20:00 UTC, not PT
+        mid_2026 = 1_777_719_763
+        # Naive = UTC → 2020-01-01 20:00Z → cutoff 2020-01-02.
+        # Naive as PT (PST, UTC-8) → 2020-01-02 04:00Z → cutoff 2020-01-03.
+        assert epoch_cutoff_date(naive) == date(2020, 1, 2)
+        assert format_detection_date(mid_2026, now=naive) == NOT_RECORDED
+        jan2 = int(datetime(2020, 1, 2, 12, 0, tzinfo=timezone.utc).timestamp())
+        jan3 = int(datetime(2020, 1, 3, 0, 0, tzinfo=timezone.utc).timestamp())
+        assert format_detection_date(jan2, now=naive) == "2020-01-02"
+        assert format_detection_date(jan3, now=naive) == NOT_RECORDED
+        pt = timezone(timedelta(hours=-7))
+        evening_pt = datetime(2026, 9, 28, 22, 50, tzinfo=pt)  # 05:50Z on 09-29
+        assert epoch_cutoff_date(evening_pt) == date(2026, 9, 30)
+        assert format_detection_date(mid_2026, now=evening_pt) == "2026-05-02"
+    finally:
+        if prev_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = prev_tz
+        time.tzset()
+
