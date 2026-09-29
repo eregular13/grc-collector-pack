@@ -335,6 +335,11 @@ def assert_lab() -> None:
         # DEMO SMB is on .corp.local / RFC1918 — 3.I, not 3.S.
         assert "cpg_3_I" in refs_smb, refs_smb
         assert "cpg_3_S" not in refs_smb
+    redis_poam = [r for r in poam if "redis" in (r.get("weakness") or "").lower()]
+    for row in redis_poam:
+        refs = row.get("framework_refs") or ""
+        assert "csf_PR_AA_03" in refs, refs
+        assert "csf_PR_AA_05" not in refs.split(",")
     for row in smb:
         refs = row.get("framework_refs") or ""
         assert "csf_PR_IR_01" in refs or "csf_PR_AA_05" in refs or "csf_PR_DS_02" in refs
@@ -442,9 +447,10 @@ def assert_lab() -> None:
                 frow = fed_by_id.get(egp)
                 if not frow:
                     continue
-                a = csf_cpg_tag_set(prow.get("framework_refs") or "")
-                b = csf_cpg_tag_set(frow.get("Framework Tags") or "")
+                a = prow.get("framework_refs") or ""
+                b = frow.get("Framework Tags") or ""
                 assert a == b, (egp, ref, a, b)
+                assert (prow.get("controls") or "") == (frow.get("Controls") or ""), egp
 
     blob = ""
     for path in OUT.rglob("*"):
