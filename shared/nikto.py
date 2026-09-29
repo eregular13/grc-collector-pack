@@ -225,26 +225,36 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
     return out
 
 
-# (GMT0), (GMT-7), (GMT+5:30), (GMT+0530), (GMT-3:30), (GMT+5:45).
+# Real Nikto prints ``(GMT$offset)`` from ``gmt_offset()`` hours as a
+# decimal, often with no ``+``: ``(GMT5.5)`` Kolkata, ``(GMT-2.5)``,
+# ``(GMT5.75)``, ``(GMT13.75)``. Also keep ``(GMT0)`` / ``(GMT-7)`` and
+# the colon / hhmm forms already accepted.
 _NIKTO_GMT = re.compile(
     r"""
     ^(?P<body>.*?)\s*\(\s*GMT\s*
     (?:
-        (?P<sign>[+-])
-        (?:
-            (?P<hhmm>\d{4})
-            | (?P<h1>\d{1,2})(?::(?P<m1>\d{2}))?
-        )
-        | (?P<h0>\d{1,2})(?::(?P<m0>\d{2}))?
+        (?P<sign_hhmm>[+-])(?P<hhmm>\d{4})
+        | (?P<sign_dec>[+-])?(?P<dec>\d{1,2}\.\d+)
+        | (?P<sign>[+-])?(?P<h>\d{1,2})(?::(?P<m>\d{2}))?
     )
     \s*\)\s*$
     """,
     re.I | re.X,
 )
+_NIKTO_MAX_HOURS = 14
+_NIKTO_VALID_MINUTES = frozenset({0, 15, 30, 45})
+
+
+def _nikto_frac_minutes(frac: float) -> int | None:
+    """Map a fractional hour to 0/15/30/45. Other fractions are invalid."""
+    minutes = int(round(abs(frac) * 60))
+    if minutes not in _NIKTO_VALID_MINUTES:
+        return None
+    return minutes
 
 
 def _nikto_start_time(raw: str) -> str:
-    """Nikto ``2026-09-04 17:00:00 (GMT0)`` / ``(GMT+5:30)`` → offset datetime."""
+    """Nikto ``2026-09-04 17:00:00 (GMT5.5)`` / ``(GMT-7)`` → offset datetime."""
     text = (raw or "").strip()
     if not text:
         return ""
@@ -255,16 +265,19 @@ def _nikto_start_time(raw: str) -> str:
     if match.group("hhmm"):
         token = match.group("hhmm")
         hours, minutes = int(token[:2]), int(token[2:])
-        sign = match.group("sign") or "+"
-    elif match.group("h1") is not None:
-        hours = int(match.group("h1"))
-        minutes = int(match.group("m1") or 0)
-        sign = match.group("sign") or "+"
+        sign = match.group("sign_hhmm") or "+"
+    elif match.group("dec") is not None:
+        dec = float(match.group("dec"))
+        hours = int(dec)
+        minutes = _nikto_frac_minutes(dec - hours)
+        if minutes is None:
+            return text
+        sign = match.group("sign_dec") or "+"
     else:
-        hours = int(match.group("h0") or 0)
-        minutes = int(match.group("m0") or 0)
+        hours = int(match.group("h") or 0)
+        minutes = int(match.group("m") or 0)
         sign = match.group("sign") or "+"
-    if minutes >= 60 or hours > 14:
+    if minutes >= 60 or hours > _NIKTO_MAX_HOURS:
         return text
     return f"{body}{sign}{hours:02d}:{minutes:02d}"
 
