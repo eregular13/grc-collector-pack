@@ -24,7 +24,19 @@ from keep.lab import keep_lab
 from scripts.prove_ciso import prove_ciso
 from shared.drop_manifest import parse_manifest_hashes, write_drop_manifest
 from shared.hardening_dedup import dedupe_hardening
-from shared.hardening_map import lynis_control
+from shared.hardening_map import (
+    ACCOUNT_LOCKOUT,
+    AUDIT_LOGGING,
+    OSCAP_FAMILY_PREFIXES,
+    OSCAP_MAP,
+    SSH_EMPTY_PASSWORDS,
+    SSH_ROOT_LOGIN,
+    extra_control_fields,
+    lynis_control,
+    oscap_control,
+    oscap_short_id,
+    _keyword_control,
+)
 from shared.lab_stamp import LAB_LABEL
 from shared.openscap import is_openscap, iter_openscap_failures
 from tests.test_lab_prove_lock import stage_lab_drop_dest_in
@@ -129,6 +141,90 @@ def test_openscap_fail_error_only() -> None:
     refs = root["extra"].get("ssg_references") or []
     assert any("ANSSI" in str(x) or "CCE-" in str(x) for x in refs)
     assert root["extra"].get("rule_id", "").startswith("xccdf_org.ssgproject")
+    audit = next(r for r in rows if r["short_id"] == "service_auditd_enabled")
+    assert audit["control_key"] == AUDIT_LOGGING
+    assert "AU-2" in (audit["extra"].get("nist_800_53") or [])
+    assert "AU-12" in (audit["extra"].get("nist_800_53") or [])
+
+
+def test_oscap_short_id_keeps_rule_family_not_last_token() -> None:
+    full = "xccdf_org.ssgproject.content_rule_service_auditd_enabled"
+    assert oscap_short_id(full) == "service_auditd_enabled"
+    assert oscap_short_id(full) != "enabled"
+    # Last-token-only IDs still resolve through OSCAP_MAP.
+    assert oscap_control("xccdf_org.example_firewall") == "host_firewall"
+    assert oscap_control(full) == AUDIT_LOGGING
+    assert oscap_control("xccdf_org.ssgproject.content_rule_auditd_data_retention") == (
+        AUDIT_LOGGING
+    )
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_accounts_password_pam_maxrepeat"
+    ) == "password_policy"
+    # Ambiguous families stay silent (not guessed).
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_sshd_set_idle_timeout",
+        "Set SSH idle timeout",
+    ) is None
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_aide_build_database",
+        "Build AIDE database",
+    ) is None
+    prefixes = {p for p, _ in OSCAP_FAMILY_PREFIXES}
+    assert "service_auditd" in prefixes
+    assert "service_auditd_enabled" in OSCAP_MAP
+
+
+def test_oscap_faillock_is_account_lockout_not_password_policy() -> None:
+    """accounts_password_ must not swallow accounts_passwords_pam_faillock_*."""
+    assert ("accounts_password_", "password_policy") in OSCAP_FAMILY_PREFIXES
+    assert ("accounts_passwords_pam_faillock", ACCOUNT_LOCKOUT) in OSCAP_FAMILY_PREFIXES
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_accounts_passwords_pam_faillock_deny"
+    ) == ACCOUNT_LOCKOUT
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_accounts_passwords_pam_faillock_unlock_time"
+    ) == ACCOUNT_LOCKOUT
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_accounts_password_pam_maxrepeat"
+    ) == "password_policy"
+    meta = extra_control_fields(ACCOUNT_LOCKOUT)
+    assert "AC-7" in (meta.get("nist_800_53") or [])
+    assert "IA-5" not in (meta.get("nist_800_53") or [])
+    from shared.framework_class_map import classify_weakness_class, resolve_class_tags
+
+    assert (
+        classify_weakness_class({"control_name": "Enforce account lockout"}, {})
+        == "identity_auth"
+    )
+    tags = resolve_class_tags("identity_auth", "protect")
+    assert tags["csf_subcategory"] == "PR.AA-03"
+
+
+def test_oscap_sshd_family_prefixes_are_required() -> None:
+    """Prefix entries must exist; short ids not in OSCAP_MAP use them."""
+    assert ("sshd_disable_root", SSH_ROOT_LOGIN) in OSCAP_FAMILY_PREFIXES
+    assert ("sshd_permit_root", SSH_ROOT_LOGIN) in OSCAP_FAMILY_PREFIXES
+    assert ("sshd_disable_empty_password", SSH_EMPTY_PASSWORDS) in OSCAP_FAMILY_PREFIXES
+    # Keyword fallback does not see "root login" / empty-password here.
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_sshd_disable_root_access"
+    ) == SSH_ROOT_LOGIN
+    assert "sshd_disable_root_access" not in OSCAP_MAP
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_sshd_permit_root_via_pubkey_only"
+    ) == SSH_ROOT_LOGIN
+    assert "sshd_permit_root_via_pubkey_only" not in OSCAP_MAP
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_sshd_disable_empty_password_via_pam"
+    ) == SSH_EMPTY_PASSWORDS
+    assert "sshd_disable_empty_password_via_pam" not in OSCAP_MAP
+
+
+def test_keyword_control_auditd_token_is_required() -> None:
+    """Removing the 'auditd' keyword leaves this text unmapped (mutant)."""
+    assert _keyword_control("auditd") == AUDIT_LOGGING
+    assert _keyword_control("restart auditd now") == AUDIT_LOGGING
+    assert lynis_control("FOO-0001", "auditd") == AUDIT_LOGGING
 
 
 def test_lynis_oscap_dedupe_same_host_control() -> None:
