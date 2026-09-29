@@ -63,6 +63,8 @@ TYPE_ALIASES: dict[str, str] = {
     "iam_root_mfa_enabled": "iam_root_mfa",
     "aws_iam_user_mfa": "iam_user_mfa",
     "ec2_securitygroup_allow_ingress_from_internet_to_any_port": "sg_ingress_open",
+    "ckv_aws_24": "sg_ingress_open",
+    "ckv_aws_260": "sg_ingress_open",
     "rd_gateway_exposed": "rd_gateway_exposed",
     "rdpgatewaypublic": "rd_gateway_exposed",
     "openrdpgateway": "rd_gateway_exposed",
@@ -237,7 +239,6 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
             "enable account lockout, and alert on failed logons. The gateway "
             "is an intended internet broker (typically 443), not a world-open "
             "3389 security-group rule — do not just remove 0.0.0.0/0. "
-            "CSF 2.0 PR.AA-03 is primary; PR.IR-01 is secondary. "
             "This is a file-drop cloud finding, not a live RDP probe."
         ),
         "nist_800_53": [
@@ -920,17 +921,28 @@ _SG_RESOURCE_KINDS = frozenset(
         "networksecuritygroups",
     }
 )
-# Singular "security group" only — "security groups" in prose is not a match.
+# Singular "security group" only — "security groups" / "network security
+# groups" in prose is not a match. Plural is allowed on check id/name.
 _SG_PHRASE_RE = re.compile(
     r"(?<![a-z0-9])(?:network\s+)?security\s+group(?!s\b|[a-z0-9])",
     re.I,
 )
-# Closed compounds. Do not match the plural prose token "securitygroups".
+_SG_PHRASE_ID_RE = re.compile(
+    r"(?<![a-z0-9])(?:network\s+)?security\s+groups?(?![a-z0-9])",
+    re.I,
+)
+# Closed compounds. Do not match the plural prose token "securitygroups"
+# or "networksecuritygroups" (ARM kinds still match via _SG_RESOURCE_KINDS).
 _SG_COMPOUND_RE = re.compile(
-    r"networksecuritygroup(?:s)?(?![a-z])|securitygroup(?!s)",
+    r"networksecuritygroup(?!s)|securitygroup(?!s)",
+    re.I,
+)
+_SG_COMPOUND_ID_RE = re.compile(
+    r"networksecuritygroups?|securitygroups?",
     re.I,
 )
 _APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
+_APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
 _RD_GATEWAY_COMPACT_RE = re.compile(r"rdpgateway|rdgateway", re.I)
 _RD_GATEWAY_PHRASE_RE = re.compile(r"\brd\s+gateway\b", re.I)
 
@@ -980,31 +992,36 @@ def _is_security_group_resource(rec: dict[str, Any], extra: dict[str, Any]) -> b
     return False
 
 
-def _has_adjacent_security_group_phrase(text: str) -> bool:
-    """True only for the adjacent singular phrase (or the closed compound)."""
+def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False) -> bool:
+    """True only for the adjacent SG phrase (or the closed compound).
+
+    Description/prose is singular-only. Check id/name may use the plural.
+    Azure application security groups are stripped before either regex.
+    """
     raw = str(text or "")
     if not raw:
         return False
     spaced = re.sub(r"[\s_\-]+", " ", raw)
     cleaned = _APP_SG_RE.sub(" ", spaced)
-    if _SG_PHRASE_RE.search(cleaned):
+    phrase = _SG_PHRASE_ID_RE if allow_plural else _SG_PHRASE_RE
+    if phrase.search(cleaned):
         return True
-    return bool(_SG_COMPOUND_RE.search(re.sub(r"[\s_\-]+", "", raw)))
+    compact = _APP_SG_COMPACT_RE.sub("", re.sub(r"[\s_\-]+", "", cleaned))
+    compound = _SG_COMPOUND_ID_RE if allow_plural else _SG_COMPOUND_RE
+    return bool(compound.search(compact))
 
 
-def _is_rd_gateway(check_id: str, title: str, authored: str) -> bool:
-    """RD Gateway from check id/name, or the phrases rd gateway / rdgateway / rdpgateway.
+def _is_rd_gateway(check_id: str, title: str) -> bool:
+    """RD Gateway from check id/name only.
 
-    A bare 'gateway' in free text (internet gateway, NAT gateway) is not enough.
+    A bare 'gateway' or a word ending in 'rd' plus 'gateway' in free text
+    (standard gateway, dashboard gateway, payment card gateway) is not enough.
     """
     id_name = f"{check_id} {title}"
     if _RD_GATEWAY_COMPACT_RE.search(re.sub(r"[\s_\-]+", "", id_name)):
         return True
-    blob = f"{check_id} {title} {authored}"
-    spaced = re.sub(r"[\s_\-]+", " ", blob)
-    if _RD_GATEWAY_PHRASE_RE.search(spaced):
-        return True
-    return bool(_RD_GATEWAY_COMPACT_RE.search(re.sub(r"[\s_\-]+", "", blob)))
+    spaced = re.sub(r"[\s_\-]+", " ", id_name)
+    return bool(_RD_GATEWAY_PHRASE_RE.search(spaced))
 
 
 def _has_sg_id_token(words: set[str]) -> bool:
@@ -1043,14 +1060,15 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
     # "remove 0.0.0.0/0". A bare 'gateway' (NAT / internet gateway) in
     # description text must not disable public-RDP typing.
     exposed = bool(words & {"public", "open", "3389"}) or "0.0.0.0" in raw
-    rd_gw = _is_rd_gateway(check_id, title, authored)
+    rd_gw = _is_rd_gateway(check_id, title)
     if rd_gw and exposed:
         return "rd_gateway_exposed"
     admin = bool(words & {"ssh", "3389"}) or ("rdp" in words and not rd_gw)
     if exposed and admin:
         return "sg_ingress_open"
     sg_signal = (
-        _has_adjacent_security_group_phrase(raw)
+        _has_adjacent_security_group_phrase(f"{check_id} {title}", allow_plural=True)
+        or _has_adjacent_security_group_phrase(authored)
         or _has_sg_id_token(id_name_words)
         or _is_security_group_resource(rec, extra)
     )

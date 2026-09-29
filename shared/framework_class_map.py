@@ -1084,12 +1084,18 @@ _THIRD_PARTY_PRODUCT_TOKS = (
 # scanners are third-party by source (not because the row named a CVE).
 _THIRD_PARTY_SCANNERS = frozenset({"nikto", "wpscan"})
 # SCA / advisory feeds ingested as SARIF. `sarif` itself is a file format.
+# "snyk" here is Open Source / SCA, not the "Snyk Code" SAST driver.
 _SCA_THIRD_PARTY_SCANNERS = frozenset(
     {"trivy", "grype", "snyk", "dependabot", "osv", "osv-scanner"}
 )
 # Real SAST engines. Never treat the `sarif` label as in-house evidence.
+# snykcode covers the spaced driver name "Snyk Code".
 _IN_HOUSE_SCANNERS = frozenset(
-    {"sast", "semgrep", "codeql", "bandit", "eslint", "opengrep"}
+    {"sast", "semgrep", "codeql", "bandit", "eslint", "opengrep", "snykcode"}
+)
+_SNYK_CODE_RE = re.compile(r"snyk[\s_\-]*code\b", re.I)
+_SEMGREP_SUPPLY_CHAIN_RE = re.compile(
+    r"semgrep[\s_\-]*supply[\s_\-]*chain", re.I
 )
 # nuclei and zap stay ambiguous (custom templates / mixed first-party DAST).
 _CVE_TOKEN_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
@@ -1137,7 +1143,7 @@ def _scanner_provenance_tokens(
 
 
 def _structured_cve_blob(extra: dict[str, Any]) -> str:
-    """CVE on a structured field (extra.cve / rule_id), never the message."""
+    """CVE / GHSA on a structured field (extra.cve / rule_id), never the message."""
     parts = [
         str(extra.get(k) or "")
         for k in ("cve", "rule", "rule_id", "ruleId", "id")
@@ -1148,19 +1154,34 @@ def _structured_cve_blob(extra: dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+def _scanner_driver_blob(rec: dict[str, Any], extra: dict[str, Any]) -> str:
+    parts = [str(x or "") for x in (rec.get("labels") or [])]
+    for key in ("tool", "scanner", "engine"):
+        parts.append(str(extra.get(key) or ""))
+    parts.append(str(rec.get("source") or ""))
+    return " ".join(parts)
+
+
 def _scanner_app_attribution(
     rec: dict[str, Any], extra: dict[str, Any]
 ) -> str:
     """Return third_party, in_house, or empty when the scanner is ambiguous.
 
-    A structured CVE (extra.cve or a rule_id that starts with CVE-) wins
-    over any transport label. Then the SARIF *driver* (or collector
-    tool/source) decides: Semgrep/CodeQL/Bandit/ESLint/OpenGrep and the
-    code-secrets lane are in-house; Trivy/Grype/Snyk/Dependabot/OSV and
-    Nikto/WPScan are third-party. Nuclei is third-party only with a CVE
-    template; ZAP stays ambiguous.
+    A structured CVE or GHSA (extra.cve or a rule_id that starts with
+    CVE-/GHSA-) wins over any transport label. Then the SARIF *driver*
+    (or collector tool/source) decides: Semgrep/CodeQL/Bandit/ESLint/
+    OpenGrep, Snyk Code, and the code-secrets lane are in-house;
+    Trivy/Grype/Snyk (Open Source)/Dependabot/OSV, Semgrep Supply Chain,
+    and Nikto/WPScan are third-party. Nuclei is third-party only with a
+    CVE template; ZAP stays ambiguous.
     """
-    if _CVE_TOKEN_RE.search(_structured_cve_blob(extra)):
+    structured = _structured_cve_blob(extra)
+    if _CVE_TOKEN_RE.search(structured) or _GHSA_TOKEN_RE.search(structured):
+        return "third_party"
+    driver = _scanner_driver_blob(rec, extra)
+    if _SNYK_CODE_RE.search(driver):
+        return "in_house"
+    if _SEMGREP_SUPPLY_CHAIN_RE.search(driver):
         return "third_party"
     toks = _scanner_provenance_tokens(rec, extra)
     if toks & _IN_HOUSE_SCANNERS or "code-secrets" in toks:
@@ -1506,10 +1527,22 @@ def apply_class_mapping(mapped: dict[str, Any], rec: dict[str, Any] | None = Non
     cis = list(mapped.get("cis") or [])
     n53_tokens = [f"nist80053_{cid}" for cid in n53]
     refs = [tags["cpg_stamp"], tags["csf_stamp"]] + n53_tokens + list(cis)
+    ftype = str(mapped.get("finding_type") or "")
+    control = str(mapped.get("control_name") or "")
+    rd_gw = (
+        ftype == "rd_gateway_exposed"
+        or control == "Harden the public Remote Desktop Gateway"
+    )
+    if rd_gw:
+        refs.append(csf_stamp("PR.IR-01"))
     mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
     csf_stamps = list(mapped.get("csf") or [])
     if tags["csf_stamp"] not in csf_stamps:
         csf_stamps.append(tags["csf_stamp"])
+    if rd_gw:
+        ir01 = csf_stamp("PR.IR-01")
+        if ir01 not in csf_stamps:
+            csf_stamps.append(ir01)
     mapped["csf"] = csf_stamps
     return mapped
 

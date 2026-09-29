@@ -443,6 +443,10 @@ def test_rdp_gateway_public_is_rd_gateway_exposed() -> None:
         assert mapped["control_name"] == "Harden the public Remote Desktop Gateway"
         assert want <= set(mapped.get("nist_800_53") or [])
         assert mapped["csf_subcategory"] == "PR.AA-03"
+        assert "csf_PR_IR_01" in mapped["framework_refs"]
+        assert "csf 2.0" not in mapped["recommended_fix"].lower()
+        assert "primary" not in mapped["recommended_fix"].lower()
+        assert "secondary" not in mapped["recommended_fix"].lower()
         assert "mfa" in mapped["recommended_fix"].lower()
         assert "aa20-014a" in mapped["recommended_fix"].lower()
     # Bare RDP on an SG stays the open-3389 class.
@@ -452,6 +456,64 @@ def test_rdp_gateway_public_is_rd_gateway_exposed() -> None:
         extra={"check_id": "PublicRDPAccess", "classification": "security"},
     )
     assert finding_type(rdp) == "sg_ingress_open"
+
+
+def test_rdgatewaypublic_non_alias_is_rd_gateway_exposed() -> None:
+    """Mutant-kill: RD Gateway branch, not only TYPE_ALIASES."""
+    rec = _custodian_finding(
+        name="Cloud Custodian RDGatewayPublic",
+        description="published on the internet",
+        extra={"check_id": "RDGatewayPublic", "classification": "security"},
+    )
+    assert finding_type(rec) == "rd_gateway_exposed"
+    mapped = map_finding(rec)
+    assert mapped["csf_subcategory"] == "PR.AA-03"
+    assert "csf_PR_IR_01" in mapped["framework_refs"]
+
+
+def test_rd_gateway_without_exposure_is_not_typed() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian rd-gateway-internal",
+        description="RD Gateway is configured on an internal listener",
+        extra={"check_id": "rd-gateway-internal", "classification": "security"},
+    )
+    assert finding_type(rec) != "rd_gateway_exposed"
+    assert finding_type(rec) != "sg_ingress_open"
+
+
+def test_standard_dashboard_card_gateway_phrases_are_not_rd_gateway() -> None:
+    cases = (
+        (
+            "ec2-rdp-public",
+            "RDP open to 0.0.0.0/0 via the standard gateway",
+            "sg_ingress_open",
+        ),
+        (
+            "ec2-ssh-public",
+            "SSH on the onboard gateway host is public",
+            "sg_ingress_open",
+        ),
+        (
+            "s3-bucket-open",
+            "bucket served to the payment card gateway",
+            "",
+        ),
+        (
+            "elb-public",
+            "ELB fronts the dashboard gateway",
+            "",
+        ),
+    )
+    for check_id, desc, want in cases:
+        rec = _custodian_finding(
+            name=f"Cloud Custodian {check_id}",
+            description=desc,
+            extra={"check_id": check_id, "classification": "security"},
+        )
+        got = finding_type(rec)
+        assert got != "rd_gateway_exposed", (check_id, desc, got)
+        if want:
+            assert got == want, (check_id, desc, got)
 
 
 def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:
@@ -494,6 +556,75 @@ def test_plural_security_groups_prose_is_not_sg_ingress() -> None:
     assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
 
 
+def test_plural_network_security_groups_prose_is_not_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian rds-ingress-logging",
+        description="RDS ingress logging is enabled; see network security groups doc",
+        extra={"check_id": "rds-ingress-logging", "classification": "security"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+
+
+def test_azure_application_security_group_is_not_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian asg-ingress",
+        description="application security group ingress from the internet",
+        extra={
+            "check_id": "asg-ingress",
+            "classification": "security",
+            "resource_type": "microsoft.network/applicationsecuritygroups",
+        },
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+    compact = _custodian_finding(
+        name="Cloud Custodian asg-ingress",
+        description="applicationsecuritygroup ingress from the internet",
+        extra={"check_id": "asg-ingress", "classification": "security"},
+    )
+    assert finding_type(compact) != "sg_ingress_open"
+
+
+def test_checkov_ckv_aws_24_and_260_are_sg_ingress() -> None:
+    for cid in ("CKV_AWS_24", "CKV_AWS_260"):
+        rec = make_record(
+            kind="finding",
+            source="code-secrets",
+            ref_id=f"CODE-{cid}",
+            name=f"Checkov {cid}",
+            description="Security groups allow ingress from 0.0.0.0/0",
+            severity="high",
+            category="misconfiguration",
+            assets=["sg-1"],
+            extra={"check_id": cid},
+        )
+        assert finding_type(rec) == "sg_ingress_open", cid
+
+
+def test_plural_security_groups_check_id_is_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian ec2-security-groups-ingress-open",
+        description="inbound from the internet",
+        extra={
+            "check_id": "ec2-security-groups-ingress-open",
+            "classification": "security",
+        },
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+
+
+def test_nested_arm_nsg_securityrules_is_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian azure-nsg-rule-open",
+        description="ingress from 0.0.0.0/0",
+        extra={
+            "check_id": "azure-nsg-rule-open",
+            "classification": "security",
+            "resource_type": "microsoft.network/networksecuritygroups/securityrules",
+        },
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+
+
 def test_ad_feed_security_group_is_not_sg_ingress() -> None:
     rec = make_record(
         kind="finding",
@@ -508,6 +639,22 @@ def test_ad_feed_security_group_is_not_sg_ingress() -> None:
     )
     assert finding_type(rec) != "sg_ingress_open"
     assert finding_type(rec) != "rd_gateway_exposed"
+
+
+def test_identity_ad_security_group_cidr_is_not_sg_ingress() -> None:
+    """Mutant-kill: dropping the identity-ad heuristic exclusion."""
+    rec = make_record(
+        kind="finding",
+        source="identity-ad",
+        ref_id="ID-corp-sg",
+        name="Corp Users security group listed",
+        description="security group members noted; 0.0.0.0/0 is not a CIDR filter",
+        severity="high",
+        category="identity-gap",
+        assets=["CORP\\Users"],
+        extra={"check_id": "corp-users"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
 
 
 def test_sg_ingress_requires_ingress_token() -> None:
