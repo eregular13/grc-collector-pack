@@ -14,7 +14,6 @@ from __future__ import annotations
 import csv
 import json
 import os
-import shutil
 from pathlib import Path
 
 from shared.asset_ledger import AssetLedger, attach_asset_uids
@@ -65,6 +64,7 @@ from shared.poam_ledger import (
     run_ledger,
 )
 from shared.vendor_dependency import VD_NOTE
+from shared.pack_outputs import clean_retired_pack_outputs
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -245,6 +245,9 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load() -> dict:
+    # Drop 1f8d347-era pack-owned leftovers before rewrite. Never touch
+    # operator files the pack did not create.
+    clean_retired_pack_outputs(out_dir())
     # Asset UIDs first (EGA- ledger), then ref_id collapse, weakness, HK keys.
     asset_ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
     overrides = in_dir() / "assets" / "assets-overrides.csv"
@@ -727,9 +730,7 @@ def load() -> dict:
         )
 
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
-    leftover_rr = out_dir() / "riskready"
-    if leftover_rr.exists():
-        shutil.rmtree(leftover_rr)
+    clean_retired_pack_outputs(out_dir())
 
     excluded_poam = max(
         0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)

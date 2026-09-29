@@ -958,7 +958,75 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
         mapped = dict(mapped)
         mapped["include_poam"] = False
-    return mapped
+    return _with_pki_sc17(mapped, rec)
+
+
+# Certificate validity / issuance / trust → SC-17 (PKI certificates).
+# Protocol/cipher weakness stays SC-8 / SC-13. Extra ids from testssl / nmap NSE.
+_PKI_CERT_IDS = frozenset(
+    {
+        "cert_expirationstatus",
+        "cert_trust_wildcard",
+        "dns_caarecord",
+        "nse-tls-self-signed",
+        "nse_tls_self_signed",
+        "nse-tls-weak-key",
+        "nse_tls_weak_key",
+    }
+)
+_PKI_CERT_TYPES = frozenset(
+    {
+        "tls_cert_expiration",
+        "nse-tls-self-signed",
+        "nse-tls-weak-key",
+    }
+)
+_PKI_CERT_NEEDLES = (
+    "self-signed",
+    "self signed",
+    "expired certificate",
+    "expiring certificate",
+    "certificate expired",
+    "certificate is expired",
+    "certificate is expiring",
+    "untrusted certificate",
+    "wildcard certificate",
+    "wildcard san",
+    "certificate trust",
+    "untrusted issuer",
+    "untrusted ca",
+    "certificate issuer",
+)
+
+
+def is_pki_certificate_finding(rec: dict[str, Any]) -> bool:
+    """True when the finding is certificate validity/issuance/trust, not TLS protocol."""
+    extra = extra_dict(rec)
+    sid = str(extra.get("id") or extra.get("check_id") or "").strip().lower()
+    sid_norm = sid.replace("-", "_")
+    if sid in _PKI_CERT_IDS or sid_norm in _PKI_CERT_IDS:
+        return True
+    ftype = finding_type(rec)
+    if ftype in _PKI_CERT_TYPES:
+        return True
+    if _is_caa_finding(rec):
+        return True
+    blob = _blob(rec)
+    if any(tok in blob for tok in _PKI_CERT_NEEDLES):
+        return True
+    return False
+
+
+def _with_pki_sc17(mapped: dict[str, Any], rec: dict[str, Any]) -> dict[str, Any]:
+    """R5-9: stamp SC-17 on PKI/certificate findings. Protocol TLS stays SC-8/SC-13."""
+    if not is_pki_certificate_finding(rec):
+        return mapped
+    n53 = list(mapped.get("nist_800_53") or [])
+    if "SC-17" in n53:
+        return mapped
+    mapped = dict(mapped)
+    mapped["nist_800_53"] = n53 + ["SC-17"]
+    return _stamp_csf(mapped, rec)
 
 
 def _is_unauth_redis(rec: dict[str, Any]) -> bool:

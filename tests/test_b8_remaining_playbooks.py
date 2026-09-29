@@ -211,8 +211,8 @@ def test_testssl_wildcard_and_caa_keep_prior_controls() -> None:
     assert "wildcard" in wmap["recommended_fix"].lower()
     assert "hostname" in wmap["recommended_fix"].lower()
     assert "caa" in cmap["recommended_fix"].lower()
-    assert set(wmap.get("nist_800_53") or []) == {"SC-8", "SC-8(1)", "SC-13"}
-    assert set(cmap.get("nist_800_53") or []) == {"SI-2", "RA-5"}
+    assert set(wmap.get("nist_800_53") or []) == {"SC-8", "SC-8(1)", "SC-13", "SC-17"}
+    assert set(cmap.get("nist_800_53") or []) == {"SI-2", "RA-5", "SC-17"}
 
 
 def test_nikto_header_matches_message_not_plugin_id() -> None:

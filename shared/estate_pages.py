@@ -204,6 +204,41 @@ EXPORT_OTHER_REL = (
 )
 
 
+def engagement_name(value: Any) -> str:
+    """Client / engagement display name. Empty or placeholder → '' (not quotes)."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    if text == NOT_RECORDED:
+        return ""
+    if text.lower() in _AUTH_PLACEHOLDERS:
+        return ""
+    return text
+
+
+def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", client_name: Any = None) -> str:
+    """One clean exec-summary sentence. No empty quotes or dangling ' . '."""
+    if stamp is not None:
+        label = stamp.label
+        kind = stamp.kind
+        client_name = stamp.client_name
+    name = engagement_name(client_name)
+    shown = (label or "").strip()
+    if kind == "CLIENT":
+        if name:
+            return f"**CLIENT: {name}**. {name}."
+        return "**This assessment**."
+    if shown.endswith(":") or shown in {"CLIENT:", "CLIENT"}:
+        shown = "This assessment"
+    if name:
+        return f"**{shown}**. {name}."
+    if shown:
+        return f"**{shown}**."
+    return "**This assessment**."
+
+
 def recorded(value: Any) -> str:
     """Fill a placeholder from run data. Missing → 'not recorded'. Never invent."""
     if value is None:
@@ -924,8 +959,13 @@ class EstateStamp:
     client_name: str = NOT_RECORDED
 
     def banner_md(self) -> str:
+        label = (self.label or "").strip()
+        if self.kind == "CLIENT" and not engagement_name(self.client_name):
+            label = "This assessment"
+        elif not label or label in {"CLIENT:", "CLIENT"}:
+            label = "This assessment"
         return (
-            f"> **{self.label}**: {self.sentence}\n"
+            f"> **{label}**: {self.sentence}\n"
             f"> Run `{self.run_id}` · generated {self.generated_at_local} · pack `{self.pack_commit}`"
         )
 
@@ -1576,11 +1616,6 @@ class PageContext:
 
 def build_executive_summary(ctx: PageContext) -> str:
     stamp = ctx.stamp
-    org = (
-        stamp.client_name
-        if stamp.kind == "CLIENT" and stamp.client_name != NOT_RECORDED
-        else recorded(stamp.client_name if stamp.client_name != NOT_RECORDED else None)
-    )
     scan_start, scan_end = _engagement_window(ctx.records, kind=stamp.kind)
     dated_n, dated_total = _dated_counts(ctx.records)
     find_sev = _count_severities(ctx.findings)
@@ -1594,7 +1629,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{stamp.label}**. {org}. Assessment window {scan_start} to {scan_end} ({dated_n} of {dated_total} rows dated).",
+        f"{exec_lede(stamp)} Assessment window {scan_start} to {scan_end} ({dated_n} of {dated_total} rows dated).",
         "",
         "### What we found",
         REVIEWER_WHAT_WE_FOUND,
