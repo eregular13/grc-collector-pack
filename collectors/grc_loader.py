@@ -15,6 +15,7 @@ import csv
 import json
 import os
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.asset_ledger import AssetLedger, attach_asset_uids
@@ -53,6 +54,7 @@ from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.egp_collapse import bind_alias_targets_to_ledger
 from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
+from shared.scan_time import bind_run_clock
 from shared.poam_ledger import (
     fingerprints_for,
     fp_v1,
@@ -245,6 +247,13 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load() -> dict:
+    # Run start is captured once and bound for the future-epoch cutoff so
+    # parse_scan_datetime does not read wall-clock at each call site.
+    with bind_run_clock(datetime.now(timezone.utc)):
+        return _load()
+
+
+def _load() -> dict:
     # Asset UIDs first (EGA- ledger), then ref_id collapse, weakness, HK keys.
     asset_ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
     overrides = in_dir() / "assets" / "assets-overrides.csv"
