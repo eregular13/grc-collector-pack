@@ -53,9 +53,10 @@ def _assert_redis_auth_class(rec: dict) -> dict:
     assert not (VULN_PATCH_N53 & n53), n53
     assert mapped.get("finding_type") == "nse-redis-noauth"
     assert classify_weakness_class(mapped, rec) == "exposure_access"
-    assert mapped.get("csf_subcategory") == "PR.AA-05"
+    assert mapped.get("csf_subcategory") == "PR.AA-03"
     refs = str(mapped.get("framework_refs") or "")
-    assert "csf_PR_AA_05" in refs
+    assert "csf_PR_AA_03" in refs
+    assert "csf_PR_AA_05" not in refs.split(",")
     assert "cpg_3_I" in refs or "cpg_3_S" in refs
     assert "csf_PR_PS_02" not in refs
     assert "nist80053_SI-2" not in refs

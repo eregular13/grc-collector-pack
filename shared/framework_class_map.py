@@ -45,6 +45,7 @@ import ipaddress
 import re
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import urlsplit
 
 # Same token as shared.hardening_map.CIS_V8_PREFIX. Do not import that
 # module here — it imports this file.
@@ -195,8 +196,9 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "source_note": (
             "NIST CSF 2.0 PR.AA-05 (least privilege / entitlements). CPG 3.S "
             "only with internet-facing evidence (public ACL / RDS / 0.0.0.0/0); "
-            "else CPG 3.I. Guest, anonymous, admin-share, Redis without auth, "
-            "or public-ACL exposure."
+            "else CPG 3.I. Guest, anonymous, admin-share, or public-ACL "
+            "exposure. Unauthenticated Redis is still this class for CPG "
+            "3.I/3.S but stamps PR.AA-03 (authentication), not PR.AA-05."
         ),
     },
     "host_firewall": {
@@ -353,7 +355,8 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "cpg": "2.B",
         "source_note": (
             "NIST CSF 2.0 PR.PS-06 (secure software development); CISA CPG 2.0 "
-            "2.B Mitigate Known Vulnerabilities. SQLi / XSS / command injection."
+            "2.B Mitigate Known Vulnerabilities. SQLi / XSS / LFI / command "
+            "injection."
         ),
     },
     UNMAPPED: {
@@ -472,8 +475,8 @@ CONTROL_CLASS: dict[str, str] = {
     "Replace web-app default credentials": "identity_default",
     "Raise domain minimum password length": "identity_password",
     "Rotate the krbtgt password twice": "identity_credential",
-    "Stop reflected web-app cross-site scripting": "config_benchmark",
-    "Stop web-app local file inclusion": "config_benchmark",
+    "Stop reflected web-app cross-site scripting": "app_secure_dev",
+    "Stop web-app local file inclusion": "app_secure_dev",
     "Mark privileged accounts sensitive and cannot be delegated": "identity_privilege",
     "Set dSHeuristics LDAP security (CVE-2021-42291)": "identity_auth",
     "Deploy baseline HTTP security headers": "config_benchmark",
@@ -549,8 +552,8 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "web_sensitive_file": "config_benchmark",
     "web_http_methods": "config_benchmark",
     "web_default_creds": "identity_default",
-    "web_xss": "config_benchmark",
-    "web_lfi": "config_benchmark",
+    "web_xss": "app_secure_dev",
+    "web_lfi": "app_secure_dev",
     "pc_min_pwd_len": "identity_password",
     "pc_krbtgt": "identity_credential",
     "pc_delegated": "identity_privilege",
@@ -1129,23 +1132,58 @@ def _iter_candidate_hosts(rec: dict[str, Any] | None, mapped: dict[str, Any] | N
     return out
 
 
-def _host_token_is_public_ip(raw: str) -> bool:
-    """True only for a public unicast IP. RFC1918 / loopback / ULA never qualify."""
+def _strip_zone_and_cidr(host: str) -> str:
+    """Drop IPv6 zone-id and CIDR suffix. Hostnames are unchanged."""
+    text = str(host or "").strip()
+    if not text:
+        return ""
+    text = text.split("%", 1)[0]
+    if "/" in text:
+        text = text.split("/", 1)[0]
+    return text
+
+
+def _host_from_url_or_token(raw: str) -> str:
+    """Extract a host/IP from a URL, [IPv6]:port, host:port, or bare token.
+
+    urllib.parse handles scheme, userinfo, IPv6 brackets, and path/query.
+    Bare IPv4:port and CIDR keep the pre-urlparse behaviour.
+    """
     token = str(raw or "").strip()
     if not token:
-        return False
-    token = token.split("%", 1)[0]
-    token = token.split("/", 1)[0]
-    if token.startswith("[") and "]" in token:
-        token = token[1 : token.index("]")]
-    if "://" in token:
-        token = token.split("://", 1)[1]
+        return ""
+    if token.startswith("["):
+        end = token.find("]")
+        if end != -1:
+            return token[1:end]
+    if "://" in token or token.startswith("//"):
+        parsed = urlsplit(token if "://" in token else f"//{token.lstrip('/')}")
+        if parsed.hostname:
+            return parsed.hostname
+        netloc = parsed.netloc or ""
+        if netloc.startswith("[") and "]" in netloc:
+            return netloc[1 : netloc.index("]")]
+        if "@" in netloc:
+            netloc = netloc.rsplit("@", 1)[-1]
+        if netloc.count(":") == 1 and netloc.rsplit(":", 1)[-1].isdigit():
+            netloc = netloc.rsplit(":", 1)[0]
+        return netloc
+    if "@" in token:
+        token = token.rsplit("@", 1)[-1]
     token = token.split("/", 1)[0]
     token = token.split("?", 1)[0]
     if token.count(":") == 1 and token.rsplit(":", 1)[-1].isdigit():
         token = token.rsplit(":", 1)[0]
+    return token
+
+
+def _host_token_is_public_ip(raw: str) -> bool:
+    """True only for a public unicast IP. RFC1918 / loopback / ULA never qualify."""
+    host = _strip_zone_and_cidr(_host_from_url_or_token(raw))
+    if not host:
+        return False
     try:
-        addr = ipaddress.ip_address(token)
+        addr = ipaddress.ip_address(host)
     except ValueError:
         return False
     return bool(addr.is_global and not addr.is_multicast)
@@ -1235,6 +1273,15 @@ def resolve_class_tags(
         if not is_internet_facing(rec, mapped):
             cpg_id = "3.I"
     if official:
+        # Unauthenticated Redis is an authentication gap (PR.AA-03), not
+        # least-privilege (PR.AA-05). CPG 3.I/3.S stays with exposure_access.
+        if (
+            official == "PR.AA-05"
+            and rec is not None
+            and mapped is not None
+            and _looks_unauth_redis(mapped, rec)
+        ):
+            official = "PR.AA-03"
         if cpg_id != UNMAPPED and cpg_id not in CPG20_GOALS:
             cpg_id = UNMAPPED
         return {

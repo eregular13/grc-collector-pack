@@ -24,7 +24,14 @@ from keep.lab import keep_lab
 from scripts.prove_ciso import prove_ciso
 from shared.drop_manifest import parse_manifest_hashes, write_drop_manifest
 from shared.hardening_dedup import dedupe_hardening
-from shared.hardening_map import lynis_control
+from shared.hardening_map import (
+    AUDIT_LOGGING,
+    OSCAP_FAMILY_PREFIXES,
+    OSCAP_MAP,
+    lynis_control,
+    oscap_control,
+    oscap_short_id,
+)
 from shared.lab_stamp import LAB_LABEL
 from shared.openscap import is_openscap, iter_openscap_failures
 from tests.test_lab_prove_lock import stage_lab_drop_dest_in
@@ -129,6 +136,37 @@ def test_openscap_fail_error_only() -> None:
     refs = root["extra"].get("ssg_references") or []
     assert any("ANSSI" in str(x) or "CCE-" in str(x) for x in refs)
     assert root["extra"].get("rule_id", "").startswith("xccdf_org.ssgproject")
+    audit = next(r for r in rows if r["short_id"] == "service_auditd_enabled")
+    assert audit["control_key"] == AUDIT_LOGGING
+    assert "AU-2" in (audit["extra"].get("nist_800_53") or [])
+    assert "AU-12" in (audit["extra"].get("nist_800_53") or [])
+
+
+def test_oscap_short_id_keeps_rule_family_not_last_token() -> None:
+    full = "xccdf_org.ssgproject.content_rule_service_auditd_enabled"
+    assert oscap_short_id(full) == "service_auditd_enabled"
+    assert oscap_short_id(full) != "enabled"
+    # Last-token-only IDs still resolve through OSCAP_MAP.
+    assert oscap_control("xccdf_org.example_firewall") == "host_firewall"
+    assert oscap_control(full) == AUDIT_LOGGING
+    assert oscap_control("xccdf_org.ssgproject.content_rule_auditd_data_retention") == (
+        AUDIT_LOGGING
+    )
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_accounts_password_pam_maxrepeat"
+    ) == "password_policy"
+    # Ambiguous families stay silent (not guessed).
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_sshd_set_idle_timeout",
+        "Set SSH idle timeout",
+    ) is None
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_aide_build_database",
+        "Build AIDE database",
+    ) is None
+    prefixes = {p for p, _ in OSCAP_FAMILY_PREFIXES}
+    assert "service_auditd" in prefixes
+    assert "service_auditd_enabled" in OSCAP_MAP
 
 
 def test_lynis_oscap_dedupe_same_host_control() -> None:

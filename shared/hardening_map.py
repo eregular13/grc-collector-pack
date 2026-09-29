@@ -238,7 +238,22 @@ OSCAP_MAP: dict[str, str] = {
     "service_chronyd_enabled": TIME_SYNC,
     "chronyd_or_ntpd_specified": TIME_SYNC,
     "service_ntpd_enabled": TIME_SYNC,
+    "service_auditd_enabled": AUDIT_LOGGING,
+    "package_audit_installed": AUDIT_LOGGING,
 }
+
+# SSG rule-family prefixes (short id starts with). Exact OSCAP_MAP wins.
+# sshd_set_idle_timeout / aide_* stay unmapped — session-idle vs AC-11
+# and file-integrity vs SI-7 are not honest one-boxes.
+OSCAP_FAMILY_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("service_auditd", AUDIT_LOGGING),
+    ("package_audit", AUDIT_LOGGING),
+    ("auditd_", AUDIT_LOGGING),
+    ("accounts_password", PASSWORD_POLICY),
+    ("sshd_disable_root", SSH_ROOT_LOGIN),
+    ("sshd_permit_root", SSH_ROOT_LOGIN),
+    ("sshd_disable_empty_password", SSH_EMPTY_PASSWORDS),
+)
 
 
 def lynis_control(check_id: str, title: str = "") -> str | None:
@@ -262,15 +277,30 @@ def oscap_control(rule_id: str, title: str = "") -> str | None:
     short = oscap_short_id(rule_id)
     if short in OSCAP_MAP:
         return OSCAP_MAP[short]
+    last = short.rsplit("_", 1)[-1] if "_" in short else short
+    if last in OSCAP_MAP:
+        return OSCAP_MAP[last]
+    for prefix, key in OSCAP_FAMILY_PREFIXES:
+        if short.startswith(prefix):
+            return key
     return _keyword_control(f"{short} {title}")
 
 
 def oscap_short_id(rule_id: str) -> str:
+    """SSG rule tail. Keep the family + name, not the last underscore token.
+
+    ``xccdf_org.ssgproject.content_rule_service_auditd_enabled`` →
+    ``service_auditd_enabled``. A bare ``xccdf_*_firewall`` last-token
+    still resolves via OSCAP_MAP in ``oscap_control``.
+    """
     raw = (rule_id or "").strip()
-    if "content_rule_" in raw:
-        return raw.rsplit("content_rule_", 1)[-1]
-    if "_" in raw and raw.startswith("xccdf_"):
-        return raw.rsplit("_", 1)[-1]
+    if not raw:
+        return ""
+    lowered = raw.lower()
+    for marker in ("content_rule_", "_rule_"):
+        idx = lowered.rfind(marker)
+        if idx != -1:
+            return raw[idx + len(marker) :]
     return raw
 
 
@@ -311,8 +341,10 @@ def _keyword_control(text: str) -> str | None:
         return ACCOUNT_LOCKOUT
     if "inactivity limit" in blob or "screen saver" in blob or "screensaver" in blob:
         return SESSION_LOCK
-    if "audit policy" in blob or (
-        "advanced audit" in blob and ("logon" in blob or "credential" in blob)
+    if (
+        "auditd" in blob
+        or "audit policy" in blob
+        or ("advanced audit" in blob and ("logon" in blob or "credential" in blob))
     ):
         return AUDIT_LOGGING
     if "real-time protection" in blob or (

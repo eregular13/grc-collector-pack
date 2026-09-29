@@ -26,6 +26,7 @@ from shared.framework_class_map import (
     csf_stamp,
     is_internet_facing,
     resolve_class_tags,
+    _host_token_is_public_ip,
 )
 from shared.schema import make_record
 
@@ -238,6 +239,15 @@ def test_loader_poam_and_fedramp_tags_match_per_egp(
             source="host-wazuh",
             extra={"control_key": "time_sync"},
         ),
+        _finding(
+            ref="VULN-redis",
+            name="Redis without auth",
+            description="Unauthenticated Redis on a LAB host.",
+            category="vulnerability",
+            source="vuln-scan",
+            extra={"template_id": "exposed-redis", "rule": "exposed-redis"},
+            assets=["https://redis-a.lab.internal"],
+        ),
     ]
     write_canonical("inventory-nmap", recs)
     load()
@@ -262,9 +272,13 @@ def test_loader_poam_and_fedramp_tags_match_per_egp(
         egp = str(item.get("poam_id") or "")
         assert egp.startswith("EGP-")
         frow = fed_by_id[egp]
-        assert csf_cpg_tag_set(prow.get("framework_refs") or "") == csf_cpg_tag_set(
-            frow.get("Framework Tags") or ""
+        assert (prow.get("framework_refs") or "") == (frow.get("Framework Tags") or ""), (
+            egp,
+            ref,
+            prow.get("framework_refs"),
+            frow.get("Framework Tags"),
         )
+        assert (prow.get("controls") or "") == (frow.get("Controls") or ""), egp
         matched += 1
     assert matched >= 4
     csf_counts: Counter[str] = Counter()
@@ -572,8 +586,8 @@ _REVIEWER_21 = (
         {
             "cpg": "cpg_3_I",
             "not_cpg": "cpg_2_B",
-            "csf": "csf_PR_AA_05",
-            "not_csf": "csf_PR_PS_02",
+            "csf": "csf_PR_AA_03",
+            "not_csf": "csf_PR_AA_05",
             "control": "Require authentication on Redis",
             "not_n53": ("SI-2", "RA-5"),
         },
@@ -650,3 +664,112 @@ def test_register_never_blanket_csf_pr(tmp_path: Path, monkeypatch) -> None:
     # extra_labels vocabulary and finding path also stay clean.
     assert not (set(extra_labels()) & BLANKET_REGISTER_STAMPS)
     assert "csf_PR" not in extra_labels(recs[0])
+
+
+# Existing host-lab / DEMO tokens. Behaviour must stay identical.
+_PUBLIC_IP_EXISTING = (
+    ("8.8.8.8", True),
+    ("8.8.8.8:443", True),
+    ("8.8.8.8/32", True),
+    ("10.0.0.10", False),
+    ("10.0.0.10:6379", False),
+    ("203.0.113.10", False),
+    ("127.0.0.1", False),
+    ("192.168.1.1", False),
+    ("172.16.0.5", False),
+    ("dc.corp.local", False),
+    ("https://redis-a.lab.internal", False),
+    ("https://redis-a.lab.internal:6379", False),
+    ("", False),
+    ("fe80::1", False),
+    ("fe80::1%eth0", False),
+    ("::1", False),
+    ("2001:db8::1", False),
+    ("[2001:db8::1]", False),
+    ("8.8.8.8:", False),
+)
+
+
+def test_host_token_public_ip_existing_inputs_unchanged() -> None:
+    for raw, expect in _PUBLIC_IP_EXISTING:
+        assert _host_token_is_public_ip(raw) is expect, (raw, expect)
+
+
+def test_host_token_public_ip_url_ipv6_userinfo_edge_cases() -> None:
+    public_v6 = "2001:4860:4860::8888"
+    assert _host_token_is_public_ip(public_v6) is True
+    assert _host_token_is_public_ip(f"[{public_v6}]") is True
+    assert _host_token_is_public_ip(f"[{public_v6}]:443") is True
+    assert _host_token_is_public_ip("https://8.8.8.8") is True
+    assert _host_token_is_public_ip("https://8.8.8.8/path") is True
+    assert _host_token_is_public_ip("https://8.8.8.8:8443/foo?q=1") is True
+    assert _host_token_is_public_ip("http://user:pass@8.8.8.8/") is True
+    assert _host_token_is_public_ip("user:pass@8.8.8.8") is True
+    assert _host_token_is_public_ip(f"https://[{public_v6}]/") is True
+    assert _host_token_is_public_ip(f"https://[{public_v6}]:443/path") is True
+    assert _host_token_is_public_ip("//8.8.8.8/foo") is True
+    assert _host_token_is_public_ip("https://10.0.0.1/admin") is False
+    assert _host_token_is_public_ip("https://user:pass@10.0.0.5:6379/info") is False
+    rec = _finding(
+        name="HTTPS on a public IP URL",
+        assets=["https://8.8.8.8:8443/admin"],
+        extra={"matched_at": "https://8.8.8.8:8443/admin"},
+    )
+    assert is_internet_facing(rec) is True
+    internal = _finding(
+        name="Redis URL",
+        assets=["https://redis-a.lab.internal:6379"],
+        extra={"ip": "10.0.0.41"},
+    )
+    assert is_internet_facing(internal) is False
+
+
+def test_web_xss_and_lfi_are_app_secure_dev_not_config_benchmark() -> None:
+    xss = apply_class_mapping(
+        {
+            "control_name": "Stop reflected web-app cross-site scripting",
+            "csf_function": "protect",
+            "csf": [],
+            "nist_800_53": ["SI-10", "SC-18", "CM-6"],
+            "cis": [],
+            "finding_type": "web_xss",
+        },
+        {"extra": {"check_id": "web_xss"}},
+    )
+    assert (
+        classify_weakness_class(
+            {
+                "control_name": "Stop reflected web-app cross-site scripting",
+                "finding_type": "web_xss",
+            },
+            {"extra": {"check_id": "web_xss"}},
+        )
+        == "app_secure_dev"
+    )
+    assert xss["csf_subcategory"] == "PR.PS-06"
+    assert "csf_PR_PS_06" in xss["framework_refs"]
+    assert "csf_PR_PS_01" not in xss["framework_refs"].split(",")
+    assert "cpg_2_B" in xss["cpg"]
+    lfi = apply_class_mapping(
+        {
+            "control_name": "Stop web-app local file inclusion",
+            "csf_function": "protect",
+            "csf": [],
+            "nist_800_53": ["SI-10", "AC-3", "CM-7"],
+            "cis": [],
+            "finding_type": "web_lfi",
+        },
+        {"extra": {"check_id": "web_lfi"}},
+    )
+    assert (
+        classify_weakness_class(
+            {
+                "control_name": "Stop web-app local file inclusion",
+                "finding_type": "web_lfi",
+            },
+            {"extra": {"check_id": "web_lfi"}},
+        )
+        == "app_secure_dev"
+    )
+    assert lfi["csf_subcategory"] == "PR.PS-06"
+    assert "cpg_2_B" in lfi["cpg"]
