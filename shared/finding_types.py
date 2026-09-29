@@ -880,7 +880,19 @@ def is_custodian_policy_row(rec: dict[str, Any]) -> bool:
 _CAMEL_DIGIT_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
 # Collector fallback when the policy has no authored description.
 _SYNTHESIZED_MATCHED_DESC = re.compile(r"^Policy\s+\S+\s+matched\s+", re.I)
-_SG_RESOURCE_KINDS = frozenset({"sg", "security-group", "securitygroup"})
+_SG_RESOURCE_KINDS = frozenset(
+    {
+        "sg",
+        "security-group",
+        "securitygroup",
+        "nsg",
+        "networksecuritygroup",
+        "network-security-group",
+        "networksecuritygroups",
+    }
+)
+_SG_PHRASE_RE = re.compile(r"network\s+security\s+group|security\s+group", re.I)
+_SG_COMPOUND_RE = re.compile(r"networksecuritygroup|securitygroup", re.I)
 
 
 def _policy_tokens(*parts: str) -> set[str]:
@@ -917,10 +929,20 @@ def _is_security_group_resource(rec: dict[str, Any], extra: dict[str, Any]) -> b
     return False
 
 
-def _has_security_group_token(words: set[str]) -> bool:
-    if "sg" in words or "securitygroup" in words:
+def _has_adjacent_security_group_phrase(text: str) -> bool:
+    """True only for the adjacent phrase (or the closed compound)."""
+    raw = str(text or "")
+    if not raw:
+        return False
+    spaced = re.sub(r"[\s_\-]+", " ", raw)
+    if _SG_PHRASE_RE.search(spaced):
         return True
-    return "security" in words and "group" in words
+    return bool(_SG_COMPOUND_RE.search(re.sub(r"[\s_\-]+", "", raw)))
+
+
+def _has_sg_id_token(words: set[str]) -> bool:
+    """Bare sg / nsg from check_id or name — never from free-text description."""
+    return bool(words & {"sg", "nsg"})
 
 
 def _custodian_security_type(rec: dict[str, Any]) -> str:
@@ -931,9 +953,12 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
     authored = _authored_policy_description(rec)
     # check_id + title + authored description only. Resource ids / ARNs /
     # synthesized "Policy <name> matched <rid>" text are not tokenized.
-    raw_parts = (str(extra.get("check_id") or ""), str(rec.get("name") or ""), authored)
+    check_id = str(extra.get("check_id") or "")
+    title = str(rec.get("name") or "")
+    raw_parts = (check_id, title, authored)
     raw = " ".join(p for p in raw_parts if p)
     words = _policy_tokens(*raw_parts)
+    id_name_words = _policy_tokens(check_id, title)
     blob = " ".join(
         norm_type_key(str(x or ""))
         for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
@@ -947,13 +972,20 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
         return "k8s_security_context"
     # Public / open SSH or RDP (EC2.13 / EC2.14) — internet-facing SG ingress.
     # Whole tokens only: "rdp" must not match inside "wordpress".
+    # RDP Gateway is an intended internet-facing broker (usually 443), not a
+    # world-open 3389 security-group rule — do not steal the SG playbook.
     exposed = bool(words & {"public", "open", "3389"}) or "0.0.0.0" in raw
-    admin = bool(words & {"ssh", "rdp", "3389"})
+    admin = bool(words & {"ssh", "3389"}) or (
+        "rdp" in words and "gateway" not in words
+    )
     if exposed and admin:
         return "sg_ingress_open"
-    if "ingress" in words and (
-        _has_security_group_token(words) or _is_security_group_resource(rec, extra)
-    ):
+    sg_signal = (
+        _has_adjacent_security_group_phrase(raw)
+        or _has_sg_id_token(id_name_words)
+        or _is_security_group_resource(rec, extra)
+    )
+    if "ingress" in words and sg_signal:
         return "sg_ingress_open"
     return ""
 
@@ -1235,7 +1267,11 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
     if "rds" in text and "public" in text:
         return "rds_public"
     if ("0.0.0.0/0" in text or "0.0.0.0 / 0" in text) and (
-        "security group" in text or "security_group" in text or "securitygroup" in text
+        "security group" in text
+        or "security_group" in text
+        or "securitygroup" in text
+        or "network security group" in text
+        or "networksecuritygroup" in text
     ):
         return "sg_ingress_open"
     return ""
