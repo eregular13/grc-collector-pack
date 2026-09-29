@@ -106,6 +106,9 @@ TYPE_ALIASES: dict[str, str] = {
     "sslv3": "tls_sslv3",
     "ssl3": "tls_sslv3",
     "sslv2": "tls_sslv2",
+    # Explicit type ids (collector already classified; honor check_id).
+    "web_xss": "web_xss",
+    "web_lfi": "web_lfi",
     # Nikto plugin ids that name a known web-app class (IDs drift; message wins).
     "999966": "tls_breach",
     "999995": "web_http_methods",  # Nikto 2.6.1 PUT

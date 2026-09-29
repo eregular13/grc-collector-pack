@@ -1076,9 +1076,14 @@ _THIRD_PARTY_PRODUCT_TOKS = (
     "nextgen-gallery",
     "myphpnuke",
 )
+_THIRD_PARTY_SCANNERS = frozenset({"nikto", "wpscan"})
+_IN_HOUSE_SCANNERS = frozenset(
+    {"sarif", "sast", "semgrep", "codeql", "bandit", "eslint", "opengrep"}
+)
 _CVE_TOKEN_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 _OSVDB_TOKEN_RE = re.compile(r"\bosvdb[- ]?\d+", re.I)
-_CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b")
+_CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b", re.I)
+_GHSA_TOKEN_RE = re.compile(r"\bGHSA-[0-9a-z]+-[0-9a-z]+-[0-9a-z]+\b", re.I)
 
 
 def _is_web_xss_or_lfi(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> bool:
@@ -1096,15 +1101,63 @@ def _is_web_xss_or_lfi(mapped: dict[str, Any], rec: dict[str, Any] | None = None
     return str(mapped.get("control_name") or "") in _WEB_APP_INJECTION_CONTROLS
 
 
+def _scanner_provenance_tokens(
+    rec: dict[str, Any], extra: dict[str, Any]
+) -> set[str]:
+    toks: set[str] = set()
+    for raw in rec.get("labels") or []:
+        val = str(raw or "").strip().lower()
+        if val:
+            toks.add(val)
+    for key in ("tool", "scanner", "engine"):
+        val = str(extra.get(key) or "").strip().lower()
+        if val:
+            toks.add(val)
+    source = str(rec.get("source") or "").strip().lower()
+    if source:
+        toks.add(source)
+    return toks
+
+
+def _scanner_app_attribution(
+    rec: dict[str, Any], extra: dict[str, Any]
+) -> str:
+    """Return third_party, in_house, or empty when the scanner is ambiguous."""
+    toks = _scanner_provenance_tokens(rec, extra)
+    if toks & _IN_HOUSE_SCANNERS or "code-secrets" in toks:
+        return "in_house"
+    if toks & _THIRD_PARTY_SCANNERS:
+        return "third_party"
+    if "nuclei" in toks:
+        cve_blob = " ".join(
+            str(extra.get(k) or "")
+            for k in ("cve", "template_id", "template-id", "id")
+        )
+        cves = extra.get("cves")
+        if isinstance(cves, (list, tuple)):
+            cve_blob += " " + " ".join(str(x) for x in cves)
+        if _CVE_TOKEN_RE.search(cve_blob):
+            return "third_party"
+    return ""
+
+
 def _looks_third_party_app_finding(
     mapped: dict[str, Any], rec: dict[str, Any] | None = None
 ) -> bool:
-    """True when the finding names a CVE, advisory, or known third-party product.
+    """Third-party XSS/LFI (PR.PS-02) vs in-house (PR.PS-06).
 
-    In-house / unattributed web_xss and web_lfi stay app_secure_dev (PR.PS-06).
+    Scanner provenance wins: nikto / wpscan / nuclei CVE templates are
+    third-party; SARIF/SAST on the client's own code is in-house. Ambiguous
+    sources fall back to advisory identifiers (not extra.url, not a bare
+    ``/advisories/`` path).
     """
     rec = rec or {}
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    attr = _scanner_app_attribution(rec, extra)
+    if attr == "in_house":
+        return False
+    if attr == "third_party":
+        return True
     parts: list[Any] = [
         mapped.get("control_name"),
         mapped.get("weakness_name"),
@@ -1113,16 +1166,18 @@ def _looks_third_party_app_finding(
         extra.get("cve"),
         extra.get("osvdb"),
         extra.get("advisory"),
-        extra.get("url"),
         extra.get("references"),
     ]
     cves = extra.get("cves")
     if isinstance(cves, (list, tuple)):
         parts.extend(cves)
     blob = " ".join(str(x or "") for x in parts)
-    if _CVE_TOKEN_RE.search(blob) or _OSVDB_TOKEN_RE.search(blob) or _CERT_ADV_RE.search(blob):
-        return True
-    if "/advisories/" in blob.lower():
+    if (
+        _CVE_TOKEN_RE.search(blob)
+        or _OSVDB_TOKEN_RE.search(blob)
+        or _CERT_ADV_RE.search(blob)
+        or _GHSA_TOKEN_RE.search(blob)
+    ):
         return True
     low = blob.lower()
     return any(tok in low for tok in _THIRD_PARTY_PRODUCT_TOKS)
@@ -1406,7 +1461,7 @@ def apply_class_mapping(mapped: dict[str, Any], rec: dict[str, Any] | None = Non
     ):
         if "SI-2" not in n53:
             n53.append("SI-2")
-        n53 = [cid for cid in n53 if cid != "SC-18"]
+        n53 = [cid for cid in n53 if cid != "SA-11"]
         mapped["nist_800_53"] = n53
     cis = list(mapped.get("cis") or [])
     n53_tokens = [f"nist80053_{cid}" for cid in n53]

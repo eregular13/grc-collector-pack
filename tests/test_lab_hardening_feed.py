@@ -200,6 +200,27 @@ def test_oscap_faillock_is_account_lockout_not_password_policy() -> None:
     assert tags["csf_subcategory"] == "PR.AA-03"
 
 
+def test_oscap_lockout_modules_are_ac7_not_ia5() -> None:
+    """Fails if pam_tally2 or faillock is retagged to password_policy / IA-5."""
+    assert ("accounts_passwords_pam_tally2", ACCOUNT_LOCKOUT) in OSCAP_FAMILY_PREFIXES
+    lockout_ids = (
+        "accounts_passwords_pam_faillock_deny",
+        "accounts_passwords_pam_faillock_unlock_time",
+        "accounts_passwords_pam_tally2",
+        "accounts_passwords_pam_tally2_deny_root",
+        "accounts_passwords_pam_tally2_unlock_time",
+    )
+    for short in lockout_ids:
+        key = oscap_control(f"xccdf_org.ssgproject.content_rule_{short}")
+        assert key == ACCOUNT_LOCKOUT, short
+        n53 = extra_control_fields(key).get("nist_800_53") or []
+        assert "AC-7" in n53, short
+        assert "IA-5" not in n53, short
+    assert oscap_control(
+        "xccdf_org.ssgproject.content_rule_accounts_password_pam_minlen"
+    ) == "password_policy"
+
+
 def test_oscap_sshd_family_prefixes_are_required() -> None:
     """Prefix entries must exist; short ids not in OSCAP_MAP use them."""
     assert ("sshd_disable_root", SSH_ROOT_LOGIN) in OSCAP_FAMILY_PREFIXES

@@ -20,6 +20,7 @@ from shared.framework_class_map import (
     CSF20_SUBCATEGORIES,
     UNMAPPED,
     WEAKNESS_CLASS_MAP,
+    _WEB_APP_INJECTION_CONTROLS,
     apply_class_mapping,
     classify_weakness_class,
     cpg_stamp,
@@ -28,6 +29,7 @@ from shared.framework_class_map import (
     is_internet_facing,
     resolve_class_tags,
     _host_token_is_public_ip,
+    _looks_third_party_app_finding,
 )
 from shared.schema import make_record
 
@@ -854,13 +856,15 @@ def test_third_party_xss_lfi_are_vuln_patch_not_app_secure_dev() -> None:
     assert "csf_ID_RA_01" not in phpnuke["framework_refs"].split(",")
     assert "SI-2" in (phpnuke.get("nist_800_53") or [])
     assert "SC-18" not in (phpnuke.get("nist_800_53") or [])
+    assert "SA-11" not in (phpnuke.get("nist_800_53") or [])
+    assert "SA-11" not in (nextgen.get("nist_800_53") or [])
     in_house = map_finding(
         _finding(
-            source="vuln-scan",
+            source="code-secrets",
             name="Stop reflected web-app cross-site scripting",
             description="Parameter q reflects a script tag.",
-            extra={"check_id": "web_xss", "id": "000099"},
-            labels=["nikto"],
+            extra={"check_id": "web_xss"},
+            labels=["sarif"],
         )
     )
     assert in_house["weakness_class"] == "app_secure_dev"
@@ -868,3 +872,93 @@ def test_third_party_xss_lfi_are_vuln_patch_not_app_secure_dev() -> None:
     assert "SI-10" in (in_house.get("nist_800_53") or [])
     assert "SA-11" in (in_house.get("nist_800_53") or [])
     assert "SC-18" not in (in_house.get("nist_800_53") or [])
+
+
+def test_third_party_attribution_signals_each_alone() -> None:
+    """Each fallback identifier must flip the class by itself (mutant-kill)."""
+    base = {
+        "control_name": "Stop reflected web-app cross-site scripting",
+        "finding_type": "web_xss",
+    }
+    rec = {"source": "vuln-scan", "name": "reflected xss", "description": "param q", "extra": {}}
+    assert classify_weakness_class(base, rec) == "app_secure_dev"
+    assert (
+        classify_weakness_class(base, {**rec, "extra": {"cve": "CVE-2024-12345", "check_id": "web_xss"}})
+        == "vuln_patch"
+    )
+    assert _looks_third_party_app_finding(base, {**rec, "extra": {"osvdb": "OSVDB-3092"}}) is True
+    assert (
+        classify_weakness_class(
+            base, {**rec, "description": "ca-2000-02 reflected xss", "extra": {"check_id": "web_xss"}}
+        )
+        == "vuln_patch"
+    )
+    assert (
+        classify_weakness_class(
+            base,
+            {**rec, "description": "GHSA-abcd-efgh-ijkl reflected xss", "extra": {"check_id": "web_xss"}},
+        )
+        == "vuln_patch"
+    )
+    assert _looks_third_party_app_finding(
+        base, {**rec, "extra": {"url": "https://app.example/advisories/list.php", "check_id": "web_xss"}}
+    ) is False
+    sarif = {
+        "source": "code-secrets",
+        "name": "reflected xss",
+        "description": "same class as CVE-2020-11022",
+        "labels": ["sarif"],
+        "extra": {"check_id": "web_xss"},
+    }
+    assert classify_weakness_class(base, sarif) == "app_secure_dev"
+
+
+def test_control_class_third_party_branch_without_finding_type() -> None:
+    name = "Stop reflected web-app cross-site scripting"
+    rec = {"labels": ["nikto"], "name": "xss", "description": "reflected", "extra": {}}
+    assert classify_weakness_class({"control_name": name}, rec) == "vuln_patch"
+
+
+def test_stop_cross_site_scripting_is_injection_control() -> None:
+    assert "Stop cross-site scripting" in _WEB_APP_INJECTION_CONTROLS
+    assert (
+        classify_weakness_class(
+            {"control_name": "Stop cross-site scripting"},
+            {"labels": ["nikto"], "extra": {}},
+        )
+        == "vuln_patch"
+    )
+
+
+def test_web_lfi_map_finding_in_house_keeps_sa11() -> None:
+    mapped = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop web-app local file inclusion",
+            description="Path traversal in an upload parameter.",
+            extra={"check_id": "web_lfi"},
+            labels=["sarif"],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+    assert "SA-11" in (mapped.get("nist_800_53") or [])
+    assert "SI-10" in (mapped.get("nist_800_53") or [])
+    assert "SI-2" not in (mapped.get("nist_800_53") or [])
+
+
+def test_web_lfi_map_finding_third_party_drops_sa11() -> None:
+    mapped = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop web-app local file inclusion",
+            description="NextGEN Gallery LFI on wordpress path.",
+            extra={"check_id": "web_lfi", "id": "006737"},
+            labels=["nikto"],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+    assert "SI-2" in (mapped.get("nist_800_53") or [])
+    assert "SA-11" not in (mapped.get("nist_800_53") or [])
+    assert "SI-10" in (mapped.get("nist_800_53") or [])
