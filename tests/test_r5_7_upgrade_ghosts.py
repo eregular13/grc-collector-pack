@@ -731,6 +731,10 @@ def test_fallback_size_cap_does_not_read(
     assert rr.is_dir()
 
 
+class _FifoHang(BaseException):
+    """Not an OSError. ``_read_path`` / ``_CLEANUP_EXC`` must not swallow a hang."""
+
+
 def test_fallback_fifo_does_not_hang(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -742,10 +746,37 @@ def test_fallback_fifo_does_not_hang(
     out = tmp_path / "out"
     rr = out / "riskready"
     rr.mkdir(parents=True)
-    os.mkfifo(os.fspath(rr / "assets.json"))
+    fifo = rr / "assets.json"
+    os.mkfifo(os.fspath(fifo))
+    fifo_key = os.path.normpath(os.fspath(fifo))
+
+    opened: list[str] = []
+    reads: list[Path] = []
+    real_open = os.open
+    real_read = Path.read_bytes
+
+    def spy_open(path, flags, mode=0o777, *, dir_fd=None):
+        target = os.path.normpath(os.fspath(path))
+        if target == fifo_key or (
+            os.path.basename(target) == "assets.json" and dir_fd is not None
+        ):
+            opened.append(target)
+            raise _FifoHang(f"opened FIFO {target}")
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    def spy_read(self):
+        reads.append(self)
+        if os.path.normpath(os.fspath(self)) == fifo_key:
+            raise _FifoHang(f"read_bytes on FIFO {self}")
+        return real_read(self)
+
+    monkeypatch.setattr(os, "open", spy_open)
+    monkeypatch.setattr(Path, "read_bytes", spy_read)
 
     def _timeout(_signum, _frame):
-        raise TimeoutError("FIFO hang: cleanup opened a non-regular file")
+        raise _FifoHang("FIFO hang: cleanup opened a non-regular file")
 
     old = signal.signal(signal.SIGALRM, _timeout)
     signal.alarm(2)
@@ -754,8 +785,69 @@ def test_fallback_fifo_does_not_hang(
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old)
-    assert (rr / "assets.json").exists()
-    assert stat.S_ISFIFO(os.lstat(rr / "assets.json").st_mode)
+    assert opened == []
+    assert reads == []
+    assert fifo.exists()
+    assert stat.S_ISFIFO(os.lstat(fifo).st_mode)
+    assert rr.is_dir()
+
+
+def test_file_open_flags_include_o_nofollow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Per-file dir_fd open must carry O_NOFOLLOW (not just the directory open)."""
+    import shared.pack_outputs as pack_outputs
+
+    assert pack_outputs._file_flags() & os.O_NOFOLLOW
+    seen: list[int] = []
+    real_open = os.open
+
+    def spy_open(path, flags, mode=0o777, *, dir_fd=None):
+        if dir_fd is not None and os.fspath(path) in _PACK_JSON:
+            seen.append(flags)
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(os, "open", spy_open)
+    out = tmp_path / "out"
+    _plant_1f8d347_layout(out)
+    clean_retired_pack_outputs(out)
+    assert seen
+    for flags in seen:
+        assert flags & os.O_NOFOLLOW, hex(flags)
+
+
+def test_dir_fd_size_cap_does_not_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """dir_fd path: size cap is checked from st_size before opening the file."""
+    assert dir_fd_cleanup_supported()
+    out = tmp_path / "out"
+    rr = out / "riskready"
+    rr.mkdir(parents=True)
+    big = rr / "assets.json"
+    fd = os.open(os.fspath(big), os.O_CREAT | os.O_WRONLY, 0o644)
+    try:
+        os.ftruncate(fd, 8 * 1024 * 1024 + 1)
+    finally:
+        os.close(fd)
+    opened: list[str] = []
+    real_open = os.open
+
+    def spy_open(path, flags, mode=0o777, *, dir_fd=None):
+        target = os.fspath(path)
+        if dir_fd is not None and target == "assets.json":
+            opened.append(target)
+        if dir_fd is None:
+            return real_open(path, flags, mode)
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(os, "open", spy_open)
+    clean_retired_pack_outputs(out)
+    assert opened == []
+    assert big.exists()
+    assert big.stat().st_size == 8 * 1024 * 1024 + 1
     assert rr.is_dir()
 
 
