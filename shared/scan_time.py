@@ -89,7 +89,7 @@ _EPOCH_MIN_DATE = date(2000, 1, 1)
 # run_date + 1 day is kept (clock-skew); run_date + 2 days is not.
 FUTURE_EPOCH_GRACE_DAYS = 1
 
-# Pack run start. Bound by the loader / apply_ledger; tests inject it.
+# Pack run start. Bound by the loader; tests inject it.
 # Unbound → wall-clock, matching pre-inject behavior.
 _RUN_CLOCK: ContextVar[datetime | None] = ContextVar("grc_run_clock", default=None)
 
@@ -116,24 +116,28 @@ def resolve_run_clock(now: datetime | date | None = None) -> datetime:
     return datetime.now(timezone.utc)
 
 
-def set_run_clock(clock: datetime | date) -> Token:
-    """Bind the pack run start. Pair with ``reset_run_clock``."""
+def _set_run_clock(clock: datetime | date) -> Token:
+    """Bind the pack run start. Pair with ``_reset_run_clock``."""
     return _RUN_CLOCK.set(resolve_run_clock(clock))
 
 
-def reset_run_clock(token: Token) -> None:
+def _reset_run_clock(token: Token) -> None:
     _RUN_CLOCK.reset(token)
 
 
 @contextmanager
 def bind_run_clock(clock: datetime | date) -> Iterator[datetime]:
-    """Bind the run start for the duration of a parse / load."""
+    """Bind the run start for the duration of a parse / load.
+
+    Always restores the prior bind (or unbound) in ``finally``, including
+    when the body raises and when binds are nested.
+    """
     resolved = resolve_run_clock(clock)
-    token = _RUN_CLOCK.set(resolved)
+    token = _set_run_clock(resolved)
     try:
         yield resolved
     finally:
-        _RUN_CLOCK.reset(token)
+        _reset_run_clock(token)
 
 
 def epoch_cutoff_date(now: datetime | date | None = None) -> date:
@@ -238,12 +242,20 @@ def parse_scan_datetime(
 
 
 def cmp_scan_dt(left: datetime, right: datetime) -> int:
-    """Compare two parsed stamps. Naive is treated as UTC. -1 / 0 / 1."""
+    """Compare two parsed stamps. Naive is treated as UTC. -1 / 0 / 1.
+
+    Primary key is the UTC instant (so mixed naive/aware never TypeError).
+    Same instant, different offsets: earlier local calendar date wins.
+    """
     a = left if left.tzinfo is not None else left.replace(tzinfo=timezone.utc)
     b = right if right.tzinfo is not None else right.replace(tzinfo=timezone.utc)
     if a < b:
         return -1
     if a > b:
+        return 1
+    if left.date() < right.date():
+        return -1
+    if left.date() > right.date():
         return 1
     return 0
 
