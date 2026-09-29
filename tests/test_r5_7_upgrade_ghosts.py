@@ -22,6 +22,8 @@ from shared.pack_outputs import (
     RETIRED_PACK_OWNED_FILES,
     clean_retired_pack_outputs,
     is_retired_pack_owned,
+    looks_like_pack_json,
+    pack_shaped_bytes,
 )
 
 _PACK_JSON = ("assets.json", "incidents.json", "evidence.json", "risks_proposed.json")
@@ -62,7 +64,7 @@ def _plant_1f8d347_layout(out: Path) -> None:
     rr = out / "riskready"
     rr.mkdir(parents=True)
     for name in _PACK_JSON:
-        (rr / name).write_text("{}\n", encoding="utf-8")
+        (rr / name).write_bytes(pack_shaped_bytes(name))
     # Pack never wrote a top-level risks_proposed.json — this is a user file.
     (out / "risks_proposed.json").write_text("[]\n", encoding="utf-8")
     (out / "canonical").mkdir(parents=True)
@@ -139,7 +141,8 @@ def test_user_file_in_riskready_survives_and_dir_stays(tmp_path: Path) -> None:
     clean_retired_pack_outputs(out)
     assert (rr / "notes.txt").read_text(encoding="utf-8") == "user\n"
     assert rr.is_dir()
-    assert not (rr / "assets.json").exists()
+    # Known name but not pack JSON — keep it.
+    assert (rr / "assets.json").read_text(encoding="utf-8") == "pack\n"
 
 
 def test_user_toplevel_risks_proposed_survives(tmp_path: Path) -> None:
@@ -159,6 +162,32 @@ def test_regular_file_named_riskready_survives(tmp_path: Path) -> None:
     clean_retired_pack_outputs(out)
     assert planted.is_file()
     assert planted.read_text(encoding="utf-8") == "not-a-dir\n"
+
+
+def test_symlinked_riskready_dir_inside_out_is_skipped(tmp_path: Path) -> None:
+    """Removing the symlink check fails: resolve() stays under out/."""
+    out = tmp_path / "out"
+    inner = out / "stash"
+    inner.mkdir(parents=True)
+    (inner / "assets.json").write_bytes(pack_shaped_bytes("assets.json"))
+    (inner / "notes.txt").write_text("keep-inner\n", encoding="utf-8")
+    (out / "riskready").symlink_to(inner)
+    clean_retired_pack_outputs(out)
+    assert (inner / "assets.json").read_bytes() == pack_shaped_bytes("assets.json")
+    assert (inner / "notes.txt").read_text(encoding="utf-8") == "keep-inner\n"
+    assert (out / "riskready").is_symlink()
+
+
+def test_known_name_without_pack_json_is_kept(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    rr = out / "riskready"
+    rr.mkdir(parents=True)
+    (rr / "assets.json").write_text('[{"foo": 1}]\n', encoding="utf-8")
+    clean_retired_pack_outputs(out)
+    assert (rr / "assets.json").read_text(encoding="utf-8") == '[{"foo": 1}]\n'
+    assert rr.is_dir()
+    assert looks_like_pack_json("assets.json", pack_shaped_bytes("assets.json"))
+    assert not looks_like_pack_json("assets.json", b'{"name": "x"}\n')
 
 
 def test_symlinked_riskready_dir_is_skipped(tmp_path: Path) -> None:
@@ -184,7 +213,7 @@ def test_symlinked_target_file_is_skipped(tmp_path: Path) -> None:
     victim = tmp_path / "outside.json"
     victim.write_text("keep-outside\n", encoding="utf-8")
     (rr / "assets.json").symlink_to(victim)
-    (rr / "incidents.json").write_text("{}\n", encoding="utf-8")
+    (rr / "incidents.json").write_bytes(pack_shaped_bytes("incidents.json"))
     clean_retired_pack_outputs(out)
     assert victim.read_text(encoding="utf-8") == "keep-outside\n"
     assert (rr / "assets.json").is_symlink()
@@ -197,7 +226,7 @@ def test_empty_dir_rmdir_works(tmp_path: Path) -> None:
     rr = out / "riskready"
     rr.mkdir(parents=True)
     for name in _PACK_JSON:
-        (rr / name).write_text("{}\n", encoding="utf-8")
+        (rr / name).write_bytes(pack_shaped_bytes(name))
     removed = clean_retired_pack_outputs(out)
     assert "riskready" in removed
     assert not rr.exists()
@@ -241,7 +270,7 @@ def test_loader_user_file_in_riskready_survives(
     out = tmp_path / "out"
     rr = out / "riskready"
     rr.mkdir(parents=True)
-    (rr / "assets.json").write_text("{}\n", encoding="utf-8")
+    (rr / "assets.json").write_bytes(pack_shaped_bytes("assets.json"))
     (rr / "operator-notes.txt").write_text("keep-inside\n", encoding="utf-8")
     loaded = _run_loader(tmp_path, monkeypatch, [_asset(), _finding()])
     assert (loaded / "riskready" / "operator-notes.txt").read_text(encoding="utf-8") == "keep-inside\n"
@@ -257,7 +286,7 @@ def test_loader_readonly_riskready_does_not_abort(
     rr = out / "riskready"
     rr.mkdir(parents=True)
     pack = rr / "assets.json"
-    pack.write_text("{}\n", encoding="utf-8")
+    pack.write_bytes(pack_shaped_bytes("assets.json"))
     pack.chmod(0o444)
     rr.chmod(0o555)
     caplog.set_level(logging.WARNING)

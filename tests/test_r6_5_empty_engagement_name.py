@@ -102,6 +102,20 @@ def test_engagement_name_strips_zwsp_and_bom() -> None:
     assert engagement_name("Acme\u200b") == "Acme"
 
 
+def test_engagement_name_strips_unicode_cf() -> None:
+    # ZWNJ, ZWJ, word joiner, soft hyphen — all category Cf.
+    assert engagement_name("\u200c") == ""
+    assert engagement_name("\u200d") == ""
+    assert engagement_name("\u2060") == ""
+    assert engagement_name("\u00ad") == ""
+    assert engagement_name("\u200c\u200d\u2060\u00ad") == ""
+    assert engagement_name("Ac\u200cme") == "Acme"
+    assert engagement_name("\u00adAcme\u2060") == "Acme"
+    assert exec_lede(_stamp(kind="CLIENT", label="CLIENT: ", client_name="\u200c\u00ad")) == (
+        "**This assessment**."
+    )
+
+
 def test_exec_lede_zwsp_and_bom_client_is_neutral() -> None:
     zwsp = exec_lede(_stamp(kind="CLIENT", label="CLIENT: ", client_name="\u200b"))
     bom = exec_lede(_stamp(kind="CLIENT", label="CLIENT: \ufeff", client_name="\ufeff"))

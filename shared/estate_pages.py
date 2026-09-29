@@ -16,6 +16,7 @@ import json
 import os
 import re
 import subprocess
+import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -204,16 +205,16 @@ EXPORT_OTHER_REL = (
 )
 
 
-# BOM / zero-width space are not stripped by str.strip(); they left
-# ``**CLIENT: **. .`` on the exec lede. Strip them before the empty check.
-_INVISIBLE_NAME_CHARS = dict.fromkeys(map(ord, "\ufeff\u200b"), None)
+def _strip_format_chars(text: str) -> str:
+    """Drop Unicode category Cf (ZWSP, BOM, ZWNJ, ZWJ, word joiner, soft hyphen)."""
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
 
 
 def engagement_name(value: Any) -> str:
     """Client / engagement display name. Empty or placeholder → '' (not quotes)."""
     if value is None:
         return ""
-    text = str(value).translate(_INVISIBLE_NAME_CHARS).strip()
+    text = _strip_format_chars(str(value)).strip()
     if not text:
         return ""
     if text == NOT_RECORDED:
