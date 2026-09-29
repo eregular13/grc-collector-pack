@@ -7,7 +7,9 @@ nikto, ffuf). Never uses the pack run date.
 
 from __future__ import annotations
 
+import itertools
 import json
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from collectors import (
@@ -24,7 +26,17 @@ from collectors import (
 from shared.masscan import parse_masscan
 from shared.nessus import iter_nessus_items
 from shared.openscap import iter_openscap_failures
-from shared.scan_time import NOT_RECORDED, extra_scan_raw, format_detection_date, zone_for
+from shared.fast_portscan import parse_fast_portscan
+from shared.nikto import _nikto_start_time, parse_nikto
+from shared.scan_time import (
+    NOT_RECORDED,
+    bind_run_clock,
+    epoch_cutoff_date,
+    extra_scan_raw,
+    format_detection_date,
+    parse_scan_datetime,
+    zone_for,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "fixtures" / "demo"
@@ -370,37 +382,58 @@ def test_epoch_float_string_and_implausible_epochs() -> None:
 
 
 def test_naabu_uses_earliest_timestamp_regardless_of_order(tmp_path: Path) -> None:
+    """One host, three records: earliest observation wins, not first/last in file."""
+    earliest = "2026-09-02T00:00:00Z"
+    later = "2026-09-15T00:00:00Z"
+    latest = "2026-09-20T00:00:00Z"
     rows = [
         {
             "ip": "10.0.0.50",
             "host": "filesrv.corp.local",
             "port": 23,
             "protocol": "tcp",
-            "timestamp": "2026-09-15T00:00:00Z",
+            "timestamp": later,
         },
         {
             "ip": "10.0.0.50",
             "host": "filesrv.corp.local",
             "port": 3389,
             "protocol": "tcp",
-            "timestamp": "2026-09-02T00:00:00Z",
+            "timestamp": earliest,
         },
         {
             "ip": "10.0.0.50",
             "host": "filesrv.corp.local",
             "port": 445,
             "protocol": "tcp",
-            "timestamp": "2026-09-20T00:00:00Z",
+            "timestamp": latest,
         },
     ]
-    later_first = tmp_path / "later.jsonl"
-    later_first.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
-    earlier_first = tmp_path / "earlier.jsonl"
-    earlier_first.write_text(
-        "\n".join(json.dumps(r) for r in reversed(rows)) + "\n", encoding="utf-8"
-    )
-    assert _dates(inventory_nmap.parse_file(later_first)) == {"2026-09-02"}
-    assert _dates(inventory_nmap.parse_file(earlier_first)) == {"2026-09-02"}
+    # Every file order — first-seen, last-seen, and the four mixed orders.
+    for i, ordered in enumerate(itertools.permutations(rows)):
+        dest = tmp_path / f"naabu-order-{i}.jsonl"
+        dest.write_text("\n".join(json.dumps(r) for r in ordered) + "\n", encoding="utf-8")
+        first_in_file = ordered[0]["timestamp"]
+        last_in_file = ordered[-1]["timestamp"]
+        hosts = parse_fast_portscan(dest)
+        assert hosts and len(hosts) == 1
+        assert hosts[0]["scan_time"] == earliest
+        assert hosts[0]["scan_time"] != first_in_file or first_in_file == earliest
+        assert hosts[0]["scan_time"] != last_in_file or last_in_file == earliest
+        recs = inventory_nmap.parse_file(dest)
+        port_finds = [
+            r
+            for r in _findings(recs)
+            if str((r.get("extra") or {}).get("port") or "") in {"23", "3389", "445"}
+        ]
+        assert {str((r.get("extra") or {}).get("port")) for r in port_finds} == {
+            "23",
+            "3389",
+            "445",
+        }
+        for rec in port_finds:
+            assert format_detection_date((rec.get("extra") or {}).get("scan_time")) == "2026-09-02"
+        assert _dates(recs) == {"2026-09-02"}
 
 
 def test_seven_tools_malformed_values_are_not_recorded(tmp_path: Path) -> None:
@@ -497,3 +530,112 @@ def test_seven_tools_timezone_offsets() -> None:
         recs = easm.parse_file(ff)
         assert _dates(recs) == {"2026-09-07"}
         assert zone_for(extra_scan_raw(_findings(recs)[0])) == "UTC+02:00"
+
+
+# --- future-epoch cutoff is the run clock, not parse-time wall-clock ---
+
+_RUN = datetime(2026, 9, 29, 12, 0, 0, tzinfo=timezone.utc)
+
+
+def _epoch_at(day: date, hour: int = 0) -> int:
+    return int(datetime(day.year, day.month, day.day, hour, tzinfo=timezone.utc).timestamp())
+
+
+def test_future_epoch_cutoff_uses_injected_run_clock_not_wall_clock() -> None:
+    """Same epoch is dated or rejected solely from the injected run start."""
+    mid_2026 = 1_777_719_763  # 2026-05-02 — "now" on this VM is later in 2026
+    early_run = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    late_run = datetime(2026, 9, 29, 12, 0, 0, tzinfo=timezone.utc)
+    assert format_detection_date(mid_2026, now=late_run) == "2026-05-02"
+    assert format_detection_date(mid_2026, now=early_run) == NOT_RECORDED
+    with bind_run_clock(early_run):
+        assert format_detection_date(mid_2026) == NOT_RECORDED
+        assert parse_scan_datetime(mid_2026) is None
+    with bind_run_clock(late_run):
+        assert format_detection_date(mid_2026) == "2026-05-02"
+        parsed = parse_scan_datetime(mid_2026)
+        assert parsed is not None
+        assert parsed[0].date() == date(2026, 5, 2)
+
+
+def test_future_epoch_cutoff_boundary_cases() -> None:
+    """Inclusive run_date+1 day; exclusive run_date+2 days; 2000-01-01 floor."""
+    run = _RUN
+    run_day = run.date()
+    plus_one = run_day + timedelta(days=1)
+    plus_two = run_day + timedelta(days=2)
+    assert epoch_cutoff_date(run) == plus_one
+    # On the last accepted calendar day (any hour).
+    assert format_detection_date(_epoch_at(plus_one, 0), now=run) == plus_one.isoformat()
+    assert format_detection_date(_epoch_at(plus_one, 23), now=run) == plus_one.isoformat()
+    # First rejected calendar day.
+    assert format_detection_date(_epoch_at(plus_two, 0), now=run) == NOT_RECORDED
+    # Run day itself and the second before midnight of plus_one.
+    assert format_detection_date(_epoch_at(run_day, 12), now=run) == run_day.isoformat()
+    just_inside = int(datetime(plus_one.year, plus_one.month, plus_one.day, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+    just_outside = just_inside + 1  # 2026-10-01T00:00:00Z
+    assert format_detection_date(just_inside, now=run) == plus_one.isoformat()
+    assert format_detection_date(just_outside, now=run) == NOT_RECORDED
+    # Floor: 2000-01-01 00:00:00Z in, one second earlier out.
+    assert format_detection_date(946_684_800, now=run) == "2000-01-01"
+    assert format_detection_date(946_684_799, now=run) == NOT_RECORDED
+    assert format_detection_date(12345, now=run) == NOT_RECORDED
+    assert format_detection_date(0, now=run) == NOT_RECORDED
+    # Float string still honors the injected clock.
+    assert format_detection_date(str(float(_epoch_at(plus_two))), now=run) == NOT_RECORDED
+    assert format_detection_date(f"{_epoch_at(plus_one)}.5", now=run) == plus_one.isoformat()
+
+
+def test_future_epoch_cutoff_bind_survives_nested_parse() -> None:
+    """Pipeline-style bind: cutoff is the bound run, even if wall-clock moved."""
+    run = datetime(2018, 6, 15, tzinfo=timezone.utc)
+    year_2019 = 1_546_300_800  # 2019-01-01
+    with bind_run_clock(run):
+        assert format_detection_date(year_2019) == NOT_RECORDED
+        # Explicit now= overrides the bind (call-site injection wins).
+        later = datetime(2020, 1, 2, tzinfo=timezone.utc)
+        assert format_detection_date(year_2019, now=later) == "2019-01-01"
+
+
+# --- nikto half-hour / 45-minute offsets ---
+
+_NIKTO_OFFSET_CASES = (
+    ("(GMT+5:30)", "UTC+05:30", "+05:30"),
+    ("(GMT+05:30)", "UTC+05:30", "+05:30"),
+    ("(GMT+0530)", "UTC+05:30", "+05:30"),
+    ("(GMT-3:30)", "UTC-03:30", "-03:30"),
+    ("(GMT-03:30)", "UTC-03:30", "-03:30"),
+    ("(GMT+5:45)", "UTC+05:45", "+05:45"),
+    ("(GMT+0545)", "UTC+05:45", "+05:45"),
+)
+
+
+def test_nikto_start_time_half_hour_and_45_minute_offsets(tmp_path: Path) -> None:
+    """+05:30 / -03:30 / +05:45 stay on 2026-09-04 with the recorded offset."""
+    demo = (DEMO / "vuln" / "nikto.txt").read_text(encoding="utf-8")
+    for gmt, zone, iso_off in _NIKTO_OFFSET_CASES:
+        assert _nikto_start_time(f"2026-09-04 17:00:00 {gmt}") == f"2026-09-04 17:00:00{iso_off}"
+        dest = tmp_path / f"nikto-{zone.replace(':', '')}.txt"
+        dest.write_text(demo.replace("(GMT0)", gmt), encoding="utf-8")
+        recs = vuln_scan.parse_file(dest)
+        assert _dates(recs) == {"2026-09-04"}, gmt
+        hit = _findings(recs)[0]
+        raw = extra_scan_raw(hit)
+        assert zone_for(raw) == zone, (gmt, raw)
+        parsed = parse_scan_datetime(raw)
+        assert parsed is not None
+        assert parsed[0].date() == date(2026, 9, 4)
+        sign = 1 if iso_off[0] == "+" else -1
+        assert parsed[0].utcoffset() == timedelta(
+            hours=sign * int(iso_off[1:3]), minutes=sign * int(iso_off[4:6])
+        )
+        rows = parse_nikto(dest)
+        assert rows
+        assert all(r.get("scan_time", "").endswith(iso_off) for r in rows if r.get("scan_time"))
+
+
+def test_nikto_integer_hour_offsets_still_parse() -> None:
+    assert _nikto_start_time("2026-09-04 17:00:00 (GMT0)") == "2026-09-04 17:00:00+00:00"
+    assert _nikto_start_time("2026-09-04 17:00:00 (GMT-7)") == "2026-09-04 17:00:00-07:00"
+    assert _nikto_start_time("2026-09-04 17:00:00 (GMT+14)") == "2026-09-04 17:00:00+14:00"
+    assert zone_for(_nikto_start_time("2026-09-04 17:00:00 (GMT-7)")) == "UTC-07:00"
