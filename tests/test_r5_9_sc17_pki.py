@@ -6,6 +6,8 @@ No POST /api/risks.
 
 from __future__ import annotations
 
+import pytest
+
 from shared.control_map import is_pki_certificate_finding, map_finding
 from shared.finding_types import finding_type
 from shared.schema import make_record
@@ -108,3 +110,84 @@ def test_https_port_only_is_not_pki() -> None:
     )
     assert is_pki_certificate_finding(rec) is False
     assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+@pytest.mark.parametrize(
+    ("extra", "name", "description"),
+    [
+        ({"plugin_id": "51192"}, "SSL Certificate Cannot Be Trusted", "The server certificate cannot be trusted"),
+        ({"plugin_id": "45411"}, "SSL Certificate with Wrong Hostname", "Certificate common name does not match the hostname"),
+        ({"plugin_id": "15901"}, "SSL Certificate Expiry", "The certificate has already expired"),
+        ({"id": "mismatched-ssl-certificate"}, "mismatched-ssl-certificate", "certificate hostname mismatch"),
+        ({"template_id": "untrusted-root-certificate"}, "untrusted-root-certificate", "untrusted root certificate"),
+        ({"id": "revoked-ssl-certificate"}, "revoked-ssl-certificate", "certificate revoked by the issuer"),
+        ({"id": "cert_trust"}, "cert_trust", "hostname mismatch versus the presented SAN"),
+    ],
+)
+def test_sc17_per_plugin_and_template_id(extra: dict, name: str, description: str) -> None:
+    rec = _rec(name=name, description=description, extra=extra)
+    assert is_pki_certificate_finding(rec) is True
+    n53 = list(map_finding(rec).get("nist_800_53") or [])
+    assert "SC-17" in n53
+
+
+@pytest.mark.parametrize(
+    ("extra", "name"),
+    [
+        ({"plugin_id": "35291"}, "SSL Certificate Signed Using Weak Hashing Algorithm"),
+        ({"id": "cert_signatureAlgorithm"}, "cert_signatureAlgorithm"),
+    ],
+)
+def test_weak_signature_sc13_primary_plus_sc17(extra: dict, name: str) -> None:
+    rec = _rec(
+        name=name,
+        description="Certificate signed with SHA-1",
+        extra=extra,
+    )
+    n53 = list(map_finding(rec).get("nist_800_53") or [])
+    assert "SC-13" in n53
+    assert "SC-17" in n53
+    assert n53.index("SC-13") < n53.index("SC-17")
+
+
+def test_caa_id_and_text_branch_gain_sc17() -> None:
+    via_id = _rec(
+        name="CAA DNS record is missing or invalid",
+        description="DNS CAA record is missing",
+        labels=["testssl"],
+        extra={"id": "DNS_CAArecord"},
+    )
+    via_text = _rec(
+        name="Missing CAA record",
+        description="Authoritative DNS has no CAA record",
+        extra={},
+    )
+    vacation = _rec(
+        name="Vacation record",
+        description="HR vacation record is missing",
+        extra={},
+    )
+    assert is_pki_certificate_finding(via_id) is True
+    assert is_pki_certificate_finding(via_text) is True
+    assert is_pki_certificate_finding(vacation) is False
+    assert "SC-17" in set(map_finding(via_id).get("nist_800_53") or [])
+    assert "SC-17" in set(map_finding(via_text).get("nist_800_53") or [])
+    assert "SC-17" not in set(map_finding(vacation).get("nist_800_53") or [])
+
+
+def test_cipher_or_protocol_mentioning_self_signed_is_not_sc17() -> None:
+    cipher = _rec(
+        name="Weak TLS cipher suites are offered",
+        description="RC4 offered; certificate issuer: Let's Encrypt; self-signed cert in the handshake dump",
+        extra={"check_id": "nse-tls-weak-cipher"},
+    )
+    proto = _rec(
+        name="TLS 1.0 is offered",
+        description="Deprecated TLS 1.0; certificate issuer: self-signed",
+        labels=["testssl"],
+        extra={"id": "TLS1"},
+    )
+    assert is_pki_certificate_finding(cipher) is False
+    assert is_pki_certificate_finding(proto) is False
+    assert "SC-17" not in set(map_finding(cipher).get("nist_800_53") or [])
+    assert "SC-17" not in set(map_finding(proto).get("nist_800_53") or [])

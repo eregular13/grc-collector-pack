@@ -204,11 +204,16 @@ EXPORT_OTHER_REL = (
 )
 
 
+# BOM / zero-width space are not stripped by str.strip(); they left
+# ``**CLIENT: **. .`` on the exec lede. Strip them before the empty check.
+_INVISIBLE_NAME_CHARS = dict.fromkeys(map(ord, "\ufeff\u200b"), None)
+
+
 def engagement_name(value: Any) -> str:
     """Client / engagement display name. Empty or placeholder → '' (not quotes)."""
     if value is None:
         return ""
-    text = str(value).strip()
+    text = str(value).translate(_INVISIBLE_NAME_CHARS).strip()
     if not text:
         return ""
     if text == NOT_RECORDED:

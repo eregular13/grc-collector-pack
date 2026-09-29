@@ -92,3 +92,40 @@ def test_exec_summary_sample_omits_empty_org_slot() -> None:
     assert line.startswith(f"**{LABEL_FOR_KIND['SAMPLE']}**. Assessment window")
     assert "not recorded." not in line.split("Assessment window")[0]
     assert '""' not in line
+
+
+def test_engagement_name_strips_zwsp_and_bom() -> None:
+    assert engagement_name("\ufeff") == ""
+    assert engagement_name("\u200b") == ""
+    assert engagement_name("\ufeff\u200b") == ""
+    assert engagement_name("\ufeffAcme Health") == "Acme Health"
+    assert engagement_name("Acme\u200b") == "Acme"
+
+
+def test_exec_lede_zwsp_and_bom_client_is_neutral() -> None:
+    zwsp = exec_lede(_stamp(kind="CLIENT", label="CLIENT: ", client_name="\u200b"))
+    bom = exec_lede(_stamp(kind="CLIENT", label="CLIENT: \ufeff", client_name="\ufeff"))
+    assert zwsp == "**This assessment**."
+    assert bom == "**This assessment**."
+    assert "CLIENT:" not in zwsp
+    assert ". ." not in zwsp
+
+
+def test_banner_md_empty_client_is_this_assessment() -> None:
+    stamp = _stamp(kind="CLIENT", label="CLIENT: ", client_name="\u200b")
+    banner = stamp.banner_md()
+    assert banner.startswith("> **This assessment**:")
+    assert "CLIENT:" not in banner.splitlines()[0]
+
+
+def test_banner_and_lede_non_client_keep_kind_name() -> None:
+    sample = _stamp(kind="SAMPLE", client_name="")
+    demo = _stamp(kind="DEMO", client_name="\ufeff")
+    named = _stamp(kind="SAMPLE", client_name="Fixture Org")
+    assert sample.banner_md().startswith(f"> **{LABEL_FOR_KIND['SAMPLE']}**:")
+    assert demo.banner_md().startswith(f"> **{LABEL_FOR_KIND['DEMO']}**:")
+    assert exec_lede(sample) == f"**{LABEL_FOR_KIND['SAMPLE']}**."
+    assert exec_lede(demo) == f"**{LABEL_FOR_KIND['DEMO']}**."
+    assert exec_lede(named) == f"**{LABEL_FOR_KIND['SAMPLE']}**. Fixture Org."
+    assert "This assessment" not in exec_lede(sample)
+    assert "not recorded." not in exec_lede(demo)
