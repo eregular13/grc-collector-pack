@@ -150,6 +150,7 @@ _INTERNET_FACING_TYPES = frozenset(
         "rds_public",
         "s3_public_access",
         "sg_ingress_open",
+        "rd_gateway_exposed",
     }
 )
 _INTERNET_FACING_CONTROLS = frozenset(
@@ -159,6 +160,7 @@ _INTERNET_FACING_CONTROLS = frozenset(
         "Block public object-storage ACL and policy",
         "Block public EBS snapshot sharing",
         "Restrict security-group ingress from the internet",
+        "Harden the public Remote Desktop Gateway",
     }
 )
 _EXTERNAL_SCAN_SOURCES = frozenset({"easm"})
@@ -395,6 +397,7 @@ CONTROL_CLASS: dict[str, str] = {
     "Remove standing IAM AdministratorAccess": "identity_privilege",
     "Require MFA on the cloud root account": "identity_mfa",
     "Restrict security-group ingress from the internet": "exposure_network",
+    "Harden the public Remote Desktop Gateway": "identity_auth",
     "Disable public accessibility on RDS": "exposure_network",
     "Enable encryption at rest on cloud storage": "encryption_rest",
     "Enable S3 default encryption (SSE-S3 or SSE-KMS)": "encryption_rest",
@@ -500,6 +503,7 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "iam_root_mfa": "identity_mfa",
     "iam_user_mfa": "identity_mfa",
     "sg_ingress_open": "exposure_network",
+    "rd_gateway_exposed": "identity_auth",
     "cloudtrail_logging": "logging",
     "rds_public": "exposure_network",
     "ad_dcsync": "identity_privilege",
@@ -1076,10 +1080,18 @@ _THIRD_PARTY_PRODUCT_TOKS = (
     "nextgen-gallery",
     "myphpnuke",
 )
+# Nikto/WPScan XSS/LFI checks are known-product signatures, so those
+# scanners are third-party by source (not because the row named a CVE).
 _THIRD_PARTY_SCANNERS = frozenset({"nikto", "wpscan"})
-_IN_HOUSE_SCANNERS = frozenset(
-    {"sarif", "sast", "semgrep", "codeql", "bandit", "eslint", "opengrep"}
+# SCA / advisory feeds ingested as SARIF. `sarif` itself is a file format.
+_SCA_THIRD_PARTY_SCANNERS = frozenset(
+    {"trivy", "grype", "snyk", "dependabot", "osv", "osv-scanner"}
 )
+# Real SAST engines. Never treat the `sarif` label as in-house evidence.
+_IN_HOUSE_SCANNERS = frozenset(
+    {"sast", "semgrep", "codeql", "bandit", "eslint", "opengrep"}
+)
+# nuclei and zap stay ambiguous (custom templates / mixed first-party DAST).
 _CVE_TOKEN_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 _OSVDB_TOKEN_RE = re.compile(r"\bosvdb[- ]?\d+", re.I)
 _CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b", re.I)
@@ -1116,17 +1128,44 @@ def _scanner_provenance_tokens(
     source = str(rec.get("source") or "").strip().lower()
     if source:
         toks.add(source)
-    return toks
+    expanded: set[str] = set(toks)
+    for tok in toks:
+        for part in re.split(r"[^a-z0-9]+", tok):
+            if len(part) >= 3:
+                expanded.add(part)
+    return expanded
+
+
+def _structured_cve_blob(extra: dict[str, Any]) -> str:
+    """CVE on a structured field (extra.cve / rule_id), never the message."""
+    parts = [
+        str(extra.get(k) or "")
+        for k in ("cve", "rule", "rule_id", "ruleId", "id")
+    ]
+    cves = extra.get("cves")
+    if isinstance(cves, (list, tuple)):
+        parts.extend(str(x) for x in cves)
+    return " ".join(parts)
 
 
 def _scanner_app_attribution(
     rec: dict[str, Any], extra: dict[str, Any]
 ) -> str:
-    """Return third_party, in_house, or empty when the scanner is ambiguous."""
+    """Return third_party, in_house, or empty when the scanner is ambiguous.
+
+    A structured CVE (extra.cve or a rule_id that starts with CVE-) wins
+    over any transport label. Then the SARIF *driver* (or collector
+    tool/source) decides: Semgrep/CodeQL/Bandit/ESLint/OpenGrep and the
+    code-secrets lane are in-house; Trivy/Grype/Snyk/Dependabot/OSV and
+    Nikto/WPScan are third-party. Nuclei is third-party only with a CVE
+    template; ZAP stays ambiguous.
+    """
+    if _CVE_TOKEN_RE.search(_structured_cve_blob(extra)):
+        return "third_party"
     toks = _scanner_provenance_tokens(rec, extra)
     if toks & _IN_HOUSE_SCANNERS or "code-secrets" in toks:
         return "in_house"
-    if toks & _THIRD_PARTY_SCANNERS:
+    if toks & (_THIRD_PARTY_SCANNERS | _SCA_THIRD_PARTY_SCANNERS):
         return "third_party"
     if "nuclei" in toks:
         cve_blob = " ".join(
@@ -1146,10 +1185,11 @@ def _looks_third_party_app_finding(
 ) -> bool:
     """Third-party XSS/LFI (PR.PS-02) vs in-house (PR.PS-06).
 
-    Scanner provenance wins: nikto / wpscan / nuclei CVE templates are
-    third-party; SARIF/SAST on the client's own code is in-house. Ambiguous
-    sources fall back to advisory identifiers (not extra.url, not a bare
-    ``/advisories/`` path).
+    Nikto/WPScan rows are third-party by scanner because their XSS/LFI
+    checks are known-product signatures. SCA drivers and nuclei CVE
+    templates are also third-party; SAST on the client's own code is
+    in-house. Ambiguous sources fall back to advisory identifiers (not
+    extra.url, not a bare ``/advisories/`` path).
     """
     rec = rec or {}
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}

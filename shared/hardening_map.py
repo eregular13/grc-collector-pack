@@ -252,6 +252,7 @@ OSCAP_FAMILY_PREFIXES: tuple[tuple[str, str], ...] = (
     # lockout modules before accounts_password_ — AC-7, not IA-5.
     ("accounts_passwords_pam_faillock", ACCOUNT_LOCKOUT),
     ("accounts_passwords_pam_tally2", ACCOUNT_LOCKOUT),
+    ("account_password_pam_faillock", ACCOUNT_LOCKOUT),
     ("accounts_password_", PASSWORD_POLICY),
     ("sshd_disable_root", SSH_ROOT_LOGIN),
     ("sshd_permit_root", SSH_ROOT_LOGIN),

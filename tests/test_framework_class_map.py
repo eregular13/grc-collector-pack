@@ -11,6 +11,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from collectors import vuln_scan
 from shared.control_map import extra_labels, map_finding
 from shared.framework_class_map import (
     BLANKET_REGISTER_STAMPS,
@@ -962,3 +963,203 @@ def test_web_lfi_map_finding_third_party_drops_sa11() -> None:
     assert "SI-2" in (mapped.get("nist_800_53") or [])
     assert "SA-11" not in (mapped.get("nist_800_53") or [])
     assert "SI-10" in (mapped.get("nist_800_53") or [])
+
+
+def _xss_sarif(*, driver: str, rule_id: str, message: str) -> dict:
+    return {
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {"driver": {"name": driver, "rules": [{"id": rule_id}]}},
+                "results": [
+                    {
+                        "ruleId": rule_id,
+                        "level": "error",
+                        "message": {"text": message},
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "app.js"}
+                                }
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_trivy_sarif_jquery_xss_cve_is_vuln_patch(tmp_path: Path) -> None:
+    """SARIF is a format: Trivy + structured CVE must stay patch-routed."""
+    path = tmp_path / "trivy-jquery-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Trivy",
+                rule_id="CVE-2020-11022",
+                message="jquery: XSS in htmlPrefilter (CVE-2020-11022)",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    assert "sarif" in {str(x).lower() for x in (rec.get("labels") or [])}
+    assert rec["extra"].get("cve", "").upper().startswith("CVE-")
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+    assert "SI-2" in (mapped.get("nist_800_53") or [])
+    assert "csf_PR_PS_06" not in mapped["framework_refs"].split(",")
+
+
+def test_codeql_and_semgrep_sarif_xss_stay_in_house(tmp_path: Path) -> None:
+    for driver in ("CodeQL", "Semgrep"):
+        path = tmp_path / f"{driver.lower()}-xss.sarif"
+        path.write_text(
+            json.dumps(
+                _xss_sarif(
+                    driver=driver,
+                    rule_id="js/reflected-xss",
+                    message="Untrusted data written to the DOM (CWE-79).",
+                )
+            ),
+            encoding="utf-8",
+        )
+        recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+        assert recs, driver
+        rec = recs[0]
+        assert "sarif" in {str(x).lower() for x in (rec.get("labels") or [])}
+        mapped = map_finding(
+            _finding(
+                source=rec["source"],
+                name=rec["name"],
+                description=rec["description"],
+                extra={**rec["extra"], "check_id": "web_xss"},
+                labels=rec.get("labels") or [],
+            )
+        )
+        assert mapped["weakness_class"] == "app_secure_dev", driver
+        assert mapped["csf_subcategory"] == "PR.PS-06", driver
+        assert "SA-11" in (mapped.get("nist_800_53") or []), driver
+        assert "SI-2" not in (mapped.get("nist_800_53") or []), driver
+
+
+def test_wpscan_label_alone_is_third_party() -> None:
+    """Mutant-kill: dropping wpscan from the third-party set."""
+    mapped = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss"},
+            labels=["wpscan"],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_nuclei_without_cve_template_is_not_always_third_party() -> None:
+    """Mutant-kill: making nuclei always third-party."""
+    mapped = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss", "template_id": "custom-reflected-xss"},
+            labels=["nuclei"],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+
+
+def test_in_house_wins_over_nikto_label_spoof() -> None:
+    """Mutant-kill: swapping the in-house / third-party check order."""
+    mapped = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss", "tool": "codeql"},
+            labels=["nikto", "codeql"],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+
+
+def test_code_secrets_source_alone_is_in_house() -> None:
+    """Mutant-kill: removing code-secrets from the in-house path."""
+    mapped = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="same class as CVE-2020-11022",
+            extra={"check_id": "web_xss"},
+            labels=[],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+
+
+def test_extra_tool_and_source_fields_are_attribution_signals() -> None:
+    """Mutant-kill: ignoring extra.tool or rec.source."""
+    tool = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="same class as CVE-2020-11022",
+            extra={"check_id": "web_xss", "tool": "semgrep"},
+            labels=["sarif"],
+        )
+    )
+    assert tool["weakness_class"] == "app_secure_dev"
+    src = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="same class as CVE-2020-11022",
+            extra={"check_id": "web_xss"},
+            labels=["sarif"],
+        )
+    )
+    assert src["weakness_class"] == "app_secure_dev"
+    sca = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss", "tool": "trivy"},
+            labels=["sarif"],
+        )
+    )
+    assert sca["weakness_class"] == "vuln_patch"
+
+
+def test_advisories_url_and_path_do_not_flip_ambiguous_source() -> None:
+    """Mutant-kill: re-adding extra.url or a bare /advisories/ match."""
+    base = {
+        "control_name": "Stop reflected web-app cross-site scripting",
+        "finding_type": "web_xss",
+    }
+    rec = {
+        "source": "vuln-scan",
+        "name": "reflected xss",
+        "description": "param q on /advisories/list.php",
+        "labels": ["zap"],
+        "extra": {"url": "https://app.example/advisories/list.php", "check_id": "web_xss"},
+    }
+    assert _looks_third_party_app_finding(base, rec) is False
+    assert classify_weakness_class(base, rec) == "app_secure_dev"

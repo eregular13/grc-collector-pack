@@ -203,12 +203,15 @@ def test_oscap_faillock_is_account_lockout_not_password_policy() -> None:
 def test_oscap_lockout_modules_are_ac7_not_ia5() -> None:
     """Fails if pam_tally2 or faillock is retagged to password_policy / IA-5."""
     assert ("accounts_passwords_pam_tally2", ACCOUNT_LOCKOUT) in OSCAP_FAMILY_PREFIXES
+    assert ("account_password_pam_faillock", ACCOUNT_LOCKOUT) in OSCAP_FAMILY_PREFIXES
     lockout_ids = (
         "accounts_passwords_pam_faillock_deny",
         "accounts_passwords_pam_faillock_unlock_time",
         "accounts_passwords_pam_tally2",
         "accounts_passwords_pam_tally2_deny_root",
         "accounts_passwords_pam_tally2_unlock_time",
+        "account_password_pam_faillock_password_auth",
+        "account_password_pam_faillock_system_auth",
     )
     for short in lockout_ids:
         key = oscap_control(f"xccdf_org.ssgproject.content_rule_{short}")

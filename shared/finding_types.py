@@ -63,6 +63,9 @@ TYPE_ALIASES: dict[str, str] = {
     "iam_root_mfa_enabled": "iam_root_mfa",
     "aws_iam_user_mfa": "iam_user_mfa",
     "ec2_securitygroup_allow_ingress_from_internet_to_any_port": "sg_ingress_open",
+    "rd_gateway_exposed": "rd_gateway_exposed",
+    "rdpgatewaypublic": "rd_gateway_exposed",
+    "openrdpgateway": "rd_gateway_exposed",
     "cloudtrail_multi_region_enabled": "cloudtrail_logging",
     "rds_instance_no_public_access": "rds_public",
     "ec2_ebs_default_encryption": "ebs_encryption",
@@ -225,6 +228,28 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
             "This is a network-exposure finding, not a CVE."
         ),
         "nist_800_53": ["SC-7", "AC-3"],
+    },
+    "rd_gateway_exposed": {
+        "control_name": "Harden the public Remote Desktop Gateway",
+        "recommended_fix": (
+            "Require MFA / NLA at the RD Gateway, restrict source addresses "
+            "where feasible, patch (CVE-2020-0609/0610, CISA AA20-014A), "
+            "enable account lockout, and alert on failed logons. The gateway "
+            "is an intended internet broker (typically 443), not a world-open "
+            "3389 security-group rule — do not just remove 0.0.0.0/0. "
+            "CSF 2.0 PR.AA-03 is primary; PR.IR-01 is secondary. "
+            "This is a file-drop cloud finding, not a live RDP probe."
+        ),
+        "nist_800_53": [
+            "AC-17",
+            "AC-17(3)",
+            "IA-2(1)",
+            "IA-2(2)",
+            "AC-7",
+            "SI-2",
+            "SC-7",
+        ],
+        "key_medium": True,
     },
     "cloudtrail_logging": {
         "control_name": "Enable multi-region CloudTrail logging",
@@ -766,6 +791,7 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "iam_root_mfa": "Root account has no MFA",
     "iam_user_mfa": "IAM user has no MFA",
     "sg_ingress_open": "Security group allows inbound traffic from the internet",
+    "rd_gateway_exposed": "Remote Desktop Gateway is published on the internet",
     "cloudtrail_logging": "CloudTrail multi-region trail is missing",
     "rds_public": "RDS instance is publicly accessible",
     "ad_dcsync": "Non-DC principal has DCSync / replication rights",
@@ -894,8 +920,19 @@ _SG_RESOURCE_KINDS = frozenset(
         "networksecuritygroups",
     }
 )
-_SG_PHRASE_RE = re.compile(r"network\s+security\s+group|security\s+group", re.I)
-_SG_COMPOUND_RE = re.compile(r"networksecuritygroup|securitygroup", re.I)
+# Singular "security group" only — "security groups" in prose is not a match.
+_SG_PHRASE_RE = re.compile(
+    r"(?<![a-z0-9])(?:network\s+)?security\s+group(?!s\b|[a-z0-9])",
+    re.I,
+)
+# Closed compounds. Do not match the plural prose token "securitygroups".
+_SG_COMPOUND_RE = re.compile(
+    r"networksecuritygroup(?:s)?(?![a-z])|securitygroup(?!s)",
+    re.I,
+)
+_APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
+_RD_GATEWAY_COMPACT_RE = re.compile(r"rdpgateway|rdgateway", re.I)
+_RD_GATEWAY_PHRASE_RE = re.compile(r"\brd\s+gateway\b", re.I)
 
 
 def _policy_tokens(*parts: str) -> set[str]:
@@ -918,29 +955,56 @@ def _authored_policy_description(rec: dict[str, Any]) -> str:
     return desc
 
 
+def _resource_kind_tails(kind: str) -> set[str]:
+    """Last path / dotted segment plus each [./] token (ARM types split on /)."""
+    text = str(kind or "").strip().lower().replace("\\", "/")
+    parts: set[str] = set()
+    if not text:
+        return parts
+    for chunk in re.split(r"[./]", text):
+        chunk = chunk.strip()
+        if chunk:
+            parts.add(chunk)
+    parts.add(text.rsplit("/", 1)[-1])
+    parts.add(text.rsplit(".", 1)[-1])
+    return parts
+
+
 def _is_security_group_resource(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
     """True when the row's resource type / service / label is a security group."""
     candidates = [extra.get("resource_type"), extra.get("service")]
     candidates.extend(rec.get("labels") or [])
     for raw in candidates:
-        kind = str(raw or "").strip().lower()
-        if not kind:
-            continue
-        tail = kind.rsplit(".", 1)[-1]
-        if tail in _SG_RESOURCE_KINDS:
+        if _resource_kind_tails(str(raw or "")) & _SG_RESOURCE_KINDS:
             return True
     return False
 
 
 def _has_adjacent_security_group_phrase(text: str) -> bool:
-    """True only for the adjacent phrase (or the closed compound)."""
+    """True only for the adjacent singular phrase (or the closed compound)."""
     raw = str(text or "")
     if not raw:
         return False
     spaced = re.sub(r"[\s_\-]+", " ", raw)
-    if _SG_PHRASE_RE.search(spaced):
+    cleaned = _APP_SG_RE.sub(" ", spaced)
+    if _SG_PHRASE_RE.search(cleaned):
         return True
     return bool(_SG_COMPOUND_RE.search(re.sub(r"[\s_\-]+", "", raw)))
+
+
+def _is_rd_gateway(check_id: str, title: str, authored: str) -> bool:
+    """RD Gateway from check id/name, or the phrases rd gateway / rdgateway / rdpgateway.
+
+    A bare 'gateway' in free text (internet gateway, NAT gateway) is not enough.
+    """
+    id_name = f"{check_id} {title}"
+    if _RD_GATEWAY_COMPACT_RE.search(re.sub(r"[\s_\-]+", "", id_name)):
+        return True
+    blob = f"{check_id} {title} {authored}"
+    spaced = re.sub(r"[\s_\-]+", " ", blob)
+    if _RD_GATEWAY_PHRASE_RE.search(spaced):
+        return True
+    return bool(_RD_GATEWAY_COMPACT_RE.search(re.sub(r"[\s_\-]+", "", blob)))
 
 
 def _has_sg_id_token(words: set[str]) -> bool:
@@ -975,12 +1039,14 @@ def _custodian_security_type(rec: dict[str, Any]) -> str:
         return "k8s_security_context"
     # Public / open SSH or RDP (EC2.13 / EC2.14) — internet-facing SG ingress.
     # Whole tokens only: "rdp" must not match inside "wordpress".
-    # RDP Gateway is an intended internet-facing broker (usually 443), not a
-    # world-open 3389 security-group rule — do not steal the SG playbook.
+    # RD Gateway is an intended internet broker — its own class, not
+    # "remove 0.0.0.0/0". A bare 'gateway' (NAT / internet gateway) in
+    # description text must not disable public-RDP typing.
     exposed = bool(words & {"public", "open", "3389"}) or "0.0.0.0" in raw
-    admin = bool(words & {"ssh", "3389"}) or (
-        "rdp" in words and "gateway" not in words
-    )
+    rd_gw = _is_rd_gateway(check_id, title, authored)
+    if rd_gw and exposed:
+        return "rd_gateway_exposed"
+    admin = bool(words & {"ssh", "3389"}) or ("rdp" in words and not rd_gw)
     if exposed and admin:
         return "sg_ingress_open"
     sg_signal = (
@@ -1269,12 +1335,10 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "cloudtrail_logging"
     if "rds" in text and "public" in text:
         return "rds_public"
-    if ("0.0.0.0/0" in text or "0.0.0.0 / 0" in text) and (
-        "security group" in text
-        or "security_group" in text
-        or "securitygroup" in text
-        or "network security group" in text
-        or "networksecuritygroup" in text
+    if (
+        str(rec.get("source") or "") != "identity-ad"
+        and ("0.0.0.0/0" in text or "0.0.0.0 / 0" in text)
+        and _has_adjacent_security_group_phrase(text)
     ):
         return "sg_ingress_open"
     return ""
