@@ -660,12 +660,13 @@ def _pkg_from_rec(rec: dict[str, Any]) -> str:
 
 
 def _is_caa_finding(rec: dict[str, Any]) -> bool:
-    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    sid = str(extra.get("id") or "").strip().lower().replace("-", "_")
+    extra = extra_dict(rec)
+    sid = str(extra.get("id") or extra.get("check_id") or "").strip().lower().replace("-", "_")
     if sid == "dns_caarecord":
         return True
     blob = f"{rec.get('name') or ''} {rec.get('description') or ''}".lower()
-    return "caa" in blob and ("dns" in blob or "record" in blob)
+    # Word boundaries so "Vacation record" is not a CAA finding.
+    return bool(re.search(r"\bcaa\b", blob) and re.search(r"\b(?:dns|record)\b", blob))
 
 
 _HEADER_MSG_TOKS = (
@@ -958,7 +959,167 @@ def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
         mapped = dict(mapped)
         mapped["include_poam"] = False
-    return mapped
+    return _with_pki_sc17(mapped, rec)
+
+
+# Certificate validity / issuance / trust → SC-17 (PKI certificates).
+# Protocol/cipher weakness stays SC-8 / SC-13. Extra ids from testssl / nmap NSE.
+# Weak signature algorithm (Nessus 35291, testssl cert_signatureAlgorithm) is
+# SC-13 primary plus SC-17 — the id list below still stamps SC-17.
+_PKI_CERT_IDS = frozenset(
+    {
+        "cert_expirationstatus",
+        "cert_trust",
+        "cert_trust_wildcard",
+        "cert_signaturealgorithm",
+        "dns_caarecord",
+        "nse-tls-self-signed",
+        "nse_tls_self_signed",
+        "nse-tls-weak-key",
+        "nse_tls_weak_key",
+        "51192",
+        "45411",
+        "15901",
+        "35291",
+        "mismatched-ssl-certificate",
+        "mismatched_ssl_certificate",
+        "untrusted-root-certificate",
+        "untrusted_root_certificate",
+        "revoked-ssl-certificate",
+        "revoked_ssl_certificate",
+    }
+)
+_PKI_CERT_TYPES = frozenset(
+    {
+        "tls_cert_expiration",
+        "nse-tls-self-signed",
+        "nse-tls-weak-key",
+    }
+)
+_TLS_PROTOCOL_CIPHER_IDS = frozenset(
+    {
+        "tls1",
+        "tls1_1",
+        "sslv2",
+        "sslv3",
+        "ssl3",
+        "sweet32",
+        "logjam",
+        "breach",
+        "heartbleed",
+        "lucky13",
+        "nse-tls-weak-cipher",
+        "nse_tls_weak_cipher",
+    }
+)
+_TLS_PROTOCOL_CIPHER_TYPES = frozenset(
+    {
+        "tls_1_0",
+        "tls_1_1",
+        "tls_sslv2",
+        "tls_sslv3",
+        "tls_breach",
+        "tls_lucky13",
+        "tls_heartbleed",
+        "nse-tls-weak-cipher",
+    }
+)
+_PKI_CERT_NEEDLES = (
+    "self-signed",
+    "self signed",
+    "expired certificate",
+    "expiring certificate",
+    "certificate expired",
+    "certificate is expired",
+    "certificate is expiring",
+    "has already expired",
+    "untrusted certificate",
+    "wildcard certificate",
+    "wildcard san",
+    "certificate trust",
+    "untrusted issuer",
+    "untrusted ca",
+    "hostname mismatch",
+    "name mismatch",
+    "wrong hostname",
+    "cannot be trusted",
+    "revoked certificate",
+    "certificate revoked",
+    "untrusted-root",
+    "untrusted root",
+)
+
+
+def _extra_ids(rec: dict[str, Any]) -> set[str]:
+    extra = extra_dict(rec)
+    found: set[str] = set()
+    for key in ("id", "check_id", "plugin_id", "template_id", "template-id", "rule"):
+        raw = str(extra.get(key) or "").strip().lower()
+        if not raw:
+            continue
+        found.add(raw)
+        found.add(raw.replace("-", "_"))
+        if "/" in raw:
+            base = raw.rsplit("/", 1)[-1]
+            found.add(base)
+            found.add(base.replace("-", "_"))
+    return found
+
+
+def _is_tls_protocol_or_cipher(rec: dict[str, Any]) -> bool:
+    ids = _extra_ids(rec)
+    if ids & _TLS_PROTOCOL_CIPHER_IDS:
+        return True
+    ftype = finding_type(rec)
+    return ftype in _TLS_PROTOCOL_CIPHER_TYPES
+
+
+def is_pki_certificate_finding(rec: dict[str, Any]) -> bool:
+    """True when the finding is certificate validity/issuance/trust, not TLS protocol."""
+    ids = _extra_ids(rec)
+    if ids & _PKI_CERT_IDS:
+        return True
+    ftype = finding_type(rec)
+    if ftype in _PKI_CERT_TYPES:
+        return True
+    if _is_caa_finding(rec):
+        return True
+    if _is_tls_protocol_or_cipher(rec):
+        return False
+    blob = _blob(rec)
+    if any(tok in blob for tok in _PKI_CERT_NEEDLES):
+        return True
+    return False
+
+
+_WEAK_SIG_IDS = frozenset({"35291", "cert_signaturealgorithm"})
+
+
+def _with_pki_sc17(mapped: dict[str, Any], rec: dict[str, Any]) -> dict[str, Any]:
+    """R5-9: stamp SC-17 on PKI/certificate findings. Protocol TLS stays SC-8/SC-13.
+
+    Weak signature algorithm keeps SC-13 as the primary control and adds SC-17.
+    """
+    if not is_pki_certificate_finding(rec):
+        return mapped
+    n53 = list(mapped.get("nist_800_53") or [])
+    ids = _extra_ids(rec)
+    changed = False
+    if ids & _WEAK_SIG_IDS:
+        if "SC-13" not in n53:
+            n53 = ["SC-13"] + n53
+            changed = True
+        elif n53 and n53[0] != "SC-13":
+            n53 = ["SC-13"] + [c for c in n53 if c != "SC-13"]
+            changed = True
+    if "SC-17" not in n53:
+        n53 = n53 + ["SC-17"]
+        changed = True
+    if not changed:
+        return mapped
+    mapped = dict(mapped)
+    mapped["nist_800_53"] = n53
+    return _stamp_csf(mapped, rec)
 
 
 def _is_unauth_redis(rec: dict[str, Any]) -> bool:

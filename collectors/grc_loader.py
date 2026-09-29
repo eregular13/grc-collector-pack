@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import os
-import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,6 +67,7 @@ from shared.poam_ledger import (
     run_ledger,
 )
 from shared.vendor_dependency import VD_NOTE
+from shared.pack_outputs import clean_retired_pack_outputs
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -89,6 +90,16 @@ from shared.schema import (
     scenario_level,
     slug,
 )
+
+log = logging.getLogger(__name__)
+
+
+def _clean_retired_outputs() -> None:
+    """Start- and end-of-load ghost cleanup. Never abort the run."""
+    try:
+        clean_retired_pack_outputs(out_dir())
+    except OSError as exc:
+        log.warning("retired-output cleanup: %s", exc)
 
 ASSETS_HEADER = [
     "ref_id",
@@ -254,6 +265,9 @@ def load() -> dict:
 
 
 def _load() -> dict:
+    # Drop 1f8d347-era pack-owned leftovers before rewrite. Never touch
+    # operator files the pack did not create.
+    _clean_retired_outputs()
     # Asset UIDs first (EGA- ledger), then ref_id collapse, weakness, HK keys.
     asset_ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
     overrides = in_dir() / "assets" / "assets-overrides.csv"
@@ -736,9 +750,7 @@ def _load() -> dict:
         )
 
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
-    leftover_rr = out_dir() / "riskready"
-    if leftover_rr.exists():
-        shutil.rmtree(leftover_rr)
+    _clean_retired_outputs()
 
     excluded_poam = max(
         0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
