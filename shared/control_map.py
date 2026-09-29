@@ -665,7 +665,7 @@ def _is_caa_finding(rec: dict[str, Any]) -> bool:
     if sid == "dns_caarecord":
         return True
     blob = f"{rec.get('name') or ''} {rec.get('description') or ''}".lower()
-    # Word boundaries so "Vacation record" is not a CAA finding.
+    # Word boundaries so "CaaS DNS record" is not a CAA finding.
     return bool(re.search(r"\bcaa\b", blob) and re.search(r"\b(?:dns|record)\b", blob))
 
 
@@ -972,6 +972,10 @@ _PKI_CERT_IDS = frozenset(
         "cert_trust",
         "cert_trust_wildcard",
         "cert_signaturealgorithm",
+        "cert_keysize",
+        "cert_ocsprevoked",
+        "cert_ocsp_revoked",
+        "ocsp_revoked",
         "dns_caarecord",
         "nse-tls-self-signed",
         "nse_tls_self_signed",
@@ -981,6 +985,7 @@ _PKI_CERT_IDS = frozenset(
         "45411",
         "15901",
         "35291",
+        "69551",
         "mismatched-ssl-certificate",
         "mismatched_ssl_certificate",
         "untrusted-root-certificate",
@@ -1047,6 +1052,8 @@ _PKI_CERT_NEEDLES = (
     "certificate revoked",
     "untrusted-root",
     "untrusted root",
+    "ocsp revoked",
+    "certificate has been revoked",
 )
 
 
@@ -1070,21 +1077,82 @@ def _is_tls_protocol_or_cipher(rec: dict[str, Any]) -> bool:
     ids = _extra_ids(rec)
     if ids & _TLS_PROTOCOL_CIPHER_IDS:
         return True
+    if any(i.startswith("cipherlist_") or i.startswith("cipherlist-") for i in ids):
+        return True
     ftype = finding_type(rec)
     return ftype in _TLS_PROTOCOL_CIPHER_TYPES
+
+
+_PASS_CERT_SEV = frozenset({"ok", "info", "information", "pass", "passed", "debug", "warnok"})
+_NON_TLS_KEYWORD_SOURCES = frozenset(
+    {
+        "code_secrets",
+        "k8s_kubescape",
+        "saas_idp",
+        "identity_ad",
+    }
+)
+
+
+def _is_passing_cert_trust(rec: dict[str, Any]) -> bool:
+    """testssl cert_trust OK/INFO is not a PKI failure.
+
+    The pack parser already drops OK/INFO rows. A HIGH/MEDIUM ``cert_trust``
+    finding that mentions ``Ok via SAN`` is still a failure. The text
+    heuristic runs only when the row has no severity.
+    """
+    ids = _extra_ids(rec)
+    if "cert_trust" not in ids:
+        return False
+    extra = extra_dict(rec)
+    extra_sev = str(extra.get("severity") or "").strip().lower()
+    rec_sev = str(rec.get("severity") or "").strip().lower()
+    sev = extra_sev or rec_sev
+    if sev:
+        return sev in _PASS_CERT_SEV
+    blob = f"{rec.get('name') or ''} {rec.get('description') or ''} {extra.get('finding') or ''}".lower()
+    fail = re.search(r"\b(fail|mismatch|untrusted|not trusted|wrong hostname|expired)\b", blob)
+    ok = re.search(r"\b(ok|pass(?:ed)?|trusted|matches)\b", blob)
+    return bool(ok and not fail)
+
+
+def _blocks_keyword_sc17(rec: dict[str, Any]) -> bool:
+    """Non-TLS sensors must not pick up SC-17 from 'self-signed' / issuer text.
+
+    Match source / tool / labels / check id only — not host names in the
+    description (``saml.example.test``, ``acm.corp.test``). cloud-prowler
+    is not a blanket block so an ELB expired-cert row can still be PKI.
+    """
+    source = str(rec.get("source") or "").strip().lower().replace("-", "_")
+    if source in _NON_TLS_KEYWORD_SOURCES:
+        return True
+    extra = extra_dict(rec)
+    tool = str(extra.get("tool") or "").strip().lower()
+    labels = " ".join(str(x) for x in (rec.get("labels") or [])).lower()
+    ids = " ".join(sorted(_extra_ids(rec)))
+    service = str(extra.get("service") or extra.get("product") or "").strip().lower()
+    blob = f"{source} {tool} {labels} {ids} {service}"
+    return bool(
+        re.search(r"\b(kubelet|saml|gitleaks|trufflehog)\b", blob)
+        or re.search(r"\bacm\b", blob)
+    )
 
 
 def is_pki_certificate_finding(rec: dict[str, Any]) -> bool:
     """True when the finding is certificate validity/issuance/trust, not TLS protocol."""
     ids = _extra_ids(rec)
     if ids & _PKI_CERT_IDS:
+        if _is_passing_cert_trust(rec):
+            return False
         return True
     ftype = finding_type(rec)
     if ftype in _PKI_CERT_TYPES:
         return True
+    if _is_tls_protocol_or_cipher(rec):
+        return False
     if _is_caa_finding(rec):
         return True
-    if _is_tls_protocol_or_cipher(rec):
+    if _blocks_keyword_sc17(rec):
         return False
     blob = _blob(rec)
     if any(tok in blob for tok in _PKI_CERT_NEEDLES):
@@ -1092,7 +1160,16 @@ def is_pki_certificate_finding(rec: dict[str, Any]) -> bool:
     return False
 
 
-_WEAK_SIG_IDS = frozenset({"35291", "cert_signaturealgorithm"})
+_WEAK_SIG_IDS = frozenset(
+    {
+        "35291",
+        "69551",
+        "cert_signaturealgorithm",
+        "cert_keysize",
+        "nse-tls-weak-key",
+        "nse_tls_weak_key",
+    }
+)
 
 
 def _with_pki_sc17(mapped: dict[str, Any], rec: dict[str, Any]) -> dict[str, Any]:

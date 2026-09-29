@@ -162,17 +162,17 @@ def test_caa_id_and_text_branch_gain_sc17() -> None:
         description="Authoritative DNS has no CAA record",
         extra={},
     )
-    vacation = _rec(
-        name="Vacation record",
-        description="HR vacation record is missing",
+    caas = _rec(
+        name="CaaS DNS record",
+        description="Cloud CaaS DNS record is missing",
         extra={},
     )
     assert is_pki_certificate_finding(via_id) is True
     assert is_pki_certificate_finding(via_text) is True
-    assert is_pki_certificate_finding(vacation) is False
+    assert is_pki_certificate_finding(caas) is False
     assert "SC-17" in set(map_finding(via_id).get("nist_800_53") or [])
     assert "SC-17" in set(map_finding(via_text).get("nist_800_53") or [])
-    assert "SC-17" not in set(map_finding(vacation).get("nist_800_53") or [])
+    assert "SC-17" not in set(map_finding(caas).get("nist_800_53") or [])
 
 
 def test_cipher_or_protocol_mentioning_self_signed_is_not_sc17() -> None:
@@ -191,3 +191,165 @@ def test_cipher_or_protocol_mentioning_self_signed_is_not_sc17() -> None:
     assert is_pki_certificate_finding(proto) is False
     assert "SC-17" not in set(map_finding(cipher).get("nist_800_53") or [])
     assert "SC-17" not in set(map_finding(proto).get("nist_800_53") or [])
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"plugin_id": "51192"},
+        {"plugin_id": "45411"},
+        {"plugin_id": "15901"},
+        {"plugin_id": "35291"},
+        {"id": "mismatched-ssl-certificate"},
+        {"id": "untrusted-root-certificate"},
+        {"id": "revoked-ssl-certificate"},
+        {"id": "cert_trust"},
+        {"id": "cert_signatureAlgorithm"},
+        {"id": "cert_keySize"},
+        {"id": "cert_ocspRevoked"},
+        {"plugin_id": "69551"},
+    ],
+)
+def test_sc17_id_only_generic_name(extra: dict) -> None:
+    rec = _rec(name="finding", description="", extra=extra)
+    assert is_pki_certificate_finding(rec) is True
+    n53 = list(map_finding(rec).get("nist_800_53") or [])
+    assert "SC-17" in n53
+
+
+def test_cipher_mentioning_caa_record_is_not_sc17() -> None:
+    rec = _rec(
+        name="Weak TLS cipher suites are offered",
+        description="RC4 offered; CAA record present on the zone",
+        extra={"check_id": "nse-tls-weak-cipher"},
+    )
+    assert is_pki_certificate_finding(rec) is False
+    assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_cipherlist_mentioning_caa_is_not_sc17() -> None:
+    rec = _rec(
+        name="cipherlist_3DES_IDEA",
+        description="offered; CAA record ok; certificate issuer DigiCert",
+        labels=["testssl"],
+        extra={"id": "cipherlist_3DES_IDEA"},
+    )
+    assert is_pki_certificate_finding(rec) is False
+    assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_passing_cert_trust_is_not_sc17() -> None:
+    rec = _rec(
+        name="cert_trust",
+        description="OK — certificate is trusted",
+        labels=["testssl"],
+        extra={"id": "cert_trust", "severity": "ok", "finding": "OK"},
+    )
+    assert is_pki_certificate_finding(rec) is False
+    assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_high_cert_trust_via_cn_not_san_keeps_sc17() -> None:
+    """Text 'Ok via SAN' must not override HIGH. Kills the no-severity-gate mutant."""
+    rec = _rec(
+        name="cert_trust",
+        description="via CN, but not SAN (w/o SNI: Ok via SAN)",
+        severity="high",
+        labels=["testssl"],
+        extra={"id": "cert_trust"},
+    )
+    assert is_pki_certificate_finding(rec) is True
+    assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_medium_cert_trust_ok_via_san_keeps_sc17() -> None:
+    rec = _rec(
+        name="cert_trust",
+        description="via CN only (w/o SNI: Ok via SAN wildcard)",
+        severity="medium",
+        labels=["testssl"],
+        extra={"id": "cert_trust"},
+    )
+    assert is_pki_certificate_finding(rec) is True
+    assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_cert_trust_without_severity_ok_text_is_not_sc17() -> None:
+    """No-severity OK text is passing. Kills a mutant that drops the text branch.
+
+    Built by hand so make_record cannot rewrite empty severity to info.
+    """
+    rec = {
+        "kind": "finding",
+        "source": "vuln-scan",
+        "ref_id": "R5-9",
+        "name": "cert_trust",
+        "description": "OK — certificate is trusted",
+        "severity": "",
+        "category": "vulnerability",
+        "assets": ["vpn.example.com"],
+        "labels": ["testssl"],
+        "extra": {"id": "cert_trust"},
+    }
+    assert is_pki_certificate_finding(rec) is False
+    assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_non_tls_keyword_rows_do_not_gain_sc17() -> None:
+    code = _rec(
+        source="code-secrets",
+        name="Private key for a self-signed certificate",
+        description="certificate issuer leftover in the repo",
+        extra={},
+    )
+    kubelet = _rec(
+        source="k8s-kubescape",
+        name="kubelet serving cert is self-signed",
+        description="self-signed certificate on the kubelet",
+        extra={},
+    )
+    saml = _rec(
+        source="saas-idp",
+        name="SAML untrusted CA",
+        description="untrusted certificate on the IdP",
+        extra={},
+    )
+    acm = _rec(
+        source="cloud-prowler",
+        name="ACM certificate is expiring",
+        description="certificate is expiring",
+        labels=["acm"],
+        extra={"service": "acm"},
+    )
+    for rec in (code, kubelet, saml, acm):
+        assert is_pki_certificate_finding(rec) is False
+        assert "SC-17" not in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_tls_cert_on_saml_or_acm_host_keeps_sc17() -> None:
+    saml_host = _rec(
+        source="vuln-scan",
+        name="TLS certificate expired",
+        description="certificate expired on saml.example.test",
+        extra={},
+    )
+    acm_host = _rec(
+        source="vuln-scan",
+        name="Self-signed certificate",
+        description="self-signed certificate on acm.corp.test",
+        extra={},
+    )
+    for rec in (saml_host, acm_host):
+        assert is_pki_certificate_finding(rec) is True
+        assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])
+
+
+def test_prowler_elb_expired_cert_keeps_sc17() -> None:
+    rec = _rec(
+        source="cloud-prowler",
+        name="ELB listener certificate expired",
+        description="certificate expired on the load balancer listener",
+        extra={},
+    )
+    assert is_pki_certificate_finding(rec) is True
+    assert "SC-17" in set(map_finding(rec).get("nist_800_53") or [])

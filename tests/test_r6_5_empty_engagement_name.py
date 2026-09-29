@@ -102,6 +102,32 @@ def test_engagement_name_strips_zwsp_and_bom() -> None:
     assert engagement_name("Acme\u200b") == "Acme"
 
 
+def test_engagement_name_strips_unicode_cf() -> None:
+    # Cf-only → empty. Joiners in a real name stay in the displayed form.
+    assert engagement_name("\u200c") == ""
+    assert engagement_name("\u200d") == ""
+    assert engagement_name("\u2060") == ""
+    assert engagement_name("\u00ad") == ""
+    assert engagement_name("\u200c\u200d\u2060\u00ad") == ""
+    assert engagement_name("Ac\u200cme") == "Ac\u200cme"
+    assert engagement_name("\u00adAcme\u2060") == "Acme"
+    assert exec_lede(_stamp(kind="CLIENT", label="CLIENT: ", client_name="\u200c\u00ad")) == (
+        "**This assessment**."
+    )
+
+
+def test_engagement_name_keeps_persian_and_hindi_joiners() -> None:
+    persian = "\u0646\u0631\u0645\u200c\u0627\u0641\u0632\u0627\u0631"  # نرم‌افزار
+    hindi = "\u0915\u094d\u200d\u0937"  # क्‍ष
+    assert engagement_name(persian) == persian
+    assert engagement_name(hindi) == hindi
+    lede = exec_lede(
+        _stamp(kind="CLIENT", label=f"CLIENT: {persian}", client_name=persian)
+    )
+    assert lede == f"**CLIENT: {persian}**. {persian}."
+    assert persian in lede
+
+
 def test_exec_lede_zwsp_and_bom_client_is_neutral() -> None:
     zwsp = exec_lede(_stamp(kind="CLIENT", label="CLIENT: ", client_name="\u200b"))
     bom = exec_lede(_stamp(kind="CLIENT", label="CLIENT: \ufeff", client_name="\ufeff"))
