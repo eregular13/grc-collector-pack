@@ -150,6 +150,7 @@ _INTERNET_FACING_TYPES = frozenset(
         "rds_public",
         "s3_public_access",
         "sg_ingress_open",
+        "rd_gateway_exposed",
     }
 )
 _INTERNET_FACING_CONTROLS = frozenset(
@@ -159,6 +160,7 @@ _INTERNET_FACING_CONTROLS = frozenset(
         "Block public object-storage ACL and policy",
         "Block public EBS snapshot sharing",
         "Restrict security-group ingress from the internet",
+        "Harden the public Remote Desktop Gateway",
     }
 )
 _EXTERNAL_SCAN_SOURCES = frozenset({"easm"})
@@ -395,6 +397,7 @@ CONTROL_CLASS: dict[str, str] = {
     "Remove standing IAM AdministratorAccess": "identity_privilege",
     "Require MFA on the cloud root account": "identity_mfa",
     "Restrict security-group ingress from the internet": "exposure_network",
+    "Harden the public Remote Desktop Gateway": "identity_auth",
     "Disable public accessibility on RDS": "exposure_network",
     "Enable encryption at rest on cloud storage": "encryption_rest",
     "Enable S3 default encryption (SSE-S3 or SSE-KMS)": "encryption_rest",
@@ -500,6 +503,7 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "iam_root_mfa": "identity_mfa",
     "iam_user_mfa": "identity_mfa",
     "sg_ingress_open": "exposure_network",
+    "rd_gateway_exposed": "identity_auth",
     "cloudtrail_logging": "logging",
     "rds_public": "exposure_network",
     "ad_dcsync": "identity_privilege",
@@ -1076,9 +1080,22 @@ _THIRD_PARTY_PRODUCT_TOKS = (
     "nextgen-gallery",
     "myphpnuke",
 )
+# Nikto/WPScan XSS/LFI checks are known-product signatures, so those
+# scanners are third-party by source (not because the row named a CVE).
+_THIRD_PARTY_SCANNERS = frozenset({"nikto", "wpscan"})
+# SCA / advisory feeds ingested as SARIF. `sarif` itself is a file format.
+_SCA_THIRD_PARTY_SCANNERS = frozenset(
+    {"trivy", "grype", "snyk", "dependabot", "osv", "osv-scanner"}
+)
+# Real SAST engines. Never treat the `sarif` label as in-house evidence.
+_IN_HOUSE_SCANNERS = frozenset(
+    {"sast", "semgrep", "codeql", "bandit", "eslint", "opengrep"}
+)
+# nuclei and zap stay ambiguous (custom templates / mixed first-party DAST).
 _CVE_TOKEN_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
 _OSVDB_TOKEN_RE = re.compile(r"\bosvdb[- ]?\d+", re.I)
-_CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b")
+_CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b", re.I)
+_GHSA_TOKEN_RE = re.compile(r"\bGHSA-[0-9a-z]+-[0-9a-z]+-[0-9a-z]+\b", re.I)
 
 
 def _is_web_xss_or_lfi(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> bool:
@@ -1096,15 +1113,91 @@ def _is_web_xss_or_lfi(mapped: dict[str, Any], rec: dict[str, Any] | None = None
     return str(mapped.get("control_name") or "") in _WEB_APP_INJECTION_CONTROLS
 
 
+def _scanner_provenance_tokens(
+    rec: dict[str, Any], extra: dict[str, Any]
+) -> set[str]:
+    toks: set[str] = set()
+    for raw in rec.get("labels") or []:
+        val = str(raw or "").strip().lower()
+        if val:
+            toks.add(val)
+    for key in ("tool", "scanner", "engine"):
+        val = str(extra.get(key) or "").strip().lower()
+        if val:
+            toks.add(val)
+    source = str(rec.get("source") or "").strip().lower()
+    if source:
+        toks.add(source)
+    expanded: set[str] = set(toks)
+    for tok in toks:
+        for part in re.split(r"[^a-z0-9]+", tok):
+            if len(part) >= 3:
+                expanded.add(part)
+    return expanded
+
+
+def _structured_cve_blob(extra: dict[str, Any]) -> str:
+    """CVE on a structured field (extra.cve / rule_id), never the message."""
+    parts = [
+        str(extra.get(k) or "")
+        for k in ("cve", "rule", "rule_id", "ruleId", "id")
+    ]
+    cves = extra.get("cves")
+    if isinstance(cves, (list, tuple)):
+        parts.extend(str(x) for x in cves)
+    return " ".join(parts)
+
+
+def _scanner_app_attribution(
+    rec: dict[str, Any], extra: dict[str, Any]
+) -> str:
+    """Return third_party, in_house, or empty when the scanner is ambiguous.
+
+    A structured CVE (extra.cve or a rule_id that starts with CVE-) wins
+    over any transport label. Then the SARIF *driver* (or collector
+    tool/source) decides: Semgrep/CodeQL/Bandit/ESLint/OpenGrep and the
+    code-secrets lane are in-house; Trivy/Grype/Snyk/Dependabot/OSV and
+    Nikto/WPScan are third-party. Nuclei is third-party only with a CVE
+    template; ZAP stays ambiguous.
+    """
+    if _CVE_TOKEN_RE.search(_structured_cve_blob(extra)):
+        return "third_party"
+    toks = _scanner_provenance_tokens(rec, extra)
+    if toks & _IN_HOUSE_SCANNERS or "code-secrets" in toks:
+        return "in_house"
+    if toks & (_THIRD_PARTY_SCANNERS | _SCA_THIRD_PARTY_SCANNERS):
+        return "third_party"
+    if "nuclei" in toks:
+        cve_blob = " ".join(
+            str(extra.get(k) or "")
+            for k in ("cve", "template_id", "template-id", "id")
+        )
+        cves = extra.get("cves")
+        if isinstance(cves, (list, tuple)):
+            cve_blob += " " + " ".join(str(x) for x in cves)
+        if _CVE_TOKEN_RE.search(cve_blob):
+            return "third_party"
+    return ""
+
+
 def _looks_third_party_app_finding(
     mapped: dict[str, Any], rec: dict[str, Any] | None = None
 ) -> bool:
-    """True when the finding names a CVE, advisory, or known third-party product.
+    """Third-party XSS/LFI (PR.PS-02) vs in-house (PR.PS-06).
 
-    In-house / unattributed web_xss and web_lfi stay app_secure_dev (PR.PS-06).
+    Nikto/WPScan rows are third-party by scanner because their XSS/LFI
+    checks are known-product signatures. SCA drivers and nuclei CVE
+    templates are also third-party; SAST on the client's own code is
+    in-house. Ambiguous sources fall back to advisory identifiers (not
+    extra.url, not a bare ``/advisories/`` path).
     """
     rec = rec or {}
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    attr = _scanner_app_attribution(rec, extra)
+    if attr == "in_house":
+        return False
+    if attr == "third_party":
+        return True
     parts: list[Any] = [
         mapped.get("control_name"),
         mapped.get("weakness_name"),
@@ -1113,16 +1206,18 @@ def _looks_third_party_app_finding(
         extra.get("cve"),
         extra.get("osvdb"),
         extra.get("advisory"),
-        extra.get("url"),
         extra.get("references"),
     ]
     cves = extra.get("cves")
     if isinstance(cves, (list, tuple)):
         parts.extend(cves)
     blob = " ".join(str(x or "") for x in parts)
-    if _CVE_TOKEN_RE.search(blob) or _OSVDB_TOKEN_RE.search(blob) or _CERT_ADV_RE.search(blob):
-        return True
-    if "/advisories/" in blob.lower():
+    if (
+        _CVE_TOKEN_RE.search(blob)
+        or _OSVDB_TOKEN_RE.search(blob)
+        or _CERT_ADV_RE.search(blob)
+        or _GHSA_TOKEN_RE.search(blob)
+    ):
         return True
     low = blob.lower()
     return any(tok in low for tok in _THIRD_PARTY_PRODUCT_TOKS)
@@ -1406,7 +1501,7 @@ def apply_class_mapping(mapped: dict[str, Any], rec: dict[str, Any] | None = Non
     ):
         if "SI-2" not in n53:
             n53.append("SI-2")
-        n53 = [cid for cid in n53 if cid != "SC-18"]
+        n53 = [cid for cid in n53 if cid != "SA-11"]
         mapped["nist_800_53"] = n53
     cis = list(mapped.get("cis") or [])
     n53_tokens = [f"nist80053_{cid}" for cid in n53]

@@ -360,6 +360,204 @@ def test_sshd_and_33890_are_not_sg_ingress_open() -> None:
         assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"], check_id
 
 
+def test_sg_token_in_description_only_is_not_sg_ingress() -> None:
+    """Bare 'sg' is accepted from check_id/name, never from free text."""
+    rec = _custodian_finding(
+        name="Cloud Custodian lambda-ingress",
+        description="Lambda ingress restricted to sg members",
+        extra={"check_id": "lambda-ingress", "classification": "security"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+    assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
+    alb = _custodian_finding(
+        name="Cloud Custodian alb-public-ingress",
+        description="ALB ingress rules; see SG docs",
+        extra={"check_id": "alb-public-ingress", "classification": "security"},
+    )
+    assert finding_type(alb) != "sg_ingress_open"
+
+
+def test_nonadjacent_security_and_group_is_not_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian review-group-security",
+        description="security review for the finance group; ingress logs retained",
+        extra={"check_id": "review-group-security", "classification": "security"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+    assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
+
+
+def test_adjacent_security_group_phrase_is_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian web-ingress-open",
+        description="Security group allows ingress from 0.0.0.0/0 on 8080",
+        extra={"check_id": "web-ingress-open", "classification": "security"},
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+    assert SG_INGRESS_FIX in map_finding(rec)["recommended_fix"]
+
+
+def test_azure_nsg_open_ingress_is_sg_ingress() -> None:
+    rec = _from_c7n_policy(
+        {
+            "name": "azure-nsg-open-ingress",
+            "resource": "azure.networksecuritygroup",
+            "description": "Network security group allows inbound from the internet",
+            "filters": [{"type": "ingress", "Cidr": "0.0.0.0/0"}],
+            "resources": [{"id": "/nsg/web-in"}],
+        }
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+    mapped = map_finding(rec)
+    assert SG_INGRESS_FIX in mapped["recommended_fix"]
+    assert "SC-7" in set(mapped.get("nist_800_53") or [])
+    named = _custodian_finding(
+        name="Cloud Custodian azure-nsg-open-ingress",
+        description="NSG ingress from 0.0.0.0/0",
+        extra={"check_id": "azure-nsg-open-ingress", "classification": "security"},
+    )
+    assert finding_type(named) == "sg_ingress_open"
+
+
+def test_rdp_gateway_public_is_rd_gateway_exposed() -> None:
+    """RD Gateway is an intended internet broker — typed, not open-3389 SG."""
+    want = {
+        "AC-17",
+        "AC-17(3)",
+        "IA-2(1)",
+        "IA-2(2)",
+        "AC-7",
+        "SI-2",
+        "SC-7",
+    }
+    for check_id in ("RDPGatewayPublic", "OpenRDPGateway"):
+        rec = _custodian_finding(
+            name=f"Cloud Custodian {check_id}",
+            description="RD Gateway published on the internet",
+            extra={"check_id": check_id, "classification": "security"},
+        )
+        assert finding_type(rec) == "rd_gateway_exposed", check_id
+        mapped = map_finding(rec)
+        assert finding_type(rec) != "sg_ingress_open"
+        assert SG_INGRESS_FIX not in mapped["recommended_fix"]
+        assert mapped["control_name"] == "Harden the public Remote Desktop Gateway"
+        assert want <= set(mapped.get("nist_800_53") or [])
+        assert mapped["csf_subcategory"] == "PR.AA-03"
+        assert "mfa" in mapped["recommended_fix"].lower()
+        assert "aa20-014a" in mapped["recommended_fix"].lower()
+    # Bare RDP on an SG stays the open-3389 class.
+    rdp = _custodian_finding(
+        name="Cloud Custodian PublicRDPAccess",
+        description="RDP open to the internet",
+        extra={"check_id": "PublicRDPAccess", "classification": "security"},
+    )
+    assert finding_type(rdp) == "sg_ingress_open"
+
+
+def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian ec2-rdp-public",
+        description="Instances behind a NAT gateway allow RDP from 0.0.0.0/0",
+        extra={"check_id": "ec2-rdp-public", "classification": "security"},
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+    assert SG_INGRESS_FIX in map_finding(rec)["recommended_fix"]
+    igw = _custodian_finding(
+        name="Cloud Custodian ec2-rdp-public",
+        description="Security group behind an internet gateway allows RDP",
+        extra={"check_id": "ec2-rdp-public", "classification": "security"},
+    )
+    assert finding_type(igw) == "sg_ingress_open"
+
+
+def test_azure_arm_networksecuritygroups_resource_is_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian azure-nsg-open-ingress",
+        description="ingress from 0.0.0.0/0",
+        extra={
+            "check_id": "azure-nsg-open-ingress",
+            "classification": "security",
+            "resource_type": "microsoft.network/networksecuritygroups",
+        },
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+    assert SG_INGRESS_FIX in map_finding(rec)["recommended_fix"]
+
+
+def test_plural_security_groups_prose_is_not_sg_ingress() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian rds-ingress-logging",
+        description="RDS ingress logging is enabled; see security groups doc",
+        extra={"check_id": "rds-ingress-logging", "classification": "security"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+    assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
+
+
+def test_ad_feed_security_group_is_not_sg_ingress() -> None:
+    rec = make_record(
+        kind="finding",
+        source="identity-ad",
+        ref_id="ID-da",
+        name="Domain Admins security group listed",
+        description="Domain Admins is a privileged security group; ingress N/A",
+        severity="high",
+        category="identity-gap",
+        assets=["CORP\\Domain Admins"],
+        extra={"check_id": "domain-admins", "edge": "DomainAdmins"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+    assert finding_type(rec) != "rd_gateway_exposed"
+
+
+def test_sg_ingress_requires_ingress_token() -> None:
+    """Mutant-kill: dropping the ingress requirement types non-ingress SG rows."""
+    rec = _custodian_finding(
+        name="Cloud Custodian sg-default-restrict",
+        description="Default security group has no extra rules",
+        extra={
+            "check_id": "sg-default-restrict",
+            "classification": "security",
+            "resource_type": "aws.security-group",
+        },
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+
+
+def test_ingress_without_sg_signal_is_not_sg_ingress() -> None:
+    """Mutant-kill: dropping the security-group phrase types any ingress row."""
+    rec = _custodian_finding(
+        name="Cloud Custodian lambda-public-ingress",
+        description="Lambda function ingress from the internet",
+        extra={"check_id": "lambda-public-ingress", "classification": "security"},
+    )
+    assert finding_type(rec) != "sg_ingress_open"
+
+
+def test_compound_securitygroup_check_id_is_sg_ingress() -> None:
+    """Mutant-kill: removing the no-separator securitygroup match."""
+    rec = _custodian_finding(
+        name="Cloud Custodian SecurityGroupIngressOpen",
+        description="inbound from the internet",
+        extra={"check_id": "SecurityGroupIngressOpen", "classification": "security"},
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+
+
+def test_azure_nsg_resource_kind_alone_is_sg_ingress() -> None:
+    """Mutant-kill: removing NSG kind checks leaves Azure resource-only untyped."""
+    rec = _custodian_finding(
+        name="Cloud Custodian open-ingress",
+        description="ingress from the internet",
+        extra={
+            "check_id": "open-ingress",
+            "classification": "security",
+            "resource_type": "azure.networksecuritygroup",
+        },
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+
+
 def test_demo_custodian_s3_encryption_stays_off_sg_ingress() -> None:
     """Host-lab DEMO poam.csv is byte-identical to master aside from intended rows."""
     recs = cloud_prowler.parse_file(ROOT / "fixtures" / "demo" / "cloud" / "custodian.json")
