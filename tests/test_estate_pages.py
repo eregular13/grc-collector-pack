@@ -834,12 +834,22 @@ def test_reformat_mutations_of_sample_fixtures_cannot_claim_client(
     _assert_mutated_fixture_not_client(tmp_path, src, mutated)
 
 
-def test_planted_tmp_grc_estate_fp_has_no_effect(tmp_path: Path) -> None:
-    """A file under /tmp/grc-estate-fp must not change SAMPLE/CLIENT."""
+def test_planted_tmp_grc_estate_fp_has_no_effect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A planted hashes file must not change SAMPLE/CLIENT.
+
+    Redirects tempfile.gettempdir() to tmp_path *before* planting so a
+    product path that reads gettempdir()/grc-estate-fp sees the plant,
+    while nothing is written outside the test temp dir (Metis #186
+    planted under the real gettempdir() and left planted.hashes).
+    """
     import hashlib
     import tempfile
 
     import shared.estate_pages as ep
+
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
 
     src = Path(ep.__file__).read_text(encoding="utf-8")
     assert "grc-estate-fp" not in src
@@ -849,7 +859,7 @@ def test_planted_tmp_grc_estate_fp_has_no_effect(tmp_path: Path) -> None:
     live = b"<nmaprun unique='planted-cache-must-not-hit'/>\n"
     live_hash = hashlib.sha256(live).hexdigest()
     planted = Path(tempfile.gettempdir()) / "grc-estate-fp"
-    planted.mkdir(parents=True, exist_ok=True)
+    planted.mkdir()
     (planted / "planted.hashes").write_text(live_hash + "\n" + "00" * 32 + "\n")
     (planted / "planted.hashes.tmp").write_text(live_hash + "\n")
 

@@ -76,7 +76,9 @@ DEEPEN_STAGE_TOOLS = frozenset({"nessus", "nessuscli"})
 # Explicit allowlist of known keys per section. Derived from Scope / load_scope,
 # committed dropbox/SCOPE.yaml + SCOPE.example.yaml, and OPERATOR / WEB_TLS docs.
 # Comparison is exact: lower-case, no surrounding whitespace, as documented.
-# Non-canonical spellings (PORTS_ALLOWED, ' ports_allowed ', NBSP, BOM) refuse.
+# Non-canonical spellings (PORTS_ALLOWED, ' ports_allowed ', quoted NBSP
+# keys, BOM) refuse. Unquoted NBSP is yaml_lite whitespace and is read
+# as the canonical key.
 # Unknown keys and any non-ASCII key refuse. engagement.begin is not an alias.
 _SCOPE_KEYS: dict[str, frozenset[str]] = {
     "": frozenset(
