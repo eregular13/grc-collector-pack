@@ -5,9 +5,19 @@
 - POAM_STATUS_DATE_LOCAL: `status_date` is the host-local civil day
   (`YYYY-MM-DD`) at generation (`datetime.now().astimezone()`, honoring
   `TZ` / `tzset`). No extra env var or CLI flag. Format stays a date
-  (no offset). Same local date on `poam.csv`, `poam_fedramp.csv`,
-  `simplerisk/poam.csv`, and `poam-ledger.json`. first_seen / last_seen
-  and scanner parse timestamps stay UTC. No POST `/api/risks`.
+  (no offset). On a first run (and on rows that change this run) the
+  same local date is written on `poam.csv`, `poam_fedramp.csv`,
+  `simplerisk/poam.csv`, and `poam-ledger.json`; carried unchanged rows
+  keep their last-change date. The same local run day also drives
+  `VENDOR_CHECKIN_OVERDUE`, `VD_HIGH_NOT_MITIGATED`, `missed_dates`,
+  pending-verification dates, and the default `closed_on`.
+  `first_seen` / `last_seen` stay UTC ISO. Master labelled aware
+  non-UTC injected clocks as local wall time with a `Z`; this PR
+  writes true UTC. A first run on a US evening after upgrade can move
+  `status_date` one day backwards versus a UTC-written ledger.
+  Naive POA&M clocks are local; `scan_time.bind_run_clock` still
+  treats naive as UTC. Scanner parse timestamps unchanged. No POST
+  `/api/risks`.
 - SCOPE_GATE_HARDEN: live SCOPE status is an allowlist (`active` /
   `authorized` / `approved` / absent; keys case-insensitive). Nested or
   top-level unknown status, `REVOKED` / `Revoked`, and mid-run revoke or

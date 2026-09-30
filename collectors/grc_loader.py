@@ -257,14 +257,18 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
     write_csv_with_estate(path, header, cleaned, stamp, delimiter=delimiter)
 
 
-def load() -> dict:
-    # Run start is captured once and bound for the future-epoch cutoff so
-    # parse_scan_datetime does not read wall-clock at each call site.
-    with bind_run_clock(datetime.now(timezone.utc)):
-        return _load()
+def load(*, run_at: datetime | None = None) -> dict:
+    # One wall-clock read for the run. today (status_date) and the ledger
+    # share it so a midnight straddle cannot split poam.csv vs FedRAMP.
+    # bind_run_clock stays UTC (scanner future-epoch cutoff; out of scope).
+    clock = run_at or datetime.now().astimezone()
+    if clock.tzinfo is None:
+        clock = clock.astimezone()
+    with bind_run_clock(clock.astimezone(timezone.utc)):
+        return _load(run_at=clock)
 
 
-def _load() -> dict:
+def _load(*, run_at: datetime | None = None) -> dict:
     # Drop 1f8d347-era pack-owned leftovers before rewrite. Never touch
     # operator files the pack did not create.
     _clean_retired_outputs()
@@ -454,8 +458,8 @@ def _load() -> dict:
         "estate",
         *POAM_EXTRA_FIELDS,
     ]
-    today = local_run_date()
-    poam_ledger = run_ledger(findings, kev_catalog)
+    today = local_run_date(run_at)
+    poam_ledger = run_ledger(findings, kev_catalog, run_at=run_at)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
         if mapped:

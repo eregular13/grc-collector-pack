@@ -70,7 +70,9 @@ def test_header_keeps_legacy_prefix_and_appends_fedramp_fields() -> None:
 
 
 def test_row_fields_from_existing_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    before = date.today()
     rows = _load(tmp_path, monkeypatch, [_rec("NMAP-10-0-0-5-21-nse-ftp-anon", "high")])
+    after = date.today()
     row = rows[0]
     assert row["poam_id"].startswith("EGP-")
     assert row["finding_ref_id"] == "NMAP-10-0-0-5-21-nse-ftp-anon"
@@ -81,7 +83,7 @@ def test_row_fields_from_existing_data(tmp_path: Path, monkeypatch: pytest.Monke
     # first-seen absent -> scan time
     assert row["original_detection_date"] == "2026-09-01"
     assert row["scheduled_completion_date"] == "2026-10-01"  # high = 30 days
-    assert row["status_date"] == date.today().isoformat()
+    assert row["status_date"] in {before.isoformat(), after.isoformat()}
     assert row["original_risk_rating"] == "High"
     assert row["owner"] == "" and row["point_of_contact"] == "" and row["due"] == ""
     assert row["status"] == "open" and row["estate"] == "LAB: TEST ENVIRONMENT"

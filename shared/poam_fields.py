@@ -58,9 +58,15 @@ SLA_NOTE = (
     "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
     "scheduled / milestone dates stay 'pending due date'. status_date is the host-local "
     "civil day (YYYY-MM-DD) at generation — datetime.now().astimezone(), honoring TZ / "
-    "time.tzset. No extra env var or CLI flag. The cell stays a date (no offset); the "
-    "same local date is written on poam.csv, poam_fedramp.csv, simplerisk/poam.csv, and "
-    "poam-ledger.json."
+    "time.tzset. No extra env var or CLI flag. The cell stays a date (no offset). "
+    "first_seen / last_seen stay UTC ISO (…Z). status_date can be a day off "
+    "first_seen's UTC day and original_detection_date (local vs UTC / recorded zone). "
+    "The same local status_date is written on poam.csv, poam_fedramp.csv, "
+    "simplerisk/poam.csv, and poam-ledger.json on a first run and on rows that "
+    "change this run; carried unchanged rows keep their last-change date. The same "
+    "local run day also drives VENDOR_CHECKIN_OVERDUE, VD_HIGH_NOT_MITIGATED, "
+    "missed_dates, pending-verification dates, and the default closed_on. Naive "
+    "POA&M clocks are local wall time; scan_time.bind_run_clock treats naive as UTC."
 )
 
 

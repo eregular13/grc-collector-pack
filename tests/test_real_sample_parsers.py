@@ -993,15 +993,16 @@ def test_scuba_timestamp_zulu_feeds_detection_date() -> None:
 
 
 def test_poam_status_date_is_local_across_exports() -> None:
-    local_day = datetime.now().astimezone().date().isoformat()
-    assert local_run_date().isoformat() == local_day
+    clock = datetime.now().astimezone()
+    local_day = clock.date().isoformat()
+    assert local_run_date(clock).isoformat() == local_day
     assert "host-local" in SLA_NOTE
     assert "UTC calendar day" not in SLA_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
     assert "host-local civil day" in schema
     recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
     hit = _findings(recs)[0]
-    fields = poam_fields(hit, map_finding(hit), local_run_date())
+    fields = poam_fields(hit, map_finding(hit), local_run_date(clock))
     assert fields["status_date"] == local_day
     assert len(fields["status_date"]) == 10
 
