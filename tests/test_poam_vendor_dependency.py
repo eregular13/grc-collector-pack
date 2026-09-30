@@ -11,6 +11,7 @@ from pathlib import Path
 
 from shared.kev import KevCatalog, KevEntry, join_kev
 from shared.poam_fedramp import item_to_row, write_fedramp_poam
+from shared.poam_fields import local_run_date
 from shared.poam_ledger import apply_ledger, fp_v1
 from shared.vendor_dependency import (
     CHECKIN_OVERDUE_AFTER_DAYS,
@@ -186,7 +187,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     item1 = next(iter(run1["items"].values()))
     pid = item1["poam_id"]
     fp = item1["fp"]
-    assert item1["status_date"] == "2026-09-10"
+    assert item1["status_date"] == local_run_date(_run("2026-09-10T00:00:00Z")).isoformat()
     assert item1["vd_source"] == "default"
 
     run2 = _apply(
@@ -198,7 +199,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     item2 = next(iter(run2["items"].values()))
     assert item2["vendor_dependency"] == VD_NO
     assert item2["vd_source"] == "operator"
-    assert item2["status_date"] == "2026-09-11"
+    assert item2["status_date"] == local_run_date(_run("2026-09-11T00:00:00Z")).isoformat()
     vd_events = [
         e
         for e in run2["events"]
@@ -228,7 +229,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     )
     item3 = next(iter(run3["items"].values()))
     assert item3["vendor_dependency"] == VD_YES
-    assert item3["status_date"] == "2026-09-12"
+    assert item3["status_date"] == local_run_date(_run("2026-09-12T00:00:00Z")).isoformat()
     yes_events = [
         e
         for e in run3["events"]
@@ -360,7 +361,10 @@ def test_yes_without_product_flags_vd_missing_product() -> None:
 
 def test_vendor_checkin_overdue_fires_at_32_not_31() -> None:
     rec = _rec()
-    first = _apply([rec], when="2026-09-01T00:00:00Z")
+    # Naive local noon — T00:00:00Z is the previous local day west of UTC,
+    # and T12:00:00Z is the next local day at UTC+14. apply_ledger treats
+    # naive as local, so the civil day is exact in every zone.
+    first = _apply([rec], when="2026-09-01T12:00:00")
     pid = next(iter(first["items"].values()))["poam_id"]
     ov = {
         pid: {
@@ -369,12 +373,12 @@ def test_vendor_checkin_overdue_fires_at_32_not_31() -> None:
             "vendor_product": "Vendor – Product",
         }
     }
-    at_31 = _apply([rec], ledger=first, when="2026-10-02T00:00:00Z", overrides=ov)
+    at_31 = _apply([rec], ledger=first, when="2026-10-02T12:00:00", overrides=ov)
     item_31 = next(iter(at_31["items"].values()))
     assert (datetime(2026, 10, 2) - datetime(2026, 9, 1)).days == CHECKIN_OVERDUE_AFTER_DAYS
     assert VENDOR_CHECKIN_OVERDUE not in item_31["vd_flags"]
 
-    at_32 = _apply([rec], ledger=first, when="2026-10-03T00:00:00Z", overrides=ov)
+    at_32 = _apply([rec], ledger=first, when="2026-10-03T12:00:00", overrides=ov)
     item_32 = next(iter(at_32["items"].values()))
     assert VENDOR_CHECKIN_OVERDUE in item_32["vd_flags"]
 

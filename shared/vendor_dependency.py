@@ -35,7 +35,9 @@ VD_NOTE = (
     "Vendor Dependency does not suspend KEV / BOD 22-01 due dates. "
     "Last Vendor Check-in Date and Vendor Dependent Product Name are "
     "blank when O=No (never N/A or None). Product Name uses "
-    "'Vendor – Product' when O=Yes."
+    "'Vendor – Product' when O=Yes. Aging (VENDOR_CHECKIN_OVERDUE, "
+    "VD_HIGH_NOT_MITIGATED) uses the host-local run day, so a flag can "
+    "fire a day earlier or later than the UTC calendar day."
 )
 
 DEFAULT_COMMENT = "default, not verified"

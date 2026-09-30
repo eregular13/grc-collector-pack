@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from collectors import cloud_prowler, host_wazuh, identity_ad, saas_idp, vuln_scan
 from shared.asset_ids import is_placeholder_id
@@ -21,7 +21,7 @@ from shared.enum4linux import parse_enum4linux
 from shared.greenbone import is_greenbone_xml, parse_greenbone
 from shared.kev import collect_cves
 from shared.nikto import is_nikto_payload, parse_nikto
-from shared.poam_fields import SLA_NOTE, poam_fields, utc_run_date
+from shared.poam_fields import SLA_NOTE, poam_fields, local_run_date
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.testssl import iter_testssl_findings
 
@@ -971,7 +971,7 @@ def test_greenbone_scan_start_feeds_detection_date() -> None:
     recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
     hit = _findings(recs)[0]
     assert hit["extra"].get("scan_time") == "2023-09-28T14:48:02Z"
-    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    fields = poam_fields(hit, map_finding(hit), local_run_date())
     assert fields["original_detection_date"] == "2023-09-28"
     assert fields["scheduled_completion_date"] != "pending due date"
     assert fields["scheduled_completion_date"] != "not recorded"
@@ -979,7 +979,7 @@ def test_greenbone_scan_start_feeds_detection_date() -> None:
     csv_recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.csv")
     csv_hit = _findings(csv_recs)[0]
     assert csv_hit["extra"].get("scan_time") == "2021-02-25T20:01:27Z"
-    csv_fields = poam_fields(csv_hit, map_finding(csv_hit), utc_run_date())
+    csv_fields = poam_fields(csv_hit, map_finding(csv_hit), local_run_date())
     assert csv_fields["original_detection_date"] == "2021-02-25"
 
 
@@ -987,21 +987,23 @@ def test_scuba_timestamp_zulu_feeds_detection_date() -> None:
     recs = saas_idp.parse_file(SAMPLES / "scuba" / "ScubaResults_sample.json")
     hit = _findings(recs)[0]
     assert hit["extra"].get("scan_time") == "2024-03-20T18:42:05.043Z"
-    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    fields = poam_fields(hit, map_finding(hit), local_run_date())
     assert fields["original_detection_date"] == "2024-03-20"
     assert fields["scheduled_completion_date"] != "pending due date"
 
 
-def test_poam_status_date_is_utc_across_exports() -> None:
-    utc_day = datetime.now(timezone.utc).date().isoformat()
-    assert utc_run_date().isoformat() == utc_day
-    assert "status_date is the UTC" in SLA_NOTE
+def test_poam_status_date_is_local_across_exports() -> None:
+    clock = datetime.now().astimezone()
+    local_day = clock.date().isoformat()
+    assert local_run_date(clock).isoformat() == local_day
+    assert "host-local" in SLA_NOTE
+    assert "UTC calendar day" not in SLA_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
-    assert "UTC calendar day" in schema
+    assert "host-local civil day" in schema
     recs = vuln_scan.parse_file(SAMPLES / "greenbone" / "one_vuln.xml")
     hit = _findings(recs)[0]
-    fields = poam_fields(hit, map_finding(hit), utc_run_date())
-    assert fields["status_date"] == utc_day
+    fields = poam_fields(hit, map_finding(hit), local_run_date(clock))
+    assert fields["status_date"] == local_day
     assert len(fields["status_date"]) == 10
 
 
@@ -1009,7 +1011,7 @@ def test_pingcastle_generation_date_feeds_detection_date() -> None:
     recs = identity_ad.parse_file(SAMPLES / "pingcastle" / "one.xml")
     hit = next(r for r in _findings(recs) if r["extra"].get("risk_id") == "A-MinPwdLen")
     assert hit["extra"].get("scan_time") == "2024-06-06T13:01:09+02:00"
-    fields = poam_fields(hit, map_finding(hit), utc_run_date())
+    fields = poam_fields(hit, map_finding(hit), local_run_date())
     assert fields["original_detection_date"] == "2024-06-06"
 
 
