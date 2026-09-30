@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- POAM_STATUS_DATE_LOCAL: `status_date` is the host-local civil day
+  (`YYYY-MM-DD`) at generation (`datetime.now().astimezone()`, honoring
+  `TZ` / `tzset`). No extra env var or CLI flag. Format stays a date
+  (no offset). Same local date on `poam.csv`, `poam_fedramp.csv`,
+  `simplerisk/poam.csv`, and `poam-ledger.json`. first_seen / last_seen
+  and scanner parse timestamps stay UTC. No POST `/api/risks`.
 - SCOPE_GATE_HARDEN: live SCOPE status is an allowlist (`active` /
   `authorized` / `approved` / absent; keys case-insensitive). Nested or
   top-level unknown status, `REVOKED` / `Revoked`, and mid-run revoke or

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from shared.kev import KevCatalog, KevEntry, join_kev
 from shared.poam_fedramp import item_to_row, write_fedramp_poam
+from shared.poam_fields import local_run_date
 from shared.poam_ledger import apply_ledger, fp_v1
 from shared.vendor_dependency import (
     CHECKIN_OVERDUE_AFTER_DAYS,
@@ -186,7 +187,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     item1 = next(iter(run1["items"].values()))
     pid = item1["poam_id"]
     fp = item1["fp"]
-    assert item1["status_date"] == "2026-09-10"
+    assert item1["status_date"] == local_run_date(_run("2026-09-10T00:00:00Z")).isoformat()
     assert item1["vd_source"] == "default"
 
     run2 = _apply(
@@ -198,7 +199,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     item2 = next(iter(run2["items"].values()))
     assert item2["vendor_dependency"] == VD_NO
     assert item2["vd_source"] == "operator"
-    assert item2["status_date"] == "2026-09-11"
+    assert item2["status_date"] == local_run_date(_run("2026-09-11T00:00:00Z")).isoformat()
     vd_events = [
         e
         for e in run2["events"]
@@ -228,7 +229,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     )
     item3 = next(iter(run3["items"].values()))
     assert item3["vendor_dependency"] == VD_YES
-    assert item3["status_date"] == "2026-09-12"
+    assert item3["status_date"] == local_run_date(_run("2026-09-12T00:00:00Z")).isoformat()
     yes_events = [
         e
         for e in run3["events"]

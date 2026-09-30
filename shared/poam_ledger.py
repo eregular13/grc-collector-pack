@@ -2042,13 +2042,14 @@ def apply_ledger(
     prior_existed: bool = True,
 ) -> dict[str, Any]:
     """Apply one run to the ledger. Never auto-closes."""
-    clock = run_at or datetime.now(timezone.utc)
+    clock = run_at or datetime.now().astimezone()
     if clock.tzinfo is None:
-        clock = clock.replace(tzinfo=timezone.utc)
-    from shared.poam_fields import utc_run_date
+        clock = clock.astimezone()
+    from shared.poam_fields import local_run_date
 
-    run_date = utc_run_date(clock)
-    run_iso = clock.strftime("%Y-%m-%dT%H:%M:%SZ")
+    run_date = local_run_date(clock)
+    # first_seen / last_seen stay UTC ISO (out of scope for status_date).
+    run_iso = clock.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ledger = deepcopy(ledger_in) if ledger_in is not None else empty_ledger()
     ledger.setdefault("items", {})
     ledger.setdefault("closed", [])

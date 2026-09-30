@@ -17,6 +17,7 @@ from shared.asset_key import (
 from shared.ciso_shape import POAM_HEADER
 from shared.kev import KevCatalog
 from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
+from shared.poam_fields import local_run_date
 from shared.poam_ledger import (
     LEDGER_CHAIN_BROKEN,
     LEDGER_LOST,
@@ -108,7 +109,7 @@ def test_3_5_2_volatile_fields_ignored() -> None:
     assert item2["poam_id"] == item["poam_id"]
     assert item2["original_risk_rating"] == item["original_risk_rating"] == "High"
     assert item2["current_scanner_rating"] == "medium"
-    assert item2["status_date"] == "2026-09-12"
+    assert item2["status_date"] == local_run_date(_run("2026-09-12T00:00:00Z")).isoformat()
     assert any(e["kind"] == "field_changed" for e in second["events"])
 
 

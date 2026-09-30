@@ -53,7 +53,7 @@ from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.egp_collapse import bind_alias_targets_to_ledger
 from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, local_run_date
 from shared.scan_time import bind_run_clock
 from shared.poam_ledger import (
     fingerprints_for,
@@ -454,7 +454,7 @@ def _load() -> dict:
         "estate",
         *POAM_EXTRA_FIELDS,
     ]
-    today = utc_run_date()
+    today = local_run_date()
     poam_ledger = run_ledger(findings, kev_catalog)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))

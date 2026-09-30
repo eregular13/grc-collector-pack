@@ -81,7 +81,7 @@ def test_row_fields_from_existing_data(tmp_path: Path, monkeypatch: pytest.Monke
     # first-seen absent -> scan time
     assert row["original_detection_date"] == "2026-09-01"
     assert row["scheduled_completion_date"] == "2026-10-01"  # high = 30 days
-    assert row["status_date"] == date.today().isoformat() or len(row["status_date"]) == 10
+    assert row["status_date"] == date.today().isoformat()
     assert row["original_risk_rating"] == "High"
     assert row["owner"] == "" and row["point_of_contact"] == "" and row["due"] == ""
     assert row["status"] == "open" and row["estate"] == "LAB: TEST ENVIRONMENT"

@@ -11,7 +11,7 @@ the pack run date. The separate FedRAMP export keeps its own template values.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from shared.scan_time import (  # noqa: F401 — re-exported for callers/tests
@@ -56,18 +56,29 @@ SLA_NOTE = (
     "23:00 PT scan stays that calendar day, not the next UTC day). The poam.csv column "
     "name is unchanged; this UTC / recorded-zone note lives here. When the artifact has "
     "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
-    "scheduled / milestone dates stay 'pending due date'. status_date is the UTC "
-    "calendar day (YYYY-MM-DD), not a local civil day — the same UTC date is written "
-    "on poam.csv, poam_fedramp.csv, and poam-ledger.json."
+    "scheduled / milestone dates stay 'pending due date'. status_date is the host-local "
+    "civil day (YYYY-MM-DD) at generation — datetime.now().astimezone(), honoring TZ / "
+    "time.tzset. No extra env var or CLI flag. The cell stays a date (no offset); the "
+    "same local date is written on poam.csv, poam_fedramp.csv, simplerisk/poam.csv, and "
+    "poam-ledger.json."
 )
 
 
-def utc_run_date(now: datetime | None = None) -> date:
-    """UTC calendar day for status_date. Naive datetimes are treated as UTC."""
-    clock = now or datetime.now(timezone.utc)
-    if clock.tzinfo is None:
-        clock = clock.replace(tzinfo=timezone.utc)
-    return clock.astimezone(timezone.utc).date()
+def local_run_date(now: datetime | None = None) -> date:
+    """Host-local civil day for status_date.
+
+    Local means the generating host's timezone at call time
+    (``datetime.now().astimezone()``, which honors ``TZ`` / ``time.tzset``).
+    There is no pack-specific override — ``TZ`` is the standard one.
+
+    Naive datetimes are treated as already-local wall time. Aware datetimes
+    are converted to the host local zone before taking the date.
+    """
+    if now is None:
+        return datetime.now().astimezone().date()
+    if now.tzinfo is None:
+        return now.date()
+    return now.astimezone().date()
 
 
 def _to_date(raw: Any) -> date | None:
@@ -172,7 +183,7 @@ def poam_fields(rec: dict[str, Any], mapped: dict[str, Any], today: date) -> dic
         "weakness_source_id": source_identifier(rec),
         "original_detection_date": odd,
         "scheduled_completion_date": scheduled_s,
-        "status_date": utc_run_date().isoformat() if today is None else today.isoformat(),
+        "status_date": local_run_date().isoformat() if today is None else today.isoformat(),
         "milestones": ms,
         "original_risk_rating": rating,
         "point_of_contact": "",
