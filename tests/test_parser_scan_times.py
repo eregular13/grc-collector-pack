@@ -942,9 +942,11 @@ def test_nested_bind_restores_outer_clock() -> None:
 def test_load_binds_and_unbinds_run_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     """load() binds a clock for _load and leaves the var None afterwards."""
     seen: list[datetime | None] = []
+    passed: list[datetime | None] = []
 
-    def fake_load() -> dict:
+    def fake_load(*, run_at=None) -> dict:
         seen.append(_RUN_CLOCK.get())
+        passed.append(run_at)
         return {"ok": True}
 
     monkeypatch.setattr(grc_loader, "_load", fake_load)
@@ -952,16 +954,21 @@ def test_load_binds_and_unbinds_run_clock(monkeypatch: pytest.MonkeyPatch) -> No
     assert len(seen) == 1
     assert seen[0] is not None
     assert seen[0].tzinfo is not None
+    assert passed[0] is not None
+    assert passed[0].tzinfo is not None
+    assert seen[0] == passed[0].astimezone(timezone.utc)
     assert _RUN_CLOCK.get() is None
 
-    def boom() -> dict:
+    def boom(*, run_at=None) -> dict:
         seen.append(_RUN_CLOCK.get())
+        passed.append(run_at)
         raise RuntimeError("load failed")
 
     monkeypatch.setattr(grc_loader, "_load", boom)
     with pytest.raises(RuntimeError, match="load failed"):
         grc_loader.load()
     assert seen[-1] is not None
+    assert passed[-1] is not None
     assert _RUN_CLOCK.get() is None
 
 
