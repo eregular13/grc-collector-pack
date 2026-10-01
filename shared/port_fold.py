@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Iterable
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from shared.finding_types import (
     SEV_RANK,
@@ -90,8 +90,36 @@ def _labels(rec: dict[str, Any]) -> set[str]:
     return {str(x).strip().lower() for x in (rec.get("labels") or []) if str(x).strip()}
 
 
+def _host_port_from_token(text: str) -> tuple[str, str]:
+    """Parse host:port, [IPv6]:port, or a bare host. No urlsplit."""
+    host = str(text or "").split("/", 1)[0]
+    port = ""
+    if host.startswith("[") and "]" in host:
+        end = host.find("]")
+        maybe = host[end + 1 :]
+        host = host[1:end]
+        if maybe.startswith(":") and maybe[1:].isdigit():
+            port = maybe[1:]
+    elif host.startswith("[") and "]" not in host:
+        # Unclosed bracket — do not invent a host from the leftover token.
+        return "", ""
+    elif host.count(":") == 1:
+        left, right = host.rsplit(":", 1)
+        if right.isdigit():
+            host, port = left, right
+    return host, port
+
+
 def _strip_host(raw: Any) -> tuple[str, str, str]:
-    """Return (host, port, scheme) parsed from a URL, host:port, or bare host."""
+    """Return (host, port, scheme) parsed from a URL, host:port, or bare host.
+
+    Malformed IPv6 brackets (``https://[notanip]:6379``, unclosed
+    ``https://[2001:4860:4860::8888``) must not raise. Same class as
+    ``_host_from_url_or_token`` (#204). Unparseable tokens degrade to an
+    empty host so a single bad ``extra.host`` / ``matched_at`` cannot abort
+    the POA&M load. Valid bracketed IPv6 (with or without a port) still
+    folds on the inner address.
+    """
     text = str(raw or "").strip()
     if not text:
         return "", "", ""
@@ -99,24 +127,26 @@ def _strip_host(raw: Any) -> tuple[str, str, str]:
     port = ""
     host = text
     if "://" in text or text.startswith("//"):
-        parsed = urlparse(text if "://" in text else f"http:{text}")
-        scheme = (parsed.scheme or "").lower()
-        host = parsed.hostname or parsed.path.split("/")[0] or ""
-        if parsed.port:
-            port = str(parsed.port)
+        try:
+            parsed = urlsplit(text if "://" in text else f"http:{text}")
+            scheme = (parsed.scheme or "").lower()
+            host = parsed.hostname or parsed.path.split("/")[0] or ""
+            try:
+                if parsed.port:
+                    port = str(parsed.port)
+            except ValueError:
+                port = ""
+        except ValueError:
+            if "://" in text:
+                scheme, rest = text.split("://", 1)
+                scheme = scheme.lower()
+            else:
+                rest = text.lstrip("/")
+            if "@" in rest:
+                rest = rest.rsplit("@", 1)[-1]
+            host, port = _host_port_from_token(rest)
     else:
-        # host:port or IPv6 in brackets, no scheme. Strip a path if present.
-        host = text.split("/", 1)[0]
-        if host.startswith("[") and "]" in host:
-            end = host.find("]")
-            maybe = host[end + 1 :]
-            host = host[1:end]
-            if maybe.startswith(":") and maybe[1:].isdigit():
-                port = maybe[1:]
-        elif host.count(":") == 1:
-            left, right = host.rsplit(":", 1)
-            if right.isdigit():
-                host, port = left, right
+        host, port = _host_port_from_token(text)
     host = normalize_asset_id(host)
     if host.startswith("www."):
         host = host[4:]

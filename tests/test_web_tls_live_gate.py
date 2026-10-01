@@ -511,3 +511,19 @@ def test_unbound_thread_cannot_see_other_context_scope(
     assert seen and seen[0] is scope
     connects = [(h, p) for h, p in recorded if not str(h).startswith("gai:")]
     assert connects == []
+
+
+def test_parse_http_url_malformed_brackets_refuse_not_crash() -> None:
+    with pytest.raises(LiveRefuse, match="invalid"):
+        parse_http_url("https://[notanip]:6379")
+    with pytest.raises(LiveRefuse, match="invalid"):
+        parse_http_url("https://[2001:4860:4860::8888")
+    host, port, scheme, path = parse_http_url("https://[2001:4860:4860::8888]/")
+    assert host == "2001:4860:4860::8888"
+    assert port == 443
+    assert scheme == "https"
+    assert path == "/"
+    host, port, scheme, path = parse_http_url("https://[2001:4860:4860::8888]:8443/x")
+    assert host == "2001:4860:4860::8888"
+    assert port == 8443
+    assert path == "/x"

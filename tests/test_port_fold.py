@@ -5,6 +5,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pytest
+
 from collectors.grc_loader import load
 from shared.ciso_shape import EXCLUDED_HEADER, assert_count_consistency
 from shared.control_map import POAM_EXCLUDE_REASONS, iter_poam_decisions, poam_breakdown
@@ -12,7 +14,9 @@ from shared.io_util import out_dir, write_canonical
 from shared.poam_ledger import assign_poam_id, fp_v1
 from shared.port_fold import (
     SUPERSEDED_REASON,
+    _strip_host,
     egp_id_for,
+    finding_hosts,
     finding_port,
     fold_port_only_into_specific,
     is_port_only_finding,
@@ -270,3 +274,104 @@ def test_loader_writes_excluded_egp_and_keeps_identity(
         if row["finding_ref_id"] == spec["ref_id"]
     )
     assert "nmap" in det
+
+
+V6 = "2001:4860:4860::8888"
+
+
+def test_strip_host_malformed_brackets_do_not_raise() -> None:
+    """#207: extra.host / matched_at garbage must not abort the load."""
+    host, port, scheme = _strip_host("https://[notanip]:6379")
+    assert host == "notanip"
+    assert port == "6379"
+    assert scheme == "https"
+    host, port, scheme = _strip_host("https://[2001:4860:4860::8888")
+    assert host == ""
+    assert port == ""
+    assert scheme == "https"
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-bad-bracket",
+        name="Redis without auth",
+        description="Malformed host tokens must not crash fold.",
+        severity="high",
+        category="vulnerability",
+        assets=["https://[notanip]:6379"],
+        labels=["nuclei"],
+        extra={
+            "host": "https://[notanip]:6379",
+            "matched_at": "https://[2001:4860:4860::8888",
+            "template_id": "exposed-redis",
+        },
+    )
+    assert "notanip" in finding_hosts(rec)
+    assert finding_port(rec) == "6379"
+    rec["extra"]["host"] = "https://[2001:4860:4860::8888"
+    rec["extra"]["port"] = ""
+    rec["assets"] = ["https://[2001:4860:4860::8888"]
+    assert finding_hosts(rec) == set()
+    assert finding_port(rec) == ""
+
+
+def test_strip_host_valid_bracketed_ipv6_with_and_without_port() -> None:
+    host, port, scheme = _strip_host(f"https://[{V6}]/")
+    assert host == V6
+    assert port == ""
+    assert scheme == "https"
+    host, port, scheme = _strip_host(f"https://[{V6}]:443/")
+    assert host == V6
+    assert port == "443"
+    host, port, scheme = _strip_host(f"[{V6}]")
+    assert host == V6
+    assert port == ""
+    host, port, scheme = _strip_host(f"[{V6}]:6379")
+    assert host == V6
+    assert port == "6379"
+
+
+def test_ipv6_url_and_bare_address_fold_on_same_host_port() -> None:
+    port = _port_only(
+        assets=[V6],
+        extra={"port": "443", "ip": V6, "protocol": "tcp", "service": "https"},
+    )
+    spec = _specific(
+        assets=[f"https://[{V6}]:443/"],
+        extra={
+            "template_id": "cve-2014-0160",
+            "cve": "CVE-2014-0160",
+            "tool": "nuclei",
+            "host": f"https://[{V6}]:443/",
+            "matched_at": f"https://[{V6}]:443/",
+            "port": "443",
+            "protocol": "tcp",
+        },
+    )
+    assert port_only_superseders([port, spec])[port["ref_id"]] is spec
+
+
+def test_malformed_host_does_not_abort_fold_or_load(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bad = _specific(
+        ref_id="VULN-bad-bracket",
+        extra={
+            "host": "https://[notanip]:6379",
+            "matched_at": "https://[2001:4860:4860::8888",
+            "port": "6379",
+            "template_id": "exposed-redis",
+            "cve": "",
+        },
+    )
+    port = _port_only()
+    spec = _specific()
+    mapping = fold_port_only_into_specific([bad, port, spec])
+    assert mapping[port["ref_id"]] is spec
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    write_canonical("vuln-scan", [bad, spec])
+    write_canonical("inventory-nmap", [port])
+    summary = load()
+    assert summary["poam"] >= 1
+    assert (tmp_path / "poam" / "poam.csv").is_file()

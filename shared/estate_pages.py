@@ -246,6 +246,39 @@ def engagement_name(value: Any) -> str:
     return _trim_edges_and_zwsp(raw)
 
 
+# Markdown / HTML metacharacters that must not stay raw in deliverables.
+# Hyphen, ampersand, apostrophe, and Unicode letters are left as-is so
+# names like O'Reilly & Co-Santé stay readable. Newlines are collapsed
+# separately so a name cannot open a heading or break a blockquote.
+_MD_META = frozenset("\\`*_{}[]()#!<>|~")
+
+
+def md_safe_text(value: Any) -> str:
+    """Neutralize markdown, HTML, and link syntax in operator-supplied text.
+
+    Used only on markdown / HTML surfaces (exec lede, banners, SCOPE_AND_TRUST,
+    README.md). CSV estate columns keep the raw label — they are not markdown.
+    ZWSP/BOM handling matches ``engagement_name`` (#206).
+    """
+    text = _trim_edges_and_zwsp(str(value or ""))
+    if not text:
+        return ""
+    text = re.sub(r"[\r\n\u2028\u2029\u0085\v\f]+", " ", text)
+    text = re.sub(r"[ \t]+", " ", text).strip()
+    if not text:
+        return ""
+    return "".join(("\\" + ch) if ch in _MD_META else ch for ch in text)
+
+
+def _lede_label(label: str, kind: str, name: str) -> str:
+    shown = (label or "").strip()
+    if kind == "CLIENT":
+        return f"CLIENT: {name}" if name else "This assessment"
+    if shown.endswith(":") or shown in {"CLIENT:", "CLIENT"}:
+        return "This assessment"
+    return shown
+
+
 def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", client_name: Any = None) -> str:
     """One clean exec-summary sentence. No empty quotes or dangling ' . '."""
     if stamp is not None:
@@ -253,17 +286,17 @@ def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", cli
         kind = stamp.kind
         client_name = stamp.client_name
     name = engagement_name(client_name)
-    shown = (label or "").strip()
+    shown = _lede_label(label, kind, name)
+    safe_name = md_safe_text(name)
+    safe_shown = md_safe_text(shown)
     if kind == "CLIENT":
-        if name:
-            return f"**CLIENT: {name}**. {name}."
+        if safe_name:
+            return f"**CLIENT: {safe_name}**. {safe_name}."
         return "**This assessment**."
-    if shown.endswith(":") or shown in {"CLIENT:", "CLIENT"}:
-        shown = "This assessment"
-    if name:
-        return f"**{shown}**. {name}."
-    if shown:
-        return f"**{shown}**."
+    if safe_name:
+        return f"**{safe_shown}**. {safe_name}."
+    if safe_shown:
+        return f"**{safe_shown}**."
     return "**This assessment**."
 
 
@@ -986,12 +1019,16 @@ class EstateStamp:
     fallback_files: tuple[str, ...] = ()
     client_name: str = NOT_RECORDED
 
-    def banner_md(self) -> str:
+    def banner_label(self) -> str:
         label = (self.label or "").strip()
         if self.kind == "CLIENT" and not engagement_name(self.client_name):
-            label = "This assessment"
-        elif not label or label in {"CLIENT:", "CLIENT"}:
-            label = "This assessment"
+            return "This assessment"
+        if not label or label in {"CLIENT:", "CLIENT"}:
+            return "This assessment"
+        return label
+
+    def banner_md(self) -> str:
+        label = md_safe_text(self.banner_label())
         return (
             f"> **{label}**: {self.sentence}\n"
             f"> Run `{self.run_id}` · generated {self.generated_at_local} · pack `{self.pack_commit}`"
@@ -1143,7 +1180,7 @@ def classify_estate(
         client_out = name
     else:
         label = LABEL_FOR_KIND[kind]
-        sentence = SENTENCE_FOR_KIND[kind].format(fallback_files=fb_display)
+        sentence = SENTENCE_FOR_KIND[kind].format(fallback_files=md_safe_text(fb_display))
         client_out = name or NOT_RECORDED
 
     return EstateStamp(
@@ -1217,7 +1254,8 @@ def prepend_banner_md(body: str, stamp: EstateStamp) -> str:
 def assert_banner_present(text: str, stamp: EstateStamp | None = None) -> None:
     blob = text
     if stamp is not None:
-        if stamp.label not in blob:
+        needles = {stamp.label, md_safe_text(stamp.banner_label()), stamp.banner_label()}
+        if not any(n and n in blob for n in needles):
             raise AssertionError(f"estate banner label missing: {stamp.label}")
         if stamp.sentence.split(".")[0] not in blob and stamp.sentence not in blob:
             raise AssertionError("estate banner sentence missing")
@@ -1795,7 +1833,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{stamp.label}**. Run `{stamp.run_id}`, pack `{stamp.pack_commit}`, generated {stamp.generated_at_local}.",
+        f"**{md_safe_text(stamp.banner_label())}**. Run `{stamp.run_id}`, pack `{stamp.pack_commit}`, generated {stamp.generated_at_local}.",
         "",
         "### Authorization",
     ]
@@ -1803,9 +1841,15 @@ def build_scope_and_trust(ctx: PageContext) -> str:
         lines.append(f"- {SAMPLE_AUTH}")
     else:
         auth = client_authorization_record(None, ctx.in_dir)
-        authorizer = recorded((auth or {}).get("authorizer") or _env(None, "GRC_AUTHORIZER"))
-        auth_date = recorded((auth or {}).get("date") or _env(None, "GRC_AUTH_DATE"))
-        scope_ref = recorded((auth or {}).get("ref") or _env(None, "GRC_SCOPE_REF"))
+        authorizer = md_safe_text(
+            recorded((auth or {}).get("authorizer") or _env(None, "GRC_AUTHORIZER"))
+        )
+        auth_date = md_safe_text(
+            recorded((auth or {}).get("date") or _env(None, "GRC_AUTH_DATE"))
+        )
+        scope_ref = md_safe_text(
+            recorded((auth or {}).get("ref") or _env(None, "GRC_SCOPE_REF"))
+        )
         lines.append(
             f"- Authorized by: {authorizer} on {auth_date}. Reference: {scope_ref}."
         )

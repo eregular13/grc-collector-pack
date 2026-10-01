@@ -6,6 +6,8 @@ No POST /api/risks.
 
 from __future__ import annotations
 
+import re
+
 from shared.estate_pages import (
     LABEL_FOR_KIND,
     NOT_RECORDED,
@@ -13,8 +15,11 @@ from shared.estate_pages import (
     EstateStamp,
     PageContext,
     build_executive_summary,
+    build_scope_and_trust,
     engagement_name,
     exec_lede,
+    md_safe_text,
+    write_csv_with_estate,
 )
 
 
@@ -155,3 +160,67 @@ def test_banner_and_lede_non_client_keep_kind_name() -> None:
     assert exec_lede(named) == f"**{LABEL_FOR_KIND['SAMPLE']}**. Fixture Org."
     assert "This assessment" not in exec_lede(sample)
     assert "not recorded." not in exec_lede(demo)
+
+
+HOSTILE = "Acme**\n\n# PWNED [x](javascript:void(0)) <script>"
+
+
+def test_md_safe_text_keeps_normal_names_readable() -> None:
+    assert md_safe_text("Acme Health") == "Acme Health"
+    assert md_safe_text("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
+    assert md_safe_text("Ac\u200cme") == "Ac\u200cme"
+    assert md_safe_text("\ufeffAcme\u200b") == "Acme"
+    assert engagement_name("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
+
+
+def test_exec_lede_and_banner_neutralize_markdown_injection() -> None:
+    stamp = _stamp(
+        kind="CLIENT",
+        label=f"CLIENT: {HOSTILE}",
+        client_name=HOSTILE,
+    )
+    lede = exec_lede(stamp)
+    banner = stamp.banner_md()
+    summary = build_executive_summary(PageContext(stamp=stamp, records=[]))
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[]))
+    for blob in (lede, banner, summary, trust):
+        assert not re.search(r"(?m)^# PWNED", blob)
+        assert "[x](javascript:" not in blob
+        assert not re.search(r"(?<!\\)<script>", blob)
+        assert "**\n" not in blob
+    assert "Acme" in lede
+    assert lede.count("\n") == 0
+    assert banner.splitlines()[0].startswith("> **CLIENT: Acme")
+    assert banner.splitlines()[0].count("**") == 2
+    assert all(line.startswith(">") for line in banner.splitlines())
+    assert "\\*" in lede
+    assert "\\#" in lede
+    assert "\\[x\\]" in lede
+    assert "\\<script" in lede
+
+
+def test_csv_estate_column_keeps_raw_client_name(tmp_path) -> None:
+    stamp = _stamp(
+        kind="CLIENT",
+        label=f"CLIENT: {HOSTILE}",
+        client_name=HOSTILE,
+    )
+    path = tmp_path / "poam.csv"
+    write_csv_with_estate(path, ["weakness", "estate"], [["x", ""]], stamp)
+    text = path.read_text(encoding="utf-8")
+    assert HOSTILE.splitlines()[0] in text or "Acme**" in text
+    assert "<script>" in text
+
+
+def test_authorizer_fields_are_escaped_on_scope_page(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GRC_AUTHORIZER", "Pat**\n\n# AUTH [x](javascript:void(0))")
+    monkeypatch.setenv("GRC_AUTH_DATE", "2026-10-01")
+    monkeypatch.setenv("GRC_SCOPE_REF", "SCOPE <script>")
+    stamp = _stamp(kind="CLIENT", label="CLIENT: Acme", client_name="Acme")
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[], in_dir=tmp_path))
+    assert not re.search(r"(?m)^# AUTH", trust)
+    assert "[x](javascript:" not in trust
+    assert not re.search(r"(?<!\\)<script>", trust)
+    assert "Pat" in trust
+    assert "2026-10-01" in trust
+    assert "\\<script" in trust
