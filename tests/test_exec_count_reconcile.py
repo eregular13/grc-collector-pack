@@ -165,8 +165,13 @@ def _assert_exec_matches_csvs(out: Path) -> dict[str, int]:
     assert parsed.get("poam", parsed["open"]) == len(poam)
     assert parsed.get("register", len(register)) == len(register)
     assert parsed.get("kind_excluded", kind_excluded) == kind_excluded
+    c5 = sum(
+        1
+        for row in excluded
+        if str(row.get("excluded_reason") or "") == "DUPLICATE_INSTANCE"
+    )
     if "excluded" in parsed:
-        assert parsed["excluded"] + parsed["kind_excluded"] == len(excluded)
+        assert parsed["excluded"] + parsed["kind_excluded"] + c5 == len(excluded)
         assert parsed["weaknesses"] == weaknesses
         assert parsed.get("merged_aliases", 0) == merged
         assert (
