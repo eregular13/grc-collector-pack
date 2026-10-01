@@ -90,6 +90,12 @@ def _labels(rec: dict[str, Any]) -> set[str]:
     return {str(x).strip().lower() for x in (rec.get("labels") or []) if str(x).strip()}
 
 
+def _valid_port(token: str) -> str:
+    if token.isdigit() and 1 <= int(token) <= 65535:
+        return token
+    return ""
+
+
 def _host_port_from_token(text: str) -> tuple[str, str]:
     """Parse host:port, [IPv6]:port, or a bare host. No urlsplit."""
     host = str(text or "").split("/", 1)[0]
@@ -98,16 +104,36 @@ def _host_port_from_token(text: str) -> tuple[str, str]:
         end = host.find("]")
         maybe = host[end + 1 :]
         host = host[1:end]
-        if maybe.startswith(":") and maybe[1:].isdigit():
-            port = maybe[1:]
+        if maybe.startswith(":"):
+            port = _valid_port(maybe[1:])
     elif host.startswith("[") and "]" not in host:
         # Unclosed bracket — do not invent a host from the leftover token.
         return "", ""
     elif host.count(":") == 1:
         left, right = host.rsplit(":", 1)
-        if right.isdigit():
-            host, port = left, right
+        host, port = left, _valid_port(right)
     return host, port
+
+
+def _url_has_explicit_port(raw: Any) -> bool:
+    """True when the token named a port, including invalid :99999 / :abc / :0."""
+    text = str(raw or "").strip()
+    if not text:
+        return False
+    if "://" in text:
+        rest = text.split("://", 1)[1]
+    elif text.startswith("//"):
+        rest = text[2:]
+    else:
+        rest = text
+    rest = rest.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    if "@" in rest:
+        rest = rest.rsplit("@", 1)[-1]
+    if rest.startswith("["):
+        if "]" not in rest:
+            return False
+        return rest[rest.find("]") + 1 :].startswith(":")
+    return rest.count(":") == 1
 
 
 def _strip_host(raw: Any) -> tuple[str, str, str]:
@@ -181,6 +207,9 @@ def finding_port(rec: dict[str, Any]) -> str:
         host, parsed, scheme = _strip_host(raw)
         if parsed:
             return parsed
+        if _url_has_explicit_port(raw):
+            # Invalid :99999 / :abc / :0 — do not invent scheme default 80/443.
+            return ""
         if scheme in _SCHEME_DEFAULT_PORT and host:
             return _SCHEME_DEFAULT_PORT[scheme]
     return ""

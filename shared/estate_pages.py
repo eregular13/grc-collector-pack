@@ -251,23 +251,38 @@ def engagement_name(value: Any) -> str:
 # names like O'Reilly & Co-Santé stay readable. Newlines are collapsed
 # separately so a name cannot open a heading or break a blockquote.
 _MD_META = frozenset("\\`*_{}[]()#!<>|~")
+_LINE_BREAKS = r"[\r\n\u2028\u2029\u0085\v\f]+"
+
+
+def _one_line(value: Any) -> str:
+    """Collapse line breaks. No markdown escaping — used for plain .txt too."""
+    text = _trim_edges_and_zwsp(str(value or ""))
+    if not text:
+        return ""
+    text = re.sub(_LINE_BREAKS, " ", text)
+    return re.sub(r"[ \t]+", " ", text).strip()
 
 
 def md_safe_text(value: Any) -> str:
     """Neutralize markdown, HTML, and link syntax in operator-supplied text.
 
     Used only on markdown / HTML surfaces (exec lede, banners, SCOPE_AND_TRUST,
-    README.md). CSV estate columns keep the raw label — they are not markdown.
-    ZWSP/BOM handling matches ``engagement_name`` (#206).
+    README.md, poam.md tables). CSV estate columns and ESTATE.txt keep the raw
+    label — they are not markdown. ZWSP/BOM handling matches ``engagement_name``
+    (#206).
     """
-    text = _trim_edges_and_zwsp(str(value or ""))
-    if not text:
-        return ""
-    text = re.sub(r"[\r\n\u2028\u2029\u0085\v\f]+", " ", text)
-    text = re.sub(r"[ \t]+", " ", text).strip()
+    text = _one_line(value)
     if not text:
         return ""
     return "".join(("\\" + ch) if ch in _MD_META else ch for ch in text)
+
+
+def md_code_span(value: Any) -> str:
+    """Markdown code span that cannot break out via a backtick in the value."""
+    text = _one_line(value).replace("`", "")
+    if not text:
+        text = NOT_RECORDED
+    return f"`{text}`"
 
 
 def _lede_label(label: str, kind: str, name: str) -> str:
@@ -1027,11 +1042,28 @@ class EstateStamp:
             return "This assessment"
         return label
 
+    def banner_sentence(self, *, markdown: bool = False) -> str:
+        """MIXED fallback-file names are escaped only on markdown surfaces."""
+        if self.kind == "MIXED":
+            fb = ", ".join(self.fallback_files) if self.fallback_files else NOT_RECORDED
+            if markdown:
+                fb = md_safe_text(fb)
+            return SENTENCE_FOR_KIND["MIXED"].format(fallback_files=fb)
+        return self.sentence
+
     def banner_md(self) -> str:
         label = md_safe_text(self.banner_label())
         return (
-            f"> **{label}**: {self.sentence}\n"
-            f"> Run `{self.run_id}` · generated {self.generated_at_local} · pack `{self.pack_commit}`"
+            f"> **{label}**: {self.banner_sentence(markdown=True)}\n"
+            f"> Run {md_code_span(self.run_id)} · generated {_one_line(self.generated_at_local) or NOT_RECORDED} · pack {md_code_span(self.pack_commit)}"
+        )
+
+    def banner_plain(self) -> str:
+        """ESTATE.txt sidecar. Same shape, no markdown escaping."""
+        label = _one_line(self.banner_label()) or "This assessment"
+        return (
+            f"> **{label}**: {self.banner_sentence(markdown=False)}\n"
+            f"> Run {_one_line(self.run_id) or NOT_RECORDED} · generated {_one_line(self.generated_at_local) or NOT_RECORDED} · pack {_one_line(self.pack_commit) or NOT_RECORDED}"
         )
 
     def banner_lines(self) -> list[str]:
@@ -1180,7 +1212,7 @@ def classify_estate(
         client_out = name
     else:
         label = LABEL_FOR_KIND[kind]
-        sentence = SENTENCE_FOR_KIND[kind].format(fallback_files=md_safe_text(fb_display))
+        sentence = SENTENCE_FOR_KIND[kind].format(fallback_files=fb_display)
         client_out = name or NOT_RECORDED
 
     return EstateStamp(
@@ -1235,7 +1267,7 @@ def write_estate_sidecar(sink_dir: Path, stamp: EstateStamp, *, note: str = "") 
         )
     )
     path = dest / "ESTATE.txt"
-    path.write_text(stamp.banner_md() + "\n\n" + extra + "\n", encoding="utf-8")
+    path.write_text(stamp.banner_plain() + "\n\n" + extra + "\n", encoding="utf-8")
     return path
 
 
@@ -1755,13 +1787,15 @@ def build_executive_summary(ctx: PageContext) -> str:
     )
     for i, rec in enumerate(ranked, 1):
         mapped = ctx.mapped_by_ref.get(str(rec.get("ref_id"))) or {}
-        weakness = recorded(rec.get("name") or rec.get("ref_id"))
+        weakness = md_safe_text(recorded(rec.get("name") or rec.get("ref_id")))
         assets = rec.get("assets") or []
-        affected = recorded("|".join(str(a) for a in assets) if assets else None)
-        action = recorded(mapped.get("recommended_fix"))
+        affected = md_safe_text(
+            recorded("|".join(str(a) for a in assets) if assets else None)
+        )
+        action = md_safe_text(recorded(mapped.get("recommended_fix")))
         ref = recorded(rec.get("ref_id"))
         lines.append(
-            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | `{ref}` |"
+            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | {md_code_span(ref)} |"
         )
     if not ranked:
         lines.append(
@@ -1833,7 +1867,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{md_safe_text(stamp.banner_label())}**. Run `{stamp.run_id}`, pack `{stamp.pack_commit}`, generated {stamp.generated_at_local}.",
+        f"**{md_safe_text(stamp.banner_label())}**. Run {md_code_span(stamp.run_id)}, pack {md_code_span(stamp.pack_commit)}, generated {_one_line(stamp.generated_at_local) or NOT_RECORDED}.",
         "",
         "### Authorization",
     ]

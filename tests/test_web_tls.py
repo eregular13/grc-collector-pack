@@ -378,3 +378,5 @@ def test_host_of_malformed_brackets_do_not_raise() -> None:
     assert _host_of("https://web-01.corp.local/admin") == "web-01.corp.local"
     assert _host_of("https://[2001:4860:4860::8888]/") == "2001:4860:4860::8888"
     assert _host_of("https://[2001:4860:4860::8888]:443/") == "2001:4860:4860::8888"
+    assert _host_of("[::1]:443") == "::1"
+    assert _host_of("h:8443") == "h"

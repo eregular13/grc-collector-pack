@@ -160,6 +160,8 @@ def test_lab_report_mode_matches_estate_kind(
         **env,
     )
     report = (out / "evidence" / "lab-report.md").read_text(encoding="utf-8")
+    assert "```json" in report
+    assert report.index("```json") < report.index("{")
     assert f"{kind} mode" in report
     assert "Demo mode" not in report
     if kind == "CLIENT":

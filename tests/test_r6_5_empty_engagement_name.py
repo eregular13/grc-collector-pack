@@ -16,8 +16,10 @@ from shared.estate_pages import (
     PageContext,
     build_executive_summary,
     build_scope_and_trust,
+    classify_estate,
     engagement_name,
     exec_lede,
+    md_code_span,
     md_safe_text,
     write_csv_with_estate,
 )
@@ -214,13 +216,118 @@ def test_csv_estate_column_keeps_raw_client_name(tmp_path) -> None:
 
 def test_authorizer_fields_are_escaped_on_scope_page(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("GRC_AUTHORIZER", "Pat**\n\n# AUTH [x](javascript:void(0))")
-    monkeypatch.setenv("GRC_AUTH_DATE", "2026-10-01")
+    monkeypatch.setenv("GRC_AUTH_DATE", "2026-10-01**\n\n# DATE [x](javascript:void(0))")
     monkeypatch.setenv("GRC_SCOPE_REF", "SCOPE <script>")
     stamp = _stamp(kind="CLIENT", label="CLIENT: Acme", client_name="Acme")
     trust = build_scope_and_trust(PageContext(stamp=stamp, records=[], in_dir=tmp_path))
     assert not re.search(r"(?m)^# AUTH", trust)
+    assert not re.search(r"(?m)^# DATE", trust)
     assert "[x](javascript:" not in trust
     assert not re.search(r"(?<!\\)<script>", trust)
     assert "Pat" in trust
     assert "2026-10-01" in trust
+    assert "\\*" in trust
+    assert "\\# DATE" in trust or "\\#" in trust
     assert "\\<script" in trust
+
+
+def test_md_safe_text_kills_backtick_cr_underscore_tilde_backslash() -> None:
+    ticks = md_safe_text("a `b` c")
+    assert "`" not in ticks.replace("\\`", "")
+    assert "\\`" in ticks
+    cr = md_safe_text("A\r- x")
+    assert "\r" not in cr
+    assert md_safe_text("_u_") == "\\_u\\_"
+    assert md_safe_text("~~s~~") == "\\~\\~s\\~\\~"
+    assert md_safe_text("\\*x\\*") == "\\\\\\*x\\\\\\*"
+
+
+def test_exec_lede_mixed_escapes_client_name() -> None:
+    lede = exec_lede(
+        None,
+        label="MIXED: REVIEW BEFORE USE",
+        kind="MIXED",
+        client_name="Acme**\n# x <script>",
+    )
+    assert "\\*" in lede
+    assert "\\<" in lede
+    assert "\n# x" not in lede
+    assert "<script>" not in lede.replace("\\<", "X")
+
+
+def test_estate_txt_does_not_escape_fallback_underscores() -> None:
+    stamp = classify_estate(
+        [
+            {"labels": ["demo"], "source": "fixtures/demo"},
+            {"labels": ["nmap"], "source": "inventory-nmap"},
+        ],
+        fallback_files=["nmap/c4rtographer_udpConnect"],
+    )
+    assert stamp.kind == "MIXED"
+    assert "c4rtographer_udpConnect" in stamp.sentence
+    assert "\\_" not in stamp.sentence
+    plain = stamp.banner_plain()
+    assert "c4rtographer_udpConnect" in plain
+    assert "\\_" not in plain
+    assert "c4rtographer\\_udpConnect" in stamp.banner_md()
+
+
+def test_banner_code_span_strips_backticks() -> None:
+    stamp = _stamp(
+        kind="SAMPLE",
+        run_id="r1` <img src=x onerror=alert(2)> `",
+        pack_commit="dead`beef",
+    )
+    banner = stamp.banner_md()
+    assert md_code_span(stamp.run_id) in banner
+    assert "` <img" not in banner
+    assert "dead`beef" not in banner
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[]))
+    assert md_code_span(stamp.run_id) in trust
+    assert "` <img" not in trust
+
+
+def test_exec_summary_escapes_scanner_hostnames() -> None:
+    evil = "evil](http://evil.invalid)<img src=x onerror=alert(3)>|x|`t`.invalid"
+    rec = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-evil",
+        "name": "Open port <img src=x onerror=alert(1)>",
+        "description": "hostile PTR",
+        "severity": "high",
+        "category": "exposure",
+        "assets": [evil],
+        "labels": ["nmap"],
+        "extra": {"port": "21", "check_id": "nmap-port-21"},
+    }
+    text = build_executive_summary(
+        PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
+    )
+    assert not re.search(r"(?<!\\)<img", text)
+    assert "|x|" not in text
+    assert "\\|" in text
+    assert "\\<" in text
+
+
+def test_write_probo_readme_escapes_client_name(tmp_path, monkeypatch) -> None:
+    from exporters.model import PackEstate
+    from exporters.probo import write_probo
+
+    (tmp_path / "ciso-assistant").mkdir()
+    (tmp_path / "ciso-assistant" / "findings.csv").write_text(
+        "ref_id,name,description,severity,status,filtering_labels\n",
+        encoding="utf-8",
+    )
+    stamp = _stamp(
+        kind="CLIENT",
+        label=f"CLIENT: {HOSTILE}",
+        client_name=HOSTILE,
+    )
+    estate = PackEstate(sample=False, demo=False, lab=False)
+    monkeypatch.setattr(estate, "estate_stamp", lambda: stamp)
+    write_probo(tmp_path, estate=estate)
+    readme = (tmp_path / "probo" / "README.md").read_text(encoding="utf-8")
+    assert "[x](javascript:" not in readme
+    assert "\\<script" in readme
+    assert "\\*" in readme

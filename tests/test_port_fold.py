@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
 
 import pytest
@@ -375,3 +376,83 @@ def test_malformed_host_does_not_abort_fold_or_load(
     summary = load()
     assert summary["poam"] >= 1
     assert (tmp_path / "poam" / "poam.csv").is_file()
+
+
+def test_strip_host_invalid_explicit_port_does_not_raise_or_invent() -> None:
+    assert _strip_host("http://h:99999") == ("h", "", "http")
+    assert _strip_host("http://h:abc") == ("h", "", "http")
+    assert _strip_host("http://h:0") == ("h", "", "http")
+    assert _strip_host("http://u@[x") == ("", "", "http")
+    assert _strip_host("h:8443") == ("h", "8443", "")
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-bad-port",
+        name="Exposed panel",
+        description="Invalid port must not become 80.",
+        severity="medium",
+        category="vulnerability",
+        assets=["http://foo:99999/admin"],
+        labels=["nuclei"],
+        extra={"template_id": "exposed-panel"},
+    )
+    assert finding_port(rec) == ""
+    port80 = _port_only(
+        assets=["foo"],
+        extra={"port": "80", "ip": "foo", "protocol": "tcp", "service": "http"},
+    )
+    spec = _specific(
+        assets=["http://foo:99999/admin"],
+        extra={
+            "template_id": "exposed-panel",
+            "cve": "",
+            "tool": "nuclei",
+            "port": "",
+        },
+    )
+    spec["extra"].pop("port", None)
+    assert port_only_superseders([port80, spec]) == {}
+
+
+def test_notanip_url_also_folds_with_bare_notanip_port() -> None:
+    port = _port_only(
+        assets=["notanip"],
+        extra={"port": "6379", "ip": "notanip", "protocol": "tcp", "service": "redis"},
+    )
+    spec = _specific(
+        assets=["https://[notanip]:6379"],
+        extra={
+            "template_id": "exposed-redis",
+            "cve": "",
+            "tool": "nuclei",
+            "host": "https://[notanip]:6379",
+            "port": "6379",
+            "protocol": "tcp",
+        },
+    )
+    assert port_only_superseders([port, spec])[port["ref_id"]] is spec
+
+
+def test_poam_md_escapes_scanner_hostnames(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    evil = "evil](http://evil.invalid)<img src=x onerror=alert(3)>|x|"
+    spec = _specific(
+        assets=[evil],
+        extra={
+            "template_id": "cve-2014-0160",
+            "cve": "CVE-2014-0160",
+            "tool": "nuclei",
+            "port": "443",
+            "ip": "10.0.0.30",
+        },
+    )
+    write_canonical("vuln-scan", [spec])
+    load()
+    md = (tmp_path / "poam" / "poam.md").read_text(encoding="utf-8")
+    assert not re.search(r"(?<!\\)<img", md)
+    assert "|x|" not in md
+    assert "\\<" in md or "\\|" in md

@@ -247,7 +247,7 @@ def write_probo(out: Path | None = None, estate: PackEstate | None = None) -> Pa
     (dest_root / "probo" / "README.md").write_text(
         stamp.banner_md()
         + "\n\n# Probo import preview (documentation only)\n\n"
-        f"{md_safe_text(stamp.banner_label())}: {stamp.sentence}\n\n"
+        f"{md_safe_text(stamp.banner_label())}: {stamp.banner_sentence(markdown=True)}\n\n"
         "Canonical file: `out/import_preview/probo.json`.\n\n"
         "- `addFinding` — one draft per CISO finding/vulnerability.\n"
         "- `addRisk` — CISO risk_scenarios plus high/critical findings.\n"
