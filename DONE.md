@@ -28,7 +28,7 @@ Cycle 209 flood-guard v2 (B1–B4): same-EGP twins stay `merged_into:<EGP>`
 `findings_in` is members + excluded (same unit). C5 skip covers every
 surviving ref. `merged_into` reason_code is `DUPLICATE_INSTANCE`.
 Host-lab 79/103/poam 119 excluded 13. SAMPLE 6/6/2 poam 8 excluded 0.
-farm 174/73/101. pytest 2438 (1 skipped). Stay draft. CoS #48 rails stand.
+farm 174/73/101. pytest 2446 (1 skipped). Stay draft. CoS #48 rails stand.
 
 Cycle 208 Metis flood-guard spec: §12.3 vocab + report-only §12.5 T/cap +
 C5 excluded merges + §12.6 `findings_in == members + excluded`.
