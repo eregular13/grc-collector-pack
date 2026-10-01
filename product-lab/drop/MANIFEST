@@ -19,6 +19,9 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 | ciso/ESTATE.txt | draft | `e1930d2ad6489f7e904e394b8166a94408d0c8e846e05e93bb8a53d84d5c6fb1` |
 | poam/poam.csv | 119 | `01d7438dd8b955879aefd673516840df1f4b1e663428e18c629853433686bf4f` |
 | poam/poam.md | draft | `96ccef9f4fdb65a88e26f4630244fab8c293b9602f3424a6f7c17e5eeedacc3e` |
+| poam/excluded.csv | 6 | `8060d50562e98ef4e6462ede4d8ca4f4f71ab42fc6452b46d4294a76c58ed3ab` |
+| poam/poam_fedramp.csv | 119 | `8bbeb81d4b0bbce3a60a8356497d92039972d1860af3c898d49e7fa5d472be07` |
+| poam/poam-ledger.json | draft | `d9b8c2ba2a388273115b4c013d81d348fa27f2ec189138e57a83e5adeb2e0f68` |
 | poam/ESTATE.txt | draft | `3c1bf15eb6dc18886c21e038eb07927d37b41b897ac649852a14adb8a8f6df94` |
 | EXECUTIVE_SUMMARY.md | draft | `dcb5167795c7c6c34908a863d8b1f1ef858475b673ba90bae15b38b01e1b24a6` |
 | SCOPE_AND_TRUST.md | draft | `ad45d8993bae860dfeca2b929b31c81b793f97a6463bfc8b36899db8688f6161` |

@@ -101,6 +101,9 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         ("ciso/ESTATE.txt", "draft"),
         ("poam/poam.csv", counts["poam/poam.csv"]),
         ("poam/poam.md", "draft"),
+        ("poam/excluded.csv", counts["poam/excluded.csv"]),
+        ("poam/poam_fedramp.csv", counts["poam/poam_fedramp.csv"]),
+        ("poam/poam-ledger.json", "draft"),
         ("poam/ESTATE.txt", "draft"),
         ("EXECUTIVE_SUMMARY.md", "draft"),
         ("SCOPE_AND_TRUST.md", "draft"),
@@ -188,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] in {"--from-out", "sync"}:
         raw = args[1] if len(args) > 1 else os.environ.get("OUT_DIR") or str(ROOT / "out")
-        sync_from_out(Path(raw))
+        sync_from_out(Path(raw), DROP)
     estate = load_pack_estate(DROP)
     stamp = write_opengrc(DROP, estate=estate)
     probo_path = write_probo(DROP, estate=estate)
@@ -203,6 +206,9 @@ def main(argv: list[str] | None = None) -> int:
         "ciso/ESTATE.txt": DROP / "ciso" / "ESTATE.txt",
         "poam/poam.csv": DROP / "poam" / "poam.csv",
         "poam/poam.md": DROP / "poam" / "poam.md",
+        "poam/excluded.csv": DROP / "poam" / "excluded.csv",
+        "poam/poam_fedramp.csv": DROP / "poam" / "poam_fedramp.csv",
+        "poam/poam-ledger.json": DROP / "poam" / "poam-ledger.json",
         "poam/ESTATE.txt": DROP / "poam" / "ESTATE.txt",
         "EXECUTIVE_SUMMARY.md": DROP / "EXECUTIVE_SUMMARY.md",
         "SCOPE_AND_TRUST.md": DROP / "SCOPE_AND_TRUST.md",

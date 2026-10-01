@@ -4,8 +4,11 @@ Argus cold-review: a Sep-4 drop (61 POA&M, no estate banner/column) is what
 repo browsers and console fallback see. This test fails when the committed
 drop drifts from collectors + grc_loader + refresh on HEAD.
 
-Locks CISO CSVs, poam.csv / poam.md, FedRAMP, and SimpleRisk IDs.
-status_date is host-local (#215) — compare IDs, not date cells.
+Compares masked content (not just IDs/counts) for CISO CSVs, poam.csv,
+poam.md, FedRAMP, excluded.csv, and the POA&M ledger. Masks status_date,
+run stamps, pack/commit lines, and ledger clocks so the check stays TZ-
+and date-proof. The drop has no simplerisk/ folder — that surface is not
+locked here.
 
 DEMO/SAMPLE fixtures. Never client KEEP. No POST /api/risks.
 """
@@ -13,6 +16,7 @@ DEMO/SAMPLE fixtures. Never client KEEP. No POST /api/risks.
 from __future__ import annotations
 
 import csv
+import json
 import os
 import re
 import subprocess
@@ -70,6 +74,19 @@ KEY_ASSET_IDS = {
     "HPOT-asset-ssh-canary-01",
 }
 EGP_RE = re.compile(r"EGP-[0-9A-F]{10}")
+# Run clocks / pack SHA only. Do not mask SLA scheduled dates or artifact days.
+_ISO_Z_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+_STAMP_RE = re.compile(
+    r"generated \d{4}-\d{2}-\d{2} \d{2}:\d{2}(?: \S+)? · pack `?[0-9a-f]+`?",
+    re.IGNORECASE,
+)
+_STAMP_ALT_RE = re.compile(
+    r"pack `?[0-9a-f]+`?, generated \d{4}-\d{2}-\d{2} \d{2}:\d{2}(?: \S+)?",
+    re.IGNORECASE,
+)
+LEDGER_CLOCK_KEYS = frozenset(
+    {"first_seen", "last_seen", "run_at", "status_date", "sha256", "at"}
+)
 
 
 def _hermetic_env(out: Path, inn: Path) -> dict[str, str]:
@@ -126,12 +143,62 @@ def _ids(path: Path, header: str, key: str) -> set[str]:
     return {str(row.get(key) or "") for row in rows if str(row.get(key) or "")}
 
 
-def _fedramp_ids(path: Path) -> set[str]:
+def _fedramp_rows(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
     first = path.read_text(encoding="utf-8").splitlines()[0].strip()
     assert first == ",".join(FEDRAMP_CSV_HEADERS), (path.name, first)
-    return {str(row.get("POAM ID") or "") for row in rows if str(row.get("POAM ID") or "")}
+    return rows
+
+
+def _is_status_date_key(key: str) -> bool:
+    return key.strip().lower().replace("_", " ") == "status date"
+
+
+def _mask_run_stamps(text: str) -> str:
+    text = _ISO_Z_RE.sub("<RUN_ISO>", text)
+    text = _STAMP_RE.sub("generated <STAMP> · pack <PACK>", text)
+    text = _STAMP_ALT_RE.sub("pack <PACK>, generated <STAMP>", text)
+    return text
+
+
+def _mask_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    masked: list[dict[str, str]] = []
+    for row in rows:
+        out: dict[str, str] = {}
+        for key, value in row.items():
+            cell = str(value or "")
+            if _is_status_date_key(str(key or "")):
+                out[str(key)] = "<STATUS_DATE>"
+            else:
+                out[str(key)] = _mask_run_stamps(cell)
+        masked.append(out)
+    return masked
+
+
+def _mask_ledger(obj: object) -> object:
+    if isinstance(obj, dict):
+        out: dict[str, object] = {}
+        for key, value in obj.items():
+            if key in LEDGER_CLOCK_KEYS:
+                out[key] = "<CLOCK>"
+            else:
+                out[key] = _mask_ledger(value)
+        return out
+    if isinstance(obj, list):
+        return [_mask_ledger(item) for item in obj]
+    return obj
+
+
+def _first_row_diff(left: list[dict[str, str]], right: list[dict[str, str]]) -> object:
+    if len(left) != len(right):
+        return ("len", len(left), len(right))
+    for index, (a, b) in enumerate(zip(left, right)):
+        if a != b:
+            keys = sorted(set(a) | set(b))
+            cells = [(k, a.get(k), b.get(k)) for k in keys if a.get(k) != b.get(k)]
+            return (index, cells[:8])
+    return ()
 
 
 def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
@@ -142,12 +209,19 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     for name in CISO_FILES:
         header = CISO_HEADERS[name]
         key = "name" if name == "evidences.csv" else "ref_id"
+        delim = ";" if name == "risk_scenarios.csv" else ","
+        packaged_rows = csv_rows(drop_ciso / name, delimiter=delim)
+        generated_rows = csv_rows(fresh_ciso / name, delimiter=delim)
         packaged = _ids(drop_ciso / name, header, key)
         generated = _ids(fresh_ciso / name, header, key)
         if name in PACKAGED_COUNTS:
             assert len(packaged) == PACKAGED_COUNTS[name], (name, len(packaged))
         assert generated, name
         assert packaged == generated, (name, sorted(packaged ^ generated)[:20])
+        assert _mask_rows(packaged_rows) == _mask_rows(generated_rows), (
+            name,
+            _first_row_diff(_mask_rows(packaged_rows), _mask_rows(generated_rows)),
+        )
         if name == "assets.csv":
             assert KEY_ASSET_IDS <= packaged, packaged
             assert KEY_ASSET_IDS <= generated, generated
@@ -172,6 +246,12 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     assert len(fresh_poam) == PACKAGED_POAM
     assert len(drop_excluded) == PACKAGED_EXCLUDED
     assert len(fresh_excluded) == PACKAGED_EXCLUDED
+    assert _mask_rows(drop_poam) == _mask_rows(fresh_poam), _first_row_diff(
+        _mask_rows(drop_poam), _mask_rows(fresh_poam)
+    )
+    assert _mask_rows(drop_excluded) == _mask_rows(fresh_excluded), _first_row_diff(
+        _mask_rows(drop_excluded), _mask_rows(fresh_excluded)
+    )
     assert {str(r.get("excluded_reason") or "") for r in drop_excluded} >= {
         "honeypot",
         "telemetry",
@@ -198,21 +278,35 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     assert EGP_RE.findall(md_drop)
     assert set(EGP_RE.findall(md_drop)) == drop_ids
     assert set(EGP_RE.findall(md_fresh)) == fresh_ids
+    assert _mask_run_stamps(md_drop) == _mask_run_stamps(md_fresh)
 
     fed_drop = DROP / "poam" / "poam_fedramp.csv"
     fed_fresh = fresh / "poam" / "poam_fedramp.csv"
     assert fed_drop.is_file()
     assert fed_fresh.is_file()
-    assert _fedramp_ids(fed_drop) == drop_ids
-    assert _fedramp_ids(fed_fresh) == fresh_ids
+    drop_fed = _fedramp_rows(fed_drop)
+    fresh_fed = _fedramp_rows(fed_fresh)
+    assert {str(r.get("POAM ID") or "") for r in drop_fed if r.get("POAM ID")} == drop_ids
+    assert {str(r.get("POAM ID") or "") for r in fresh_fed if r.get("POAM ID")} == fresh_ids
+    assert _mask_rows(drop_fed) == _mask_rows(fresh_fed), _first_row_diff(
+        _mask_rows(drop_fed), _mask_rows(fresh_fed)
+    )
 
+    ledger_drop = DROP / "poam" / "poam-ledger.json"
+    ledger_fresh = fresh / "poam" / "poam-ledger.json"
+    assert ledger_drop.is_file()
+    assert ledger_fresh.is_file()
+    drop_ledger = json.loads(ledger_drop.read_text(encoding="utf-8"))
+    fresh_ledger = json.loads(ledger_fresh.read_text(encoding="utf-8"))
+    assert _mask_ledger(drop_ledger) == _mask_ledger(fresh_ledger)
+
+    # Fresh SimpleRisk is an internal consistency check only. The packaged
+    # drop has no simplerisk/ folder, so that surface is not hashed or locked.
     sr_fresh = fresh / "simplerisk" / "poam.csv"
     assert sr_fresh.is_file()
     sr_fresh_ids = _ids(sr_fresh, POAM_HEADER, "poam_id")
     assert sr_fresh_ids == fresh_ids
-    sr_drop = DROP / "simplerisk" / "poam.csv"
-    if sr_drop.is_file():
-        assert _ids(sr_drop, POAM_HEADER, "poam_id") == drop_ids
+    assert not (DROP / "simplerisk").exists()
 
     for rel in (
         "ciso/ESTATE.txt",
