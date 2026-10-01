@@ -83,7 +83,11 @@ REGISTER_OK_LINE = "REGISTER_SHAPE=ok findings_to_poam != empty paying_day=FAIL"
 
 
 def count_merged_aliases(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> int:
-    """How many excluded.csv rows are collapsed pack_drop twins, not accept."""
+    """How many excluded.csv rows are collapsed pack_drop twins, not accept.
+
+    C5 ``DUPLICATE_INSTANCE`` rows are flood-guard extras (dropped before the
+    register) and are not subtracted from findings.
+    """
     out = resolve_out_dir(ciso_or_out)
     excluded_path = out / "poam" / "excluded.csv"
     from_csv = 0
@@ -116,7 +120,12 @@ def register_treatment_counts(ciso_or_out: Path) -> dict[str, int]:
     excluded = csv_rows(excluded_path) if excluded_path.is_file() else []
     mitigate = sum(1 for row in scenarios if row.get("treatment") == "mitigate")
     accept = sum(1 for row in scenarios if row.get("treatment") == "accept")
-    merged = sum(1 for row in excluded if is_merged_into_reason(str(row.get("excluded_reason") or "")))
+    merged = sum(
+        1
+        for row in excluded
+        if is_merged_into_reason(str(row.get("excluded_reason") or ""))
+        or str(row.get("excluded_reason") or "") == "DUPLICATE_INSTANCE"
+    )
     return {
         "mitigate": mitigate,
         "accept": accept,

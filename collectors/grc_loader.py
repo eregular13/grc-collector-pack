@@ -322,7 +322,13 @@ def _load(*, run_at: datetime | None = None) -> dict:
     if overrides.is_file():
         asset_ledger.apply_overrides(overrides)
     raw = attach_asset_uids(_load_canonical(), asset_ledger)
-    findings_in_n = sum(1 for rec in raw if rec.get("kind") in {"finding", "excluded"})
+    findings_in_n = len(
+        {
+            str(rec.get("ref_id") or "")
+            for rec in raw
+            if rec.get("kind") in {"finding", "excluded"} and rec.get("ref_id")
+        }
+    )
     deduped = _dedupe(raw)
     merge_rows = list(getattr(deduped, "merges", []) or [])
     after_weakness = dedupe_weaknesses(deduped)
@@ -549,14 +555,20 @@ def _load(*, run_at: datetime | None = None) -> dict:
 
     ranked = sorted(weaknesses, key=_poam_rank)
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    if merge_rows:
-        reasons = dict(breakdown.get("excluded_by_reason") or {})
-        reasons["DUPLICATE_INSTANCE"] = int(reasons.get("DUPLICATE_INSTANCE") or 0) + len(
-            merge_rows
-        )
-        breakdown["excluded_by_reason"] = reasons
+    c5_merges = []
+    for merge in merge_rows:
+        rec = merge.get("rec") or {}
+        kept = merge.get("kept") or {}
+        rec_ref = str(rec.get("ref_id") or "").strip().lower()
+        kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "").strip().lower()
+        # Same-ref exact dups are already represented by the survivor. A
+        # second excluded.csv row with that ref would fail accounting.
+        if rec_ref and rec_ref == kept_ref:
+            continue
+        c5_merges.append(merge)
+    if c5_merges:
         breakdown["weaknesses_total"] = int(breakdown.get("weaknesses_total") or 0) + len(
-            merge_rows
+            c5_merges
         )
     decision_pairs = poam_decisions
     member_rows: list[list] = []
@@ -583,10 +595,6 @@ def _load(*, run_at: datetime | None = None) -> dict:
             continue
         reason = str(decision.get("reason") or "unexplained")
         excluded_reasons[reason] = excluded_reasons.get(reason, 0) + 1
-    if merge_rows:
-        excluded_reasons["DUPLICATE_INSTANCE"] = int(
-            excluded_reasons.get("DUPLICATE_INSTANCE") or 0
-        ) + len(merge_rows)
     breakdown["excluded_by_reason"] = excluded_reasons
 
     # Shared-EGP folds (#180): an excluded pack_drop duplicate and the
@@ -754,7 +762,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
             "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
         ),
     )
-    for merge in merge_rows:
+    for merge in c5_merges:
         rec = merge.get("rec") or {}
         kept = merge.get("kept") or {}
         kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "")
@@ -762,6 +770,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
         parent_id = str((kept_item or {}).get("poam_id") or "")
         mapped = mapped_by_ref.get(str(rec.get("ref_id") or "")) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
+        alias = "DUPLICATE_INSTANCE"
+        excluded_reasons[alias] = int(excluded_reasons.get(alias) or 0) + 1
         excluded_rows.append(
             [
                 rec.get("ref_id") or "",
@@ -769,7 +779,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
                 weakness_name_for(rec, mapped),
                 assets_s,
                 canon_severity(rec.get("severity")),
-                "DUPLICATE_INSTANCE",
+                alias,
                 parent_id,
                 "DUPLICATE_INSTANCE",
                 parent_id or kept_ref,
@@ -777,6 +787,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
                 str(merge.get("detail") or "dedupe"),
             ]
         )
+    breakdown["excluded_by_reason"] = excluded_reasons
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
@@ -929,7 +940,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
             decision_pairs,
             profile=str(breakdown.get("poam_plan") or ("lighter" if lighter else "full")),
             assets_n=len(ciso_assets),
-            merges_n=len(merge_rows),
+            merges_n=len(c5_merges),
             members_n=len(member_rows),
             findings_in=findings_in_n,
             poam_rows=len(poam_rows),

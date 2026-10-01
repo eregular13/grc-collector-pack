@@ -2303,6 +2303,9 @@ POAM_EXCLUDE_REASONS = frozenset(
     }
 )
 # pack_drop twins use merged_into:<survivor EGP> (prefix, not a fixed token).
+from shared.poam_rollup import REASON_CODES as ROLLUP_REASON_CODES
+
+REASON_CODES = POAM_INCLUDE_REASONS | POAM_EXCLUDE_REASONS | ROLLUP_REASON_CODES | frozenset({"escalate"})
 
 
 def is_poam_exclude_reason(reason: str) -> bool:
@@ -2572,9 +2575,17 @@ def iter_poam_decisions(
     )
     from shared.egp_collapse import collapse_same_egp
 
+    # collapse_same_egp rewrites same-EGP extras to merged_into (info twins).
+    # Keep flood-guard E1 / port-fold reasons — those are not pack_drop aliases.
+    _keep_reasons = {"telemetry_duplicate", "superseded_by_specific"}
+    prior = {id(rec): decision for rec, decision in pairs}
     out: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for rec, decision in collapse_same_egp(pairs):
-        d = dict(decision)
+        prev = prior.get(id(rec)) or {}
+        if not prev.get("include") and str(prev.get("reason") or "") in _keep_reasons:
+            d = dict(prev)
+        else:
+            d = dict(decision)
         if not d.get("reason_code"):
             d["reason_code"] = reason_code_of(
                 d.get("reason"), include=bool(d.get("include"))

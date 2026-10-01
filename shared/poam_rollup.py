@@ -109,7 +109,7 @@ _FALSE_POSITIVE_TOKENS = frozenset(
 )
 _MANUAL_TOKENS = frozenset({"MANUAL_CHECK", "manual_check", "manual"})
 _MUTED_TOKENS = frozenset({"MUTED", "muted"})
-_NOT_WEAK_TOKENS = frozenset({"NOT_A_WEAKNESS", "not_a_weakness", "unmapped"})
+_NOT_WEAK_TOKENS = frozenset({"NOT_A_WEAKNESS", "not_a_weakness"})
 _HONEYPOT_TOKENS = frozenset({"HONEYPOT", "honeypot"})
 _ACCEPTED_TOKENS = frozenset({"ACCEPTED_RISK", "accepted_risk"})
 _UNVERIFIED_TOKENS = frozenset({"UNVERIFIED_BANNER_CVE", "unverified_banner_cve"})

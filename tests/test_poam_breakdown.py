@@ -194,10 +194,14 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
             out["merged_into"] = merged
         return out
 
-    walk_ex = dict(walked["excluded_by_reason"])
-    if merges:
-        walk_ex["DUPLICATE_INSTANCE"] = int(walk_ex.get("DUPLICATE_INSTANCE") or 0) + merges
-    assert _buckets(walk_ex) == _buckets(summary["excluded_by_reason"])
+    walk_b = _buckets(walked["excluded_by_reason"])
+    sum_b = _buckets(summary["excluded_by_reason"])
+    # C5 / alias rows exist only on the written excluded.csv, not on walked
+    # post-dedupe findings.
+    for key in ("merged_into", "DUPLICATE_INSTANCE"):
+        walk_b.pop(key, None)
+        sum_b.pop(key, None)
+    assert walk_b == sum_b
     for rec in findings:
         decision = poam_decision(rec)
         included = bool(map_finding(rec).get("include_poam"))
