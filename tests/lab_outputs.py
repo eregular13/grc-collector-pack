@@ -196,6 +196,7 @@ def assert_lab() -> None:
         row
         for row in excluded
         if not is_merged_into_reason(str(row.get("excluded_reason") or ""))
+        and str(row.get("excluded_reason") or "") != "DUPLICATE_INSTANCE"
     ]
     assert accept_n == len(non_merged)
     overlap = assert_register_no_double_treatment(OUT)
