@@ -2,22 +2,34 @@
 
 ## Unreleased
 
+- POAM_STATUS_DATE_LOCAL_CI: #215 follow-up. CI runs the full pytest
+  suite under `America/Los_Angeles` and `Pacific/Kiritimati` (pytest
+  only — SAMPLE/farm/collectors stay on the UTC lab job). `load()`
+  accepts `run_at=`; a naive value is local wall time, including the
+  scanner cutoff bind. Direct `bind_run_clock()` still treats naive as
+  UTC. `missed_dates` uses the local day. `first_seen` / `last_seen` /
+  `run_at` / ledger event `at` are stamped at load start (seconds
+  earlier than the old `apply_ledger` read, so `ledger_sha` moves).
+  Reobserved unchanged rows now keep the ledger last-change date on
+  `poam.csv` and SimpleRisk as well as FedRAMP / the ledger (pre-#215
+  those two CSVs restamped the run day). No POST `/api/risks`.
 - POAM_STATUS_DATE_LOCAL: `status_date` is the host-local civil day
   (`YYYY-MM-DD`) at generation (`datetime.now().astimezone()`, honoring
   `TZ` / `tzset`). No extra env var or CLI flag. Format stays a date
   (no offset). On a first run (and on rows that change this run) the
   same local date is written on `poam.csv`, `poam_fedramp.csv`,
-  `simplerisk/poam.csv`, and `poam-ledger.json`; carried unchanged rows
-  keep their last-change date. The same local run day also drives
+  `simplerisk/poam.csv`, and `poam-ledger.json`. Reobserved unchanged
+  rows and unobserved carried rows keep the ledger last-change date on
+  all four surfaces. The same local run day also drives
   `VENDOR_CHECKIN_OVERDUE`, `VD_HIGH_NOT_MITIGATED`, `missed_dates`,
   pending-verification dates, and the default `closed_on`.
   `first_seen` / `last_seen` stay UTC ISO. Master labelled aware
   non-UTC injected clocks as local wall time with a `Z`; this PR
   writes true UTC. A first run on a US evening after upgrade can move
   `status_date` one day backwards versus a UTC-written ledger.
-  Naive POA&M clocks are local; `scan_time.bind_run_clock` still
-  treats naive as UTC. Scanner parse timestamps unchanged. No POST
-  `/api/risks`.
+  Naive POA&M clocks (including `load(run_at=)` naive) are local;
+  `scan_time.bind_run_clock` called directly still treats naive as UTC.
+  Scanner parse timestamps unchanged. No POST `/api/risks`.
 - SCOPE_GATE_HARDEN: live SCOPE status is an allowlist (`active` /
   `authorized` / `approved` / absent; keys case-insensitive). Nested or
   top-level unknown status, `REVOKED` / `Revoked`, and mid-run revoke or

@@ -109,8 +109,14 @@ def test_local_run_date_none_matches_host_wall_clock() -> None:
 
 
 def test_local_run_date_naive_is_already_local() -> None:
+    """M08: naive is local wall time, not UTC-then-convert (dies under LA)."""
     naive = datetime(2026, 10, 1, 4, 0, 0)
-    assert local_run_date(naive).isoformat() == "2026-10-01"
+    with pinned_tz("America/Los_Angeles"):
+        assert local_run_date(naive).isoformat() == "2026-10-01"
+        # UTC-then-convert would yield 2026-09-30 (04:00Z = 21:00 PDT prior day).
+        as_utc = naive.replace(tzinfo=timezone.utc).astimezone().date().isoformat()
+        assert as_utc == "2026-09-30"
+        assert local_run_date(naive).isoformat() != as_utc
 
 
 def test_docs_say_host_local_not_utc() -> None:
@@ -120,8 +126,10 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "first_seen / last_seen stay UTC" in SLA_NOTE
     assert "can be a day off" in SLA_NOTE
     assert "on a first run" in SLA_NOTE
+    assert "all four surfaces" in SLA_NOTE
     assert "VENDOR_CHECKIN_OVERDUE" in SLA_NOTE
     assert "scan_time.bind_run_clock treats naive as UTC" in SLA_NOTE
+    assert "load(run_at=)" in SLA_NOTE
     assert "host-local run day" in VD_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
     assert "host-local civil day" in schema
@@ -131,7 +139,19 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "simplerisk" in schema
     assert "first_seen" in schema and "last_seen" in schema and "stay UTC" in schema
     assert "on a first run" in schema
+    assert "all four surfaces" in schema
+    assert "load(run_at=)" in schema
+    assert "bind_run_clock treats naive as UTC" in schema
     assert "UTC calendar day" not in schema
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "load(run_at=)" in changelog
+    assert "ledger_sha" in changelog
+    assert "America/Los_Angeles" in changelog
+    yml = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
+    assert "America/Los_Angeles" in yml
+    assert "Pacific/Kiritimati" in yml
+    assert "pytest-tz:" in yml
+    assert "TZ: ${{ matrix.tz }}" in yml
 
 
 @pytest.mark.parametrize("zone,clock,utc_day,local_day", _ZONES)
@@ -300,3 +320,178 @@ def test_vendor_checkin_overdue_uses_local_run_day() -> None:
             [rec], catalog=_catalog(), run_at=naive_noon, ledger_in=first, overrides=ov
         )
         assert VENDOR_CHECKIN_OVERDUE in next(iter(local["items"].values()))["vd_flags"]
+
+
+def test_local_run_date_none_is_host_local_not_utc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """M05: None path must use host-local date, not UTC."""
+    frozen_utc = datetime(2026, 10, 1, 4, 0, 0, tzinfo=timezone.utc)
+
+    class _FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            if tz is None:
+                return frozen_utc.astimezone()
+            return frozen_utc.astimezone(tz)
+
+    monkeypatch.setattr("shared.poam_fields.datetime", _FrozenDateTime)
+    with pinned_tz("America/Los_Angeles"):
+        got = local_run_date()
+        assert got.isoformat() == "2026-09-30"
+        assert frozen_utc.date().isoformat() == "2026-10-01"
+        assert got.isoformat() != frozen_utc.date().isoformat()
+
+
+def test_load_naive_run_at_is_local_including_scanner_cutoff(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N06: load() treats naive run_at as local, not UTC (status_date + bind)."""
+    out = _write_canonical(tmp_path, monkeypatch, _rec())
+    import collectors.grc_loader as loader
+    from shared.scan_time import bind_run_clock as real_bind
+
+    importlib.reload(loader)
+    captured: list[datetime] = []
+
+    @contextmanager
+    def _capture(clock):
+        captured.append(clock)
+        with real_bind(clock) as resolved:
+            yield resolved
+
+    monkeypatch.setattr(loader, "bind_run_clock", _capture)
+    naive = datetime(2026, 10, 1, 4, 0, 0)
+    with pinned_tz("America/Los_Angeles"):
+        loader.load(run_at=naive)
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    assert {row["status_date"] for row in poam} == {"2026-10-01"}
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = next(iter(ledger["items"].values()))
+    assert item["status_date"] == "2026-10-01"
+    # 04:00 PDT = 11:00Z. Treating naive as UTC would write 04:00Z / 09-30.
+    assert item["first_seen"] == "2026-10-01T11:00:00Z"
+    assert item["last_seen"] == "2026-10-01T11:00:00Z"
+    assert captured
+    bound = captured[0]
+    if bound.tzinfo is None:
+        bound = bound.replace(tzinfo=timezone.utc)
+    assert bound.astimezone(timezone.utc) == datetime(2026, 10, 1, 11, 0, tzinfo=timezone.utc)
+
+
+def test_load_bind_converts_local_aware_to_true_utc(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N11: bind must convert local wall to UTC, not label local as Z."""
+    _write_canonical(tmp_path, monkeypatch, _rec())
+    import collectors.grc_loader as loader
+    from shared.scan_time import bind_run_clock as real_bind
+
+    importlib.reload(loader)
+    captured: list[datetime] = []
+
+    @contextmanager
+    def _capture(clock):
+        captured.append(clock)
+        with real_bind(clock) as resolved:
+            yield resolved
+
+    monkeypatch.setattr(loader, "bind_run_clock", _capture)
+    try:
+        from zoneinfo import ZoneInfo
+    except ImportError:
+        pytest.skip("zoneinfo missing")
+    local = datetime(2026, 9, 30, 21, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
+    with pinned_tz("America/Los_Angeles"):
+        loader.load(run_at=local)
+    assert captured
+    bound = captured[0]
+    if bound.tzinfo is None:
+        bound = bound.replace(tzinfo=timezone.utc)
+    assert bound.astimezone(timezone.utc) == datetime(
+        2026, 10, 1, 4, 0, tzinfo=timezone.utc
+    )
+    labelled_local_as_utc = local.replace(tzinfo=timezone.utc)
+    assert bound.astimezone(timezone.utc) != labelled_local_as_utc.astimezone(
+        timezone.utc
+    )
+
+
+def test_missed_dates_use_local_day_not_utc() -> None:
+    """N10: a covered miss records the local civil day, not the UTC day."""
+    rec = _rec()
+    cover = {
+        "kind": "finding",
+        "source": "vuln-scan",
+        "ref_id": "VULN-status-date-cover",
+        "name": "cover peer",
+        "description": "same host so the miss is covered",
+        "severity": "high",
+        "category": "vulnerability",
+        "assets": ["10.0.0.5"],
+        "labels": ["vuln", "nessus"],
+        "collected_at": "2026-09-01T00:00:00Z",
+        "extra": {
+            "id": "plugin-cover",
+            "tool": "nessus",
+            "port": "80",
+            "protocol": "tcp",
+            "scan_time": "2026-09-01T12:00:00Z",
+        },
+    }
+    first = apply_ledger(
+        [rec, cover],
+        catalog=_catalog(),
+        run_at=datetime(2026, 9, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    fp_a = next(
+        fp for fp, it in first["items"].items() if "plugin-1" in str(it.get("weakness_key") or "")
+    )
+    utc_midnight = datetime(2026, 10, 3, 0, 0, tzinfo=timezone.utc)
+    with pinned_tz("America/Los_Angeles"):
+        # 2026-10-03T00:00:00Z is still 2026-10-02 17:00 PDT.
+        second = apply_ledger(
+            [cover], catalog=_catalog(), run_at=utc_midnight, ledger_in=first
+        )
+        dates = second["items"][fp_a]["missed_dates"]
+        assert "2026-10-02" in dates
+        assert "2026-10-03" not in dates
+
+
+def test_reobserved_unchanged_status_date_agrees_on_all_surfaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Observed-but-unchanged rows keep the ledger last-change date everywhere."""
+    rec = _rec()
+    first = apply_ledger(
+        [rec],
+        catalog=_catalog(),
+        run_at=datetime(2026, 10, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    out = _write_canonical(tmp_path, monkeypatch, rec)
+    incoming = Path(os.environ["IN_DIR"])
+    (incoming / "poam").mkdir(parents=True, exist_ok=True)
+    (incoming / "poam" / "poam-ledger.json").write_text(
+        json.dumps(first) + "\n", encoding="utf-8"
+    )
+    import collectors.grc_loader as loader
+
+    importlib.reload(loader)
+    with pinned_tz("America/Los_Angeles"):
+        loader.load(run_at=datetime(2026, 10, 3, 12, 0, 0))
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    sr = csv_rows(out / "simplerisk" / "poam.csv")
+    with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = next(iter(ledger["items"].values()))
+    assert item["status_date"] == "2026-10-01"
+    assert {row["status_date"] for row in poam} == {"2026-10-01"}
+    assert {row["status_date"] for row in sr} == {"2026-10-01"}
+    assert {row["Status Date"] for row in fed} == {"2026-10-01"}
