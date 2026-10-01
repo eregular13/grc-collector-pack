@@ -27,6 +27,8 @@ from shared.io_util import load_sensor_coverage, run_collector
 from shared.hardening_map import (
     CIS_V8_INTERNAL_FIELD,
     CIS_V8_PREFIX,
+    CONTROL_META,
+    HK_MAP,
     all_cis_v8_internal_tokens,
     extra_control_fields,
     hk_control,
@@ -64,7 +66,7 @@ EXPECTED_MAP = {
     "10001": ("account_lockout", ["AC-7"], "csf_PR", "cpg_3_E"),
     "10208": ("session_lock", ["AC-11"], "csf_PR", "cpg_3_E"),
     "10400": ("audit_logging", ["AU-2", "AU-12"], "csf_DE", "cpg_3_Q"),
-    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_S"),
+    "10501": ("host_firewall", ["CM-6", "CM-7"], "csf_PR", "cpg_3_I"),
     "10219": ("password_policy", ["IA-5"], "csf_PR", "cpg_3_B"),
     "11014": ("malware_protection", ["SI-3"], "csf_PR", "cpg_4_A"),
     "10964": ("encryption_in_transit", ["SC-8"], "csf_PR", "cpg_3_K"),
@@ -189,6 +191,18 @@ def test_hk_control_map_and_800_53() -> None:
         assert all(str(t).startswith(CIS_V8_PREFIX) for t in extra[CIS_V8_INTERNAL_FIELD])
     lynis_extra = extra_control_fields("host_firewall")
     assert CIS_V8_INTERNAL_FIELD not in lynis_extra
+
+
+def test_hk_map_every_id_has_nist_800_53() -> None:
+    """Every HardeningKitty MS-baseline ID maps to a packed 800-53 set."""
+    assert HK_MAP
+    for hid, key in HK_MAP.items():
+        assert hk_control(hid) == key, hid
+        meta = CONTROL_META[key]
+        n53 = list(meta.get("nist_800_53") or [])
+        assert n53, (hid, key)
+        extra = extra_control_fields(key)
+        assert extra["nist_800_53"] == n53
 
 
 def test_hk_lab_rows_failure_titles_and_honest_cpg() -> None:

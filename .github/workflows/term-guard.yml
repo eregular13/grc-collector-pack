@@ -1,0 +1,163 @@
+# Generic term guard. Fails the check if any commit in a pull request (or a
+# pushed branch) adds a line, file path, or commit message matching an entry in
+# the TERM_DENYLIST Actions secret, or if the PR title/body matches.
+# The denylist is never stored in the repo and matched text is never printed:
+# logs show only the location and "denylisted term".
+# TERM_DENYLIST format: one entry per line; blank lines and '#' lines ignored;
+# plain lines are case-insensitive substrings; lines starting with 're:' are
+# case-sensitive POSIX extended regexes.
+# If the secret is not set (or unavailable, e.g. PRs from forks) the job skips
+# with a notice instead of failing.
+name: term-guard
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  push:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: term-guard-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  term-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check denylist secret
+        id: gate
+        env:
+          TERM_DENYLIST: ${{ secrets.TERM_DENYLIST }}
+        run: |
+          if [ -z "${TERM_DENYLIST}" ]; then
+            echo "::notice title=term-guard::TERM_DENYLIST secret is not set or not available to this run; skipping term guard."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout (full history)
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan for denylisted terms
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          TERM_DENYLIST: ${{ secrets.TERM_DENYLIST }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -uo pipefail
+          umask 077
+          work="$RUNNER_TEMP/term-guard"; mkdir -p "$work"
+          trap 'rm -rf "$work"' EXIT
+          printf '%s\n' "$TERM_DENYLIST" > "$work/denylist"
+          cat > "$work/scan.sh" <<'SCANNER_EOF'
+          #!/usr/bin/env bash
+          # term-guard-scan.sh  --  scan a git commit range for denylisted terms.
+          # Usage: term-guard-scan.sh <denylist-file> <rev-list args...>
+          #   e.g. term-guard-scan.sh ~/.config/term-guard/denylist origin/master..HEAD
+          # Checks every non-merge commit in the range: added lines, added/renamed
+          # paths, and all commit messages (merges included).
+          # Denylist format: one term per line; blank lines and lines starting with '#'
+          # are ignored. Plain lines = case-insensitive fixed strings. Lines starting
+          # with 're:' = case-sensitive POSIX extended regex.
+          # Output never contains the matched term: only location + 'denylisted term'.
+          # Optional: TERM_GUARD_EXTRA_FILE=<file> also scans that file (e.g. PR title+body);
+          #   TERM_GUARD_EXTRA_LABEL names it in output; TERM_GUARD_ANNOTATE=1 adds ::error lines.
+          # Exit: 0 clean, 1 hits found, 2 usage/denylist error.
+          set -uo pipefail
+          list="${1:-}"; shift || true
+          [ -n "$list" ] && [ -r "$list" ] && [ "$#" -gt 0 ] || { echo "term-guard: usage: $0 <denylist> <rev-range...>" >&2; exit 2; }
+          anno="${TERM_GUARD_ANNOTATE:-0}"   # 1 = emit GitHub Actions ::error annotations
+          tmp="$(mktemp -d)"; chmod 700 "$tmp"; trap 'rm -rf "$tmp"' EXIT
+          tr -d '\r' < "$list" | grep -v -E '^[[:space:]]*(#|$)' > "$tmp/all" || true
+          grep -v '^re:' "$tmp/all" > "$tmp/fixed" || true
+          grep '^re:' "$tmp/all" | sed 's/^re://' > "$tmp/regex" || true
+          if [ ! -s "$tmp/fixed" ] && [ ! -s "$tmp/regex" ]; then echo "term-guard: denylist is empty; nothing to check"; exit 0; fi
+          if [ -s "$tmp/regex" ]; then grep -E -f "$tmp/regex" /dev/null >/dev/null 2>&1; [ $? -eq 2 ] && { echo "term-guard: denylist contains an invalid regex" >&2; exit 2; }; fi
+          # matches <file> -> prints 1-based line numbers of lines containing any term
+          matches() {
+            local rc=0
+            { [ -s "$tmp/fixed" ] && grep -n -i -F -f "$tmp/fixed" -- "$1"; } >  "$tmp/m" 2>/dev/null; [ $? -eq 2 ] && rc=2
+            { [ -s "$tmp/regex" ] && grep -n -E -f "$tmp/regex" -- "$1"; } >> "$tmp/m" 2>/dev/null; [ $? -eq 2 ] && rc=2
+            [ $rc -eq 2 ] && { echo "term-guard: denylist contains an invalid pattern" >&2; exit 2; }
+            cut -d: -f1 "$tmp/m" | sort -n -u
+          }
+          hit_path() { printf '%s\n' "$1" > "$tmp/p"; [ -n "$(matches "$tmp/p")" ]; }
+          : > "$tmp/loc"; : > "$tmp/txt"
+          # 1) added lines + added/renamed paths (non-merge commits)
+          git -c core.quotePath=false log --no-merges --no-color --no-ext-diff --no-textconv -p -U0 \
+              --format='%x01COMMIT %H' "$@" -- | LC_ALL=C awk -v L="$tmp/loc" -v T="$tmp/txt" '
+            function emit(kind, f, n, s) { printf "%s\t%s\t%s\t%s\n", c, kind, f, n >> L; print s >> T }
+            /^\001COMMIT / { c = substr($0, 9); f = ""; nr = 0; orr = 0; next }
+            nr > 0 || orr > 0 {
+              ch = substr($0, 1, 1)
+              if (ch == "+") { emit("line", f, ln, substr($0, 2)); ln++; nr--; next }
+              if (ch == "-") { orr--; next }
+              if (ch == "\\") next
+            }
+            /^diff --git / { f = ""; next }
+            /^rename to / { emit("path", substr($0, 11), 0, substr($0, 11)); next }
+            /^copy to /   { emit("path", substr($0, 9), 0, substr($0, 9)); next }
+            /^\+\+\+ /    { p = substr($0, 5); if (p == "/dev/null") f = ""; else { f = substr(p, 3); emit("path", f, 0, f) } ; next }
+            /^@@ / {
+              split($0, a, " "); o = substr(a[2], 2); n = substr(a[3], 2)
+              if (index(o, ",")) { split(o, b, ","); orr = b[2] + 0 } else orr = 1
+              if (index(n, ",")) { split(n, b, ","); ln = b[1] + 0; nr = b[2] + 0 } else { ln = n + 0; nr = 1 }
+              next }
+          '
+          # 2) commit messages (all commits in range, merges included)
+          git log --no-color --format='%x01COMMIT %H%n%B' "$@" -- | LC_ALL=C awk -v L="$tmp/loc" -v T="$tmp/txt" '
+            /^\001COMMIT / { c = substr($0, 9); k = 0; next }
+            { k++; printf "%s\tmsg\t-\t%d\n", c, k >> L; print >> T }'
+          # 3) optional extra text (e.g. PR title/body) from $TERM_GUARD_EXTRA_FILE
+          if [ -n "${TERM_GUARD_EXTRA_FILE:-}" ] && [ -r "$TERM_GUARD_EXTRA_FILE" ]; then
+            tr -d '\r' < "$TERM_GUARD_EXTRA_FILE" | LC_ALL=C awk -v L="$tmp/loc" -v T="$tmp/txt" '
+              { printf "-\textra\t-\t%d\n", NR >> L; print >> T }'
+          fi
+          hits=0
+          for i in $(matches "$tmp/txt"); do
+            IFS=$'\t' read -r c kind f n < <(sed -n "${i}p" "$tmp/loc")
+            short="${c:0:7}"
+            if [ "$kind" = line -o "$kind" = path ] && hit_path "$f"; then shown="[path redacted]"; else shown="$f"; fi
+            case "$kind" in
+              line) where="$shown:$n"; [ "$anno" = 1 ] && [ "$shown" = "$f" ] && echo "::error file=$f,line=$n::denylisted term (commit $short)" ;;
+              path) where="path $shown" ;;
+              msg)  where="commit message line $n" ;;
+              extra) short="-"; where="${TERM_GUARD_EXTRA_LABEL:-extra text} line $n" ;;
+            esac
+            echo "term-guard: commit $short: $where: denylisted term"
+            hits=$((hits + 1))
+          done
+          if [ "$hits" -gt 0 ]; then echo "term-guard: $hits denylisted-term hit(s) found"; exit 1; fi
+          echo "term-guard: clean"; exit 0
+          SCANNER_EOF
+          chmod 700 "$work/scan.sh"
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            range=("$PR_BASE_SHA..$PR_HEAD_SHA")
+            printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" > "$work/pr.txt"
+            export TERM_GUARD_EXTRA_FILE="$work/pr.txt" TERM_GUARD_EXTRA_LABEL="PR title/body"
+          else
+            if [ -n "$PUSH_BEFORE" ] && [ -n "${PUSH_BEFORE//0/}" ] && git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+              range=("$PUSH_BEFORE..$PUSH_AFTER")
+            else
+              base="$(git merge-base "origin/$DEFAULT_BRANCH" "$PUSH_AFTER" 2>/dev/null || true)"
+              if [ -n "$base" ]; then range=("$base..$PUSH_AFTER"); else range=("$PUSH_AFTER"); fi
+            fi
+          fi
+          TERM_GUARD_ANNOTATE=1 "$work/scan.sh" "$work/denylist" "${range[@]}"

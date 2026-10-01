@@ -34,7 +34,7 @@ See [SECURITY.md](SECURITY.md). Stranger clone path: [docs/PUBLIC_CLONE.md](docs
 | dns-email | SPF/DKIM/DMARC/MX + optional cert file_drop (`in/dns_email/`) | email/DNS Seen (not a breach) |
 | grc-loader | `out/canonical/*.jsonl` | all GRC files |
 
-Optional file_drop stub (not a 12th container): `in/honeypot/` via `python collectors/honeypot.py`. Palisade fleet-sensor may emit stage 1|2; Beelzebub pack_drop is session/cmd/login only (`stage` null) — [docs/HONEYPOT_BEELZEBUB.md](docs/HONEYPOT_BEELZEBUB.md). Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md). SAMPLE/DEMO CISO prove (not a paying-day PASS): [docs/PROVE_CISO.md](docs/PROVE_CISO.md) / `python3 scripts/prove_ciso.py`.
+Optional file_drop stub (not a 12th container): `in/honeypot/` via `python collectors/honeypot.py`. Palisade fleet-sensor may emit stage 1|2; Beelzebub pack_drop is session/cmd/login only (`stage` null) — [docs/HONEYPOT_BEELZEBUB.md](docs/HONEYPOT_BEELZEBUB.md). Optional live-only web/TLS (`in/web_tls/` parse; `python -m shared.web_tls_live --live` behind signed SCOPE) is not a compose service and is not in DEMO lab.sh — [docs/WEB_TLS_SCOPE.md](docs/WEB_TLS_SCOPE.md). Covey pack_drop lands on the existing nmap lane — [docs/EVIDENCE_MATRIX.md](docs/EVIDENCE_MATRIX.md), [docs/COVEY_PACK_DROP.md](docs/COVEY_PACK_DROP.md). SAMPLE/DEMO CISO prove (not a paying-day PASS): [docs/PROVE_CISO.md](docs/PROVE_CISO.md) / `python3 scripts/prove_ciso.py`.
 
 One `python:3.12-slim` image. `grc-loader` waits on the ten collectors (`condition: service_completed_successfully`).
 
@@ -88,7 +88,7 @@ Overnight improve ended 2026-09-02 (`LOOP.md`). Afternoon harden until 16:00 PT 
 
 - `out/canonical/*.jsonl` — `asset|finding|evidence|incident`
 - `out/ciso-assistant/` — `assets.csv` `applied_controls.csv` `evidences.csv` `findings.csv` `vulnerabilities.csv` `risk_scenarios.csv` (semicolon)
-- `out/poam/` — `poam.csv` `poam.md` (owner/due blank; human fills). Pentera finds it; Evergreen maps it.
+- `out/poam/` — `poam.csv` `poam.md` (owner/due blank; human fills).
 - `out/simplerisk/poam.csv` — leave-behind copy of the POA&M (exact header, `estate` column; banner in `out/simplerisk/ESTATE.txt`). No SimpleRisk API.
 - `out/ocsf/compliance_findings.json` — OCSF-like Compliance Finding (`class_uid` 2003)
 - `out/summary.json` `out/evidence/lab-report.md`

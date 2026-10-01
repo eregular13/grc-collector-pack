@@ -11,19 +11,26 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from shared.control_map import map_finding
+from collectors import code_secrets, vuln_scan
+from shared.control_map import extra_labels, map_finding
 from shared.framework_class_map import (
+    BLANKET_REGISTER_STAMPS,
+    CONTROL_CLASS,
     CPG20_GOALS,
     CSF20_FUNCTION_OF,
     CSF20_SUBCATEGORIES,
     UNMAPPED,
     WEAKNESS_CLASS_MAP,
+    _WEB_APP_INJECTION_CONTROLS,
     apply_class_mapping,
     classify_weakness_class,
     cpg_stamp,
     csf_cpg_tag_set,
     csf_stamp,
+    is_internet_facing,
     resolve_class_tags,
+    _host_token_is_public_ip,
+    _looks_third_party_app_finding,
 )
 from shared.schema import make_record
 
@@ -106,7 +113,8 @@ def test_subcategory_sits_under_stamped_function() -> None:
     assert smb["csf_function"] == "protect"
     assert smb["csf_subcategory"] == "PR.IR-01"
     assert "csf_PR" not in smb["framework_refs"].split(",")
-    assert "cpg_3_S" in smb["cpg"]
+    assert "cpg_3_I" in smb["cpg"]
+    assert "cpg_3_S" not in smb["cpg"]
 
     honeypot = map_finding(
         _finding(
@@ -128,9 +136,9 @@ def test_subcategory_sits_under_stamped_function() -> None:
             source="easm",
         )
     )
-    assert perimeter["csf_function"] == "identify"
-    assert perimeter["csf_subcategory"] == "ID.AM-01"
-    assert "cpg_2_A" in perimeter["cpg"]
+    assert perimeter["csf_function"] == "protect"
+    assert perimeter["csf_subcategory"] == "PR.IR-01"
+    assert "cpg_3_S" in perimeter["cpg"]
 
 
 def test_vuln_reconciles_id_ra_or_pr_ps() -> None:
@@ -235,6 +243,15 @@ def test_loader_poam_and_fedramp_tags_match_per_egp(
             source="host-wazuh",
             extra={"control_key": "time_sync"},
         ),
+        _finding(
+            ref="VULN-redis",
+            name="Redis without auth",
+            description="Unauthenticated Redis on a LAB host.",
+            category="vulnerability",
+            source="vuln-scan",
+            extra={"template_id": "exposed-redis", "rule": "exposed-redis"},
+            assets=["https://redis-a.lab.internal"],
+        ),
     ]
     write_canonical("inventory-nmap", recs)
     load()
@@ -259,9 +276,13 @@ def test_loader_poam_and_fedramp_tags_match_per_egp(
         egp = str(item.get("poam_id") or "")
         assert egp.startswith("EGP-")
         frow = fed_by_id[egp]
-        assert csf_cpg_tag_set(prow.get("framework_refs") or "") == csf_cpg_tag_set(
-            frow.get("Framework Tags") or ""
+        assert (prow.get("framework_refs") or "") == (frow.get("Framework Tags") or ""), (
+            egp,
+            ref,
+            prow.get("framework_refs"),
+            frow.get("Framework Tags"),
         )
+        assert (prow.get("controls") or "") == (frow.get("Controls") or ""), egp
         matched += 1
     assert matched >= 4
     csf_counts: Counter[str] = Counter()
@@ -291,3 +312,1000 @@ def test_classify_unknown_is_unmapped() -> None:
     )
     assert tagged["csf_subcategory"] == UNMAPPED
     assert "csf_PR" not in tagged["framework_refs"]
+
+
+def test_cpg_3_i_is_official() -> None:
+    assert CPG20_GOALS["3.I"] == "Implement Logical/Physical Network Segmentation"
+    assert cpg_stamp("3.I") == "cpg_3_I"
+
+
+def test_internet_facing_requires_evidence() -> None:
+    internal = _finding(
+        name="SMB 445 exposed",
+        description="dc.corp.local has open TCP/445 (microsoft-ds).",
+        assets=["dc.corp.local"],
+        extra={"port": "445", "service": "microsoft-ds", "ip": "10.0.0.10"},
+    )
+    assert is_internet_facing(internal) is False
+    public_ip = _finding(
+        name="SMB 445 exposed",
+        assets=["edge.example.net"],
+        extra={"port": "445", "ip": "203.0.113.10"},
+    )
+    # 203.0.113.0/24 is documentation — ipaddress treats it as not global.
+    assert is_internet_facing(public_ip) is False
+    real_public = _finding(
+        name="HTTPS exposed",
+        assets=["203.0.113.1"],
+        extra={"ip": "8.8.8.8"},
+    )
+    assert is_internet_facing(real_public) is True
+    easm = _finding(
+        name="Sensitive external hostname vpn.example.com",
+        source="easm",
+        assets=["vpn.example.com"],
+    )
+    assert is_internet_facing(easm) is True
+    rds = _finding(
+        source="cloud-prowler",
+        name="RDS instance is publicly accessible",
+        extra={"check_id": "rds_instance_no_public_access"},
+    )
+    assert is_internet_facing(rds, {"finding_type": "rds_public"}) is True
+    empty = _finding(name="mystery", description="no plane", assets=["unknown-host"])
+    assert is_internet_facing(empty) is False
+
+
+# Reviewer cold-review #4 §D4 21-row sample. OK stay; wrong get the
+# corrected tags; weak/arguable are the justified choices in this brick.
+_REVIEWER_21 = (
+    # OK (8)
+    (
+        "ok_rds_public",
+        dict(
+            source="cloud-prowler",
+            name="RDS instance is publicly accessible",
+            description="RDS instance PubliclyAccessible=true.",
+            extra={"check_id": "rds_instance_no_public_access"},
+        ),
+        {"cpg": "cpg_3_S"},
+    ),
+    (
+        "ok_s3_public",
+        dict(
+            source="cloud-prowler",
+            name="S3 bucket allows public access",
+            description="Bucket ACL AllUsers.",
+            extra={"check_id": "s3_bucket_public_access"},
+        ),
+        {"cpg": "cpg_3_S"},
+    ),
+    (
+        "ok_spf",
+        dict(
+            source="dns-email",
+            name="SPF missing",
+            description="No SPF TXT for example.com.",
+            category="email",
+        ),
+        {"cpg": "cpg_3_L", "csf": "csf_PR_DS_02"},
+    ),
+    (
+        "ok_dmarc",
+        dict(
+            source="dns-email",
+            name="DMARC missing",
+            description="No _dmarc TXT for example.com.",
+            category="email",
+        ),
+        {"cpg": "cpg_3_L", "csf": "csf_PR_DS_02"},
+    ),
+    (
+        "ok_heartbleed",
+        dict(
+            source="vuln-scan",
+            name="OpenSSL Heartbleed",
+            description="Heartbleed CVE-2014-0160 on the TLS stack.",
+            category="vulnerability",
+            extra={"cve": "CVE-2014-0160"},
+        ),
+        {"cpg": "cpg_2_B", "csf": "csf_PR_PS_02"},
+    ),
+    (
+        "ok_api_key",
+        dict(
+            source="code-secrets",
+            name="Generic API Key",
+            description="Generic API key in services/payments/config.py.",
+            category="secrets",
+        ),
+        {"cpg": "cpg_3_C", "csf": "csf_PR_AA_01"},
+    ),
+    (
+        "ok_domain_admins",
+        dict(
+            source="identity-ad",
+            name="Domain Admins standing members",
+            description="Domain Admins has standing members.",
+            extra={"edge": "Domain Admins"},
+        ),
+        {"cpg": "cpg_3_H"},
+    ),
+    (
+        "ok_cloudtrail",
+        dict(
+            source="cloud-prowler",
+            name="CloudTrail multi-region trail is missing",
+            description="No multi-region CloudTrail trail.",
+            extra={"check_id": "cloudtrail_multi_region_enabled"},
+        ),
+        {"cpg": "cpg_3_Q"},
+    ),
+    # Arguable (3) — justified choices
+    (
+        "arg_roastable_spn",
+        dict(
+            source="identity-ad",
+            name="Roastable SPN",
+            description="SVC-SQL@CORP.LOCAL has an SPN and is kerberoastable.",
+            extra={"edge": "kerberoast"},
+        ),
+        # Offline crack of the TGS (service account password) → 3.B, same as AS-REP.
+        {"cpg": "cpg_3_B", "csf": "csf_PR_AA_01"},
+    ),
+    (
+        "arg_mdm_enrollment",
+        dict(
+            source="host-wazuh",
+            name="Endpoint not enrolled in MDM",
+            description="fleet-laptop-07 MDM enrollment off.",
+        ),
+        # Stay 3.N / PR.PS-01: MDM enrollment is configuration management.
+        {"cpg": "cpg_3_N", "csf": "csf_PR_PS_01"},
+    ),
+    (
+        "arg_k8s_anonymous",
+        dict(
+            source="k8s-kubescape",
+            name="Anonymous Kubernetes API access",
+            description="anonymous-auth=true on kube-apiserver.",
+            extra={"check_id": "1_2_1"},
+            assets=["prod-cluster"],
+        ),
+        # No internet-facing evidence on prod-cluster → 3.I, not 3.S.
+        {"cpg": "cpg_3_I", "csf": "csf_PR_AA_05"},
+    ),
+    # Weak (3) — better honest fit
+    (
+        "weak_host_firewall",
+        dict(
+            source="host-wazuh",
+            name="Host firewall is disabled",
+            description="No firewall software installed.",
+            extra={"control_key": "host_firewall"},
+        ),
+        {"cpg": "cpg_3_I", "csf": "csf_PR_PS_01"},
+    ),
+    (
+        "weak_sensitive_hostname",
+        dict(
+            source="easm",
+            name="Sensitive external hostname vpn.example.com",
+            description="vpn.example.com is published on the public perimeter.",
+            assets=["vpn.example.com"],
+        ),
+        # EASM source is internet-facing evidence; lock down the listener → 3.S / PR.IR-01.
+        {"cpg": "cpg_3_S", "csf": "csf_PR_IR_01"},
+    ),
+    (
+        "weak_falco_binary_dir",
+        dict(
+            source="k8s-kubescape",
+            name="Falco WriteBelowBinaryDir",
+            description="Workload can write below binary directory.",
+            extra={"check_id": "write_below_binary_dir"},
+            labels=["falco"],
+        ),
+        # Runtime integrity / malicious-code detection, not change-management 3.N.
+        {"cpg": "cpg_4_A", "csf": "csf_DE_CM_09"},
+    ),
+    # Wrong (7) — corrected tags
+    (
+        "wrong_internal_telnet",
+        dict(
+            source="inventory-nmap",
+            name="Telnet exposed",
+            description="telnet-legacy.corp.local has open TCP/23.",
+            category="exposure",
+            extra={"port": "23", "service": "telnet"},
+            assets=["telnet-legacy.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S", "csf": "csf_PR_IR_01"},
+    ),
+    (
+        "wrong_smb_dc",
+        dict(
+            source="inventory-nmap",
+            name="SMB 445 exposed",
+            description="dc.corp.local has open TCP/445 (microsoft-ds).",
+            category="exposure",
+            extra={"port": "445", "service": "microsoft-ds", "ip": "10.0.0.20"},
+            assets=["dc.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S", "csf": "csf_PR_IR_01"},
+    ),
+    (
+        "wrong_msrpc_135",
+        dict(
+            source="inventory-nmap",
+            name="msrpc 135 exposed",
+            description="dc.corp.local has open TCP/135 (msrpc).",
+            category="exposure",
+            extra={"port": "135", "service": "msrpc"},
+            assets=["dc.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S"},
+    ),
+    (
+        "wrong_admin_share",
+        dict(
+            source="inventory-nmap",
+            name="Administrative share exposed on dc.corp.local (C$/ADMIN$)",
+            description="C$/ADMIN$ reachable off the admin network.",
+            category="exposure",
+            extra={"port": "445", "service": "microsoft-ds"},
+            assets=["dc.corp.local"],
+        ),
+        {"cpg": "cpg_3_I", "not_cpg": "cpg_3_S", "csf": "csf_PR_AA_05"},
+    ),
+    (
+        "wrong_legacy_auth",
+        dict(
+            source="saas-idp",
+            name="Legacy authentication protocols are enabled",
+            description="M365 legacy auth (IMAP/SMTP basic) still enabled.",
+        ),
+        {"cpg": "cpg_3_F", "not_cpg": "cpg_3_E", "csf": "csf_PR_AA_03"},
+    ),
+    (
+        "wrong_asrep",
+        dict(
+            source="identity-ad",
+            name="AS-REP roastable account",
+            description="SVC-KRBTGT-ROAST does not require Kerberos preauth.",
+            extra={"edge": "asrep"},
+        ),
+        {"cpg": "cpg_3_B", "not_cpg": "cpg_3_E", "csf": "csf_PR_AA_01"},
+    ),
+    (
+        "wrong_redis",
+        dict(
+            source="vuln-scan",
+            name="Redis without auth",
+            description="Unauthenticated Redis on a LAB host.",
+            category="vulnerability",
+            extra={"template_id": "exposed-redis", "rule": "exposed-redis"},
+            assets=["https://redis-a.lab.internal"],
+        ),
+        {
+            "cpg": "cpg_3_I",
+            "not_cpg": "cpg_2_B",
+            "csf": "csf_PR_AA_03",
+            "not_csf": "csf_PR_AA_05",
+            "control": "Require authentication on Redis",
+            "not_n53": ("SI-2", "RA-5"),
+        },
+    ),
+)
+
+
+def test_reviewer_21_row_sample_expectations() -> None:
+    assert len(_REVIEWER_21) == 21
+    for key, kwargs, expect in _REVIEWER_21:
+        rec = _finding(**kwargs)
+        mapped = map_finding(rec)
+        refs = mapped.get("framework_refs") or ""
+        cpg = mapped.get("cpg") or []
+        if want := expect.get("cpg"):
+            assert want in cpg or want in refs, (key, cpg, refs)
+        if not_cpg := expect.get("not_cpg"):
+            assert not_cpg not in cpg and not_cpg not in refs.split(","), (key, cpg, refs)
+        if want_csf := expect.get("csf"):
+            assert want_csf in refs or want_csf in (mapped.get("csf") or []), (key, refs)
+        if not_csf := expect.get("not_csf"):
+            assert not_csf not in refs.split(","), (key, refs)
+        if control := expect.get("control"):
+            assert mapped.get("control_name") == control, (key, mapped.get("control_name"))
+        if not_n53 := expect.get("not_n53"):
+            n53 = set(mapped.get("nist_800_53") or [])
+            assert not (set(not_n53) & n53), (key, n53)
+            assert mapped.get("control_name") != "Apply vulnerability remediation"
+
+
+def test_register_never_blanket_csf_pr(tmp_path: Path, monkeypatch) -> None:
+    from collectors.grc_loader import load
+    from shared.io_util import out_dir, write_canonical
+
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
+    (tmp_path / "in").mkdir()
+    recs = [
+        _finding(
+            ref="NMAP-smb",
+            name="SMB 445 exposed",
+            description="filesrv has open TCP/445 (microsoft-ds).",
+            extra={"port": "445", "service": "microsoft-ds"},
+            assets=["filesrv.corp.local"],
+        ),
+        make_record(
+            kind="asset",
+            source="inventory-nmap",
+            ref_id="AST-filesrv",
+            name="filesrv.corp.local",
+            description="internal file server",
+            assets=["filesrv.corp.local"],
+        ),
+    ]
+    write_canonical("inventory-nmap", recs)
+    load()
+    findings = list(
+        csv.DictReader((out_dir() / "ciso-assistant" / "findings.csv").open(encoding="utf-8"))
+    )
+    assets = list(
+        csv.DictReader((out_dir() / "ciso-assistant" / "assets.csv").open(encoding="utf-8"))
+    )
+    assert findings
+    for row in findings:
+        labels = {t.strip() for t in (row.get("filtering_labels") or "").split(",") if t.strip()}
+        assert not (labels & BLANKET_REGISTER_STAMPS), (row.get("name"), labels)
+        assert "csf_PR_IR_01" in labels or "csf_PR_AA_05" in labels
+    for row in assets:
+        labels = {t.strip() for t in (row.get("filtering_labels") or "").split(",") if t.strip()}
+        assert "cpg_2_W" not in labels
+        assert "cpg_1_E" not in labels
+        assert "csf_PR" not in labels
+        assert "csf_protect" not in labels
+    # extra_labels vocabulary and finding path also stay clean.
+    assert not (set(extra_labels()) & BLANKET_REGISTER_STAMPS)
+    assert "csf_PR" not in extra_labels(recs[0])
+
+
+# Existing host-lab / DEMO tokens. Behaviour must stay identical.
+_PUBLIC_IP_EXISTING = (
+    ("8.8.8.8", True),
+    ("8.8.8.8:443", True),
+    ("8.8.8.8/32", True),
+    ("10.0.0.10", False),
+    ("10.0.0.10:6379", False),
+    ("203.0.113.10", False),
+    ("127.0.0.1", False),
+    ("192.168.1.1", False),
+    ("172.16.0.5", False),
+    ("dc.corp.local", False),
+    ("https://redis-a.lab.internal", False),
+    ("https://redis-a.lab.internal:6379", False),
+    ("", False),
+    ("fe80::1", False),
+    ("fe80::1%eth0", False),
+    ("::1", False),
+    ("2001:db8::1", False),
+    ("[2001:db8::1]", False),
+    ("8.8.8.8:", False),
+)
+
+
+def test_host_token_public_ip_existing_inputs_unchanged() -> None:
+    for raw, expect in _PUBLIC_IP_EXISTING:
+        assert _host_token_is_public_ip(raw) is expect, (raw, expect)
+
+
+def test_host_token_public_ip_url_ipv6_userinfo_edge_cases() -> None:
+    public_v6 = "2001:4860:4860::8888"
+    assert _host_token_is_public_ip(public_v6) is True
+    assert _host_token_is_public_ip(f"[{public_v6}]") is True
+    assert _host_token_is_public_ip(f"[{public_v6}]:443") is True
+    assert _host_token_is_public_ip("https://8.8.8.8") is True
+    assert _host_token_is_public_ip("https://8.8.8.8/path") is True
+    assert _host_token_is_public_ip("https://8.8.8.8:8443/foo?q=1") is True
+    assert _host_token_is_public_ip("http://user:pass@8.8.8.8/") is True
+    assert _host_token_is_public_ip("user:pass@8.8.8.8") is True
+    assert _host_token_is_public_ip(f"https://[{public_v6}]/") is True
+    assert _host_token_is_public_ip(f"https://[{public_v6}]:443/path") is True
+    assert _host_token_is_public_ip("//8.8.8.8/foo") is True
+    assert _host_token_is_public_ip("https://10.0.0.1/admin") is False
+    assert _host_token_is_public_ip("https://user:pass@10.0.0.5:6379/info") is False
+    rec = _finding(
+        name="HTTPS on a public IP URL",
+        assets=["https://8.8.8.8:8443/admin"],
+        extra={"matched_at": "https://8.8.8.8:8443/admin"},
+    )
+    assert is_internet_facing(rec) is True
+    internal = _finding(
+        name="Redis URL",
+        assets=["https://redis-a.lab.internal:6379"],
+        extra={"ip": "10.0.0.41"},
+    )
+    assert is_internet_facing(internal) is False
+    # Malformed IPv6 brackets must not raise (master returned False).
+    assert _host_token_is_public_ip("https://[notanip]/") is False
+    assert _host_token_is_public_ip("https://[2001:4860:4860::8888") is False
+    assert _host_token_is_public_ip("https://[notanip]:6379") is False
+    redis = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Redis without auth",
+            description="Unauthenticated Redis on a LAB host.",
+            extra={
+                "template_id": "exposed-redis",
+                "rule": "exposed-redis",
+                "ip": "https://[notanip]:6379",
+                "address": "https://[notanip]:6379",
+                "public_ip": "https://[2001:4860:4860::8888",
+            },
+            assets=["https://[notanip]:6379"],
+        )
+    )
+    assert redis["csf_subcategory"] == "PR.AA-03"
+
+
+def test_web_xss_and_lfi_are_app_secure_dev_not_config_benchmark() -> None:
+    xss = apply_class_mapping(
+        {
+            "control_name": "Stop reflected web-app cross-site scripting",
+            "csf_function": "protect",
+            "csf": [],
+            "nist_800_53": ["SI-10", "SA-11", "CM-6"],
+            "cis": [],
+            "finding_type": "web_xss",
+        },
+        {"extra": {"check_id": "web_xss"}},
+    )
+    assert (
+        classify_weakness_class(
+            {
+                "control_name": "Stop reflected web-app cross-site scripting",
+                "finding_type": "web_xss",
+            },
+            {"extra": {"check_id": "web_xss"}},
+        )
+        == "app_secure_dev"
+    )
+    assert xss["csf_subcategory"] == "PR.PS-06"
+    assert "csf_PR_PS_06" in xss["framework_refs"]
+    assert "csf_PR_PS_01" not in xss["framework_refs"].split(",")
+    assert "csf_ID_RA_01" not in xss["framework_refs"].split(",")
+    assert "SC-18" not in (xss.get("nist_800_53") or [])
+    assert "SA-11" in (xss.get("nist_800_53") or [])
+    assert "SI-10" in (xss.get("nist_800_53") or [])
+    assert "cpg_2_B" in xss["cpg"]
+    lfi = apply_class_mapping(
+        {
+            "control_name": "Stop web-app local file inclusion",
+            "csf_function": "protect",
+            "csf": [],
+            "nist_800_53": ["SI-10", "SA-11", "AC-3", "CM-7"],
+            "cis": [],
+            "finding_type": "web_lfi",
+        },
+        {"extra": {"check_id": "web_lfi"}},
+    )
+    assert (
+        classify_weakness_class(
+            {
+                "control_name": "Stop web-app local file inclusion",
+                "finding_type": "web_lfi",
+            },
+            {"extra": {"check_id": "web_lfi"}},
+        )
+        == "app_secure_dev"
+    )
+    assert lfi["csf_subcategory"] == "PR.PS-06"
+    assert "SA-11" in (lfi.get("nist_800_53") or [])
+    assert "SI-10" in (lfi.get("nist_800_53") or [])
+    assert "cpg_2_B" in lfi["cpg"]
+
+
+def test_control_class_xss_lfi_entries_map_app_secure_dev() -> None:
+    """CONTROL_CLASS keys must be the path when finding_type is absent.
+
+    Removing either entry leaves classify_weakness_class unmapped (mutant).
+    """
+    xss_name = "Stop reflected web-app cross-site scripting"
+    lfi_name = "Stop web-app local file inclusion"
+    assert CONTROL_CLASS[xss_name] == "app_secure_dev"
+    assert CONTROL_CLASS[lfi_name] == "app_secure_dev"
+    assert classify_weakness_class({"control_name": xss_name}, {}) == "app_secure_dev"
+    assert classify_weakness_class({"control_name": lfi_name}, {}) == "app_secure_dev"
+
+
+def test_third_party_xss_lfi_are_vuln_patch_not_app_secure_dev() -> None:
+    nextgen = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Nikto: NextGEN Gallery LFI on wordpress path",
+            description=(
+                "NextGEN Gallery LFI, see "
+                "https://security.dxw.com/advisories/directory-traversal-in-nextgen-gallery-2-0-0/"
+            ),
+            extra={"check_id": "web_lfi", "id": "006737"},
+            labels=["nikto"],
+        )
+    )
+    assert nextgen["weakness_class"] == "vuln_patch"
+    assert nextgen["csf_subcategory"] == "PR.PS-02"
+    assert "csf_PR_PS_02" in nextgen["framework_refs"]
+    assert "csf_PR_PS_06" not in nextgen["framework_refs"].split(",")
+    assert "csf_ID_RA_01" not in nextgen["framework_refs"].split(",")
+    assert "SI-2" in (nextgen.get("nist_800_53") or [])
+    assert "SC-18" not in (nextgen.get("nist_800_53") or [])
+    phpnuke = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Nikto: myPHPNuke XSS",
+            description=(
+                "/myphpnuke/links.php: myphpnuke is vulnerable to Cross Site "
+                "Scripting (XSS). CA-2000-02."
+            ),
+            extra={"check_id": "web_xss", "id": "000099"},
+            labels=["nikto"],
+        )
+    )
+    assert phpnuke["weakness_class"] == "vuln_patch"
+    assert phpnuke["csf_subcategory"] == "PR.PS-02"
+    assert "csf_PR_PS_02" in phpnuke["framework_refs"]
+    assert "csf_PR_PS_06" not in phpnuke["framework_refs"].split(",")
+    assert "csf_ID_RA_01" not in phpnuke["framework_refs"].split(",")
+    assert "SI-2" in (phpnuke.get("nist_800_53") or [])
+    assert "SC-18" not in (phpnuke.get("nist_800_53") or [])
+    assert "SA-11" not in (phpnuke.get("nist_800_53") or [])
+    assert "SA-11" not in (nextgen.get("nist_800_53") or [])
+    in_house = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss"},
+            labels=["sarif"],
+        )
+    )
+    assert in_house["weakness_class"] == "app_secure_dev"
+    assert in_house["csf_subcategory"] == "PR.PS-06"
+    assert "SI-10" in (in_house.get("nist_800_53") or [])
+    assert "SA-11" in (in_house.get("nist_800_53") or [])
+    assert "SC-18" not in (in_house.get("nist_800_53") or [])
+
+
+def test_third_party_attribution_signals_each_alone() -> None:
+    """Each fallback identifier must flip the class by itself (mutant-kill)."""
+    base = {
+        "control_name": "Stop reflected web-app cross-site scripting",
+        "finding_type": "web_xss",
+    }
+    rec = {"source": "vuln-scan", "name": "reflected xss", "description": "param q", "extra": {}}
+    assert classify_weakness_class(base, rec) == "app_secure_dev"
+    assert (
+        classify_weakness_class(base, {**rec, "extra": {"cve": "CVE-2024-12345", "check_id": "web_xss"}})
+        == "vuln_patch"
+    )
+    assert _looks_third_party_app_finding(base, {**rec, "extra": {"osvdb": "OSVDB-3092"}}) is True
+    assert (
+        classify_weakness_class(
+            base, {**rec, "description": "ca-2000-02 reflected xss", "extra": {"check_id": "web_xss"}}
+        )
+        == "vuln_patch"
+    )
+    assert (
+        classify_weakness_class(
+            base,
+            {**rec, "description": "GHSA-abcd-efgh-ijkl reflected xss", "extra": {"check_id": "web_xss"}},
+        )
+        == "vuln_patch"
+    )
+    assert _looks_third_party_app_finding(
+        base, {**rec, "extra": {"url": "https://app.example/advisories/list.php", "check_id": "web_xss"}}
+    ) is False
+    sarif = {
+        "source": "code-secrets",
+        "name": "reflected xss",
+        "description": "same class as CVE-2020-11022",
+        "labels": ["sarif"],
+        "extra": {"check_id": "web_xss"},
+    }
+    assert classify_weakness_class(base, sarif) == "app_secure_dev"
+
+
+def test_control_class_third_party_branch_without_finding_type() -> None:
+    name = "Stop reflected web-app cross-site scripting"
+    rec = {"labels": ["nikto"], "name": "xss", "description": "reflected", "extra": {}}
+    assert classify_weakness_class({"control_name": name}, rec) == "vuln_patch"
+
+
+def test_stop_cross_site_scripting_is_injection_control() -> None:
+    assert "Stop cross-site scripting" in _WEB_APP_INJECTION_CONTROLS
+    assert (
+        classify_weakness_class(
+            {"control_name": "Stop cross-site scripting"},
+            {"labels": ["nikto"], "extra": {}},
+        )
+        == "vuln_patch"
+    )
+
+
+def test_web_lfi_map_finding_in_house_keeps_sa11() -> None:
+    mapped = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop web-app local file inclusion",
+            description="Path traversal in an upload parameter.",
+            extra={"check_id": "web_lfi"},
+            labels=["sarif"],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+    assert "SA-11" in (mapped.get("nist_800_53") or [])
+    assert "SI-10" in (mapped.get("nist_800_53") or [])
+    assert "SI-2" not in (mapped.get("nist_800_53") or [])
+
+
+def test_web_lfi_map_finding_third_party_drops_sa11() -> None:
+    mapped = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop web-app local file inclusion",
+            description="NextGEN Gallery LFI on wordpress path.",
+            extra={"check_id": "web_lfi", "id": "006737"},
+            labels=["nikto"],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+    assert "SI-2" in (mapped.get("nist_800_53") or [])
+    assert "SA-11" not in (mapped.get("nist_800_53") or [])
+    assert "SI-10" in (mapped.get("nist_800_53") or [])
+
+
+def _xss_sarif(*, driver: str, rule_id: str, message: str) -> dict:
+    return {
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {"driver": {"name": driver, "rules": [{"id": rule_id}]}},
+                "results": [
+                    {
+                        "ruleId": rule_id,
+                        "level": "error",
+                        "message": {"text": message},
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "app.js"}
+                                }
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_trivy_sarif_jquery_xss_cve_is_vuln_patch(tmp_path: Path) -> None:
+    """SARIF is a format: Trivy + structured CVE must stay patch-routed."""
+    path = tmp_path / "trivy-jquery-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Trivy",
+                rule_id="CVE-2020-11022",
+                message="jquery: XSS in htmlPrefilter (CVE-2020-11022)",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    assert "sarif" in {str(x).lower() for x in (rec.get("labels") or [])}
+    assert rec["extra"].get("cve", "").upper().startswith("CVE-")
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+    assert "SI-2" in (mapped.get("nist_800_53") or [])
+    assert "csf_PR_PS_06" not in mapped["framework_refs"].split(",")
+
+
+def test_trivy_cve_in_code_secrets_lane_is_vuln_patch(tmp_path: Path) -> None:
+    """Mutant-kill: removing structured-CVE-first leaves code-secrets in-house."""
+    path = tmp_path / "trivy-jquery-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Trivy",
+                rule_id="CVE-2020-11022",
+                message="jquery: XSS in htmlPrefilter (CVE-2020-11022)",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in code_secrets.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    assert rec["source"] == "code-secrets"
+    assert rec["extra"].get("rule", "").upper().startswith("CVE-")
+    assert not rec["extra"].get("cve")
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+    assert "SI-2" in (mapped.get("nist_800_53") or [])
+
+
+def test_codeql_cve_ruleid_is_vuln_patch(tmp_path: Path) -> None:
+    """Structured CVE in ruleId wins over the CodeQL in-house driver."""
+    path = tmp_path / "codeql-cve-ruleid.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="CodeQL",
+                rule_id="CVE-2020-11022",
+                message="Untrusted data written to the DOM (CWE-79).",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_snyk_code_spaced_driver_is_in_house(tmp_path: Path) -> None:
+    path = tmp_path / "snyk-code-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Snyk Code",
+                rule_id="js/xss",
+                message="Untrusted data written to the DOM (CWE-79).",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+
+
+def test_semgrep_supply_chain_is_third_party(tmp_path: Path) -> None:
+    path = tmp_path / "semgrep-sc-xss.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="Semgrep Supply Chain",
+                rule_id="ssc-jquery-xss",
+                message="Untrusted data written to the DOM (CWE-79).",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_ghsa_only_unknown_driver_is_third_party(tmp_path: Path) -> None:
+    path = tmp_path / "unknown-ghsa.sarif"
+    path.write_text(
+        json.dumps(
+            _xss_sarif(
+                driver="trivyfork",
+                rule_id="GHSA-jfh8-c2jp-5v3q",
+                message="jquery XSS advisory",
+            )
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+    assert recs
+    rec = recs[0]
+    mapped = map_finding(
+        _finding(
+            source=rec["source"],
+            name=rec["name"],
+            description=rec["description"],
+            extra={**rec["extra"], "check_id": "web_xss"},
+            labels=rec.get("labels") or [],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_codeql_and_semgrep_sarif_xss_stay_in_house(tmp_path: Path) -> None:
+    for driver in ("CodeQL", "Semgrep"):
+        path = tmp_path / f"{driver.lower()}-xss.sarif"
+        path.write_text(
+            json.dumps(
+                _xss_sarif(
+                    driver=driver,
+                    rule_id="js/reflected-xss",
+                    message="Untrusted data written to the DOM (CWE-79).",
+                )
+            ),
+            encoding="utf-8",
+        )
+        recs = [r for r in vuln_scan.parse_file(path) if r["kind"] == "finding"]
+        assert recs, driver
+        rec = recs[0]
+        assert "sarif" in {str(x).lower() for x in (rec.get("labels") or [])}
+        mapped = map_finding(
+            _finding(
+                source=rec["source"],
+                name=rec["name"],
+                description=rec["description"],
+                extra={**rec["extra"], "check_id": "web_xss"},
+                labels=rec.get("labels") or [],
+            )
+        )
+        assert mapped["weakness_class"] == "app_secure_dev", driver
+        assert mapped["csf_subcategory"] == "PR.PS-06", driver
+        assert "SA-11" in (mapped.get("nist_800_53") or []), driver
+        assert "SI-2" not in (mapped.get("nist_800_53") or []), driver
+
+
+def test_wpscan_label_alone_is_third_party() -> None:
+    """Mutant-kill: dropping wpscan from the third-party set."""
+    mapped = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss"},
+            labels=["wpscan"],
+        )
+    )
+    assert mapped["weakness_class"] == "vuln_patch"
+    assert mapped["csf_subcategory"] == "PR.PS-02"
+
+
+def test_nuclei_without_cve_template_is_not_always_third_party() -> None:
+    """Mutant-kill: making nuclei always third-party."""
+    mapped = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss", "template_id": "custom-reflected-xss"},
+            labels=["nuclei"],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+
+
+def test_in_house_wins_over_nikto_label_spoof() -> None:
+    """Mutant-kill: swapping the in-house / third-party check order."""
+    mapped = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss", "tool": "codeql"},
+            labels=["nikto", "codeql"],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+    assert mapped["csf_subcategory"] == "PR.PS-06"
+
+
+def test_code_secrets_source_alone_is_in_house() -> None:
+    """Mutant-kill: removing code-secrets from the in-house path."""
+    mapped = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="same class as CVE-2020-11022",
+            extra={"check_id": "web_xss"},
+            labels=[],
+        )
+    )
+    assert mapped["weakness_class"] == "app_secure_dev"
+
+
+def test_extra_tool_and_source_fields_are_attribution_signals() -> None:
+    """Mutant-kill: ignoring extra.tool or rec.source."""
+    tool = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="same class as CVE-2020-11022",
+            extra={"check_id": "web_xss", "tool": "semgrep"},
+            labels=["sarif"],
+        )
+    )
+    assert tool["weakness_class"] == "app_secure_dev"
+    src = map_finding(
+        _finding(
+            source="code-secrets",
+            name="Stop reflected web-app cross-site scripting",
+            description="same class as CVE-2020-11022",
+            extra={"check_id": "web_xss"},
+            labels=["sarif"],
+        )
+    )
+    assert src["weakness_class"] == "app_secure_dev"
+    sca = map_finding(
+        _finding(
+            source="vuln-scan",
+            name="Stop reflected web-app cross-site scripting",
+            description="Parameter q reflects a script tag.",
+            extra={"check_id": "web_xss", "tool": "trivy"},
+            labels=["sarif"],
+        )
+    )
+    assert sca["weakness_class"] == "vuln_patch"
+
+
+def test_advisories_url_and_path_do_not_flip_ambiguous_source() -> None:
+    """Mutant-kill: re-adding extra.url or a bare /advisories/ match."""
+    base = {
+        "control_name": "Stop reflected web-app cross-site scripting",
+        "finding_type": "web_xss",
+    }
+    rec = {
+        "source": "vuln-scan",
+        "name": "reflected xss",
+        "description": "param q on /advisories/list.php",
+        "labels": ["zap"],
+        "extra": {"url": "https://app.example/advisories/list.php", "check_id": "web_xss"},
+    }
+    assert _looks_third_party_app_finding(base, rec) is False
+    assert classify_weakness_class(base, rec) == "app_secure_dev"

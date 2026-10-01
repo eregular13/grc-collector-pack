@@ -1,5 +1,6 @@
 # lynis report — DEMO fixture, not a client estate
 Lynis 3.1.4
+report_datetime_start=2026-09-17 09:00:00
 
 Hostname = jump-unmanaged
 

@@ -1,8 +1,22 @@
-"""Minimal YAML subset loader for SCOPE files. No PyYAML dependency."""
+"""Minimal YAML subset loader for SCOPE files. No PyYAML dependency.
+
+Duplicate mapping keys fail closed at every nesting level. Comparison is
+case-insensitive (``Status`` and ``status`` in the same mapping are dups).
+Matching single/double quotes are stripped from keys before storage and
+duplicate detection, so ``'status'`` and ``status`` are the same key.
+"""
 
 from __future__ import annotations
 
 from typing import Any
+
+
+def _unquote_key(key: str) -> str:
+    """Strip one matching pair of ASCII quotes from a mapping key."""
+    text = str(key)
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        return text[1:-1]
+    return text
 
 
 def load_yaml(text: str) -> Any:
@@ -29,10 +43,14 @@ def load_yaml(text: str) -> Any:
         if ":" not in stripped:
             raise ValueError(f"expected key: {stripped}")
         key, rest = stripped.split(":", 1)
-        key = key.strip()
+        key = _unquote_key(key.strip())
         rest = rest.strip()
         if not isinstance(parent, dict):
             raise ValueError(f"mapping entry without mapping parent: {stripped}")
+        fold = key.lower()
+        for existing in parent:
+            if str(existing).strip().lower() == fold:
+                raise ValueError(f"duplicate mapping key {key!r}")
         if rest == "":
             nxt = _next_significant(lines, i)
             if nxt is not None and nxt.lstrip().startswith("- "):

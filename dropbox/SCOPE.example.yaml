@@ -8,6 +8,18 @@ consent:
 engagement:
   start: "YYYY-MM-DD"
   end: "YYYY-MM-DD"
+  # Optional. Absent / status: authorized|active|approved load (value any case).
+  # Any other status (expired, on-hold, withdrawn, revoked, …) or
+  # revoked: true fails closed at load_scope. Keys must be spelled exactly
+  # as documented (lower-case, no surrounding whitespace). PORTS_ALLOWED,
+  # Status, and ' ports_allowed ' refuse. engagement.start is the only
+  # window-start key (begin is not an alias).
+  # status: authorized
+# Optional per-port allow-list. Absent = any port on an in-scope host
+# (current behavior). An explicit list is fail-closed.
+# ports_allowed:
+#   - 80
+#   - 443
 internal:
   cidrs:
     - "10.0.0.0/8"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterator
@@ -224,8 +225,86 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
     return out
 
 
+# Real Nikto prints ``(GMT$offset)`` from ``gmt_offset()`` hours as a
+# decimal, often with no ``+``: ``(GMT5.5)`` Kolkata, ``(GMT-2.5)``,
+# ``(GMT5.75)``, ``(GMT13.75)``. Also keep ``(GMT0)`` / ``(GMT-7)``,
+# colon / hhmm, and unsigned hhmm ``(GMT0530)``. ``re.ASCII`` so ``\d``
+# is [0-9] only (Unicode digits stay unparsed).
+_NIKTO_GMT = re.compile(
+    r"""
+    ^(?P<body>.*?)\s*\(\s*GMT\s*
+    (?:
+        (?P<sign_hhmm>[+-])?(?P<hhmm>\d{4})
+        | (?P<sign_dec>[+-])?(?P<dec>\d{1,2}\.\d+)
+        | (?P<sign>[+-])?(?P<h>\d{1,2})(?::(?P<m>\d{2}))?
+    )
+    \s*\)\s*$
+    """,
+    re.I | re.X | re.ASCII,
+)
+_NIKTO_MAX_HOURS = 14
+_NIKTO_MIN_HOURS = -12
+# Real zones use :00 / :30 / :45. :15 (GMT5.25) is not a real offset.
+_NIKTO_VALID_MINUTES = frozenset({0, 30, 45})
+
+
+def _nikto_frac_minutes(frac: float) -> int | None:
+    """Exact quarter-hour only (no round() ±30s). 0 / 30 / 45."""
+    scaled = abs(frac) * 4
+    if scaled != int(scaled):
+        return None
+    minutes = int(scaled) * 15
+    if minutes not in _NIKTO_VALID_MINUTES:
+        return None
+    return minutes
+
+
+def _nikto_offset_in_range(sign: str, hours: int, minutes: int) -> bool:
+    """+14:00 and −12:00 are in; minutes past +14 or below −12 are out.
+
+    ``{0, 30, 45}`` applies to decimal, hhmm, and colon forms so
+    ``GMT0559`` / ``GMT+5:15`` are rejected the same way as ``GMT5.25``.
+    """
+    if minutes not in _NIKTO_VALID_MINUTES:
+        return False
+    total = hours * 60 + minutes
+    if sign == "-":
+        total = -total
+    return _NIKTO_MIN_HOURS * 60 <= total <= _NIKTO_MAX_HOURS * 60
+
+
+def _nikto_start_time(raw: str) -> str:
+    """Nikto ``2026-09-04 17:00:00 (GMT5.5)`` / ``(GMT-7)`` → offset datetime."""
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    match = _NIKTO_GMT.match(text)
+    if not match:
+        return text
+    body = (match.group("body") or "").strip()
+    if match.group("hhmm"):
+        token = match.group("hhmm")
+        hours, minutes = int(token[:2]), int(token[2:])
+        sign = match.group("sign_hhmm") or "+"
+    elif match.group("dec") is not None:
+        dec = float(match.group("dec"))
+        hours = int(dec)
+        minutes = _nikto_frac_minutes(dec - hours)
+        if minutes is None:
+            return text
+        sign = match.group("sign_dec") or "+"
+    else:
+        hours = int(match.group("h") or 0)
+        minutes = int(match.group("m") or 0)
+        sign = match.group("sign") or "+"
+    if not _nikto_offset_in_range(sign, hours, minutes):
+        return text
+    return f"{body}{sign}{hours:02d}:{minutes:02d}"
+
+
 def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
     host = "unknown"
+    start = ""
     for line in text.splitlines():
         raw = line.strip()
         if not raw.startswith("+"):
@@ -237,6 +316,9 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
             continue
         if low.startswith("target ip") and host in {"unknown", ""}:
             host = rest.split(":", 1)[-1].strip() or host
+            continue
+        if low.startswith("start time"):
+            start = _nikto_start_time(rest.split(":", 1)[-1] if ":" in rest else "")
             continue
         if ":" not in rest:
             continue
@@ -252,7 +334,10 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
                 url = "/"
         elif not left.startswith("/"):
             continue
-        yield {"host": host, "url": url, "msg": msg, "id": left}
+        row = {"host": host, "url": url, "msg": msg, "id": left}
+        if start:
+            row["scan_time"] = start
+        yield row
 
 
 def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:

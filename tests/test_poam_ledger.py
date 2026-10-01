@@ -17,6 +17,7 @@ from shared.asset_key import (
 from shared.ciso_shape import POAM_HEADER
 from shared.kev import KevCatalog
 from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
+from shared.poam_fields import local_run_date
 from shared.poam_ledger import (
     LEDGER_CHAIN_BROKEN,
     LEDGER_LOST,
@@ -108,7 +109,7 @@ def test_3_5_2_volatile_fields_ignored() -> None:
     assert item2["poam_id"] == item["poam_id"]
     assert item2["original_risk_rating"] == item["original_risk_rating"] == "High"
     assert item2["current_scanner_rating"] == "medium"
-    assert item2["status_date"] == "2026-09-12"
+    assert item2["status_date"] == local_run_date(_run("2026-09-12T00:00:00Z")).isoformat()
     assert any(e["kind"] == "field_changed" for e in second["events"])
 
 
@@ -145,6 +146,15 @@ def test_3_5_4_port_distinguishes() -> None:
     ledger = _apply([a, b])
     assert len(ledger["items"]) == 2
     assert {i["poam_id"] for i in ledger["items"].values()}.__len__() == 2
+
+
+def test_ledger_lost_clears_when_ledger_supplied() -> None:
+    """Argus B11: LEDGER_LOST is this-run only; a supplied ledger clears it."""
+    rec = _rec()
+    first = _apply([rec], when="2026-09-10T00:00:00Z", prior_existed=False)
+    assert LEDGER_LOST in first["warnings"]
+    second = _apply([rec], ledger=first, when="2026-09-11T00:00:00Z", prior_existed=True)
+    assert LEDGER_LOST not in second["warnings"]
 
 
 def test_3_5_5_lost_ledger() -> None:
@@ -433,14 +443,25 @@ def test_migration_nmap_title_to_check_id_keeps_id_and_date() -> None:
         "ref_id": "NMAP-10-11-1-22-161-udp",
         "extra": {**old["extra"], "check_id": "nmap-port-161/udp"},
     }
-    old_fp = fp_v1(old)
+    from shared.poam_ledger import legacy_title_weakness_key
+
+    old_fp = fp_v1(old, weakness_key_fn=legacy_title_weakness_key)
     new_fp = fp_v1(new)
     assert old_fp != new_fp
-    assert weakness_key(old).startswith("name:")
+    assert legacy_title_weakness_key(old).startswith("name:")
     assert weakness_key(new) == "nmap:nmap-port-161/udp"
 
-    seeded = _apply([old], when="2026-07-02T00:00:00Z")
-    item = next(iter(seeded["items"].values()))
+    seeded = empty_ledger()
+    first = _apply([old], when="2026-07-02T00:00:00Z")
+    item = next(iter(first["items"].values()))
+    seeded["items"] = {
+        old_fp: {
+            **item,
+            "fp": old_fp,
+            "weakness_key": legacy_title_weakness_key(old),
+        }
+    }
+    seeded["sha256"] = payload_sha256(seeded)
     pid = item["poam_id"]
     odd = item["original_detection_date"]
 
@@ -656,7 +677,7 @@ def test_existing_poam_csv_header_constant_unchanged() -> None:
 
 
 def test_ledger_run_delta_counts_this_run_only() -> None:
-    """EXECUTIVE one-liner: open includes pending; new/reopened/closed are this-run events."""
+    """EXECUTIVE one-liner: open includes pending when no plan_ids; new/reopened/closed are this-run events."""
     same_second = "2026-09-15T00:00:00Z"
     ledger = {
         "run_at": same_second,
@@ -680,10 +701,27 @@ def test_ledger_run_delta_counts_this_run_only() -> None:
     }
     delta = ledger_run_delta(ledger)
     assert delta["open"] == 3
+    assert delta["ledger_open"] == 3
     assert delta["new"] == 1
     assert delta["pending_verification"] == 1
     assert delta["reopened"] == 1
     assert delta["closed"] == 0
+
+
+def test_ledger_run_delta_open_follows_plan_ids() -> None:
+    """Headline open is poam.csv; ledger_open still counts excluded items."""
+    ledger = {
+        "run_at": "2026-09-15T00:00:00Z",
+        "items": {
+            "on-plan": {"status": "open", "poam_id": "EGP-PLAN"},
+            "excluded": {"status": "open", "poam_id": "EGP-X"},
+            "closed": {"status": "closed", "poam_id": "EGP-C"},
+        },
+        "events_this_run": [],
+    }
+    delta = ledger_run_delta(ledger, plan_ids={"EGP-PLAN"})
+    assert delta["open"] == 1
+    assert delta["ledger_open"] == 2
 
 
 def test_ledger_run_delta_same_second_runs_do_not_inflate_new() -> None:
@@ -700,3 +738,4 @@ def test_ledger_run_delta_same_second_runs_do_not_inflate_new() -> None:
     delta = ledger_run_delta(second)
     assert delta["new"] == 1
     assert delta["open"] == 2
+    assert delta["ledger_open"] == 2

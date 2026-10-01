@@ -1,0 +1,12 @@
+# Lynis Report — LAB/DEMO -- not a client estate
+# Not SAMPLE keep. Not a client export. Hardening index is a score, not a finding.
+lynis_version=3.1.4
+hostname=lab-jump.lab.internal
+os=Linux
+os_name=Debian
+os_version=12
+warning[]=FIRE-4590|No firewall software installed|Install a host firewall
+warning[]=SSH-7408|SSH PermitRootLogin is configured|Set PermitRootLogin no
+suggestion[]=SSH-7402|PermitEmptyPasswords is not explicitly disabled|Set PermitEmptyPasswords no
+suggestion[]=ACCT-9622|Enable process accounting|Enable process accounting
+hardening_index=47

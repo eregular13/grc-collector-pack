@@ -33,3 +33,5 @@ farm/work/
 keep/work/
 prove/work/
 in/**/dropbox-*
+in/poam/
+in/assets/asset-ledger.json

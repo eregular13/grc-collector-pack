@@ -2,5 +2,10 @@
   "policy": {
     "name": "s3-encryption-missing",
     "resource": "aws.s3"
+  },
+  "execution": {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "start": 1790262000.123,
+    "end_time": 1790262001.456
   }
 }

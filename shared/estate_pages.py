@@ -11,14 +11,19 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
+import json
 import os
 import re
 import subprocess
+import unicodedata
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from shared.io_util import SKIP_INPUT_NAMES
 from shared.scan_time import extra_scan_raw, format_detection_date
 
 NOT_RECORDED = "not recorded"
@@ -64,6 +69,20 @@ REVIEWER_NEXT_STEP = "[reviewer: one sentence — not generated]"
 REVIEWER_NOT_REVIEWED = "not human-reviewed"
 
 SAMPLE_AUTH = "No client authorization applies. No client systems were touched."
+
+# Bookkeeping files are not scanner drops and are not hashed as fixtures.
+_AUTH_FILENAMES = ("AUTHORIZATION.txt", "AUTHORIZATION.md", "AUTH.txt")
+_HASH_SKIP_NAMES = frozenset(SKIP_INPUT_NAMES)
+_AUTH_PLACEHOLDERS = frozenset(
+    {"", "not recorded", "none", "null", "unknown", "n/a", "na", "-"}
+)
+_FIXTURE_HASH_CACHE: frozenset[str] | None = None
+_BYTES_FP_CACHE: dict[str, frozenset[str]] = {}
+_FIXTURE_MANIFEST_NAME = "FINGERPRINTS.json"
+# Prior-release hashes of restamped fixtures. The classifier accepts these
+# as SAMPLE; the exact on-disk files[] check ignores them.
+_LEGACY_SAMPLE_KEY = "legacy_sample_sha256"
+_PACK_DEMO_SCOPE = Path("dropbox") / "SCOPE.yaml"
 
 CLIENT_PAGE_FORBIDDEN = (
     "cycle ",
@@ -184,6 +203,125 @@ EXPORT_MD_REL = (
 EXPORT_OTHER_REL = (
     "import_preview/probo.json",
 )
+
+
+# ZWSP / BOM are invisible padding, not joiners. Strip them from display
+# the way #206 did. Other Cf (ZWNJ, ZWJ, word joiner, soft hyphen) stay
+# in the displayed name so Persian / Hindi / emoji sequences keep shape.
+_ZWSP_BOM = dict.fromkeys(map(ord, "\ufeff\u200b"), None)
+
+
+def _strip_format_chars(text: str) -> str:
+    """Drop Unicode category Cf (ZWSP, BOM, ZWNJ, ZWJ, word joiner, soft hyphen)."""
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
+
+
+def _trim_edges_and_zwsp(text: str) -> str:
+    """Display form: drop ZWSP/BOM, then leading/trailing whitespace and Cf."""
+    text = text.translate(_ZWSP_BOM)
+    text = text.strip()
+    while text and unicodedata.category(text[0]) == "Cf":
+        text = text[1:]
+    while text and unicodedata.category(text[-1]) == "Cf":
+        text = text[:-1]
+    return text.strip()
+
+
+def engagement_name(value: Any) -> str:
+    """Client / engagement display name. Empty or placeholder → '' (not quotes).
+
+    Emptiness uses the all-Cf-stripped copy. The returned display name keeps
+    joiners (ZWNJ/ZWJ) and only drops ZWSP/BOM plus edge Cf.
+    """
+    if value is None:
+        return ""
+    raw = str(value)
+    emptied = _strip_format_chars(raw).strip()
+    if not emptied:
+        return ""
+    if emptied == NOT_RECORDED:
+        return ""
+    if emptied.lower() in _AUTH_PLACEHOLDERS:
+        return ""
+    return _trim_edges_and_zwsp(raw)
+
+
+# Markdown / HTML metacharacters that must not stay raw in deliverables.
+# Hyphen, ampersand, apostrophe, and Unicode letters are left as-is so
+# names like O'Reilly & Co-Santé stay readable. Newlines are collapsed
+# separately so a name cannot open a heading or break a blockquote.
+_MD_META = frozenset("\\`*_{}[]()#!|~")
+_HTML_ENTS = {"<": "&lt;", ">": "&gt;"}
+_LINE_BREAKS = r"[\r\n\u2028\u2029\u0085\v\f]+"
+
+
+def _one_line(value: Any) -> str:
+    """Collapse line breaks. No markdown escaping — used for plain .txt too."""
+    text = _trim_edges_and_zwsp(str(value or ""))
+    if not text:
+        return ""
+    text = re.sub(_LINE_BREAKS, " ", text)
+    return re.sub(r"[ \t]+", " ", text).strip()
+
+
+def md_safe_text(value: Any) -> str:
+    """Neutralize markdown, HTML, and link syntax in operator-supplied text.
+
+    Used only on markdown / HTML surfaces (exec lede, banners, SCOPE_AND_TRUST,
+    README.md, poam.md tables). CSV estate columns and ESTATE.txt keep the raw
+    label — they are not markdown. ZWSP/BOM handling matches ``engagement_name``
+    (#206).
+    """
+    text = _one_line(value)
+    if not text:
+        return ""
+    out: list[str] = []
+    for ch in text:
+        if ch in _HTML_ENTS:
+            out.append(_HTML_ENTS[ch])
+        elif ch in _MD_META:
+            out.append("\\" + ch)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def md_code_span(value: Any) -> str:
+    """Markdown code span that cannot break out via a backtick in the value."""
+    text = _one_line(value).replace("`", "")
+    if not text:
+        text = NOT_RECORDED
+    return f"`{text}`"
+
+
+def _lede_label(label: str, kind: str, name: str) -> str:
+    shown = (label or "").strip()
+    if kind == "CLIENT":
+        return f"CLIENT: {name}" if name else "This assessment"
+    if shown.endswith(":") or shown in {"CLIENT:", "CLIENT"}:
+        return "This assessment"
+    return shown
+
+
+def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", client_name: Any = None) -> str:
+    """One clean exec-summary sentence. No empty quotes or dangling ' . '."""
+    if stamp is not None:
+        label = stamp.label
+        kind = stamp.kind
+        client_name = stamp.client_name
+    name = engagement_name(client_name)
+    shown = _lede_label(label, kind, name)
+    safe_name = md_safe_text(name)
+    safe_shown = md_safe_text(shown)
+    if kind == "CLIENT":
+        if safe_name:
+            return f"**CLIENT: {safe_name}**. {safe_name}."
+        return "**This assessment**."
+    if safe_name:
+        return f"**{safe_shown}**. {safe_name}."
+    if safe_shown:
+        return f"**{safe_shown}**."
+    return "**This assessment**."
 
 
 def recorded(value: Any) -> str:
@@ -320,6 +458,568 @@ def _marker_in(folder: Path | None, name: str) -> bool:
         return False
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_bytes(blob: bytes) -> str:
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _safe_is_file(path: Path) -> bool:
+    try:
+        return path.is_file()
+    except OSError:
+        return False
+
+
+def _safe_is_dir(path: Path | None) -> bool:
+    if path is None:
+        return False
+    try:
+        return path.is_dir()
+    except OSError:
+        return False
+
+
+def _hashable_file(path: Path) -> bool:
+    if not _safe_is_file(path):
+        return False
+    if path.name.startswith("."):
+        return False
+    if path.name == _FIXTURE_MANIFEST_NAME:
+        return False
+    return path.name not in _HASH_SKIP_NAMES
+
+
+def _json_dumps(obj: Any) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _canon_json_obj(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {str(k): _canon_json_obj(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        items = [_canon_json_obj(x) for x in obj]
+        try:
+            return sorted(items, key=_json_dumps)
+        except TypeError:
+            return items
+    return obj
+
+
+def _try_canonical_json(text: str) -> bytes | None:
+    stripped = text.lstrip()
+    if not stripped or stripped[0] not in "{[":
+        return None
+    try:
+        obj = json.loads(text)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+    return (_json_dumps(_canon_json_obj(obj)) + "\n").encode("utf-8")
+
+
+def _try_canonical_jsonl(text: str) -> bytes | None:
+    rows = [ln.strip() for ln in text.split("\n") if ln.strip()]
+    if len(rows) < 2:
+        return None
+    dumps: list[str] = []
+    for ln in rows:
+        if ln[0] not in "{[":
+            return None
+        try:
+            dumps.append(_json_dumps(_canon_json_obj(json.loads(ln))))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+    return ("\n".join(sorted(dumps)) + "\n").encode("utf-8")
+
+
+def _collapse_text(text: str) -> str:
+    lines: list[str] = []
+    for ln in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        collapsed = " ".join(ln.split())
+        if collapsed:
+            lines.append(collapsed)
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _try_canonical_xml(data: bytes) -> bytes | None:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return None
+
+    def walk(el: ET.Element) -> None:
+        items = sorted(el.attrib.items())
+        el.attrib.clear()
+        el.attrib.update(items)
+        if el.text is not None:
+            el.text = el.text.strip() or None
+        if el.tail is not None:
+            el.tail = el.tail.strip() or None
+        for child in el:
+            walk(child)
+
+    walk(root)
+    return ET.tostring(root, encoding="utf-8")
+
+
+_CSV_DELIMS = (",", ";", "\t", "|")
+
+
+def _strip_wrapping_csv_quotes(text: str) -> str:
+    """Undo a QUOTE_ALL re-save that wrapped each whole line in quotes."""
+    out: list[str] = []
+    for ln in text.split("\n"):
+        s = ln.strip()
+        if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            out.append(s[1:-1].replace('""', '"'))
+        else:
+            out.append(ln)
+    return "\n".join(out)
+
+
+def _csv_rows(text: str, delim: str) -> list[list[str]] | None:
+    try:
+        rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+    except csv.Error:
+        return None
+    if not rows or all(len(r) <= 1 for r in rows):
+        return None
+    return rows
+
+
+def _rows_to_csv_canon(rows: list[list[str]]) -> bytes:
+    header = [" ".join(c.split()) for c in rows[0]]
+    body = sorted(tuple(" ".join(c.split()) for c in r) for r in rows[1:])
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(header)
+    for row in body:
+        writer.writerow(row)
+    return buf.getvalue().encode("utf-8")
+
+
+def _canonical_csv_forms(text: str) -> list[bytes]:
+    """One canon per delimiter that parses, plus an unquoted-line retry.
+
+    A semicolon SAMPLE re-saved with a comma reader + QUOTE_ALL must
+    still share a fingerprint with the catalog (Metis #186 v3).
+    """
+    if not text.strip():
+        return []
+    texts = [text]
+    unquoted = _strip_wrapping_csv_quotes(text)
+    if unquoted != text:
+        texts.append(unquoted)
+    seen: list[bytes] = []
+    for src in texts:
+        for delim in _CSV_DELIMS:
+            if delim not in src:
+                continue
+            rows = _csv_rows(src, delim)
+            if rows is None:
+                continue
+            canon = _rows_to_csv_canon(rows)
+            if canon not in seen:
+                seen.append(canon)
+    return seen
+
+
+def _try_canonical_csv(text: str) -> bytes | None:
+    forms = _canonical_csv_forms(text)
+    return forms[0] if forms else None
+
+
+def _edge_normalize_bytes(data: bytes) -> bytes:
+    """BOM / CRLF→LF / trailing whitespace per line. Safe on binary."""
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    body = body.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    lines = [ln.rstrip(b" \t") for ln in body.split(b"\n")]
+    while lines and lines[0] == b"":
+        lines.pop(0)
+    while lines and lines[-1] == b"":
+        lines.pop()
+    return b"\n".join(lines) + (b"\n" if lines else b"")
+
+
+def _collapse_bytes(data: bytes) -> bytes:
+    """Collapse ASCII whitespace runs; drop blank lines. Safe on binary."""
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    body = body.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    lines: list[bytes] = []
+    for ln in body.split(b"\n"):
+        parts = ln.split()
+        if parts:
+            lines.append(b" ".join(parts))
+    return b"\n".join(lines) + (b"\n" if lines else b"")
+
+
+def normalize_fixture_bytes(data: bytes) -> bytes:
+    """Best single canonical form: XML / JSON(L) / CSV, else collapsed bytes."""
+    forms = _normalized_forms(data)
+    if not forms:
+        return data
+    if len(forms) > 2:
+        return forms[2]
+    return forms[-1]
+
+
+def _normalized_forms(data: bytes) -> list[bytes]:
+    """Edge + collapsed bytes always; structured canons when UTF-8."""
+    forms: list[bytes] = []
+    for blob in (_edge_normalize_bytes(data), _collapse_bytes(data)):
+        if blob not in forms:
+            forms.append(blob)
+    if b"\x00" in data[:8192]:
+        return forms
+    body = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    xml = _try_canonical_xml(body)
+    if xml is not None:
+        forms.append(xml)
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError:
+        return forms
+    text_eol = text.replace("\r\n", "\n").replace("\r", "\n")
+    for fn in (_try_canonical_json, _try_canonical_jsonl):
+        canon = fn(text_eol)
+        if canon is not None:
+            forms.append(canon)
+    for canon in _canonical_csv_forms(text_eol):
+        if canon not in forms:
+            forms.append(canon)
+    collapsed = _collapse_text(text_eol).encode("utf-8")
+    if collapsed not in forms:
+        forms.append(collapsed)
+    return forms
+
+
+def fingerprints_from_bytes(data: bytes) -> frozenset[str]:
+    raw = _sha256_bytes(data)
+    hit = _BYTES_FP_CACHE.get(raw)
+    if hit is not None:
+        return hit
+    fps = {raw}
+    for form in _normalized_forms(data):
+        fps.add(_sha256_bytes(form))
+    frozen = frozenset(fps)
+    _BYTES_FP_CACHE[raw] = frozen
+    return frozen
+
+
+def file_content_fingerprints(path: Path) -> frozenset[str]:
+    """Raw SHA-256 plus every normalized form. Empty if the file is unreadable."""
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return frozenset()
+    return fingerprints_from_bytes(data)
+
+
+def _fixtures_root(fixtures_root: Path | None = None) -> Path | None:
+    if fixtures_root is not None:
+        return fixtures_root
+    try:
+        from shared.io_util import root_dir
+
+        return root_dir() / "fixtures"
+    except Exception:
+        return None
+
+
+def _pack_root() -> Path | None:
+    try:
+        from shared.io_util import root_dir
+
+        return root_dir()
+    except Exception:
+        return None
+
+
+def _legacy_sample_hashes(manifest: Any) -> frozenset[str]:
+    """Accepted SAMPLE fingerprints from a prior release (not on-disk files[])."""
+    if not isinstance(manifest, dict):
+        return frozenset()
+    raw = manifest.get(_LEGACY_SAMPLE_KEY)
+    out: set[str] = set()
+    if isinstance(raw, list):
+        for item in raw:
+            text = str(item or "").strip().lower()
+            if len(text) == 64 and all(c in "0123456789abcdef" for c in text):
+                out.add(text)
+        return frozenset(out)
+    if isinstance(raw, dict):
+        for val in raw.values():
+            if isinstance(val, dict):
+                for key in ("raw", "norm"):
+                    text = str(val.get(key) or "").strip().lower()
+                    if len(text) == 64 and all(c in "0123456789abcdef" for c in text):
+                        out.add(text)
+            elif isinstance(val, list):
+                out.update(_legacy_sample_hashes({_LEGACY_SAMPLE_KEY: val}))
+    return frozenset(out)
+
+
+def build_fixture_manifest(fixtures_root: Path) -> dict[str, Any]:
+    files: dict[str, dict[str, str]] = {}
+    try:
+        paths = sorted(fixtures_root.rglob("*"))
+    except OSError as exc:
+        raise OSError(str(exc)) from exc
+    for path in paths:
+        if not _hashable_file(path):
+            continue
+        data = path.read_bytes()
+        rel = str(path.relative_to(fixtures_root)).replace("\\", "/")
+        files[rel] = {
+            "raw": _sha256_bytes(data),
+            "norm": _sha256_bytes(normalize_fixture_bytes(data)),
+        }
+    out: dict[str, Any] = {"version": 1, "files": files}
+    existing = _load_manifest(fixtures_root)
+    legacy = existing.get(_LEGACY_SAMPLE_KEY) if isinstance(existing, dict) else None
+    if legacy not in (None, "", [], {}):
+        out[_LEGACY_SAMPLE_KEY] = legacy
+    return out
+
+
+def _manifest_files_match(expected: Any, on_disk: dict[str, dict[str, str]]) -> bool:
+    exp_files = expected.get("files") if isinstance(expected, dict) else None
+    return isinstance(exp_files, dict) and bool(exp_files) and exp_files == on_disk
+
+
+def _load_manifest(root: Path) -> dict[str, Any] | None:
+    dest = root / _FIXTURE_MANIFEST_NAME
+    try:
+        if not dest.is_file():
+            return None
+        parsed = json.loads(dest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _manifest_matches(root: Path, *, required: bool) -> bool:
+    """True when on-disk fixtures match FINGERPRINTS.json.
+
+    A missing manifest is allowed only for small custom test trees
+    (`required=False`). Pack fixtures and any copy that still ships
+    the manifest must match exactly or the catalog is untrusted.
+    Stat/read failures (chmod 000) fail closed.
+    """
+    dest = root / _FIXTURE_MANIFEST_NAME
+    try:
+        exists = dest.is_file()
+    except OSError:
+        return False
+    if not exists:
+        return not required
+    try:
+        expected = json.loads(dest.read_text(encoding="utf-8"))
+        got = build_fixture_manifest(root)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return False
+    return _manifest_files_match(expected, got.get("files") if isinstance(got, dict) else None)
+
+
+def _walk_hashable_bytes(root: Path) -> list[tuple[str, bytes]] | None:
+    try:
+        out: list[tuple[str, bytes]] = []
+        for path in root.rglob("*"):
+            if not _hashable_file(path):
+                continue
+            rel = str(path.relative_to(root)).replace("\\", "/")
+            out.append((rel, path.read_bytes()))
+        return out
+    except OSError:
+        return None
+
+
+def fixture_content_hashes(fixtures_root: Path | None = None) -> frozenset[str]:
+    """SHA-256 set of bundled fixture fingerprints. Cached for the process.
+
+    Unreadable fixtures or a pack-manifest mismatch fail closed (empty set)
+    so classify_estate cannot claim CLIENT.
+    """
+    global _FIXTURE_HASH_CACHE
+    use_cache = fixtures_root is None
+    if use_cache and _FIXTURE_HASH_CACHE is not None:
+        return _FIXTURE_HASH_CACHE
+    root = _fixtures_root(fixtures_root)
+    found: set[str] = set()
+    trusted = True
+    if not _safe_is_dir(root):
+        trusted = False
+    else:
+        assert root is not None
+        blobs = _walk_hashable_bytes(root)
+        if blobs is None:
+            trusted = False
+            blobs = []
+        try:
+            pack = _pack_root()
+            pack_fixtures = pack / "fixtures" if pack is not None else None
+            is_pack = bool(
+                pack_fixtures is not None
+                and root.resolve() == pack_fixtures.resolve()
+            )
+        except OSError:
+            is_pack = True
+        expected = _load_manifest(root)
+        on_disk: dict[str, dict[str, str]] = {}
+        for rel, data in blobs:
+            fps = fingerprints_from_bytes(data)
+            if not fps:
+                trusted = False
+                break
+            found.update(fps)
+            on_disk[rel] = {
+                "raw": _sha256_bytes(data),
+                "norm": _sha256_bytes(normalize_fixture_bytes(data)),
+            }
+        if trusted:
+            if expected is None:
+                if is_pack:
+                    trusted = False
+            elif not _manifest_files_match(expected, on_disk):
+                trusted = False
+            else:
+                found.update(_legacy_sample_hashes(expected))
+    result = frozenset(found) if trusted else frozenset()
+    if use_cache:
+        _FIXTURE_HASH_CACHE = result
+    return result
+
+
+def in_dir_fixture_hits(
+    in_path: Path | None,
+    *,
+    fixtures_root: Path | None = None,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return (fixture-matching relative paths, other input relative paths).
+
+    Unreadable inputs and an empty/untrusted fixture catalog fail closed:
+    every scanner drop is treated as a fixture hit so classify_estate
+    cannot claim CLIENT.
+    """
+    if in_path is None or not _safe_is_dir(in_path):
+        return (), ()
+    catalog = fixture_content_hashes(fixtures_root)
+    hits: list[str] = []
+    others: list[str] = []
+    try:
+        paths = [p for p in in_path.rglob("*") if _hashable_file(p)]
+    except OSError:
+        return ("<unreadable>",), ()
+    if not catalog and paths:
+        rels = []
+        for path in paths:
+            try:
+                rels.append(str(path.relative_to(in_path)).replace("\\", "/"))
+            except OSError:
+                rels.append(path.name)
+        return tuple(rels), ()
+    for path in paths:
+        try:
+            rel = str(path.relative_to(in_path)).replace("\\", "/")
+        except OSError:
+            hits.append(path.name)
+            continue
+        fps = file_content_fingerprints(path)
+        if not fps or (fps & catalog):
+            hits.append(rel)
+        else:
+            others.append(rel)
+    return tuple(hits), tuple(others)
+
+
+def _looks_non_auth(value: str) -> bool:
+    blob = str(value or "").strip().lower()
+    if blob in _AUTH_PLACEHOLDERS:
+        return True
+    return any(
+        tok in blob
+        for tok in ("demo", "sample", "lab fixture", "not a client", "not recorded")
+    )
+
+
+def _parse_authorization_file(path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for raw in text.splitlines():
+        line = raw.strip()
+        if ":" not in line:
+            continue
+        key, val = line.split(":", 1)
+        key = key.strip().lower().lstrip("- ")
+        val = val.strip().strip("\"'")
+        if key in {"authorized by", "authorizer", "by"} and val:
+            out["authorizer"] = val
+        elif key in {"date", "authorized on", "on"} and val:
+            out["date"] = val
+        elif key in {"reference", "ref", "scope"} and val:
+            out["ref"] = val
+    return out
+
+
+def client_authorization_record(
+    env: dict[str, str] | None = None,
+    in_dir: Path | None = None,
+) -> dict[str, str] | None:
+    """A CLIENT label needs a real authorization record, not just a name.
+
+    Accepted evidence: GRC_AUTHORIZER + GRC_AUTH_DATE, or in/AUTHORIZATION.txt
+    (or AUTHORIZATION.md / AUTH.txt) with those fields. DEMO / sample wording
+    and the pack DEMO consent file never count.
+    """
+    src = env if env is not None else {k: str(v) for k, v in os.environ.items()}
+    authorizer = str(src.get("GRC_AUTHORIZER") or "").strip()
+    auth_date = str(src.get("GRC_AUTH_DATE") or "").strip()
+    scope_ref = str(src.get("GRC_SCOPE_REF") or "").strip()
+    if in_dir is not None and in_dir.is_dir():
+        for name in _AUTH_FILENAMES:
+            path = in_dir / name
+            if not path.is_file():
+                continue
+            parsed = _parse_authorization_file(path)
+            authorizer = authorizer or parsed.get("authorizer", "")
+            auth_date = auth_date or parsed.get("date", "")
+            scope_ref = scope_ref or parsed.get("ref", "")
+    if _looks_non_auth(authorizer) or _looks_non_auth(auth_date):
+        return None
+    return {
+        "authorizer": authorizer,
+        "date": auth_date,
+        "ref": scope_ref,
+    }
+
+
+def _is_pack_demo_scope(path: Path) -> bool:
+    """True for the committed DEMO dropbox/SCOPE.yaml (or a copy of it)."""
+    try:
+        from shared.io_util import root_dir
+
+        demo = (root_dir() / _PACK_DEMO_SCOPE).resolve()
+        if path.resolve() == demo:
+            return True
+    except Exception:
+        pass
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    blob = text.lower()
+    return "demo-written-consent" in blob or "demo — not a client estate" in blob
+
+
 def _fallback_from_records(records: list[dict]) -> list[str]:
     names: list[str] = []
     for rec in records:
@@ -343,10 +1043,36 @@ class EstateStamp:
     fallback_files: tuple[str, ...] = ()
     client_name: str = NOT_RECORDED
 
+    def banner_label(self) -> str:
+        label = (self.label or "").strip()
+        if self.kind == "CLIENT" and not engagement_name(self.client_name):
+            return "This assessment"
+        if not label or label in {"CLIENT:", "CLIENT"}:
+            return "This assessment"
+        return label
+
+    def banner_sentence(self, *, markdown: bool = False) -> str:
+        """MIXED fallback-file names are escaped only on markdown surfaces."""
+        if self.kind == "MIXED":
+            fb = ", ".join(self.fallback_files) if self.fallback_files else NOT_RECORDED
+            if markdown:
+                fb = md_safe_text(fb)
+            return SENTENCE_FOR_KIND["MIXED"].format(fallback_files=fb)
+        return self.sentence
+
     def banner_md(self) -> str:
+        label = md_safe_text(self.banner_label())
         return (
-            f"> **{self.label}**: {self.sentence}\n"
-            f"> Run `{self.run_id}` · generated {self.generated_at_local} · pack `{self.pack_commit}`"
+            f"> **{label}**: {self.banner_sentence(markdown=True)}\n"
+            f"> Run {md_code_span(self.run_id)} · generated {_one_line(self.generated_at_local) or NOT_RECORDED} · pack {md_code_span(self.pack_commit)}"
+        )
+
+    def banner_plain(self) -> str:
+        """ESTATE.txt sidecar. Same shape, no markdown escaping."""
+        label = _one_line(self.banner_label()) or "This assessment"
+        return (
+            f"> **{label}**: {self.banner_sentence(markdown=False)}\n"
+            f"> Run {_one_line(self.run_id) or NOT_RECORDED} · generated {_one_line(self.generated_at_local) or NOT_RECORDED} · pack {_one_line(self.pack_commit) or NOT_RECORDED}"
         )
 
     def banner_lines(self) -> list[str]:
@@ -419,6 +1145,18 @@ def classify_estate(
     if dropbox_demo and raw_label not in {"LAB", "DEMO"} and not lab_marker:
         sample_marker = True
 
+    fixture_hits, fixture_others = in_dir_fixture_hits(in_path)
+    for rel in fixture_hits:
+        if rel not in fb:
+            fb.append(rel)
+    # Fixture bytes forbid CLIENT (see client_ok). SAMPLE/MIXED only when the
+    # run is not an explicit LAB dest_in — fixtures/lab-* is copied into in/
+    # on the operator LAB path and must stay LAB, never a client KEEP.
+    if fixture_hits and fixture_others:
+        signals.append("MIXED")
+    elif fixture_hits and raw_label != "LAB" and not lab_marker:
+        signals.append("SAMPLE")
+
     if drop_fb and (mixed_records or n_demo < n_records or lab_marker):
         signals.append("MIXED")
     elif drop_fb:
@@ -446,11 +1184,17 @@ def classify_estate(
     if name and _looks_non_client_name(name):
         name = ""
 
+    auth = client_authorization_record(env, in_path)
+    has_client_artifacts = bool(n_records) or bool(fixture_others)
+
     kind = most_restrictive(*signals) if signals else "SAMPLE"
 
     client_ok = (
         raw_label == "CLIENT"
         and bool(name)
+        and auth is not None
+        and has_client_artifacts
+        and not fixture_hits
         and not drop_fb
         and n_demo == 0
         and not lab_marker
@@ -532,7 +1276,7 @@ def write_estate_sidecar(sink_dir: Path, stamp: EstateStamp, *, note: str = "") 
         )
     )
     path = dest / "ESTATE.txt"
-    path.write_text(stamp.banner_md() + "\n\n" + extra + "\n", encoding="utf-8")
+    path.write_text(stamp.banner_plain() + "\n\n" + extra + "\n", encoding="utf-8")
     return path
 
 
@@ -551,7 +1295,8 @@ def prepend_banner_md(body: str, stamp: EstateStamp) -> str:
 def assert_banner_present(text: str, stamp: EstateStamp | None = None) -> None:
     blob = text
     if stamp is not None:
-        if stamp.label not in blob:
+        needles = {stamp.label, md_safe_text(stamp.banner_label()), stamp.banner_label()}
+        if not any(n and n in blob for n in needles):
             raise AssertionError(f"estate banner label missing: {stamp.label}")
         if stamp.sentence.split(".")[0] not in blob and stamp.sentence not in blob:
             raise AssertionError("estate banner sentence missing")
@@ -607,6 +1352,34 @@ def _risk_key(rec: dict, mapped: dict | None) -> tuple[int, int, int, str]:
     poam = 1 if mapped.get("include_poam") else 0
     refs = 1 if mapped.get("framework_refs") else 0
     return (SEV_RANK.get(sev, 9), -poam, -refs, str(rec.get("ref_id") or ""))
+
+
+def _exec_top_findings(
+    findings: list[dict],
+    mapped_by_ref: dict[str, dict],
+    n: int,
+) -> list[dict]:
+    """Top-N by risk, one row per host/port EGP (pack_drop id ≠ weakness)."""
+    from shared.poam_ledger import fp_v1
+
+    ranked: list[dict] = []
+    seen: set[str] = set()
+    def _exec_sort(rec: dict) -> tuple:
+        sev, poam, refs, ref = _risk_key(rec, mapped_by_ref.get(str(rec.get("ref_id"))))
+        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        port_first = 0 if str(extra.get("check_id") or "").startswith("nmap-port-") else 1
+        return (sev, poam, refs, port_first, ref)
+
+    ordered = sorted(findings, key=_exec_sort)
+    for rec in ordered:
+        ident = fp_v1(rec)
+        if ident in seen:
+            continue
+        seen.add(ident)
+        ranked.append(rec)
+        if len(ranked) >= n:
+            break
+    return ranked
 
 
 def _frameworks_used(mapped_by_ref: dict[str, dict]) -> str:
@@ -727,6 +1500,23 @@ def _dated_counts(records: list[dict]) -> tuple[int, int]:
     return dated, len(records)
 
 
+MERGED_INTO_PREFIX = "merged_into:"
+
+
+def is_merged_into_alias(reason: str) -> bool:
+    """True for excluded.csv merged_into:<EGP> aliases (pack_drop twins).
+
+    Distinct from PageContext.merged / duplicates_merged (raw-record collapse).
+    merged_into rows stay off the register; they are 0 until that change lands.
+    """
+    text = str(reason or "")
+    return text.startswith(MERGED_INTO_PREFIX) and len(text) > len(MERGED_INTO_PREFIX)
+
+
+def count_merged_aliases(reasons: Iterable[str]) -> int:
+    return sum(1 for reason in reasons if is_merged_into_alias(reason))
+
+
 def _reconcile(
     findings_n: int,
     poam_n: int,
@@ -734,48 +1524,114 @@ def _reconcile(
     *,
     vuln_n: int = 0,
     excluded_poam: int = 0,
+    kind_excluded: int = 0,
     merged: str = NOT_RECORDED,
+    merged_aliases: int = 0,
 ) -> str | None:
-    if findings_n == poam_n == risk_n:
+    """Identity: POA&M + (excluded − merged) + kind-excluded = register
+    and weaknesses + kind-excluded − merged = register.
+
+    Printed sums are the computed totals, never the register count. A
+    mismatch always warns, even when extras (duplicates_merged) exist.
+    kind:excluded rows stay on the register as accept (#181).
+    """
+    merged_n = max(0, int(merged_aliases or 0))
+    if (
+        findings_n == poam_n == risk_n
+        and not excluded_poam
+        and not kind_excluded
+        and not merged_n
+    ):
         return None
-    reasons: list[str] = []
-    if vuln_n and findings_n + vuln_n == risk_n:
-        reasons.append(
+    plan_sum = poam_n + (excluded_poam - merged_n) + kind_excluded
+    weak_sum = findings_n + kind_excluded - merged_n
+    if merged_n:
+        equations = (
+            f"{poam_n} + ({excluded_poam} - {merged_n}) + {kind_excluded} = {plan_sum}; "
+            f"{findings_n} + {kind_excluded} - {merged_n} = {weak_sum}"
+        )
+    else:
+        equations = (
+            f"{poam_n} + {excluded_poam} + {kind_excluded} = {plan_sum}; "
+            f"{findings_n} + {kind_excluded} = {weak_sum}"
+        )
+    parts: list[str] = [
+        (
+            f"{findings_n} weaknesses, {poam_n} POA&M, {excluded_poam} excluded, "
+            f"{kind_excluded} kind-excluded, {risk_n} register "
+            f"({equations})."
+        )
+    ]
+    if kind_excluded:
+        parts.append(
+            f"{kind_excluded} kind-excluded records stay on the register as "
+            "accept and are not POA&M rows."
+        )
+    if merged_n:
+        parts.append(f"{merged_n} merged-into aliases stay off the register.")
+    extras: list[str] = []
+    if vuln_n and findings_n + kind_excluded + vuln_n == risk_n and findings_n + kind_excluded != risk_n:
+        extras.append(
             f"{vuln_n} vulnerability-class rows are counted on the risk register "
             "but not in findings.csv"
         )
-    if excluded_poam:
-        reasons.append(f"{excluded_poam} findings were not included in the POA&M")
     if merged not in {NOT_RECORDED, "0"} and merged.isdigit() and int(merged) > 0:
-        reasons.append(f"{merged} duplicates were merged")
-    if findings_n != poam_n and not excluded_poam:
-        pass
-    if reasons:
-        return (
-            f"{findings_n} findings produced {poam_n} POA&M rows and {risk_n} "
-            f"risk-register entries because {'; '.join(reasons)}."
-        )
-    return "counts not reconciled"
+        extras.append(f"{merged} duplicates were merged")
+    adds_up = plan_sum == risk_n and weak_sum == risk_n
+    if extras:
+        parts.append("Also: " + "; ".join(extras) + ".")
+    if not adds_up:
+        parts.append("counts not reconciled.")
+    return "\n".join(parts)
 
 
-def _engagement_window(records: list[dict]) -> tuple[str, str]:
-    start = _env(None, "GRC_SCAN_START")
-    end = _env(None, "GRC_SCAN_END")
+def _read_scope_window(path: Path) -> tuple[str, str]:
+    start = end = ""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return start, end
+    for line in text.splitlines():
+        if line.strip().startswith("start:"):
+            start = start or line.split(":", 1)[1].strip().strip("\"'")
+        if line.strip().startswith("end:"):
+            end = end or line.split(":", 1)[1].strip().strip("\"'")
+    return start, end
+
+
+def _engagement_window(
+    records: list[dict],
+    *,
+    kind: str | None = None,
+    env: dict[str, str] | None = None,
+) -> tuple[str, str]:
+    """Assessment window. Never inherit the DEMO SCOPE dates on non-DEMO runs."""
+    src = env if env is not None else None
+    start = _env(src, "GRC_SCAN_START")
+    end = _env(src, "GRC_SCAN_END")
     if start or end:
         return recorded(start), recorded(end)
-    try:
-        from shared.io_util import root_dir
+    scope_path = _env(src, "GRC_SCOPE_PATH")
+    candidates: list[Path] = []
+    if scope_path:
+        candidates.append(Path(scope_path))
+    if (kind or "").upper() == "DEMO":
+        try:
+            from shared.io_util import root_dir
 
-        scope = root_dir() / "dropbox" / "SCOPE.yaml"
-        if scope.is_file():
-            text = scope.read_text(encoding="utf-8")
-            for line in text.splitlines():
-                if line.strip().startswith("start:"):
-                    start = start or line.split(":", 1)[1].strip().strip("\"'")
-                if line.strip().startswith("end:"):
-                    end = end or line.split(":", 1)[1].strip().strip("\"'")
-    except OSError:
-        pass
+            candidates.append(root_dir() / _PACK_DEMO_SCOPE)
+        except Exception:
+            pass
+    for path in candidates:
+        if not path.is_file():
+            continue
+        if (kind or "").upper() != "DEMO" and _is_pack_demo_scope(path):
+            continue
+        s, e = _read_scope_window(path)
+        start = start or s
+        end = end or e
+        if start or end:
+            break
     times: list[str] = []
     for rec in records:
         stamp = _artifact_scan_stamp(rec)
@@ -839,7 +1695,8 @@ def format_coverage_gaps(sensor_rows: list[dict] | None) -> list[str]:
         return lines
     for gap in gaps:
         lines.append(
-            f"- {gap['source']}: {gap['files']} ({gap['status']} — {gap['reason']})"
+            f"- {md_safe_text(gap['source'])}: {md_safe_text(gap['files'])} "
+            f"({md_safe_text(gap['status'])} — {md_safe_text(gap['reason'])})"
         )
     return lines
 
@@ -857,6 +1714,8 @@ class PageContext:
     poam_n: int = 0
     merged: str = NOT_RECORDED
     excluded_poam: int = 0
+    kind_excluded: int = 0
+    merged_aliases: int = 0
     in_dir: Path | None = None
     generated_at: str = ""
     run_delta: dict[str, int] = field(default_factory=dict)
@@ -865,12 +1724,7 @@ class PageContext:
 
 def build_executive_summary(ctx: PageContext) -> str:
     stamp = ctx.stamp
-    org = (
-        stamp.client_name
-        if stamp.kind == "CLIENT" and stamp.client_name != NOT_RECORDED
-        else recorded(stamp.client_name if stamp.client_name != NOT_RECORDED else None)
-    )
-    scan_start, scan_end = _engagement_window(ctx.records)
+    scan_start, scan_end = _engagement_window(ctx.records, kind=stamp.kind)
     dated_n, dated_total = _dated_counts(ctx.records)
     find_sev = _count_severities(ctx.findings)
     poam_sev = _count_severities(ctx.poam_rows)
@@ -883,7 +1737,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{stamp.label}**. {org}. Assessment window {scan_start} to {scan_end} ({dated_n} of {dated_total} rows dated).",
+        f"{exec_lede(stamp)} Assessment window {scan_start} to {scan_end} ({dated_n} of {dated_total} rows dated).",
         "",
         "### What we found",
         REVIEWER_WHAT_WE_FOUND,
@@ -900,32 +1754,40 @@ def build_executive_summary(ctx: PageContext) -> str:
         lines.append(f"| {sev.title()} | {n_f} | {n_p} | {merged_by[sev]} |")
     lines.append(f"| **Total** | {tot_f} | {tot_p} | {merged_total} |")
     lines.append("")
+    headline_open = int(ctx.poam_n or tot_p)
+    lines.append(f"Open POA&M (poam.csv): {headline_open}")
+    lines.append("")
     if ctx.run_delta:
         lines.append(
             "Changed since last run: "
-            f"open={int(ctx.run_delta.get('open') or 0)} "
+            f"open={headline_open} "
             f"new={int(ctx.run_delta.get('new') or 0)} "
             f"pending verification={int(ctx.run_delta.get('pending_verification') or 0)} "
             f"reopened={int(ctx.run_delta.get('reopened') or 0)} "
             f"closed={int(ctx.run_delta.get('closed') or 0)}."
         )
+        ledger_open = int(ctx.run_delta.get("ledger_open") or 0)
+        if ledger_open and ledger_open != headline_open:
+            lines.append(f"Ledger open including excluded: {ledger_open}.")
         lines.append("")
+    weaknesses_n = ctx.findings_csv_n + ctx.vuln_n or tot_f
     recon = _reconcile(
-        tot_f,
-        ctx.poam_n or tot_p,
+        weaknesses_n,
+        headline_open,
         ctx.risk_n or tot_f,
         vuln_n=ctx.vuln_n,
         excluded_poam=ctx.excluded_poam,
+        kind_excluded=ctx.kind_excluded,
         merged=ctx.merged,
+        merged_aliases=ctx.merged_aliases,
     )
     if recon:
         lines.append(recon)
         lines.append("")
 
-    ranked = sorted(
-        ctx.findings,
-        key=lambda rec: _risk_key(rec, ctx.mapped_by_ref.get(str(rec.get("ref_id")))),
-    )[: MAX_EXEC_BODY_ROWS["top_n"]]
+    ranked = _exec_top_findings(
+        ctx.findings, ctx.mapped_by_ref, MAX_EXEC_BODY_ROWS["top_n"]
+    )
     lines.extend(
         [
             "### Fix these first (top 5 by risk, not by scanner severity alone)",
@@ -935,13 +1797,15 @@ def build_executive_summary(ctx: PageContext) -> str:
     )
     for i, rec in enumerate(ranked, 1):
         mapped = ctx.mapped_by_ref.get(str(rec.get("ref_id"))) or {}
-        weakness = recorded(rec.get("name") or rec.get("ref_id"))
+        weakness = md_safe_text(recorded(rec.get("name") or rec.get("ref_id")))
         assets = rec.get("assets") or []
-        affected = recorded("|".join(str(a) for a in assets) if assets else None)
-        action = recorded(mapped.get("recommended_fix"))
+        affected = md_safe_text(
+            recorded("|".join(str(a) for a in assets) if assets else None)
+        )
+        action = md_safe_text(recorded(mapped.get("recommended_fix")))
         ref = recorded(rec.get("ref_id"))
         lines.append(
-            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | `{ref}` |"
+            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | {md_code_span(ref)} |"
         )
     if not ranked:
         lines.append(
@@ -999,6 +1863,7 @@ def build_executive_summary(ctx: PageContext) -> str:
     return _fit_one_page(
         "\n".join(lines),
         keep_tails=(
+            "Open POA&M (poam.csv):",
             "### What this does not tell you",
             COVERAGE_GAPS_HEADING,
             "### Next step",
@@ -1012,16 +1877,23 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{stamp.label}**. Run `{stamp.run_id}`, pack `{stamp.pack_commit}`, generated {stamp.generated_at_local}.",
+        f"**{md_safe_text(stamp.banner_label())}**. Run {md_code_span(stamp.run_id)}, pack {md_code_span(stamp.pack_commit)}, generated {_one_line(stamp.generated_at_local) or NOT_RECORDED}.",
         "",
         "### Authorization",
     ]
     if stamp.kind in {"SAMPLE", "DEMO", "LAB", "MIXED"}:
         lines.append(f"- {SAMPLE_AUTH}")
     else:
-        authorizer = recorded(_env(None, "GRC_AUTHORIZER"))
-        auth_date = recorded(_env(None, "GRC_AUTH_DATE"))
-        scope_ref = recorded(_env(None, "GRC_SCOPE_REF"))
+        auth = client_authorization_record(None, ctx.in_dir)
+        authorizer = md_safe_text(
+            recorded((auth or {}).get("authorizer") or _env(None, "GRC_AUTHORIZER"))
+        )
+        auth_date = md_safe_text(
+            recorded((auth or {}).get("date") or _env(None, "GRC_AUTH_DATE"))
+        )
+        scope_ref = md_safe_text(
+            recorded((auth or {}).get("ref") or _env(None, "GRC_SCOPE_REF"))
+        )
         lines.append(
             f"- Authorized by: {authorizer} on {auth_date}. Reference: {scope_ref}."
         )
@@ -1042,11 +1914,15 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     else:
         for row in inside:
             lines.append(
-                f"| {row['area']} | {row['targets']} | {row['tool']} | {row['version']} | {row['collected']} | {row['records']} |"
+                f"| {md_safe_text(row['area'])} | {md_safe_text(row['targets'])} | "
+                f"{md_safe_text(row['tool'])} | {md_safe_text(row['version'])} | "
+                f"{md_safe_text(row['collected'])} | {md_safe_text(row['records'])} |"
             )
     lines.append("")
     lines.append(
-        "Out of scope, or no data supplied: " + _out_of_scope_phrase(coverage_rows, outside) + "."
+        "Out of scope, or no data supplied: "
+        + md_safe_text(_out_of_scope_phrase(coverage_rows, outside))
+        + "."
     )
     lines.append("")
     lines.extend(format_coverage_gaps(ctx.sensor_rows))
@@ -1057,6 +1933,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     reviewer = recorded(_env(None, "GRC_REVIEWER"))
     if reviewer == NOT_RECORDED:
         reviewer = REVIEWER_NOT_REVIEWED
+    else:
+        reviewer = md_safe_text(reviewer)
     if who == NOT_RECORDED:
         method_1 = (
             "1. Scanner output was supplied as files. The pack parses files only. "
@@ -1064,7 +1942,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
         )
     else:
         method_1 = (
-            f"1. Scanner output was supplied as files, or collected by {who} "
+            f"1. Scanner output was supplied as files, or collected by {md_safe_text(who)} "
             "under the authorization above. The pack parses files only. "
             "It does not run exploits, log in to client systems, or call client APIs."
         )
@@ -1085,8 +1963,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
             "",
             "### Integrity and traceability",
             "- Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.",
-            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with `{recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST')}`.",
-            f"- Contact for questions or corrections: {recorded(_env(None, 'GRC_CONTACT'))}.",
+            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST'))}.",
+            f"- Contact for questions or corrections: {md_safe_text(recorded(_env(None, 'GRC_CONTACT')))}.",
             "",
         ]
     )

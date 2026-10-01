@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<nmaprun scanner="nmap" args="nmap -sV fixtures" start="1700000000">
-  <host>
+<nmaprun scanner="nmap" args="nmap -sV fixtures" start="1789041600" startstr="Thu Sep 10 12:00:00 2026" version="7.94" xmloutputversion="1.26">
+  <host starttime="1789041600" endtime="1789041615">
     <status state="up"/>
     <address addr="10.0.0.10" addrtype="ipv4"/>
     <hostnames><hostname name="dc.corp.local" type="PTR"/></hostnames>
@@ -12,7 +12,7 @@
       <port protocol="tcp" portid="3389"><state state="open"/><service name="ms-wbt-server"/></port>
     </ports>
   </host>
-  <host>
+  <host starttime="1789041600" endtime="1789041615">
     <status state="up"/>
     <address addr="10.0.0.20" addrtype="ipv4"/>
     <hostnames><hostname name="telnet-legacy.corp.local" type="PTR"/></hostnames>
@@ -21,7 +21,7 @@
       <port protocol="tcp" portid="80"><state state="open"/><service name="http"/></port>
     </ports>
   </host>
-  <host>
+  <host starttime="1789041600" endtime="1789041615">
     <status state="up"/>
     <address addr="10.0.0.30" addrtype="ipv4"/>
     <hostnames><hostname name="web-01.corp.local" type="PTR"/></hostnames>
@@ -30,7 +30,7 @@
       <port protocol="tcp" portid="443"><state state="open"/><service name="https"/></port>
     </ports>
   </host>
-  <host>
+  <host starttime="1789041600" endtime="1789041615">
     <status state="up"/>
     <address addr="10.0.0.40" addrtype="ipv4"/>
     <hostnames/>
@@ -39,7 +39,7 @@
       <port protocol="tcp" portid="445"><state state="filtered"/><service name="microsoft-ds"/></port>
     </ports>
   </host>
-  <host>
+  <host starttime="1789041600" endtime="1789041615">
     <status state="up"/>
     <address addr="10.0.0.50" addrtype="ipv4"/>
     <hostnames><hostname name="filesrv.corp.local" type="PTR"/></hostnames>
@@ -48,4 +48,8 @@
       <port protocol="tcp" portid="139"><state state="open"/><service name="netbios-ssn"/></port>
     </ports>
   </host>
+  <runstats>
+    <finished time="1789041615" timestr="Thu Sep 10 12:00:15 2026" elapsed="15" exit="success"/>
+    <hosts up="5" down="0" total="5"/>
+  </runstats>
 </nmaprun>

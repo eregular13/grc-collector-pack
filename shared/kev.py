@@ -23,8 +23,9 @@ from shared.schema import ciso_finding_severity
 CISA_KEV_JSON = (
     "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 )
-CVE_RE = re.compile(r"CVE-\d{4}-\d{4,19}", re.I)
-CVE_STRICT = re.compile(r"^CVE-[0-9]{4}-[0-9]{4,19}$")
+# ^CVE-\d{4}-\d{4,7}$ semantics: no XCVE- prefix, no truncation of overlong IDs.
+CVE_RE = re.compile(r"(?<![A-Za-z0-9])CVE-\d{4}-\d{4,7}(?![0-9])", re.I)
+CVE_STRICT = re.compile(r"^CVE-\d{4}-\d{4,7}$")
 
 KEV_JSON_NAME = "known_exploited_vulnerabilities.json"
 KEV_SHA_NAME = "known_exploited_vulnerabilities.json.sha256"
@@ -142,12 +143,15 @@ def collect_cves(rec: dict[str, Any]) -> list[str]:
         up = raw.strip().upper()
         if not up or up in seen:
             return
-        if CVE_RE.fullmatch(up) or CVE_RE.search(up):
-            for match in CVE_RE.findall(up):
-                token = match.upper()
-                if token not in seen:
-                    seen.add(token)
-                    found.append(token)
+        if CVE_STRICT.fullmatch(up):
+            seen.add(up)
+            found.append(up)
+            return
+        for match in CVE_RE.findall(up):
+            token = match.upper()
+            if CVE_STRICT.fullmatch(token) and token not in seen:
+                seen.add(token)
+                found.append(token)
 
     for blob in blobs:
         _add(blob)

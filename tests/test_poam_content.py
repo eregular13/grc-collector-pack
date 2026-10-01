@@ -135,7 +135,8 @@ def test_cpg_derived_from_800_53_or_dropped() -> None:
             extra={"port": "445", "service": "microsoft-ds"},
         )
     )
-    assert "cpg_3_S" in smb["cpg"]
+    assert "cpg_3_I" in smb["cpg"]
+    assert "cpg_3_S" not in smb["cpg"]
     assert smb["csf_subcategory"] == "PR.IR-01"
     mfa = map_finding(
         _finding(

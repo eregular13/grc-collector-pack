@@ -52,6 +52,8 @@ REASON_CODES = frozenset(
         "NOT_YET_LATE",
         "unexplained",
         "UNEXPLAINED",
+        "unmapped",
+        "needs_review",
     }
 )
 
@@ -121,6 +123,7 @@ _INCLUDE_REASON_CODES = frozenset(
         "severity_low",
         "severity_medium",
         "escalate",
+        "needs_review",
     }
 )
 
@@ -138,6 +141,8 @@ def reason_code_of(reason: str | None, *, include: bool = False) -> str:
     raw = str(reason or "").strip()
     if not raw:
         return "UNEXPLAINED"
+    if raw.startswith("merged_into:"):
+        return "DUPLICATE_INSTANCE"
     if include and raw in _INCLUDE_REASON_CODES:
         return raw
     return REASON_CODE_FOR.get(raw, raw if raw in REASON_CODES else "UNEXPLAINED")

@@ -1,0 +1,45 @@
+{
+  "schema": "web_tls.probe.v1",
+  "target": "192.0.2.10",
+  "ports": [80, 443, 6379],
+  "open_ports": [80, 443, 6379],
+  "http": {
+    "http://192.0.2.10/": {
+      "status": 200,
+      "headers": {
+        "server": "Apache/2.4.41",
+        "access-control-allow-origin": "*",
+        "access-control-allow-credentials": "true"
+      },
+      "set_cookie": ["session=tok; Path=/; HttpOnly"],
+      "body": "ok",
+      "allow": "GET, HEAD",
+      "redirect_status": 200,
+      "location": "",
+      "server": "Apache/2.4.41"
+    },
+    "https://192.0.2.10/": {
+      "status": 200,
+      "headers": {
+        "server": "Apache/2.4.41",
+        "access-control-allow-origin": "https://evil.example"
+      },
+      "set_cookie": ["session=tok; Path=/"],
+      "body": "ok",
+      "server": "Apache/2.4.41"
+    }
+  },
+  "tls": {
+    "443": {
+      "open": true,
+      "tls": true,
+      "cert_present": true,
+      "notAfter": "Jan  1 00:00:00 2020 GMT",
+      "days_remaining": -100,
+      "subject": "CN=192.0.2.10",
+      "port": 443
+    }
+  },
+  "ssh": {},
+  "live": false
+}

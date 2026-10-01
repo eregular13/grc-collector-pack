@@ -1,6 +1,5 @@
 # POA&M (operator draft)
 
-Pentera (or any scanner) finds it. Evergreen maps it.
 Owner and due are blank — a human fills them. No invented dates.
 
 | Weakness | Asset | Severity | Framework | Recommended fix | Status |

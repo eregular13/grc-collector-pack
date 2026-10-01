@@ -9,10 +9,12 @@ Dest_in LAB.txt / DEMO-adapter fail-closed lives in scripts/prove_ciso.py
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from typing import Any
 
-from shared.control_map import POAM_EXCLUDE_REASONS
+from shared.control_map import is_poam_exclude_reason
+from shared.egp_collapse import is_merged_into_reason
 from shared.poam_fields import POAM_EXTRA_FIELDS
 from shared.poam_rollup import REASON_CODES
 
@@ -56,7 +58,7 @@ CISO_HEADERS = {
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
 EXCLUDED_HEADER = (
-    "finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,"
+    "id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,"
     "reason_code,rolled_into,source,detail"
 )
 EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
@@ -70,8 +72,128 @@ SCENARIO_LEVELS = frozenset({"Low", "Moderate", "High", "Very High"})
 REGISTER_OK_LINE = "REGISTER_SHAPE=ok findings_to_poam != empty paying_day=FAIL"
 
 # Documented count relationship after weakness dedupe:
-#   weaknesses == risk_scenarios == findings.csv + vulnerabilities.csv
+#   mitigate == POA&M == CTL; accept == non-merged excluded
+#   risk_scenarios == findings.csv + vulnerabilities.csv + kind_excluded
+#     - merged_into:<EGP> aliases (pack_drop twins, not accepted risk)
 #   POA&M == open_risks (include_poam). findings.csv is non-CVE; vulns are CVE-class.
+#   kind:excluded (Custodian cost, osquery unmapped) stay on the register as accept.
+#   CISO Community risk_scenarios.csv has no justification/comment column
+#   (CISO_HEADERS below). Accept reason lives in poam/excluded.csv
+#   excluded_reason. existing_controls is not an exclusion dump.
+
+
+def count_merged_aliases(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> int:
+    """How many excluded.csv rows are collapsed pack_drop twins, not accept."""
+    out = resolve_out_dir(ciso_or_out)
+    excluded_path = out / "poam" / "excluded.csv"
+    from_csv = 0
+    if excluded_path.is_file() and first_nonempty_line(excluded_path) == EXCLUDED_HEADER:
+        from_csv = sum(
+            1
+            for row in csv_rows(excluded_path)
+            if is_merged_into_reason(str(row.get("excluded_reason") or ""))
+        )
+    from_summary = 0
+    reasons = (summary or {}).get("excluded_by_reason") or {}
+    if isinstance(reasons, dict):
+        from_summary = sum(
+            int(count) for key, count in reasons.items() if is_merged_into_reason(str(key))
+        )
+    if from_csv and from_summary and from_csv != from_summary:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL merged aliases csv={from_csv} summary={from_summary}"
+        )
+    return from_csv or from_summary
+
+
+def register_treatment_counts(ciso_or_out: Path) -> dict[str, int]:
+    """mitigate / accept / CTL / excluded split. Merged twins are not accept."""
+    out = resolve_out_dir(ciso_or_out)
+    ciso = ciso_dir_of(out)
+    scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";") if (ciso / "risk_scenarios.csv").is_file() else []
+    controls = csv_rows(ciso / "applied_controls.csv") if (ciso / "applied_controls.csv").is_file() else []
+    excluded_path = out / "poam" / "excluded.csv"
+    excluded = csv_rows(excluded_path) if excluded_path.is_file() else []
+    mitigate = sum(1 for row in scenarios if row.get("treatment") == "mitigate")
+    accept = sum(1 for row in scenarios if row.get("treatment") == "accept")
+    merged = sum(1 for row in excluded if is_merged_into_reason(str(row.get("excluded_reason") or "")))
+    return {
+        "mitigate": mitigate,
+        "accept": accept,
+        "controls": len(controls),
+        "excluded": len(excluded),
+        "merged_aliases": merged,
+        "non_merged_excluded": len(excluded) - merged,
+    }
+
+
+def title_host_key(name: str, assets: str) -> tuple[str, str]:
+    return ((name or "").strip().lower(), (assets or "").strip().lower())
+
+
+def assert_register_no_double_treatment(ciso_or_out: Path) -> dict[str, Any]:
+    """No EGP or title+host appears as both mitigate and accept."""
+    from shared.control_map import iter_poam_decisions, risk_register_treatment
+    from shared.io_util import read_jsonl
+    from shared.port_fold import egp_id_for
+
+    out = resolve_out_dir(ciso_or_out)
+    ciso = ciso_dir_of(out)
+    scenarios = csv_rows(ciso / "risk_scenarios.csv", delimiter=";")
+    by_title: dict[tuple[str, str], set[str]] = {}
+    for row in scenarios:
+        treat = str(row.get("treatment") or "")
+        if treat not in {"mitigate", "accept"}:
+            raise RegisterShapeError(f"REGISTER_TREATMENT_FAIL unknown treatment: {row}")
+        if (row.get("existing_controls") or "") != "":
+            raise RegisterShapeError(
+                f"REGISTER_TREATMENT_FAIL existing_controls must stay empty: {row}"
+            )
+        key = title_host_key(row.get("name") or "", row.get("assets") or "")
+        by_title.setdefault(key, set()).add(treat)
+    overlap_title = sorted(key for key, treats in by_title.items() if treats == {"mitigate", "accept"})
+    if overlap_title:
+        raise RegisterShapeError(
+            f"REGISTER_TREATMENT_FAIL title-host in mitigate and accept: {overlap_title[:8]}"
+        )
+
+    overlap_egp: list[str] = []
+    canon = out / "canonical"
+    if canon.is_dir():
+        from collectors.grc_loader import _dedupe
+        from shared.finding_types import dedupe_weaknesses
+        from shared.hardening_dedup import dedupe_hardening
+
+        parsed: list[dict[str, Any]] = []
+        for path in sorted(canon.glob("*.jsonl")):
+            parsed.extend(row for row in read_jsonl(path) if isinstance(row, dict))
+        findings = [
+            rec
+            for rec in dedupe_hardening(dedupe_weaknesses(_dedupe(parsed)))
+            if rec.get("kind") in {"finding", "excluded"}
+        ]
+        mitigate_egp: set[str] = set()
+        accept_egp: set[str] = set()
+        for rec, decision in iter_poam_decisions(findings):
+            stamp = risk_register_treatment(decision)
+            if not stamp.get("on_register", True):
+                continue
+            egp = egp_id_for(rec)
+            if stamp.get("treatment") == "mitigate":
+                mitigate_egp.add(egp)
+            elif stamp.get("treatment") == "accept":
+                accept_egp.add(egp)
+        overlap_egp = sorted(mitigate_egp & accept_egp)
+        if overlap_egp:
+            raise RegisterShapeError(
+                f"REGISTER_TREATMENT_FAIL EGP in mitigate and accept: {overlap_egp[:8]}"
+            )
+    return {
+        "ok": True,
+        "title_host_overlap": overlap_title,
+        "egp_overlap": overlap_egp,
+        **register_treatment_counts(out),
+    }
 
 
 def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -83,11 +205,41 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
     vulns_n = int(register.get("vulnerabilities") or 0)
     scenarios_n = int(register.get("risk_scenarios") or 0)
     poam_n = int(poam.get("poam_rows") or 0)
-    weaknesses = findings_n + vulns_n
-    if scenarios_n != weaknesses:
+    if summary is None:
+        summary_path = out / "summary.json"
+        if summary_path.is_file():
+            try:
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                summary = None
+    kind_excluded = int((summary or {}).get("kind_excluded") or 0)
+    finding_class = findings_n + vulns_n
+    merged_n = count_merged_aliases(out, summary)
+    weaknesses = finding_class + kind_excluded
+    expected_scenarios = weaknesses - merged_n
+    if scenarios_n != expected_scenarios:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL risk_scenarios={scenarios_n} != "
-            f"findings+vulnerabilities={weaknesses} (deduped weaknesses)"
+            f"findings+vulnerabilities+kind_excluded-merged={expected_scenarios} "
+            f"(findings={findings_n} vulns={vulns_n} kind_excluded={kind_excluded} "
+            f"merged={merged_n})"
+        )
+    treatments = register_treatment_counts(out)
+    pending = int((summary or {}).get("pending_carried") or 0)
+    if treatments["mitigate"] != poam_n - pending:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL mitigate={treatments['mitigate']} != "
+            f"poam-pending={poam_n - pending} (poam={poam_n} pending={pending})"
+        )
+    if treatments["accept"] != treatments["non_merged_excluded"]:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL accept={treatments['accept']} != "
+            f"non_merged_excluded={treatments['non_merged_excluded']}"
+        )
+    if treatments["controls"] != treatments["mitigate"]:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL controls={treatments['controls']} != "
+            f"mitigate={treatments['mitigate']}"
         )
     if summary:
         if int(summary.get("risk_scenarios") or 0) != scenarios_n:
@@ -109,25 +261,36 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
                 f"COUNT_CONSISTENCY_FAIL summary.open_risks={summary.get('open_risks')} "
                 f"!= poam={poam_n} (POA&M is 1:1 with open risks)"
             )
-        if "weaknesses" in summary and int(summary.get("weaknesses") or 0) != weaknesses:
+        if "weaknesses" in summary and int(summary.get("weaknesses") or 0) != finding_class:
             raise RegisterShapeError(
                 f"COUNT_CONSISTENCY_FAIL summary.weaknesses={summary.get('weaknesses')} "
-                f"!= findings+vulns={weaknesses}"
+                f"!= findings+vulns={finding_class}"
             )
         if "weaknesses_total" in summary:
             assert_poam_breakdown(summary)
         assert_flood_guard(out, summary)
     else:
         assert_flood_guard(out)
+    overlap = assert_register_no_double_treatment(out)
     return {
         "ok": True,
         "findings": findings_n,
         "vulnerabilities": vulns_n,
-        "weaknesses": weaknesses,
+        "weaknesses": finding_class,
+        "kind_excluded": kind_excluded,
         "risk_scenarios": scenarios_n,
         "poam": poam_n,
         "open_risks": poam_n,
-        "relationship": "POA&M is 1:1 with open risks (include_poam); register is 1:1 with weaknesses",
+        "merged_aliases": merged_n,
+        "mitigate": treatments["mitigate"],
+        "accept": treatments["accept"],
+        "title_host_overlap": overlap.get("title_host_overlap") or [],
+        "egp_overlap": overlap.get("egp_overlap") or [],
+        "relationship": (
+            "POA&M is 1:1 with open risks (include_poam); "
+            "mitigate == POA&M == CTL; accept == non-merged excluded; "
+            "merged_into aliases stay off the register"
+        ),
     }
 
 
@@ -140,8 +303,9 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded_by_reason must be a dict")
     if any(not str(reason or "").strip() for reason in excluded):
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded item missing named reason")
-    allowed = POAM_EXCLUDE_REASONS | REASON_CODES
-    unknown = sorted(str(reason) for reason in excluded if reason not in allowed)
+    unknown = sorted(
+        str(reason) for reason in excluded if not is_poam_exclude_reason(str(reason))
+    )
     if unknown:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
@@ -165,18 +329,24 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
             f"COUNT_CONSISTENCY_FAIL poam_included={included} != poam={summary.get('poam')}"
         )
     pending_carried = int(summary.get("pending_carried") or 0)
+    kind_excluded = int(summary.get("kind_excluded") or 0)
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    merges = int(fg.get("duplicates_merged") or 0)
     if "weaknesses" in summary:
-        fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
-        merges = int(fg.get("duplicates_merged") or 0)
-        expected = int(summary.get("weaknesses") or 0) + pending_carried + merges
+        expected = (
+            int(summary.get("weaknesses") or 0)
+            + pending_carried
+            + kind_excluded
+            + merges
+        )
         if total != expected:
             raise RegisterShapeError(
                 f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
                 f"weaknesses={summary.get('weaknesses')}"
+                + (f" + kind_excluded={kind_excluded}" if kind_excluded else "")
                 + (f" + pending_carried={pending_carried}" if pending_carried else "")
                 + (f" + duplicates_merged={merges}" if merges else "")
             )
-    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
     if fg and int(fg.get("UNEXPLAINED") or 0) != 0:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL flood_guard.UNEXPLAINED={fg.get('UNEXPLAINED')} (must be 0)"
@@ -190,10 +360,7 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
-    """§12.6: findings_in == members + excluded; UNEXPLAINED==0.
-
-    FedRAMP Open==poam.csv (G0) is #149's write_fedramp_poam — not asserted here.
-    """
+    """§12.6: findings_in == members + excluded; UNEXPLAINED==0."""
     out = resolve_out_dir(ciso_or_out)
     if summary is None:
         summary_path = out / "summary.json"
@@ -221,7 +388,11 @@ def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None)
                     "unexplained",
                 }:
                     unexplained += 1
-                if code and code not in REASON_CODES:
+                if (
+                    code
+                    and code not in REASON_CODES
+                    and not is_merged_into_reason(code)
+                ):
                     raise RegisterShapeError(
                         f"FLOOD_GUARD_FAIL unknown reason_code={code}"
                     )
@@ -260,6 +431,49 @@ def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None)
 
 class RegisterShapeError(ValueError):
     """CISO risk register or POA&M is missing, header-wrong, or empty when findings exist."""
+
+
+def assert_input_export_accounting(
+    parsed: list[dict[str, Any]],
+    poam_rows: list[dict[str, Any]],
+    excluded_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Every finding/excluded input record is in exactly one of poam.csv or excluded.csv."""
+    keys: list[str] = []
+    for rec in parsed:
+        if rec.get("kind") not in {"finding", "excluded"}:
+            continue
+        key = str(rec.get("ref_id") or "").strip()
+        if key:
+            keys.append(key)
+    unique = list(dict.fromkeys(keys))
+    poam_ids = {
+        str(row.get("finding_ref_id") or row.get("id") or "").strip()
+        for row in poam_rows
+    }
+    poam_ids.discard("")
+    ex_ids = {
+        str(row.get("finding_ref_id") or row.get("id") or "").strip()
+        for row in excluded_rows
+    }
+    ex_ids.discard("")
+    both = sorted(poam_ids & ex_ids)
+    if both:
+        raise RegisterShapeError(
+            f"ACCOUNTING_FAIL in both poam.csv and excluded.csv: {both}"
+        )
+    exported = poam_ids | ex_ids
+    missing = [key for key in unique if key not in exported]
+    if missing:
+        raise RegisterShapeError(
+            f"ACCOUNTING_FAIL missing record keys: {missing}"
+        )
+    return {
+        "ok": True,
+        "parsed": len(unique),
+        "poam": len(poam_ids),
+        "excluded": len(ex_ids),
+    }
 
 
 def first_nonempty_line(path: Path) -> str:
@@ -481,7 +695,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
             EXCLUDED_HEADER + "\n"
-            "DEMO-I,sample-info,sample-asset,info,severity_info,,INFO_ONLY,,demo,info-only\n"
-            "DEMO-H,sample-honeypot,sample-asset,high,honeypot,,NOT_A_WEAKNESS,,demo,honeypot\n",
+            "DEMO-I,DEMO-I,sample-info,sample-asset,info,severity_info,,INFO_ONLY,,demo,info-only\n"
+            "DEMO-H,DEMO-H,sample-honeypot,sample-asset,high,honeypot,,HONEYPOT,,demo,honeypot\n",
             encoding="utf-8",
         )

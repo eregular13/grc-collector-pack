@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<NessusClientData_v2>
+<Report name="ssh-weak-mac-sample">
+  <ReportHost name="10.0.0.22">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.22</tag>
+      <tag name="HOST_START">Sat Sep 26 00:00:00 2026</tag>
+    </HostProperties>
+    <ReportItem port="22" svc_name="ssh" protocol="tcp" severity="2" pluginID="70658" pluginName="SSH Weak MAC Algorithms Enabled" pluginFamily="Misc.">
+      <risk_factor>Medium</risk_factor>
+      <description>The remote SSH server is configured to allow weak MAC algorithms. This is a file-drop Nessus export, not a live scan.</description>
+      <solution>Disable the weak MAC algorithms.</solution>
+    </ReportItem>
+  </ReportHost>
+</Report>
+</NessusClientData_v2>

@@ -1,5 +1,6 @@
-# Nmap 7.94 scan
+# Nmap 7.94 scan initiated Thu Sep 10 12:00:00 2026 as: nmap -sV -oG scan.gnmap fixtures
 Host: 10.0.0.60 (legacy-ftp.corp.local)	Status: Up
 Host: 10.0.0.60 (legacy-ftp.corp.local)	Ports: 21/open/tcp//ftp///, 80/open/tcp//http///
 Host: 10.0.0.50 (filesrv.corp.local)	Status: Up
 Host: 10.0.0.50 (filesrv.corp.local)	Ports: 445/open/tcp//microsoft-ds///, 139/open/tcp//netbios-ssn///
+# Nmap done at Thu Sep 10 12:00:15 2026 -- 2 IP addresses (2 hosts up) scanned in 15.00 seconds

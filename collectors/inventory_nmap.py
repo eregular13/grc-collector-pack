@@ -266,6 +266,8 @@ def _emit_host(
                 extra_find["cdn"] = True
             if extra.get("cdn_name"):
                 extra_find["cdn_name"] = extra["cdn_name"]
+            if extra.get("scan_time"):
+                extra_find["scan_time"] = extra["scan_time"]
         ref_port = f"{name}-{portid}/{proto}"
         if state == "open|filtered":
             desc = (
@@ -354,8 +356,24 @@ def parse_nmap_json(payload: Any, now: str) -> list[dict]:
     return records
 
 
+def _gnmap_scan_time(raw: str) -> str:
+    """Nmap greppable header: ``# Nmap … scan initiated <ctime> as: …``."""
+    for line in raw.splitlines():
+        if not line.startswith("#"):
+            continue
+        low = line.lower()
+        if "scan initiated" not in low:
+            continue
+        after = line.split("scan initiated", 1)[-1]
+        after = after.split(" as:", 1)[0].strip()
+        return after
+    return ""
+
+
 def parse_gnmap(raw: str, now: str) -> list[dict]:
     records: list[dict] = []
+    stamp = _gnmap_scan_time(raw)
+    extra = {"scan_time": stamp} if stamp else None
     for line in raw.splitlines():
         if not line.startswith("Host:"):
             continue
@@ -378,7 +396,7 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
                 if len(parts) >= 5 and parts[1] == "open":
                     ports.append((parts[0], parts[4]))
         if "Ports:" in line or name:
-            _emit_host(records, now, name, addr, hostname, ports)
+            _emit_host(records, now, name, addr, hostname, ports, extra=extra)
     return records
 
 
@@ -403,6 +421,9 @@ def parse_file(path: Path) -> list[dict]:
             ports = list(host.get("ports") or [])
             if not ports:
                 continue
+            extra = {}
+            if host.get("scan_time"):
+                extra["scan_time"] = host.get("scan_time")
             _emit_host(
                 records,
                 now,
@@ -410,6 +431,7 @@ def parse_file(path: Path) -> list[dict]:
                 str(host.get("addr") or ""),
                 str(host.get("hostname") or ""),
                 ports,
+                extra=extra or None,
             )
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
@@ -425,6 +447,8 @@ def parse_file(path: Path) -> list[dict]:
                 extra["cdn"] = True
             if host.get("cdn_name"):
                 extra["cdn_name"] = host.get("cdn_name")
+            if host.get("scan_time"):
+                extra["scan_time"] = host.get("scan_time")
             _emit_host(
                 records,
                 now,
@@ -547,7 +571,14 @@ def parse_file(path: Path) -> list[dict]:
                         assets=[name],
                         labels=LABELS + ["smbmap", "smb", "anonymous"],
                         collected_at=now,
-                        extra={"port": "445", "service": "smb", "session": session, "ip": addr},
+                        extra={
+                            "port": "445",
+                            "service": "smb",
+                            "session": session,
+                            "ip": addr,
+                            "check_id": "smb-null-session",
+                            "tool": "nmap",
+                        },
                     )
                 )
             for share in host.get("shares") or []:
@@ -576,6 +607,8 @@ def parse_file(path: Path) -> list[dict]:
                     "share": share_name,
                     "access": access,
                     "ip": addr,
+                    "check_id": f"smb-share-{share_name}",
+                    "tool": "nmap",
                 }
                 labels = LABELS + ["smbmap", "smb"]
                 if admin:

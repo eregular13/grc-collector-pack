@@ -123,7 +123,7 @@ def _risk_row_from_finding(finding, estate: PackEstate) -> list[Any]:
 
 def build_opengrc_rows(estate: PackEstate) -> dict[str, list[list[Any]]]:
     scenario_ids = {s.ref_id.lower() for s in estate.scenarios}
-    # Scenario refs are often RSK-<finding-slug>; also skip finding ids already used.
+    # Scenario refs are RSK-<finding-slug> with the uncapped identity slug.
     finding_ids_in_scenarios = set()
     for scenario in estate.scenarios:
         slug = scenario.ref_id.lower()
@@ -233,7 +233,7 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
         "3. In OpenGRC: Data Manager → Import Data → Risks, then Assets, then Implementations.\n"
         "4. Download the in-app CSV template if the wizard rejects a header; map columns.\n"
         "5. Status is **Not Assessed**. Owner / department / taxonomy FKs stay blank.\n\n"
-        "posted=false. No REST. RiskReady is stay-out. This is not a paying-day PASS.\n",
+        "posted=false. No REST. This is not a paying-day PASS.\n",
         encoding="utf-8",
     )
     report["dir"] = str(dest)

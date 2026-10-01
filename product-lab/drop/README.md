@@ -5,7 +5,7 @@
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
 
-**Pentera finds it; Evergreen maps it.** Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
+Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 
 OpenGRC and Probo files are **file-true leave-behind, posted=false, not live import**. Do not POST `/api/risks`.
 
@@ -55,4 +55,4 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 |---|---|
 | `import_preview/probo.json` | 77 addFinding drafts |
 
-RiskReady is out of scope. This drop does not include RiskReady JSON. Do not POST `/api/risks`.
+Do not POST `/api/risks`.

@@ -23,6 +23,7 @@ from shared.estate_pages import (
     LABEL_FOR_KIND,
     MAX_PAGE_LINES,
     classify_estate,
+    md_safe_text,
 )
 from shared.io_util import UNRECOGNIZED_STATUS, load_sensor_coverage, run_collector
 
@@ -40,6 +41,9 @@ def _prep(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, label: str | None)
     monkeypatch.setenv("FIXTURES_DIR", str(DEMO))
     monkeypatch.delenv("DROPBOX_DEMO", raising=False)
     monkeypatch.delenv("GRC_CLIENT_NAME", raising=False)
+    monkeypatch.delenv("GRC_AUTHORIZER", raising=False)
+    monkeypatch.delenv("GRC_AUTH_DATE", raising=False)
+    monkeypatch.delenv("GRC_SCOPE_REF", raising=False)
     if label:
         monkeypatch.setenv("GRC_ESTATE_LABEL", label)
     else:
@@ -91,7 +95,15 @@ def _run_loader_records(
     monkeypatch.setenv("OUT_DIR", str(out))
     monkeypatch.setenv("IN_DIR", str(tmp_path / "in"))
     monkeypatch.setenv("FIXTURES_DIR", str(DEMO))
-    for key in ("GRC_ESTATE_LABEL", "DROPBOX_DEMO", "GRC_CLIENT_NAME", "GRC_HIDE_ESTATE"):
+    for key in (
+        "GRC_ESTATE_LABEL",
+        "DROPBOX_DEMO",
+        "GRC_CLIENT_NAME",
+        "GRC_HIDE_ESTATE",
+        "GRC_AUTHORIZER",
+        "GRC_AUTH_DATE",
+        "GRC_SCOPE_REF",
+    ):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
         monkeypatch.setenv(key, value)
@@ -119,7 +131,12 @@ def _issue(status: dict, name: str) -> dict:
         ("LAB", {"GRC_ESTATE_LABEL": "LAB"}, ["nmap"]),
         (
             "CLIENT",
-            {"GRC_ESTATE_LABEL": "CLIENT", "GRC_CLIENT_NAME": "Acme Corp"},
+            {
+                "GRC_ESTATE_LABEL": "CLIENT",
+                "GRC_CLIENT_NAME": "Acme Corp",
+                "GRC_AUTHORIZER": "Jane Roe",
+                "GRC_AUTH_DATE": "2026-09-20",
+            },
             ["nmap"],
         ),
     ],
@@ -144,6 +161,8 @@ def test_lab_report_mode_matches_estate_kind(
         **env,
     )
     report = (out / "evidence" / "lab-report.md").read_text(encoding="utf-8")
+    assert "```json" in report
+    assert report.index("```json") < report.index("{")
     assert f"{kind} mode" in report
     assert "Demo mode" not in report
     if kind == "CLIENT":
@@ -296,13 +315,13 @@ def test_coverage_gaps_section_lists_failed_sensors(
         assert COVERAGE_GAPS_NONE not in blob
         assert "cloud-prowler" in blob
         assert "notes.txt" in blob
-        assert UNRECOGNIZED_STATUS in blob
+        assert md_safe_text(UNRECOGNIZED_STATUS) in blob
         assert "vuln-scan" in blob
         assert "broken.json" in blob
-        assert "parse_error" in blob
+        assert md_safe_text("parse_error") in blob
         assert "code-secrets" in blob
         assert "empty.json" in blob
-        assert "no_records" in blob
+        assert md_safe_text("no_records") in blob
         assert LABEL_FOR_KIND["LAB"] in blob
         assert "CLIENT:" not in blob.splitlines()[0]
         assert len(blob.splitlines()) <= MAX_PAGE_LINES

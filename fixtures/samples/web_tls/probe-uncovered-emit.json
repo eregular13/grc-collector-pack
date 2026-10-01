@@ -1,0 +1,26 @@
+{
+  "schema": "web_tls.probe.v1",
+  "target": "192.0.2.20",
+  "ports": [21, 22, 443, 8443],
+  "open_ports": [21, 22, 443, 8443],
+  "http": {},
+  "tls": {
+    "443": {
+      "open": true,
+      "port": 443,
+      "verify_error": "certificate verify failed: self-signed certificate"
+    },
+    "8443": {
+      "open": true,
+      "port": 8443,
+      "error": "SSLEOFError: unexpected eof"
+    }
+  },
+  "ssh": {
+    "22": {
+      "banner": "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.5",
+      "port": 22
+    }
+  },
+  "live": false
+}

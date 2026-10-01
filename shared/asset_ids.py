@@ -35,6 +35,7 @@ MATCH_ORDER = (
     # Last-resort collector-dupe keys (not Tenable). Same short name with a
     # conflicting stronger id still splits (§5.7.10).
     "hostname",
+    "principal",
     "name",
 )
 
@@ -56,6 +57,7 @@ STRENGTH: dict[str, int] = {
     "fqdn": 40,
     "ip": 10,
     "hostname": 1,
+    "principal": 2,
     "name": 0,
 }
 
@@ -77,6 +79,24 @@ _PLACEHOLDER_SERIAL = frozenset(
     }
 )
 _NON_FQDN = frozenset({"localhost", "localhost.localdomain", "localdomain"})
+_PLACEHOLDER_TOKEN = re.compile(r"<[^>]+>")
+_CLOUD_SOURCES = frozenset(
+    {
+        "cloud-prowler",
+        "saas-idp",
+        "code-secrets",
+        "k8s-kubescape",
+    }
+)
+_SCOPE_KEYS = (
+    "account_id",
+    "account",
+    "tenant_id",
+    "tenant",
+    "region",
+    "subscription_id",
+    "subscription",
+)
 
 
 def extra_dict(rec: dict[str, Any] | None) -> dict[str, Any]:
@@ -150,7 +170,7 @@ def normalize_netbios(value: Any) -> str:
         return ""
     if text.lower() in {"unknown", "<unknown>", "workgroup"}:
         return ""
-    if _looks_ip(text) or "." in text:
+    if _looks_ip(text) or "." in text or " " in text:
         return ""
     return text.upper()
 
@@ -227,6 +247,7 @@ def ids_blank() -> dict[str, Any]:
         "domain": "",
         "id_quality": "",
         "name": "",
+        "principal": "",
     }
 
 
@@ -268,6 +289,9 @@ def merge_ids(*parts: dict[str, Any] | None) -> dict[str, Any]:
             norm = normalize_digest(digest)
             if norm and norm not in out["image_digest"]:
                 out["image_digest"].append(norm)
+        principal = str(part.get("principal") or "").strip()
+        if principal:
+            out["principal"] = principal.lower()
         for key in ("artifact_id", "image_id", "image_ref", "agent", "serial", "scope", "domain", "id_quality", "name"):
             got = str(part.get(key) or "").strip()
             if got:
@@ -287,8 +311,29 @@ def _host_from_url(text: str) -> str:
         return ""
 
 
-def classify_name(name: Any) -> dict[str, Any]:
-    """Turn a display name into identifier fields without inventing strength."""
+def is_placeholder_id(value: Any) -> bool:
+    """Prowler / OCSF ``<resource_uid>`` style tokens are not real assets."""
+    text = str(value or "").strip()
+    return bool(text) and bool(_PLACEHOLDER_TOKEN.search(text))
+
+
+def identity_scope(extra: dict[str, Any] | None = None, ids: dict[str, Any] | None = None) -> str:
+    """Account / region / tenant scope for name-only anchors."""
+    extra = extra if isinstance(extra, dict) else {}
+    ids = ids if isinstance(ids, dict) else {}
+    parts: list[str] = []
+    for key in _SCOPE_KEYS:
+        val = str(extra.get(key) or ids.get(key) or "").strip()
+        if val and not is_placeholder_id(val):
+            parts.append(f"{key}:{val.lower()}")
+    scope = str(extra.get("scope") or ids.get("scope") or "").strip()
+    if scope and not is_placeholder_id(scope) and scope.lower() not in {p.split(":", 1)[-1] for p in parts}:
+        parts.append(scope.lower())
+    return "|".join(parts)
+
+
+def classify_name_pre161(name: Any) -> dict[str, Any]:
+    """Master classify_name before #161: UPN is FQDN, short names are hostname."""
     text = str(name or "").strip()
     if not text:
         return {}
@@ -321,6 +366,63 @@ def classify_name(name: Any) -> dict[str, Any]:
     return {"name": text}
 
 
+def classify_name(name: Any, *, source: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Turn a display name into identifier fields without inventing strength."""
+    text = str(name or "").strip()
+    if not text or is_placeholder_id(text):
+        return {}
+    extra = extra if isinstance(extra, dict) else {}
+    host = _host_from_url(text)
+    if host:
+        ip = normalize_ip(host)
+        if ip:
+            return {"ip": [ip]}
+        fqdn = normalize_fqdn(host)
+        if fqdn:
+            return {"fqdn": fqdn}
+        short = normalize_hostname(host)
+        if short:
+            return {"hostname": short}
+    if "@" in text and not text.lower().startswith("arn:"):
+        user, _, domain = text.partition("@")
+        if user and domain and "/" not in text:
+            blob = {
+                "principal": text.lower(),
+                "domain": domain.rstrip(".").lower(),
+            }
+            scope = identity_scope(extra)
+            if scope:
+                blob["scope"] = scope
+            return blob
+    ip = normalize_ip(text)
+    if ip:
+        return {"ip": [ip]}
+    fqdn = normalize_fqdn(text)
+    if fqdn:
+        return {"fqdn": fqdn}
+    arn = normalize_arn(text)
+    if arn:
+        return {"arn": arn}
+    src = str(source or extra.get("source") or "").strip()
+    if src in _CLOUD_SOURCES:
+        blob = {"name": text}
+        scope = identity_scope(extra)
+        if scope:
+            blob["scope"] = scope
+        return blob
+    short = normalize_hostname(text)
+    if short:
+        return {"hostname": short}
+    netbios = normalize_netbios(text)
+    if netbios and text.upper() == netbios:
+        return {"netbios": netbios}
+    blob = {"name": text}
+    scope = identity_scope(extra)
+    if scope:
+        blob["scope"] = scope
+    return blob
+
+
 def lift_extra_fields(extra: dict[str, Any]) -> dict[str, Any]:
     """Pull identifiers that collectors already store beside extra.ids."""
     blob: dict[str, Any] = {}
@@ -341,6 +443,11 @@ def lift_extra_fields(extra: dict[str, Any]) -> dict[str, Any]:
         "scope",
         "domain",
         "id_quality",
+        "principal",
+        "account_id",
+        "tenant",
+        "tenant_id",
+        "region",
     ):
         if extra.get(key) not in (None, ""):
             blob[key] = extra.get(key)
@@ -355,17 +462,78 @@ def lift_extra_fields(extra: dict[str, Any]) -> dict[str, Any]:
     return blob
 
 
+_HOST_TOOLS = frozenset({"hardeningkitty", "cis-cat", "enum4linux"})
+
+
+def _is_computer_identity(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
+    kind = str(extra.get("kind") or extra.get("object_kind") or "").lower()
+    if kind == "computer":
+        return True
+    name = str(rec.get("name") or extra.get("samaccountname") or "")
+    if name.endswith("$"):
+        return True
+    if extra.get("operatingsystem"):
+        return True
+    if str(rec.get("category") or "").lower() == "host":
+        return True
+    if str(extra.get("tool") or "").lower() in _HOST_TOOLS:
+        return True
+    return False
+
+
+def _is_principal_record(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
+    """AD/SaaS users and groups — not computer objects, not network hosts.
+
+    HardeningKitty / enum4linux / CIS-CAT land under identity-ad but are
+    hosts. ``source=identity-ad`` + ``kind=asset`` is not enough.
+    """
+    if extra.get("principal") or (isinstance(extra.get("ids"), dict) and extra["ids"].get("principal")):
+        if _is_computer_identity(rec, extra):
+            return False
+        return True
+    if _is_computer_identity(rec, extra):
+        return False
+    atype = str(extra.get("asset_type") or rec.get("type") or "").upper()
+    cat = str(rec.get("category") or "").lower()
+    extra_kind = str(extra.get("kind") or extra.get("object_kind") or "").lower()
+    if atype == "SP" or cat in {"identity", "saas-tenant", "saas"}:
+        return extra_kind not in {"computer"}
+    if extra_kind in {"user", "group"}:
+        return True
+    return False
+
+
 def ids_from_record(rec: dict[str, Any] | None) -> dict[str, Any]:
     rec = rec or {}
     extra = extra_dict(rec)
-    parts = [
-        lift_extra_fields(extra),
-        classify_name(rec.get("name")),
-    ]
+    source = str(rec.get("source") or extra.get("source") or "")
+    lifted = lift_extra_fields(extra)
+    scope = identity_scope(extra, lifted)
+    if scope:
+        lifted.setdefault("scope", scope)
+    parts = [lifted]
+    # Finding titles are weakness names, not asset anchors. Classifying
+    # "Open port 445/microsoft-ds" as NetBIOS made FILESRV findings miss
+    # the ledger host and mint a second EGA from the IP alone.
+    if rec.get("kind") != "finding":
+        parts.append(classify_name(rec.get("name"), source=source, extra=extra))
     assets = rec.get("assets") or []
     if assets:
-        parts.append(classify_name(assets[0]))
-    return merge_ids(*parts)
+        parts.append(classify_name(assets[0], source=source, extra=extra))
+    merged = merge_ids(*parts)
+    if _is_principal_record(rec, extra) and not _is_computer_identity(rec, extra):
+        token = (
+            str(merged.get("principal") or "").strip()
+            or str(merged.get("hostname") or "").strip()
+            or str(merged.get("name") or "").strip()
+            or str(rec.get("name") or "").strip()
+        )
+        if token:
+            merged["principal"] = token.lower()
+        merged["hostname"] = ""
+        if not merged.get("netbios") or str(merged.get("netbios") or "").lower() == token.lower():
+            merged["netbios"] = ""
+    return merged
 
 
 def stamp_ids(extra: dict[str, Any] | None, **fields: Any) -> dict[str, Any]:
@@ -408,6 +576,7 @@ def strongest_anchor(ids: dict[str, Any], *, skip: set[str] | None = None) -> tu
         "fqdn",
         "ip",
         "hostname",
+        "principal",
     ):
         if key in skip:
             continue

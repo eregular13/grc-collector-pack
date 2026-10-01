@@ -2,6 +2,144 @@
 
 ## Unreleased
 
+- POAM_STATUS_DATE_LOCAL_CI: #215 follow-up. CI runs the full pytest
+  suite under `America/Los_Angeles` and `Pacific/Kiritimati` (pytest
+  only — SAMPLE/farm/collectors stay on the UTC lab job). `load()`
+  accepts `run_at=`; a naive value is local wall time, including the
+  scanner cutoff bind. Direct `bind_run_clock()` still treats naive as
+  UTC. `missed_dates` uses the local day. `first_seen` / `last_seen` /
+  `run_at` / ledger event `at` are stamped at load start (seconds
+  earlier than the old `apply_ledger` read, so `ledger_sha` moves).
+  Reobserved unchanged rows now keep the ledger last-change date on
+  `poam.csv` and SimpleRisk as well as FedRAMP / the ledger (pre-#215
+  those two CSVs restamped the run day). No POST `/api/risks`.
+- POAM_STATUS_DATE_LOCAL: `status_date` is the host-local civil day
+  (`YYYY-MM-DD`) at generation (`datetime.now().astimezone()`, honoring
+  `TZ` / `tzset`). No extra env var or CLI flag. Format stays a date
+  (no offset). On a first run (and on rows that change this run) the
+  same local date is written on `poam.csv`, `poam_fedramp.csv`,
+  `simplerisk/poam.csv`, and `poam-ledger.json`. Reobserved unchanged
+  rows and unobserved carried rows keep the ledger last-change date on
+  all four surfaces. The same local run day also drives
+  `VENDOR_CHECKIN_OVERDUE`, `VD_HIGH_NOT_MITIGATED`, `missed_dates`,
+  pending-verification dates, and the default `closed_on`.
+  `first_seen` / `last_seen` stay UTC ISO. Master labelled aware
+  non-UTC injected clocks as local wall time with a `Z`; this PR
+  writes true UTC. A first run on a US evening after upgrade can move
+  `status_date` one day backwards versus a UTC-written ledger.
+  Naive POA&M clocks (including `load(run_at=)` naive) are local;
+  `scan_time.bind_run_clock` called directly still treats naive as UTC.
+  Scanner parse timestamps unchanged. No POST `/api/risks`.
+- SCOPE_GATE_HARDEN: live SCOPE status is an allowlist (`active` /
+  `authorized` / `approved` / absent; keys case-insensitive). Nested or
+  top-level unknown status, `REVOKED` / `Revoked`, and mid-run revoke or
+  read error fail closed — the SCOPE file (and consent digest) is
+  re-read before every connect. Live mode refuses the pack DEMO consent
+  digest regardless of filename. `build_snapshot()` requires a bound
+  SCOPE. Helper test compares TYPE_REMEDIATIONS independently (not the
+  sensor map). No POST `/api/risks`. RiskReady stay-out.
+- WEB_TLS_LIVE_GATE: live probes never follow redirects; `--target` is a
+  bare host/IP; URLs are `urlsplit` (http/https, no userinfo); every
+  (host, port) including implicit 80/443 is gated; default URLs only for
+  allowed ports; ports outside 1..65535 refuse even without
+  `ports_allowed`; resolved IP is re-checked and pinned; pack DEMO
+  SCOPE is refused. Revocation also honors `revoked: on`/`y`,
+  `status: terminated`/`suspended`, and top-level `revoked: true`.
+  `nist_800_53_ids(rec, *, finding_type, sensor, title, description)`
+  follows POA&M `TYPE_REMEDIATIONS`. CSF 1.1 PR.AC-05 → PR.IR-01.
+  TLS no-listener vs accepted IDs are distinct. No POST `/api/risks`.
+- HERMES_FREEDOM45_PORT: live-only web/TLS collector (`in/web_tls/`,
+  `shared.web_tls` parse-only, `shared.web_tls_live` behind `--live` +
+  signed SCOPE). 24 non-destructive check types from the frozen
+  freedom45 env-eval sensors. Fail-closed with no / expired / revoked
+  SCOPE or any target/port outside scope. No `fixtures/demo` fallback —
+  DEMO lab.sh / compose do not run it, so existing DEMO `poam.csv` is
+  unchanged unless an operator drops snapshots. Scope doc:
+  `docs/WEB_TLS_SCOPE.md`. IDs use `make_ref` (never salted `hash()`).
+  Informational findings stay off the POA&M. No POST `/api/risks`.
+  RiskReady stay-out.
+- SCOPE_PORTS_REVOCATION: `dropbox.scope` accepts optional
+  `ports_allowed` (absent = current any-port-on-host behavior) and
+  engagement revocation (`status: revoked` / `revoked: true`).
+  Backward compatible with existing SCOPE files.
+- FRAMEWORK_ENV_EVAL: freedom45 control-map heuristics folded into
+  `framework_class_map` (not imported wholesale). CPG 2.0 stays the
+  client-facing spine. CIS v8 is internal-only under
+  `extra.cis_v8_internal`. Mixed CSF 1.1 IDs normalize to CSF 2.0.
+  `nist_800_53_ids` is the single helper for a content pipeline — no
+  second map. Title heuristics are gated to web-tls / `sense-*` so
+  DEMO nmap classifications stay unchanged.
+- CR6_2_SECRET_LINE_STABLE: secret-class findings (gitleaks / TruffleHog /
+  category secrets) drop line/evidence/cmd from the weakness and
+  identity discriminator when Secret/Match/Raw is usable. They key
+  on rule + file + HMAC-SHA256 `secret_hash` (pack pepper; not
+  unsalted sha256). Raw material is never persisted. Empty or
+  redacted material (`REDACTED`, `*`) keeps `line` so two leaks of
+  one rule in one file stay two IDs. `secret_hash` is stripped from
+  client-facing CSVs (`poam_fedramp.csv` Weakness Source Identifier).
+  A gitleaks line move with usable material and the ledger carried
+  keeps the same EGP. Pre-CR6-2 `:line:N` fps rematch via
+  `secret_line_to_hash`. Upgrade plus a line move in the same run
+  still mints a new ID and a ghost (legacy fp needs the old line;
+  no worse than master). #170 path/url (httpx-admin root vs `/login`)
+  and honeypot cmd location stay. Vendor fields stay out of `fp_v1`.
+  MIN_ gates unchanged. No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
+- EXEC_COUNT_RECONCILE: executive page names kind-excluded and
+  merged-into aliases so POA&M + (excluded − merged) + kind-excluded
+  equals register. Printed sums are the computed totals; a mismatch
+  always warns. Headline `open=` / `Open POA&M (poam.csv)` is poam.csv
+  (FedRAMP Open #179). Ledger-open including excluded is secondary.
+  SAMPLE/DEMO/LAB never client KEEP. No POST `/api/risks`. Does not
+  touch `product-lab/drop`.
+- CR7_BH_HIGH_VALUE: `bh-high-value` (Administrators / Enterprise
+  Admins / Schema Admins) keeps the high-value group playbook and
+  AC-2/AC-6. Typed generic falls through to the legacy title map.
+  POA&M IDs unchanged (`bh-high-value`). Sample generic fix rows
+  return to the pre-#177 count (5). No POST `/api/risks`. Does not
+  touch `product-lab/drop`.
+- B8_STABLE_CHECK_ID: title-keyed DEMO families (secrets, easm, wazuh
+  posture, identity) stamp a stable `extra.check_id` so percentages and
+  hostnames in the display title cannot remint EGP IDs. Intune
+  encryption compliance uses `enc-compliance-{provider}`; 33.3%→50.0%
+  keeps the same fingerprint. `httpx-admin` / `whatweb-admin` /
+  `path-exposure-*` keep the #170 path/url location discriminator so
+  root vs `/login` stay two items. `_legacy_fps_for` chains
+  title→check_id + #172 host-less + #170 `pre_location_*` (#172 first)
+  so a 7ebc697 DEMO ledger upgrades with 0 duplicate opens, 1 new
+  (#170 split), 127 FedRAMP Open. Vendor fields stay out of `fp_v1`.
+  MIN_ gates unchanged. No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
+- POAM_GAP2_VENDOR_DEPENDENCY: FedRAMP R3.0 Open O/P/Q. Vendor
+  Dependency defaults to No (`vd_source=default`); never invents Yes.
+  Last Vendor Check-in Date and Vendor Dependent Product Name are blank
+  when O=No (never N/A). O=Yes only via `in/poam/overrides.csv`. Operator
+  Yes **and** No persist on the ledger across later runs without the
+  file (`vd_source=operator`). Any O/P/Q / `vd_source` change updates
+  `status_date` and writes a `field_changed` event (spec §3.4 step 3).
+  Invalid override tokens (e.g. `Maybe`) warn `VD_INVALID_OVERRIDE`.
+  Vendor-dependent Yes stays off the Closed tab (`VD_NOT_CLOSED`). Q
+  uses `Vendor – Product`. Scanner "no fix available" is
+  suggestion-only. KEV / BOD 22-01 due dates are not suspended.
+  `poam.md` states the No default is not a verified determination.
+  Vendor fields stay out of `fp_v1`; EGP IDs unchanged. Upgrading a
+  pre-#160 ledger backfills No/default as a schema baseline — no
+  `field_changed` event and no Status Date (col N) churn. Host-lab
+  unchanged (79 / 107 / poam 124 / excluded 5). MIN_ gates unchanged.
+  No POST `/api/risks`. Does not touch `product-lab/drop`.
+- B6_PLAYBOOKS: unmapped PingCastle RiskIds (A-ZeroPoint, P-SchemaAdmins,
+  group-operator rules) fall through to the #145 playbook instead of the
+  generic fallback. Mapped ids (SSLv2, P-Delegated, S-NoPreAuth*) stay typed.
+- B6_PLAYBOOKS: per-type remediations for Nikto web-app findings, TLS
+  side-channels (BREACH / LUCKY13), and PingCastle RiskIds. HOLD remap:
+  testssl exact `SSLv2`; PingCastle `P-Delegated` is Protected Users (not
+  unconstrained — that is `P-UnconstrainedDelegation`); AS-REP is
+  `S-NoPreAuth` / `S-NoPreAuthAdmin`; Nikto PUT/DELETE including 999995;
+  no substring TLS/RDP on NextGEN LFI; XSS is output-encoding/CSP;
+  `A-DsHeuristicsLDAPSecurity` cites CVE-2021-42291 / KB5008383. Each
+  class has a short `source` field. Paraphrase only (PingCastle NPOSL-3.0;
+  Nikto DBs All Rights Reserved). No POST `/api/risks`. Does not touch
+  `product-lab/drop`.
 - LAB_EXCLUDED_HONESTY: lab collectors (`Makefile` / `scripts/lab.sh` /
   `scripts/lab.ps1` / CI lab job) now run `collectors/honeypot.py` so DEMO
   `fixtures/demo/honeypot*` land in `poam/excluded.csv` (not header-only).

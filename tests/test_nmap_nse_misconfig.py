@@ -101,7 +101,7 @@ def test_every_nse_finding_maps_to_specific_control_with_real_800_53() -> None:
     ("check", "must_have", "fix_words"),
     [
         ("nse-ftp-anon", {"AC-3", "CM-7"}, ("anonymous_enable", "SFTP")),
-        ("nse-redis-noauth", {"IA-2", "AC-3"}, ("requirepass", "protected-mode")),
+        ("nse-redis-noauth", {"IA-2", "AC-3"}, ("requirepass", "protected-mode", "-@dangerous")),
         ("nse-http-dirlist", {"CM-7", "AC-3"}, ("autoindex", "Indexes")),
         ("nse-tls-deprecated-protocol", {"SC-8(1)", "SC-13"}, ("TLS 1.2", "TLS 1.0")),
         ("nse-tls-weak-cipher", {"SC-8(1)", "SC-13"}, ("aNULL", "RC4")),

@@ -11,6 +11,9 @@ provenance. Apply before risk-register and POA&M generation.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import re
 from typing import Any
 
 # Sources whose emitted types this catalog covers. Other collectors stay on
@@ -60,6 +63,11 @@ TYPE_ALIASES: dict[str, str] = {
     "iam_root_mfa_enabled": "iam_root_mfa",
     "aws_iam_user_mfa": "iam_user_mfa",
     "ec2_securitygroup_allow_ingress_from_internet_to_any_port": "sg_ingress_open",
+    "ckv_aws_24": "sg_ingress_open",
+    "ckv_aws_260": "sg_ingress_open",
+    "rd_gateway_exposed": "rd_gateway_exposed",
+    "rdpgatewaypublic": "rd_gateway_exposed",
+    "openrdpgateway": "rd_gateway_exposed",
     "cloudtrail_multi_region_enabled": "cloudtrail_logging",
     "rds_instance_no_public_access": "rds_public",
     "ec2_ebs_default_encryption": "ebs_encryption",
@@ -67,8 +75,21 @@ TYPE_ALIASES: dict[str, str] = {
     "dcsync": "ad_dcsync",
     "genericall": "ad_genericall",
     "adminto": "ad_adminto",
+    "hassession": "ad_session",
+    "hasession": "ad_session",
     "hasesession": "ad_session",
     "genericwrite": "ad_genericwrite",
+    "xccdf_sample_rule_ssh_permitroot": "ssh_root_login",
+    "sample_rule_ssh_permitroot": "ssh_root_login",
+    "xccdf_sample_rule_firewall": "host_fw",
+    "sample_rule_firewall": "host_fw",
+    "alf": "host_fw",
+    "ds_0002": "docker_nonroot",
+    "ds0002": "docker_nonroot",
+    "check_ebs_snapshot_public": "ebs_snapshot_public",
+    # Cloud Custodian security-context class (k8s.pod missing securityContext).
+    "security_context_pods": "k8s_security_context",
+    "security_context": "k8s_security_context",
     "allowedtodelegate": "ad_constrained_delegation",
     "addmember": "ad_addmember",
     "1.1": "hk_password_history",
@@ -80,6 +101,71 @@ TYPE_ALIASES: dict[str, str] = {
     "1_2_1": "k8s_anonymous_auth",
     "c_0034": "k8s_privilege_escalation",
     "c_0041": "k8s_hostnetwork",
+    # testssl.sh exact ids (norm_type_key of SSLv2 → sslv2, not ssl2).
+    "breach": "tls_breach",
+    "lucky13": "tls_lucky13",
+    "cert_expirationstatus": "tls_cert_expiration",
+    "heartbleed": "tls_heartbleed",
+    "tls1": "tls_1_0",
+    "tls1_1": "tls_1_1",
+    "sslv3": "tls_sslv3",
+    "ssl3": "tls_sslv3",
+    "sslv2": "tls_sslv2",
+    # Explicit type ids (collector already classified; honor check_id).
+    "web_xss": "web_xss",
+    "web_lfi": "web_lfi",
+    # Nikto plugin ids that name a known web-app class (IDs drift; message wins).
+    "999966": "tls_breach",
+    "999995": "web_http_methods",  # Nikto 2.6.1 PUT
+    "999978": "web_http_methods",  # Nikto 2.1.5 PUT
+    # PingCastle Healthcheck exact RiskId values (norm_type_key).
+    "a_minpwdlen": "pc_min_pwd_len",
+    "a_krbtgt": "pc_krbtgt",
+    "s_nopreauth": "ad_asrep",
+    "s_nopreauthadmin": "ad_asrep",
+    "p_delegated": "pc_delegated",
+    "p_unconstraineddelegation": "ad_unconstrained_delegation",
+    "a_dsheuristicsldapsecurity": "pc_dsheuristics",
+    # Nuclei / nmap Redis-without-auth → existing nse-redis-noauth class.
+    "exposed_redis": "nse-redis-noauth",
+    "nse_redis_noauth": "nse-redis-noauth",
+    "redis_noauth": "nse-redis-noauth",
+    "redis_unauth": "nse-redis-noauth",
+    # Live web/TLS env-eval sensors (shared.web_tls).
+    "sense_http_headers": "web_security_headers",
+    "sense-http-headers": "web_security_headers",
+    "sense_cookie_flags": "web_cookie_flags",
+    "sense-cookie-flags": "web_cookie_flags",
+    "sense_cors": "web_cors",
+    "sense-cors": "web_cors",
+    "sense_cleartext_http": "web_cleartext_http",
+    "sense-cleartext-http": "web_cleartext_http",
+    "sense_cleartext_ftp": "web_cleartext_ftp",
+    "sense-cleartext-ftp": "web_cleartext_ftp",
+    "sense_git_exposed": "web_sensitive_file",
+    "sense-git-exposed": "web_sensitive_file",
+    "sense_dir_listing": "web_dir_listing",
+    "sense-dir-listing": "web_dir_listing",
+    "sense_http_methods": "web_http_methods",
+    "sense-http-methods": "web_http_methods",
+    "sense_tls_expiry": "tls_cert_expiration",
+    "sense-tls-expiry": "tls_cert_expiration",
+    "sense_default_page": "web_default_page",
+    "sense-default-page": "web_default_page",
+    "sense_http_https_redirect": "web_http_redirect",
+    "sense-http-https-redirect": "web_http_redirect",
+    "sense_service_exposure": "web_service_exposure",
+    "sense-service-exposure": "web_service_exposure",
+    "sense_tech_disclosure": "web_tech_disclosure",
+    "sense-tech-disclosure": "web_tech_disclosure",
+    "sense_http_info": "web_tech_disclosure",
+    "sense-http-info": "web_tech_disclosure",
+    "sense_surface": "web_surface",
+    "sense-surface": "web_surface",
+    "sense_ssh_banner": "web_ssh_banner",
+    "sense-ssh-banner": "web_ssh_banner",
+    "sense_tls": "web_tls_service",
+    "sense-tls": "web_tls_service",
 }
 
 # Type-specific remediations. Distinct types must not share identical fix text
@@ -145,6 +231,27 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         ),
         "nist_800_53": ["SC-7", "AC-3"],
     },
+    "rd_gateway_exposed": {
+        "control_name": "Harden the public Remote Desktop Gateway",
+        "recommended_fix": (
+            "Require MFA / NLA at the RD Gateway, restrict source addresses "
+            "where feasible, patch (CVE-2020-0609/0610, CISA AA20-014A), "
+            "enable account lockout, and alert on failed logons. The gateway "
+            "is an intended internet broker (typically 443), not a world-open "
+            "3389 security-group rule — do not just remove 0.0.0.0/0. "
+            "This is a file-drop cloud finding, not a live RDP probe."
+        ),
+        "nist_800_53": [
+            "AC-17",
+            "AC-17(3)",
+            "IA-2(1)",
+            "IA-2(2)",
+            "AC-7",
+            "SI-2",
+            "SC-7",
+        ],
+        "key_medium": True,
+    },
     "cloudtrail_logging": {
         "control_name": "Enable multi-region CloudTrail logging",
         "recommended_fix": (
@@ -186,6 +293,49 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
             "access. This is a BloodHound file-drop finding, not a live AD call."
         ),
         "nist_800_53": ["AC-6", "AC-2"],
+    },
+    "ad_session": {
+        "control_name": "End privileged HasSession logons",
+        "recommended_fix": (
+            "Log off the privileged HasSession, stop using Domain Admin on "
+            "workstations, and rotate that credential if the host is untrusted. "
+            "This is a BloodHound file-drop finding, not a live AD call."
+        ),
+        "nist_800_53": ["AC-6", "AC-2"],
+    },
+    "ssh_root_login": {
+        "control_name": "Disable SSH root login",
+        "recommended_fix": (
+            "Set PermitRootLogin no and use a named sudo account. This is a "
+            "CIS-CAT/XCCDF file-drop finding, not a live SSH call."
+        ),
+        "nist_800_53": ["IA-2", "CM-6"],
+    },
+    "host_fw": {
+        "control_name": "Enable a host firewall",
+        "recommended_fix": (
+            "Enable the host or application firewall (macOS ALF, firewalld, "
+            "iptables, or ufw). This is a CIS-CAT/XCCDF or osquery file-drop "
+            "finding, not a live host call."
+        ),
+        "nist_800_53": ["SC-7", "CM-7"],
+    },
+    "docker_nonroot": {
+        "control_name": "Run container images as a non-root USER",
+        "recommended_fix": (
+            "Add a non-root USER instruction in the Dockerfile so the image "
+            "does not run as root. This is a Trivy Dockerfile misconfig "
+            "file-drop, not a live image build."
+        ),
+        "nist_800_53": ["AC-6", "CM-7"],
+    },
+    "ebs_snapshot_public": {
+        "control_name": "Block public EBS snapshot sharing",
+        "recommended_fix": (
+            "Make the EBS snapshot private and drop public or CrossAccount "
+            "share-all. This is a Cloud Custodian file-drop, not a live AWS call."
+        ),
+        "nist_800_53": ["AC-3", "SC-7"],
     },
     "ad_backup_operators": {
         "control_name": "Restrict Backup Operators membership",
@@ -302,6 +452,334 @@ TYPE_REMEDIATIONS: dict[str, dict[str, Any]] = {
         "nist_800_53": ["SI-7", "CM-6", "AC-3"],
         "key_medium": True,
     },
+    "k8s_security_context": {
+        "control_name": "Require a Kubernetes container securityContext",
+        "recommended_fix": (
+            "Set a container securityContext: runAsNonRoot, drop extra capabilities, "
+            "and do not omit the element so the runtime default stays privileged. "
+            "This is a Cloud Custodian k8s.pod file-drop, not a live kubectl call "
+            "and not a privileged=true admission finding."
+        ),
+        "nist_800_53": ["AC-6", "CM-6", "CM-7"],
+        "key_medium": True,
+    },
+    # Playbook text is paraphrase-only. PingCastle reports are NPOSL-3.0;
+    # Nikto plugin DBs are All Rights Reserved. Never copy vendor wording.
+    "tls_breach": {
+        "control_name": "Disable HTTP compression on HTTPS (BREACH)",
+        "recommended_fix": (
+            "Disable gzip, deflate, and brotli HTTP compression on HTTPS, or mask "
+            "secrets so they never appear in a compressed body. BREACH is a "
+            "compression side-channel, not a cipher-suite upgrade and not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_lucky13": {
+        "control_name": "Disable TLS CBC ciphers (LUCKY13)",
+        "recommended_fix": (
+            "Disable CBC cipher suites and prefer AEAD (AES-GCM or ChaCha20-Poly1305), "
+            "or enable encrypt-then-MAC / a patched TLS library. LUCKY13 is a CBC "
+            "timing side-channel, not HTTP compression and not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "source": "testssl",
+    },
+    "tls_cert_expiration": {
+        "control_name": "Renew the expired or expiring TLS certificate",
+        "recommended_fix": (
+            "Replace the expired or expiring certificate before NotAfter with a "
+            "currently-valid chain. This is a certificate-lifetime finding, not a "
+            "protocol or cipher change and not a live TLS probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-17"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_heartbleed": {
+        "control_name": "Remediate Heartbleed-vulnerable TLS",
+        "recommended_fix": (
+            "Upgrade the TLS stack so Heartbleed is not offered, then regenerate "
+            "private keys and reissue certificates (CISA TA14-098A). "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SI-2", "RA-5", "SC-8"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_1_0": {
+        "control_name": "Disable TLS 1.0",
+        "recommended_fix": (
+            "Disable TLS 1.0 and require TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_1_1": {
+        "control_name": "Disable TLS 1.1",
+        "recommended_fix": (
+            "Disable TLS 1.1 and require TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe and not a TLS 1.0-only finding."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "source": "testssl",
+    },
+    "tls_sslv3": {
+        "control_name": "Disable SSLv3",
+        "recommended_fix": (
+            "Disable SSLv3 on the listener. Prefer TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "tls_sslv2": {
+        "control_name": "Disable SSLv2",
+        "recommended_fix": (
+            "Disable SSLv2 on the listener. Prefer TLS 1.2 or newer. "
+            "This is a dropped TLS export, not a live probe."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "key_medium": True,
+        "source": "testssl",
+    },
+    "web_admin_path": {
+        "control_name": "Remove or lock down the exposed web admin path",
+        "recommended_fix": (
+            "Remove or restrict /admin (and sibling login/manager consoles) so they "
+            "are not reachable from untrusted networks. Require SSO or VPN. "
+            "This is a Nikto file-drop finding, not a live HTTP probe and not a hostname inventory row."
+        ),
+        "nist_800_53": ["AC-6", "CM-7", "SC-7"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_dir_listing": {
+        "control_name": "Disable web-app directory listing",
+        "recommended_fix": (
+            "Turn off autoindex / directory listing on the web root. "
+            "This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-6", "AC-3"],
+        "source": "nikto",
+    },
+    "web_sensitive_file": {
+        "control_name": "Remove exposed web-app sensitive files",
+        "recommended_fix": (
+            "Remove .git / .env / phpinfo / server-status from the published tree "
+            "and block those paths. This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-7", "AC-3", "SI-12"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_http_methods": {
+        "control_name": "Disable dangerous HTTP methods",
+        "recommended_fix": (
+            "Disable PUT and DELETE (and any unused write methods) on the public listener. "
+            "This is a Nikto file-drop finding, not a live HTTP probe."
+        ),
+        "nist_800_53": ["CM-7", "AC-3"],
+        "source": "nikto",
+    },
+    "web_default_creds": {
+        "control_name": "Replace web-app default credentials",
+        "recommended_fix": (
+            "Change vendor default passwords on the admin console and disable the "
+            "default account. This is a Nikto file-drop finding, not a live login."
+        ),
+        "nist_800_53": ["IA-5", "AC-2"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_xss": {
+        "control_name": "Stop reflected web-app cross-site scripting",
+        "recommended_fix": (
+            "Encode untrusted response output for the HTML and JavaScript context "
+            "and set a Content-Security-Policy that blocks inline script. "
+            "This is a Nikto web-app finding, not a source-code static-analysis "
+            "row and not a live HTTP probe."
+        ),
+        "nist_800_53": ["SI-10", "SA-11", "CM-6"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "web_lfi": {
+        "control_name": "Stop web-app local file inclusion",
+        "recommended_fix": (
+            "Reject path traversal in upload/connector parameters and keep plugin "
+            "files off the public tree. This is a Nikto web-app finding, not a "
+            "listener-protocol or remote-desktop exposure and not a live HTTP probe."
+        ),
+        "nist_800_53": ["SI-10", "SA-11", "AC-3", "CM-7"],
+        "key_medium": True,
+        "source": "nikto",
+    },
+    "pc_min_pwd_len": {
+        "control_name": "Raise domain minimum password length",
+        "recommended_fix": (
+            "Set the domain minimum password length per NIST SP 800-63B-4 "
+            "(15 characters password-only, or 8 with MFA) or at least 8 as "
+            "PingCastle A-MinPwdLen scores. This is a PingCastle file-drop, not a "
+            "live directory call."
+        ),
+        "nist_800_53": ["IA-5", "AC-2"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "pc_krbtgt": {
+        "control_name": "Rotate the krbtgt password twice",
+        "recommended_fix": (
+            "Reset the krbtgt password twice, at least 10 hours apart, so old "
+            "KRBTGT keys die. This is PingCastle rule A-Krbtgt from a file-drop, "
+            "not a live DC call."
+        ),
+        "nist_800_53": ["IA-5", "SC-12"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "pc_delegated": {
+        "control_name": "Mark privileged accounts sensitive and cannot be delegated",
+        "recommended_fix": (
+            "Set 'Account is sensitive and cannot be delegated' on admins, or add "
+            "them to Protected Users. PingCastle P-Delegated is that flag, not "
+            "the P-UnconstrainedDelegation RiskId. File-drop only."
+        ),
+        "nist_800_53": ["AC-6", "IA-2"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "pc_dsheuristics": {
+        "control_name": "Set dSHeuristics LDAP security (CVE-2021-42291)",
+        "recommended_fix": (
+            "Set dSHeuristics characters 28 (LDAPAddAuthZVerifications) and 29 "
+            "(LDAPOwnerModify) to 1 for Enforcement after watching events "
+            "3044-3056 in audit mode. The 10th character must be 1 and the 20th "
+            "character must be 2 per KB5008383 (CVE-2021-42291). PingCastle "
+            "A-DsHeuristicsLDAPSecurity from a file-drop, not a live directory call."
+        ),
+        "nist_800_53": ["AC-3", "AC-6", "SI-2"],
+        "key_medium": True,
+        "source": "pingcastle",
+    },
+    "web_security_headers": {
+        "control_name": "Deploy baseline HTTP security headers",
+        "recommended_fix": (
+            "Add HSTS (HTTPS), CSP, X-Frame-Options or frame-ancestors, "
+            "X-Content-Type-Options, Referrer-Policy, and Permissions-Policy. "
+            "This is a signed-SCOPE live web/TLS finding, not a Nikto file-drop."
+        ),
+        "nist_800_53": ["SC-7", "SC-18"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_cookie_flags": {
+        "control_name": "Set Secure HttpOnly SameSite cookie flags",
+        "recommended_fix": (
+            "Set HttpOnly, Secure on HTTPS, and SameSite=Lax or Strict on session cookies. "
+            "This is a signed-SCOPE live web/TLS finding, not a live login."
+        ),
+        "nist_800_53": ["SC-23", "AC-12"],
+        "source": "web-tls",
+    },
+    "web_cors": {
+        "control_name": "Allowlist CORS origins",
+        "recommended_fix": (
+            "Replace Access-Control-Allow-Origin * with an explicit allowlist; "
+            "never combine * with credentials. Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["AC-3", "SC-7"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_cleartext_http": {
+        "control_name": "Terminate TLS and redirect HTTP to HTTPS",
+        "recommended_fix": (
+            "Enable HTTPS, 301 HTTP to HTTPS, and HSTS. "
+            "This is a signed-SCOPE live web/TLS finding, not a file-drop."
+        ),
+        "nist_800_53": ["SC-8", "SC-7"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_cleartext_ftp": {
+        "control_name": "Disable or lock down cleartext FTP",
+        "recommended_fix": (
+            "Disable FTP; use SFTP or managed transfer. "
+            "Signed-SCOPE live connect-only finding, not a credential test."
+        ),
+        "nist_800_53": ["SC-8"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_default_page": {
+        "control_name": "Replace default web welcome or error pages",
+        "recommended_fix": (
+            "Replace default welcome/error pages with intentional production content. "
+            "Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["CM-2", "CM-6"],
+        "source": "web-tls",
+    },
+    "web_http_redirect": {
+        "control_name": "Redirect HTTP to HTTPS",
+        "recommended_fix": (
+            "Configure the edge to 301/308 HTTP to HTTPS and enable HSTS after validation. "
+            "Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["SC-8", "SC-7"],
+        "source": "web-tls",
+    },
+    "web_service_exposure": {
+        "control_name": "Remove public exposure of data and admin services",
+        "recommended_fix": (
+            "Bind DB/cache/RDP/SMB/admin listeners to private networks and require auth. "
+            "Signed-SCOPE TCP-connect finding, not an exploit."
+        ),
+        "nist_800_53": ["SC-7", "CM-7"],
+        "key_medium": True,
+        "source": "web-tls",
+    },
+    "web_tech_disclosure": {
+        "control_name": "Strip Server and X-Powered-By version tokens",
+        "recommended_fix": (
+            "Strip or generalize Server/X-Powered-By at the reverse proxy. "
+            "Signed-SCOPE live web/TLS finding."
+        ),
+        "nist_800_53": ["CM-7"],
+        "source": "web-tls",
+    },
+    "web_surface": {
+        "control_name": "Inventory listeners and close unused ports",
+        "recommended_fix": (
+            "Close unused listeners; restrict admin ports to jump hosts or VPN. "
+            "Signed-SCOPE TCP-connect finding, not a port scan spray."
+        ),
+        "nist_800_53": ["CM-7", "CM-8"],
+        "source": "web-tls",
+    },
+    "web_ssh_banner": {
+        "control_name": "Restrict SSH to management networks",
+        "recommended_fix": (
+            "Limit SSH to jump hosts/VPN; disable password auth; keep OpenSSH current. "
+            "Banner read only — no auth attempted."
+        ),
+        "nist_800_53": ["CM-7", "AC-17"],
+        "source": "web-tls",
+    },
+    "web_tls_service": {
+        "control_name": "Ensure TLS is present where HTTPS is expected",
+        "recommended_fix": (
+            "Enable TLS on public web endpoints; disable weak protocols/ciphers. "
+            "Signed-SCOPE live TLS handshake, not a cipher brute."
+        ),
+        "nist_800_53": ["SC-8", "SC-13"],
+        "source": "web-tls",
+    },
 }
 
 # Failure-oriented weakness names. Check titles that read as passes
@@ -314,11 +792,17 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "iam_root_mfa": "Root account has no MFA",
     "iam_user_mfa": "IAM user has no MFA",
     "sg_ingress_open": "Security group allows inbound traffic from the internet",
+    "rd_gateway_exposed": "Remote Desktop Gateway is published on the internet",
     "cloudtrail_logging": "CloudTrail multi-region trail is missing",
     "rds_public": "RDS instance is publicly accessible",
     "ad_dcsync": "Non-DC principal has DCSync / replication rights",
     "ad_genericall": "Principal has GenericAll on a privileged object",
     "ad_adminto": "Principal has standing local-admin (AdminTo) rights",
+    "ad_session": "Privileged principal has a HasSession on a workstation",
+    "ssh_root_login": "SSH PermitRootLogin is enabled",
+    "host_fw": "Host firewall or macOS ALF is disabled",
+    "docker_nonroot": "Container image runs as root",
+    "ebs_snapshot_public": "EBS snapshot is shared publicly",
     "ad_backup_operators": "Backup Operators has standing members",
     "ad_kerberoast": "Service account is kerberoastable",
     "ad_asrep": "Account does not require Kerberos preauthentication",
@@ -333,6 +817,39 @@ TYPE_WEAKNESS_NAME: dict[str, str] = {
     "k8s_privilege_escalation": "Kubernetes privilege escalation is allowed",
     "k8s_hostnetwork": "Workload uses hostNetwork",
     "k8s_write_binary_dir": "Workload can write under container binary directories",
+    "k8s_security_context": "Container securityContext is missing",
+    "tls_breach": "HTTPS response compression enables BREACH",
+    "tls_lucky13": "TLS CBC ciphers enable LUCKY13",
+    "tls_cert_expiration": "TLS certificate is expired or expiring",
+    "tls_heartbleed": "TLS stack is vulnerable to Heartbleed",
+    "tls_1_0": "TLS 1.0 is offered",
+    "tls_1_1": "TLS 1.1 is offered",
+    "tls_sslv3": "SSLv3 is offered",
+    "tls_sslv2": "SSLv2 is offered",
+    "web_admin_path": "Web admin or login path is exposed",
+    "web_dir_listing": "Web-app directory listing is enabled",
+    "web_sensitive_file": "Sensitive web-app file is published",
+    "web_http_methods": "Dangerous HTTP write methods are enabled",
+    "web_default_creds": "Web-app default credentials are in use",
+    "web_xss": "Web application reflects cross-site scripting",
+    "web_lfi": "Web application allows local file inclusion",
+    "pc_min_pwd_len": "Domain minimum password length is below policy",
+    "pc_krbtgt": "krbtgt password has not been rotated",
+    "pc_delegated": "Privileged account is not marked sensitive / Protected Users",
+    "pc_dsheuristics": "dSHeuristics LDAP security flags are not set",
+    "nse-redis-noauth": "Redis accepts unauthenticated access",
+    "web_security_headers": "Required HTTP security headers are missing",
+    "web_cookie_flags": "Session cookies lack Secure/HttpOnly/SameSite",
+    "web_cors": "CORS allow-origin is overly permissive",
+    "web_cleartext_http": "HTTP is exposed without HTTPS",
+    "web_cleartext_ftp": "FTP listener is reachable",
+    "web_default_page": "Default or verbose error page is published",
+    "web_http_redirect": "HTTP does not redirect to HTTPS",
+    "web_service_exposure": "Sensitive service port is reachable",
+    "web_tech_disclosure": "Server or framework version is disclosed",
+    "web_surface": "Unauthorized or undocumented listeners are open",
+    "web_ssh_banner": "SSH banner is reachable on the network",
+    "web_tls_service": "TLS listener is missing, untrusted, or informational",
 }
 
 # Distinct types may share remediations only with an explicit reason.
@@ -353,17 +870,477 @@ def extra_dict(rec: dict[str, Any]) -> dict[str, Any]:
     return extra if isinstance(extra, dict) else {}
 
 
+def union_controls(*groups: Any) -> list[str]:
+    """De-duplicated controls, first-seen order (survivor, then merged-away)."""
+    out: list[str] = []
+    for group in groups:
+        if not group:
+            continue
+        for raw in group:
+            token = str(raw or "").strip()
+            if token and token not in out:
+                out.append(token)
+    return out
+
+
+def _mapped_nist_controls(rec: dict[str, Any]) -> list[str]:
+    """Controls already on the row plus the current map_finding stamp."""
+    extra = extra_dict(rec)
+    have = list(extra.get("nist_800_53") or [])
+    from shared.control_map import map_finding
+
+    mapped = map_finding(rec)
+    return union_controls(have, mapped.get("nist_800_53") or [])
+
+
+def is_custodian_policy_row(rec: dict[str, Any]) -> bool:
+    """Cloud Custodian policy row (security / needs-review / named c7n title)."""
+    name = str(rec.get("name") or "").strip().lower()
+    if name.startswith("cloud custodian"):
+        return True
+    if str(rec.get("source") or "") != "cloud-prowler":
+        return False
+    extra = extra_dict(rec)
+    klass = str(extra.get("classification") or "").strip().lower()
+    return klass in {"security", "needs-review", "cost"} or extra.get("needs_review") is True
+
+
+# Split camelCase and letter–digit boundaries before lowercasing so OpenRdpPort
+# / rdp3389 / ssh22 tokenize, while wordpress / sshd / 33890 stay whole.
+_CAMEL_DIGIT_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
+# Collector fallback when the policy has no authored description.
+_SYNTHESIZED_MATCHED_DESC = re.compile(r"^Policy\s+\S+\s+matched\s+", re.I)
+_SG_RESOURCE_KINDS = frozenset(
+    {
+        "sg",
+        "security-group",
+        "securitygroup",
+        "nsg",
+        "networksecuritygroup",
+        "network-security-group",
+        "networksecuritygroups",
+    }
+)
+# Singular "security group" only — "security groups" / "network security
+# groups" in prose is not a match. Plural is allowed on check id/name.
+_SG_PHRASE_RE = re.compile(
+    r"(?<![a-z0-9])(?:network\s+)?security\s+group(?!s\b|[a-z0-9])",
+    re.I,
+)
+_SG_PHRASE_ID_RE = re.compile(
+    r"(?<![a-z0-9])(?:network\s+)?security\s+groups?(?![a-z0-9])",
+    re.I,
+)
+# Closed compounds. Do not match the plural prose token "securitygroups"
+# or "networksecuritygroups" (ARM kinds still match via _SG_RESOURCE_KINDS).
+_SG_COMPOUND_RE = re.compile(
+    r"networksecuritygroup(?!s)|securitygroup(?!s)",
+    re.I,
+)
+_SG_COMPOUND_ID_RE = re.compile(
+    r"networksecuritygroups?|securitygroups?",
+    re.I,
+)
+_APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
+_APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
+# Longest needles first so rdgatewaylogs remainder is "logs", not
+# rdgw + "atewaylogs" (which would miss the artifact suffix).
+_RD_GATEWAY_COMPACT = (
+    "remotedesktopgateway",
+    "rdpgateway",
+    "rdgateway",
+    "tsgateway",
+    "rdpgw",
+    "rdgw",
+)
+# rd / rdp only. rds is not a lead — it steals AWS rds_public
+# (rds-gateway-public). ts is not a general lead (nest-ts-gateway).
+_RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
+_RD_GATEWAY_TRAIL_TOKENS = frozenset({"gateway", "gateways"})
+_RD_GATEWAY_PHRASE_LEAD = ("remote", "desktop")
+_RD_GATEWAY_TS_PHRASE = ("terminal", "services")
+# Compact openrdgateway / publicrdgateway / internetrdgateway / devrdgateway.
+# Not a contains scan — *rd+gateway compounds (birdgateway, onboardgateway) stay off.
+# Environment prefixes match the hyphenated forms (dev-rdgateway already types):
+# prod plus the common siblings so compact and kebab stay consistent.
+_RD_GATEWAY_COMPACT_PREFIXES = (
+    "staging",
+    "internet",
+    "external",
+    "exposed",
+    "public",
+    "stage",
+    "open",
+    "test",
+    "prod",
+    "uat",
+    "dev",
+)
+# Under-drop artifact names: only clear non-exposure leftovers immediately
+# after the stem — logs, audit/audits, cert* (certexpiry / certificate).
+# Not backup (standby gateway), not log (log in / Log4j / login / logging),
+# not auditor. Only the token (or compact remainder) right after the stem
+# is checked, so rdgateway-public-logs still types.
+_RD_GATEWAY_ARTIFACT_EXACT = frozenset({"logs", "audit", "audits"})
+_RD_GATEWAY_ARTIFACT_STARTS = ("logs", "cert")
+
+
+def _policy_token_seq(*parts: str) -> list[str]:
+    """Ordered camel/digit tokens from policy text. Never feed a resource id."""
+    tokens: list[str] = []
+    for part in parts:
+        text = str(part or "")
+        if not text:
+            continue
+        tokens.extend(tok.lower() for tok in _CAMEL_DIGIT_RE.findall(text))
+    return tokens
+
+
+def _policy_tokens(*parts: str) -> set[str]:
+    """Whole tokens from policy text. Never feed a resource id into this."""
+    return set(_policy_token_seq(*parts))
+
+
+def _authored_policy_description(rec: dict[str, Any]) -> str:
+    """Policy-authored description only — drop synthesized 'matched <rid>' text."""
+    desc = str(rec.get("description") or "").strip()
+    if not desc or _SYNTHESIZED_MATCHED_DESC.match(desc):
+        return ""
+    return desc
+
+
+def _resource_kind_tails(kind: str) -> set[str]:
+    """Last path / dotted segment plus each [./] token (ARM types split on /)."""
+    text = str(kind or "").strip().lower().replace("\\", "/")
+    parts: set[str] = set()
+    if not text:
+        return parts
+    for chunk in re.split(r"[./]", text):
+        chunk = chunk.strip()
+        if chunk:
+            parts.add(chunk)
+    parts.add(text.rsplit("/", 1)[-1])
+    parts.add(text.rsplit(".", 1)[-1])
+    return parts
+
+
+def _is_security_group_resource(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
+    """True when the row's resource type / service / label is a security group."""
+    candidates = [extra.get("resource_type"), extra.get("service")]
+    candidates.extend(rec.get("labels") or [])
+    for raw in candidates:
+        if _resource_kind_tails(str(raw or "")) & _SG_RESOURCE_KINDS:
+            return True
+    return False
+
+
+def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False) -> bool:
+    """True only for the adjacent SG phrase (or the closed compound).
+
+    Description/prose is singular-only. Check id/name may use the plural.
+    Azure application security groups are stripped before either regex.
+    """
+    raw = str(text or "")
+    if not raw:
+        return False
+    spaced = re.sub(r"[\s_\-]+", " ", raw)
+    cleaned = _APP_SG_RE.sub(" ", spaced)
+    phrase = _SG_PHRASE_ID_RE if allow_plural else _SG_PHRASE_RE
+    if phrase.search(cleaned):
+        return True
+    compact = _APP_SG_COMPACT_RE.sub("", re.sub(r"[\s_\-]+", "", cleaned))
+    compound = _SG_COMPOUND_ID_RE if allow_plural else _SG_COMPOUND_RE
+    return bool(compound.search(compact))
+
+
+def _policy_token_marks(text: str) -> list[tuple[str, int]]:
+    """Camel/digit tokens plus each token's start index in the source text.
+
+    Used to tell a true ordinal (3rd / 3rdGateway: digit run starts the
+    alphanumeric segment) from a host/site/version digit (vm3rdgateway /
+    Server2019RDGateway: a letter precedes the digit run).
+    """
+    raw = str(text or "")
+    return [(m.group(0).lower(), m.start()) for m in _CAMEL_DIGIT_RE.finditer(raw)]
+
+
+def _digit_run_starts_segment(raw: str, token_start: int) -> bool:
+    """True when a digit run immediately before token_start begins an alnum segment."""
+    if token_start <= 0 or not raw[token_start - 1].isdigit():
+        return False
+    i = token_start - 1
+    while i >= 0 and raw[i].isdigit():
+        i -= 1
+    return i < 0 or not raw[i].isalnum()
+
+
+def _ordinal_rd_skip(raw: str, token_start: int, tok: str) -> bool:
+    """Skip only true ordinals: digit run starts a segment and token is rd, not rdp.
+
+    3rd / 3rdGateway / 3rdgateway skip. vm3rdgateway / site2rdgateway /
+    Server2019RDGateway / 3rdpgateway / 3rdp-gateway do not.
+    """
+    if tok.startswith("rdp") or not tok.startswith("rd"):
+        return False
+    return _digit_run_starts_segment(raw, token_start)
+
+
+def _rd_gateway_compact_remainder(tok: str) -> str | None:
+    """Remainder after an allowlisted compact needle, or None if not compact."""
+    for needle in _RD_GATEWAY_COMPACT:
+        if tok.startswith(needle):
+            return tok[len(needle) :]
+        for prefix in _RD_GATEWAY_COMPACT_PREFIXES:
+            blob = prefix + needle
+            if tok.startswith(blob):
+                return tok[len(blob) :]
+    return None
+
+
+def _is_rd_gateway_artifact_remainder(remainder: str) -> bool:
+    if not remainder:
+        return False
+    if remainder in _RD_GATEWAY_ARTIFACT_EXACT:
+        return True
+    return remainder.startswith(_RD_GATEWAY_ARTIFACT_STARTS)
+
+
+def _is_rd_gateway_artifact_token(tok: str) -> bool:
+    if tok in _RD_GATEWAY_ARTIFACT_EXACT:
+        return True
+    return tok.startswith("cert")
+
+
+def _is_rd_gateway_compact_token(tok: str) -> bool:
+    """True when a token starts with rdgateway/rdpgateway (or RDGW / TS).
+
+    Allowlisted prefixes restore openrdgateway / internetrdgateway.
+    A contains scan is not used — birdgateway / onboardgateway stay off.
+    Clear artifact suffixes (logs / audit / cert*) stay off.
+    """
+    remainder = _rd_gateway_compact_remainder(tok)
+    if remainder is None:
+        return False
+    return not _is_rd_gateway_artifact_remainder(remainder)
+
+
+def _alnum_segments(text: str) -> list[str]:
+    """Lowercased alphanumeric runs — recovers RDgateway after camel split."""
+    return [m.group(0).lower() for m in re.finditer(r"[A-Za-z0-9]+", str(text or ""))]
+
+
+def _phrase_is_rd_gateway(tokens: list[str], lead: tuple[str, str]) -> bool:
+    """Adjacent lead pair + gateway(s), with an optional artifact skip after."""
+    if len(tokens) < 3:
+        return False
+    for i, tok in enumerate(tokens[:-2]):
+        if tok != lead[0] or tokens[i + 1] != lead[1]:
+            continue
+        if tokens[i + 2] not in _RD_GATEWAY_TRAIL_TOKENS:
+            continue
+        if i + 3 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 3]):
+            continue
+        return True
+    return False
+
+
+def _field_is_windows_rds_gateway(tokens: list[str]) -> bool:
+    """Windows feature id RDS-Gateway as a whole field — not a general rds lead.
+
+    rds-gateway-public / aws-rds-gateway-public stay with rds_public
+    (PubliclyAccessible=false), not MFA/NLA at the RD Gateway.
+    """
+    return tokens in (["rds", "gateway"], ["rds", "gateways"])
+
+
+def _field_starts_with_ts_gateway(tokens: list[str]) -> bool:
+    """TSGateway / ts-gateway as the leading segment, not nest-ts-gateway.
+
+    An allowlisted prefix may lead (open-ts-gateway / opentsgateway).
+    """
+    if len(tokens) < 2:
+        return False
+    start = 0
+    if tokens[0] in _RD_GATEWAY_COMPACT_PREFIXES and len(tokens) >= 3:
+        start = 1
+    if tokens[start] != "ts":
+        return False
+    if start + 1 >= len(tokens) or tokens[start + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
+        return False
+    after = start + 2
+    if after < len(tokens) and _is_rd_gateway_artifact_token(tokens[after]):
+        return False
+    return True
+
+
+def _field_is_rd_gateway(text: str) -> bool:
+    """Adjacent rd/rdp + gateway(s), remote/terminal phrases, or compact.
+
+    Skip 'rd' (or a compact rdgateway* token) only when a digit run starts
+    the alphanumeric segment (3rd, 3rdGateway, 3rdgateway). A host/site/
+    version digit (vm3rdgateway, site2rdgateway, Server2019RDGateway) and
+    any rdp token (3rdpgateway, 3rdp-gateway) still match. A separated
+    number (2019 RD, vm01-rd-gateway, 3389 RD Gateway) still matches.
+
+    Mixed-case compacts (RDgateway, RDPgateway, openRDgateway) are recovered
+    by applying the compact rule to each lowercased alphanumeric segment:
+    the camel splitter otherwise cuts them into R + Dgateway.
+
+    rds is not a lead token. Only the whole-field Windows feature
+    RDS-Gateway types; rds-gateway-public stays rds_public. ts matches
+    only as a leading TSGateway / ts-gateway (or Terminal Services
+    Gateway), not nest-ts-gateway.
+    """
+    raw = str(text or "")
+    segments = _alnum_segments(raw)
+    for i, seg in enumerate(segments):
+        if not _is_rd_gateway_compact_token(seg):
+            continue
+        if i + 1 < len(segments) and _is_rd_gateway_artifact_token(segments[i + 1]):
+            continue
+        return True
+    marks = _policy_token_marks(raw)
+    tokens = [tok for tok, _ in marks]
+    for i, (tok, start) in enumerate(marks):
+        if not _is_rd_gateway_compact_token(tok):
+            continue
+        if _ordinal_rd_skip(raw, start, tok):
+            continue
+        if i + 1 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 1]):
+            continue
+        return True
+    if _phrase_is_rd_gateway(tokens, _RD_GATEWAY_PHRASE_LEAD):
+        return True
+    if _phrase_is_rd_gateway(tokens, _RD_GATEWAY_TS_PHRASE):
+        return True
+    if _field_is_windows_rds_gateway(tokens):
+        return True
+    if _field_starts_with_ts_gateway(tokens):
+        return True
+    for i, tok in enumerate(tokens[:-1]):
+        if tok not in _RD_GATEWAY_LEAD_TOKENS:
+            continue
+        if tokens[i + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
+            continue
+        if _ordinal_rd_skip(raw, marks[i][1], tok):
+            continue
+        if i + 2 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 2]):
+            continue
+        return True
+    return False
+
+
+def _is_rd_gateway(check_id: str, title: str) -> bool:
+    """RD Gateway from tokenized check id/name only.
+
+    Id and title are tokenized separately so a trailing 'rd' on the id
+    cannot pair with a leading 'gateway' on the title. Compact
+    rdgateway / rdpgateway must start the token (rdgatewaypublic) or
+    follow an allowlisted prefix (openrdgateway, internetrdgateway).
+    Adjacent rd/rdp + gateway(s) still match, as does
+    'Remote Desktop Gateway' and 'Terminal Services Gateway'. The
+    Windows feature id RDS-Gateway matches as a whole field; a general
+    rds + gateway lead does not. A glued ordinal digit+'rd' (3rdGateway)
+    does not; a host-glued digit (vm3rdgateway) does. A bare gateway
+    is not enough.
+    """
+    return _field_is_rd_gateway(check_id) or _field_is_rd_gateway(title)
+
+
+def _has_sg_id_token(words: set[str]) -> bool:
+    """Bare sg / nsg from check_id or name — never from free-text description."""
+    return bool(words & {"sg", "nsg"})
+
+
+def _custodian_security_type(rec: dict[str, Any]) -> str:
+    """Honest class for Custodian security-policy / security-context names."""
+    if not is_custodian_policy_row(rec):
+        return ""
+    extra = extra_dict(rec)
+    authored = _authored_policy_description(rec)
+    # check_id + title + authored description only. Resource ids / ARNs /
+    # synthesized "Policy <name> matched <rid>" text are not tokenized.
+    check_id = str(extra.get("check_id") or "")
+    title = str(rec.get("name") or "")
+    raw_parts = (check_id, title, authored)
+    raw = " ".join(p for p in raw_parts if p)
+    words = _policy_tokens(*raw_parts)
+    id_name_words = _policy_tokens(check_id, title)
+    blob = " ".join(
+        norm_type_key(str(x or ""))
+        for x in (extra.get("check_id"), rec.get("name"), rec.get("description"))
+    )
+    compact = blob.replace("_", "")
+    if (
+        "security_context" in blob
+        or "securitycontext" in compact
+        or "sec_con" in blob
+    ):
+        return "k8s_security_context"
+    # Public / open SSH or RDP (EC2.13 / EC2.14) — internet-facing SG ingress.
+    # Whole tokens only: "rdp" must not match inside "wordpress".
+    # RD Gateway is an intended internet broker — its own class, not
+    # "remove 0.0.0.0/0". A bare 'gateway' (NAT / internet gateway) in
+    # description text must not disable public-RDP typing.
+    exposed = bool(words & {"public", "open", "3389"}) or "0.0.0.0" in raw
+    rd_gw = _is_rd_gateway(check_id, title)
+    if rd_gw and exposed:
+        return "rd_gateway_exposed"
+    admin = bool(words & {"ssh", "3389"}) or ("rdp" in words and not rd_gw)
+    if exposed and admin:
+        return "sg_ingress_open"
+    sg_signal = (
+        _has_adjacent_security_group_phrase(f"{check_id} {title}", allow_plural=True)
+        or _has_adjacent_security_group_phrase(authored)
+        or _has_sg_id_token(id_name_words)
+        or _is_security_group_resource(rec, extra)
+    )
+    if "ingress" in words and sg_signal:
+        return "sg_ingress_open"
+    return ""
+
+
 def _alias_keys(rec: dict[str, Any]) -> list[str]:
     extra = extra_dict(rec)
-    keys = [
+    # risk_id is not an alias key: unmapped PingCastle RiskIds must fall
+    # through to control_map._pingcastle_playbook (#145), not "unknown".
+    # Mapped RiskIds are read via _exact_scanner_id / _PINGCASTLE_EXACT.
+    raw_keys = [
         extra.get("check_id"),
         extra.get("edge"),
         extra.get("control"),
         extra.get("id"),
         extra.get("control_key"),
         extra.get("rule"),
+        extra.get("template_id"),
+        extra.get("template-id"),
     ]
-    return [norm_type_key(str(k)) for k in keys if k]
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_keys:
+        if not raw:
+            continue
+        text = str(raw).strip()
+        if not text:
+            continue
+        for cand in (text, normalize_osquery_pack_name(text)):
+            n = norm_type_key(cand) if cand else ""
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+    return out
+
+
+def _risk_id_only(rec: dict[str, Any]) -> bool:
+    extra = extra_dict(rec)
+    if not str(extra.get("risk_id") or "").strip():
+        return False
+    return not any(
+        extra.get(k)
+        for k in ("check_id", "edge", "control", "id", "control_key", "rule")
+    )
 
 
 def _match_blob(rec: dict[str, Any]) -> str:
@@ -385,8 +1362,127 @@ def _match_blob(rec: dict[str, Any]) -> str:
     ).lower()
 
 
+def _has_word(text: str, *words: str) -> bool:
+    """True when any token matches on a word boundary (not a substring)."""
+    blob = str(text or "")
+    for word in words:
+        if re.search(rf"(?<![A-Za-z0-9_]){re.escape(word)}(?![A-Za-z0-9_])", blob, re.I):
+            return True
+    return False
+
+
+def has_xss_signal(rec: dict[str, Any]) -> bool:
+    """XSS only from plugin name, family, or CWE — never the description body.
+
+    'Multiple Vulnerabilities' plugins list XSS among other issues in the
+    description; that must not type the row as web_xss or pick an XSS playbook.
+    """
+    extra = extra_dict(rec)
+    blob = " ".join(
+        str(x or "")
+        for x in (
+            rec.get("name"),
+            extra.get("plugin_family"),
+            extra.get("family"),
+            extra.get("cwe"),
+            extra.get("cwes"),
+        )
+    ).lower()
+    if _has_word(blob, "xss") or "cross-site scripting" in blob or "cross site scripting" in blob:
+        return True
+    if re.search(r"cwe[-_ ]?79\b", blob):
+        return True
+    return False
+
+
+def _message_text(rec: dict[str, Any]) -> str:
+    """Nikto/testssl message first — name + description, not URL-only extra."""
+    return f"{rec.get('name') or ''} {rec.get('description') or ''}"
+
+
+def _exact_scanner_id(rec: dict[str, Any]) -> str:
+    extra = extra_dict(rec)
+    return norm_type_key(str(extra.get("id") or extra.get("risk_id") or "").strip())
+
+
+_TESTSSL_EXACT: dict[str, str] = {
+    "breach": "tls_breach",
+    "lucky13": "tls_lucky13",
+    "cert_expirationstatus": "tls_cert_expiration",
+    "heartbleed": "tls_heartbleed",
+    "tls1": "tls_1_0",
+    "tls1_1": "tls_1_1",
+    "sslv3": "tls_sslv3",
+    "ssl3": "tls_sslv3",
+    "sslv2": "tls_sslv2",
+}
+
+_PINGCASTLE_EXACT: dict[str, str] = {
+    "a_minpwdlen": "pc_min_pwd_len",
+    "a_krbtgt": "pc_krbtgt",
+    "s_nopreauth": "ad_asrep",
+    "s_nopreauthadmin": "ad_asrep",
+    "p_delegated": "pc_delegated",
+    "p_unconstraineddelegation": "ad_unconstrained_delegation",
+    "a_dsheuristicsldapsecurity": "pc_dsheuristics",
+}
+
+_NIKTO_METHOD_IDS = frozenset({"999995", "999978"})
+_NIKTO_BREACH_IDS = frozenset({"999966"})
+
+
+def _nikto_http_methods(msg: str, extra_id: str) -> bool:
+    if extra_id in _NIKTO_METHOD_IDS:
+        return True
+    write_method = _has_word(msg, "put", "delete") or "webdav" in msg
+    if not write_method:
+        return False
+    if "allowed http methods" in msg:
+        return True
+    if _has_word(msg, "method", "methods") or ("allow" in msg and "header" in msg):
+        return True
+    return False
+
+
 def _heuristic_type(rec: dict[str, Any]) -> str:
     text = _match_blob(rec)
+    extra = extra_dict(rec)
+    extra_id = _exact_scanner_id(rec)
+    raw_id = str(extra.get("id") or extra.get("risk_id") or "").strip()
+    mapped = _TESTSSL_EXACT.get(extra_id) or _PINGCASTLE_EXACT.get(extra_id)
+    if mapped:
+        return mapped
+    msg = _message_text(rec)
+    labels = {str(x).lower() for x in (rec.get("labels") or [])}
+    nessus = "nessus" in labels or str(extra.get("tool") or "").lower() == "nessus"
+    nikto = (not nessus) and (
+        "nikto" in labels or raw_id.isdigit() or "nikto" in msg.lower()
+    )
+    if has_xss_signal(rec):
+        return "web_xss"
+    if nikto:
+        # Message-text-first, then plugin ID (IDs drift between Nikto versions).
+        # XSS is name / family / CWE only (has_xss_signal above) — never a
+        # substring inside a Nessus 'Multiple Vulnerabilities' description.
+        if _has_word(msg, "breach") or raw_id in _NIKTO_BREACH_IDS:
+            return "tls_breach"
+        if (
+            _has_word(msg, "lfi")
+            or "directory traversal" in msg.lower()
+            or "directory-traversal" in msg.lower()
+            or "local file inclusion" in msg.lower()
+        ):
+            return "web_lfi"
+        if "directory listing" in msg.lower() or "directory index" in msg.lower() or "indexing found" in msg.lower():
+            return "web_dir_listing"
+        if any(tok in msg.lower() for tok in (".git", ".env", "phpinfo", "server-status")):
+            return "web_sensitive_file"
+        if "default password" in msg.lower() or "default credential" in msg.lower():
+            return "web_default_creds"
+        if _nikto_http_methods(msg.lower(), raw_id):
+            return "web_http_methods"
+        if any(tok in msg.lower() for tok in ("admin login", "/admin", "phpmyadmin", "wp-admin", "manager/html")):
+            return "web_admin_path"
     if "dcsync" in text or "ds-replication-get-changes" in text or (
         "replicat" in text and ("directory" in text or "get-changes" in text)
     ):
@@ -405,11 +1501,22 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         "local admin" in text and "bloodhound" in text
     ):
         return "ad_adminto"
+    if (
+        "hassession" in text.replace(" ", "")
+        or "hasession" in text.replace(" ", "")
+        or "has session" in text
+    ):
+        return "ad_session"
+    if "ebs" in text and "snapshot" in text and "public" in text:
+        return "ebs_snapshot_public"
     if "null session" in text or extra_dict(rec).get("access") == "null-session":
         return "ad_smb_null_session"
     if "domain admins" in text:
         return "ad_domain_admins"
-    if "global administrator" in text and ("pim" in text or "standing" in text or "graph" in text):
+    if "not a global administrator" not in text and (
+        "global administrator" in text
+        and ("pim" in text or "standing" in text or "graph" in text)
+    ):
         return "entra_ga_pim"
     if "password history" in text:
         return "hk_password_history"
@@ -431,6 +1538,18 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "k8s_anonymous_auth"
     if "privileged" in text and ("container" in text or "pod" in text or "admission" in text):
         return "k8s_privileged"
+    if (
+        "securitycontext" in text.replace(" ", "").replace("_", "").replace("-", "")
+        or "security-context" in text
+        or "security_context" in text
+        or "sec-con" in text
+    ) and (
+        "pod" in text
+        or "container" in text
+        or "k8s" in text
+        or "kubernetes" in text
+    ):
+        return "k8s_security_context"
     if ("s3" in text or "bucket" in text) and (
         "public access" in text
         or "public-access" in text
@@ -457,8 +1576,10 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
         return "cloudtrail_logging"
     if "rds" in text and "public" in text:
         return "rds_public"
-    if ("0.0.0.0/0" in text or "0.0.0.0 / 0" in text) and (
-        "security group" in text or "security_group" in text or "securitygroup" in text
+    if (
+        str(rec.get("source") or "") != "identity-ad"
+        and ("0.0.0.0/0" in text or "0.0.0.0 / 0" in text)
+        and _has_adjacent_security_group_phrase(text)
     ):
         return "sg_ingress_open"
     return ""
@@ -466,17 +1587,33 @@ def _heuristic_type(rec: dict[str, Any]) -> str:
 
 def finding_type(rec: dict[str, Any]) -> str:
     """Stable type id. Empty string = leave the row to the legacy narrative map."""
+    extra = extra_dict(rec)
+    risk_key = norm_type_key(str(extra.get("risk_id") or "").strip())
+    if risk_key:
+        mapped_risk = TYPE_ALIASES.get(risk_key) or _PINGCASTLE_EXACT.get(risk_key)
+        if mapped_risk:
+            return mapped_risk
     keys = _alias_keys(rec)
     for key in keys:
         mapped = TYPE_ALIASES.get(key)
         if mapped:
             return mapped
+    c7n = _custodian_security_type(rec)
+    if c7n:
+        return c7n
+    guessed = _heuristic_type(rec)
     source = str(rec.get("source") or "")
+    # Unmapped PingCastle RiskId-only rows stay untyped so #145 playbooks win.
+    if _risk_id_only(rec) and source in {"identity-ad", ""}:
+        return ""
+    if guessed and (
+        source in TYPED_SOURCES
+        or guessed.startswith(("tls_", "web_", "pc_"))
+        or guessed == "entra_ga_pim"
+    ):
+        return guessed
     if source not in TYPED_SOURCES:
         return ""
-    guessed = _heuristic_type(rec)
-    if guessed:
-        return guessed
     # Typed collector with an explicit check/edge/control we do not know.
     if keys:
         return "unknown"
@@ -522,6 +1659,7 @@ def type_remediation(rec: dict[str, Any]) -> dict[str, Any] | None:
         "cis": list(meta.get("cis") or []),
         "key_medium": bool(meta.get("key_medium")),
         "weakness_name": TYPE_WEAKNESS_NAME.get(ftype) or str(meta.get("weakness_name") or ""),
+        "source": str(meta.get("source") or ""),
     }
 
 
@@ -550,12 +1688,137 @@ def primary_asset(rec: dict[str, Any]) -> str:
     return normalize_asset_id(extra.get("arn") or rec.get("name") or "")
 
 
+_IDENTITY_LOCATION_KEYS = (
+    "path",
+    "url",
+    "file",
+    "line",
+    "user",
+    "evidence",
+    "evidence_ref",
+    "cmd",
+    "command",
+)
+
+# Secret-class identity is rule + file + secret_hash when material is
+# usable. Line remints when a leak slides in the file (Argus CR6-2) —
+# keep line when the value is empty or redacted so two leaks of one
+# rule in one file stay two IDs. Path/url/user stay so #170 httpx-admin
+# root vs /login and honeypot wget vs uname are untouched.
+SECRET_UNSTABLE_LOCATION_KEYS = frozenset(
+    {"line", "evidence", "evidence_ref", "cmd", "command"}
+)
+SECRET_UNSTABLE_WITHOUT_HASH = frozenset(
+    {"evidence", "evidence_ref", "cmd", "command"}
+)
+SECRET_HASH_LEN = 16
+# Pack-internal HMAC pepper. Not an estate secret; stops unsalted
+# sha256(secret)[:16] from being confirmed offline from a CSV.
+SECRET_HASH_PEPPER = b"grc-collector-pack/cr6-2/secret-identity/v1"
+_SECRET_HASH_IN_KEY = re.compile(r"(?:\|)?secret_hash:[0-9a-fA-F]+", re.I)
+
+
+def secret_material_usable(material: Any) -> bool:
+    """False when the scanner omitted the value or replaced it with REDACTED / *."""
+    text = str(material or "").strip()
+    if not text:
+        return False
+    if "redacted" in text.lower():
+        return False
+    if text.replace("*", "") == "":
+        return False
+    return True
+
+
+def secret_material_hash(material: Any) -> str:
+    """HMAC-SHA256 prefix of Secret/Match/Raw. Empty when omitted or redacted."""
+    if not secret_material_usable(material):
+        return ""
+    text = str(material).strip()
+    return hmac.new(
+        SECRET_HASH_PEPPER, text.encode("utf-8"), hashlib.sha256
+    ).hexdigest()[:SECRET_HASH_LEN]
+
+
+def secret_has_identity_hash(rec: dict[str, Any] | None, extra: dict[str, Any] | None = None) -> bool:
+    extra = extra if extra is not None else extra_dict(rec or {})
+    return bool(str(extra.get("secret_hash") or "").strip())
+
+
+def strip_secret_hash_from_key(key: str) -> str:
+    """Drop secret_hash tokens from a client-facing weakness_source_id."""
+    text = str(key or "")
+    if not text:
+        return ""
+    cleaned = _SECRET_HASH_IN_KEY.sub("", text)
+    cleaned = cleaned.replace("||", "|").strip("|")
+    return cleaned.rstrip(":")
+
+
+def is_secret_finding(
+    rec: dict[str, Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> bool:
+    """Gitleaks / TruffleHog / category secrets. Not Checkov, Semgrep, or httpx."""
+    rec = rec or {}
+    extra = extra if extra is not None else extra_dict(rec)
+    category = str(rec.get("category") or extra.get("category") or "").strip().lower()
+    if category in {"secrets", "secret"}:
+        return True
+    labels = {
+        str(x).strip().lower()
+        for x in (rec.get("labels") or extra.get("labels") or [])
+        if str(x).strip()
+    }
+    if labels & {"gitleaks", "trufflehog"}:
+        return True
+    check_id = str(extra.get("check_id") or extra.get("rule") or "").strip().lower()
+    return check_id.startswith(("gitleaks-", "trufflehog-"))
+
+
+def _identity_location(
+    extra: dict[str, Any], rec: dict[str, Any] | None = None
+) -> str:
+    """Path/url/file/line/user/cmd so the same check_id on two URLs stays two rows.
+
+    Secret-class rows drop line/evidence/cmd and append ``secret_hash`` when
+    present. File stays so two leaks of the same rule in different files
+    stay two rows.
+    """
+    secret = is_secret_finding(rec, extra)
+    has_hash = secret_has_identity_hash(rec, extra)
+    skip = SECRET_UNSTABLE_LOCATION_KEYS if (secret and has_hash) else (
+        SECRET_UNSTABLE_WITHOUT_HASH if secret else frozenset()
+    )
+    bits: list[str] = []
+    seen: set[str] = set()
+    for key in _IDENTITY_LOCATION_KEYS:
+        if key in skip:
+            continue
+        val = str(extra.get(key) or "").strip().lower()
+        if not val or val in seen:
+            continue
+        seen.add(val)
+        bits.append(f"{key}:{val}")
+    if secret:
+        hashed = str(extra.get("secret_hash") or "").strip().lower()
+        if hashed:
+            token = f"secret_hash:{hashed}"
+            if token not in seen:
+                bits.append(token)
+    return "|".join(bits)
+
+
 def finding_identity(rec: dict[str, Any]) -> str:
     """Full rule/vuln/check id. Never a 48-char display slug.
 
     Collectors store the raw SARIF rule, Trivy CVE, check_id, etc. in extra.
     ``make_ref`` / ``slug(..., maxlen=48)`` is display-only and must not feed
     this key — two long IDs that share a prefix would otherwise collide.
+    Repeating check_ids (httpx-admin / whatweb-admin / path-exposure) keep
+    the #170 path/url discriminator so root vs /login do not collapse.
+    Secret-class rows key rule + file + secret_hash (CR6-2); line moves do
+    not remint.
     """
     extra = extra_dict(rec)
     for key in (
@@ -571,16 +1834,50 @@ def finding_identity(rec: dict[str, Any]) -> str:
     ):
         val = str(extra.get(key) or "").strip()
         if val:
-            return val.lower()
+            ident = val.lower()
+            if key != "cve" and not ident.startswith("cve-"):
+                loc = _identity_location(extra, rec)
+                if loc:
+                    ident = f"{ident}:{loc}"
+            return ident
     return str(rec.get("ref_id") or rec.get("name") or "").strip().lower()
+
+
+def register_asset_key(rec: dict[str, Any]) -> str:
+    """UPN leaf for standing Global Administrator so Scuba/Graph/BH share one row.
+
+    Other types keep ``primary_asset`` so port/path/FQDN identity stays on
+    #170/#177/#180.
+    """
+    if finding_type(rec) == "entra_ga_pim":
+        for raw in rec.get("assets") or []:
+            text = str(raw or "")
+            if "@" in text:
+                return normalize_asset_id(text)
+        return primary_asset(rec)
+    return primary_asset(rec)
 
 
 def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
     """(normalized asset, finding type or full identity). Asset is always in the key."""
     ftype = finding_type(rec)
+    if ftype == "entra_ga_pim":
+        return (register_asset_key(rec), ftype)
     if not ftype or ftype == "unknown":
         ftype = finding_identity(rec) or "finding"
     return (primary_asset(rec), ftype)
+
+
+def _prefer_upn_assets(rec: dict[str, Any]) -> None:
+    """Standing GA is the UPN. Tenant as a second asset fans out a second EGP."""
+    if finding_type(rec) != "entra_ga_pim":
+        return
+    assets = rec.get("assets")
+    if not isinstance(assets, list):
+        return
+    upns = [a for a in assets if a and "@" in str(a)]
+    if upns:
+        rec["assets"] = list(dict.fromkeys(upns))
 
 
 def _sev_rank(rec: dict[str, Any]) -> int:
@@ -681,6 +1978,7 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
     for asset in other.get("assets") or []:
         if asset and asset not in assets:
             assets.append(asset)
+    _prefer_upn_assets(kept)
     if _sev_rank(other) > _sev_rank(kept):
         kept["severity"] = other.get("severity")
     other_desc = str(other.get("description") or "").strip()
@@ -691,6 +1989,10 @@ def _merge_weakness(kept: dict[str, Any], other: dict[str, Any]) -> None:
             extra["also_descriptions"] = extras = []
         if other_desc not in extras:
             extras.append(other_desc)
+    extra["nist_800_53"] = union_controls(
+        _mapped_nist_controls(kept),
+        _mapped_nist_controls(other),
+    )
 
 
 def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -721,6 +2023,7 @@ def dedupe_weaknesses(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     ],
                 )
                 _record_tools(extra, rec)
+            _prefer_upn_assets(rec)
             index[key] = rec
             out.append(rec)
             continue
