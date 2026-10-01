@@ -176,8 +176,10 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    merges = int(fg.get("duplicates_merged") or 0)
     pending = int(summary.get("pending_carried") or 0)
-    assert walked["weaknesses_total"] + pending == summary["weaknesses_total"] == len(findings) + pending
+    assert walked["weaknesses_total"] + pending + merges == summary["weaknesses_total"]
     assert walked["poam_included"] + pending == summary["poam_included"]
 
     def _buckets(reasons: dict) -> dict[str, int]:
@@ -192,7 +194,14 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
             out["merged_into"] = merged
         return out
 
-    assert _buckets(walked["excluded_by_reason"]) == _buckets(summary["excluded_by_reason"])
+    walk_b = _buckets(walked["excluded_by_reason"])
+    sum_b = _buckets(summary["excluded_by_reason"])
+    # C5 / alias rows exist only on the written excluded.csv, not on walked
+    # post-dedupe findings.
+    for key in ("merged_into", "DUPLICATE_INSTANCE"):
+        walk_b.pop(key, None)
+        sum_b.pop(key, None)
+    assert walk_b == sum_b
     for rec in findings:
         decision = poam_decision(rec)
         included = bool(map_finding(rec).get("include_poam"))

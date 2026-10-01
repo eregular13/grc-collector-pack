@@ -2308,6 +2308,63 @@ def apply_ledger(
     return ledger
 
 
+def apply_rollups(
+    ledger: dict[str, Any],
+    decisions: Iterable[tuple[dict[str, Any], dict[str, Any]]],
+    *,
+    included_ids: set[str] | None = None,
+) -> dict[str, Any]:
+    """Stamp poam_decision / rolled_into on ledger items. fp_v1 and EGP- stay.
+
+    Called after apply_ledger. Does not remint IDs or rewrite fingerprints.
+    status_date / run_at / original_detection_date are not touched.
+    """
+    by_ref: dict[str, dict[str, Any]] = {}
+    for rec, decision in decisions:
+        ref = str(rec.get("ref_id") or "")
+        if ref:
+            by_ref[ref] = dict(decision)
+    included_ids = {str(x) for x in (included_ids or set()) if x}
+    id_by_ref = {
+        str(item.get("ref_id") or ""): str(item.get("poam_id") or "")
+        for item in (ledger.get("items") or {}).values()
+        if item.get("ref_id") and item.get("poam_id")
+    }
+    for item in (ledger.get("items") or {}).values():
+        ref = str(item.get("ref_id") or "")
+        decision = by_ref.get(ref) or {}
+        pid = str(item.get("poam_id") or "")
+        parent_ref = str(decision.get("rolled_into_ref") or decision.get("superseded_by_ref") or "")
+        rolled_into = str(decision.get("superseded_by") or "")
+        if parent_ref and id_by_ref.get(parent_ref):
+            rolled_into = id_by_ref[parent_ref]
+        if included_ids:
+            include = pid in included_ids
+        elif decision:
+            include = bool(decision.get("include"))
+        else:
+            include = str(item.get("status") or "") != "closed"
+        item["include"] = include
+        if decision:
+            item["poam_decision"] = str(decision.get("reason") or "")
+            item["reason_code"] = str(decision.get("reason_code") or "")
+            item["klass"] = str(decision.get("klass") or "")
+            item["rollup_key"] = str(decision.get("rollup_key") or "")
+            item["band"] = str(decision.get("band") or "")
+            item["rolled_into"] = rolled_into
+        elif include:
+            item.setdefault("poam_decision", "pending_carried")
+            item.setdefault("reason_code", "")
+            item.setdefault("rolled_into", "")
+        else:
+            item.setdefault("poam_decision", "")
+            item.setdefault("reason_code", "")
+            item.setdefault("rolled_into", "")
+        # fp_v1 / poam_id / original_detection_date / status_date / run_at stay.
+    ledger["sha256"] = payload_sha256(ledger)
+    return ledger
+
+
 def ledger_run_delta(
     ledger: dict[str, Any],
     *,

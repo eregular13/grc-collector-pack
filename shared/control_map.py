@@ -953,7 +953,13 @@ def _is_custodian_not_a_weakness(rec: dict[str, Any]) -> bool:
 def map_finding(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     mapped = _map_finding_body(rec)
+    from shared.poam_rollup import EXCLUDE_KLASSES, classify
+
     if rec.get("kind") == "excluded":
+        mapped = dict(mapped)
+        mapped["include_poam"] = False
+    klass, _rk, _band = classify(rec)
+    if klass in EXCLUDE_KLASSES:
         mapped = dict(mapped)
         mapped["include_poam"] = False
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
@@ -2279,17 +2285,40 @@ POAM_EXCLUDE_REASONS = frozenset(
         "superseded_by_specific",
         "not_a_weakness",
         "unmapped",
+        "DUPLICATE_INSTANCE",
+        "INFO_ONLY",
+        "TELEMETRY",
+        "NOT_A_WEAKNESS",
+        "FALSE_POSITIVE_CANDIDATE",
+        "MANUAL_CHECK",
+        "MUTED",
+        "HONEYPOT",
+        "LIGHTER_LOW",
+        "LIGHTER_MEDIUM",
+        "ACCEPTED_RISK",
+        "UNVERIFIED_BANNER_CVE",
+        "NOT_YET_LATE",
+        "unexplained",
+        "UNEXPLAINED",
     }
 )
 # pack_drop twins use merged_into:<survivor EGP> (prefix, not a fixed token).
+from shared.poam_rollup import REASON_CODES as ROLLUP_REASON_CODES
+
+REASON_CODES = POAM_INCLUDE_REASONS | POAM_EXCLUDE_REASONS | ROLLUP_REASON_CODES | frozenset({"escalate"})
 
 
 def is_poam_exclude_reason(reason: str) -> bool:
     """Named POA&M exclude, including collapsed-twin merged_into:<EGP> aliases."""
     from shared.egp_collapse import is_merged_into_reason
+    from shared.poam_rollup import REASON_CODES
 
     text = str(reason or "")
-    return text in POAM_EXCLUDE_REASONS or is_merged_into_reason(text)
+    return (
+        text in POAM_EXCLUDE_REASONS
+        or text in REASON_CODES
+        or is_merged_into_reason(text)
+    )
 LIGHTER_ENV = "GRC_POAM_LIGHTER"
 TELEMETRY_SOURCES = frozenset({"host-wazuh", "wazuh"})
 TELEMETRY_CATEGORIES = frozenset({"incident", "alert", "telemetry", "siem-alert"})
@@ -2369,62 +2398,97 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     Custodian policies stay on the plan as needs_review (never a silent
     drop). Classified Custodian security with no honest 800-53 stamp
     also stays on the plan. kind:excluded rows (osquery unmapped,
-    Custodian cost) land in excluded.csv. Informational is excluded
+    Custodian cost, MUTED) land in excluded.csv. Informational is excluded
     (telemetry_info for telemetry-only rows). Status is not a gate.
-    Repeated telemetry lows are collapsed by iter_poam_decisions, not
-    here.
+    Repeated telemetry lows are collapsed by iter_poam_decisions →
+    poam_rollup.build (E1). Same-EGP twins then become merged_into:<EGP>
+    aliases (#192); flood-guard origin stays in reason_code/detail.
 
     GRC_POAM_LIGHTER=1 restores the lighter plan: Lows and non-key Mediums
     are excluded (severity_low / severity_medium_not_key) and recorded.
     """
+    from shared.poam_rollup import classify, extra_exclude_token, reason_code_of
+
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     check = str(extra.get("check_id") or "")
     sev = canon_severity(rec.get("severity"))
     mapped = map_finding(rec)
     key_medium = bool(mapped.get("key_medium"))
+    klass, rk, band = classify(rec)
     if lighter is None:
         lighter = poam_lighter_requested()
+
+    def _done(include: bool, reason: str) -> dict[str, Any]:
+        return {
+            "include": include,
+            "reason": reason,
+            "reason_code": reason_code_of(reason, include=include),
+            "severity": sev,
+            "klass": klass,
+            "rollup_key": rk,
+            "band": band,
+        }
+
+    token = extra_exclude_token(rec)
     if rec.get("kind") == "excluded":
+        if token == "MUTED":
+            return _done(False, "MUTED")
+        if token == "FALSE_POSITIVE_CANDIDATE":
+            return _done(False, "FALSE_POSITIVE_CANDIDATE")
+        if token == "MANUAL_CHECK":
+            return _done(False, "MANUAL_CHECK")
+        if token in {"NOT_A_WEAKNESS", "not_a_weakness"}:
+            return _done(False, "not_a_weakness")
+        if token == "HONEYPOT":
+            return _done(False, "honeypot")
         reason = _canon_exclude_reason(
             extra.get("exclude_reason") or extra.get("poam_exclude") or "unmapped"
         )
         if reason not in POAM_EXCLUDE_REASONS:
             reason = "unmapped"
-        return {"include": False, "reason": reason, "severity": sev}
+        return _done(False, reason)
     if _is_needs_review(rec):
-        return {"include": True, "reason": "needs_review", "severity": sev}
+        return _done(True, "needs_review")
     if _is_custodian_not_a_weakness(rec):
-        return {"include": False, "reason": "not_a_weakness", "severity": sev}
+        return _done(False, "not_a_weakness")
+    if token == "MUTED":
+        return _done(False, "MUTED")
+    if token == "FALSE_POSITIVE_CANDIDATE":
+        return _done(False, "FALSE_POSITIVE_CANDIDATE")
+    if token == "MANUAL_CHECK":
+        return _done(False, "MANUAL_CHECK")
+    if token == "NOT_A_WEAKNESS":
+        return _done(False, "not_a_weakness")
+    if token == "ACCEPTED_RISK":
+        return _done(False, "ACCEPTED_RISK")
+    if token == "UNVERIFIED_BANNER_CVE":
+        return _done(False, "UNVERIFIED_BANNER_CVE")
+    if token == "HONEYPOT":
+        return _done(False, "honeypot")
     if check in MISCONFIG_RULES:
-        return {"include": True, "reason": "nse_misconfig", "severity": sev}
+        return _done(True, "nse_misconfig")
     if _is_honeypot(rec):
-        return {"include": False, "reason": "honeypot", "severity": sev}
+        return _done(False, "honeypot")
     if extra.get("not_a_weakness") or str(extra.get("exclude_reason") or "") == "not_a_weakness":
-        return {"include": False, "reason": "not_a_weakness", "severity": sev}
+        return _done(False, "not_a_weakness")
     if is_telemetry_finding(rec) and not keep_telemetry_on_plan(rec):
         if sev == "info":
-            return {"include": False, "reason": "telemetry_info", "severity": sev}
-        return {"include": False, "reason": "telemetry", "severity": sev}
+            return _done(False, "telemetry_info")
+        return _done(False, "telemetry")
     if sev == "info":
-        return {"include": False, "reason": "severity_info", "severity": sev}
+        return _done(False, "severity_info")
     if sev in {"high", "critical"}:
-        return {"include": True, "reason": "severity_high_critical", "severity": sev}
+        return _done(True, "severity_high_critical")
     if key_medium:
-        return {"include": True, "reason": "key_medium", "severity": sev}
+        return _done(True, "key_medium")
     if sev == "low":
-        if lighter:
-            return {"include": False, "reason": "severity_low", "severity": sev}
-        return {"include": True, "reason": "severity_low", "severity": sev}
+        return _done(not lighter, "severity_low")
     if sev == "medium":
         if lighter:
-            return {"include": False, "reason": "severity_medium_not_key", "severity": sev}
-        return {"include": True, "reason": "severity_medium", "severity": sev}
+            return _done(False, "severity_medium_not_key")
+        return _done(True, "severity_medium")
     included = bool(mapped.get("include_poam"))
-    return {
-        "include": included,
-        "reason": "severity_high_critical" if included else "unexplained",
-        "severity": sev,
-    }
+    return _done(included, "severity_high_critical" if included else "unexplained")
 
 
 INCLUDED_TREATMENT = "mitigate"
@@ -2476,9 +2540,13 @@ def risk_register_treatment(decision: dict[str, Any]) -> dict[str, Any]:
 
 
 def iter_poam_decisions(
-    findings: list[dict[str, Any]], *, lighter: bool | None = None
+    findings: list[dict[str, Any]],
+    *,
+    lighter: bool | None = None,
+    ledger: dict[str, Any] | None = None,
+    assets_n: int | None = None,
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
-    """Per-finding POA&M decisions with telemetry flood-guard collapse.
+    """Per-finding POA&M decisions. Collapse is poam_rollup.build (E1 + fold).
 
     Multiple low telemetry rows that share (rule/check id, asset) become one
     included row. The extras are excluded as telemetry_duplicate so
@@ -2488,36 +2556,57 @@ def iter_poam_decisions(
     finding is excluded as superseded_by_specific (winner = highest
     severity, then lowest EGP- id). The row stays in the finding set.
     """
-    from shared.port_fold import SUPERSEDED_REASON, egp_id_for, port_only_superseders
+    from shared.egp_collapse import collapse_same_egp, is_merged_into_reason
+    from shared.poam_rollup import build, reason_code_of
 
     if lighter is None:
         lighter = poam_lighter_requested()
-    seen: set[tuple[str, str]] = set()
-    superseders = port_only_superseders(findings)
+    if assets_n is None:
+        assets: set[str] = set()
+        for rec in findings:
+            for name in rec.get("assets") or []:
+                if name:
+                    assets.add(str(name))
+        assets_n = len(assets)
+    seed = [(rec, dict(poam_decision(rec, lighter=lighter))) for rec in findings]
+    pairs = build(
+        seed,
+        profile="lighter" if lighter else "full",
+        assets_n=assets_n,
+        ledger=ledger,
+    )
+    # #192: same-EGP extras are off-register aliases (merged_into:<EGP>).
+    # Recompute reason_code after collapse so include-path codes do not stick.
+    # Flood-guard E1 / port-fold origin is recorded on the decision, not the reason.
+    prior = {id(rec): dict(decision) for rec, decision in pairs}
     out: list[tuple[dict[str, Any], dict[str, Any]]] = []
-    for rec in findings:
-        decision = dict(poam_decision(rec, lighter=lighter))
-        if (
-            decision.get("include")
-            and decision.get("severity") == "low"
-            and is_telemetry_finding(rec)
-        ):
-            key = telemetry_collapse_key(rec)
-            if key[0] and key in seen:
-                decision["include"] = False
-                decision["reason"] = "telemetry_duplicate"
-            elif key[0]:
-                seen.add(key)
-        winner = superseders.get(str(rec.get("ref_id") or ""))
-        if winner is not None:
-            decision["include"] = False
-            decision["reason"] = SUPERSEDED_REASON
-            decision["superseded_by"] = egp_id_for(winner)
-            decision["superseded_by_ref"] = str(winner.get("ref_id") or "")
-        out.append((rec, decision))
-    from shared.egp_collapse import collapse_same_egp
-
-    return collapse_same_egp(out)
+    for rec, decision in collapse_same_egp(pairs):
+        d = dict(decision)
+        prev = prior.get(id(rec)) or {}
+        prev_reason = str(prev.get("reason") or "")
+        if is_merged_into_reason(str(d.get("reason") or "")):
+            # Only flood-guard fold/E1 origins — never a leftover include code.
+            if prev_reason in {"telemetry_duplicate", "superseded_by_specific"}:
+                d["flood_guard_origin"] = prev_reason
+                merged_parent = str(d.get("reason") or "").split(":", 1)[-1]
+                winner = merged_parent or str(
+                    prev.get("rolled_into_ref")
+                    or prev.get("superseded_by_ref")
+                    or d.get("superseded_by_ref")
+                    or d.get("superseded_by")
+                    or ""
+                )
+                if prev_reason == "telemetry_duplicate":
+                    d["detail"] = f"E1 same rule+asset as {winner}".strip()
+                else:
+                    d["detail"] = (
+                        f"port-fold superseded_by_specific; folded into {winner}"
+                    ).strip()
+        d["reason_code"] = reason_code_of(
+            d.get("reason"), include=bool(d.get("include"))
+        )
+        out.append((rec, d))
+    return out
 
 
 def poam_breakdown(findings: list[dict[str, Any]], *, lighter: bool | None = None) -> dict[str, Any]:

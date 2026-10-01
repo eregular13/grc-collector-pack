@@ -179,6 +179,7 @@ COVERAGE_GAPS_HEADING = "### Coverage gaps"
 EXPORT_CSV_REL = (
     "poam/poam.csv",
     "poam/excluded.csv",
+    "poam/poam_members.csv",
     "ciso-assistant/assets.csv",
     "ciso-assistant/applied_controls.csv",
     "ciso-assistant/evidences.csv",
@@ -1527,32 +1528,38 @@ def _reconcile(
     kind_excluded: int = 0,
     merged: str = NOT_RECORDED,
     merged_aliases: int = 0,
+    c5_extras: int = 0,
 ) -> str | None:
-    """Identity: POA&M + (excluded − merged) + kind-excluded = register
+    """Identity: POA&M + (excluded − off-register) = register
     and weaknesses + kind-excluded − merged = register.
 
     Printed sums are the computed totals, never the register count. A
     mismatch always warns, even when extras (duplicates_merged) exist.
-    kind:excluded rows stay on the register as accept (#181).
+    kind:excluded rows stay on the register as accept (#181) and are
+    already counted in ``excluded_poam`` (excluded.csv row count). Do
+    not add ``kind_excluded`` to the plan equation.
+    merged_into aliases and C5 DUPLICATE_INSTANCE extras stay off it.
     """
     merged_n = max(0, int(merged_aliases or 0))
+    c5_n = max(0, int(c5_extras or 0))
+    off_n = merged_n + c5_n
     if (
         findings_n == poam_n == risk_n
         and not excluded_poam
         and not kind_excluded
-        and not merged_n
+        and not off_n
     ):
         return None
-    plan_sum = poam_n + (excluded_poam - merged_n) + kind_excluded
+    plan_sum = poam_n + (excluded_poam - off_n)
     weak_sum = findings_n + kind_excluded - merged_n
-    if merged_n:
+    if off_n:
         equations = (
-            f"{poam_n} + ({excluded_poam} - {merged_n}) + {kind_excluded} = {plan_sum}; "
+            f"{poam_n} + ({excluded_poam} - {off_n}) = {plan_sum}; "
             f"{findings_n} + {kind_excluded} - {merged_n} = {weak_sum}"
         )
     else:
         equations = (
-            f"{poam_n} + {excluded_poam} + {kind_excluded} = {plan_sum}; "
+            f"{poam_n} + {excluded_poam} = {plan_sum}; "
             f"{findings_n} + {kind_excluded} = {weak_sum}"
         )
     parts: list[str] = [
@@ -1569,6 +1576,10 @@ def _reconcile(
         )
     if merged_n:
         parts.append(f"{merged_n} merged-into aliases stay off the register.")
+    if c5_n:
+        parts.append(
+            f"{c5_n} C5 duplicate-instance extras stay off the register."
+        )
     extras: list[str] = []
     if vuln_n and findings_n + kind_excluded + vuln_n == risk_n and findings_n + kind_excluded != risk_n:
         extras.append(
@@ -1716,6 +1727,7 @@ class PageContext:
     excluded_poam: int = 0
     kind_excluded: int = 0
     merged_aliases: int = 0
+    c5_extras: int = 0
     in_dir: Path | None = None
     generated_at: str = ""
     run_delta: dict[str, int] = field(default_factory=dict)
@@ -1780,6 +1792,7 @@ def build_executive_summary(ctx: PageContext) -> str:
         kind_excluded=ctx.kind_excluded,
         merged=ctx.merged,
         merged_aliases=ctx.merged_aliases,
+        c5_extras=ctx.c5_extras,
     )
     if recon:
         lines.append(recon)

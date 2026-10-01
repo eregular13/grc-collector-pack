@@ -8,19 +8,33 @@ out/summary.json counts (host-lab; honeypot stub is not in compose lab):
 
 ```json
 {
-  "assets": 78,
-  "findings": 104,
+  "assets": 79,
+  "findings": 103,
   "vulnerabilities": 22,
-  "evidences": 32,
-  "applied_controls": 126,
-  "poam": 124,
-  "risk_scenarios": 126,
-  "ocsf": 104,
-  "canonical": 209,
+  "evidences": 34,
+  "applied_controls": 119,
+  "poam": 119,
+  "risk_scenarios": 125,
+  "ocsf": 103,
+  "canonical": 210,
   "severity_unmapped": 0,
   "demo": true,
-  "generated_at": "2026-09-26T07:11:37Z"
+  "excluded": 13
 }
 ```
+
+Cycle 209 flood-guard v2 (B1–B4): same-EGP twins stay `merged_into:<EGP>`
+(#192 aliases, off-register); flood-guard origin in reason_code/detail.
+`findings_in` is members + excluded (same unit). C5 skip covers every
+surviving ref. `merged_into` reason_code is `DUPLICATE_INSTANCE`.
+Host-lab 79/103/poam 119 excluded 13. SAMPLE 6/6/2 poam 8 excluded 0.
+farm 174/73/101. pytest 2446 (1 skipped). Stay draft. CoS #48 rails stand.
+
+Cycle 208 Metis flood-guard spec: §12.3 vocab + report-only §12.5 T/cap +
+C5 excluded merges + §12.6 `findings_in == members + excluded`.
+Host-lab 79/103/poam 119 excluded 13 (UNEXPLAINED==0, G0).
+SAMPLE 6/6/2 poam 8. farm 174/73/101. E4 deferred. CoS #48 rails above stand.
+
+Cycle 207 Metis flood-guard: UNEXPLAINED==0; FedRAMP Open == poam.csv. pytest 1303. Merged origin/master ff6ffd7 (#145 after #150+#156+#155). CoS #48 rails above stand.
 
 Cycle 203 merge origin/master `51bba3c` (#134+#147+#140+#144) into parser-real-output; keep Metis §11 + asset_uid + unrecognized_shape (pytest 1235; host-lab assets=78 findings=104 poam=124 excluded=2). Cycle 202 restamp after merging master `9aeb229` stands as history. CoS #48 rails above stand.

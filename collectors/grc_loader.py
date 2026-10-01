@@ -30,6 +30,13 @@ from shared.control_map import (
     risk_register_treatment,
     weakness_name_for,
 )
+from shared.poam_rollup import (
+    POAM_MEMBERS_FIELDS,
+    collect_finding_merges,
+    extra_exclude_token,
+    flood_guard_summary,
+    reason_code_of,
+)
 from shared.estate_pages import (
     PageContext,
     classify_estate,
@@ -57,6 +64,7 @@ from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_po
 from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, local_run_date
 from shared.scan_time import bind_run_clock
 from shared.poam_ledger import (
+    apply_rollups,
     fingerprints_for,
     fp_v1,
     item_is_excluded,
@@ -173,16 +181,26 @@ def _asset_type(rec: dict) -> str:
     return "PR"
 
 
+class _DedupeResult(list):
+    """List of kept records plus the merge audit trail."""
+
+    merges: list[dict]
+
+
 def _dedupe(records: list[dict]) -> list[dict]:
     """Collapse exact dupes. Findings key on full identity + normalized asset.
 
     SARIF/Trivy (and any source that stamps the same rule/CVE into ref_id via
     ``slug(..., maxlen=48)``) must not drop a second host. Display slugs stay
     truncated; this key uses the full extra.rule / extra.cve / check_id.
+
+    Returns a list. ``.merges`` is the dropped-finding audit
+    (DUPLICATE_INSTANCE → kept ref_id) for excluded/members.
     """
     assets: dict[str, dict] = {}
     others: dict[tuple[str, ...], dict] = {}
     leftover: list[dict] = []
+    merges: list[dict] = []
     for rec in records:
         kind = rec.get("kind")
         if kind == "asset":
@@ -201,14 +219,40 @@ def _dedupe(records: list[dict]) -> list[dict]:
             slot = (str(kind), finding_identity(rec) or ref.lower(), primary_asset(rec))
             if slot not in others:
                 others[slot] = rec
+            else:
+                kept = others[slot]
+                merges.append(
+                    {
+                        "rec": rec,
+                        "kept": kept,
+                        "reason_code": "DUPLICATE_INSTANCE",
+                        "rolled_into": str(kept.get("ref_id") or ""),
+                        "source": rec.get("source") or "",
+                        "detail": "same finding_identity + primary_asset",
+                    }
+                )
             continue
         if kind and ref:
             slot = (str(kind), ref.lower())
             if slot not in others:
                 others[slot] = rec
+            elif kind in {"finding", "excluded"}:
+                kept = others[slot]
+                merges.append(
+                    {
+                        "rec": rec,
+                        "kept": kept,
+                        "reason_code": "DUPLICATE_INSTANCE",
+                        "rolled_into": str(kept.get("ref_id") or ""),
+                        "source": rec.get("source") or "",
+                        "detail": "same kind + ref_id",
+                    }
+                )
             continue
         leftover.append(rec)
-    return list(assets.values()) + list(others.values()) + leftover
+    out = _DedupeResult(list(assets.values()) + list(others.values()) + leftover)
+    out.merges = merges
+    return out
 
 
 def estate_label(records: list[dict]) -> str:
@@ -279,7 +323,16 @@ def _load(*, run_at: datetime | None = None) -> dict:
     if overrides.is_file():
         asset_ledger.apply_overrides(overrides)
     raw = attach_asset_uids(_load_canonical(), asset_ledger)
-    records = dedupe_hardening(dedupe_weaknesses(_dedupe(raw)))
+    deduped = _dedupe(raw)
+    merge_rows = list(getattr(deduped, "merges", []) or [])
+    after_weakness = dedupe_weaknesses(deduped)
+    merge_rows.extend(
+        collect_finding_merges(deduped, after_weakness, detail="dedupe_weaknesses")
+    )
+    records = dedupe_hardening(after_weakness)
+    merge_rows.extend(
+        collect_finding_merges(after_weakness, records, detail="dedupe_hardening")
+    )
     merged_n = max(0, len(raw) - len(records))
     now = iso_now()
     try:
@@ -338,7 +391,9 @@ def _load(*, run_at: datetime | None = None) -> dict:
             str(rec.get("ref_id") or ""),
         ),
     )
-    poam_decisions = iter_poam_decisions(ranked, lighter=lighter)
+    poam_decisions = iter_poam_decisions(
+        ranked, lighter=lighter, assets_n=len(ciso_assets)
+    )
     decision_by_ref: dict[str, dict] = {
         str(rec.get("ref_id") or ""): decision
         for rec, decision in poam_decisions
@@ -421,13 +476,20 @@ def _load(*, run_at: datetime | None = None) -> dict:
         else:
             resid = level
             cid = ""
+        threats = rec.get("category") or rec.get("source") or ""
+        description = rec.get("description") or ""
+        if extra_exclude_token(rec) == "MUTED" or str(decision.get("reason") or "") == "MUTED":
+            muted_label = "muted in Prowler (operator mutelist)"
+            threats = f"{threats}|{muted_label}".strip("|") if threats else muted_label
+            if "muted in prowler" not in description.lower():
+                description = f"{description} ({muted_label})".strip()
         scenarios.append(
             [
                 f"RSK-{ref_slug(str(rec.get('ref_id') or rec.get('name')))}",
                 "|".join(rec.get("assets") or []),
-                rec.get("category") or rec.get("source"),
+                threats,
                 rec.get("name"),
-                rec.get("description"),
+                description,
                 register["existing_controls"],
                 level,
                 level,
@@ -494,6 +556,12 @@ def _load(*, run_at: datetime | None = None) -> dict:
 
     ranked = sorted(weaknesses, key=_poam_rank)
     breakdown = poam_breakdown(ranked, lighter=lighter)
+    # C5 extras are written after poam/excluded rows exist so the skip
+    # covers every ref already on the register or excluded.csv — not
+    # only kept_ref of the merge pair.
+    c5_candidates = list(merge_rows)
+    decision_pairs = poam_decisions
+    member_rows: list[list] = []
 
     def _ledger_item_for(rec: dict) -> dict | None:
         rec_ref = str(rec.get("ref_id") or "")
@@ -510,9 +578,9 @@ def _load(*, run_at: datetime | None = None) -> dict:
     # Content-hash EGP (egp_id_for) is first-seen only. Bind alias
     # pointers to the survivor's live ledger poam_id so upgraded
     # farms do not write merged_into/superseded_by at a dead hash.
-    bind_alias_targets_to_ledger(poam_decisions, _ledger_item_for)
+    bind_alias_targets_to_ledger(decision_pairs, _ledger_item_for)
     excluded_reasons: dict[str, int] = {}
-    for _rec, decision in poam_decisions:
+    for _rec, decision in decision_pairs:
         if decision.get("include"):
             continue
         reason = str(decision.get("reason") or "unexplained")
@@ -523,14 +591,14 @@ def _load(*, run_at: datetime | None = None) -> dict:
     # specific plan row resolve to the same item. Mark excluded only when
     # no included record maps to that item this run.
     included_pids: set[str] = set()
-    for rec, decision in poam_decisions:
+    for rec, decision in decision_pairs:
         if not decision.get("include"):
             continue
         item = _ledger_item_for(rec)
         pid = str((item or {}).get("poam_id") or "")
         if pid:
             included_pids.add(pid)
-    for rec, decision in poam_decisions:
+    for rec, decision in decision_pairs:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
@@ -542,11 +610,41 @@ def _load(*, run_at: datetime | None = None) -> dict:
             elif not decision.get("include"):
                 item["excluded_reason"] = str(decision.get("reason") or "unexplained")
         if not decision.get("include"):
+            winner_ref = str(
+                decision.get("superseded_by_ref") or decision.get("rolled_into_ref") or ""
+            )
             superseded_by = str(decision.get("superseded_by") or "")
-            if not superseded_by:
-                winner_ref = str(decision.get("superseded_by_ref") or "")
-                winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
+            if not superseded_by and winner_ref:
+                winner_item = ledger_by_ref.get(winner_ref)
                 superseded_by = str((winner_item or {}).get("poam_id") or "")
+            reason = str(decision.get("reason") or "unexplained")
+            code = str(decision.get("reason_code") or reason_code_of(reason))
+            if not code or code in {"UNEXPLAINED", "unexplained"}:
+                from shared.egp_collapse import is_merged_into_reason
+
+                if is_merged_into_reason(reason):
+                    code = "DUPLICATE_INSTANCE"
+            source = str(rec.get("source") or "")
+            detail = ""
+            if reason == "superseded_by_specific":
+                detail = f"folded into {winner_ref or superseded_by}"
+            elif reason == "telemetry_duplicate":
+                detail = f"E1 same rule+asset as {winner_ref}"
+            elif reason == "telemetry":
+                detail = "detection/telemetry; not a posture weakness"
+            elif reason.startswith("merged_into:"):
+                origin = str(decision.get("flood_guard_origin") or "")
+                detail = str(decision.get("detail") or "")
+                if not detail:
+                    if origin == "telemetry_duplicate":
+                        detail = f"E1 same rule+asset as {winner_ref}"
+                    elif origin == "superseded_by_specific":
+                        detail = (
+                            "port-fold superseded_by_specific; "
+                            f"folded into {winner_ref or superseded_by}"
+                        )
+                    else:
+                        detail = f"collapsed twin of {reason.split(':', 1)[-1]}"
             excluded_rows.append(
                 [
                     rec.get("ref_id") or "",
@@ -554,8 +652,12 @@ def _load(*, run_at: datetime | None = None) -> dict:
                     weakness,
                     assets_s,
                     canon_severity(rec.get("severity")),
-                    decision.get("reason") or "unexplained",
+                    reason,
                     superseded_by,
+                    code,
+                    superseded_by or winner_ref,
+                    source,
+                    detail,
                 ]
             )
             continue
@@ -578,7 +680,17 @@ def _load(*, run_at: datetime | None = None) -> dict:
                 *[fields[key] for key in POAM_EXTRA_FIELDS],
             ]
         )
-    persist_ledger(poam_ledger)
+        pid = str(fields.get("poam_id") or "")
+        member_rows.append(
+            [
+                pid,
+                rec.get("ref_id") or "",
+                pid,
+                assets_s,
+                ciso_finding_severity(rec.get("severity")),
+                estate,
+            ]
+        )
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
     observed_refs = {str(rec.get("ref_id") or "") for rec in weaknesses if rec.get("ref_id")}
@@ -652,9 +764,65 @@ def _load(*, run_at: datetime | None = None) -> dict:
             "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
         ),
     )
+    _ref_idx = poam_header.index("finding_ref_id")
+    claimed_refs = {
+        str(row[_ref_idx] if len(row) > _ref_idx else "").strip().lower()
+        for row in poam_rows
+        if len(row) > _ref_idx and row[_ref_idx]
+    }
+    claimed_refs.update(
+        str(row[1] if len(row) > 1 else "").strip().lower()
+        for row in excluded_rows
+        if len(row) > 1 and row[1]
+    )
+    written_c5: set[tuple[str, str]] = set()
+    c5_merges = []
+    c5_skipped = 0
+    for merge in c5_candidates:
+        rec = merge.get("rec") or {}
+        rec_ref = str(rec.get("ref_id") or "").strip().lower()
+        rec_asset = str(primary_asset(rec) or "").strip().lower()
+        if rec_ref and rec_ref in claimed_refs:
+            c5_skipped += 1
+            continue
+        slot = (rec_ref, rec_asset)
+        if rec_ref and slot in written_c5:
+            continue
+        kept = merge.get("kept") or {}
+        kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "")
+        kept_item = ledger_by_ref.get(kept_ref) if kept_ref else None
+        parent_id = str((kept_item or {}).get("poam_id") or "")
+        mapped = mapped_by_ref.get(str(rec.get("ref_id") or "")) or map_finding(rec)
+        assets_s = "|".join(rec.get("assets") or [])
+        alias = "DUPLICATE_INSTANCE"
+        excluded_reasons[alias] = int(excluded_reasons.get(alias) or 0) + 1
+        excluded_rows.append(
+            [
+                rec.get("ref_id") or "",
+                rec.get("ref_id") or "",
+                weakness_name_for(rec, mapped),
+                assets_s,
+                canon_severity(rec.get("severity")),
+                alias,
+                parent_id,
+                "DUPLICATE_INSTANCE",
+                parent_id or kept_ref,
+                rec.get("source") or "",
+                str(merge.get("detail") or "dedupe"),
+            ]
+        )
+        c5_merges.append(merge)
+        if rec_ref:
+            written_c5.add(slot)
+    if c5_merges:
+        breakdown["weaknesses_total"] = int(breakdown.get("weaknesses_total") or 0) + len(
+            c5_merges
+        )
+    breakdown["excluded_by_reason"] = excluded_reasons
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
+    _write_csv(out_poam / "poam_members.csv", list(POAM_MEMBERS_FIELDS), member_rows)
     assert_input_export_accounting(
         [r for r in records if r.get("kind") in {"finding", "excluded"}],
         [dict(zip(poam_header, row)) for row in poam_rows],
@@ -700,6 +868,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
+    apply_rollups(poam_ledger, decision_pairs, included_ids=listed_ids)
+    persist_ledger(poam_ledger)
     write_fedramp_poam(
         out_poam, poam_ledger, plan_by_id=plan_by_poam_id(poam_header, poam_rows)
     )
@@ -710,10 +880,11 @@ def _load(*, run_at: datetime | None = None) -> dict:
         stamp,
         note=(
             "POA&M is an operator draft, not a CISO Assistant import. "
-            "poam.csv, poam_fedramp.csv, and poam_fedramp_closed.csv start "
-            "with the operator header (no # preamble). Banner lives in "
-            "ESTATE.txt. Ledger and kev_provenance.json are JSON (no # "
-            "banner). poam.csv carries a per-row estate column. "
+            "poam.csv, poam_fedramp.csv, poam_fedramp_closed.csv, "
+            "excluded.csv, and poam_members.csv start with the operator "
+            "header (no # preamble). Banner lives in ESTATE.txt. Ledger "
+            "and kev_provenance.json are JSON (no # banner). poam.csv and "
+            "poam_members.csv carry a per-row estate column. "
             "SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP."
         ),
     )
@@ -757,15 +928,24 @@ def _load(*, run_at: datetime | None = None) -> dict:
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
     _clean_retired_outputs()
 
-    excluded_poam = max(
-        0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
-    )
+    excluded_poam = len(excluded_rows)
     reason_idx = EXCLUDED_FIELDS.index("excluded_reason")
     merged_aliases = sum(
         1
         for row in excluded_rows
         if is_merged_into_alias(row[reason_idx] if len(row) > reason_idx else "")
     )
+    c5_extras = sum(
+        1
+        for row in excluded_rows
+        if str(row[reason_idx] if len(row) > reason_idx else "") == "DUPLICATE_INSTANCE"
+    )
+    # findings_in is the listed unit (members + excluded.csv), not raw
+    # parsed input. Raw input would break B3 (same ref already on
+    # poam/excluded → C5 skip) and silent same-ref+asset collapses:
+    # raw ≠ members + excluded. Dropped input shows up as C5
+    # DUPLICATE_INSTANCE extras / c5_skipped, not a findings_in delta.
+    findings_in_n = len(member_rows) + len(excluded_rows)
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
         "assets": len(ciso_assets),
@@ -797,6 +977,17 @@ def _load(*, run_at: datetime | None = None) -> dict:
         "estate_kind": estate_kind,
         "client": False if estate_kind != "CLIENT" else True,
         "duplicates_merged": merged_n,
+        "flood_guard": flood_guard_summary(
+            decision_pairs,
+            profile=str(breakdown.get("poam_plan") or ("lighter" if lighter else "full")),
+            assets_n=len(ciso_assets),
+            merges_n=len(c5_merges),
+            members_n=len(member_rows),
+            findings_in=findings_in_n,
+            poam_rows=len(poam_rows),
+            excluded_n=len(excluded_rows),
+            lighter=lighter,
+        ),
         "sensors": {row["source"]: row for row in sensor_rows},
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
@@ -843,6 +1034,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
         excluded_poam=excluded_poam,
         kind_excluded=len(pre_excluded),
         merged_aliases=merged_aliases,
+        c5_extras=c5_extras,
         in_dir=dest_in,
         generated_at=now,
         run_delta=ledger_run_delta(poam_ledger, plan_ids=listed_ids),

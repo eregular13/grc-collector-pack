@@ -16,6 +16,7 @@ from typing import Any
 from shared.control_map import is_poam_exclude_reason
 from shared.egp_collapse import is_merged_into_reason
 from shared.poam_fields import POAM_EXTRA_FIELDS
+from shared.poam_rollup import REASON_CODES
 
 # Risk register = findings + risk_scenarios (one scenario per canonical finding).
 # vulnerabilities.csv is CVE/secrets/sast only — header-only is allowed when
@@ -56,7 +57,10 @@ CISO_HEADERS = {
 }
 POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
-EXCLUDED_HEADER = "id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by"
+EXCLUDED_HEADER = (
+    "id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,"
+    "reason_code,rolled_into,source,detail"
+)
 EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
 POAM_REL = Path("poam") / "poam.csv"
 POAM_MD_REL = Path("poam") / "poam.md"
@@ -79,7 +83,11 @@ REGISTER_OK_LINE = "REGISTER_SHAPE=ok findings_to_poam != empty paying_day=FAIL"
 
 
 def count_merged_aliases(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> int:
-    """How many excluded.csv rows are collapsed pack_drop twins, not accept."""
+    """How many excluded.csv rows are collapsed pack_drop twins, not accept.
+
+    C5 ``DUPLICATE_INSTANCE`` rows are flood-guard extras (dropped before the
+    register) and are not subtracted from findings.
+    """
     out = resolve_out_dir(ciso_or_out)
     excluded_path = out / "poam" / "excluded.csv"
     from_csv = 0
@@ -112,7 +120,12 @@ def register_treatment_counts(ciso_or_out: Path) -> dict[str, int]:
     excluded = csv_rows(excluded_path) if excluded_path.is_file() else []
     mitigate = sum(1 for row in scenarios if row.get("treatment") == "mitigate")
     accept = sum(1 for row in scenarios if row.get("treatment") == "accept")
-    merged = sum(1 for row in excluded if is_merged_into_reason(str(row.get("excluded_reason") or "")))
+    merged = sum(
+        1
+        for row in excluded
+        if is_merged_into_reason(str(row.get("excluded_reason") or ""))
+        or str(row.get("excluded_reason") or "") == "DUPLICATE_INSTANCE"
+    )
     return {
         "mitigate": mitigate,
         "accept": accept,
@@ -264,6 +277,9 @@ def assert_count_consistency(ciso_or_out: Path, summary: dict[str, Any] | None =
             )
         if "weaknesses_total" in summary:
             assert_poam_breakdown(summary)
+        assert_flood_guard(out, summary)
+    else:
+        assert_flood_guard(out)
     overlap = assert_register_no_double_treatment(out)
     return {
         "ok": True,
@@ -296,11 +312,16 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded_by_reason must be a dict")
     if any(not str(reason or "").strip() for reason in excluded):
         raise RegisterShapeError("COUNT_CONSISTENCY_FAIL excluded item missing named reason")
-    unknown = sorted(str(reason) for reason in excluded if not is_poam_exclude_reason(str(reason)))
+    unknown = sorted(
+        str(reason) for reason in excluded if not is_poam_exclude_reason(str(reason))
+    )
     if unknown:
         raise RegisterShapeError(
             f"COUNT_CONSISTENCY_FAIL silent POA&M drop: unknown reasons {unknown}"
         )
+    unexplained = int((excluded.get("unexplained") or 0) + (excluded.get("UNEXPLAINED") or 0))
+    if unexplained:
+        raise RegisterShapeError(f"COUNT_CONSISTENCY_FAIL UNEXPLAINED={unexplained} (must be 0)")
     excluded_n = sum(int(count) for count in excluded.values())
     if "excluded" in summary and int(summary.get("excluded") or 0) != excluded_n:
         raise RegisterShapeError(
@@ -318,21 +339,103 @@ def assert_poam_breakdown(summary: dict[str, Any]) -> dict[str, Any]:
         )
     pending_carried = int(summary.get("pending_carried") or 0)
     kind_excluded = int(summary.get("kind_excluded") or 0)
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    merges = int(fg.get("duplicates_merged") or 0)
     if "weaknesses" in summary:
-        expected = int(summary.get("weaknesses") or 0) + pending_carried + kind_excluded
+        expected = (
+            int(summary.get("weaknesses") or 0)
+            + pending_carried
+            + kind_excluded
+            + merges
+        )
         if total != expected:
             raise RegisterShapeError(
                 f"COUNT_CONSISTENCY_FAIL weaknesses_total={total} != "
                 f"weaknesses={summary.get('weaknesses')}"
                 + (f" + kind_excluded={kind_excluded}" if kind_excluded else "")
                 + (f" + pending_carried={pending_carried}" if pending_carried else "")
+                + (f" + duplicates_merged={merges}" if merges else "")
             )
+    if fg and int(fg.get("UNEXPLAINED") or 0) != 0:
+        raise RegisterShapeError(
+            f"COUNT_CONSISTENCY_FAIL flood_guard.UNEXPLAINED={fg.get('UNEXPLAINED')} (must be 0)"
+        )
     return {
         "ok": True,
         "weaknesses_total": total,
         "poam_included": included,
         "excluded_by_reason": {str(k): int(v) for k, v in excluded.items()},
     }
+
+
+def assert_flood_guard(ciso_or_out: Path, summary: dict[str, Any] | None = None) -> dict[str, Any]:
+    """§12.6: findings_in == members + excluded; UNEXPLAINED==0."""
+    out = resolve_out_dir(ciso_or_out)
+    if summary is None:
+        summary_path = out / "summary.json"
+        if summary_path.is_file():
+            import json
+
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary = summary or {}
+    fg = summary.get("flood_guard") if isinstance(summary.get("flood_guard"), dict) else {}
+    unexplained = int(fg.get("UNEXPLAINED") or 0)
+    excluded = summary.get("excluded_by_reason") or {}
+    if isinstance(excluded, dict):
+        unexplained += int(excluded.get("unexplained") or 0) + int(excluded.get("UNEXPLAINED") or 0)
+    excluded_path = out / "poam" / "excluded.csv"
+    excluded_rows: list[dict[str, str]] = []
+    if excluded_path.is_file() and excluded_path.read_text(encoding="utf-8").strip():
+        first = first_nonempty_line(excluded_path)
+        if first == EXCLUDED_HEADER:
+            excluded_rows = csv_rows(excluded_path)
+            for row in excluded_rows:
+                reason = str(row.get("excluded_reason") or "").strip()
+                code = str(row.get("reason_code") or "").strip()
+                if reason in {"", "unexplained", "UNEXPLAINED"} or code in {
+                    "UNEXPLAINED",
+                    "unexplained",
+                }:
+                    unexplained += 1
+                if (
+                    code
+                    and code not in REASON_CODES
+                    and not is_merged_into_reason(code)
+                ):
+                    raise RegisterShapeError(
+                        f"FLOOD_GUARD_FAIL unknown reason_code={code}"
+                    )
+    if unexplained:
+        raise RegisterShapeError(f"FLOOD_GUARD_FAIL UNEXPLAINED={unexplained} (must be 0)")
+    members_path = out / "poam" / "poam_members.csv"
+    member_rows: list[dict[str, str]] = []
+    if members_path.is_file() and members_path.read_text(encoding="utf-8").strip():
+        member_rows = csv_rows(members_path)
+    if fg:
+        findings_in = int(fg.get("findings_in") or 0)
+        members_n = int(fg.get("poam_members") or 0)
+        excluded_n = int(fg.get("excluded") or 0)
+        if findings_in and findings_in != members_n + excluded_n:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL findings_in={findings_in} != "
+                f"poam_members={members_n} + excluded={excluded_n}"
+            )
+        if excluded_n and excluded_n != len(excluded_rows) and excluded_rows:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL flood_guard.excluded={excluded_n} != "
+                f"excluded.csv={len(excluded_rows)}"
+            )
+        if members_n and members_n != len(member_rows) and member_rows:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL flood_guard.poam_members={members_n} != "
+                f"poam_members.csv={len(member_rows)}"
+            )
+        budget = fg.get("budget") if isinstance(fg.get("budget"), dict) else {}
+        if budget.get("status") not in {"", None, "ok", "exceeded"}:
+            raise RegisterShapeError(
+                f"FLOOD_GUARD_FAIL budget.status={budget.get('status')}"
+            )
+    return {"ok": True, "UNEXPLAINED": 0, "flood_guard": fg}
 
 
 class RegisterShapeError(ValueError):
@@ -538,6 +641,10 @@ def assert_risk_register_and_poam(ciso_or_out: Path) -> dict[str, Any]:
         ciso_or_out,
         findings_count=int(register["counts"].get("findings.csv") or 0),
     )
+    try:
+        assert_flood_guard(ciso_or_out)
+    except RegisterShapeError:
+        raise
     return {
         "ok": True,
         "ciso": register["ciso"],
@@ -597,7 +704,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
             EXCLUDED_HEADER + "\n"
-            "DEMO-I,DEMO-I,sample-info,sample-asset,info,severity_info,\n"
-            "DEMO-H,DEMO-H,sample-honeypot,sample-asset,high,honeypot,\n",
+            "DEMO-I,DEMO-I,sample-info,sample-asset,info,severity_info,,INFO_ONLY,,demo,info-only\n"
+            "DEMO-H,DEMO-H,sample-honeypot,sample-asset,high,honeypot,,HONEYPOT,,demo,honeypot\n",
             encoding="utf-8",
         )

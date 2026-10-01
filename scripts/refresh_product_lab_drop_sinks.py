@@ -53,11 +53,17 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         ("ciso/vulnerabilities.csv", counts["ciso/vulnerabilities.csv"]),
         ("poam/poam.csv", counts["poam/poam.csv"]),
         ("poam/poam.md", "draft"),
+    ]
+    if "poam/excluded.csv" in hashes:
+        table.insert(-1, ("poam/excluded.csv", counts["poam/excluded.csv"]))
+    if "poam/poam_members.csv" in hashes:
+        table.insert(-1, ("poam/poam_members.csv", counts["poam/poam_members.csv"]))
+    table.extend([
         ("opengrc/risks.csv", counts["opengrc/risks.csv"]),
         ("opengrc/assets.csv", counts["opengrc/assets.csv"]),
         ("opengrc/implementations.csv", counts["opengrc/implementations.csv"]),
         ("import_preview/probo.json", counts["import_preview/probo.json"]),
-    ]
+    ])
     for rel, count in table:
         lines.append(f"| {rel} | {count} | `{hashes[rel]}` |")
     lines.append("")
@@ -104,7 +110,11 @@ Operator draft. Not a CISO import. Owner and due stay blank.
 | File | Rows |
 |---|---|
 | `poam.csv` | {counts["poam/poam.csv"]} |
+| `excluded.csv` | {counts.get("poam/excluded.csv", "")} |
+| `poam_members.csv` | {counts.get("poam/poam_members.csv", "")} |
 | `poam.md` | same draft, markdown |
+
+`poam.csv` and `poam_members.csv` carry a per-row `estate` column. Member rows are this-scan plan rows (pending carried items can appear on `poam.csv` without a member row).
 
 Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
 
@@ -147,11 +157,14 @@ def main() -> int:
         "ciso/vulnerabilities.csv": DROP / "ciso" / "vulnerabilities.csv",
         "poam/poam.csv": DROP / "poam" / "poam.csv",
         "poam/poam.md": DROP / "poam" / "poam.md",
+        "poam/excluded.csv": DROP / "poam" / "excluded.csv",
+        "poam/poam_members.csv": DROP / "poam" / "poam_members.csv",
         "opengrc/risks.csv": DROP / "opengrc" / "risks.csv",
         "opengrc/assets.csv": DROP / "opengrc" / "assets.csv",
         "opengrc/implementations.csv": DROP / "opengrc" / "implementations.csv",
         "import_preview/probo.json": DROP / "import_preview" / "probo.json",
     }
+    files = {rel: path for rel, path in files.items() if path.is_file()}
     hashes = {rel: _sha256(path) for rel, path in files.items()}
     counts: dict[str, int] = {}
     for rel, path in files.items():

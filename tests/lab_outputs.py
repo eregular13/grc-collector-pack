@@ -196,6 +196,7 @@ def assert_lab() -> None:
         row
         for row in excluded
         if not is_merged_into_reason(str(row.get("excluded_reason") or ""))
+        and str(row.get("excluded_reason") or "") != "DUPLICATE_INSTANCE"
     ]
     assert accept_n == len(non_merged)
     overlap = assert_register_no_double_treatment(OUT)
@@ -206,6 +207,23 @@ def assert_lab() -> None:
         assert row.get("severity") in EXCLUDED_SEV, row
         if row.get("excluded_reason") == "severity_info":
             assert row.get("severity") == "info", row
+        assert row.get("excluded_reason") not in {"", "unexplained", "UNEXPLAINED"}
+        assert row.get("reason_code") not in {"", "UNEXPLAINED", "unexplained"}
+    fg = summary.get("flood_guard") or {}
+    assert int(fg.get("UNEXPLAINED") or 0) == 0
+    assert int(fg.get("findings_in") or 0) == int(fg.get("poam_members") or 0) + int(
+        fg.get("excluded") or 0
+    )
+    assert int(fg.get("excluded") or 0) == len(excluded)
+    budget = fg.get("budget") or {}
+    assert budget.get("status") in {"ok", "exceeded"}
+    members_path = OUT / "poam" / "poam_members.csv"
+    assert members_path.is_file(), "poam/poam_members.csv missing"
+    from shared.poam_rollup import POAM_MEMBERS_FIELDS
+
+    members = _csv_rows(members_path, ",".join(POAM_MEMBERS_FIELDS))
+    assert int(fg.get("poam_members") or 0) == len(members)
+    assert all(row.get("estate") for row in members)
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()

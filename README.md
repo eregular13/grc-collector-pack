@@ -88,7 +88,7 @@ Overnight improve ended 2026-09-02 (`LOOP.md`). Afternoon harden until 16:00 PT 
 
 - `out/canonical/*.jsonl` — `asset|finding|evidence|incident`
 - `out/ciso-assistant/` — `assets.csv` `applied_controls.csv` `evidences.csv` `findings.csv` `vulnerabilities.csv` `risk_scenarios.csv` (semicolon)
-- `out/poam/` — `poam.csv` `poam.md` (owner/due blank; human fills).
+- `out/poam/` — `poam.csv` `poam.md` `excluded.csv` `poam_members.csv` (owner/due blank; human fills). `poam.csv` and `poam_members.csv` carry a per-row `estate` column. Member rows are this-scan plan rows (pending carried items can appear on `poam.csv` without a member row).
 - `out/simplerisk/poam.csv` — leave-behind copy of the POA&M (exact header, `estate` column; banner in `out/simplerisk/ESTATE.txt`). No SimpleRisk API.
 - `out/ocsf/compliance_findings.json` — OCSF-like Compliance Finding (`class_uid` 2003)
 - `out/summary.json` `out/evidence/lab-report.md`
