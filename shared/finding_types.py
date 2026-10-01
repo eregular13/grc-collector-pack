@@ -943,12 +943,46 @@ _SG_COMPOUND_ID_RE = re.compile(
 )
 _APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
 _APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
-_RD_GATEWAY_COMPACT = ("rdpgateway", "rdgateway")
+# Longest needles first so rdgatewaylogs remainder is "logs", not
+# rdgw + "atewaylogs" (which would miss the artifact suffix).
+_RD_GATEWAY_COMPACT = (
+    "remotedesktopgateway",
+    "rdpgateway",
+    "rdgateway",
+    "tsgateway",
+    "rdpgw",
+    "rdgw",
+)
+# rd / rdp only. rds is not a lead — it steals AWS rds_public
+# (rds-gateway-public). ts is not a general lead (nest-ts-gateway).
 _RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
 _RD_GATEWAY_TRAIL_TOKENS = frozenset({"gateway", "gateways"})
-# Compact openrdgateway / publicrdgateway / exposedrdgateway. Not a contains
-# scan — *rd+gateway compounds (birdgateway, onboardgateway) stay off.
-_RD_GATEWAY_COMPACT_PREFIXES = ("open", "public", "exposed")
+_RD_GATEWAY_PHRASE_LEAD = ("remote", "desktop")
+_RD_GATEWAY_TS_PHRASE = ("terminal", "services")
+# Compact openrdgateway / publicrdgateway / internetrdgateway / devrdgateway.
+# Not a contains scan — *rd+gateway compounds (birdgateway, onboardgateway) stay off.
+# Environment prefixes match the hyphenated forms (dev-rdgateway already types):
+# prod plus the common siblings so compact and kebab stay consistent.
+_RD_GATEWAY_COMPACT_PREFIXES = (
+    "staging",
+    "internet",
+    "external",
+    "exposed",
+    "public",
+    "stage",
+    "open",
+    "test",
+    "prod",
+    "uat",
+    "dev",
+)
+# Under-drop artifact names: only clear non-exposure leftovers immediately
+# after the stem — logs, audit/audits, cert* (certexpiry / certificate).
+# Not backup (standby gateway), not log (log in / Log4j / login / logging),
+# not auditor. Only the token (or compact remainder) right after the stem
+# is checked, so rdgateway-public-logs still types.
+_RD_GATEWAY_ARTIFACT_EXACT = frozenset({"logs", "audit", "audits"})
+_RD_GATEWAY_ARTIFACT_STARTS = ("logs", "cert")
 
 
 def _policy_token_seq(*parts: str) -> list[str]:
@@ -1019,56 +1053,178 @@ def _has_adjacent_security_group_phrase(text: str, *, allow_plural: bool = False
     return bool(compound.search(compact))
 
 
-def _policy_token_marks(text: str) -> list[tuple[str, bool]]:
-    """Camel/digit tokens plus whether each token is glued to a preceding digit.
+def _policy_token_marks(text: str) -> list[tuple[str, int]]:
+    """Camel/digit tokens plus each token's start index in the source text.
 
-    3rdGateway / 3rdgateway → ('rd'/'rdgateway', True). 2019 RD / vm01-rd /
-    site2-rdgateway keep False: the digit is separated by space or hyphen.
+    Used to tell a true ordinal (3rd / 3rdGateway: digit run starts the
+    alphanumeric segment) from a host/site/version digit (vm3rdgateway /
+    Server2019RDGateway: a letter precedes the digit run).
     """
-    marks: list[tuple[str, bool]] = []
     raw = str(text or "")
-    for match in _CAMEL_DIGIT_RE.finditer(raw):
-        glued = match.start() > 0 and raw[match.start() - 1].isdigit()
-        marks.append((match.group(0).lower(), glued))
-    return marks
+    return [(m.group(0).lower(), m.start()) for m in _CAMEL_DIGIT_RE.finditer(raw)]
+
+
+def _digit_run_starts_segment(raw: str, token_start: int) -> bool:
+    """True when a digit run immediately before token_start begins an alnum segment."""
+    if token_start <= 0 or not raw[token_start - 1].isdigit():
+        return False
+    i = token_start - 1
+    while i >= 0 and raw[i].isdigit():
+        i -= 1
+    return i < 0 or not raw[i].isalnum()
+
+
+def _ordinal_rd_skip(raw: str, token_start: int, tok: str) -> bool:
+    """Skip only true ordinals: digit run starts a segment and token is rd, not rdp.
+
+    3rd / 3rdGateway / 3rdgateway skip. vm3rdgateway / site2rdgateway /
+    Server2019RDGateway / 3rdpgateway / 3rdp-gateway do not.
+    """
+    if tok.startswith("rdp") or not tok.startswith("rd"):
+        return False
+    return _digit_run_starts_segment(raw, token_start)
+
+
+def _rd_gateway_compact_remainder(tok: str) -> str | None:
+    """Remainder after an allowlisted compact needle, or None if not compact."""
+    for needle in _RD_GATEWAY_COMPACT:
+        if tok.startswith(needle):
+            return tok[len(needle) :]
+        for prefix in _RD_GATEWAY_COMPACT_PREFIXES:
+            blob = prefix + needle
+            if tok.startswith(blob):
+                return tok[len(blob) :]
+    return None
+
+
+def _is_rd_gateway_artifact_remainder(remainder: str) -> bool:
+    if not remainder:
+        return False
+    if remainder in _RD_GATEWAY_ARTIFACT_EXACT:
+        return True
+    return remainder.startswith(_RD_GATEWAY_ARTIFACT_STARTS)
+
+
+def _is_rd_gateway_artifact_token(tok: str) -> bool:
+    if tok in _RD_GATEWAY_ARTIFACT_EXACT:
+        return True
+    return tok.startswith("cert")
 
 
 def _is_rd_gateway_compact_token(tok: str) -> bool:
-    """True when a camel-split token starts with rdgateway/rdpgateway.
+    """True when a token starts with rdgateway/rdpgateway (or RDGW / TS).
 
-    Allowlisted prefixes (open/public/exposed) restore openrdgateway.
+    Allowlisted prefixes restore openrdgateway / internetrdgateway.
     A contains scan is not used — birdgateway / onboardgateway stay off.
-    Both rdgateway and rdpgateway use this same rule.
+    Clear artifact suffixes (logs / audit / cert*) stay off.
     """
-    for needle in _RD_GATEWAY_COMPACT:
-        if tok.startswith(needle):
-            return True
-        if any(tok.startswith(prefix + needle) for prefix in _RD_GATEWAY_COMPACT_PREFIXES):
-            return True
+    remainder = _rd_gateway_compact_remainder(tok)
+    if remainder is None:
+        return False
+    return not _is_rd_gateway_artifact_remainder(remainder)
+
+
+def _alnum_segments(text: str) -> list[str]:
+    """Lowercased alphanumeric runs — recovers RDgateway after camel split."""
+    return [m.group(0).lower() for m in re.finditer(r"[A-Za-z0-9]+", str(text or ""))]
+
+
+def _phrase_is_rd_gateway(tokens: list[str], lead: tuple[str, str]) -> bool:
+    """Adjacent lead pair + gateway(s), with an optional artifact skip after."""
+    if len(tokens) < 3:
+        return False
+    for i, tok in enumerate(tokens[:-2]):
+        if tok != lead[0] or tokens[i + 1] != lead[1]:
+            continue
+        if tokens[i + 2] not in _RD_GATEWAY_TRAIL_TOKENS:
+            continue
+        if i + 3 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 3]):
+            continue
+        return True
     return False
 
 
-def _field_is_rd_gateway(text: str) -> bool:
-    """Adjacent rd/rdp + gateway(s), or a compact rdgateway/rdpgateway token.
+def _field_is_windows_rds_gateway(tokens: list[str]) -> bool:
+    """Windows feature id RDS-Gateway as a whole field — not a general rds lead.
 
-    Skip 'rd' (or a compact rdgateway* token) only when a digit is glued
-    directly to it in the source (3rd, 3rdGateway, 3rdgateway). A separated
-    number (2019 RD, vm01-rd-gateway, 3389 RD Gateway) still matches.
+    rds-gateway-public / aws-rds-gateway-public stay with rds_public
+    (PubliclyAccessible=false), not MFA/NLA at the RD Gateway.
     """
-    marks = _policy_token_marks(text)
+    return tokens in (["rds", "gateway"], ["rds", "gateways"])
+
+
+def _field_starts_with_ts_gateway(tokens: list[str]) -> bool:
+    """TSGateway / ts-gateway as the leading segment, not nest-ts-gateway.
+
+    An allowlisted prefix may lead (open-ts-gateway / opentsgateway).
+    """
+    if len(tokens) < 2:
+        return False
+    start = 0
+    if tokens[0] in _RD_GATEWAY_COMPACT_PREFIXES and len(tokens) >= 3:
+        start = 1
+    if tokens[start] != "ts":
+        return False
+    if start + 1 >= len(tokens) or tokens[start + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
+        return False
+    after = start + 2
+    if after < len(tokens) and _is_rd_gateway_artifact_token(tokens[after]):
+        return False
+    return True
+
+
+def _field_is_rd_gateway(text: str) -> bool:
+    """Adjacent rd/rdp + gateway(s), remote/terminal phrases, or compact.
+
+    Skip 'rd' (or a compact rdgateway* token) only when a digit run starts
+    the alphanumeric segment (3rd, 3rdGateway, 3rdgateway). A host/site/
+    version digit (vm3rdgateway, site2rdgateway, Server2019RDGateway) and
+    any rdp token (3rdpgateway, 3rdp-gateway) still match. A separated
+    number (2019 RD, vm01-rd-gateway, 3389 RD Gateway) still matches.
+
+    Mixed-case compacts (RDgateway, RDPgateway, openRDgateway) are recovered
+    by applying the compact rule to each lowercased alphanumeric segment:
+    the camel splitter otherwise cuts them into R + Dgateway.
+
+    rds is not a lead token. Only the whole-field Windows feature
+    RDS-Gateway types; rds-gateway-public stays rds_public. ts matches
+    only as a leading TSGateway / ts-gateway (or Terminal Services
+    Gateway), not nest-ts-gateway.
+    """
+    raw = str(text or "")
+    segments = _alnum_segments(raw)
+    for i, seg in enumerate(segments):
+        if not _is_rd_gateway_compact_token(seg):
+            continue
+        if i + 1 < len(segments) and _is_rd_gateway_artifact_token(segments[i + 1]):
+            continue
+        return True
+    marks = _policy_token_marks(raw)
     tokens = [tok for tok, _ in marks]
-    for tok, glued in marks:
+    for i, (tok, start) in enumerate(marks):
         if not _is_rd_gateway_compact_token(tok):
             continue
-        if glued:
+        if _ordinal_rd_skip(raw, start, tok):
             continue
+        if i + 1 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 1]):
+            continue
+        return True
+    if _phrase_is_rd_gateway(tokens, _RD_GATEWAY_PHRASE_LEAD):
+        return True
+    if _phrase_is_rd_gateway(tokens, _RD_GATEWAY_TS_PHRASE):
+        return True
+    if _field_is_windows_rds_gateway(tokens):
+        return True
+    if _field_starts_with_ts_gateway(tokens):
         return True
     for i, tok in enumerate(tokens[:-1]):
         if tok not in _RD_GATEWAY_LEAD_TOKENS:
             continue
         if tokens[i + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
             continue
-        if tok == "rd" and marks[i][1]:
+        if _ordinal_rd_skip(raw, marks[i][1], tok):
+            continue
+        if i + 2 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 2]):
             continue
         return True
     return False
@@ -1080,9 +1236,13 @@ def _is_rd_gateway(check_id: str, title: str) -> bool:
     Id and title are tokenized separately so a trailing 'rd' on the id
     cannot pair with a leading 'gateway' on the title. Compact
     rdgateway / rdpgateway must start the token (rdgatewaypublic) or
-    follow an allowlisted prefix (openrdgateway). Adjacent rd/rdp +
-    gateway(s) still match. A glued digit+'rd' (3rdGateway) does not.
-    A bare gateway is not enough.
+    follow an allowlisted prefix (openrdgateway, internetrdgateway).
+    Adjacent rd/rdp + gateway(s) still match, as does
+    'Remote Desktop Gateway' and 'Terminal Services Gateway'. The
+    Windows feature id RDS-Gateway matches as a whole field; a general
+    rds + gateway lead does not. A glued ordinal digit+'rd' (3rdGateway)
+    does not; a host-glued digit (vm3rdgateway) does. A bare gateway
+    is not enough.
     """
     return _field_is_rd_gateway(check_id) or _field_is_rd_gateway(title)
 

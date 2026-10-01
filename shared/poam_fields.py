@@ -63,10 +63,13 @@ SLA_NOTE = (
     "first_seen's UTC day and original_detection_date (local vs UTC / recorded zone). "
     "The same local status_date is written on poam.csv, poam_fedramp.csv, "
     "simplerisk/poam.csv, and poam-ledger.json on a first run and on rows that "
-    "change this run; carried unchanged rows keep their last-change date. The same "
+    "change this run. Reobserved unchanged rows and unobserved carried rows keep "
+    "the ledger last-change date on all four surfaces. The same "
     "local run day also drives VENDOR_CHECKIN_OVERDUE, VD_HIGH_NOT_MITIGATED, "
     "missed_dates, pending-verification dates, and the default closed_on. Naive "
-    "POA&M clocks are local wall time; scan_time.bind_run_clock treats naive as UTC."
+    "POA&M clocks (including load(run_at=) naive) are local wall time — load() "
+    "localizes before the scanner cutoff bind. Direct scan_time.bind_run_clock "
+    "treats naive as UTC."
 )
 
 
@@ -203,10 +206,12 @@ def apply_ledger_detection(
     rec: dict[str, Any],
     mapped: dict[str, Any],
 ) -> dict[str, str]:
-    """Stamp ledger-stable EGP- ID and original_detection_date onto poam.csv."""
+    """Stamp ledger-stable EGP- ID, detection date, and status_date onto poam.csv."""
     out = dict(fields)
     if item.get("poam_id"):
         out["poam_id"] = str(item["poam_id"])
+    if item.get("status_date"):
+        out["status_date"] = str(item["status_date"])
     stored = str(item.get("original_detection_date") or NOT_RECORDED)
     incoming, _basis, _tz = artifact_detection(rec)
     odd = merge_detection(stored, incoming)

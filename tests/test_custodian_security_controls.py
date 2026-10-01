@@ -739,6 +739,156 @@ def test_compact_rd_stem_gateway_stays_untyped(check_id: str) -> None:
     assert finding_type(rec) != "rd_gateway_exposed", check_id
 
 
+# #214 v3 follow-up. Exposure is held in the description so only the
+# matcher varies. expect=True must type rd_gateway_exposed (not
+# sg_ingress_open). expect=False must stay off rd_gateway_exposed.
+_RD_GATEWAY_V4_CASES = (
+    # Mixed-case compacts: camel splitter cuts RDgateway → R + Dgateway.
+    ("RDgateway", "Cloud Custodian RDgateway", True),
+    ("RDPgateway", "Cloud Custodian RDPgateway", True),
+    ("openRDgateway", "Cloud Custodian openRDgateway", True),
+    ("OpenRdGateway", "Cloud Custodian OpenRdGateway", True),
+    ("OpenRDGateway", "Cloud Custodian OpenRDGateway", True),
+    ("RDgatewayPublic", "Cloud Custodian RDgatewayPublic", True),
+    # Host/site/version digits glued to the name; digit run does not start
+    # the segment. 3rdpgateway must match 3rdp-gateway (rdp is not an ordinal).
+    ("vm3rdgateway", "Cloud Custodian vm3rdgateway", True),
+    ("site2rdgateway", "Cloud Custodian site2rdgateway", True),
+    ("Server2019RDGateway", "Cloud Custodian Server2019RDGateway", True),
+    ("3rdpgateway", "Cloud Custodian 3rdpgateway", True),
+    ("3rdp-gateway", "Cloud Custodian 3rdp-gateway", True),
+    ("vm3rdpgateway", "Cloud Custodian vm3rdpgateway", True),
+    # Exposure prefixes (public/exposed kill v3#127/#128). prod is kept:
+    # master typed it and prod-2-rd-gateway already types.
+    ("internetrdgateway", "Cloud Custodian internetrdgateway", True),
+    ("INTERNETRDGATEWAY", "Cloud Custodian INTERNETRDGATEWAY", True),
+    ("internetrdgateways", "Cloud Custodian internetrdgateways", True),
+    ("internetrdpgateway", "Cloud Custodian internetrdpgateway", True),
+    ("externalrdgateway", "Cloud Custodian externalrdgateway", True),
+    ("EXTERNALRDGATEWAY", "Cloud Custodian EXTERNALRDGATEWAY", True),
+    ("prodrdgateway", "Cloud Custodian prodrdgateway", True),
+    ("PRODRDGATEWAY", "Cloud Custodian PRODRDGATEWAY", True),
+    ("publicrdgateway", "Cloud Custodian publicrdgateway", True),
+    ("publicrdgatewayserver", "Cloud Custodian publicrdgatewayserver", True),
+    ("exposedrdgateway", "Cloud Custodian exposedrdgateway", True),
+    # Pre-existing FNs from #214: RDGW, Windows feature, spelled-out, TS.
+    ("RDGW", "Cloud Custodian RDGW", True),
+    ("rdgw-public", "Cloud Custodian rdgw-public", True),
+    ("RDPGW", "Cloud Custodian RDPGW", True),
+    ("RDS-Gateway", "Cloud Custodian RDS-Gateway", True),
+    ("TSGateway", "Cloud Custodian TSGateway", True),
+    ("ts-gateway", "Cloud Custodian ts-gateway", True),
+    ("policy-open", "Remote Desktop Gateway", True),
+    ("RemoteDesktopGateway", "Cloud Custodian RemoteDesktopGateway", True),
+    ("remote-desktop-gateway", "Cloud Custodian remote-desktop-gateway", True),
+    ("policy-open", "Remote Desktop Gateways public", True),
+    # A1 / A2 compact needles (not only camel/kebab).
+    ("remotedesktopgateway", "Cloud Custodian remotedesktopgateway", True),
+    ("REMOTEDESKTOPGATEWAY", "Cloud Custodian REMOTEDESKTOPGATEWAY", True),
+    ("TSGATEWAY", "Cloud Custodian TSGATEWAY", True),
+    ("tsgatewaypublic", "Cloud Custodian tsgatewaypublic", True),
+    ("tsgateway-public", "Cloud Custodian tsgateway-public", True),
+    ("opentsgateway", "Cloud Custodian opentsgateway", True),
+    ("policy-open", "Terminal Services Gateway", True),
+    # Environment compact prefixes (hyphenated siblings already type).
+    ("devrdgateway", "Cloud Custodian devrdgateway", True),
+    ("testrdgateway", "Cloud Custodian testrdgateway", True),
+    ("stagerdgateway", "Cloud Custodian stagerdgateway", True),
+    ("stagingrdgateway", "Cloud Custodian stagingrdgateway", True),
+    ("uatrdgateway", "Cloud Custodian uatrdgateway", True),
+    # #214 forms that must keep typing, including rd.gateway and 3389.
+    ("rd.gateway", "Cloud Custodian rd.gateway", True),
+    ("policy-open", "3389 RD Gateway open", True),
+    ("policy-open", "Server 2019 RD Gateway public", True),
+    ("rdgatewaypublic", "Cloud Custodian rdgatewaypublic", True),
+    ("openrdgateway", "Cloud Custodian openrdgateway", True),
+    ("rdp-gateways-open", "Cloud Custodian rdp-gateways-open", True),
+    # X10: login is not the logs artifact.
+    ("rdgatewaylogin", "Cloud Custodian rdgatewaylogin", True),
+    ("rdgatewaylogin-public", "Cloud Custodian rdgatewaylogin-public", True),
+    # Under-drop artifacts: backup / log / auditor / logging stay typed.
+    ("rdgateway-backup-public", "Cloud Custodian rdgateway-backup-public", True),
+    ("policy-open", "RD Gateway backup server public", True),
+    ("policy-open", "Backup RD Gateway public", True),
+    ("rd-gateway-log-public", "Cloud Custodian rd-gateway-log-public", True),
+    ("policy-open", "RD Gateway log in page public", True),
+    ("rdgateway-auditor-public", "Cloud Custodian rdgateway-auditor-public", True),
+    ("rdgateway-logging-open", "Cloud Custodian rdgateway-logging-open", True),
+    ("rdgateway-public-logs", "Cloud Custodian rdgateway-public-logs", True),
+    # Ordinals and unrelated compounds stay untyped.
+    ("3rd", "Cloud Custodian 3rd", False),
+    ("2rd", "Cloud Custodian 2rd", False),
+    ("3rdGateway", "Cloud Custodian 3rdGateway", False),
+    ("3rdgateway", "Cloud Custodian 3rdgateway", False),
+    ("3RDGATEWAY", "Cloud Custodian 3RDGATEWAY", False),
+    ("policy-open", "3RD Gateway", False),
+    ("payment-3rd-gateway-open", "Cloud Custodian payment-3rd-gateway-open", False),
+    ("birdgateway", "Cloud Custodian birdgateway", False),
+    ("discordgateway", "Cloud Custodian discordgateway", False),
+    ("passwordgateway", "Cloud Custodian passwordgateway", False),
+    ("guardgateway", "Cloud Custodian guardgateway", False),
+    ("recordgateway", "Cloud Custodian recordgateway", False),
+    ("forwardgateway", "Cloud Custodian forwardgateway", False),
+    ("leopardgateway", "Cloud Custodian leopardgateway", False),
+    ("standardgateway", "Cloud Custodian standardgateway", False),
+    ("cardgateway", "Cloud Custodian cardgateway", False),
+    ("thirdgateway", "Cloud Custodian thirdgateway", False),
+    ("boardgateway", "Cloud Custodian boardgateway", False),
+    # ts lead is only TSGateway / ts-gateway, not a mid-field ts token.
+    ("nest-ts-gateway-public", "Cloud Custodian nest-ts-gateway-public", False),
+    ("grpc-ts-gateway-open", "Cloud Custodian grpc-ts-gateway-open", False),
+    ("iot-ts-gateway-public", "Cloud Custodian iot-ts-gateway-public", False),
+    # PH3: phrase requires 'remote'. PH4: logs after the phrase.
+    ("desktop-gateway-public", "Cloud Custodian desktop-gateway-public", False),
+    ("remote-desktop-gateway-logs-public", "Cloud Custodian remote-desktop-gateway-logs-public", False),
+    # Clear artifacts only: logs / audit / cert expiry.
+    ("rdgatewaylogs-public", "Cloud Custodian rdgatewaylogs-public", False),
+    ("rdgatewaycertexpiry-open", "Cloud Custodian rdgatewaycertexpiry-open", False),
+    ("rd-gateway-logs-public", "Cloud Custodian rd-gateway-logs-public", False),
+    ("rdgateway-logs-public", "Cloud Custodian rdgateway-logs-public", False),
+    ("rdgatewayaudit", "Cloud Custodian rdgatewayaudit", False),
+    ("rdgateway-audit-open", "Cloud Custodian rdgateway-audit-open", False),
+)
+
+
+@pytest.mark.parametrize("check_id,name,expect", _RD_GATEWAY_V4_CASES)
+def test_rd_gateway_v4_forms(check_id: str, name: str, expect: bool) -> None:
+    rec = _custodian_finding(
+        name=name,
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    got = finding_type(rec)
+    if expect:
+        assert got == "rd_gateway_exposed", (check_id, name, got)
+        assert got != "sg_ingress_open"
+        if "3389" in name:
+            assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
+    else:
+        assert got != "rd_gateway_exposed", (check_id, name, got)
+
+
+_RDS_PUBLIC_NOT_RD_GATEWAY = (
+    ("rds-gateway-public", "Cloud Custodian rds-gateway-public"),
+    ("aws-rds-gateway-public", "Cloud Custodian aws-rds-gateway-public"),
+    ("policy-open", "RDS Gateway endpoint public"),
+)
+
+
+@pytest.mark.parametrize("check_id,name", _RDS_PUBLIC_NOT_RD_GATEWAY)
+def test_aws_rds_gateway_stays_rds_public(check_id: str, name: str) -> None:
+    """rds is not a general RD Gateway lead — AWS RDS keeps PubliclyAccessible=false."""
+    rec = _custodian_finding(
+        name=name,
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) == "rds_public", (check_id, name, finding_type(rec))
+    fix = map_finding(rec)["recommended_fix"]
+    assert "PubliclyAccessible=false" in fix
+    assert "MFA / NLA" not in fix
+
+
 def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:
     rec = _custodian_finding(
         name="Cloud Custodian ec2-rdp-public",
