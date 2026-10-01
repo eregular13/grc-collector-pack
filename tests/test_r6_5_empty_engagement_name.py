@@ -22,6 +22,7 @@ from shared.estate_pages import (
     md_code_span,
     md_safe_text,
     write_csv_with_estate,
+    write_estate_sidecar,
 )
 
 
@@ -188,7 +189,9 @@ def test_exec_lede_and_banner_neutralize_markdown_injection() -> None:
     for blob in (lede, banner, summary, trust):
         assert not re.search(r"(?m)^# PWNED", blob)
         assert "[x](javascript:" not in blob
+        assert "<script>" not in blob
         assert not re.search(r"(?<!\\)<script>", blob)
+        assert "<img" not in blob
         assert "**\n" not in blob
     assert "Acme" in lede
     assert lede.count("\n") == 0
@@ -198,7 +201,7 @@ def test_exec_lede_and_banner_neutralize_markdown_injection() -> None:
     assert "\\*" in lede
     assert "\\#" in lede
     assert "\\[x\\]" in lede
-    assert "\\<script" in lede
+    assert "&lt;script&gt;" in lede
 
 
 def test_csv_estate_column_keeps_raw_client_name(tmp_path) -> None:
@@ -223,12 +226,12 @@ def test_authorizer_fields_are_escaped_on_scope_page(monkeypatch, tmp_path) -> N
     assert not re.search(r"(?m)^# AUTH", trust)
     assert not re.search(r"(?m)^# DATE", trust)
     assert "[x](javascript:" not in trust
-    assert not re.search(r"(?<!\\)<script>", trust)
+    assert "<script>" not in trust
     assert "Pat" in trust
     assert "2026-10-01" in trust
     assert "\\*" in trust
     assert "\\# DATE" in trust or "\\#" in trust
-    assert "\\<script" in trust
+    assert "&lt;script&gt;" in trust
 
 
 def test_md_safe_text_kills_backtick_cr_underscore_tilde_backslash() -> None:
@@ -250,9 +253,10 @@ def test_exec_lede_mixed_escapes_client_name() -> None:
         client_name="Acme**\n# x <script>",
     )
     assert "\\*" in lede
-    assert "\\<" in lede
+    assert "&lt;" in lede
     assert "\n# x" not in lede
-    assert "<script>" not in lede.replace("\\<", "X")
+    assert "<" not in lede
+    assert ">" not in lede
 
 
 def test_estate_txt_does_not_escape_fallback_underscores() -> None:
@@ -304,10 +308,11 @@ def test_exec_summary_escapes_scanner_hostnames() -> None:
     text = build_executive_summary(
         PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
     )
-    assert not re.search(r"(?<!\\)<img", text)
+    assert "<img" not in text
+    assert "&lt;img" in text
     assert "|x|" not in text
     assert "\\|" in text
-    assert "\\<" in text
+    assert "&lt;" in text
 
 
 def test_write_probo_readme_escapes_client_name(tmp_path, monkeypatch) -> None:
@@ -329,5 +334,87 @@ def test_write_probo_readme_escapes_client_name(tmp_path, monkeypatch) -> None:
     write_probo(tmp_path, estate=estate)
     readme = (tmp_path / "probo" / "README.md").read_text(encoding="utf-8")
     assert "[x](javascript:" not in readme
-    assert "\\<script" in readme
+    assert "&lt;script&gt;" in readme
+    assert "<script>" not in readme
     assert "\\*" in readme
+
+
+def test_md_safe_text_autolink_uses_html_entities() -> None:
+    """GFM autolinks swallow \\ before <; entities stay inert. See review B2."""
+    payloads = (
+        "http://x.invalid<img src=x onerror=alert&lpar;1&rpar;//>",
+        "https://x.invalid/p<svg onload=alert&lpar;1&rpar;//>",
+        "www.x.invalid<img src=x onerror=alert&lpar;1&rpar;//>",
+    )
+    for raw in payloads:
+        escaped = md_safe_text(raw)
+        assert "<" not in escaped
+        assert ">" not in escaped
+        assert "&lt;" in escaped
+        assert "&gt;" in escaped
+        assert "\\<" not in escaped
+        assert "\\>" not in escaped
+
+
+def test_estate_txt_is_plain_via_banner_plain(tmp_path) -> None:
+    stamp = _stamp(
+        kind="SAMPLE",
+        label="SAMPLE DATA: NOT A CLIENT",
+        run_id="r1`tick",
+        pack_commit="dead`beef",
+        client_name="Acme_Health",
+    )
+    path = write_estate_sidecar(tmp_path, stamp)
+    text = path.read_text(encoding="utf-8")
+    assert stamp.banner_plain() in text
+    assert "\\_" not in text
+    assert "`r1" not in text
+    assert "r1`tick" in text or "r1tick" in text
+    assert "Run `" not in text
+    assert "pack `" not in text
+    md = stamp.banner_md()
+    assert md_code_span(stamp.run_id) in md
+    assert "`" in md
+
+
+def test_md_code_span_collapses_newlines_and_strips_ticks() -> None:
+    assert "\n" not in md_code_span("r1\n# heading")
+    assert "`" not in md_code_span("a`b`c").strip("`")
+    assert md_code_span("a`b`c") == "`abc`"
+    assert md_code_span("") == f"`{NOT_RECORDED}`"
+
+
+def test_exec_summary_code_spans_ref_id(tmp_path) -> None:
+    rec = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-`evil`<img>",
+        "name": "Open port 21",
+        "description": "x",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["h"],
+        "labels": ["nmap"],
+        "extra": {"port": "21", "check_id": "nmap-port-21"},
+    }
+    text = build_executive_summary(
+        PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
+    )
+    assert md_code_span(rec["ref_id"]) in text
+    assert "`evil`" not in text
+    assert rec["ref_id"] not in text
+
+
+def test_scope_env_fields_are_escaped(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GRC_COLLECTED_BY", "Pat**\n# WHO <script>")
+    monkeypatch.setenv("GRC_REVIEWER", "Rev**\n# REV <img>")
+    monkeypatch.setenv("GRC_VERIFY_COMMAND", "sha` <img src=x>")
+    monkeypatch.setenv("GRC_CONTACT", "ops <script>@x.invalid")
+    stamp = _stamp(kind="CLIENT", label="CLIENT: Acme", client_name="Acme")
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[], in_dir=tmp_path))
+    assert not re.search(r"(?m)^# WHO", trust)
+    assert not re.search(r"(?m)^# REV", trust)
+    assert "<script>" not in trust
+    assert "&lt;script&gt;" in trust
+    assert md_code_span("sha` <img src=x>") in trust
+    assert "` <img" not in trust

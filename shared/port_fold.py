@@ -91,7 +91,9 @@ def _labels(rec: dict[str, Any]) -> set[str]:
 
 
 def _valid_port(token: str) -> str:
-    if token.isdigit() and 1 <= int(token) <= 65535:
+    """ASCII decimal 1..65535 only. Superscript / Arabic digits must not reach int()."""
+    token = str(token or "").strip()
+    if token.isascii() and token.isdigit() and 1 <= int(token) <= 65535:
         return token
     return ""
 
@@ -132,8 +134,11 @@ def _url_has_explicit_port(raw: Any) -> bool:
     if rest.startswith("["):
         if "]" not in rest:
             return False
-        return rest[rest.find("]") + 1 :].startswith(":")
-    return rest.count(":") == 1
+        after = rest[rest.find("]") + 1 :]
+        return after.startswith(":") and bool(after[1:].strip())
+    if rest.count(":") != 1:
+        return False
+    return bool(rest.rsplit(":", 1)[-1].strip())
 
 
 def _strip_host(raw: Any) -> tuple[str, str, str]:
@@ -161,7 +166,17 @@ def _strip_host(raw: Any) -> tuple[str, str, str]:
                 if parsed.port:
                     port = str(parsed.port)
             except ValueError:
-                port = ""
+                netloc = parsed.netloc or ""
+                if "@" in netloc:
+                    netloc = netloc.rsplit("@", 1)[-1]
+                if netloc.startswith("[") and "]" in netloc:
+                    after = netloc[netloc.find("]") + 1 :]
+                    raw_port = after[1:] if after.startswith(":") else ""
+                elif netloc.count(":") == 1:
+                    raw_port = netloc.rsplit(":", 1)[-1]
+                else:
+                    raw_port = ""
+                port = _valid_port(raw_port)
         except ValueError:
             if "://" in text:
                 scheme, rest = text.split("://", 1)
@@ -208,8 +223,8 @@ def finding_port(rec: dict[str, Any]) -> str:
         if parsed:
             return parsed
         if _url_has_explicit_port(raw):
-            # Invalid :99999 / :abc / :0 — do not invent scheme default 80/443.
-            return ""
+            # Invalid :99999 / :abc / :0 — skip this candidate; do not invent 80/443.
+            continue
         if scheme in _SCHEME_DEFAULT_PORT and host:
             return _SCHEME_DEFAULT_PORT[scheme]
     return ""

@@ -250,7 +250,8 @@ def engagement_name(value: Any) -> str:
 # Hyphen, ampersand, apostrophe, and Unicode letters are left as-is so
 # names like O'Reilly & Co-Santé stay readable. Newlines are collapsed
 # separately so a name cannot open a heading or break a blockquote.
-_MD_META = frozenset("\\`*_{}[]()#!<>|~")
+_MD_META = frozenset("\\`*_{}[]()#!|~")
+_HTML_ENTS = {"<": "&lt;", ">": "&gt;"}
 _LINE_BREAKS = r"[\r\n\u2028\u2029\u0085\v\f]+"
 
 
@@ -274,7 +275,15 @@ def md_safe_text(value: Any) -> str:
     text = _one_line(value)
     if not text:
         return ""
-    return "".join(("\\" + ch) if ch in _MD_META else ch for ch in text)
+    out: list[str] = []
+    for ch in text:
+        if ch in _HTML_ENTS:
+            out.append(_HTML_ENTS[ch])
+        elif ch in _MD_META:
+            out.append("\\" + ch)
+        else:
+            out.append(ch)
+    return "".join(out)
 
 
 def md_code_span(value: Any) -> str:
@@ -1686,7 +1695,8 @@ def format_coverage_gaps(sensor_rows: list[dict] | None) -> list[str]:
         return lines
     for gap in gaps:
         lines.append(
-            f"- {gap['source']}: {gap['files']} ({gap['status']} — {gap['reason']})"
+            f"- {md_safe_text(gap['source'])}: {md_safe_text(gap['files'])} "
+            f"({md_safe_text(gap['status'])} — {md_safe_text(gap['reason'])})"
         )
     return lines
 
@@ -1904,11 +1914,15 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     else:
         for row in inside:
             lines.append(
-                f"| {row['area']} | {row['targets']} | {row['tool']} | {row['version']} | {row['collected']} | {row['records']} |"
+                f"| {md_safe_text(row['area'])} | {md_safe_text(row['targets'])} | "
+                f"{md_safe_text(row['tool'])} | {md_safe_text(row['version'])} | "
+                f"{md_safe_text(row['collected'])} | {md_safe_text(row['records'])} |"
             )
     lines.append("")
     lines.append(
-        "Out of scope, or no data supplied: " + _out_of_scope_phrase(coverage_rows, outside) + "."
+        "Out of scope, or no data supplied: "
+        + md_safe_text(_out_of_scope_phrase(coverage_rows, outside))
+        + "."
     )
     lines.append("")
     lines.extend(format_coverage_gaps(ctx.sensor_rows))
@@ -1919,6 +1933,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     reviewer = recorded(_env(None, "GRC_REVIEWER"))
     if reviewer == NOT_RECORDED:
         reviewer = REVIEWER_NOT_REVIEWED
+    else:
+        reviewer = md_safe_text(reviewer)
     if who == NOT_RECORDED:
         method_1 = (
             "1. Scanner output was supplied as files. The pack parses files only. "
@@ -1926,7 +1942,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
         )
     else:
         method_1 = (
-            f"1. Scanner output was supplied as files, or collected by {who} "
+            f"1. Scanner output was supplied as files, or collected by {md_safe_text(who)} "
             "under the authorization above. The pack parses files only. "
             "It does not run exploits, log in to client systems, or call client APIs."
         )
@@ -1947,8 +1963,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
             "",
             "### Integrity and traceability",
             "- Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.",
-            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with `{recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST')}`.",
-            f"- Contact for questions or corrections: {recorded(_env(None, 'GRC_CONTACT'))}.",
+            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST'))}.",
+            f"- Contact for questions or corrections: {md_safe_text(recorded(_env(None, 'GRC_CONTACT')))}.",
             "",
         ]
     )
