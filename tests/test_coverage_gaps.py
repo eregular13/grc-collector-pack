@@ -23,6 +23,7 @@ from shared.estate_pages import (
     LABEL_FOR_KIND,
     MAX_PAGE_LINES,
     classify_estate,
+    md_safe_text,
 )
 from shared.io_util import UNRECOGNIZED_STATUS, load_sensor_coverage, run_collector
 
@@ -314,7 +315,7 @@ def test_coverage_gaps_section_lists_failed_sensors(
         assert COVERAGE_GAPS_NONE not in blob
         assert "cloud-prowler" in blob
         assert "notes.txt" in blob
-        assert UNRECOGNIZED_STATUS in blob
+        assert md_safe_text(UNRECOGNIZED_STATUS) in blob
         assert "vuln-scan" in blob
         assert "broken.json" in blob
         assert "parse_error" in blob
