@@ -148,22 +148,24 @@ def parse_http_url(url: str) -> tuple[str, int, str, str]:
     raw = str(url or "").strip()
     if not raw:
         raise LiveRefuse("empty URL")
-    parts = urlsplit(raw)
-    if parts.scheme.lower() not in HTTP_SCHEMES:
-        raise LiveRefuse(f"URL scheme {parts.scheme!r} is not http/https")
-    if parts.username is not None or parts.password is not None or "@" in (parts.netloc or ""):
-        raise LiveRefuse("URL userinfo is refused")
-    host = (parts.hostname or "").strip().lower().rstrip(".")
-    if not host:
-        raise LiveRefuse("URL has no host")
-    if not is_bare_host(host) and not _is_ip(host):
-        # hostname may contain only label chars; reject leftover junk
-        if "/" in host or "@" in host or ":" in host:
-            raise LiveRefuse(f"URL host {host!r} is not a bare host")
     try:
+        parts = urlsplit(raw)
+        if parts.scheme.lower() not in HTTP_SCHEMES:
+            raise LiveRefuse(f"URL scheme {parts.scheme!r} is not http/https")
+        if parts.username is not None or parts.password is not None or "@" in (parts.netloc or ""):
+            raise LiveRefuse("URL userinfo is refused")
+        host = (parts.hostname or "").strip().lower().rstrip(".")
+        if not host:
+            raise LiveRefuse("URL has no host")
+        if not is_bare_host(host) and not _is_ip(host):
+            # hostname may contain only label chars; reject leftover junk
+            if "/" in host or "@" in host or ":" in host:
+                raise LiveRefuse(f"URL host {host!r} is not a bare host")
         port = int(parts.port) if parts.port is not None else SCHEME_DEFAULT_PORT[parts.scheme.lower()]
+    except LiveRefuse:
+        raise
     except (TypeError, ValueError) as exc:
-        raise LiveRefuse(f"URL port invalid: {url!r}") from exc
+        raise LiveRefuse(f"URL invalid: {url!r}") from exc
     path = parts.path or "/"
     if parts.query:
         path = f"{path}?{parts.query}"

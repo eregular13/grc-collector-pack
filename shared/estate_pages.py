@@ -246,6 +246,63 @@ def engagement_name(value: Any) -> str:
     return _trim_edges_and_zwsp(raw)
 
 
+# Markdown / HTML metacharacters that must not stay raw in deliverables.
+# Hyphen, ampersand, apostrophe, and Unicode letters are left as-is so
+# names like O'Reilly & Co-Santé stay readable. Newlines are collapsed
+# separately so a name cannot open a heading or break a blockquote.
+_MD_META = frozenset("\\`*_{}[]()#!|~")
+_HTML_ENTS = {"<": "&lt;", ">": "&gt;"}
+_LINE_BREAKS = r"[\r\n\u2028\u2029\u0085\v\f]+"
+
+
+def _one_line(value: Any) -> str:
+    """Collapse line breaks. No markdown escaping — used for plain .txt too."""
+    text = _trim_edges_and_zwsp(str(value or ""))
+    if not text:
+        return ""
+    text = re.sub(_LINE_BREAKS, " ", text)
+    return re.sub(r"[ \t]+", " ", text).strip()
+
+
+def md_safe_text(value: Any) -> str:
+    """Neutralize markdown, HTML, and link syntax in operator-supplied text.
+
+    Used only on markdown / HTML surfaces (exec lede, banners, SCOPE_AND_TRUST,
+    README.md, poam.md tables). CSV estate columns and ESTATE.txt keep the raw
+    label — they are not markdown. ZWSP/BOM handling matches ``engagement_name``
+    (#206).
+    """
+    text = _one_line(value)
+    if not text:
+        return ""
+    out: list[str] = []
+    for ch in text:
+        if ch in _HTML_ENTS:
+            out.append(_HTML_ENTS[ch])
+        elif ch in _MD_META:
+            out.append("\\" + ch)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def md_code_span(value: Any) -> str:
+    """Markdown code span that cannot break out via a backtick in the value."""
+    text = _one_line(value).replace("`", "")
+    if not text:
+        text = NOT_RECORDED
+    return f"`{text}`"
+
+
+def _lede_label(label: str, kind: str, name: str) -> str:
+    shown = (label or "").strip()
+    if kind == "CLIENT":
+        return f"CLIENT: {name}" if name else "This assessment"
+    if shown.endswith(":") or shown in {"CLIENT:", "CLIENT"}:
+        return "This assessment"
+    return shown
+
+
 def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", client_name: Any = None) -> str:
     """One clean exec-summary sentence. No empty quotes or dangling ' . '."""
     if stamp is not None:
@@ -253,17 +310,17 @@ def exec_lede(stamp: EstateStamp | None, *, label: str = "", kind: str = "", cli
         kind = stamp.kind
         client_name = stamp.client_name
     name = engagement_name(client_name)
-    shown = (label or "").strip()
+    shown = _lede_label(label, kind, name)
+    safe_name = md_safe_text(name)
+    safe_shown = md_safe_text(shown)
     if kind == "CLIENT":
-        if name:
-            return f"**CLIENT: {name}**. {name}."
+        if safe_name:
+            return f"**CLIENT: {safe_name}**. {safe_name}."
         return "**This assessment**."
-    if shown.endswith(":") or shown in {"CLIENT:", "CLIENT"}:
-        shown = "This assessment"
-    if name:
-        return f"**{shown}**. {name}."
-    if shown:
-        return f"**{shown}**."
+    if safe_name:
+        return f"**{safe_shown}**. {safe_name}."
+    if safe_shown:
+        return f"**{safe_shown}**."
     return "**This assessment**."
 
 
@@ -986,15 +1043,36 @@ class EstateStamp:
     fallback_files: tuple[str, ...] = ()
     client_name: str = NOT_RECORDED
 
-    def banner_md(self) -> str:
+    def banner_label(self) -> str:
         label = (self.label or "").strip()
         if self.kind == "CLIENT" and not engagement_name(self.client_name):
-            label = "This assessment"
-        elif not label or label in {"CLIENT:", "CLIENT"}:
-            label = "This assessment"
+            return "This assessment"
+        if not label or label in {"CLIENT:", "CLIENT"}:
+            return "This assessment"
+        return label
+
+    def banner_sentence(self, *, markdown: bool = False) -> str:
+        """MIXED fallback-file names are escaped only on markdown surfaces."""
+        if self.kind == "MIXED":
+            fb = ", ".join(self.fallback_files) if self.fallback_files else NOT_RECORDED
+            if markdown:
+                fb = md_safe_text(fb)
+            return SENTENCE_FOR_KIND["MIXED"].format(fallback_files=fb)
+        return self.sentence
+
+    def banner_md(self) -> str:
+        label = md_safe_text(self.banner_label())
         return (
-            f"> **{label}**: {self.sentence}\n"
-            f"> Run `{self.run_id}` · generated {self.generated_at_local} · pack `{self.pack_commit}`"
+            f"> **{label}**: {self.banner_sentence(markdown=True)}\n"
+            f"> Run {md_code_span(self.run_id)} · generated {_one_line(self.generated_at_local) or NOT_RECORDED} · pack {md_code_span(self.pack_commit)}"
+        )
+
+    def banner_plain(self) -> str:
+        """ESTATE.txt sidecar. Same shape, no markdown escaping."""
+        label = _one_line(self.banner_label()) or "This assessment"
+        return (
+            f"> **{label}**: {self.banner_sentence(markdown=False)}\n"
+            f"> Run {_one_line(self.run_id) or NOT_RECORDED} · generated {_one_line(self.generated_at_local) or NOT_RECORDED} · pack {_one_line(self.pack_commit) or NOT_RECORDED}"
         )
 
     def banner_lines(self) -> list[str]:
@@ -1198,7 +1276,7 @@ def write_estate_sidecar(sink_dir: Path, stamp: EstateStamp, *, note: str = "") 
         )
     )
     path = dest / "ESTATE.txt"
-    path.write_text(stamp.banner_md() + "\n\n" + extra + "\n", encoding="utf-8")
+    path.write_text(stamp.banner_plain() + "\n\n" + extra + "\n", encoding="utf-8")
     return path
 
 
@@ -1217,7 +1295,8 @@ def prepend_banner_md(body: str, stamp: EstateStamp) -> str:
 def assert_banner_present(text: str, stamp: EstateStamp | None = None) -> None:
     blob = text
     if stamp is not None:
-        if stamp.label not in blob:
+        needles = {stamp.label, md_safe_text(stamp.banner_label()), stamp.banner_label()}
+        if not any(n and n in blob for n in needles):
             raise AssertionError(f"estate banner label missing: {stamp.label}")
         if stamp.sentence.split(".")[0] not in blob and stamp.sentence not in blob:
             raise AssertionError("estate banner sentence missing")
@@ -1616,7 +1695,8 @@ def format_coverage_gaps(sensor_rows: list[dict] | None) -> list[str]:
         return lines
     for gap in gaps:
         lines.append(
-            f"- {gap['source']}: {gap['files']} ({gap['status']} — {gap['reason']})"
+            f"- {md_safe_text(gap['source'])}: {md_safe_text(gap['files'])} "
+            f"({md_safe_text(gap['status'])} — {md_safe_text(gap['reason'])})"
         )
     return lines
 
@@ -1717,13 +1797,15 @@ def build_executive_summary(ctx: PageContext) -> str:
     )
     for i, rec in enumerate(ranked, 1):
         mapped = ctx.mapped_by_ref.get(str(rec.get("ref_id"))) or {}
-        weakness = recorded(rec.get("name") or rec.get("ref_id"))
+        weakness = md_safe_text(recorded(rec.get("name") or rec.get("ref_id")))
         assets = rec.get("assets") or []
-        affected = recorded("|".join(str(a) for a in assets) if assets else None)
-        action = recorded(mapped.get("recommended_fix"))
+        affected = md_safe_text(
+            recorded("|".join(str(a) for a in assets) if assets else None)
+        )
+        action = md_safe_text(recorded(mapped.get("recommended_fix")))
         ref = recorded(rec.get("ref_id"))
         lines.append(
-            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | `{ref}` |"
+            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | {md_code_span(ref)} |"
         )
     if not ranked:
         lines.append(
@@ -1795,7 +1877,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     lines = [
         stamp.banner_md(),
         "",
-        f"**{stamp.label}**. Run `{stamp.run_id}`, pack `{stamp.pack_commit}`, generated {stamp.generated_at_local}.",
+        f"**{md_safe_text(stamp.banner_label())}**. Run {md_code_span(stamp.run_id)}, pack {md_code_span(stamp.pack_commit)}, generated {_one_line(stamp.generated_at_local) or NOT_RECORDED}.",
         "",
         "### Authorization",
     ]
@@ -1803,9 +1885,15 @@ def build_scope_and_trust(ctx: PageContext) -> str:
         lines.append(f"- {SAMPLE_AUTH}")
     else:
         auth = client_authorization_record(None, ctx.in_dir)
-        authorizer = recorded((auth or {}).get("authorizer") or _env(None, "GRC_AUTHORIZER"))
-        auth_date = recorded((auth or {}).get("date") or _env(None, "GRC_AUTH_DATE"))
-        scope_ref = recorded((auth or {}).get("ref") or _env(None, "GRC_SCOPE_REF"))
+        authorizer = md_safe_text(
+            recorded((auth or {}).get("authorizer") or _env(None, "GRC_AUTHORIZER"))
+        )
+        auth_date = md_safe_text(
+            recorded((auth or {}).get("date") or _env(None, "GRC_AUTH_DATE"))
+        )
+        scope_ref = md_safe_text(
+            recorded((auth or {}).get("ref") or _env(None, "GRC_SCOPE_REF"))
+        )
         lines.append(
             f"- Authorized by: {authorizer} on {auth_date}. Reference: {scope_ref}."
         )
@@ -1826,11 +1914,15 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     else:
         for row in inside:
             lines.append(
-                f"| {row['area']} | {row['targets']} | {row['tool']} | {row['version']} | {row['collected']} | {row['records']} |"
+                f"| {md_safe_text(row['area'])} | {md_safe_text(row['targets'])} | "
+                f"{md_safe_text(row['tool'])} | {md_safe_text(row['version'])} | "
+                f"{md_safe_text(row['collected'])} | {md_safe_text(row['records'])} |"
             )
     lines.append("")
     lines.append(
-        "Out of scope, or no data supplied: " + _out_of_scope_phrase(coverage_rows, outside) + "."
+        "Out of scope, or no data supplied: "
+        + md_safe_text(_out_of_scope_phrase(coverage_rows, outside))
+        + "."
     )
     lines.append("")
     lines.extend(format_coverage_gaps(ctx.sensor_rows))
@@ -1841,6 +1933,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
     reviewer = recorded(_env(None, "GRC_REVIEWER"))
     if reviewer == NOT_RECORDED:
         reviewer = REVIEWER_NOT_REVIEWED
+    else:
+        reviewer = md_safe_text(reviewer)
     if who == NOT_RECORDED:
         method_1 = (
             "1. Scanner output was supplied as files. The pack parses files only. "
@@ -1848,7 +1942,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
         )
     else:
         method_1 = (
-            f"1. Scanner output was supplied as files, or collected by {who} "
+            f"1. Scanner output was supplied as files, or collected by {md_safe_text(who)} "
             "under the authorization above. The pack parses files only. "
             "It does not run exploits, log in to client systems, or call client APIs."
         )
@@ -1869,8 +1963,8 @@ def build_scope_and_trust(ctx: PageContext) -> str:
             "",
             "### Integrity and traceability",
             "- Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.",
-            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with `{recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST')}`.",
-            f"- Contact for questions or corrections: {recorded(_env(None, 'GRC_CONTACT'))}.",
+            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST'))}.",
+            f"- Contact for questions or corrections: {md_safe_text(recorded(_env(None, 'GRC_CONTACT')))}.",
             "",
         ]
     )

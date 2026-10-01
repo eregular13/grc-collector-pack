@@ -6,6 +6,8 @@ No POST /api/risks.
 
 from __future__ import annotations
 
+import re
+
 from shared.estate_pages import (
     LABEL_FOR_KIND,
     NOT_RECORDED,
@@ -13,8 +15,14 @@ from shared.estate_pages import (
     EstateStamp,
     PageContext,
     build_executive_summary,
+    build_scope_and_trust,
+    classify_estate,
     engagement_name,
     exec_lede,
+    md_code_span,
+    md_safe_text,
+    write_csv_with_estate,
+    write_estate_sidecar,
 )
 
 
@@ -155,3 +163,258 @@ def test_banner_and_lede_non_client_keep_kind_name() -> None:
     assert exec_lede(named) == f"**{LABEL_FOR_KIND['SAMPLE']}**. Fixture Org."
     assert "This assessment" not in exec_lede(sample)
     assert "not recorded." not in exec_lede(demo)
+
+
+HOSTILE = "Acme**\n\n# PWNED [x](javascript:void(0)) <script>"
+
+
+def test_md_safe_text_keeps_normal_names_readable() -> None:
+    assert md_safe_text("Acme Health") == "Acme Health"
+    assert md_safe_text("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
+    assert md_safe_text("Ac\u200cme") == "Ac\u200cme"
+    assert md_safe_text("\ufeffAcme\u200b") == "Acme"
+    assert engagement_name("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
+
+
+def test_exec_lede_and_banner_neutralize_markdown_injection() -> None:
+    stamp = _stamp(
+        kind="CLIENT",
+        label=f"CLIENT: {HOSTILE}",
+        client_name=HOSTILE,
+    )
+    lede = exec_lede(stamp)
+    banner = stamp.banner_md()
+    summary = build_executive_summary(PageContext(stamp=stamp, records=[]))
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[]))
+    for blob in (lede, banner, summary, trust):
+        assert not re.search(r"(?m)^# PWNED", blob)
+        assert "[x](javascript:" not in blob
+        assert "<script>" not in blob
+        assert not re.search(r"(?<!\\)<script>", blob)
+        assert "<img" not in blob
+        assert "**\n" not in blob
+    assert "Acme" in lede
+    assert lede.count("\n") == 0
+    assert banner.splitlines()[0].startswith("> **CLIENT: Acme")
+    assert banner.splitlines()[0].count("**") == 2
+    assert all(line.startswith(">") for line in banner.splitlines())
+    assert "\\*" in lede
+    assert "\\#" in lede
+    assert "\\[x\\]" in lede
+    assert "&lt;script&gt;" in lede
+
+
+def test_csv_estate_column_keeps_raw_client_name(tmp_path) -> None:
+    stamp = _stamp(
+        kind="CLIENT",
+        label=f"CLIENT: {HOSTILE}",
+        client_name=HOSTILE,
+    )
+    path = tmp_path / "poam.csv"
+    write_csv_with_estate(path, ["weakness", "estate"], [["x", ""]], stamp)
+    text = path.read_text(encoding="utf-8")
+    assert HOSTILE.splitlines()[0] in text or "Acme**" in text
+    assert "<script>" in text
+
+
+def test_authorizer_fields_are_escaped_on_scope_page(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GRC_AUTHORIZER", "Pat**\n\n# AUTH [x](javascript:void(0))")
+    monkeypatch.setenv("GRC_AUTH_DATE", "2026-10-01**\n\n# DATE [x](javascript:void(0))")
+    monkeypatch.setenv("GRC_SCOPE_REF", "SCOPE <script>")
+    stamp = _stamp(kind="CLIENT", label="CLIENT: Acme", client_name="Acme")
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[], in_dir=tmp_path))
+    assert not re.search(r"(?m)^# AUTH", trust)
+    assert not re.search(r"(?m)^# DATE", trust)
+    assert "[x](javascript:" not in trust
+    assert "<script>" not in trust
+    assert "Pat" in trust
+    assert "2026-10-01" in trust
+    assert "\\*" in trust
+    assert "\\# DATE" in trust or "\\#" in trust
+    assert "&lt;script&gt;" in trust
+
+
+def test_md_safe_text_kills_backtick_cr_underscore_tilde_backslash() -> None:
+    ticks = md_safe_text("a `b` c")
+    assert "`" not in ticks.replace("\\`", "")
+    assert "\\`" in ticks
+    cr = md_safe_text("A\r- x")
+    assert "\r" not in cr
+    assert md_safe_text("_u_") == "\\_u\\_"
+    assert md_safe_text("~~s~~") == "\\~\\~s\\~\\~"
+    assert md_safe_text("\\*x\\*") == "\\\\\\*x\\\\\\*"
+
+
+def test_exec_lede_mixed_escapes_client_name() -> None:
+    lede = exec_lede(
+        None,
+        label="MIXED: REVIEW BEFORE USE",
+        kind="MIXED",
+        client_name="Acme**\n# x <script>",
+    )
+    assert "\\*" in lede
+    assert "&lt;" in lede
+    assert "\n# x" not in lede
+    assert "<" not in lede
+    assert ">" not in lede
+
+
+def test_estate_txt_does_not_escape_fallback_underscores() -> None:
+    stamp = classify_estate(
+        [
+            {"labels": ["demo"], "source": "fixtures/demo"},
+            {"labels": ["nmap"], "source": "inventory-nmap"},
+        ],
+        fallback_files=["nmap/c4rtographer_udpConnect"],
+    )
+    assert stamp.kind == "MIXED"
+    assert "c4rtographer_udpConnect" in stamp.sentence
+    assert "\\_" not in stamp.sentence
+    plain = stamp.banner_plain()
+    assert "c4rtographer_udpConnect" in plain
+    assert "\\_" not in plain
+    assert "c4rtographer\\_udpConnect" in stamp.banner_md()
+
+
+def test_banner_code_span_strips_backticks() -> None:
+    stamp = _stamp(
+        kind="SAMPLE",
+        run_id="r1` <img src=x onerror=alert(2)> `",
+        pack_commit="dead`beef",
+    )
+    banner = stamp.banner_md()
+    assert md_code_span(stamp.run_id) in banner
+    assert "` <img" not in banner
+    assert "dead`beef" not in banner
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[]))
+    assert md_code_span(stamp.run_id) in trust
+    assert "` <img" not in trust
+
+
+def test_exec_summary_escapes_scanner_hostnames() -> None:
+    evil = "evil](http://evil.invalid)<img src=x onerror=alert(3)>|x|`t`.invalid"
+    rec = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-evil",
+        "name": "Open port <img src=x onerror=alert(1)>",
+        "description": "hostile PTR",
+        "severity": "high",
+        "category": "exposure",
+        "assets": [evil],
+        "labels": ["nmap"],
+        "extra": {"port": "21", "check_id": "nmap-port-21"},
+    }
+    text = build_executive_summary(
+        PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
+    )
+    assert "<img" not in text
+    assert "&lt;img" in text
+    assert "|x|" not in text
+    assert "\\|" in text
+    assert "&lt;" in text
+
+
+def test_write_probo_readme_escapes_client_name(tmp_path, monkeypatch) -> None:
+    from exporters.model import PackEstate
+    from exporters.probo import write_probo
+
+    (tmp_path / "ciso-assistant").mkdir()
+    (tmp_path / "ciso-assistant" / "findings.csv").write_text(
+        "ref_id,name,description,severity,status,filtering_labels\n",
+        encoding="utf-8",
+    )
+    stamp = _stamp(
+        kind="CLIENT",
+        label=f"CLIENT: {HOSTILE}",
+        client_name=HOSTILE,
+    )
+    estate = PackEstate(sample=False, demo=False, lab=False)
+    monkeypatch.setattr(estate, "estate_stamp", lambda: stamp)
+    write_probo(tmp_path, estate=estate)
+    readme = (tmp_path / "probo" / "README.md").read_text(encoding="utf-8")
+    assert "[x](javascript:" not in readme
+    assert "&lt;script&gt;" in readme
+    assert "<script>" not in readme
+    assert "\\*" in readme
+
+
+def test_md_safe_text_autolink_uses_html_entities() -> None:
+    """GFM autolinks swallow \\ before <; entities stay inert. See review B2."""
+    payloads = (
+        "http://x.invalid<img src=x onerror=alert&lpar;1&rpar;//>",
+        "https://x.invalid/p<svg onload=alert&lpar;1&rpar;//>",
+        "www.x.invalid<img src=x onerror=alert&lpar;1&rpar;//>",
+    )
+    for raw in payloads:
+        escaped = md_safe_text(raw)
+        assert "<" not in escaped
+        assert ">" not in escaped
+        assert "&lt;" in escaped
+        assert "&gt;" in escaped
+        assert "\\<" not in escaped
+        assert "\\>" not in escaped
+
+
+def test_estate_txt_is_plain_via_banner_plain(tmp_path) -> None:
+    stamp = _stamp(
+        kind="SAMPLE",
+        label="SAMPLE DATA: NOT A CLIENT",
+        run_id="r1`tick",
+        pack_commit="dead`beef",
+        client_name="Acme_Health",
+    )
+    path = write_estate_sidecar(tmp_path, stamp)
+    text = path.read_text(encoding="utf-8")
+    assert stamp.banner_plain() in text
+    assert "\\_" not in text
+    assert "`r1" not in text
+    assert "r1`tick" in text or "r1tick" in text
+    assert "Run `" not in text
+    assert "pack `" not in text
+    md = stamp.banner_md()
+    assert md_code_span(stamp.run_id) in md
+    assert "`" in md
+
+
+def test_md_code_span_collapses_newlines_and_strips_ticks() -> None:
+    assert "\n" not in md_code_span("r1\n# heading")
+    assert "`" not in md_code_span("a`b`c").strip("`")
+    assert md_code_span("a`b`c") == "`abc`"
+    assert md_code_span("") == f"`{NOT_RECORDED}`"
+
+
+def test_exec_summary_code_spans_ref_id(tmp_path) -> None:
+    rec = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-`evil`<img>",
+        "name": "Open port 21",
+        "description": "x",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["h"],
+        "labels": ["nmap"],
+        "extra": {"port": "21", "check_id": "nmap-port-21"},
+    }
+    text = build_executive_summary(
+        PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
+    )
+    assert md_code_span(rec["ref_id"]) in text
+    assert "`evil`" not in text
+    assert rec["ref_id"] not in text
+
+
+def test_scope_env_fields_are_escaped(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GRC_COLLECTED_BY", "Pat**\n# WHO <script>")
+    monkeypatch.setenv("GRC_REVIEWER", "Rev**\n# REV <img>")
+    monkeypatch.setenv("GRC_VERIFY_COMMAND", "sha` <img src=x>")
+    monkeypatch.setenv("GRC_CONTACT", "ops <script>@x.invalid")
+    stamp = _stamp(kind="CLIENT", label="CLIENT: Acme", client_name="Acme")
+    trust = build_scope_and_trust(PageContext(stamp=stamp, records=[], in_dir=tmp_path))
+    assert not re.search(r"(?m)^# WHO", trust)
+    assert not re.search(r"(?m)^# REV", trust)
+    assert "<script>" not in trust
+    assert "&lt;script&gt;" in trust
+    assert md_code_span("sha` <img src=x>") in trust
+    assert "` <img" not in trust

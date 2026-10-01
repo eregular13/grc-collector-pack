@@ -69,8 +69,20 @@ def _host_of(target: str) -> str:
     if not raw:
         return ""
     if "://" in raw:
-        raw = urlsplit(raw).hostname or raw.split("://", 1)[-1]
-    return raw.split("/")[0].split(":")[0].strip().lower().rstrip(".")
+        try:
+            host = urlsplit(raw).hostname
+            if host:
+                return host.strip().lower().rstrip(".")
+        except ValueError:
+            # Same class as #204 / #207: malformed IPv6 brackets must not abort.
+            return ""
+        raw = raw.split("://", 1)[-1]
+    host = raw.split("/", 1)[0]
+    if host.startswith("[") and "]" in host:
+        return host[1 : host.find("]")].strip().lower()
+    if host.count(":") == 1 and host.rsplit(":", 1)[-1].isdigit():
+        host = host.rsplit(":", 1)[0]
+    return host.strip().lower().rstrip(".")
 
 
 def _ref(sensor: str, target: str, *parts: Any) -> str:

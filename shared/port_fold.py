@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Iterable
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from shared.finding_types import (
     SEV_RANK,
@@ -90,8 +90,67 @@ def _labels(rec: dict[str, Any]) -> set[str]:
     return {str(x).strip().lower() for x in (rec.get("labels") or []) if str(x).strip()}
 
 
+def _valid_port(token: str) -> str:
+    """ASCII decimal 1..65535 only. Superscript / Arabic digits must not reach int()."""
+    token = str(token or "").strip()
+    if token.isascii() and token.isdigit() and 1 <= int(token) <= 65535:
+        return token
+    return ""
+
+
+def _host_port_from_token(text: str) -> tuple[str, str]:
+    """Parse host:port, [IPv6]:port, or a bare host. No urlsplit."""
+    host = str(text or "").split("/", 1)[0]
+    port = ""
+    if host.startswith("[") and "]" in host:
+        end = host.find("]")
+        maybe = host[end + 1 :]
+        host = host[1:end]
+        if maybe.startswith(":"):
+            port = _valid_port(maybe[1:])
+    elif host.startswith("[") and "]" not in host:
+        # Unclosed bracket — do not invent a host from the leftover token.
+        return "", ""
+    elif host.count(":") == 1:
+        left, right = host.rsplit(":", 1)
+        host, port = left, _valid_port(right)
+    return host, port
+
+
+def _url_has_explicit_port(raw: Any) -> bool:
+    """True when the token named a port, including invalid :99999 / :abc / :0."""
+    text = str(raw or "").strip()
+    if not text:
+        return False
+    if "://" in text:
+        rest = text.split("://", 1)[1]
+    elif text.startswith("//"):
+        rest = text[2:]
+    else:
+        rest = text
+    rest = rest.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    if "@" in rest:
+        rest = rest.rsplit("@", 1)[-1]
+    if rest.startswith("["):
+        if "]" not in rest:
+            return False
+        after = rest[rest.find("]") + 1 :]
+        return after.startswith(":") and bool(after[1:].strip())
+    if rest.count(":") != 1:
+        return False
+    return bool(rest.rsplit(":", 1)[-1].strip())
+
+
 def _strip_host(raw: Any) -> tuple[str, str, str]:
-    """Return (host, port, scheme) parsed from a URL, host:port, or bare host."""
+    """Return (host, port, scheme) parsed from a URL, host:port, or bare host.
+
+    Malformed IPv6 brackets (``https://[notanip]:6379``, unclosed
+    ``https://[2001:4860:4860::8888``) must not raise. Same class as
+    ``_host_from_url_or_token`` (#204). Unparseable tokens degrade to an
+    empty host so a single bad ``extra.host`` / ``matched_at`` cannot abort
+    the POA&M load. Valid bracketed IPv6 (with or without a port) still
+    folds on the inner address.
+    """
     text = str(raw or "").strip()
     if not text:
         return "", "", ""
@@ -99,24 +158,36 @@ def _strip_host(raw: Any) -> tuple[str, str, str]:
     port = ""
     host = text
     if "://" in text or text.startswith("//"):
-        parsed = urlparse(text if "://" in text else f"http:{text}")
-        scheme = (parsed.scheme or "").lower()
-        host = parsed.hostname or parsed.path.split("/")[0] or ""
-        if parsed.port:
-            port = str(parsed.port)
+        try:
+            parsed = urlsplit(text if "://" in text else f"http:{text}")
+            scheme = (parsed.scheme or "").lower()
+            host = parsed.hostname or parsed.path.split("/")[0] or ""
+            try:
+                if parsed.port:
+                    port = str(parsed.port)
+            except ValueError:
+                netloc = parsed.netloc or ""
+                if "@" in netloc:
+                    netloc = netloc.rsplit("@", 1)[-1]
+                if netloc.startswith("[") and "]" in netloc:
+                    after = netloc[netloc.find("]") + 1 :]
+                    raw_port = after[1:] if after.startswith(":") else ""
+                elif netloc.count(":") == 1:
+                    raw_port = netloc.rsplit(":", 1)[-1]
+                else:
+                    raw_port = ""
+                port = _valid_port(raw_port)
+        except ValueError:
+            if "://" in text:
+                scheme, rest = text.split("://", 1)
+                scheme = scheme.lower()
+            else:
+                rest = text.lstrip("/")
+            if "@" in rest:
+                rest = rest.rsplit("@", 1)[-1]
+            host, port = _host_port_from_token(rest)
     else:
-        # host:port or IPv6 in brackets, no scheme. Strip a path if present.
-        host = text.split("/", 1)[0]
-        if host.startswith("[") and "]" in host:
-            end = host.find("]")
-            maybe = host[end + 1 :]
-            host = host[1:end]
-            if maybe.startswith(":") and maybe[1:].isdigit():
-                port = maybe[1:]
-        elif host.count(":") == 1:
-            left, right = host.rsplit(":", 1)
-            if right.isdigit():
-                host, port = left, right
+        host, port = _host_port_from_token(text)
     host = normalize_asset_id(host)
     if host.startswith("www."):
         host = host[4:]
@@ -151,6 +222,9 @@ def finding_port(rec: dict[str, Any]) -> str:
         host, parsed, scheme = _strip_host(raw)
         if parsed:
             return parsed
+        if _url_has_explicit_port(raw):
+            # Invalid :99999 / :abc / :0 — skip this candidate; do not invent 80/443.
+            continue
         if scheme in _SCHEME_DEFAULT_PORT and host:
             return _SCHEME_DEFAULT_PORT[scheme]
     return ""

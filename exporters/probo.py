@@ -24,6 +24,7 @@ from exporters.model import (
     score_scenario_level,
     score_severity,
 )
+from shared.estate_pages import md_safe_text
 from shared.schema import canon_severity
 
 # Probo FindingKind / FindingStatus / FindingPriority (public MCP docs).
@@ -246,7 +247,7 @@ def write_probo(out: Path | None = None, estate: PackEstate | None = None) -> Pa
     (dest_root / "probo" / "README.md").write_text(
         stamp.banner_md()
         + "\n\n# Probo import preview (documentation only)\n\n"
-        f"{stamp.banner_oneline()}\n\n"
+        f"{md_safe_text(stamp.banner_label())}: {stamp.banner_sentence(markdown=True)}\n\n"
         "Canonical file: `out/import_preview/probo.json`.\n\n"
         "- `addFinding` — one draft per CISO finding/vulnerability.\n"
         "- `addRisk` — CISO risk_scenarios plus high/critical findings.\n"

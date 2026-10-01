@@ -23,6 +23,7 @@ from shared.estate_pages import (
     LABEL_FOR_KIND,
     MAX_PAGE_LINES,
     classify_estate,
+    md_safe_text,
 )
 from shared.io_util import UNRECOGNIZED_STATUS, load_sensor_coverage, run_collector
 
@@ -160,6 +161,8 @@ def test_lab_report_mode_matches_estate_kind(
         **env,
     )
     report = (out / "evidence" / "lab-report.md").read_text(encoding="utf-8")
+    assert "```json" in report
+    assert report.index("```json") < report.index("{")
     assert f"{kind} mode" in report
     assert "Demo mode" not in report
     if kind == "CLIENT":
@@ -312,13 +315,13 @@ def test_coverage_gaps_section_lists_failed_sensors(
         assert COVERAGE_GAPS_NONE not in blob
         assert "cloud-prowler" in blob
         assert "notes.txt" in blob
-        assert UNRECOGNIZED_STATUS in blob
+        assert md_safe_text(UNRECOGNIZED_STATUS) in blob
         assert "vuln-scan" in blob
         assert "broken.json" in blob
-        assert "parse_error" in blob
+        assert md_safe_text("parse_error") in blob
         assert "code-secrets" in blob
         assert "empty.json" in blob
-        assert "no_records" in blob
+        assert md_safe_text("no_records") in blob
         assert LABEL_FOR_KIND["LAB"] in blob
         assert "CLIENT:" not in blob.splitlines()[0]
         assert len(blob.splitlines()) <= MAX_PAGE_LINES

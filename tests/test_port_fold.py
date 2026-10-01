@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
+
+import pytest
 
 from collectors.grc_loader import load
 from shared.ciso_shape import EXCLUDED_HEADER, assert_count_consistency
@@ -12,7 +15,11 @@ from shared.io_util import out_dir, write_canonical
 from shared.poam_ledger import assign_poam_id, fp_v1
 from shared.port_fold import (
     SUPERSEDED_REASON,
+    _strip_host,
+    _url_has_explicit_port,
+    _valid_port,
     egp_id_for,
+    finding_hosts,
     finding_port,
     fold_port_only_into_specific,
     is_port_only_finding,
@@ -270,3 +277,311 @@ def test_loader_writes_excluded_egp_and_keeps_identity(
         if row["finding_ref_id"] == spec["ref_id"]
     )
     assert "nmap" in det
+
+
+V6 = "2001:4860:4860::8888"
+
+
+def test_strip_host_malformed_brackets_do_not_raise() -> None:
+    """#207: extra.host / matched_at garbage must not abort the load."""
+    host, port, scheme = _strip_host("https://[notanip]:6379")
+    assert host == "notanip"
+    assert port == "6379"
+    assert scheme == "https"
+    host, port, scheme = _strip_host("https://[2001:4860:4860::8888")
+    assert host == ""
+    assert port == ""
+    assert scheme == "https"
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-bad-bracket",
+        name="Redis without auth",
+        description="Malformed host tokens must not crash fold.",
+        severity="high",
+        category="vulnerability",
+        assets=["https://[notanip]:6379"],
+        labels=["nuclei"],
+        extra={
+            "host": "https://[notanip]:6379",
+            "matched_at": "https://[2001:4860:4860::8888",
+            "template_id": "exposed-redis",
+        },
+    )
+    assert "notanip" in finding_hosts(rec)
+    assert finding_port(rec) == "6379"
+    rec["extra"]["host"] = "https://[2001:4860:4860::8888"
+    rec["extra"]["port"] = ""
+    rec["assets"] = ["https://[2001:4860:4860::8888"]
+    assert finding_hosts(rec) == set()
+    assert finding_port(rec) == ""
+
+
+def test_strip_host_valid_bracketed_ipv6_with_and_without_port() -> None:
+    host, port, scheme = _strip_host(f"https://[{V6}]/")
+    assert host == V6
+    assert port == ""
+    assert scheme == "https"
+    host, port, scheme = _strip_host(f"https://[{V6}]:443/")
+    assert host == V6
+    assert port == "443"
+    host, port, scheme = _strip_host(f"[{V6}]")
+    assert host == V6
+    assert port == ""
+    host, port, scheme = _strip_host(f"[{V6}]:6379")
+    assert host == V6
+    assert port == "6379"
+
+
+def test_ipv6_url_and_bare_address_fold_on_same_host_port() -> None:
+    port = _port_only(
+        assets=[V6],
+        extra={"port": "443", "ip": V6, "protocol": "tcp", "service": "https"},
+    )
+    spec = _specific(
+        assets=[f"https://[{V6}]:443/"],
+        extra={
+            "template_id": "cve-2014-0160",
+            "cve": "CVE-2014-0160",
+            "tool": "nuclei",
+            "host": f"https://[{V6}]:443/",
+            "matched_at": f"https://[{V6}]:443/",
+            "port": "443",
+            "protocol": "tcp",
+        },
+    )
+    assert port_only_superseders([port, spec])[port["ref_id"]] is spec
+
+
+def test_malformed_host_does_not_abort_fold_or_load(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bad = _specific(
+        ref_id="VULN-bad-bracket",
+        extra={
+            "host": "https://[notanip]:6379",
+            "matched_at": "https://[2001:4860:4860::8888",
+            "port": "6379",
+            "template_id": "exposed-redis",
+            "cve": "",
+        },
+    )
+    port = _port_only()
+    spec = _specific()
+    mapping = fold_port_only_into_specific([bad, port, spec])
+    assert mapping[port["ref_id"]] is spec
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    write_canonical("vuln-scan", [bad, spec])
+    write_canonical("inventory-nmap", [port])
+    summary = load()
+    assert summary["poam"] >= 1
+    assert (tmp_path / "poam" / "poam.csv").is_file()
+
+
+def test_strip_host_invalid_explicit_port_does_not_raise_or_invent() -> None:
+    assert _strip_host("http://h:99999") == ("h", "", "http")
+    assert _strip_host("http://h:abc") == ("h", "", "http")
+    assert _strip_host("http://h:0") == ("h", "", "http")
+    assert _strip_host("http://u@[x") == ("", "", "http")
+    assert _strip_host("h:8443") == ("h", "8443", "")
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-bad-port",
+        name="Exposed panel",
+        description="Invalid port must not become 80.",
+        severity="medium",
+        category="vulnerability",
+        assets=["http://foo:99999/admin"],
+        labels=["nuclei"],
+        extra={"template_id": "exposed-panel"},
+    )
+    assert finding_port(rec) == ""
+    port80 = _port_only(
+        assets=["foo"],
+        extra={"port": "80", "ip": "foo", "protocol": "tcp", "service": "http"},
+    )
+    spec = _specific(
+        assets=["http://foo:99999/admin"],
+        extra={
+            "template_id": "exposed-panel",
+            "cve": "",
+            "tool": "nuclei",
+            "port": "",
+        },
+    )
+    spec["extra"].pop("port", None)
+    assert port_only_superseders([port80, spec]) == {}
+
+
+def test_notanip_url_also_folds_with_bare_notanip_port() -> None:
+    port = _port_only(
+        assets=["notanip"],
+        extra={"port": "6379", "ip": "notanip", "protocol": "tcp", "service": "redis"},
+    )
+    spec = _specific(
+        assets=["https://[notanip]:6379"],
+        extra={
+            "template_id": "exposed-redis",
+            "cve": "",
+            "tool": "nuclei",
+            "host": "https://[notanip]:6379",
+            "port": "6379",
+            "protocol": "tcp",
+        },
+    )
+    assert port_only_superseders([port, spec])[port["ref_id"]] is spec
+
+
+def test_poam_md_escapes_scanner_hostnames(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    evil = "evil](http://evil.invalid)<img src=x onerror=alert(3)>|x|"
+    spec = _specific(
+        assets=[evil],
+        extra={
+            "template_id": "cve-2014-0160",
+            "cve": "CVE-2014-0160",
+            "tool": "nuclei",
+            "port": "443",
+            "ip": "10.0.0.30",
+        },
+    )
+    write_canonical("vuln-scan", [spec])
+    load()
+    md = (tmp_path / "poam" / "poam.md").read_text(encoding="utf-8")
+    assert "<img" not in md
+    assert "|x|" not in md
+    assert "&lt;" in md or "\\|" in md
+
+
+def test_valid_port_rejects_unicode_digits_and_bounds() -> None:
+    assert _valid_port("443") == "443"
+    assert _valid_port("65535") == "65535"
+    assert _valid_port("1") == "1"
+    assert _valid_port("0") == ""
+    assert _valid_port("65536") == ""
+    assert _valid_port("0443") == "0443"
+    assert _valid_port("²") == ""
+    assert _valid_port("³¹") == ""
+    assert _valid_port("٤٤٣") == ""
+    assert _valid_port("443 ") == "443"
+    assert _valid_port("abc") == ""
+    assert _valid_port("") == ""
+
+
+def test_strip_host_unicode_digits_do_not_raise() -> None:
+    assert _strip_host("10.0.0.1:³¹") == ("10.0.0.1", "", "")
+    assert _strip_host("h:²")[1] == ""
+    assert _strip_host("[::1]:²") == ("::1", "", "")
+    assert _strip_host("https://[notanip]:²/")[1] == ""
+    assert _strip_host("ptr.invalid:³¹") == ("ptr.invalid", "", "")
+    assert finding_port(
+        make_record(
+            kind="finding",
+            source="inventory-nmap",
+            ref_id="NMAP-sup",
+            name="Open port",
+            description="superscript port",
+            severity="low",
+            category="exposure",
+            assets=["10.0.0.1:³¹"],
+            labels=["nmap"],
+            extra={"host": "h:²"},
+        )
+    ) == ""
+
+
+def test_unicode_digit_ports_load_without_abort(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    rows = []
+    for i, asset in enumerate(
+        ("10.0.0.1:³¹", "h:²", "[::1]:²", "https://[notanip]:²/", "ptr.invalid:³¹")
+    ):
+        rows.append(
+            _specific(
+                ref_id=f"VULN-sup-{i}",
+                assets=[asset],
+                extra={
+                    "template_id": "exposed-panel",
+                    "cve": "",
+                    "tool": "nuclei",
+                    "host": asset,
+                    "port": "",
+                },
+            )
+        )
+        rows[-1]["extra"].pop("port", None)
+    write_canonical("vuln-scan", rows)
+    summary = load()
+    assert summary["poam"] >= 1
+    assert (tmp_path / "poam" / "poam.csv").is_file()
+    for rec in rows:
+        assert finding_port(rec) == ""
+
+
+def test_url_has_explicit_port_branches() -> None:
+    assert _url_has_explicit_port("http://h:443/") is True
+    assert _url_has_explicit_port("http://u:p@h:443/") is True
+    assert _url_has_explicit_port("https://[::1]:443/") is True
+    assert _url_has_explicit_port("//h:8080/x") is True
+    assert _url_has_explicit_port("http://h/") is False
+    assert _url_has_explicit_port("http://h:/") is False
+    assert _url_has_explicit_port("https://[::1]/") is False
+    assert _url_has_explicit_port("https://[bad") is False
+    assert _url_has_explicit_port("") is False
+    assert _url_has_explicit_port("http://h:99999/") is True
+
+
+def test_finding_port_continues_past_invalid_explicit() -> None:
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-later-good",
+        name="Exposed panel",
+        description="later valid candidate wins",
+        severity="medium",
+        category="vulnerability",
+        assets=["http://foo:99999/admin", "https://foo:443/ok"],
+        labels=["nuclei"],
+        extra={"template_id": "exposed-panel"},
+    )
+    rec["extra"].pop("port", None)
+    assert finding_port(rec) == "443"
+    empty_default = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-empty-colon",
+        name="HTTP",
+        description="RFC default",
+        severity="low",
+        category="exposure",
+        assets=["http://h:/"],
+        labels=["nuclei"],
+        extra={"template_id": "http-default"},
+    )
+    empty_default["extra"].pop("port", None)
+    assert finding_port(empty_default) == "80"
+    spaced = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-space-port",
+        name="TLS",
+        description="space after port",
+        severity="low",
+        category="exposure",
+        assets=["https://h:443 /x"],
+        labels=["nuclei"],
+        extra={"template_id": "tls"},
+    )
+    spaced["extra"].pop("port", None)
+    assert finding_port(spaced) == "443"
