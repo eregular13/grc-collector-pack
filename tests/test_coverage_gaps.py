@@ -318,10 +318,10 @@ def test_coverage_gaps_section_lists_failed_sensors(
         assert md_safe_text(UNRECOGNIZED_STATUS) in blob
         assert "vuln-scan" in blob
         assert "broken.json" in blob
-        assert "parse_error" in blob
+        assert md_safe_text("parse_error") in blob
         assert "code-secrets" in blob
         assert "empty.json" in blob
-        assert "no_records" in blob
+        assert md_safe_text("no_records") in blob
         assert LABEL_FOR_KIND["LAB"] in blob
         assert "CLIENT:" not in blob.splitlines()[0]
         assert len(blob.splitlines()) <= MAX_PAGE_LINES
