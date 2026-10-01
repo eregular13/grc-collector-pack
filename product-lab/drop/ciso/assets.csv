@@ -47,7 +47,7 @@ ID-asset-backup-operatorscorp-local,BACKUP OPERATORS@CORP.LOCAL,Backup Operators
 ID-asset-svc-sqlcorp-local,SVC-SQL@CORP.LOCAL,Roastable SQL service account,Global,SP,,,"identity,ad,user,demo,estate_demo",
 ID-asset-domain-adminscorp-local,DOMAIN ADMINS@CORP.LOCAL,Group DOMAIN ADMINS@CORP.LOCAL,Global,SP,,,"identity,ad,group,demo,estate_demo",
 ID-asset-gacontoso-onmicrosoft-com,ga@contoso.onmicrosoft.com,Entra GA without PIM,Global,SP,,,"identity,ad,azuser,demo,saas,idp,entra,inventory,estate_demo",
-ID-asset-dc01-corp-local,DC01.CORP.LOCAL,Computer DC01.CORP.LOCAL,Global,SP,,,"identity,ad,computer,demo,estate_demo",
+ID-asset-dc01-corp-local,DC01.CORP.LOCAL,Computer DC01.CORP.LOCAL,Global,PR,,,"identity,ad,computer,demo,estate_demo",
 ID-asset-win-dc01,win-dc01,Windows host win-dc01,Global,PR,,,"identity,ad,windows,hardeningkitty,demo,estate_demo",
 ID-asset-backup-operators,Backup Operators,PingCastle privileged group,Global,SP,,,"identity,ad,group,demo,estate_demo",
 ID-asset-domain-admins,Domain Admins,Built-in Domain Admins,Global,SP,,,"identity,ad,group,demo,estate_demo",

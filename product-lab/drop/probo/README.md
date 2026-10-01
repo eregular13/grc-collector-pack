@@ -1,5 +1,5 @@
 > **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled example files. None describes any real organization.
-> Run `not recorded` · generated 2026-09-26 09:39 UTC · pack `02da545`
+> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `9e8e570`
 
 # Probo import preview (documentation only)
 

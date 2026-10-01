@@ -1,6 +1,6 @@
 # Drop package
 
-**Copied:** 2026-09-26T09:39:47Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** 2026-10-01T20:55:27Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). SAMPLE/DEMO. Not a client. Not a LAB dest_in prove.
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
@@ -18,11 +18,11 @@ CISO Assistant Community import CSVs. Headers are the contract. `risk_scenarios.
 | File | Rows |
 |---|---|
 | `assets.csv` | 79 |
-| `findings.csv` | 107 |
+| `findings.csv` | 103 |
 | `vulnerabilities.csv` | 22 |
 | `evidences.csv` | 34 |
-| `applied_controls.csv` | 129 |
-| `risk_scenarios.csv` | 129 |
+| `applied_controls.csv` | 119 |
+| `risk_scenarios.csv` | 125 |
 
 ## `poam/`
 
@@ -30,7 +30,7 @@ Operator draft. Not a CISO import. Owner and due stay blank. `poam.csv` has an `
 
 | File | Rows |
 |---|---|
-| `poam.csv` | 124 |
+| `poam.csv` | 119 |
 | `poam.md` | same draft, markdown |
 
 Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
@@ -41,9 +41,9 @@ OpenGRC Data Manager CSVs (Risks / Assets / Implementations). File-true leave-be
 
 | File | Rows |
 |---|---|
-| `risks.csv` | 154 |
+| `risks.csv` | 125 |
 | `assets.csv` | 79 |
-| `implementations.csv` | 129 |
+| `implementations.csv` | 119 |
 
 Operator path: Data Manager → Import Data → map headers. Status is **Not Assessed**. No taxonomy FKs invented.
 
@@ -53,6 +53,6 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 
 | File | Rows |
 |---|---|
-| `import_preview/probo.json` | 129 addFinding drafts |
+| `import_preview/probo.json` | 125 addFinding drafts |
 
 Do not POST `/api/risks`.

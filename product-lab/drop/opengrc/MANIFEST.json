@@ -7,9 +7,9 @@
   "client": false,
   "paying_day": "FAIL",
   "counts": {
-    "risks": 154,
+    "risks": 125,
     "assets": 79,
-    "implementations": 129
+    "implementations": 119
   },
   "files": [
     "risks.csv",

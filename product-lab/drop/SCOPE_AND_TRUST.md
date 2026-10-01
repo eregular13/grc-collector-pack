@@ -1,7 +1,7 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-09-26 09:39 UTC · pack `02da545`
+> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `9e8e570`
 
-**DEMO: NOT A CLIENT**. Run `not recorded`, pack `02da545`, generated 2026-09-26 09:39 UTC.
+**DEMO: NOT A CLIENT**. Run `not recorded`, pack `9e8e570`, generated 2026-10-01 20:55 UTC.
 
 ### Authorization
 - No client authorization applies. No client systems were touched.
@@ -28,7 +28,7 @@ None. Every sensor that received input was assessed.
 
 ### Method
 1. Scanner output was supplied as files. The pack parses files only. It does not run exploits, log in to client systems, or call client APIs.
-2. Each result is normalized, and duplicates are merged (13 merged).
+2. Each result is normalized, and duplicates are merged (17 merged).
 3. Each finding is mapped to controls (CISA CPG, NIST CSF, NIST SP 800-53, CIS Controls) using a per-finding rule table, not by severity.
 4. Severity is taken from the source tool and adjusted only where noted in the finding's `severity_rationale`.
 5. A human reviewer (not human-reviewed) checked the top findings and the recommended actions before release.
