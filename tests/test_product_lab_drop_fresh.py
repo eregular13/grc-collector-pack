@@ -5,10 +5,12 @@ repo browsers and console fallback see. This test fails when the committed
 drop drifts from collectors + grc_loader + refresh on HEAD.
 
 Compares masked content (not just IDs/counts) for CISO CSVs, poam.csv,
-poam.md, FedRAMP, excluded.csv, and the POA&M ledger. Masks status_date,
-run stamps, pack/commit lines, and ledger clocks so the check stays TZ-
-and date-proof. The drop has no simplerisk/ folder — that surface is not
-locked here.
+poam.md, FedRAMP, excluded.csv, and the POA&M ledger. Masks the
+status_date column, run-clock phrases (ingested-from / loader
+canonical-records ISO-Z), pack/commit lines (hex or ``not recorded``),
+and ledger clocks so the check stays TZ- and date-proof in git and
+archive trees. Artifact ISO-Z times (honeypot scan) stay compared.
+The drop has no simplerisk/ folder — that surface is not locked here.
 
 DEMO/SAMPLE fixtures. Never client KEEP. No POST /api/risks.
 """
@@ -19,6 +21,7 @@ import csv
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -74,14 +77,24 @@ KEY_ASSET_IDS = {
     "HPOT-asset-ssh-canary-01",
 }
 EGP_RE = re.compile(r"EGP-[0-9A-F]{10}")
-# Run clocks / pack SHA only. Do not mask SLA scheduled dates or artifact days.
-_ISO_Z_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+# Run-clock phrases only. Artifact ISO-Z (honeypot scan time) stays compared.
+# SLA scheduled dates and artifact calendar days are not masked.
+_RUN_ISO_RE = re.compile(
+    r"((?:ingested from \S+|Normalized \d+ canonical records) at )"
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+)
+# %Z / IANA / numeric offset. Rejects tokens like CLIENT-HQ.
+_ZONE = (
+    r"(?:[A-Z]{2,5}|[A-Za-z_]+(?:/[A-Za-z0-9_+-]+)+|"
+    r"[+-]\d{2}(?::?\d{2})?|GMT[+-]\d{1,2})"
+)
+_PACK = r"`?(?:[0-9a-f]+|not recorded)`?"
 _STAMP_RE = re.compile(
-    r"generated \d{4}-\d{2}-\d{2} \d{2}:\d{2}(?: \S+)? · pack `?[0-9a-f]+`?",
+    rf"generated \d{{4}}-\d{{2}}-\d{{2}} \d{{2}}:\d{{2}}(?: {_ZONE})? · pack {_PACK}",
     re.IGNORECASE,
 )
 _STAMP_ALT_RE = re.compile(
-    r"pack `?[0-9a-f]+`?, generated \d{4}-\d{2}-\d{2} \d{2}:\d{2}(?: \S+)?",
+    rf"pack {_PACK}, generated \d{{4}}-\d{{2}}-\d{{2}} \d{{2}}:\d{{2}}(?: {_ZONE})?",
     re.IGNORECASE,
 )
 LEDGER_CLOCK_KEYS = frozenset(
@@ -156,10 +169,23 @@ def _is_status_date_key(key: str) -> bool:
 
 
 def _mask_run_stamps(text: str) -> str:
-    text = _ISO_Z_RE.sub("<RUN_ISO>", text)
+    text = _RUN_ISO_RE.sub(r"\1<RUN_ISO>", text)
     text = _STAMP_RE.sub("generated <STAMP> · pack <PACK>", text)
     text = _STAMP_ALT_RE.sub("pack <PACK>, generated <STAMP>", text)
     return text
+
+
+def _status_date_values(rows: list[dict[str, str]], key: str) -> set[str]:
+    return {str(row.get(key) or "") for row in rows if str(row.get(key) or "")}
+
+
+def _ledger_status_dates(ledger: dict) -> set[str]:
+    items = ledger.get("items") or {}
+    return {
+        str(item.get("status_date") or "")
+        for item in items.values()
+        if isinstance(item, dict) and str(item.get("status_date") or "")
+    }
 
 
 def _mask_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -266,6 +292,10 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     for row in drop_poam + fresh_poam:
         day = str(row.get("status_date") or "")
         assert len(day) == 10 and day[4] == "-" and day[7] == "-", day
+    drop_status = _status_date_values(drop_poam, "status_date")
+    fresh_status = _status_date_values(fresh_poam, "status_date")
+    assert len(drop_status) == 1, drop_status
+    assert len(fresh_status) == 1, fresh_status
 
     md_drop = (DROP / "poam" / "poam.md").read_text(encoding="utf-8")
     md_fresh = (fresh / "poam" / "poam.md").read_text(encoding="utf-8")
@@ -291,6 +321,8 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     assert _mask_rows(drop_fed) == _mask_rows(fresh_fed), _first_row_diff(
         _mask_rows(drop_fed), _mask_rows(fresh_fed)
     )
+    assert _status_date_values(drop_fed, "Status Date") == drop_status
+    assert _status_date_values(fresh_fed, "Status Date") == fresh_status
 
     ledger_drop = DROP / "poam" / "poam-ledger.json"
     ledger_fresh = fresh / "poam" / "poam-ledger.json"
@@ -299,6 +331,8 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     drop_ledger = json.loads(ledger_drop.read_text(encoding="utf-8"))
     fresh_ledger = json.loads(ledger_fresh.read_text(encoding="utf-8"))
     assert _mask_ledger(drop_ledger) == _mask_ledger(fresh_ledger)
+    assert _ledger_status_dates(drop_ledger) == drop_status
+    assert _ledger_status_dates(fresh_ledger) == fresh_status
 
     # Fresh SimpleRisk is an internal consistency check only. The packaged
     # drop has no simplerisk/ folder, so that surface is not hashed or locked.
@@ -330,3 +364,60 @@ def test_product_lab_drop_matches_fresh_generator(tmp_path: Path) -> None:
     fresh_vulns = csv_rows(fresh_ciso / "vulnerabilities.csv")
     assert len(findings) + len(drop_vulns) == len(fresh_findings) + len(fresh_vulns)
     assert len(drop_poam) + len(drop_excluded) == len(fresh_poam) + len(fresh_excluded)
+
+
+def test_mask_run_stamps_accepts_not_recorded_pack() -> None:
+    """git archive / no-.git trees stamp pack `not recorded`; must mask like a hex sha."""
+    hexed = "> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `9e8e570`"
+    archived = "> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `not recorded`"
+    plain = "> Run not recorded · generated 2026-10-01 20:55 UTC · pack not recorded"
+    assert _mask_run_stamps(hexed) == _mask_run_stamps(archived)
+    assert _mask_run_stamps(hexed) == "> Run `not recorded` · generated <STAMP> · pack <PACK>"
+    assert _mask_run_stamps(plain) == "> Run not recorded · generated <STAMP> · pack <PACK>"
+    alt_hex = "pack `9e8e570`, generated 2026-10-01 20:55 UTC"
+    alt_nr = "pack `not recorded`, generated 2026-10-01 20:55 UTC"
+    assert _mask_run_stamps(alt_hex) == _mask_run_stamps(alt_nr)
+    assert _mask_run_stamps(alt_hex) == "pack <PACK>, generated <STAMP>"
+
+
+def test_mask_run_stamps_keeps_artifact_iso_and_real_zones() -> None:
+    artifact = (
+        "File-drop attestation from fleet-sensor at 2026-09-08T00:02:00Z. "
+        "This is deception-sensor evidence."
+    )
+    run = "Canonical records ingested from honeypot at 2026-10-01T20:55:26Z"
+    loader = "Normalized 210 canonical records at 2026-10-01T20:55:26Z"
+    assert "2026-09-08T00:02:00Z" in _mask_run_stamps(artifact)
+    assert "<RUN_ISO>" in _mask_run_stamps(run)
+    assert "2026-10-01T20:55:26Z" not in _mask_run_stamps(run)
+    assert "<RUN_ISO>" in _mask_run_stamps(loader)
+    utc = "generated 2026-10-01 20:55 UTC · pack `abc1234`"
+    iana = "generated 2026-10-01 13:55 America/Los_Angeles · pack `abc1234`"
+    offset = "generated 2026-10-02 10:55 +14 · pack `abc1234`"
+    fake = "generated 2026-10-01 20:55 CLIENT-HQ · pack `abc1234`"
+    assert _mask_run_stamps(utc) == _mask_run_stamps(iana) == _mask_run_stamps(offset)
+    assert "CLIENT-HQ" in _mask_run_stamps(fake)
+    assert _mask_run_stamps(utc) != _mask_run_stamps(fake)
+
+
+def test_pack_commit_without_git_is_not_recorded_and_masks(tmp_path: Path) -> None:
+    """CI-equivalent archive tree: no .git → pack_commit() is 'not recorded'."""
+    dest = tmp_path / "archive"
+    dest.mkdir()
+    shutil.copytree(ROOT / "shared", dest / "shared")
+    env = {key: os.environ[key] for key in ("PATH", "HOME", "LANG", "LC_ALL") if os.environ.get(key)}
+    env["PYTHONPATH"] = str(dest)
+    got = subprocess.check_output(
+        [
+            sys.executable,
+            "-c",
+            "from shared.estate_pages import pack_commit; print(pack_commit())",
+        ],
+        cwd=str(dest),
+        env=env,
+        text=True,
+    ).strip()
+    assert got == "not recorded"
+    hexed = "> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `53b1b21`"
+    archived = f"> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `{got}`"
+    assert _mask_run_stamps(hexed) == _mask_run_stamps(archived)

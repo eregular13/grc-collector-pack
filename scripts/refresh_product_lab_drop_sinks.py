@@ -33,6 +33,29 @@ CISO_CSVS = (
     "vulnerabilities.csv",
 )
 ESTATE_PAGES = ("EXECUTIVE_SUMMARY.md", "SCOPE_AND_TRUST.md")
+# One row list for hashes + MANIFEST. #158 may append poam_members.csv later;
+# do not add it here. Count is "draft" or a counts[] key (same as rel).
+MANIFEST_ROWS: tuple[tuple[str, str], ...] = (
+    ("ciso/applied_controls.csv", "ciso/applied_controls.csv"),
+    ("ciso/assets.csv", "ciso/assets.csv"),
+    ("ciso/evidences.csv", "ciso/evidences.csv"),
+    ("ciso/findings.csv", "ciso/findings.csv"),
+    ("ciso/risk_scenarios.csv", "ciso/risk_scenarios.csv"),
+    ("ciso/vulnerabilities.csv", "ciso/vulnerabilities.csv"),
+    ("ciso/ESTATE.txt", "draft"),
+    ("poam/poam.csv", "poam/poam.csv"),
+    ("poam/poam.md", "draft"),
+    ("poam/excluded.csv", "poam/excluded.csv"),
+    ("poam/poam_fedramp.csv", "poam/poam_fedramp.csv"),
+    ("poam/poam-ledger.json", "draft"),
+    ("poam/ESTATE.txt", "draft"),
+    ("EXECUTIVE_SUMMARY.md", "draft"),
+    ("SCOPE_AND_TRUST.md", "draft"),
+    ("opengrc/risks.csv", "opengrc/risks.csv"),
+    ("opengrc/assets.csv", "opengrc/assets.csv"),
+    ("opengrc/implementations.csv", "opengrc/implementations.csv"),
+    ("import_preview/probo.json", "import_preview/probo.json"),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -91,28 +114,8 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         "| File | Rows | SHA256 |",
         "|---|---|---|",
     ]
-    table = [
-        ("ciso/applied_controls.csv", counts["ciso/applied_controls.csv"]),
-        ("ciso/assets.csv", counts["ciso/assets.csv"]),
-        ("ciso/evidences.csv", counts["ciso/evidences.csv"]),
-        ("ciso/findings.csv", counts["ciso/findings.csv"]),
-        ("ciso/risk_scenarios.csv", counts["ciso/risk_scenarios.csv"]),
-        ("ciso/vulnerabilities.csv", counts["ciso/vulnerabilities.csv"]),
-        ("ciso/ESTATE.txt", "draft"),
-        ("poam/poam.csv", counts["poam/poam.csv"]),
-        ("poam/poam.md", "draft"),
-        ("poam/excluded.csv", counts["poam/excluded.csv"]),
-        ("poam/poam_fedramp.csv", counts["poam/poam_fedramp.csv"]),
-        ("poam/poam-ledger.json", "draft"),
-        ("poam/ESTATE.txt", "draft"),
-        ("EXECUTIVE_SUMMARY.md", "draft"),
-        ("SCOPE_AND_TRUST.md", "draft"),
-        ("opengrc/risks.csv", counts["opengrc/risks.csv"]),
-        ("opengrc/assets.csv", counts["opengrc/assets.csv"]),
-        ("opengrc/implementations.csv", counts["opengrc/implementations.csv"]),
-        ("import_preview/probo.json", counts["import_preview/probo.json"]),
-    ]
-    for rel, count in table:
+    for rel, count_key in MANIFEST_ROWS:
+        count = "draft" if count_key == "draft" else counts[count_key]
         lines.append(f"| {rel} | {count} | `{hashes[rel]}` |")
     lines.append("")
     lines.append("Do not POST /api/risks.")
@@ -196,27 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     stamp = write_opengrc(DROP, estate=estate)
     probo_path = write_probo(DROP, estate=estate)
     payload = json.loads(probo_path.read_text(encoding="utf-8"))
-    files = {
-        "ciso/applied_controls.csv": DROP / "ciso" / "applied_controls.csv",
-        "ciso/assets.csv": DROP / "ciso" / "assets.csv",
-        "ciso/evidences.csv": DROP / "ciso" / "evidences.csv",
-        "ciso/findings.csv": DROP / "ciso" / "findings.csv",
-        "ciso/risk_scenarios.csv": DROP / "ciso" / "risk_scenarios.csv",
-        "ciso/vulnerabilities.csv": DROP / "ciso" / "vulnerabilities.csv",
-        "ciso/ESTATE.txt": DROP / "ciso" / "ESTATE.txt",
-        "poam/poam.csv": DROP / "poam" / "poam.csv",
-        "poam/poam.md": DROP / "poam" / "poam.md",
-        "poam/excluded.csv": DROP / "poam" / "excluded.csv",
-        "poam/poam_fedramp.csv": DROP / "poam" / "poam_fedramp.csv",
-        "poam/poam-ledger.json": DROP / "poam" / "poam-ledger.json",
-        "poam/ESTATE.txt": DROP / "poam" / "ESTATE.txt",
-        "EXECUTIVE_SUMMARY.md": DROP / "EXECUTIVE_SUMMARY.md",
-        "SCOPE_AND_TRUST.md": DROP / "SCOPE_AND_TRUST.md",
-        "opengrc/risks.csv": DROP / "opengrc" / "risks.csv",
-        "opengrc/assets.csv": DROP / "opengrc" / "assets.csv",
-        "opengrc/implementations.csv": DROP / "opengrc" / "implementations.csv",
-        "import_preview/probo.json": DROP / "import_preview" / "probo.json",
-    }
+    files = {rel: DROP.joinpath(*rel.split("/")) for rel, _count_key in MANIFEST_ROWS}
     hashes = {rel: _sha256(path) for rel, path in files.items()}
     counts: dict[str, int] = {}
     for rel, path in files.items():

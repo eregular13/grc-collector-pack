@@ -12,7 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from scripts.refresh_product_lab_drop_sinks import CISO_CSVS, main, sync_from_out
+from scripts.refresh_product_lab_drop_sinks import (
+    CISO_CSVS,
+    MANIFEST_ROWS,
+    main,
+    sync_from_out,
+)
 
 
 def _seed_out(src_out: Path) -> None:
@@ -117,4 +122,65 @@ def test_main_sync_alias_dispatches_sync(tmp_path: Path, monkeypatch: pytest.Mon
     monkeypatch.setattr(mod, "_csv_rows", lambda path: 0)
 
     assert main(["sync", str(src_out)]) == 0
+    assert called["src"] == src_out
+
+
+def test_sync_from_out_refuses_missing_findings_csv(tmp_path: Path) -> None:
+    """S5: missing-CSV guard must refuse. An empty ciso-assistant is not a sync."""
+    src_out = tmp_path / "out"
+    (src_out / "ciso-assistant").mkdir(parents=True)
+    dest = tmp_path / "drop"
+    with pytest.raises((SystemExit, FileNotFoundError), match="CISO|findings"):
+        sync_from_out(src_out, dest)
+    assert not (dest / "ciso" / "findings.csv").is_file()
+
+
+def test_manifest_writer_keeps_estate_and_ledger_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """S6/S7: ciso/ESTATE.txt and poam-ledger.json stay in the MANIFEST writer."""
+    import scripts.refresh_product_lab_drop_sinks as mod
+
+    rels = [rel for rel, _key in MANIFEST_ROWS]
+    assert "ciso/ESTATE.txt" in rels
+    assert "poam/ESTATE.txt" in rels
+    assert "poam/poam-ledger.json" in rels
+    assert "poam/excluded.csv" in rels
+    assert "poam/poam_fedramp.csv" in rels
+    assert all("poam_members.csv" not in rel for rel in rels)
+
+    dest = tmp_path / "drop"
+    dest.mkdir()
+    monkeypatch.setattr(mod, "DROP", dest)
+    hashes = {rel: "0" * 64 for rel, _key in MANIFEST_ROWS}
+    counts = {rel: 1 for rel, key in MANIFEST_ROWS if key != "draft"}
+    mod._write_manifest(counts, hashes)
+    text = (dest / "MANIFEST").read_text(encoding="utf-8")
+    assert "| ciso/ESTATE.txt |" in text
+    assert "| poam/poam-ledger.json |" in text
+    assert "| poam/ESTATE.txt |" in text
+    assert "poam_members.csv" not in text
+
+
+def test_main_from_out_uses_outdir_env_when_path_omitted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S9: `--from-out` with no path must honor OUT_DIR."""
+    src_out = tmp_path / "out"
+    dest = tmp_path / "drop"
+    dest.mkdir()
+    _seed_out(src_out)
+
+    import scripts.refresh_product_lab_drop_sinks as mod
+
+    called: dict[str, Path] = {}
+
+    def fake_sync(src: Path, drop: Path = dest) -> None:
+        called["src"] = Path(src)
+
+    _stub_sinks(monkeypatch, dest)
+    monkeypatch.setattr(mod, "sync_from_out", fake_sync)
+    monkeypatch.setattr(mod, "_sha256", lambda path: "0" * 64)
+    monkeypatch.setattr(mod, "_csv_rows", lambda path: 0)
+    monkeypatch.setenv("OUT_DIR", str(src_out))
+
+    assert main(["--from-out"]) == 0
     assert called["src"] == src_out
