@@ -1,0 +1,46 @@
+{
+  "clusterName": "prod-cluster",
+  "summaryDetails": {
+    "controls": {
+      "C-0057": {
+        "name": "Privileged container",
+        "status": "failed",
+        "severityScore": 8,
+        "failedResources": 1,
+        "description": "Pod payments-worker runs privileged=true"
+      },
+      "C-0013": {
+        "name": "Anonymous Kubernetes API access",
+        "status": "failed",
+        "severityScore": 9,
+        "failedResources": 1,
+        "description": "anonymous-auth=true on kube-apiserver"
+      },
+      "C-0034": {
+        "name": "Allow privilege escalation",
+        "status": "failed",
+        "severityScore": 6,
+        "failedResources": 2,
+        "description": "allowPrivilegeEscalation not set false"
+      },
+      "C-0041": {
+        "name": "HostNetwork access",
+        "status": "failed",
+        "severityScore": 7,
+        "failedResources": 1,
+        "description": "DaemonSet uses hostNetwork"
+      },
+      "C-0017": {
+        "name": "Immutable container filesystem",
+        "status": "passed",
+        "severityScore": 4,
+        "failedResources": 0,
+        "description": "readOnlyRootFilesystem set"
+      }
+    }
+  },
+  "resources": [
+    {"name": "payments-worker", "kind": "Pod", "namespace": "prod", "privileged": true},
+    {"name": "kube-apiserver", "kind": "Pod", "namespace": "kube-system", "anonymousAuth": true}
+  ]
+}

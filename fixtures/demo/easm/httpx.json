@@ -5,7 +5,8 @@
     "status_code": 200,
     "title": "Admin login",
     "tech": ["okta"],
-    "failed": false
+    "failed": false,
+    "timestamp": "2026-09-08T10:00:00Z"
   },
   {
     "host": "vpn.example.com",

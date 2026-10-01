@@ -37,6 +37,20 @@ def test_nessus_info_and_risk_none_dropped() -> None:
     assert iter_nessus_items(text) == []
 
 
+def test_nessus_host_start_timestamp_when_host_start_absent() -> None:
+    text = """<NessusClientData_v2><Report name="t"><ReportHost name="10.0.0.9">
+    <HostProperties>
+      <tag name="HOST_START_TIMESTAMP">1789043400</tag>
+    </HostProperties>
+    <ReportItem port="443" svc_name="www" protocol="tcp" severity="3" pluginID="42411" pluginName="SMB">
+    <risk_factor>High</risk_factor></ReportItem>
+    </ReportHost></Report></NessusClientData_v2>"""
+    rows = iter_nessus_items(text)
+    assert len(rows) == 1
+    assert rows[0]["scan_time"]
+    assert rows[0]["scan_time"].startswith("2026-09-10")
+
+
 def test_vuln_scan_carries_host_start_scan_time() -> None:
     recs = vuln_scan.parse_file(FIXTURE)
     findings = [r for r in recs if r["kind"] == "finding"]

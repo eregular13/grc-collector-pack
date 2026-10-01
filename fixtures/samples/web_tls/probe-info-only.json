@@ -1,0 +1,26 @@
+{
+  "schema": "web_tls.probe.v1",
+  "target": "192.0.2.10",
+  "ports": [443, 22],
+  "open_ports": [443, 22],
+  "http": {
+    "https://192.0.2.10/": {
+      "error": "URLError: timed out"
+    }
+  },
+  "tls": {
+    "443": {
+      "open": true,
+      "tls": true,
+      "cert_present": true,
+      "notAfter": "Jan  1 00:00:00 2030 GMT",
+      "days_remaining": 1200,
+      "subject": "CN=192.0.2.10",
+      "port": 443
+    }
+  },
+  "ssh": {
+    "22": {"error": "timed out", "port": 22}
+  },
+  "live": false
+}

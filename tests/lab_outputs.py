@@ -47,6 +47,30 @@ def _json(path: Path):
     return data
 
 
+def _risk_is_high_critical(row: dict) -> bool:
+    risk = str(
+        row.get("original_risk_rating") or row.get("Original Risk Rating") or ""
+    ).strip()
+    sev = str(row.get("severity") or "").strip().lower()
+    return risk in {"High", "Critical"} or sev in {"high", "critical"}
+
+
+def assert_no_blank_high_critical(rows: list[dict], *, source: str = "poam") -> None:
+    """#179: no High/Critical row may carry a blank Controls or Plan cell."""
+    blanks = []
+    for row in rows:
+        if not _risk_is_high_critical(row):
+            continue
+        pid = str(row.get("poam_id") or row.get("POAM ID") or "")
+        controls = str(row.get("controls") or row.get("Controls") or "").strip()
+        plan = str(
+            row.get("recommended_fix") or row.get("Overall Remediation Plan") or ""
+        ).strip()
+        if not controls or not plan:
+            blanks.append((pid, controls, plan[:40], row.get("weakness") or row.get("Weakness Name")))
+    assert not blanks, f"{source} High/Critical blank Controls/Plan: {blanks}"
+
+
 def assert_lab() -> None:
     assets = _csv_rows(OUT / "ciso-assistant" / "assets.csv", ASSETS_H)
     findings = _csv_rows(OUT / "ciso-assistant" / "findings.csv", FIND_H)
@@ -54,10 +78,16 @@ def assert_lab() -> None:
     evid = _csv_rows(OUT / "ciso-assistant" / "evidences.csv", EVID_H)
     ctrls = _csv_rows(OUT / "ciso-assistant" / "applied_controls.csv", CONTROLS_H)
     scen = _csv_rows(OUT / "ciso-assistant" / "risk_scenarios.csv", SCEN_H, delim=";")
-    from shared.ciso_shape import EXCLUDED_HEADER, POAM_HEADER, assert_count_consistency
+    from shared.ciso_shape import (
+        EXCLUDED_HEADER,
+        POAM_HEADER,
+        assert_count_consistency,
+        assert_input_export_accounting,
+    )
 
     poam_h = POAM_HEADER
     poam = _csv_rows(OUT / "poam" / "poam.csv", poam_h)
+    assert_no_blank_high_critical(poam, source="poam.csv")
     sr_path = OUT / "simplerisk" / "poam.csv"
     if sr_path.is_file():
         sr_raw = sr_path.read_text(encoding="utf-8")
@@ -117,10 +147,61 @@ def assert_lab() -> None:
     assert excluded_path.is_file(), "poam/excluded.csv missing"
     excluded = _csv_rows(excluded_path, EXCLUDED_HEADER)
     assert excluded, "DEMO/lab excluded.csv must not be header-only"
+    assert "id" in EXCLUDED_HEADER.split(",")
+    for row in excluded:
+        assert row.get("id"), row
+        assert row.get("finding_ref_id"), row
+        assert row.get("id") == row.get("finding_ref_id"), row
+        assert row.get("excluded_reason"), row
+    from collectors.grc_loader import _dedupe
+    from shared.finding_types import dedupe_weaknesses
+    from shared.hardening_dedup import dedupe_hardening
+    from shared.io_util import read_jsonl
+
+    parsed: list[dict] = []
+    canon = OUT / "canonical"
+    if canon.is_dir():
+        for path in sorted(canon.glob("*.jsonl")):
+            parsed.extend(row for row in read_jsonl(path) if isinstance(row, dict))
+    records = dedupe_hardening(dedupe_weaknesses(_dedupe(parsed)))
+    assert_input_export_accounting(
+        [r for r in records if r.get("kind") in {"finding", "excluded"}],
+        poam,
+        excluded,
+    )
     assert int(summary.get("excluded") or 0) == len(excluded)
     assert int(summary.get("weaknesses_total") or 0) == len(poam) + len(excluded)
     reasons = {str(row.get("excluded_reason") or "") for row in excluded}
     assert reasons & {"honeypot", "severity_info"}, reasons
+    scen_refs = [row["ref_id"] for row in scen]
+    assert len(set(scen_refs)) == len(scen_refs)
+    from shared.schema import CISO_REF_MAX
+
+    assert max(len(ref) for ref in scen_refs) <= CISO_REF_MAX
+    from shared.ciso_shape import assert_register_no_double_treatment
+    from shared.egp_collapse import is_merged_into_reason
+
+    accept_n = 0
+    for row in scen:
+        treat = row.get("treatment")
+        assert treat in {"mitigate", "accept"}, row
+        assert (row.get("existing_controls") or "") == "", row
+        if treat == "accept":
+            accept_n += 1
+            assert (row.get("additional_controls") or "") == ""
+            assert row.get("residual_risk") == row.get("current_risk"), row
+        else:
+            assert str(row.get("additional_controls") or "").startswith("CTL-"), row
+    non_merged = [
+        row
+        for row in excluded
+        if not is_merged_into_reason(str(row.get("excluded_reason") or ""))
+    ]
+    assert accept_n == len(non_merged)
+    overlap = assert_register_no_double_treatment(OUT)
+    assert overlap["ok"] is True
+    assert not overlap["title_host_overlap"]
+    assert not overlap["egp_overlap"]
     for row in excluded:
         assert row.get("severity") in EXCLUDED_SEV, row
         if row.get("excluded_reason") == "severity_info":
@@ -155,13 +236,38 @@ def assert_lab() -> None:
         from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, FEDRAMP_OPEN_HEADERS
 
         fed_rows = _csv_rows(fed, ",".join(FEDRAMP_CSV_HEADERS))
+        assert_no_blank_high_critical(fed_rows, source="poam_fedramp.csv")
         assert ",".join(FEDRAMP_CSV_HEADERS).startswith(",".join(FEDRAMP_OPEN_HEADERS))
+        plan_ids = {r.get("poam_id") or "" for r in poam if r.get("poam_id")}
+        fed_ids = {r.get("POAM ID") or "" for r in fed_rows if r.get("POAM ID")}
+        assert fed_ids == plan_ids, (
+            f"FedRAMP Open IDs must match poam.csv; extra={sorted(fed_ids - plan_ids)} "
+            f"missing={sorted(plan_ids - fed_ids)}"
+        )
+        poam_by_id = {r.get("poam_id") or "": r for r in poam if r.get("poam_id")}
+        for row in fed_rows:
+            pid = row.get("POAM ID") or ""
+            prow = poam_by_id.get(pid) or {}
+            assert (row.get("Controls") or "") == (prow.get("controls") or ""), pid
+            assert (row.get("Overall Remediation Plan") or "") == (
+                prow.get("recommended_fix") or ""
+            ), pid
+            plan_risk = prow.get("original_risk_rating") or ""
+            if plan_risk:
+                assert (row.get("Original Risk Rating") or "") == plan_risk, pid
+            if plan_risk == "Critical":
+                assert (row.get("Original Risk Rating") or "") == "Critical", pid
         for row in fed_rows:
             vd = row.get("Vendor Dependency") or ""
             assert vd in {"Yes", "No"}, vd
             if vd == "No":
                 assert not (row.get("Last Vendor Check-in Date") or "").strip()
                 assert not (row.get("Vendor Dependent Product Name") or "").strip()
+                comments = row.get("Comments") or ""
+                assert (
+                    "default, not verified" in comments
+                    or "no fix available" in comments.lower()
+                ), comments
             else:
                 product = (row.get("Vendor Dependent Product Name") or "").strip()
                 assert product and product.lower() not in {"n/a", "none"}
@@ -229,6 +335,11 @@ def assert_lab() -> None:
         # DEMO SMB is on .corp.local / RFC1918 — 3.I, not 3.S.
         assert "cpg_3_I" in refs_smb, refs_smb
         assert "cpg_3_S" not in refs_smb
+    redis_poam = [r for r in poam if "redis" in (r.get("weakness") or "").lower()]
+    for row in redis_poam:
+        refs = row.get("framework_refs") or ""
+        assert "csf_PR_AA_03" in refs, refs
+        assert "csf_PR_AA_05" not in refs.split(",")
     for row in smb:
         refs = row.get("framework_refs") or ""
         assert "csf_PR_IR_01" in refs or "csf_PR_AA_05" in refs or "csf_PR_DS_02" in refs
@@ -336,9 +447,10 @@ def assert_lab() -> None:
                 frow = fed_by_id.get(egp)
                 if not frow:
                     continue
-                a = csf_cpg_tag_set(prow.get("framework_refs") or "")
-                b = csf_cpg_tag_set(frow.get("Framework Tags") or "")
+                a = prow.get("framework_refs") or ""
+                b = frow.get("Framework Tags") or ""
                 assert a == b, (egp, ref, a, b)
+                assert (prow.get("controls") or "") == (frow.get("Controls") or ""), egp
 
     blob = ""
     for path in OUT.rglob("*"):

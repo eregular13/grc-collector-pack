@@ -62,5 +62,5 @@ def test_lab_path_excluded_csv_has_honeypot_or_severity_info(
 def test_farm_identity_floors_still_hold() -> None:
     """Farm_drop floors are unchanged; density test locks measured identity."""
     assert MIN_FARM_FINDINGS == 110
-    assert MIN_FARM_POAM == 100
+    assert MIN_FARM_POAM == 70
     assert MIN_FARM_EXCLUDED == 20

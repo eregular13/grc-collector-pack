@@ -78,9 +78,16 @@ Semicolon-delimited:
 ref_id;assets;threats;name;description;existing_controls;current_impact;current_proba;current_risk;additional_controls;residual_impact;residual_proba;residual_risk;treatment
 ```
 
-treatment: `mitigate`
+treatment: `mitigate` | `accept`
 Severity → `Low|Moderate|High|Very High`
-One row per canonical finding. `findings.csv` rows > 0 requires `risk_scenarios.csv` rows > 0.
+One row per canonical finding that is on the register. `findings.csv` rows > 0 requires `risk_scenarios.csv` rows > 0.
+`existing_controls` is for real controls only and stays empty on export.
+CISO Community CSV import has no justification/comment column
+(`shared/ciso_shape.py` `CISO_HEADERS`). Accept / exclude reasons live in
+`out/poam/excluded.csv` `excluded_reason`. Pack_drop twins excluded as
+`merged_into:<survivor ledger EGP>` are aliases and are not register accept rows.
+The survivor ID is the live ledger `poam_id` (preserved on upgrade), not a
+fresh content hash. The same ID is written to `superseded_by`.
 
 ## POA&M (operator draft — not a CISO import)
 
@@ -97,7 +104,7 @@ FedRAMP POA&M R3.0-style fields (appended; the first nine columns are unchanged)
 - `weakness_description` = finding description; `detector_source` = collector + tool (e.g. `inventory-nmap (nmap NSE ftp-anon)`); `weakness_source_id` = check/plugin/rule id or blank.
 - `original_detection_date` = artifact scan timestamp calendar day (Nessus HOST_START/HOST_END, nmap starttime, SARIF startTimeUtc, Trivy CreatedAt, pack_drop meta generated_at, file-level scan time). Literal `not recorded` when the artifact has none — never the pack run date. Dates keep the recorded timezone (UTC when the artifact is Zulu); poam.md labels the zone. The poam.csv column name is unchanged.
 - `scheduled_completion_date` = Evergreen default schedule: detection + 15 days (Critical), 30 (High), 90 (Moderate), 180 (Low) when a real detection date exists; `pending due date` when detection is `not recorded`. `due` stays blank until a human commits a date. The separate FedRAMP export (`poam_fedramp.csv`) keeps its own template values.
-- `status_date` = UTC calendar day of the run (`YYYY-MM-DD`), not a local civil day. The same UTC date is written on `poam.csv`, `poam_fedramp.csv`, and `poam-ledger.json`. `milestones` = three dated defaults (validate, apply fix, rescan to verify).
+- `status_date` = host-local civil day of the run (`YYYY-MM-DD`), not UTC. Local is the generating host's timezone at generation (`datetime.now().astimezone()`, honoring `TZ` / `tzset`). The cell stays a date (no offset). `first_seen` / `last_seen` on the ledger stay UTC ISO (`…Z`). `status_date` can be a day off `first_seen`'s UTC day and `original_detection_date` (local vs UTC / recorded zone). The same local `status_date` is written on `poam.csv`, `poam_fedramp.csv`, `simplerisk/poam.csv`, and `poam-ledger.json` on a first run and on rows that change this run. Reobserved unchanged rows and unobserved carried rows keep the ledger last-change date on all four surfaces. The same local run day also drives vendor-dependency aging (`VENDOR_CHECKIN_OVERDUE`, `VD_HIGH_NOT_MITIGATED`), `missed_dates`, pending-verification dates, and the default `closed_on`. Naive POA&M clocks (including `load(run_at=)` naive) are local wall time — `load()` localizes before the scanner cutoff bind. Direct scan_time.bind_run_clock treats naive as UTC. `milestones` = three dated defaults (validate, apply fix, rescan to verify).
 - `original_risk_rating` = Low/Moderate/High/Critical (`severity` keeps the legacy low/medium/high/critical vocabulary for existing readers).
 - `point_of_contact` is blank, like `owner`. `cve` = explicit CVE ids or known aliases (Heartbleed -> CVE-2014-0160), else blank.
 

@@ -226,7 +226,7 @@ def test_b6_classes_have_short_source_field() -> None:
         if ftype.startswith("tls_"):
             assert meta.get("source") == "testssl", ftype
         elif ftype.startswith("web_"):
-            assert meta.get("source") == "nikto", ftype
+            assert meta.get("source") in {"nikto", "web-tls"}, ftype
         elif ftype.startswith("pc_"):
             assert meta.get("source") == "pingcastle", ftype
 

@@ -1,0 +1,13 @@
+{
+  "policies": [
+    {
+      "name": "s3-encryption-missing",
+      "resource": "aws.s3",
+      "severity": "high",
+      "description": "S3 bucket without default encryption",
+      "resources": [
+        {"Name": "demo-unencrypted-tmp", "Arn": "arn:aws:s3:::demo-unencrypted-tmp"}
+      ]
+    }
+  ]
+}

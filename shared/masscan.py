@@ -93,6 +93,7 @@ def _from_xml(text: str) -> list[dict[str, Any]]:
     except ET.ParseError:
         return []
     out: list[dict[str, Any]] = []
+    run_start = str(root.attrib.get("start") or "").strip()
     for host in root.iter():
         tag = host.tag.split("}")[-1].lower()
         if tag != "host":
@@ -134,7 +135,11 @@ def _from_xml(text: str) -> list[dict[str, Any]]:
         if not ports:
             continue
         name = hostname or addr or "unknown-host"
-        out.append({"name": name, "addr": addr, "hostname": hostname, "ports": ports})
+        stamp = str(host.attrib.get("endtime") or host.attrib.get("starttime") or run_start).strip()
+        row = {"name": name, "addr": addr, "hostname": hostname, "ports": ports}
+        if stamp:
+            row["scan_time"] = stamp
+        out.append(row)
     return out
 
 

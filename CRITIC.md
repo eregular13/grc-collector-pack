@@ -1,3 +1,133 @@
+# CRITIC — cycle 222 (SCOPE_CANONICAL_KEY_REFUSE)
+
+Lab this brick: pytest **2058** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Non-canonical SCOPE keys refuse at the
+loader; `engagement.begin` removed; BOM keys refuse; nested
+`copy_context().run` binds documented. DEMO / SAMPLE / farm
+`poam.csv` byte-identical to master `a7dd5a3` (119 / 8 / 73). Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 221 (SCOPE_GATE_QUOTED_KEYS_BIND_DEMO)
+
+Lab this brick: pytest **1783** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Quoted SCOPE keys participate in lookup and
+duplicate detection; unknown / non-ASCII keys refuse; live bind is a
+contextvar plus a lock that refuses a second concurrent bind; DEMO
+`client.name` normalizes case/dash/NBSP. DEMO / SAMPLE / farm
+`poam.csv` byte-identical to master `b67de6f` (119 / 8 / 73). Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 220 (SCOPE_GATE_HARDEN)
+
+Lab this brick: pytest **1760** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Metis #196 follow-up: status allowlist,
+per-connect re-read, DEMO consent digest refuse, `build_snapshot`
+gated. DEMO / SAMPLE / farm `poam.csv` byte-identical to master
+`5c6ac7b`. Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out. CoS #48 rails
+below are unchanged.
+
+# CRITIC — cycle 219 (SLIM_REGISTER_ALIAS_CONTROL_UNION)
+
+Lab this brick: pytest **1525** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Owner AC-5: merge-union of controls onto
+the survivor; tenant `EGP-8F1A843A26` keeps AC-5; UPN survivor
+`EGP-F18CA5E082` cites `AC-2, AC-6, AC-5`. IDs/counts unchanged.
+Exec `Open POA&M (poam.csv): 119`. Farm ledger Open **109**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 218 (SLIM_REGISTER_GA_UPN_ALIAS)
+
+Lab this brick: pytest **1523** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=103` `poam=119` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Slim #192 rebased onto `ce67328` (#188):
+GA-by-UPN merge + `aliased_poam_ids` before #184 excluded_reason
+loop (DEMO 2 Graph/Standing IDs aliased, 0 orphans). Exec
+`Open POA&M (poam.csv): 119`. FedRAMP Open follows poam.csv (#179).
+Farm ledger Open **109**. AC-5 left as-is. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 218 (POAM_PACK_NAME_BACKFILL)
+
+Lab this brick: pytest **1525** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Rebased onto `ce67328`. Legacy osquery
+pack names (`pack_it-compliance_alf`) map to the current query class
+(`alf` / host_fw SC-7, CM-7). Real `EGP-8EC6F7CA09` row is tested,
+not a synthetic FTP item. IDs unchanged. No Status Date churn.
+Catalog **unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 217 (CR7_BH_HIGH_VALUE)
+
+Lab this brick: pytest **1505** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. #177 `bh-high-value` keeps the group
+playbook + AC-2/AC-6; typed generic falls through to the title map.
+Sample generic count returns to 5. POA&M IDs unchanged. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 216 (B8_METIS_177_LOCATION_CHAIN)
+
+Lab this brick: pytest **1463** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Merged `73ff785` (#170+#173). 7ebc697
+upgrade is 0 dups / 1 new / 127 Open. FedRAMP Open **127**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 215 (MERGE_MASTER_172_178_INTO_B8)
+
+Merge `origin/master` `6a5ebd6` (#172+#178) with a normal merge
+commit. No rebase. B8 check_id brick kept. Pytest **1440**. Host-lab
+unchanged. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+# CRITIC — cycle 214 (MERGE_MASTER_169_INTO_B8)
+
+Merge `origin/master` `7ebc697` (#169) with a normal merge commit. No
+rebase. B8 check_id brick kept. Pytest **1427**. Host-lab unchanged.
+Catalog **unchanged**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out.
+
+# CRITIC — cycle 213 (B8_STABLE_CHECK_ID)
+
+Lab this brick: pytest **1419** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=104` `poam=120` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Title-keyed families stamp `check_id`;
+33.3%→50.0% keeps the EGP. FedRAMP Open **126**. Catalog
+**unchanged** **111 / 32 / 30 / 81**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out. CoS #48 rails below are unchanged.
+
+# CRITIC — cycle 217 (POAM_CARRIED_CONTROLS_PLAN)
+
+Lab this brick: pytest **1510** passed, 1 skipped. Ten collectors +
+honeypot + `grc_loader` + `tests/lab_outputs.py` PASS (`assets=79`
+`findings=105` `poam=121` `excluded=6` `severity_unmapped=0`
+`demo=true`). Zero P0/P1. Carried-unobserved rows from an old ledger
+keep Controls and Plan; High/Critical blank-cell gate holds; upgrade
+== fresh for observed rows. IDs unchanged. Catalog **unchanged**
+**111 / 32 / 30 / 81**. paying_day **FAIL**. No POST `/api/risks`.
+RiskReady stay-out. CoS #48 rails below are unchanged.
+
 # CRITIC — cycle 212 (MERGE_MASTER_163_INTO_GAP2)
 
 Merge `origin/master` `d6ae8d0` (#163) with a normal merge commit. No

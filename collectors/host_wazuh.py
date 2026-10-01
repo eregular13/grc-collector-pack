@@ -30,7 +30,7 @@ from shared.osquery_checks import (
     looks_osquery_text,
     osquery_hosts,
 )
-from shared.schema import canon_severity, make_record, make_ref
+from shared.schema import canon_severity, make_record, make_ref, slug
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
@@ -433,6 +433,7 @@ _LYNIS_STAR = re.compile(r"^\*\s+(.+?)\s+\[([A-Z]+-\d+)\]\s*$")
 _LYNIS_DAT = re.compile(r"^(warning|suggestion)\[\]=([^|]+)\|(.+)$", re.I)
 _LYNIS_HOST = re.compile(r"(?im)^(?:hostname\s*[:=]\s*|hostname\s+)(\S+)")
 _LYNIS_INDEX = re.compile(r"(?im)^hardening_index\s*[:=]\s*(\d+)")
+_LYNIS_DT = re.compile(r"(?im)^report_datetime_start\s*[:=]\s*(.+)$")
 
 
 def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[dict]:
@@ -448,6 +449,8 @@ def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[di
         host = mhost.group(1).strip().strip("\"'")
     index_match = _LYNIS_INDEX.search(text)
     hardening_index = int(index_match.group(1)) if index_match else None
+    dt_match = _LYNIS_DT.search(text)
+    lynis_stamp = dt_match.group(1).strip().strip("\"'") if dt_match else ""
     rows: list[tuple[str, str, str]] = []
     for line in text.splitlines():
         raw = line.strip()
@@ -514,6 +517,8 @@ def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[di
         seen.add(key)
         extra = extra_control_fields(control)
         extra.update({"check_id": cid, "id": cid, "lynis_kind": kind, "tool": "lynis"})
+        if lynis_stamp:
+            extra["scan_time"] = lynis_stamp
         records.append(
             make_record(
                 kind="finding",
@@ -699,7 +704,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                 assets=[estate],
                 labels=LABELS + extra_labels + ["disk-encryption"],
                 collected_at=now,
-                extra={"encryption_pct": pct, "measured_count": measured},
+                extra={
+                    "encryption_pct": pct,
+                    "measured_count": measured,
+                    "check_id": f"enc-compliance-{slug(provider, maxlen=None)}",
+                },
             )
         )
     for device in inv.get("devices") or []:
@@ -724,7 +733,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels + ["disk-encryption"],
                     collected_at=now,
-                    extra={"disk_encryption_enabled": False, "provider": provider},
+                    extra={
+                        "disk_encryption_enabled": False,
+                        "provider": provider,
+                        "check_id": "disk-encryption-disabled",
+                    },
                 )
             )
         elif device.get("encryption_collected") is False and provider == "jamf":
@@ -743,7 +756,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels + ["disk-encryption", "coverage"],
                     collected_at=now,
-                    extra={"encryption_collected": False, "provider": provider},
+                    extra={
+                        "encryption_collected": False,
+                        "provider": provider,
+                        "check_id": "enc-gap",
+                    },
                 )
             )
         if device.get("mdm_enrolled") is False:
@@ -762,7 +779,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels,
                     collected_at=now,
-                    extra={"mdm_enrollment": "unenrolled", "provider": provider},
+                    extra={
+                        "mdm_enrollment": "unenrolled",
+                        "provider": provider,
+                        "check_id": "mdm-unenrolled",
+                    },
                 )
             )
         if device.get("edr_present") is False:
@@ -780,7 +801,11 @@ def _emit_mdm_inventory(inv: dict, now: str) -> list[dict]:
                     assets=[name],
                     labels=LABELS + extra_labels + ["edr"],
                     collected_at=now,
-                    extra={"edr_present": False, "provider": provider},
+                    extra={
+                        "edr_present": False,
+                        "provider": provider,
+                        "check_id": "edr-missing",
+                    },
                 )
             )
     return records
@@ -814,9 +839,29 @@ def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> l
             )
         )
     for row in iter_osquery_unmapped(payload):
-        host = row.get("host") or ""
+        host = str(row.get("host") or "").strip()
         if not host:
-            continue
+            # Wazuh alert wraps can classify as unmapped with no host.
+            # Only invent account-less "unknown" on real osquery results.
+            if not is_osquery_results_payload(payload):
+                continue
+            host = "unknown"
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            records.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{host}"),
+                    name=host,
+                    description=f"Host {host}",
+                    category="host",
+                    assets=[host],
+                    labels=LABELS + ["osquery"],
+                    collected_at=now,
+                    extra=stamp_ids({"asset_type": "PR"}, hostname=host, fqdn=host if "." in host else ""),
+                )
+            )
         hid = row.get("id") or "osquery"
         records.append(
             {
@@ -975,7 +1020,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["coverage"],
                     collected_at=now,
-                    extra={"agent_status": status},
+                    extra={
+                        "agent_status": status,
+                        "check_id": "wazuh-agent-disconnected",
+                    },
                 )
             )
         enc = agent.get("disk_encryption_enabled")
@@ -992,7 +1040,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["fleet", "disk-encryption"],
                     collected_at=now,
-                    extra={"disk_encryption_enabled": False},
+                    extra={
+                        "disk_encryption_enabled": False,
+                        "check_id": "disk-encryption-disabled",
+                    },
                 )
             )
         mdm = agent.get("mdm") if isinstance(agent.get("mdm"), dict) else {}
@@ -1010,7 +1061,10 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[name],
                     labels=LABELS + ["fleet", "mdm"],
                     collected_at=now,
-                    extra={"mdm_enrollment": enroll},
+                    extra={
+                        "mdm_enrollment": enroll,
+                        "check_id": "mdm-unenrolled",
+                    },
                 )
             )
     for policy in _failing_policies(payload):
@@ -1034,7 +1088,11 @@ def parse_file(path: Path) -> list[dict]:
                 assets=[host],
                 labels=LABELS + ["fleet", "policy"],
                 collected_at=now,
-                extra={"policy": pname, "name": pname},
+                extra={
+                    "policy": pname,
+                    "name": pname,
+                    "check_id": f"fleet-policy-{slug(pname, maxlen=None)}",
+                },
             )
         )
     for alert in _aggregate_alerts(_extract_alerts(payload)):

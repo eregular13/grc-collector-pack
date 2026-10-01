@@ -6,6 +6,8 @@ Fingerprint::
 
 ``asset_key`` is the EGA- asset UID + PORT (see ``shared.asset_key.asset_key``),
 not the lower-cased name. IDs are ``EGP-`` + first 10 hex of fp_v1, upper-cased.
+Unknown Custodian needs-review rows roll up per policy+account as ``EGR-``
++ first 10 hex of ``egr_key(policy, account)`` — not resource order.
 """
 
 from __future__ import annotations
@@ -30,7 +32,14 @@ from shared.asset_key import (
     legacy_port_only_asset_key,
     normalize_weakness_name,
 )
-from shared.finding_types import extra_dict, finding_type
+from shared.finding_types import (
+    SECRET_UNSTABLE_LOCATION_KEYS,
+    SECRET_UNSTABLE_WITHOUT_HASH,
+    extra_dict,
+    finding_type,
+    is_secret_finding,
+    secret_has_identity_hash,
+)
 from shared.io_util import in_dir, out_dir
 from shared.kev import (
     collect_cves,
@@ -85,6 +94,52 @@ _UUIDISH = re.compile(
 )
 _HOST_PORT_PROTO_SLUG = re.compile(r".+-\d+-(tcp|udp|sctp)$", re.I)
 _IPV4_PORT_SLUG = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}-\d+", re.I)
+# Covey pack_drop observation/service row ids (nmap-10-microsoftds-445,
+# rustscan-7-tcp-80). Not plugin/check ids. nmap-port-445/tcp is excluded.
+_PACK_DROP_ROW_ADAPTERS = frozenset(
+    {
+        "nmap",
+        "rustscan",
+        "naabu",
+        "nping",
+        "unicornscan",
+        "httpx",
+        "sslscan",
+        "tlsx",
+        "whatweb",
+        "hping3",
+        "onesixtyone",
+        "nbtscan",
+        "braa",
+        "ike-scan",
+        "svmap",
+        "fping",
+    }
+)
+_PACK_DROP_ROW_PORT = re.compile(r"-\d+$")
+_PACK_DROP_HOST_INDEX = re.compile(
+    r"^(" + "|".join(sorted(_PACK_DROP_ROW_ADAPTERS)) + r")-[a-z]?\d+-",
+    re.I,
+)
+_NMAP_PORT_CHECK_ID = re.compile(r"^nmap-port-\d+/(tcp|udp|sctp)$", re.I)
+_OPEN_PORT_OBSERVED = re.compile(
+    r"^open(?:\s+[a-z0-9._/-]+(?:\s+on)?)?\s+(?:tcp|udp|sctp)/\d+\s+observed$",
+    re.I,
+)
+_OPEN_PORT_N = re.compile(
+    r"^open\s+port\s+\d+(?:/[a-z0-9._-]+)?$",
+    re.I,
+)
+_PORT_EXPOSURE_TITLE = re.compile(
+    r"^[a-z0-9._/+-]+(?:\s+\d+(?:/(?:tcp|udp|sctp))?)?(?:\s+[a-z0-9._/+-]+)?\s+exposed$",
+    re.I,
+)
+_NOT_PORT_EXPOSURE_TITLE = re.compile(
+    r"share|signing|protocol|enabled|required|directory|\.git|cipher|smbv1|tls\s+\d",
+    re.I,
+)
+_URL_IN_TEXT = re.compile(r"https?://[^\s<>()\[\]'\",;]+", re.I)
+_TRAILING_LOC = ").,;:\"'"
 _SERVICE_NAMES = frozenset(
     {
         "kerberos",
@@ -234,8 +289,71 @@ def _is_literal_host_port_slug(text: str) -> bool:
     return False
 
 
+def _is_pack_drop_row_id(val: str) -> bool:
+    """True for Covey row ids that must not become weakness identity.
+
+    ``nmap-10-microsoftds-445`` / ``rustscan-7-tcp-80`` are lift keys.
+    ``nmap-port-445/tcp`` is the stable XML/check id and stays accepted.
+    """
+    text = str(val or "").strip()
+    if not text or _NMAP_PORT_CHECK_ID.match(text):
+        return False
+    prefix, sep, rest = text.lower().partition("-")
+    if not sep or prefix not in _PACK_DROP_ROW_ADAPTERS:
+        return False
+    return bool(_PACK_DROP_ROW_PORT.search(rest))
+
+
+def _nmap_port_weakness_key(port: str, proto: str) -> str:
+    proto_n = proto if proto in {"tcp", "udp", "sctp"} else "tcp"
+    return f"nmap:nmap-port-{port}/{proto_n}"
+
+
+def _strip_pack_drop_host_index(row_id: str) -> str:
+    """nmap-10-microsoftds-445 → nmap-microsoftds-445. Empty when not a row id."""
+    text = str(row_id or "").strip()
+    if not text or not _is_pack_drop_row_id(text):
+        return ""
+    return _PACK_DROP_HOST_INDEX.sub(r"\1-", text, count=1)
+
+
+def _is_port_exposure_observation(rec: dict[str, Any]) -> bool:
+    """True only for open-port / '{svc} {port} exposed' rows.
+
+    Specific findings on the same host/port (SMBv1, TLS 1.0, .git) stay distinct.
+    """
+    name = strip_asset_from_title(rec)
+    if _NOT_PORT_EXPOSURE_TITLE.search(name):
+        return False
+    extra = extra_dict(rec)
+    if _extra_field(extra, "claim").lower() == "open_port_observed":
+        return True
+    if str(rec.get("kind") or "").strip().lower() == "observation":
+        return True
+    if _OPEN_PORT_OBSERVED.match(name) or _OPEN_PORT_N.match(name):
+        return True
+    return bool(_PORT_EXPOSURE_TITLE.match(name))
+
+
+def _pack_drop_specific_port_key(
+    rec: dict[str, Any],
+    *,
+    port: str,
+    proto: str,
+    token: str,
+    title: str,
+) -> str:
+    """Keep a discriminator so SMBv1 ≠ SMB 445 exposed on the same port."""
+    cls = finding_type(rec) or str(rec.get("category") or "exposure")
+    proto_n = proto if proto in {"tcp", "udp", "sctp"} else "tcp"
+    disc = token or title or _strip_pack_drop_host_index(_extra_field(extra_dict(rec), "id"))
+    if not disc:
+        disc = "specific"
+    return f"port:{port}/{proto_n}:{cls.lower()}:{disc}"
+
+
 def _is_scanner_identity(val: str) -> bool:
-    """True for plugin/check ids. Denylist: service names, obs-*, UUIDs, host/IP slugs."""
+    """True for plugin/check ids. Denylist: service names, obs-*, UUIDs, host/IP slugs, pack_drop row ids."""
     text = str(val or "").strip()
     if not text or "<" in text or text.endswith(">"):
         return False
@@ -247,6 +365,8 @@ def _is_scanner_identity(val: str) -> bool:
     if lowered.startswith("obs-") or lowered.startswith("observation"):
         return False
     if _is_literal_host_port_slug(text):
+        return False
+    if _is_pack_drop_row_id(text):
         return False
     return True
 
@@ -311,8 +431,221 @@ def _extra_identity_token(rec: dict[str, Any]) -> str:
     return ""
 
 
-def weakness_key(rec: dict[str, Any]) -> str:
-    """Stable weakness identity: scanner id, share, port+class, then a discriminator."""
+_LOCATION_KEYS = (
+    "path",
+    "url",
+    "file",
+    "line",
+    "user",
+    "evidence",
+    "evidence_ref",
+    "cmd",
+    "command",
+)
+
+
+def _location_suffix(rec: dict[str, Any], *, secret_legacy: bool = False) -> str:
+    """Path/url/file/line/user/evidence (and cmd/service) when present.
+
+    Same-title fallback rows on one asset stay distinct. CVE keys omit this.
+    Secret-class rows drop line/evidence/cmd and append ``secret_hash``
+    when the value is usable (CR6-2). Empty or redacted material keeps
+    ``line`` so two leaks of one rule in one file stay two IDs.
+    Path/url/user stay so #170 admin URLs and honeypot cmds still
+    split. ``secret_legacy`` rebuilds the pre-CR6-2 suffix.
+    """
+    extra = extra_dict(rec)
+    secret = is_secret_finding(rec)
+    has_hash = secret_has_identity_hash(rec)
+    skip: frozenset[str] = frozenset()
+    if secret and not secret_legacy:
+        skip = (
+            SECRET_UNSTABLE_LOCATION_KEYS
+            if has_hash
+            else SECRET_UNSTABLE_WITHOUT_HASH
+        )
+    bits: list[str] = []
+    seen: set[str] = set()
+    for key in _LOCATION_KEYS:
+        if key in skip:
+            continue
+        val = _extra_field(extra, key)
+        if not val:
+            continue
+        token = f"{key}:{val.lower()}"
+        if token not in seen:
+            seen.add(token)
+            bits.append(token)
+    if secret and not secret_legacy:
+        hashed = _extra_field(extra, "secret_hash")
+        if hashed:
+            token = f"secret_hash:{hashed.lower()}"
+            if token not in seen:
+                seen.add(token)
+                bits.append(token)
+    port = _extra_field(extra, "port")
+    has_plugin = False
+    for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id", "id"):
+        val = _extra_field(extra, key)
+        if val and _is_scanner_identity(val):
+            has_plugin = True
+            break
+    if (not port or port == "0") and not has_plugin:
+        svc = _extra_field(extra, "service")
+        if svc:
+            token = f"service:{svc.lower()}"
+            if token not in seen:
+                bits.append(token)
+    return "|".join(bits)
+
+
+def legacy_secret_line_weakness_key(rec: dict[str, Any]) -> str:
+    """Pre-CR6-2 secret key: line/evidence/cmd in location, no secret_hash."""
+    core = _weakness_key_core(rec)
+    if not core.startswith("cve:"):
+        loc = _location_suffix(rec, secret_legacy=True)
+        if loc:
+            core = f"{core}:{loc}"
+    return _attach_wazuh_host(rec, core)
+
+
+def _wazuh_host_segment(raw: str) -> str:
+    """First DNS label, lowercased. ``hosta.corp.local`` → ``hosta``. IPs stay whole."""
+    text = str(raw or "").strip().lower().rstrip(".")
+    if not text:
+        return ""
+    token = text.split()[0]
+    if not token:
+        return ""
+    if token[0].isdigit() or ":" in token:
+        return token
+    return token.split(".", 1)[0]
+
+
+def _wazuh_raw_host(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent string before first-segment fold."""
+    extra = extra_dict(rec)
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
+    if assets:
+        return assets[0].split()[0].lower().rstrip(".")
+    for key in ("agent", "hostname", "host"):
+        val = _extra_field(extra, key)
+        if val:
+            return val.split()[0].lower().rstrip(".")
+    ids = extra.get("ids") if isinstance(extra.get("ids"), dict) else {}
+    for key in ("agent", "hostname"):
+        val = str(ids.get(key) or "").strip()
+        if val:
+            return val.split()[0].lower().rstrip(".")
+    return ""
+
+
+def _is_dns_fqdn(raw: str) -> bool:
+    text = str(raw or "").strip().lower().rstrip(".")
+    if not text:
+        return False
+    token = text.split()[0]
+    if not token or token[0].isdigit() or ":" in token:
+        return False
+    return "." in token
+
+
+def _wazuh_host_token(rec: dict[str, Any]) -> str:
+    """Finding's own host/agent — first name segment, not a ledger-merged hostname."""
+    return _wazuh_host_segment(_wazuh_raw_host(rec))
+
+
+def _stored_wazuh_hosts(item: dict[str, Any]) -> set[str]:
+    """Host tokens from the stored display/host field only — never the title."""
+    display = str(item.get("display_asset") or "").strip()
+    if not display:
+        return set()
+    seg = _wazuh_host_segment(display)
+    return {seg} if seg else set()
+
+
+def _wazuh_hostless_item_matches(rec: dict[str, Any], item: dict[str, Any]) -> bool:
+    """True only when the stored host-less Wazuh row is this incoming host.
+
+    First-segment match covers short↔FQDN (``hosta`` / ``hosta.corp.local``).
+    When both stored display and incoming host are FQDNs, require the full
+    name so ``web01.corp-a.local`` cannot absorb ``web01.corp-b.local``.
+    """
+    incoming = _wazuh_raw_host(rec)
+    display = str(item.get("display_asset") or "").strip()
+    if not incoming or not display:
+        return False
+    parts = display.split()
+    if not parts:
+        return False
+    stored = parts[0].lower().rstrip(".")
+    if not stored:
+        return False
+    if _is_dns_fqdn(incoming) and _is_dns_fqdn(stored):
+        return incoming == stored
+    return _wazuh_host_segment(incoming) == _wazuh_host_segment(stored)
+
+
+def _find_stored_wazuh_by_display(
+    rec: dict[str, Any], items: dict[str, Any]
+) -> list[tuple[str, dict[str, Any]]]:
+    """Host-less Wazuh rows whose stored display first-segment is this host.
+
+    29c4c3e keyed host-less; a later short-name vs FQDN observation may land on a
+    different EGA. Match ``display_asset`` only — never title — so hostb cannot
+    steal hosta's EGP.
+    """
+    extra = extra_dict(rec)
+    if extra.get("agent_status") in (None, "") and extra.get("disk_encryption_enabled") in (
+        None,
+        "",
+    ):
+        return []
+    hostless = _weakness_key_core(rec)
+    if not hostless or hostless == weakness_key(rec):
+        return []
+    out: list[tuple[str, dict[str, Any]]] = []
+    for old_fp, item in items.items():
+        if str(item.get("status") or "") == "closed":
+            continue
+        if str(item.get("weakness_key") or "") != hostless:
+            continue
+        if _wazuh_hostless_item_matches(rec, item):
+            out.append((old_fp, item))
+    incoming = _wazuh_raw_host(rec)
+    if incoming and not _is_dns_fqdn(incoming):
+        fqdn_hits = [
+            pair
+            for pair in out
+            if _is_dns_fqdn(str(pair[1].get("display_asset") or ""))
+        ]
+        # Bare web01 vs two stored FQDNs is ambiguous — mint a new ID.
+        if len(fqdn_hits) >= 2:
+            return []
+    return out
+
+
+def _attach_wazuh_host(rec: dict[str, Any], key: str) -> str:
+    """Keep host/agent on Wazuh coverage keys so IP-joined EGAs stay two EGPs."""
+    if _tool_tag(rec) != "wazuh":
+        return key
+    extra = extra_dict(rec)
+    if extra.get("agent_status") in (None, "") and extra.get("disk_encryption_enabled") in (
+        None,
+        "",
+    ):
+        return key
+    host = _wazuh_host_token(rec)
+    if not host:
+        return key
+    suffix = f":{host}"
+    if key.lower().endswith(suffix):
+        return key
+    return f"{key}{suffix}"
+
+
+def _weakness_key_core(rec: dict[str, Any]) -> str:
+    """Pre-location / pre-host-suffix key. Migration source only."""
     extra = extra_dict(rec)
     tool = _tool_tag(rec)
     for key in ("check_id", "plugin_id", "nse_script", "template_id", "rule", "finding_id"):
@@ -329,6 +662,22 @@ def weakness_key(rec: dict[str, Any]) -> str:
     proto = (_extra_field(extra, "protocol") or _extra_field(extra, "proto")).lower()
     token = _extra_identity_token(rec)
     title = _title_discriminator(rec)
+    adapter = _extra_field(extra, "adapter").lower()
+    port_exposure = bool(port and port != "0" and _is_port_exposure_observation(rec))
+    if (
+        port_exposure
+        and adapter in {"", "nmap"}
+        and (tool == "nmap" or source_family(rec) == "inventory-nmap")
+    ):
+        # pack_drop extra.id is not identity; same host/port as XML nmap-port-*.
+        return _nmap_port_weakness_key(port, proto)
+    if port_exposure and adapter in _PACK_DROP_ROW_ADAPTERS:
+        proto_n = proto if proto in {"tcp", "udp", "sctp"} else "tcp"
+        return f"{adapter}:port:{port}/{proto_n}"
+    if port and port != "0" and adapter in _PACK_DROP_ROW_ADAPTERS and not port_exposure:
+        return _pack_drop_specific_port_key(
+            rec, port=port, proto=proto, token=token, title=title
+        )
     if port and port != "0":
         cls = finding_type(rec) or str(rec.get("category") or "exposure")
         if token:
@@ -367,6 +716,21 @@ def weakness_key(rec: dict[str, Any]) -> str:
     if ref:
         return f"{tool}:ref:{ref}"
     return f"{tool}:unkeyed"
+
+
+def legacy_pre_location_weakness_key(rec: dict[str, Any]) -> str:
+    """#161 fallback key before path/url/file/line/user/evidence. Migration only."""
+    return _weakness_key_core(rec)
+
+
+def weakness_key(rec: dict[str, Any]) -> str:
+    """Stable weakness identity: scanner id, share, port+class, then location."""
+    core = _weakness_key_core(rec)
+    if not core.startswith("cve:"):
+        loc = _location_suffix(rec)
+        if loc:
+            core = f"{core}:{loc}"
+    return _attach_wazuh_host(rec, core)
 
 
 def fp_v1(
@@ -475,13 +839,64 @@ def item_maps_to_current(
     return False
 
 
-def assign_poam_id(fp: str, used: dict[str, str]) -> str:
-    """EGP- + first 10 hex, upper-cased. Collision with a different fp → 12 hex."""
-    short = "EGP-" + fp[:10].upper()
+def excluded_reason_for(rec: dict[str, Any]) -> str:
+    """Why this finding is off the POA&M, or empty when it stays on."""
+    from shared.control_map import poam_decision
+
+    decision = poam_decision(rec)
+    if decision.get("include"):
+        return ""
+    return str(decision.get("reason") or "unexplained")
+
+
+def item_is_excluded(item: dict[str, Any]) -> bool:
+    """True when a ledger item was recorded as excluded, not an open weakness."""
+    return bool(str(item.get("excluded_reason") or "").strip())
+
+
+def persist_ledger(ledger: dict[str, Any], out_root: Path | None = None) -> Path:
+    """Rewrite out/poam/poam-ledger.json after in-memory stamps."""
+    ledger["sha256"] = payload_sha256(ledger)
+    dest = (out_root or out_dir()) / LEDGER_OUT_REL
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    return dest
+
+
+def egr_key(policy: str, account: str) -> str:
+    """Stable digest for an EGR- rollup. Policy name + account, not resources."""
+    acct = str(account or "").strip() or "unknown"
+    payload = f"egr|{str(policy or '').strip().lower()}|{acct}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def is_egr_rollup(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if extra.get("rollup") is True:
+        return True
+    return str(extra.get("poam_prefix") or "").strip().upper() in {"EGR-", "EGR"}
+
+
+def _egr_account(rec: dict[str, Any]) -> str:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    acct = str(extra.get("account_id") or "").strip()
+    if acct:
+        return acct
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
+    if assets and assets[0].lower().startswith("account:"):
+        return assets[0].split(":", 1)[1] or "unknown"
+    return "unknown"
+
+
+def assign_poam_id(fp: str, used: dict[str, str], prefix: str = "EGP-") -> str:
+    """EGP-/EGR- + first 10 hex, upper-cased. Collision with a different fp → 12 hex."""
+    if prefix not in {"EGP-", "EGR-"}:
+        prefix = "EGP-"
+    short = prefix + fp[:10].upper()
     holder = used.get(short)
     if holder is None or holder == fp:
         return short
-    return "EGP-" + fp[:12].upper()
+    return prefix + fp[:12].upper()
 
 
 def next_reopen_id(base_id: str, existing: set[str]) -> str:
@@ -581,6 +996,10 @@ def _used_ids(ledger: dict[str, Any]) -> dict[str, str]:
         pid = str(item.get("poam_id") or "")
         if pid:
             used[pid] = fp
+        for alias in item.get("aliased_poam_ids") or []:
+            token = str(alias or "")
+            if token and token not in used:
+                used[token] = fp
     for item in ledger.get("closed") or []:
         pid = str(item.get("poam_id") or "")
         if pid:
@@ -605,6 +1024,183 @@ def _event(run_iso: str, fp: str, poam_id: str, kind: str, detail: dict[str, Any
 def _iso_date(raw: Any) -> str:
     got = _to_date(raw)
     return got.isoformat() if got else ""
+
+
+_LOC_WK_KEYS = frozenset(
+    {
+        "path",
+        "url",
+        "file",
+        "line",
+        "user",
+        "evidence",
+        "evidence_ref",
+        "cmd",
+        "command",
+        "service",
+    }
+)
+
+
+def check_id_from_weakness_key(wk: str) -> str:
+    """Best-effort scanner id from a stored weakness_key. Empty when title-only."""
+    text = str(wk or "").strip()
+    if not text:
+        return ""
+    if text.startswith("cve:"):
+        return text.split(":", 1)[1].split(":")[0]
+    if text.startswith("name:"):
+        return ""
+    if text.startswith("port:"):
+        port_proto = text[5:].split(":")[0]
+        if "/" in port_proto:
+            return f"nmap-port-{port_proto}"
+        return ""
+    if text.startswith("class:"):
+        parts = text.split(":")
+        return parts[1] if len(parts) > 1 else ""
+    parts = text.split(":")
+    if len(parts) < 2:
+        return ""
+    if parts[1] in {"share", "unkeyed", "mfa_unregistered"}:
+        return ""
+    if parts[1] == "ref":
+        return parts[2] if len(parts) > 2 else ""
+    if parts[1] in _LOC_WK_KEYS:
+        return ""
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    raw = parts[1]
+    return normalize_osquery_pack_name(raw) or raw
+
+
+def finding_from_ledger_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Rebuild a finding so ``map_finding`` can re-derive Controls / Plan.
+
+    Old ledgers lack check_id / kind / controls. Name, weakness_key, and
+    source_family are enough for the same control_map path fresh rows use.
+    """
+    extra: dict[str, Any] = {}
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    wk = str(item.get("weakness_key") or "")
+    check = str(item.get("check_id") or "").strip()
+    if not check:
+        check = check_id_from_weakness_key(wk)
+    check = normalize_osquery_pack_name(check) or check
+    if not check or check.lower().startswith("pack_"):
+        from_name = normalize_osquery_pack_name(str(item.get("name") or ""))
+        if from_name:
+            check = from_name
+    kind = str(item.get("finding_kind") or "").strip()
+    if kind in {"finding", "asset", "evidence", "incident"}:
+        kind = ""
+    if check:
+        extra["check_id"] = check
+        extra["id"] = check
+    if kind and kind != check:
+        extra["finding_type"] = kind
+    cves = [str(c).strip() for c in (item.get("cves") or []) if str(c).strip()]
+    if cves:
+        extra["cve"] = cves[0]
+    elif wk.startswith("cve:"):
+        extra["cve"] = wk.split(":", 1)[1].split(":")[0]
+    if wk.startswith("port:"):
+        port_proto = wk[5:].split(":")[0]
+        if "/" in port_proto:
+            port, proto = port_proto.split("/", 1)
+            extra.setdefault("port", port)
+            extra.setdefault("protocol", proto)
+    display = str(item.get("display_asset") or "").strip()
+    return {
+        "kind": "finding",
+        "source": str(item.get("source_family") or ""),
+        "ref_id": str(item.get("ref_id") or ""),
+        "name": str(item.get("name") or item.get("weakness_key") or ""),
+        "description": str(item.get("description") or item.get("name") or ""),
+        "severity": str(item.get("severity") or item.get("current_scanner_rating") or ""),
+        "category": str(item.get("category") or ""),
+        "assets": [display] if display else [],
+        "extra": extra,
+    }
+
+
+def persist_mapped_fields(
+    item: dict[str, Any],
+    rec: dict[str, Any] | None = None,
+    *,
+    overwrite_plan: bool = True,
+) -> dict[str, str]:
+    """Stamp controls / plan / check_id / kind from control_map onto a ledger item.
+
+    Fills missing fields on old items. Refreshes derived stamps from the
+    current finding when one is supplied. Does not change poam_id or fp.
+    """
+    from shared.control_map import map_finding
+
+    rec = rec or finding_from_ledger_item(item)
+    mapped = map_finding(rec)
+    extra = extra_dict(rec)
+    check = ""
+    for key in ("check_id", "plugin_id", "id", "rule"):
+        check = str(extra.get(key) or "").strip()
+        if check:
+            break
+    if not check:
+        check = check_id_from_weakness_key(str(item.get("weakness_key") or ""))
+    from shared.osquery_checks import normalize_osquery_pack_name
+
+    check = normalize_osquery_pack_name(check) or check
+    kind = finding_type(rec) or str(mapped.get("finding_type") or "") or str(
+        item.get("finding_kind") or ""
+    )
+    controls = ", ".join(
+        str(cid).strip() for cid in (mapped.get("nist_800_53") or []) if str(cid).strip()
+    )
+    plan = str(mapped.get("recommended_fix") or "").strip()
+    refs = str(mapped.get("framework_refs") or "").strip()
+    category = str(rec.get("category") or item.get("category") or "").strip()
+    if check:
+        item["check_id"] = check
+    if kind:
+        item["finding_kind"] = kind
+    if category:
+        item["category"] = category
+    if controls:
+        item["controls"] = controls
+    if plan and (overwrite_plan or not str(item.get("remediation_plan") or "").strip()):
+        item["remediation_plan"] = plan
+    if refs:
+        item["framework_refs"] = refs
+    return {
+        "controls": str(item.get("controls") or ""),
+        "recommended_fix": str(item.get("remediation_plan") or ""),
+        "framework_refs": str(item.get("framework_refs") or ""),
+    }
+
+
+def plan_from_ledger_item(item: dict[str, Any]) -> dict[str, str]:
+    """Controls / Plan for a carried row: persisted stamps, else control_map."""
+    controls = str(item.get("controls") or "").strip()
+    plan = str(item.get("remediation_plan") or "").strip()
+    refs = str(item.get("framework_refs") or "").strip()
+    if controls and plan:
+        return {"controls": controls, "recommended_fix": plan, "framework_refs": refs}
+    return persist_mapped_fields(item, overwrite_plan=False)
+
+
+def _map_plan_is_schema_backfill(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    """Empty→filled remediation_plan on an old item is not a field change."""
+    if str(before.get("remediation_plan") or "").strip():
+        return False
+    if not str(after.get("remediation_plan") or "").strip():
+        return False
+    for key in TRACKED_FIELDS:
+        if key == "remediation_plan":
+            continue
+        if before.get(key) != after.get(key):
+            return False
+    return True
 
 
 def _new_item(
@@ -633,7 +1229,7 @@ def _new_item(
         effective_s = kev_due.isoformat() if kev_due else ""
         odd = NOT_RECORDED
         basis = "not_recorded"
-    return {
+    item = {
         "poam_id": poam_id,
         "fp": fp,
         "source_family": source_family(rec),
@@ -654,6 +1250,7 @@ def _new_item(
         "current_scanner_rating": scanner,
         "scanner_critical": scanner == "critical",
         "status": "open",
+        "excluded_reason": "",
         "status_date": run_date.isoformat(),
         "closed_date": "",
         "closure_evidence": [],
@@ -676,6 +1273,8 @@ def _new_item(
         "ref_id": str(rec.get("ref_id") or ""),
         "severity": scanner,
     }
+    persist_mapped_fields(item, rec)
+    return item
 
 
 def _tracked_snapshot(item: dict[str, Any]) -> dict[str, Any]:
@@ -889,6 +1488,16 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
         if fp and fp not in seen:
             seen.add(fp)
             out.append((fp, "title_host_stripped"))
+    # Current weakness_key before extra.check_id was stamped (B8 / Argus #5).
+    extra_now = extra_dict(rec)
+    if str(extra_now.get("check_id") or "").strip():
+        pre = dict(rec)
+        pre["extra"] = {k: v for k, v in extra_now.items() if k != "check_id"}
+        for fn in (asset_key, legacy_asset_id_port_key, legacy_name_asset_key, legacy_master_asset_key):
+            fp = fp_v1(pre, asset_key_fn=fn)
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, "title_to_check_id"))
     extra = extra_dict(rec)
     svc = str(extra.get("service") or "").strip()
     if svc:
@@ -922,6 +1531,97 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
     if fp and fp not in seen:
         seen.add(fp)
         out.append((fp, "title_master_ega"))
+    extra = extra_dict(rec)
+    variants = [rec]
+    if str(extra.get("check_id") or "").strip():
+        pre = dict(rec)
+        pre["extra"] = {k: v for k, v in extra.items() if k != "check_id"}
+        variants.append(pre)
+    wazuh_hostful = _tool_tag(rec) == "wazuh" and (
+        extra.get("agent_status") not in (None, "")
+        or extra.get("disk_encryption_enabled") not in (None, "")
+    )
+    # #172 host-less before #170 pre_location. Title→check_id is chained
+    # through `variants` so a 7ebc697 / 29c4c3e title-keyed host-less row
+    # rematches (Metis #177).
+    if wazuh_hostful:
+        for variant in variants:
+            hostless = _weakness_key_core(variant)
+            loc = ""
+            if hostless and not hostless.startswith("cve:"):
+                loc = _location_suffix(variant)
+            hostless_loc = f"{hostless}:{loc}" if loc else hostless
+            for key in (hostless_loc, hostless):
+                if not key or key == weakness_key(rec):
+                    continue
+                for fn, reason in (
+                    (asset_key, "wazuh_add_host"),
+                    (legacy_master_asset_key, "wazuh_add_host"),
+                    (legacy_asset_id_port_key, "wazuh_add_host"),
+                    (legacy_name_asset_key, "wazuh_add_host"),
+                ):
+                    fp = fp_v1(variant, asset_key_fn=fn, weakness_key_fn=lambda _r, k=key: k)
+                    if fp and fp not in seen:
+                        seen.add(fp)
+                        out.append((fp, reason))
+    # Pre-location fallback (#161): same title on one asset, no path/url/file.
+    # After wazuh_add_host so hosta's stored host-less fp is claimed before a
+    # same-title sibling (KR-B / EGP-946F27C7C3). Also run on the pre-check_id
+    # variant so #170 location rematch still sees the title-keyed family.
+    for variant in variants:
+        for fn, reason in (
+            (asset_key, "pre_location_to_location"),
+            (legacy_master_asset_key, "pre_location_master_ega"),
+            (legacy_asset_id_port_key, "pre_location_asset_id"),
+            (legacy_name_asset_key, "pre_location_name"),
+        ):
+            fp = fp_v1(
+                variant, asset_key_fn=fn, weakness_key_fn=legacy_pre_location_weakness_key
+            )
+            if fp and fp not in seen:
+                seen.add(fp)
+                out.append((fp, reason))
+            hosted = _attach_wazuh_host(variant, _weakness_key_core(variant))
+            if hosted and hosted != legacy_pre_location_weakness_key(variant):
+                fp = fp_v1(variant, asset_key_fn=fn, weakness_key_fn=lambda _r, k=hosted: k)
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
+    # CR6-2: pre-hash / line-keyed secret fps rematch. Strip newly stamped
+    # file+secret_hash so DEMO gitleaks ``:line:N`` and TruffleHog check_id-only
+    # rows keep their EGP. Do not drop path/url — that would undo #170.
+    if is_secret_finding(rec):
+        extra = extra_dict(rec)
+        secret_variants = [rec]
+        no_new = {k: v for k, v in extra.items() if k not in ("secret_hash", "file")}
+        if no_new != dict(extra):
+            fake = dict(rec)
+            fake["extra"] = no_new
+            secret_variants.append(fake)
+        no_hash = {k: v for k, v in extra.items() if k != "secret_hash"}
+        if no_hash != dict(extra) and no_hash != no_new:
+            fake = dict(rec)
+            fake["extra"] = no_hash
+            secret_variants.append(fake)
+        for variant in secret_variants:
+            for fn, reason in (
+                (asset_key, "secret_line_to_hash"),
+                (legacy_master_asset_key, "secret_line_to_hash"),
+                (legacy_asset_id_port_key, "secret_line_to_hash"),
+                (legacy_name_asset_key, "secret_line_to_hash"),
+            ):
+                fp = fp_v1(
+                    variant,
+                    asset_key_fn=fn,
+                    weakness_key_fn=legacy_secret_line_weakness_key,
+                )
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
+                fp = fp_v1(variant, asset_key_fn=fn)
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    out.append((fp, reason))
     return out
 
 
@@ -945,19 +1645,201 @@ def _item_sort_key(item: dict[str, Any]) -> tuple:
     return (detected is None, detected or date.max, first, pid)
 
 
-def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str) -> str:
+def _norm_loc_url(url: str) -> str:
+    """Lowercase URL, strip trailing slash/punctuation. Host-only ≠ /login."""
+    text = str(url or "").strip().lower().rstrip(_TRAILING_LOC)
+    if not text:
+        return ""
+    while text.endswith("/") and text.count("/") > 2:
+        text = text[:-1]
+    return text.rstrip(_TRAILING_LOC)
+
+
+def _urls_in_text(text: str) -> list[str]:
+    return [_norm_loc_url(m.group(0)) for m in _URL_IN_TEXT.finditer(text or "") if _norm_loc_url(m.group(0))]
+
+
+def _url_matches_hay(url: str, hay: str) -> bool:
+    target = _norm_loc_url(url)
+    if not target:
+        return False
+    return target in _urls_in_text(hay)
+
+
+def _path_in_hay(path: str, hay: str) -> bool:
+    raw = str(path or "").strip()
+    if not raw or raw in {".", "/"}:
+        return False
+    if "://" in raw:
+        return _url_matches_hay(raw, hay)
+    norm = raw if raw.startswith("/") else f"/{raw}"
+    norm = norm.rstrip("/") or "/"
+    if norm == "/":
+        return False
+    for url in _urls_in_text(hay):
+        rest = url.split("://", 1)[-1]
+        url_path = "/" + rest.split("/", 1)[-1] if "/" in rest else "/"
+        url_path = url_path.rstrip("/") or "/"
+        if url_path == norm.lower():
+            return True
+    hay_l = hay.lower()
+    needle = norm.lower()
+    idx = 0
+    while True:
+        idx = hay_l.find(needle, idx)
+        if idx < 0:
+            return False
+        after = hay_l[idx + len(needle) : idx + len(needle) + 1]
+        if after in {"", " ", ".", ",", ")", "'", '"', ";", ":", "\n", "\t"}:
+            return True
+        idx += len(needle)
+
+
+def _cmd_in_hay(cmd: str, hay: str) -> bool:
+    text = str(cmd or "").strip()
+    if len(text) < 3:
+        return False
+    if f"'{text}'" in hay or f'"{text}"' in hay:
+        return True
+    return text in hay
+
+
+def _item_location_haystack(item: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key in ("description", "url", "cmd", "command", "path", "file"):
+        val = item.get(key)
+        if val not in (None, ""):
+            parts.append(str(val))
+    return " ".join(parts)
+
+
+def _haystack_has_location(hay: str) -> bool:
+    if not str(hay or "").strip():
+        return False
+    if _urls_in_text(hay):
+        return True
+    lowered = hay.lower()
+    if "observed command" in lowered:
+        return True
+    if re.search(r"presents\s+\S+", hay, re.I):
+        return True
+    if re.search(r"(?:^|[\s'\"])(/[A-Za-z0-9._-]+)", hay):
+        return True
+    return False
+
+
+def _location_affinity(rec: dict[str, Any], item: dict[str, Any]) -> int:
+    """>0 this rec's path/url/file/line/cmd matches the stored row; <0 contradicts; 0 unknown."""
+    extra = extra_dict(rec)
+    url = _extra_field(extra, "url")
+    path = _extra_field(extra, "path")
+    cmd = _extra_field(extra, "cmd") or _extra_field(extra, "command")
+    file_name = _extra_field(extra, "file")
+    line = _extra_field(extra, "line")
+    user = _extra_field(extra, "user")
+    if not any((url, path, cmd, file_name, user)):
+        return 0
+    hay = _item_location_haystack(item)
+    hits = 0
+    if url and _url_matches_hay(url, hay):
+        hits += 1
+    if path:
+        if "://" in path:
+            if _url_matches_hay(path, hay):
+                hits += 1
+        elif _path_in_hay(path, hay):
+            hits += 1
+    if cmd and _cmd_in_hay(cmd, hay):
+        hits += 1
+    if file_name and file_name.lower() in hay.lower():
+        hits += 1
+        if line and line in hay:
+            hits += 1
+    if user and not cmd and user.lower() in hay.lower():
+        hits += 1
+    if hits > 0:
+        return hits
+    if _haystack_has_location(hay):
+        return -1
+    return 0
+
+
+def _legacy_fps_cached(
+    rec: dict[str, Any], cache: dict[int, list[tuple[str, str]]]
+) -> list[tuple[str, str]]:
+    key = id(rec)
+    hit = cache.get(key)
+    if hit is None:
+        hit = _legacy_fps_for(rec)
+        cache[key] = hit
+    return hit
+
+
+def _may_claim_legacy_fp(
+    rec: dict[str, Any],
+    item: dict[str, Any],
+    old_fp: str,
+    instances: list[dict[str, Any]],
+    legacy_cache: dict[int, list[tuple[str, str]]],
+) -> bool:
+    """Same-title siblings: location match wins; first in record order only if none match."""
+    siblings = []
+    for other in instances:
+        reasons = [
+            reason
+            for fp, reason in _legacy_fps_cached(other, legacy_cache)
+            if fp == old_fp
+        ]
+        if not reasons:
+            continue
+        if "wazuh_add_host" in reasons and not _wazuh_hostless_item_matches(other, item):
+            continue
+        siblings.append(other)
+    if len(siblings) <= 1:
+        return True
+    if _location_affinity(rec, item) > 0:
+        return True
+    if any(other is not rec and _location_affinity(other, item) > 0 for other in siblings):
+        return False
+    return siblings[0] is rec
+
+
+def _migrate_if_needed(
+    rec: dict[str, Any],
+    ledger: dict[str, Any],
+    run_iso: str,
+    *,
+    instances: list[dict[str, Any]] | None = None,
+    legacy_cache: dict[int, list[tuple[str, str]]] | None = None,
+) -> str:
     """Map prior fps onto the current EGA- key. Never remint a surviving EGP- ID.
 
     Same weakness + two old asset keys → keep the older EGP- ID and earliest
     Original Detection Date; the other EGP- ID is recorded on ``fp_migrations``
     as an alias (not deleted). Different weaknesses stay separate items.
+
+    Location split (Metis #170): when several current rows rematch the same
+    stored title/location-family item, the sibling whose path/url/file/line/cmd
+    matches the stored description/url/cmd keeps that EGP. Others mint new
+    EGPs. Fall back to the first sibling in record order only if none match.
     """
     new_fp = fp_v1(rec)
     items: dict[str, Any] = ledger["items"]
+    peers = instances or [rec]
+    cache = legacy_cache if legacy_cache is not None else {}
     found: dict[str, tuple[dict[str, Any], str]] = {}
-    for old_fp, reason in _legacy_fps_for(rec):
+    for old_fp, reason in _legacy_fps_cached(rec, cache):
         if old_fp != new_fp and old_fp in items:
-            found[old_fp] = (items[old_fp], reason)
+            item = items[old_fp]
+            if reason == "wazuh_add_host" and not _wazuh_hostless_item_matches(rec, item):
+                continue
+            if not _may_claim_legacy_fp(rec, item, old_fp, peers, cache):
+                continue
+            found[old_fp] = (item, reason)
+    if _tool_tag(rec) == "wazuh":
+        for old_fp, item in _find_stored_wazuh_by_display(rec, items):
+            if old_fp not in found:
+                found[old_fp] = (item, "wazuh_add_host")
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):
@@ -1021,6 +1903,98 @@ def _migrate_if_needed(rec: dict[str, Any], ledger: dict[str, Any], run_iso: str
     return new_fp
 
 
+def _merged_away_ref_ids(rec: dict[str, Any]) -> set[str]:
+    """ref_ids collapsed into this finding by weakness merge (also_ids / provenance)."""
+    extra = extra_dict(rec)
+    refs: set[str] = set()
+    keep = str(rec.get("ref_id") or "").strip()
+    for raw in extra.get("also_ids") or []:
+        token = str(raw or "").strip()
+        if token and token != keep:
+            refs.add(token)
+    for prov in extra.get("provenance") or []:
+        if not isinstance(prov, dict):
+            continue
+        token = str(prov.get("ref_id") or "").strip()
+        if token and token != keep:
+            refs.add(token)
+    return refs
+
+
+def _alias_merged_away_items(
+    ledger: dict[str, Any],
+    instances: list[dict[str, Any]],
+    seen: set[str],
+    run_iso: str,
+) -> None:
+    """Fold ledger rows whose ref_id was merged away. Do not orphan those EGP- IDs.
+
+    #180 already aliases same-fp pack_drop collapse. This pass covers
+    Global-Admin-by-UPN (and any other weakness merge that stamps also_ids)
+    so upgrade Open equals a fresh run.
+    """
+    items: dict[str, Any] = ledger["items"]
+    by_ref: dict[str, list[str]] = {}
+    for fp, item in items.items():
+        rid = str(item.get("ref_id") or "").strip()
+        if rid:
+            by_ref.setdefault(rid, []).append(fp)
+
+    for rec in instances:
+        refs = _merged_away_ref_ids(rec)
+        if not refs:
+            continue
+        surv_fp = fp_v1(rec)
+        if surv_fp not in items:
+            continue
+        survivor = items[surv_fp]
+        survivor_id = str(survivor.get("poam_id") or "")
+        aliases = [str(x) for x in (survivor.get("aliased_poam_ids") or []) if x]
+        for rid in refs:
+            for old_fp in list(by_ref.get(rid) or []):
+                if old_fp == surv_fp or old_fp in seen:
+                    continue
+                item = items.get(old_fp)
+                if not item:
+                    continue
+                if str(item.get("status") or "") == "closed":
+                    continue
+                alias_id = str(item.get("poam_id") or "")
+                odd = str(item.get("original_detection_date") or "")
+                d_alias = _to_date(odd)
+                d_keep = _to_date(survivor.get("original_detection_date"))
+                if d_alias and (not d_keep or d_alias < d_keep):
+                    survivor["original_detection_date"] = odd
+                for extra_alias in item.get("aliased_poam_ids") or []:
+                    token = str(extra_alias or "")
+                    if token and token != survivor_id and token not in aliases:
+                        aliases.append(token)
+                if alias_id and alias_id != survivor_id and alias_id not in aliases:
+                    aliases.append(alias_id)
+                items.pop(old_fp, None)
+                _record_fp_migration(
+                    ledger,
+                    src_fp=old_fp,
+                    dest_fp=surv_fp,
+                    poam_id=alias_id,
+                    odd=odd,
+                    reason="merged_away_alias",
+                    alias_of=survivor_id,
+                )
+                ledger["events"].append(
+                    _event(
+                        run_iso,
+                        surv_fp,
+                        survivor_id,
+                        "migrated_alias",
+                        {"from": old_fp, "alias_poam_id": alias_id},
+                    )
+                )
+                seen.add(old_fp)
+        if aliases:
+            survivor["aliased_poam_ids"] = aliases
+
+
 def build_coverage(instances: Iterable[dict[str, Any]]) -> dict[str, set[str]]:
     cov: dict[str, set[str]] = {}
     for rec in instances:
@@ -1068,13 +2042,14 @@ def apply_ledger(
     prior_existed: bool = True,
 ) -> dict[str, Any]:
     """Apply one run to the ledger. Never auto-closes."""
-    clock = run_at or datetime.now(timezone.utc)
+    clock = run_at or datetime.now().astimezone()
     if clock.tzinfo is None:
-        clock = clock.replace(tzinfo=timezone.utc)
-    from shared.poam_fields import utc_run_date
+        clock = clock.astimezone()
+    from shared.poam_fields import local_run_date
 
-    run_date = utc_run_date(clock)
-    run_iso = clock.strftime("%Y-%m-%dT%H:%M:%SZ")
+    run_date = local_run_date(clock)
+    # first_seen / last_seen stay UTC ISO (out of scope for status_date).
+    run_iso = clock.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ledger = deepcopy(ledger_in) if ledger_in is not None else empty_ledger()
     ledger.setdefault("items", {})
     ledger.setdefault("closed", [])
@@ -1089,17 +2064,33 @@ def apply_ledger(
     instances = fan_out_instances(findings)
     coverage = build_coverage(instances)
     seen: set[str] = set()
+    included_fps: set[str] = set()
+    excluded_by_fp: dict[str, str] = {}
     catalog_sha = catalog.sha256 if catalog.kev_evaluated else ""
+    legacy_cache: dict[int, list[tuple[str, str]]] = {}
 
     for rec in instances:
-        fp = _migrate_if_needed(rec, ledger, run_iso)
+        fp = _migrate_if_needed(
+            rec, ledger, run_iso, instances=instances, legacy_cache=legacy_cache
+        )
         seen.add(fp)
+        reason = excluded_reason_for(rec)
+        if reason:
+            excluded_by_fp.setdefault(fp, reason)
+        else:
+            included_fps.add(fp)
         cves = collect_cves(rec)
         kev = join_kev(cves, catalog)
         used = _used_ids(ledger)
         item = ledger["items"].get(fp)
         if item is None:
-            poam_id = assign_poam_id(fp, used)
+            extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+            if is_egr_rollup(rec):
+                policy = str(extra.get("check_id") or rec.get("name") or "")
+                mint_fp = egr_key(policy, _egr_account(rec))
+                poam_id = assign_poam_id(mint_fp, used, prefix="EGR-")
+            else:
+                poam_id = assign_poam_id(fp, used)
             used[poam_id] = fp
             item = _new_item(
                 rec,
@@ -1192,8 +2183,9 @@ def apply_ledger(
                     ledger["events"].append(
                         _event(run_iso, fp, str(item.get("poam_id") or ""), "seen_from_pending")
                     )
+                persist_mapped_fields(item, rec)
                 after = _tracked_snapshot(item)
-                if after != before:
+                if after != before and not _map_plan_is_schema_backfill(before, after):
                     item["status_date"] = run_date.isoformat()
                     ledger["events"].append(
                         _event(
@@ -1258,11 +2250,20 @@ def apply_ledger(
                 )
             )
 
+    _alias_merged_away_items(ledger, instances, seen, run_iso)
+
+    for fp, item in ledger["items"].items():
+        if fp in included_fps:
+            item["excluded_reason"] = ""
+        elif fp in excluded_by_fp:
+            item["excluded_reason"] = excluded_by_fp[fp]
+
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
             continue
         if str(item.get("status") or "") == "closed":
             continue
+        persist_mapped_fields(item, overwrite_plan=False)
         before_vd = _vd_snapshot(item)
         for flag in finalize_vendor_fields(item, None, run_date=run_date):
             warnings.append(f"{flag}:{item.get('poam_id')}")
@@ -1307,8 +2308,16 @@ def apply_ledger(
     return ledger
 
 
-def ledger_run_delta(ledger: dict[str, Any]) -> dict[str, int]:
+def ledger_run_delta(
+    ledger: dict[str, Any],
+    *,
+    plan_ids: set[str] | frozenset[str] | None = None,
+) -> dict[str, int]:
     """Client-facing counts for this run: open / new / pending / reopened / closed.
+
+    ``open`` is the operator plan (poam.csv) when ``plan_ids`` is supplied —
+    excluded ledger items stay off that headline. ``ledger_open`` is every
+    non-closed ledger item, including excluded, for a labeled secondary figure.
 
     Prefer ``events_this_run`` (the events ``apply_ledger`` appended). The
     timestamp filter is a fallback for older ledgers; second-resolution
@@ -1320,13 +2329,19 @@ def ledger_run_delta(ledger: dict[str, Any]) -> dict[str, int]:
     else:
         run_iso = str(ledger.get("run_at") or "")
         events = [e for e in (ledger.get("events") or []) if str(e.get("at") or "") == run_iso]
-    open_n = sum(
-        1
+    live = [
+        item
         for item in items.values()
         if str(item.get("status") or "") != "closed"
-    )
+    ]
+    ledger_open_n = len(live)
+    if plan_ids is None:
+        open_n = ledger_open_n
+    else:
+        open_n = sum(1 for item in live if str(item.get("poam_id") or "") in plan_ids)
     return {
         "open": open_n,
+        "ledger_open": ledger_open_n,
         "new": sum(1 for e in events if e.get("kind") == "created"),
         "pending_verification": sum(
             1 for item in items.values() if str(item.get("status") or "") == "pending_verification"
@@ -1372,7 +2387,5 @@ def run_ledger(
     )
     if LEDGER_CHAIN_BROKEN in load_warnings:
         ledger["warnings"] = sorted(set(list(ledger.get("warnings") or []) + [LEDGER_CHAIN_BROKEN]))
-    dest = (out_root or out_dir()) / LEDGER_OUT_REL
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    persist_ledger(ledger, out_root)
     return ledger

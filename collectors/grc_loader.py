@@ -2,15 +2,20 @@
 """Normalize canonical JSONL into CISO Assistant + POA&M + OCSF outputs.
 
 RiskReady JSON is LICENSE-LOCK stay-out and is not generated. Count identity
-is findings + vulnerabilities == risk_scenarios; POA&M == open_risks.
+is findings + vulnerabilities + kind_excluded - merged_into aliases ==
+risk_scenarios; POA&M == open_risks (poam.csv). mitigate == POA&M == CTL;
+accept == non-merged excluded. kind:excluded rows stay on the register as
+accept. Merged pack_drop twins (merged_into:<EGP>) stay off the register.
+Never POST /api/risks.
 """
 
 from __future__ import annotations
 
 import csv
 import json
+import logging
 import os
-import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.asset_ledger import AssetLedger, attach_asset_uids
@@ -20,35 +25,50 @@ from shared.control_map import (
     iter_poam_decisions,
     map_finding,
     poam_breakdown,
+    poam_decision,
     poam_lighter_requested,
+    risk_register_treatment,
     weakness_name_for,
 )
 from shared.estate_pages import (
     PageContext,
     classify_estate,
+    is_merged_into_alias,
+    md_safe_text,
     write_client_pages,
     write_csv_with_estate,
     write_estate_sidecar,
     write_export_manifest,
 )
 from shared.evidence import build_evidence_rows
-from shared.ciso_shape import EXCLUDED_FIELDS
-from shared.finding_types import dedupe_weaknesses, finding_identity, primary_asset
+from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
+from shared.finding_types import (
+    dedupe_weaknesses,
+    finding_identity,
+    primary_asset,
+    strip_secret_hash_from_key,
+)
 from shared.port_fold import fold_port_only_into_specific
 from shared.hardening_dedup import dedupe_hardening
 from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
-from shared.poam_fedramp import kev_md_footer, write_fedramp_poam
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, utc_run_date
+from shared.egp_collapse import bind_alias_targets_to_ledger
+from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
+from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, local_run_date
+from shared.scan_time import bind_run_clock
 from shared.poam_ledger import (
     fingerprints_for,
     fp_v1,
+    item_is_excluded,
     item_maps_to_current,
     ledger_run_delta,
     migrate_finding_refs,
+    persist_ledger,
+    plan_from_ledger_item,
     run_ledger,
 )
 from shared.vendor_dependency import VD_NOTE
+from shared.pack_outputs import clean_retired_pack_outputs
 from shared.io_util import (
     in_dir,
     iso_now,
@@ -66,10 +86,21 @@ from shared.schema import (
     ciso_finding_severity,
     ciso_vuln_severity,
     control_priority,
+    ref_slug,
     residual_level,
     scenario_level,
     slug,
 )
+
+log = logging.getLogger(__name__)
+
+
+def _clean_retired_outputs() -> None:
+    """Start- and end-of-load ghost cleanup. Never abort the run."""
+    try:
+        clean_retired_pack_outputs(out_dir())
+    except OSError as exc:
+        log.warning("retired-output cleanup: %s", exc)
 
 ASSETS_HEADER = [
     "ref_id",
@@ -227,7 +258,21 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
     write_csv_with_estate(path, header, cleaned, stamp, delimiter=delimiter)
 
 
-def load() -> dict:
+def load(*, run_at: datetime | None = None) -> dict:
+    # One wall-clock read for the run. today (status_date) and the ledger
+    # share it so a midnight straddle cannot split poam.csv vs FedRAMP.
+    # bind_run_clock stays UTC (scanner future-epoch cutoff; out of scope).
+    clock = run_at or datetime.now().astimezone()
+    if clock.tzinfo is None:
+        clock = clock.astimezone()
+    with bind_run_clock(clock.astimezone(timezone.utc)):
+        return _load(run_at=clock)
+
+
+def _load(*, run_at: datetime | None = None) -> dict:
+    # Drop 1f8d347-era pack-owned leftovers before rewrite. Never touch
+    # operator files the pack did not create.
+    _clean_retired_outputs()
     # Asset UIDs first (EGA- ledger), then ref_id collapse, weakness, HK keys.
     asset_ledger = AssetLedger.load(in_dir() / "assets" / "asset-ledger.json")
     overrides = in_dir() / "assets" / "assets-overrides.csv"
@@ -251,6 +296,7 @@ def load() -> dict:
     estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
     findings = [r for r in records if r.get("kind") == "finding"]
+    pre_excluded = [r for r in records if r.get("kind") == "excluded"]
     fold_port_only_into_specific(findings)
     evidences_in = [r for r in records if r.get("kind") == "evidence"]
     severity_unmapped = sum(
@@ -281,6 +327,23 @@ def load() -> dict:
 
     vuln_findings = [r for r in findings if _is_vuln(r)]
     other_findings = [r for r in findings if not _is_vuln(r)]
+    weaknesses = other_findings + vuln_findings + pre_excluded
+    lighter = poam_lighter_requested()
+    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    ranked = sorted(
+        weaknesses,
+        key=lambda rec: (
+            sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            str(rec.get("name") or rec.get("ref_id") or ""),
+            str(rec.get("ref_id") or ""),
+        ),
+    )
+    poam_decisions = iter_poam_decisions(ranked, lighter=lighter)
+    decision_by_ref: dict[str, dict] = {
+        str(rec.get("ref_id") or ""): decision
+        for rec, decision in poam_decisions
+        if rec.get("ref_id")
+    }
 
     ciso_findings = []
     for rec in other_findings:
@@ -298,11 +361,16 @@ def load() -> dict:
     controls = []
     control_ids_by_finding: dict[str, str] = {}
     mapped_by_ref: dict[str, dict] = {}
-    for rec in other_findings + vuln_findings:
+    for rec in weaknesses:
         mapped = map_finding(rec)
         mapped_by_ref[str(rec.get("ref_id"))] = mapped
-        cid = f"CTL-{slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
-        control_ids_by_finding[str(rec.get("ref_id"))] = cid
+        rec_ref = str(rec.get("ref_id") or "")
+        decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
+        register = risk_register_treatment(decision)
+        if not register["attach_control"]:
+            continue
+        cid = f"CTL-{ref_slug(str(rec.get('ref_id') or rec.get('name') or 'ctrl'))}"
+        control_ids_by_finding[rec_ref] = cid
         controls.append(
             [
                 cid,
@@ -340,18 +408,27 @@ def load() -> dict:
         )
 
     scenarios = []
-    for rec in findings:
+    for rec in weaknesses:
         level = scenario_level(rec.get("severity"))
-        resid = residual_level(level)
-        cid = control_ids_by_finding.get(str(rec.get("ref_id")), "")
+        rec_ref = str(rec.get("ref_id") or "")
+        decision = decision_by_ref.get(rec_ref) or poam_decision(rec, lighter=lighter)
+        register = risk_register_treatment(decision)
+        if not register.get("on_register", True):
+            continue
+        if register["attach_control"]:
+            resid = residual_level(level)
+            cid = control_ids_by_finding.get(rec_ref, "")
+        else:
+            resid = level
+            cid = ""
         scenarios.append(
             [
-                f"RSK-{slug(str(rec.get('ref_id') or rec.get('name')))}",
+                f"RSK-{ref_slug(str(rec.get('ref_id') or rec.get('name')))}",
                 "|".join(rec.get("assets") or []),
                 rec.get("category") or rec.get("source"),
                 rec.get("name"),
                 rec.get("description"),
-                "",
+                register["existing_controls"],
                 level,
                 level,
                 level,
@@ -359,7 +436,7 @@ def load() -> dict:
                 resid,
                 resid,
                 resid,
-                "mitigate",
+                register["treatment"],
             ]
         )
 
@@ -382,11 +459,8 @@ def load() -> dict:
         "estate",
         *POAM_EXTRA_FIELDS,
     ]
-    today = utc_run_date()
-    lighter = poam_lighter_requested()
-    weaknesses = other_findings + vuln_findings
-    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-    poam_ledger = run_ledger(findings, kev_catalog)
+    today = local_run_date(run_at)
+    poam_ledger = run_ledger(findings, kev_catalog, run_at=run_at)
     for item in (poam_ledger.get("items") or {}).values():
         mapped = mapped_by_ref.get(str(item.get("ref_id") or ""))
         if mapped:
@@ -407,29 +481,75 @@ def load() -> dict:
             ledger_by_fp[fp] = item
     poam_rows: list[list] = []
     excluded_rows: list[list] = []
-    ranked = sorted(
-        weaknesses,
-        key=lambda rec: (
+    def _poam_rank(rec: dict) -> tuple:
+        extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        check = str(extra.get("check_id") or "")
+        port_first = 0 if check.startswith("nmap-port-") else 1
+        return (
             sev_rank.get(ciso_finding_severity(rec.get("severity")), 9),
+            port_first,
             str(rec.get("name") or rec.get("ref_id") or ""),
             str(rec.get("ref_id") or ""),
-        ),
-    )
+        )
+
+    ranked = sorted(weaknesses, key=_poam_rank)
     breakdown = poam_breakdown(ranked, lighter=lighter)
-    for rec, decision in iter_poam_decisions(ranked, lighter=lighter):
+
+    def _ledger_item_for(rec: dict) -> dict | None:
+        rec_ref = str(rec.get("ref_id") or "")
+        item = ledger_by_ref.get(rec_ref)
+        if item is None:
+            for cand in migrate_finding_refs(rec_ref):
+                item = ledger_by_ref.get(cand)
+                if item:
+                    break
+        if item is None:
+            item = ledger_by_fp.get(fp_v1(rec))
+        return item
+
+    # Content-hash EGP (egp_id_for) is first-seen only. Bind alias
+    # pointers to the survivor's live ledger poam_id so upgraded
+    # farms do not write merged_into/superseded_by at a dead hash.
+    bind_alias_targets_to_ledger(poam_decisions, _ledger_item_for)
+    excluded_reasons: dict[str, int] = {}
+    for _rec, decision in poam_decisions:
+        if decision.get("include"):
+            continue
+        reason = str(decision.get("reason") or "unexplained")
+        excluded_reasons[reason] = excluded_reasons.get(reason, 0) + 1
+    breakdown["excluded_by_reason"] = excluded_reasons
+
+    # Shared-EGP folds (#180): an excluded pack_drop duplicate and the
+    # specific plan row resolve to the same item. Mark excluded only when
+    # no included record maps to that item this run.
+    included_pids: set[str] = set()
+    for rec, decision in poam_decisions:
+        if not decision.get("include"):
+            continue
+        item = _ledger_item_for(rec)
+        pid = str((item or {}).get("poam_id") or "")
+        if pid:
+            included_pids.add(pid)
+    for rec, decision in poam_decisions:
         mapped = mapped_by_ref.get(str(rec.get("ref_id"))) or map_finding(rec)
         assets_s = "|".join(rec.get("assets") or [])
         weakness = weakness_name_for(rec, mapped)
+        item = _ledger_item_for(rec)
+        if item:
+            pid = str(item.get("poam_id") or "")
+            if pid and pid in included_pids:
+                item["excluded_reason"] = ""
+            elif not decision.get("include"):
+                item["excluded_reason"] = str(decision.get("reason") or "unexplained")
         if not decision.get("include"):
-            winner_ref = str(decision.get("superseded_by_ref") or "")
-            winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
-            superseded_by = ""
-            if winner_item:
-                superseded_by = str(winner_item.get("poam_id") or "")
+            superseded_by = str(decision.get("superseded_by") or "")
             if not superseded_by:
-                superseded_by = str(decision.get("superseded_by") or "")
+                winner_ref = str(decision.get("superseded_by_ref") or "")
+                winner_item = ledger_by_ref.get(winner_ref) if winner_ref else None
+                superseded_by = str((winner_item or {}).get("poam_id") or "")
             excluded_rows.append(
                 [
+                    rec.get("ref_id") or "",
                     rec.get("ref_id") or "",
                     weakness,
                     assets_s,
@@ -440,15 +560,6 @@ def load() -> dict:
             )
             continue
         fields = poam_fields(rec, mapped, today)
-        rec_ref = str(rec.get("ref_id") or "")
-        item = ledger_by_ref.get(rec_ref)
-        if item is None:
-            for cand in migrate_finding_refs(rec_ref):
-                item = ledger_by_ref.get(cand)
-                if item:
-                    break
-        if item is None:
-            item = ledger_by_fp.get(fp_v1(rec))
         status = "open"
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
@@ -467,6 +578,7 @@ def load() -> dict:
                 *[fields[key] for key in POAM_EXTRA_FIELDS],
             ]
         )
+    persist_ledger(poam_ledger)
     _pid_idx = poam_header.index("poam_id")
     listed_ids = {str(row[_pid_idx]) for row in poam_rows if len(row) > _pid_idx and row[_pid_idx]}
     observed_refs = {str(rec.get("ref_id") or "") for rec in weaknesses if rec.get("ref_id")}
@@ -481,6 +593,10 @@ def load() -> dict:
             continue
         if status not in {"open", "pending_verification", "reopened"}:
             continue
+        # Excluded this scan (or a prior scan): stay off the plan even if
+        # the feed that produced the row later disappears.
+        if item_is_excluded(item):
+            continue
         # Present this scan but excluded / collapsed, or the same weakness
         # under a migrated ref/fp (nmap ``-445`` → ``-445-tcp``): stay off.
         if item_maps_to_current(
@@ -492,22 +608,26 @@ def load() -> dict:
             continue
         pending_carried += 1
         listed_ids.add(pid)
+        mapped = plan_from_ledger_item(item)
         fields = {key: "" for key in POAM_EXTRA_FIELDS}
         fields["poam_id"] = pid
         fields["finding_ref_id"] = str(item.get("ref_id") or "")
         fields["weakness_description"] = str(item.get("description") or item.get("name") or "")
         fields["detector_source"] = str(item.get("source_family") or "")
-        fields["weakness_source_id"] = str(item.get("weakness_key") or "")
+        fields["weakness_source_id"] = strip_secret_hash_from_key(
+            str(item.get("weakness_key") or "")
+        )
         fields["original_detection_date"] = str(item.get("original_detection_date") or "")
         fields["status_date"] = str(item.get("status_date") or "")
         fields["original_risk_rating"] = str(item.get("original_risk_rating") or "")
+        fields["controls"] = mapped["controls"]
         poam_rows.append(
             [
                 str(item.get("name") or item.get("weakness_key") or ""),
                 str(item.get("display_asset") or item.get("asset_key") or ""),
                 str(item.get("severity") or item.get("current_scanner_rating") or ""),
-                "",
-                "",
+                mapped["framework_refs"],
+                mapped["recommended_fix"],
                 "",
                 "",
                 status,
@@ -535,6 +655,11 @@ def load() -> dict:
     out_poam = out_dir() / "poam"
     _write_csv(out_poam / "poam.csv", poam_header, poam_rows, stamp=stamp)
     _write_csv(out_poam / "excluded.csv", list(EXCLUDED_FIELDS), excluded_rows)
+    assert_input_export_accounting(
+        [r for r in records if r.get("kind") in {"finding", "excluded"}],
+        [dict(zip(poam_header, row)) for row in poam_rows],
+        [dict(zip(EXCLUDED_FIELDS, row)) for row in excluded_rows],
+    )
     if lighter:
         plan_line = (
             "POA&M plan: lighter — Lows and non-key Mediums excluded at operator "
@@ -569,13 +694,15 @@ def load() -> dict:
     ]
     idx = {name: i for i, name in enumerate(poam_header)}
     for row in poam_rows:
-        cell = lambda key: str(row[idx[key]]).replace("|", "/")  # noqa: E731
+        cell = lambda key: md_safe_text(row[idx[key]])  # noqa: E731
         lines.append(
             f"| {cell('poam_id')} | {cell('weakness')} | {cell('asset')} | {cell('original_risk_rating')} | "
             f"{cell('controls')} | {cell('original_detection_date')} | {cell('scheduled_completion_date')} | "
             f"{cell('recommended_fix')} | {cell('milestones')} | {cell('status')} |"
         )
-    write_fedramp_poam(out_poam, poam_ledger)
+    write_fedramp_poam(
+        out_poam, poam_ledger, plan_by_id=plan_by_poam_id(poam_header, poam_rows)
+    )
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
     write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
     write_estate_sidecar(
@@ -628,12 +755,16 @@ def load() -> dict:
         )
 
     write_json(out_dir() / "ocsf" / "compliance_findings.json", ocsf)
-    leftover_rr = out_dir() / "riskready"
-    if leftover_rr.exists():
-        shutil.rmtree(leftover_rr)
+    _clean_retired_outputs()
 
     excluded_poam = max(
         0, len(other_findings) + len(vuln_findings) - (len(poam_rows) - pending_carried)
+    )
+    reason_idx = EXCLUDED_FIELDS.index("excluded_reason")
+    merged_aliases = sum(
+        1
+        for row in excluded_rows
+        if is_merged_into_alias(row[reason_idx] if len(row) > reason_idx else "")
     )
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
@@ -649,6 +780,7 @@ def load() -> dict:
         "poam_included": int(breakdown["poam_included"]) + pending_carried,
         "pending_carried": pending_carried,
         "excluded": len(excluded_rows),
+        "kind_excluded": len(pre_excluded),
         "excluded_by_reason": breakdown["excluded_by_reason"],
         "poam_plan": breakdown.get("poam_plan") or ("lighter" if lighter else "full"),
         "poam_plan_note": (
@@ -669,9 +801,15 @@ def load() -> dict:
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
             "deduped weaknesses (normalized asset + finding type); "
-            "risk_scenarios == weaknesses == findings + vulnerabilities; "
+            "mitigate == POA&M == CTL; accept == non-merged excluded; "
+            "risk_scenarios == findings + vulnerabilities + kind_excluded "
+            "- merged_into aliases; "
             "POA&M is 1:1 with open risks (poam_decision + pending carry-forward); "
-            "weaknesses_total == poam_included + excluded == weaknesses + pending_carried; "
+            "weaknesses_total == poam_included + excluded == "
+            "weaknesses + kind_excluded + pending_carried; "
+            "kind:excluded rows stay on the register as treatment=accept; "
+            "pack_drop twins are excluded as merged_into:<survivor ledger EGP> and "
+            "stay off the register; "
             "port-only rows superseded by a specific finding on the same host+port "
             "are excluded as superseded_by_specific"
         ),
@@ -703,17 +841,25 @@ def load() -> dict:
         poam_n=len(poam_rows),
         merged=str(merged_n),
         excluded_poam=excluded_poam,
+        kind_excluded=len(pre_excluded),
+        merged_aliases=merged_aliases,
         in_dir=dest_in,
         generated_at=now,
-        run_delta=ledger_run_delta(poam_ledger),
+        run_delta=ledger_run_delta(poam_ledger, plan_ids=listed_ids),
         sensor_rows=sensor_rows,
     )
     write_client_pages(out_dir(), ctx)
+    payload = json.dumps(summary, indent=2)
+    fence = "```"
+    while fence in payload:
+        fence += "`"
     write_text(
         out_dir() / "evidence" / "lab-report.md",
         "# Lab report\n\n"
-        + json.dumps(summary, indent=2)
-        + f"\n\nGenerated by grc-loader. {estate_kind} mode. No live scan. No /api/risks POST.\n"
+        + f"{fence}json\n"
+        + payload
+        + f"\n{fence}\n"
+        + f"\nGenerated by grc-loader. {estate_kind} mode. No live scan. No /api/risks POST.\n"
         + "POA&M: out/poam/poam.csv — owner/due blank for a human. "
         + "Excluded Infos/honeypot/telemetry (and lighter-plan Lows/non-key Mediums) "
         + "are in out/poam/excluded.csv.\n"

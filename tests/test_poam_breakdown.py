@@ -13,10 +13,12 @@ from collectors.grc_loader import _dedupe, load
 from shared.ciso_shape import assert_poam_breakdown
 from shared.control_map import (
     POAM_EXCLUDE_REASONS,
+    is_poam_exclude_reason,
     map_finding,
     poam_breakdown,
     poam_decision,
 )
+from shared.egp_collapse import is_merged_into_reason
 from shared.finding_types import dedupe_weaknesses
 from shared.io_util import read_jsonl
 from shared.schema import make_record
@@ -92,7 +94,7 @@ def test_poam_decision_names_low_exposure_and_honeypot() -> None:
     )
     decision = poam_decision(cost)
     assert decision["include"] is False
-    assert decision["reason"] == "NOT_A_WEAKNESS"
+    assert decision["reason"] == "not_a_weakness"
     assert decision["reason"] in POAM_EXCLUDE_REASONS
     assert map_finding(cost)["include_poam"] is False
 
@@ -166,13 +168,31 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
     if folder.is_dir():
         for path in sorted(folder.glob("*.jsonl")):
             records.extend(row for row in read_jsonl(path) if isinstance(row, dict))
-    findings = [r for r in dedupe_weaknesses(_dedupe(records)) if r.get("kind") == "finding"]
+    findings = [
+        r
+        for r in dedupe_weaknesses(_dedupe(records))
+        if r.get("kind") in {"finding", "excluded"}
+    ]
     if not findings:
         pytest.fail("canonical findings missing; cannot prove every exclusion is named")
     walked = poam_breakdown(findings)
-    assert walked["weaknesses_total"] == summary["weaknesses_total"] == len(findings)
-    assert walked["poam_included"] == summary["poam_included"]
-    assert walked["excluded_by_reason"] == summary["excluded_by_reason"]
+    pending = int(summary.get("pending_carried") or 0)
+    assert walked["weaknesses_total"] + pending == summary["weaknesses_total"] == len(findings) + pending
+    assert walked["poam_included"] + pending == summary["poam_included"]
+
+    def _buckets(reasons: dict) -> dict[str, int]:
+        out: dict[str, int] = {}
+        merged = 0
+        for key, count in (reasons or {}).items():
+            if is_merged_into_reason(str(key)):
+                merged += int(count)
+            else:
+                out[str(key)] = out.get(str(key), 0) + int(count)
+        if merged:
+            out["merged_into"] = merged
+        return out
+
+    assert _buckets(walked["excluded_by_reason"]) == _buckets(summary["excluded_by_reason"])
     for rec in findings:
         decision = poam_decision(rec)
         included = bool(map_finding(rec).get("include_poam"))
@@ -180,7 +200,7 @@ def _assert_walk_matches_summary(out: Path, summary: dict) -> None:
         if included:
             continue
         assert decision["reason"], rec.get("ref_id")
-        assert decision["reason"] in POAM_EXCLUDE_REASONS, (
+        assert is_poam_exclude_reason(decision["reason"]) or decision["reason"] in POAM_EXCLUDE_REASONS, (
             rec.get("ref_id"),
             decision["reason"],
             rec.get("severity"),

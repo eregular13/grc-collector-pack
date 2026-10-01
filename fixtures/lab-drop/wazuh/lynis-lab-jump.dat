@@ -1,6 +1,7 @@
 # Lynis Report — LAB/DEMO -- not a client estate
 # Not SAMPLE keep. Not a client export. Hardening index is a score, not a finding.
 lynis_version=3.1.4
+report_datetime_start=2026-09-17 09:00:00
 hostname=lab-jump.lab.internal
 os=Linux
 os_name=Debian

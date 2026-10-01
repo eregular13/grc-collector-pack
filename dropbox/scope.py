@@ -8,6 +8,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 from dropbox.yaml_lite import load_yaml
 
@@ -72,6 +73,53 @@ EXTERNAL_STAGE_TOOLS = frozenset({"curl", "testssl", "testssl.sh"})
 DISCOVER_STAGE_TOOLS = frozenset({"nmap"})
 DEEPEN_STAGE_TOOLS = frozenset({"nessus", "nessuscli"})
 
+# Explicit allowlist of known keys per section. Derived from Scope / load_scope,
+# committed dropbox/SCOPE.yaml + SCOPE.example.yaml, and OPERATOR / WEB_TLS docs.
+# Comparison is exact: lower-case, no surrounding whitespace, as documented.
+# Non-canonical spellings (PORTS_ALLOWED, ' ports_allowed ', quoted NBSP
+# keys, BOM) refuse. Unquoted NBSP is yaml_lite whitespace and is read
+# as the canonical key.
+# Unknown keys and any non-ASCII key refuse. engagement.begin is not an alias.
+_SCOPE_KEYS: dict[str, frozenset[str]] = {
+    "": frozenset(
+        {
+            "client",
+            "consent",
+            "engagement",
+            "revoked",
+            "status",
+            "ports_allowed",
+            "internal",
+            "external",
+            "allow_tools",
+            "orchestrator",
+            "byo",
+        }
+    ),
+    "client": frozenset({"name"}),
+    "consent": frozenset({"attestation_path", "attestation_sha256"}),
+    "engagement": frozenset(
+        {"start", "end", "status", "revoked", "ports_allowed"}
+    ),
+    "internal": frozenset({"cidrs", "hosts"}),
+    "external": frozenset({"hosts", "domains", "ips"}),
+    "orchestrator": frozenset(
+        {
+            "discover_prefix",
+            "deepen_batch",
+            "max_live_shards",
+            "max_workers",
+            "host_timeout_sec",
+            "stages",
+            "deepen_hosts",
+            "stage_tools",
+        }
+    ),
+    "orchestrator.stages": frozenset({"discover", "deepen", "external"}),
+    "orchestrator.stage_tools": frozenset({"discover", "deepen"}),
+    "byo[]": frozenset({"name", "args", "sensor", "timeout"}),
+}
+
 
 class GateError(SystemExit):
     """SCOPE gate failed. Exit non-zero."""
@@ -105,6 +153,10 @@ class Scope:
     deepen_hosts: list[str] = field(default_factory=list)
     stage_tools_discover: list[str] = field(default_factory=lambda: ["nmap"])
     stage_tools_deepen: list[str] = field(default_factory=lambda: ["nessus"])
+    # None = field absent (current behavior: any port on an in-scope host).
+    # An explicit list is fail-closed: only those TCP ports may be probed.
+    ports_allowed: list[int] | None = None
+    revoked: bool = False
 
     def tools_for(self, stage: str) -> list[str]:
         """Intersect SCOPE.allow_tools with the tools permitted for this stage."""
@@ -177,6 +229,25 @@ class Scope:
         """True when target is an authorized internal or named-external SCOPE host."""
         return self.allows_internal_target(target) or self.allows_external_target(target)
 
+    def allows_port(self, port: int) -> bool:
+        """True when port is in 1..65535 and (if set) in ports_allowed.
+
+        Absent ``ports_allowed`` keeps pre-port-list behavior (any valid
+        TCP port on an in-scope host). Out-of-range ports always deny.
+        An explicit empty list denies every port.
+        """
+        try:
+            if isinstance(port, bool):
+                return False
+            num = int(port)
+        except (TypeError, ValueError):
+            return False
+        if not 1 <= num <= 65535:
+            return False
+        if self.ports_allowed is None:
+            return True
+        return num in self.ports_allowed
+
 
 def require_authorized_targets(scope: Scope, targets: list[str]) -> None:
     """Fail closed if any requested target is outside the signed SCOPE.
@@ -191,6 +262,43 @@ def require_authorized_targets(scope: Scope, targets: list[str]) -> None:
     if missing:
         shown = ", ".join(missing)
         raise GateError(f"requested target(s) outside authorized SCOPE: {shown}")
+
+
+def require_not_revoked(scope: Scope) -> None:
+    """Fail closed when the signed SCOPE has been revoked."""
+    if scope.revoked:
+        raise GateError("engagement is revoked")
+
+
+def require_authorized_ports(scope: Scope, ports: list[int]) -> None:
+    """Fail closed when any requested port is outside 1..65535 or SCOPE.
+
+    Ports outside 1..65535 always refuse, even when ports_allowed is
+    absent. An explicit list then refuses every port not named,
+    including an empty allow-list.
+    """
+    rows: list[int] = []
+    for item in ports or []:
+        if isinstance(item, bool):
+            raise GateError(f"invalid port {item!r}")
+        try:
+            num = int(item)
+        except (TypeError, ValueError) as exc:
+            raise GateError(f"invalid port {item!r}") from exc
+        if not 1 <= num <= 65535:
+            raise GateError(f"port out of range: {item!r}")
+        rows.append(num)
+    missing = [p for p in rows if not scope.allows_port(p)]
+    if missing:
+        shown = ", ".join(str(p) for p in missing)
+        raise GateError(f"requested port(s) outside authorized SCOPE: {shown}")
+
+
+def require_live_probe(scope: Scope, target: str, ports: list[int]) -> None:
+    """Fail-closed live gate: not revoked, target in SCOPE, ports allowed."""
+    require_not_revoked(scope)
+    require_authorized_targets(scope, [target])
+    require_authorized_ports(scope, ports)
 
 
 def _refuse_external_scope_item(field: str, item: str) -> None:
@@ -248,6 +356,80 @@ def _as_bool(value, default: bool) -> bool:
     return default
 
 
+_REVOKED_TRUE = frozenset({"true", "yes", "1", "on", "y"})
+_REVOKED_FALSE = frozenset({"false", "no", "0", "off", "n", ""})
+# Absent status, or one of these tokens, is the only live-valid set.
+# Docs (SCOPE.example.yaml) name ``authorized``; Metis/operator also use
+# ``active`` / ``approved``. Everything else (expired, on-hold, withdrawn,
+# revoked-by-client, terminated, nested mappings, …) refuses.
+_STATUS_ALLOWED = frozenset({"", "active", "authorized", "approved"})
+
+
+def _ci_values(mapping: Any, key: str) -> list[Any]:
+    """All values whose key case-folds to ``key`` (YAML keys are case-sensitive)."""
+    if not isinstance(mapping, dict):
+        return []
+    want = str(key).strip().lower()
+    out: list[Any] = []
+    for raw_key, value in mapping.items():
+        if str(raw_key).strip().lower() == want:
+            out.append(value)
+    return out
+
+
+def _ci_get(mapping: Any, key: str) -> Any:
+    """First case-insensitive hit, or None when the key is absent."""
+    rows = _ci_values(mapping, key)
+    return rows[0] if rows else None
+
+
+def _flag_is_revoked(raw: Any) -> bool | None:
+    """True / False / None (absent). Unknown tokens fail closed."""
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).split("#", 1)[0].strip().lower()
+    if text in _REVOKED_TRUE:
+        return True
+    if text in _REVOKED_FALSE:
+        return False
+    raise GateError(f"invalid revoked value {raw!r}")
+
+
+def _status_is_allowed(raw: Any) -> bool:
+    """True only for absent or allowlisted status. Nested / unknown refuse."""
+    if raw is None:
+        return True
+    if isinstance(raw, (dict, list, bool)):
+        return False
+    text = str(raw).split("#", 1)[0].strip().lower()
+    return text in _STATUS_ALLOWED
+
+
+def _engagement_is_revoked(data: dict, eng: dict) -> bool:
+    """Revoked flags or any status outside the allowlist.
+
+    The loader boundary already refused non-canonical keys, so YAML
+    mappings only carry documented spellings. Helpers still fold case
+    for constructed (non-YAML) mappings. Nested ``status: {state: …}``
+    refuses. Absent status is allowed.
+    """
+    eng_ci = eng if isinstance(eng, dict) else {}
+    if not _ci_values(eng_ci, "status") and not _ci_values(eng_ci, "revoked"):
+        found = _ci_get(data, "engagement")
+        if isinstance(found, dict):
+            eng_ci = found
+    for raw in (*_ci_values(data, "revoked"), *_ci_values(eng_ci, "revoked")):
+        flag = _flag_is_revoked(raw)
+        if flag is True:
+            return True
+    for raw in (*_ci_values(eng_ci, "status"), *_ci_values(data, "status")):
+        if not _status_is_allowed(raw):
+            return True
+    return False
+
+
 def _as_list(value) -> list:
     if value is None:
         return []
@@ -303,9 +485,7 @@ def consent_file_from_scope(scope_path: Path) -> tuple[Path, str]:
     """Resolve attestation path + declared hash. Does not verify the hash (attest uses this)."""
     if not scope_path.is_file():
         raise GateError(f"no SCOPE file at {scope_path}")
-    data = load_yaml(scope_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or not data:
-        raise GateError("SCOPE.yaml is empty or not a mapping")
+    data = _load_scope_mapping(scope_path)
     consent = data.get("consent") if isinstance(data.get("consent"), dict) else {}
     att_rel = str(consent.get("attestation_path") or "").strip()
     att_hash = str(consent.get("attestation_sha256") or "").strip().lower()
@@ -354,13 +534,104 @@ def write_attestation_hash(scope_path: Path, digest: str) -> None:
     scope_path.write_text("".join(out), encoding="utf-8")
 
 
+def _key_is_ascii(key: str) -> bool:
+    return all(ord(ch) < 128 for ch in key)
+
+
+def _where(path: str) -> str:
+    return path if path else "root"
+
+
+def _canonical_for(allowed: frozenset[str], key: str) -> str | None:
+    """Documented spelling if ``key`` case-folds and strips to an allowlisted name."""
+    fold = str(key).strip().lower()
+    for name in allowed:
+        if name == fold:
+            return name
+    return None
+
+
+def allowlisted_scope_keys() -> list[tuple[str, str]]:
+    """Every allowlisted (section, key) pair. Tests parametrize over this."""
+    rows: list[tuple[str, str]] = []
+    for section, names in _SCOPE_KEYS.items():
+        for name in sorted(names):
+            rows.append((section, name))
+    return rows
+
+
+def refuse_unknown_scope_keys(data: Any, path: str = "") -> None:
+    """Refuse non-canonical, unknown, non-ASCII, and BOM keys at the loader.
+
+    Keys must be spelled exactly as documented (lower-case, no surrounding
+    whitespace). Refusing is preferred over silently normalising so a
+    misspelled ``PORTS_ALLOWED`` cannot load as an absent port limit.
+    Downstream readers never see a non-canonical key.
+
+    A leading UTF-8 BOM on a key is refused. Walks every mapping section
+    that has an allowlist. A known scalar field whose value is a mapping
+    (nested ``status: {state: …}``) is left to the existing
+    status/revocation check — that path is not a section.
+    """
+    if isinstance(data, list):
+        item_path = f"{path}[]" if path else "[]"
+        allowed = _SCOPE_KEYS.get(item_path)
+        for item in data:
+            if isinstance(item, dict):
+                if allowed is None:
+                    raise GateError(f"unexpected mapping item under {_where(path)}")
+                refuse_unknown_scope_keys(item, item_path)
+            elif isinstance(item, list):
+                refuse_unknown_scope_keys(item, item_path)
+        return
+    if not isinstance(data, dict):
+        return
+    allowed = _SCOPE_KEYS.get(path)
+    if allowed is None:
+        raise GateError(f"unexpected mapping at {_where(path)}")
+    for raw_key, value in data.items():
+        key = str(raw_key)
+        if "\ufeff" in key:
+            raise GateError(f"BOM mapping key {key!r} at {_where(path)}")
+        if key not in allowed:
+            canon = _canonical_for(allowed, key)
+            if canon is not None:
+                raise GateError(
+                    f"non-canonical key {key!r} at {_where(path)} (canonical: {canon})"
+                )
+            if not _key_is_ascii(key):
+                raise GateError(f"non-ASCII mapping key {key!r} at {_where(path)}")
+            raise GateError(f"unknown key {key!r} at {_where(path)}")
+        child = f"{path}.{key}" if path else key
+        if isinstance(value, dict) and child in _SCOPE_KEYS:
+            refuse_unknown_scope_keys(value, child)
+        elif isinstance(value, list):
+            refuse_unknown_scope_keys(value, child)
+
+
+def _load_scope_mapping(scope_path: Path) -> dict:
+    """Parse SCOPE YAML. Duplicate / non-canonical / unknown / BOM keys fail closed."""
+    try:
+        text = scope_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise GateError(f"cannot read SCOPE: {exc}") from exc
+    if "\ufeff" in text:
+        raise GateError("BOM mapping key refused")
+    try:
+        data = load_yaml(text)
+    except ValueError as exc:
+        raise GateError(str(exc)) from exc
+    if not isinstance(data, dict) or not data:
+        raise GateError("SCOPE.yaml is empty or not a mapping")
+    refuse_unknown_scope_keys(data)
+    return data
+
+
 def load_scope(path: Path | None = None) -> Scope:
     scope_path = Path(path) if path else default_scope_path()
     if not scope_path.is_file():
         raise GateError(f"no SCOPE file at {scope_path}")
-    data = load_yaml(scope_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or not data:
-        raise GateError("SCOPE.yaml is empty or not a mapping")
+    data = _load_scope_mapping(scope_path)
 
     client = data.get("client") if isinstance(data.get("client"), dict) else {}
     name = str(client.get("name") or "").strip()
@@ -384,13 +655,33 @@ def load_scope(path: Path | None = None) -> Scope:
         )
 
     eng = data.get("engagement") if isinstance(data.get("engagement"), dict) else {}
-    start = _parse_day(eng.get("start") or eng.get("begin"), "engagement.start")
+    start = _parse_day(eng.get("start"), "engagement.start")
     end = _parse_day(eng.get("end"), "engagement.end")
     if end < start:
         raise GateError("engagement window ends before it starts")
     today = date.today()
     if today < start or today > end:
         raise GateError(f"today {today.isoformat()} is outside engagement window {start}..{end}")
+    if _engagement_is_revoked(data, eng):
+        raise GateError("engagement is revoked")
+
+    ports_raw = data.get("ports_allowed")
+    if ports_raw is None:
+        ports_raw = eng.get("ports_allowed")
+    ports_allowed: list[int] | None = None
+    if ports_raw is not None:
+        ports_allowed = []
+        for item in _as_list(ports_raw):
+            if isinstance(item, bool):
+                raise GateError(f"invalid ports_allowed item {item!r}")
+            try:
+                num = int(item)
+            except (TypeError, ValueError) as exc:
+                raise GateError(f"invalid ports_allowed item {item!r}") from exc
+            if not 1 <= num <= 65535:
+                raise GateError(f"ports_allowed out of range: {num}")
+            if num not in ports_allowed:
+                ports_allowed.append(num)
 
     internal = data.get("internal") if isinstance(data.get("internal"), dict) else {}
     cidrs = _as_str_list(internal.get("cidrs"))
@@ -512,4 +803,6 @@ def load_scope(path: Path | None = None) -> Scope:
         deepen_hosts=deepen_hosts,
         stage_tools_discover=stage_tools_discover,
         stage_tools_deepen=stage_tools_deepen,
+        ports_allowed=ports_allowed,
+        revoked=False,
     )

@@ -1,0 +1,14 @@
+{
+  "data": {
+    "Results": [
+      {
+        "Tenant": "contoso.onmicrosoft.com",
+        "ProductName": "AAD",
+        "Requirement": "Privileged users require MFA",
+        "Result": "Fail",
+        "Details": "Admin MFA not enforced for Global Administrator",
+        "Severity": "high"
+      }
+    ]
+  }
+}

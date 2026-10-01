@@ -1,5 +1,118 @@
 # CYCLE log
 
+## cycle 222 — SCOPE canonical-key refuse (2026-09-27)
+
+Loader boundary refuses any SCOPE key that is not spelled exactly as
+documented (lower-case, no surrounding whitespace). `PORTS_ALLOWED`,
+`engagement.Ports_Allowed`, and `' ports_allowed '` no longer load as
+an absent port limit. Near-miss errors name the canonical spelling.
+`engagement.begin` removed (unused). BOM keys refuse. Context-copied
+threads count as nested binds. Pytest **2058**. Host-lab 79 / 103 /
+poam 119 / excluded 6. DEMO / SAMPLE / farm `poam.csv` byte-identical
+to master `a7dd5a3` (119 / 8 / 73). Catalog **unchanged**. paying_day
+**FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 221 — SCOPE quoted keys, bind isolation, DEMO name (2026-09-27)
+
+yaml_lite strips matching quotes from mapping keys so `'status'` and
+`status` share lookup and case-insensitive duplicate detection.
+SCOPE loader allowlists known keys per section and refuses unknown or
+non-ASCII keys. Live SCOPE bind is a contextvar; a second concurrent
+bind refuses. Pack DEMO `client.name` comparison is casefold + NFKC +
+collapsed whitespace + unicode dashes as `-`. Pytest **1783**. Host-lab
+79 / 103 / poam 119 / excluded 6. DEMO / SAMPLE / farm `poam.csv`
+byte-identical to master `b67de6f` (119 / 8 / 73). Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
+## cycle 220 — SCOPE gate harden (Metis #196 follow-up) (2026-09-27)
+
+Live SCOPE status is an allowlist (`active` / `authorized` / `approved` /
+absent; keys case-insensitive). Nested or top-level unknown status,
+`REVOKED` / `Revoked`, and mid-run revoke or read error fail closed —
+the SCOPE file and consent digest are re-read before every connect.
+Live mode refuses the pack DEMO consent digest regardless of filename.
+`build_snapshot()` requires a bound SCOPE. Helper test compares
+TYPE_REMEDIATIONS independently. Pytest **1760**. Host-lab 79 / 103 /
+poam 119 / excluded 6. DEMO / SAMPLE / farm `poam.csv` byte-identical
+to master `5c6ac7b`. Catalog **unchanged**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out.
+
+## cycle 219 — slim register: alias-merge control union + AC-5 (2026-09-26)
+
+Owner decision on #192: when alias/weakness merge folds rows, the
+survivor takes the union of controls (de-duplicated, first-seen
+order). saas-idp standing-GA / tenant PIM keep title-map AC-5.
+Tenant `EGP-8F1A843A26` keeps AC-5. BloodHound UPN survivor
+`EGP-F18CA5E082` carries AC-5 from the two merged-away DEMO rows.
+Row counts and IDs unchanged. Pytest **1525**. Host-lab 79 / 103 /
+poam 119 / excluded 6. Catalog **unchanged**. paying_day **FAIL**.
+No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 218 — slim register: GA-by-UPN + alias collapsed IDs (2026-09-26)
+
+Rebased onto master `ce67328` (#188). Type real saas-idp Global
+Administrator as `entra_ga_pim`; merge Scuba/Graph/BloodHound on the
+UPN; alias merged-away EGP- IDs (`merged_away_alias`) before #184's
+excluded_reason loop. Exec names `Open POA&M (poam.csv): N`. No
+FedRAMP rewrite. No port/identity dedupe. AC-5 left as-is. Pytest
+**1523**. Host-lab 79 / 103 / poam 119 / excluded 6. Farm FedRAMP
+Open == poam.csv. Farm ledger Open **109**. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 218 — legacy osquery pack names map to current class (2026-09-26)
+
+Carried High `EGP-8EC6F7CA09` (`pack_it-compliance_alf`) now maps to
+`alf` / host_fw (SC-7, CM-7) like observed `EGP-CC1D5A971D`. Rebased
+onto `ce67328`. Pytest **1525**. Host-lab 79 / 105 / poam 121 /
+excluded 6. Catalog **unchanged**. paying_day **FAIL**. No POST
+`/api/risks`. RiskReady stay-out.
+
+## cycle 217 — CR7 bh-high-value playbook after #177 (2026-09-26)
+
+`bh-high-value` (Administrators / Enterprise Admins / Schema Admins)
+keeps the high-value group playbook and AC-2/AC-6. Typed generic
+falls through to the legacy title map. POA&M IDs unchanged.
+Sample generic fix rows return to 5. Pytest **1505**. Host-lab
+79 / 105 / poam 121 / excluded 6. Catalog **unchanged**.
+paying_day **FAIL**. No POST `/api/risks`. RiskReady stay-out.
+
+## cycle 216 — #177 Metis: chain fps + keep admin URL split (2026-09-26)
+
+Merged `origin/master` `73ff785` (#170+#173). `_legacy_fps_for`
+chains title→check_id + #172 host-less + #170 `pre_location_*`
+(#172 first). Repeating admin `check_id`s keep the path/url
+discriminator. 7ebc697 DEMO upgrade: 0 duplicate opens, 1 new, 127
+Open. Pytest **1463**. Host-lab 79 / 105 / poam 121 / excluded 6.
+FedRAMP Open **127**. Catalog **unchanged**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out.
+
+## cycle 215 — merge master 6a5ebd6 (#172+#178) into B8 (2026-09-26)
+
+Normal merge of `origin/master` `6a5ebd6` (#172 short-name fold +
+Wazuh host key; after `15c2de1` #178 CLIENT estate guard). No rebase.
+B8 check_id brick kept. Pytest **1440**. Host-lab unchanged
+(79 / 104 / poam 120 / excluded 6). FedRAMP Open **126**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
+## cycle 214 — merge master 7ebc697 (#169) into B8 (2026-09-26)
+
+Normal merge of `origin/master` `7ebc697` (#169 Redis-auth class). No
+rebase. B8 check_id brick kept. Pytest **1427**. Host-lab unchanged
+(79 / 104 / poam 120 / excluded 6). FedRAMP Open **126**. Catalog
+**unchanged**. paying_day **FAIL**. No POST `/api/risks`. RiskReady
+stay-out.
+
+## cycle 213 — B8 stable check_id (title metrics cannot remint EGP) (2026-09-26)
+
+Stamp `extra.check_id` on title-keyed DEMO families (wazuh posture,
+easm, secrets, identity). Intune `enc-compliance-{provider}`:
+33.3%→50.0% keeps the same EGP. Pre-B8 title-keyed rows migrate.
+Host-lab 79 / 104 / poam 120 / excluded 6. Pytest **1419**. FedRAMP
+Open stays **126**. Catalog **unchanged**. paying_day **FAIL**. No
+POST `/api/risks`. RiskReady stay-out.
+
 ## cycle 212 — merge master d6ae8d0 (#163) into Gap 2 (2026-09-26)
 
 Normal merge of `origin/master` `d6ae8d0` (#163 Nessus CVE extract;

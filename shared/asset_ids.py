@@ -170,7 +170,7 @@ def normalize_netbios(value: Any) -> str:
         return ""
     if text.lower() in {"unknown", "<unknown>", "workgroup"}:
         return ""
-    if _looks_ip(text) or "." in text:
+    if _looks_ip(text) or "." in text or " " in text:
         return ""
     return text.upper()
 
@@ -462,6 +462,47 @@ def lift_extra_fields(extra: dict[str, Any]) -> dict[str, Any]:
     return blob
 
 
+_HOST_TOOLS = frozenset({"hardeningkitty", "cis-cat", "enum4linux"})
+
+
+def _is_computer_identity(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
+    kind = str(extra.get("kind") or extra.get("object_kind") or "").lower()
+    if kind == "computer":
+        return True
+    name = str(rec.get("name") or extra.get("samaccountname") or "")
+    if name.endswith("$"):
+        return True
+    if extra.get("operatingsystem"):
+        return True
+    if str(rec.get("category") or "").lower() == "host":
+        return True
+    if str(extra.get("tool") or "").lower() in _HOST_TOOLS:
+        return True
+    return False
+
+
+def _is_principal_record(rec: dict[str, Any], extra: dict[str, Any]) -> bool:
+    """AD/SaaS users and groups — not computer objects, not network hosts.
+
+    HardeningKitty / enum4linux / CIS-CAT land under identity-ad but are
+    hosts. ``source=identity-ad`` + ``kind=asset`` is not enough.
+    """
+    if extra.get("principal") or (isinstance(extra.get("ids"), dict) and extra["ids"].get("principal")):
+        if _is_computer_identity(rec, extra):
+            return False
+        return True
+    if _is_computer_identity(rec, extra):
+        return False
+    atype = str(extra.get("asset_type") or rec.get("type") or "").upper()
+    cat = str(rec.get("category") or "").lower()
+    extra_kind = str(extra.get("kind") or extra.get("object_kind") or "").lower()
+    if atype == "SP" or cat in {"identity", "saas-tenant", "saas"}:
+        return extra_kind not in {"computer"}
+    if extra_kind in {"user", "group"}:
+        return True
+    return False
+
+
 def ids_from_record(rec: dict[str, Any] | None) -> dict[str, Any]:
     rec = rec or {}
     extra = extra_dict(rec)
@@ -470,14 +511,29 @@ def ids_from_record(rec: dict[str, Any] | None) -> dict[str, Any]:
     scope = identity_scope(extra, lifted)
     if scope:
         lifted.setdefault("scope", scope)
-    parts = [
-        lifted,
-        classify_name(rec.get("name"), source=source, extra=extra),
-    ]
+    parts = [lifted]
+    # Finding titles are weakness names, not asset anchors. Classifying
+    # "Open port 445/microsoft-ds" as NetBIOS made FILESRV findings miss
+    # the ledger host and mint a second EGA from the IP alone.
+    if rec.get("kind") != "finding":
+        parts.append(classify_name(rec.get("name"), source=source, extra=extra))
     assets = rec.get("assets") or []
     if assets:
         parts.append(classify_name(assets[0], source=source, extra=extra))
-    return merge_ids(*parts)
+    merged = merge_ids(*parts)
+    if _is_principal_record(rec, extra) and not _is_computer_identity(rec, extra):
+        token = (
+            str(merged.get("principal") or "").strip()
+            or str(merged.get("hostname") or "").strip()
+            or str(merged.get("name") or "").strip()
+            or str(rec.get("name") or "").strip()
+        )
+        if token:
+            merged["principal"] = token.lower()
+        merged["hostname"] = ""
+        if not merged.get("netbios") or str(merged.get("netbios") or "").lower() == token.lower():
+            merged["netbios"] = ""
+    return merged
 
 
 def stamp_ids(extra: dict[str, Any] | None, **fields: Any) -> dict[str, Any]:

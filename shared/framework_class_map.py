@@ -15,6 +15,13 @@ Sources
 CPG version used: **CPG 2.0** (CISA's current published set; CPG 1.0.1
 1.E / 2.W are not current).
 
+Env-eval / web-TLS NIST 800-53 IDs live in this same map. Call
+``nist_800_53_ids`` from a content pipeline — do not keep a second
+control map. CIS v8 tokens stay under ``extra.cis_v8_internal`` via
+``cis_v8_internal_ids`` and never on client-facing ``framework_refs``.
+``normalize_csf20_id`` remaps mixed CSF 1.1 (PR.AC / PR.PT / PR.IP) to
+CSF 2.0.
+
 CSF function on the CISO wire stays the PR #128 stamp (800-53 / CIS / topic).
 The subcategory is chosen under that function. When a class has two honest
 subcategories (vuln → ID.RA-01 or PR.PS-02), the stamped function picks.
@@ -36,7 +43,14 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from collections.abc import Mapping
 from typing import Any
+from urllib.parse import urlsplit
+
+# Same token as shared.hardening_map.CIS_V8_PREFIX. Do not import that
+# module here — it imports this file.
+CIS_V8_INTERNAL_FIELD = "cis_v8_internal"
+CIS_V8_PREFIX = "CIS-v8-"
 
 # NIST CSF 2.0 subcategory IDs that this pack may stamp. Every id was checked
 # against NIST CSWP 29 Appendix A. Withdrawn 1.1 ids (PR.DS-03..09, DE.CM-04
@@ -136,6 +150,7 @@ _INTERNET_FACING_TYPES = frozenset(
         "rds_public",
         "s3_public_access",
         "sg_ingress_open",
+        "rd_gateway_exposed",
     }
 )
 _INTERNET_FACING_CONTROLS = frozenset(
@@ -143,7 +158,9 @@ _INTERNET_FACING_CONTROLS = frozenset(
         "Disable public accessibility on RDS",
         "Block public object-storage access",
         "Block public object-storage ACL and policy",
+        "Block public EBS snapshot sharing",
         "Restrict security-group ingress from the internet",
+        "Harden the public Remote Desktop Gateway",
     }
 )
 _EXTERNAL_SCAN_SOURCES = frozenset({"easm"})
@@ -181,8 +198,9 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "source_note": (
             "NIST CSF 2.0 PR.AA-05 (least privilege / entitlements). CPG 3.S "
             "only with internet-facing evidence (public ACL / RDS / 0.0.0.0/0); "
-            "else CPG 3.I. Guest, anonymous, admin-share, Redis without auth, "
-            "or public-ACL exposure."
+            "else CPG 3.I. Guest, anonymous, admin-share, or public-ACL "
+            "exposure. Unauthenticated Redis is still this class for CPG "
+            "3.I/3.S but stamps PR.AA-03 (authentication), not PR.AA-05."
         ),
     },
     "host_firewall": {
@@ -339,7 +357,8 @@ WEAKNESS_CLASS_MAP: dict[str, dict[str, Any]] = {
         "cpg": "2.B",
         "source_note": (
             "NIST CSF 2.0 PR.PS-06 (secure software development); CISA CPG 2.0 "
-            "2.B Mitigate Known Vulnerabilities. SQLi / XSS / command injection."
+            "2.B Mitigate Known Vulnerabilities. SQLi / XSS / LFI / command "
+            "injection."
         ),
     },
     UNMAPPED: {
@@ -371,9 +390,14 @@ CONTROL_CLASS: dict[str, str] = {
     "Publish DKIM for the listed selector": "email_dns",
     "Block public object-storage access": "exposure_access",
     "Block public object-storage ACL and policy": "exposure_access",
+    "Block public EBS snapshot sharing": "exposure_access",
+    "End privileged HasSession logons": "identity_privilege",
+    "Run container images as a non-root USER": "identity_privilege",
+    "Disable weak SSH cryptographic algorithms": "tls_crypto",
     "Remove standing IAM AdministratorAccess": "identity_privilege",
     "Require MFA on the cloud root account": "identity_mfa",
     "Restrict security-group ingress from the internet": "exposure_network",
+    "Harden the public Remote Desktop Gateway": "identity_auth",
     "Disable public accessibility on RDS": "exposure_network",
     "Enable encryption at rest on cloud storage": "encryption_rest",
     "Enable S3 default encryption (SSE-S3 or SSE-KMS)": "encryption_rest",
@@ -419,6 +443,7 @@ CONTROL_CLASS: dict[str, str] = {
     "Enable malware protection": "detect_endpoint",
     "Require encryption in transit": "tls_crypto",
     "Deny privileged Kubernetes containers": "identity_privilege",
+    "Require a Kubernetes container securityContext": "config_benchmark",
     "Disable anonymous Kubernetes API access": "exposure_access",
     "Block Kubernetes privilege escalation": "identity_privilege",
     "Avoid hostNetwork on Kubernetes workloads": "exposure_network",
@@ -453,10 +478,21 @@ CONTROL_CLASS: dict[str, str] = {
     "Replace web-app default credentials": "identity_default",
     "Raise domain minimum password length": "identity_password",
     "Rotate the krbtgt password twice": "identity_credential",
-    "Stop reflected web-app cross-site scripting": "config_benchmark",
-    "Stop web-app local file inclusion": "config_benchmark",
+    "Stop reflected web-app cross-site scripting": "app_secure_dev",
+    "Stop web-app local file inclusion": "app_secure_dev",
     "Mark privileged accounts sensitive and cannot be delegated": "identity_privilege",
     "Set dSHeuristics LDAP security (CVE-2021-42291)": "identity_auth",
+    "Deploy baseline HTTP security headers": "config_benchmark",
+    "Set Secure HttpOnly SameSite cookie flags": "tls_crypto",
+    "Allowlist CORS origins": "exposure_access",
+    "Terminate TLS and redirect HTTP to HTTPS": "tls_crypto",
+    "Replace default web welcome or error pages": "config_benchmark",
+    "Redirect HTTP to HTTPS": "tls_crypto",
+    "Remove public exposure of data and admin services": "exposure_network",
+    "Strip Server and X-Powered-By version tokens": "config_benchmark",
+    "Inventory listeners and close unused ports": "exposure_network",
+    "Restrict SSH to management networks": "exposure_network",
+    "Ensure TLS is present where HTTPS is expected": "tls_crypto",
 }
 
 FINDING_TYPE_CLASS: dict[str, str] = {
@@ -467,6 +503,7 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "iam_root_mfa": "identity_mfa",
     "iam_user_mfa": "identity_mfa",
     "sg_ingress_open": "exposure_network",
+    "rd_gateway_exposed": "identity_auth",
     "cloudtrail_logging": "logging",
     "rds_public": "exposure_network",
     "ad_dcsync": "identity_privilege",
@@ -482,6 +519,7 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "hk_password_history": "identity_password",
     "hk_lm_hash": "identity_password",
     "k8s_privileged": "identity_privilege",
+    "k8s_security_context": "config_benchmark",
     "k8s_anonymous_auth": "exposure_access",
     "k8s_privilege_escalation": "identity_privilege",
     "k8s_hostnetwork": "exposure_network",
@@ -489,7 +527,13 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "honeypot": "detect_telemetry",
     "nse-ftp-anon": "exposure_access",
     "nse-redis-noauth": "exposure_access",
+    "nse_redis_noauth": "exposure_access",
     "exposed-redis": "exposure_access",
+    "exposed_redis": "exposure_access",
+    "redis_noauth": "exposure_access",
+    "redis-noauth": "exposure_access",
+    "redis-unauth": "exposure_access",
+    "redis_unauth": "exposure_access",
     "nse-http-dirlist": "config_benchmark",
     "nse-tls-deprecated-protocol": "tls_crypto",
     "nse-tls-weak-cipher": "tls_crypto",
@@ -512,12 +556,24 @@ FINDING_TYPE_CLASS: dict[str, str] = {
     "web_sensitive_file": "config_benchmark",
     "web_http_methods": "config_benchmark",
     "web_default_creds": "identity_default",
-    "web_xss": "config_benchmark",
-    "web_lfi": "config_benchmark",
+    "web_xss": "app_secure_dev",
+    "web_lfi": "app_secure_dev",
     "pc_min_pwd_len": "identity_password",
     "pc_krbtgt": "identity_credential",
     "pc_delegated": "identity_privilege",
     "pc_dsheuristics": "identity_auth",
+    "web_security_headers": "config_benchmark",
+    "web_cookie_flags": "tls_crypto",
+    "web_cors": "exposure_access",
+    "web_cleartext_http": "tls_crypto",
+    "web_cleartext_ftp": "exposure_network",
+    "web_default_page": "config_benchmark",
+    "web_http_redirect": "tls_crypto",
+    "web_service_exposure": "exposure_network",
+    "web_tech_disclosure": "config_benchmark",
+    "web_surface": "exposure_network",
+    "web_ssh_banner": "exposure_network",
+    "web_tls_service": "tls_crypto",
 }
 
 
@@ -535,16 +591,59 @@ def cpg_stamp(cpg_id: str) -> str:
     return "cpg_" + cpg_id.replace(".", "_")
 
 
-def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
+# Nuclei / nmap ids that are Redis-without-auth (exposure), not a patch CVE.
+# Hyphen and underscore forms: finding_types.norm_type_key rewrites '-'.
+REDIS_AUTH_TEMPLATE_IDS = frozenset(
+    {
+        "exposed-redis",
+        "exposed_redis",
+        "nse-redis-noauth",
+        "nse_redis_noauth",
+        "redis_noauth",
+        "redis-noauth",
+        "redis-unauth",
+        "redis_unauth",
+    }
+)
+
+_REDIS_AUTH_BLOB_TOKS = (
+    "without auth",
+    "unauthenticated",
+    "noauth",
+    "no auth",
+    "requirepass",
+    "accessible without authentication",
+    "unprotected by password",
+)
+
+
+def redis_auth_template_ids(
+    rec: dict[str, Any], mapped: dict[str, Any] | None = None
+) -> list[str]:
+    """Every extra/template id. Do not first-win on check_id or finding_type."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
-    tid = str(
-        mapped.get("finding_type")
-        or extra.get("template_id")
-        or extra.get("rule")
-        or extra.get("check_id")
-        or ""
-    ).lower()
-    if tid in {"exposed-redis", "nse-redis-noauth"}:
+    mapped = mapped or {}
+    raw: list[str] = []
+    for key in ("check_id", "template_id", "rule", "template-id", "id"):
+        val = str(extra.get(key) or "").strip().lower()
+        if val:
+            raw.append(val)
+    ftype = str(mapped.get("finding_type") or "").strip().lower()
+    # vuln_playbook sets finding_type=vulnerability and must not hide extra.rule.
+    if ftype and ftype not in {"vulnerability", "unknown", "generic"}:
+        raw.append(ftype)
+    out: list[str] = []
+    seen: set[str] = set()
+    for val in raw:
+        for form in (val, val.replace("-", "_").replace(" ", "_")):
+            if form and form not in seen:
+                seen.add(form)
+                out.append(form)
+    return out
+
+
+def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
+    if any(tid in REDIS_AUTH_TEMPLATE_IDS for tid in redis_auth_template_ids(rec, mapped)):
         return True
     blob = " ".join(
         str(x or "")
@@ -557,21 +656,455 @@ def _looks_unauth_redis(mapped: dict[str, Any], rec: dict[str, Any]) -> bool:
     ).lower()
     if "redis" not in blob:
         return False
-    return any(
-        tok in blob
-        for tok in (
-            "without auth",
-            "unauthenticated",
-            "noauth",
-            "no auth",
-            "requirepass",
-            "accessible without authentication",
-        )
+    return any(tok in blob for tok in _REDIS_AUTH_BLOB_TOKS)
+
+
+# NIST CSF 1.1 subcategory ids (and unpadded 2.0-style twins) → CSF 2.0.
+# PR.AC → PR.AA, PR.PT/PR.IP → PR.PS. Official 2.0 ids pass through.
+CSF11_TO_20: dict[str, str] = {
+    "PR.AC-1": "PR.AA-01",
+    "PR.AC-01": "PR.AA-01",
+    "PR.AC-3": "PR.AA-05",
+    "PR.AC-03": "PR.AA-05",
+    "PR.AC-4": "PR.AA-05",
+    "PR.AC-04": "PR.AA-05",
+    "PR.AC-5": "PR.IR-01",
+    "PR.AC-05": "PR.IR-01",
+    "PR.PT-3": "PR.PS-01",
+    "PR.PT-03": "PR.PS-01",
+    "PR.IP-1": "PR.PS-01",
+    "PR.IP-01": "PR.PS-01",
+    "PR.DS-1": "PR.DS-01",
+    "PR.DS-2": "PR.DS-02",
+    "ID.AM-1": "ID.AM-01",
+    "DE.CM-1": "DE.CM-01",
+}
+
+
+def normalize_csf20_id(raw: str) -> str:
+    """Normalize mixed NIST CSF 1.1 / 2.0 tokens to a CSF 2.0 subcategory id.
+
+    Returns ``unmapped`` when the token is not a known 2.0 subcategory after
+    the 1.1 remap. CPG 2.0 stays the client-facing spine; this helper only
+    touches CSF ids.
+    """
+    text = str(raw or "").strip()
+    if not text:
+        return UNMAPPED
+    for prefix in ("NIST.CSF.", "NIST_CSF:", "NIST_CSF.", "csf_"):
+        if text.upper().startswith(prefix.upper()) or text.startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    text = text.replace("_", ".").strip()
+    # csf_PR_DS_02 → PR.DS.02 then restore hyphen form
+    parts = text.split(".")
+    if len(parts) >= 3 and parts[1].isalpha() and parts[2].isdigit():
+        text = f"{parts[0]}.{parts[1]}-{parts[2].zfill(2)}"
+    elif "-" in text:
+        fam, num = text.split("-", 1)
+        if num.isdigit():
+            text = f"{fam}-{num.zfill(2)}"
+    text = CSF11_TO_20.get(text, text)
+    if text in CSF20_SUBCATEGORIES:
+        return text
+    return UNMAPPED
+
+
+def _norm_sensor(raw: str) -> str:
+    return str(raw or "").strip().lower().replace("_", "-")
+
+
+def _cis_v8_token(raw: str) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    for prefix in ("CIS.", "CIS-", "CIS_"):
+        if text.upper().startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    if text.upper().startswith("V8-") or text.upper().startswith("V8."):
+        text = text[3:]
+    if text.startswith(CIS_V8_PREFIX):
+        return text
+    return f"{CIS_V8_PREFIX}{text}"
+
+
+# Folded from frozen freedom45 control_map.py (sensor + title heuristics).
+# CIS v8 tokens are internal-only. CPG 2.0 is stamped via WEAKNESS_CLASS_MAP.
+ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
+    "sense-cleartext-http": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-7"),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-cleartext-ftp": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("SC-8",),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-http-https-redirect": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-7"),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-http-headers": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("SC-7", "SC-18"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-cookie-flags": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-23", "AC-12"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-cors": {
+        "weakness_class": "exposure_access",
+        "nist_800_53": ("AC-3", "SC-7"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.AA-05",
+    },
+    "sense-ssh-banner": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("CM-7", "AC-17"),
+        "cis_v8_internal": ("5.2", "12.2"),
+        "csf20": "PR.IR-01",
+    },
+    "sense-surface": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("CM-7", "CM-8"),
+        "cis_v8_internal": ("16.2",),
+        "csf20": "ID.AM-01",
+    },
+    "sense-tls": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-13"),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-tls-expiry": {
+        "weakness_class": "tls_crypto",
+        "nist_800_53": ("SC-8", "SC-17"),
+        "cis_v8_internal": ("3.3",),
+        "csf20": "PR.DS-02",
+    },
+    "sense-service-exposure": {
+        "weakness_class": "exposure_network",
+        "nist_800_53": ("SC-7", "CM-7"),
+        "cis_v8_internal": ("16.2", "12.2"),
+        "csf20": "PR.IR-01",
+    },
+    "sense-dir-listing": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-6", "AC-3"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.DS-01",
+    },
+    "sense-git-exposed": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7", "AC-3", "SI-12"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.DS-01",
+    },
+    "sense-tech-disclosure": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7",),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-http-info": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7",),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-default-page": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-2", "CM-6"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+    "sense-http-methods": {
+        "weakness_class": "config_benchmark",
+        "nist_800_53": ("CM-7", "AC-3"),
+        "cis_v8_internal": ("5.2",),
+        "csf20": "PR.PS-01",
+    },
+}
+
+ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
+    (
+        re.compile(r"smbv?1|smb\s*v1", re.I),
+        {
+            "rule_id": "smb-v1",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("CM-7",),
+            "cis_v8_internal": ("5.1",),
+            "csf20": "PR.AA-01",
+        },
+    ),
+    (
+        re.compile(r"s3.*public|public.*bucket|block public access", re.I),
+        {
+            "rule_id": "s3-public",
+            "weakness_class": "exposure_access",
+            "nist_800_53": ("AC-3",),
+            "cis_v8_internal": ("3.3",),
+            "csf20": "PR.DS-01",
+        },
+    ),
+    (
+        re.compile(r"\brdp\b|(?<!\d)3389(?!\d)|remote desktop", re.I),
+        {
+            "rule_id": "rdp",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("AC-17",),
+            "cis_v8_internal": ("12.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"\bredis\b|(?<!\d)6379(?!\d)", re.I),
+        {
+            "rule_id": "redis",
+            "weakness_class": "exposure_access",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"\bmongodb\b|(?<!\d)27017(?!\d)", re.I),
+        {
+            "rule_id": "mongodb",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"\bmysql\b|(?<!\d)3306(?!\d)|\bpostgres(?:ql)?\b|(?<!\d)5432(?!\d)", re.I),
+        {
+            "rule_id": "sql-db",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"\belasticsearch\b|(?<!\d)9200(?!\d)|\bkibana\b", re.I),
+        {
+            "rule_id": "elastic",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"\bmemcached\b|(?<!\d)11211(?!\d)", re.I),
+        {
+            "rule_id": "memcached",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7",),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"\btelnet\b", re.I),
+        {
+            "rule_id": "telnet",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-8",),
+            "cis_v8_internal": ("3.3",),
+            "csf20": "PR.DS-02",
+        },
+    ),
+    (
+        re.compile(r"\bvnc\b|(?<!\d)5900(?!\d)", re.I),
+        {
+            "rule_id": "vnc",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("AC-17",),
+            "cis_v8_internal": ("12.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"weak cipher|sslv3|tlsv1\.0|tls 1\.0|heartbleed", re.I),
+        {
+            "rule_id": "weak-tls",
+            "weakness_class": "tls_crypto",
+            "nist_800_53": ("SC-8", "SC-13"),
+            "cis_v8_internal": ("3.3",),
+            "csf20": "PR.DS-02",
+        },
+    ),
+    (
+        re.compile(r"open.?relay|smtp captur|anonymous bind", re.I),
+        {
+            "rule_id": "insecure-service",
+            "weakness_class": "exposure_access",
+            "nist_800_53": ("AC-3",),
+            "cis_v8_internal": ("5.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+    (
+        re.compile(r"world.?writ|0?777|permissions too open", re.I),
+        {
+            "rule_id": "perms",
+            "weakness_class": "config_benchmark",
+            "nist_800_53": ("AC-3",),
+            "cis_v8_internal": ("5.2",),
+            "csf20": "PR.AA-05",
+        },
+    ),
+]
+
+
+def _lookup_env_eval_rule(
+    *,
+    sensor: str = "",
+    title: str = "",
+    description: str = "",
+    finding_type: str = "",
+) -> dict[str, Any] | None:
+    sid = _norm_sensor(sensor)
+    if sid in ENV_EVAL_SENSOR_RULES:
+        return {"sensor": sid, **ENV_EVAL_SENSOR_RULES[sid]}
+    ftype = _norm_sensor(finding_type)
+    if ftype.startswith("sense-") and ftype in ENV_EVAL_SENSOR_RULES:
+        return {"sensor": ftype, **ENV_EVAL_SENSOR_RULES[ftype]}
+    blob = " ".join(x for x in (title, description, finding_type, sensor) if x)
+    for pat, hit in ENV_EVAL_HEURISTICS:
+        if pat.search(blob):
+            return dict(hit)
+    return None
+
+
+def _dedupe_ids(ids: Any) -> list[str]:
+    out: list[str] = []
+    for raw in ids or ():
+        token = str(raw or "").strip()
+        if token and token not in out:
+            out.append(token)
+    return out
+
+
+def nist_800_53_ids(
+    rec: Mapping[str, Any] | None = None,
+    *,
+    finding_type: str = "",
+    sensor: str = "",
+    title: str = "",
+    description: str = "",
+) -> list[str]:
+    """NIST SP 800-53 Rev.5 IDs via the same path as POA&M Controls.
+
+    Prefer ``TYPE_REMEDIATIONS`` (finding type / alias). sense-* rules are
+    a fallback only when no type map hits. Title heuristics use word
+    boundaries and do not match version numbers (WordPress, Apache 2.4.23).
+    Returns an ordered de-duplicated list. CIS v8 is not returned
+    (see ``cis_v8_internal_ids``).
+    """
+    from shared.finding_types import (
+        TYPE_ALIASES,
+        TYPE_REMEDIATIONS,
+        finding_type as resolve_type,
+        norm_type_key,
+        type_remediation,
     )
 
+    extra: dict[str, Any] = {}
+    if rec and isinstance(rec.get("extra"), dict):
+        extra = rec["extra"]  # type: ignore[assignment]
+    sensor = sensor or str(extra.get("sensor") or extra.get("check_id") or extra.get("finding_id") or "")
+    title = title or str((rec or {}).get("name") or "")
+    description = description or str((rec or {}).get("description") or "")
+    ftype = str(finding_type or "").strip()
+    if rec and not ftype:
+        mapped = type_remediation(dict(rec))
+        if mapped and mapped.get("nist_800_53"):
+            return _dedupe_ids(mapped.get("nist_800_53"))
+        ftype = resolve_type(dict(rec)) or ""
+    if not ftype:
+        key = norm_type_key(sensor)
+        ftype = TYPE_ALIASES.get(key) or TYPE_ALIASES.get(sensor) or ""
+    if ftype and ftype in TYPE_REMEDIATIONS:
+        return _dedupe_ids(TYPE_REMEDIATIONS[ftype].get("nist_800_53"))
+    rule = ENV_EVAL_SENSOR_RULES.get(_norm_sensor(sensor))
+    if rule:
+        return _dedupe_ids(rule.get("nist_800_53"))
+    blob = " ".join(x for x in (title, description) if x)
+    if blob:
+        for pat, hit in ENV_EVAL_HEURISTICS:
+            if pat.search(blob):
+                return _dedupe_ids(hit.get("nist_800_53"))
+    return []
 
-def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> str:
-    """Pick one class from control name, finding type, then light heuristics."""
+
+def cis_v8_internal_ids(
+    *,
+    sensor: str = "",
+    title: str = "",
+    description: str = "",
+    finding_type: str = "",
+) -> list[str]:
+    """CIS Controls v8 tokens for extra.cis_v8_internal only — never client-facing."""
+    rule = _lookup_env_eval_rule(
+        sensor=sensor, title=title, description=description, finding_type=finding_type
+    )
+    if not rule:
+        return []
+    return [_cis_v8_token(str(x)) for x in (rule.get("cis_v8_internal") or ()) if x]
+
+
+_WEB_APP_INJECTION_TYPES = frozenset({"web_xss", "web_lfi"})
+_WEB_APP_INJECTION_CONTROLS = frozenset(
+    {
+        "Stop reflected web-app cross-site scripting",
+        "Stop web-app local file inclusion",
+        "Stop cross-site scripting",
+    }
+)
+_THIRD_PARTY_PRODUCT_TOKS = (
+    "nextgen gallery",
+    "nextgen-gallery",
+    "myphpnuke",
+)
+# Nikto/WPScan XSS/LFI checks are known-product signatures, so those
+# scanners are third-party by source (not because the row named a CVE).
+_THIRD_PARTY_SCANNERS = frozenset({"nikto", "wpscan"})
+# SCA / advisory feeds ingested as SARIF. `sarif` itself is a file format.
+# "snyk" here is Open Source / SCA, not the "Snyk Code" SAST driver.
+_SCA_THIRD_PARTY_SCANNERS = frozenset(
+    {"trivy", "grype", "snyk", "dependabot", "osv", "osv-scanner"}
+)
+# Real SAST engines. Never treat the `sarif` label as in-house evidence.
+# snykcode covers the spaced driver name "Snyk Code".
+_IN_HOUSE_SCANNERS = frozenset(
+    {"sast", "semgrep", "codeql", "bandit", "eslint", "opengrep", "snykcode"}
+)
+_SNYK_CODE_RE = re.compile(r"snyk[\s_\-]*code\b", re.I)
+_SEMGREP_SUPPLY_CHAIN_RE = re.compile(
+    r"semgrep[\s_\-]*supply[\s_\-]*chain", re.I
+)
+# nuclei and zap stay ambiguous (custom templates / mixed first-party DAST).
+_CVE_TOKEN_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
+_OSVDB_TOKEN_RE = re.compile(r"\bosvdb[- ]?\d+", re.I)
+_CERT_ADV_RE = re.compile(r"\bCA-\d{4}-\d+\b", re.I)
+_GHSA_TOKEN_RE = re.compile(r"\bGHSA-[0-9a-z]+-[0-9a-z]+-[0-9a-z]+\b", re.I)
+
+
+def _is_web_xss_or_lfi(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> bool:
     rec = rec or {}
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     ftype = str(
@@ -581,13 +1114,174 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
         or extra.get("rule")
         or ""
     )
+    if ftype in _WEB_APP_INJECTION_TYPES:
+        return True
+    return str(mapped.get("control_name") or "") in _WEB_APP_INJECTION_CONTROLS
+
+
+def _scanner_provenance_tokens(
+    rec: dict[str, Any], extra: dict[str, Any]
+) -> set[str]:
+    toks: set[str] = set()
+    for raw in rec.get("labels") or []:
+        val = str(raw or "").strip().lower()
+        if val:
+            toks.add(val)
+    for key in ("tool", "scanner", "engine"):
+        val = str(extra.get(key) or "").strip().lower()
+        if val:
+            toks.add(val)
+    source = str(rec.get("source") or "").strip().lower()
+    if source:
+        toks.add(source)
+    expanded: set[str] = set(toks)
+    for tok in toks:
+        for part in re.split(r"[^a-z0-9]+", tok):
+            if len(part) >= 3:
+                expanded.add(part)
+    return expanded
+
+
+def _structured_cve_blob(extra: dict[str, Any]) -> str:
+    """CVE / GHSA on a structured field (extra.cve / rule_id), never the message."""
+    parts = [
+        str(extra.get(k) or "")
+        for k in ("cve", "rule", "rule_id", "ruleId", "id")
+    ]
+    cves = extra.get("cves")
+    if isinstance(cves, (list, tuple)):
+        parts.extend(str(x) for x in cves)
+    return " ".join(parts)
+
+
+def _scanner_driver_blob(rec: dict[str, Any], extra: dict[str, Any]) -> str:
+    parts = [str(x or "") for x in (rec.get("labels") or [])]
+    for key in ("tool", "scanner", "engine"):
+        parts.append(str(extra.get(key) or ""))
+    parts.append(str(rec.get("source") or ""))
+    return " ".join(parts)
+
+
+def _scanner_app_attribution(
+    rec: dict[str, Any], extra: dict[str, Any]
+) -> str:
+    """Return third_party, in_house, or empty when the scanner is ambiguous.
+
+    A structured CVE or GHSA (extra.cve or a rule_id that starts with
+    CVE-/GHSA-) wins over any transport label. Then the SARIF *driver*
+    (or collector tool/source) decides: Semgrep/CodeQL/Bandit/ESLint/
+    OpenGrep, Snyk Code, and the code-secrets lane are in-house;
+    Trivy/Grype/Snyk (Open Source)/Dependabot/OSV, Semgrep Supply Chain,
+    and Nikto/WPScan are third-party. Nuclei is third-party only with a
+    CVE template; ZAP stays ambiguous.
+    """
+    structured = _structured_cve_blob(extra)
+    if _CVE_TOKEN_RE.search(structured) or _GHSA_TOKEN_RE.search(structured):
+        return "third_party"
+    driver = _scanner_driver_blob(rec, extra)
+    if _SNYK_CODE_RE.search(driver):
+        return "in_house"
+    if _SEMGREP_SUPPLY_CHAIN_RE.search(driver):
+        return "third_party"
+    toks = _scanner_provenance_tokens(rec, extra)
+    if toks & _IN_HOUSE_SCANNERS or "code-secrets" in toks:
+        return "in_house"
+    if toks & (_THIRD_PARTY_SCANNERS | _SCA_THIRD_PARTY_SCANNERS):
+        return "third_party"
+    if "nuclei" in toks:
+        cve_blob = " ".join(
+            str(extra.get(k) or "")
+            for k in ("cve", "template_id", "template-id", "id")
+        )
+        cves = extra.get("cves")
+        if isinstance(cves, (list, tuple)):
+            cve_blob += " " + " ".join(str(x) for x in cves)
+        if _CVE_TOKEN_RE.search(cve_blob):
+            return "third_party"
+    return ""
+
+
+def _looks_third_party_app_finding(
+    mapped: dict[str, Any], rec: dict[str, Any] | None = None
+) -> bool:
+    """Third-party XSS/LFI (PR.PS-02) vs in-house (PR.PS-06).
+
+    Nikto/WPScan rows are third-party by scanner because their XSS/LFI
+    checks are known-product signatures. SCA drivers and nuclei CVE
+    templates are also third-party; SAST on the client's own code is
+    in-house. Ambiguous sources fall back to advisory identifiers (not
+    extra.url, not a bare ``/advisories/`` path).
+    """
+    rec = rec or {}
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    attr = _scanner_app_attribution(rec, extra)
+    if attr == "in_house":
+        return False
+    if attr == "third_party":
+        return True
+    parts: list[Any] = [
+        mapped.get("control_name"),
+        mapped.get("weakness_name"),
+        rec.get("name"),
+        rec.get("description"),
+        extra.get("cve"),
+        extra.get("osvdb"),
+        extra.get("advisory"),
+        extra.get("references"),
+    ]
+    cves = extra.get("cves")
+    if isinstance(cves, (list, tuple)):
+        parts.extend(cves)
+    blob = " ".join(str(x or "") for x in parts)
+    if (
+        _CVE_TOKEN_RE.search(blob)
+        or _OSVDB_TOKEN_RE.search(blob)
+        or _CERT_ADV_RE.search(blob)
+        or _GHSA_TOKEN_RE.search(blob)
+    ):
+        return True
+    low = blob.lower()
+    return any(tok in low for tok in _THIRD_PARTY_PRODUCT_TOKS)
+
+
+def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None = None) -> str:
+    """Pick one class from control name, finding type, then light heuristics."""
+    rec = rec or {}
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    sensor = _norm_sensor(str(extra.get("sensor") or extra.get("finding_id") or ""))
+    if sensor in ENV_EVAL_SENSOR_RULES:
+        return str(ENV_EVAL_SENSOR_RULES[sensor]["weakness_class"])
+    ftype = str(
+        mapped.get("finding_type")
+        or extra.get("check_id")
+        or extra.get("template_id")
+        or extra.get("rule")
+        or ""
+    )
     if ftype in FINDING_TYPE_CLASS:
-        return FINDING_TYPE_CLASS[ftype]
+        cls = FINDING_TYPE_CLASS[ftype]
+        if (
+            cls == "app_secure_dev"
+            and ftype in _WEB_APP_INJECTION_TYPES
+            and _looks_third_party_app_finding(mapped, rec)
+        ):
+            return "vuln_patch"
+        return cls
+    for tid in redis_auth_template_ids(rec, mapped):
+        if tid in FINDING_TYPE_CLASS:
+            return FINDING_TYPE_CLASS[tid]
     if _looks_unauth_redis(mapped, rec):
         return "exposure_access"
     name = str(mapped.get("control_name") or "")
     if name in CONTROL_CLASS:
-        return CONTROL_CLASS[name]
+        cls = CONTROL_CLASS[name]
+        if (
+            cls == "app_secure_dev"
+            and name in _WEB_APP_INJECTION_CONTROLS
+            and _looks_third_party_app_finding(mapped, rec)
+        ):
+            return "vuln_patch"
+        return cls
     if name.startswith("Reduce unnecessary network exposure"):
         return "exposure_network"
     if name.startswith("Patch ") or name.startswith("Apply security") or name.startswith("Apply vulnerability"):
@@ -600,6 +1294,18 @@ def classify_weakness_class(mapped: dict[str, Any], rec: dict[str, Any] | None =
             return "vuln_patch"
     if cat in {"honeypot", "deception-sensor"}:
         return "detect_telemetry"
+    # Freedom45 title heuristics only for env-eval / web-tls rows so DEMO
+    # nmap/easm classifications stay byte-identical.
+    env_eval = str(rec.get("source") or "") == "web-tls" or sensor.startswith("sense-")
+    if env_eval:
+        rule = _lookup_env_eval_rule(
+            sensor=sensor,
+            title=str(mapped.get("control_name") or rec.get("name") or ""),
+            description=str(rec.get("description") or ""),
+            finding_type=ftype,
+        )
+        if rule and rule.get("weakness_class"):
+            return str(rule["weakness_class"])
     return UNMAPPED
 
 
@@ -621,23 +1327,61 @@ def _iter_candidate_hosts(rec: dict[str, Any] | None, mapped: dict[str, Any] | N
     return out
 
 
-def _host_token_is_public_ip(raw: str) -> bool:
-    """True only for a public unicast IP. RFC1918 / loopback / ULA never qualify."""
+def _strip_zone_and_cidr(host: str) -> str:
+    """Drop IPv6 zone-id and CIDR suffix. Hostnames are unchanged."""
+    text = str(host or "").strip()
+    if not text:
+        return ""
+    text = text.split("%", 1)[0]
+    if "/" in text:
+        text = text.split("/", 1)[0]
+    return text
+
+
+def _host_from_url_or_token(raw: str) -> str:
+    """Extract a host/IP from a URL, [IPv6]:port, host:port, or bare token.
+
+    urllib.parse handles scheme, userinfo, IPv6 brackets, and path/query.
+    Bare IPv4:port and CIDR keep the pre-urlparse behaviour.
+    """
     token = str(raw or "").strip()
     if not token:
-        return False
-    token = token.split("%", 1)[0]
-    token = token.split("/", 1)[0]
-    if token.startswith("[") and "]" in token:
-        token = token[1 : token.index("]")]
-    if "://" in token:
-        token = token.split("://", 1)[1]
+        return ""
+    if token.startswith("["):
+        end = token.find("]")
+        if end != -1:
+            return token[1:end]
+    if "://" in token or token.startswith("//"):
+        try:
+            parsed = urlsplit(token if "://" in token else f"//{token.lstrip('/')}")
+            if parsed.hostname:
+                return parsed.hostname
+            netloc = parsed.netloc or ""
+            if netloc.startswith("[") and "]" in netloc:
+                return netloc[1 : netloc.index("]")]
+            if "@" in netloc:
+                netloc = netloc.rsplit("@", 1)[-1]
+            if netloc.count(":") == 1 and netloc.rsplit(":", 1)[-1].isdigit():
+                netloc = netloc.rsplit(":", 1)[0]
+            return netloc
+        except ValueError:
+            return ""
+    if "@" in token:
+        token = token.rsplit("@", 1)[-1]
     token = token.split("/", 1)[0]
     token = token.split("?", 1)[0]
     if token.count(":") == 1 and token.rsplit(":", 1)[-1].isdigit():
         token = token.rsplit(":", 1)[0]
+    return token
+
+
+def _host_token_is_public_ip(raw: str) -> bool:
+    """True only for a public unicast IP. RFC1918 / loopback / ULA never qualify."""
+    host = _strip_zone_and_cidr(_host_from_url_or_token(raw))
+    if not host:
+        return False
     try:
-        addr = ipaddress.ip_address(token)
+        addr = ipaddress.ip_address(host)
     except ValueError:
         return False
     return bool(addr.is_global and not addr.is_multicast)
@@ -727,6 +1471,15 @@ def resolve_class_tags(
         if not is_internet_facing(rec, mapped):
             cpg_id = "3.I"
     if official:
+        # Unauthenticated Redis is an authentication gap (PR.AA-03), not
+        # least-privilege (PR.AA-05). CPG 3.I/3.S stays with exposure_access.
+        if (
+            official == "PR.AA-05"
+            and rec is not None
+            and mapped is not None
+            and _looks_unauth_redis(mapped, rec)
+        ):
+            official = "PR.AA-03"
         if cpg_id != UNMAPPED and cpg_id not in CPG20_GOALS:
             cpg_id = UNMAPPED
         return {
@@ -762,13 +1515,34 @@ def apply_class_mapping(mapped: dict[str, Any], rec: dict[str, Any] | None = Non
     mapped["class_source_note"] = tags["source_note"]
     mapped["cpg"] = [tags["cpg_stamp"]]
     n53 = list(mapped.get("nist_800_53") or [])
+    if (
+        cls == "vuln_patch"
+        and _is_web_xss_or_lfi(mapped, rec)
+        and _looks_third_party_app_finding(mapped, rec)
+    ):
+        if "SI-2" not in n53:
+            n53.append("SI-2")
+        n53 = [cid for cid in n53 if cid != "SA-11"]
+        mapped["nist_800_53"] = n53
     cis = list(mapped.get("cis") or [])
     n53_tokens = [f"nist80053_{cid}" for cid in n53]
     refs = [tags["cpg_stamp"], tags["csf_stamp"]] + n53_tokens + list(cis)
+    ftype = str(mapped.get("finding_type") or "")
+    control = str(mapped.get("control_name") or "")
+    rd_gw = (
+        ftype == "rd_gateway_exposed"
+        or control == "Harden the public Remote Desktop Gateway"
+    )
+    if rd_gw:
+        refs.append(csf_stamp("PR.IR-01"))
     mapped["framework_refs"] = ",".join(dict.fromkeys(x for x in refs if x))
     csf_stamps = list(mapped.get("csf") or [])
     if tags["csf_stamp"] not in csf_stamps:
         csf_stamps.append(tags["csf_stamp"])
+    if rd_gw:
+        ir01 = csf_stamp("PR.IR-01")
+        if ir01 not in csf_stamps:
+            csf_stamps.append(ir01)
     mapped["csf"] = csf_stamps
     return mapped
 

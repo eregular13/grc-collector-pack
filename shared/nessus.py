@@ -104,8 +104,9 @@ def _cwes_from_item(item: ET.Element) -> list[str]:
 
 
 def _host_scan_time(host_el: ET.Element) -> str:
-    """HOST_START, else HOST_END, from ReportHost HostProperties tags."""
+    """HOST_START, else HOST_START_TIMESTAMP, else HOST_END."""
     start = ""
+    start_ts = ""
     end = ""
     for child in list(host_el):
         if _tag(child) != "HostProperties":
@@ -119,9 +120,11 @@ def _host_scan_time(host_el: ET.Element) -> str:
                 continue
             if name in {"HOST_START", "host_start"}:
                 start = val
-            elif name in {"HOST_END", "host_end"}:
+            elif name in {"HOST_START_TIMESTAMP", "host_start_timestamp"}:
+                start_ts = val
+            elif name in {"HOST_END", "host_end", "HOST_END_TIMESTAMP", "host_end_timestamp"}:
                 end = val
-    raw = start or end
+    raw = start or start_ts or end
     if not raw:
         return ""
     parsed = parse_scan_datetime(raw)
@@ -159,16 +162,20 @@ def iter_nessus_items(text: str) -> list[dict[str, Any]]:
             svc = str(item.attrib.get("svc_name") or "")
             family = str(item.attrib.get("pluginFamily") or "")
             desc = title
+            solution = ""
             cves = _cves_from_item(item)
             cwes = _cwes_from_item(item)
             for child in list(item):
                 tag = _tag(child)
                 if tag == "description" and (child.text or "").strip():
                     desc = (child.text or "").strip()
+                elif tag == "solution" and (child.text or "").strip():
+                    solution = (child.text or "").strip()
             row: dict[str, Any] = {
                 "host": host,
                 "name": title,
                 "description": desc,
+                "solution": solution,
                 "severity": sev,
                 "port": port,
                 "protocol": proto,

@@ -21,6 +21,7 @@ from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import canon_severity, make_record, make_ref
 from shared.testssl import human_title as testssl_human_title
 from shared.testssl import is_testssl, iter_testssl_findings
+from shared.vendor_dependency import no_fix_from_scanner_tokens
 
 SOURCE = "vuln-scan"
 LABELS = ["vuln", "scanner"]
@@ -219,8 +220,27 @@ def _emit_testssl_row(row: dict[str, Any], host: str, now: str) -> dict:
         assets=[host],
         labels=LABELS + ["testssl"] + extra_labels,
         collected_at=now,
-        extra={"cve": row.get("cve") or "", "id": row.get("id") or "", "ip": row.get("ip") or ""},
+        extra={
+            "cve": row.get("cve") or "",
+            "id": row.get("id") or "",
+            "ip": row.get("ip") or "",
+            **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
+        },
     )
+
+
+def _no_fix_extra(*tokens: Any) -> dict[str, Any]:
+    """Stamp solution_type/status plus no_fix_available when the scanner says so."""
+    extra: dict[str, Any] = {}
+    solution_type = str(tokens[0] or "").strip() if tokens else ""
+    status = str(tokens[1] or "").strip() if len(tokens) > 1 else ""
+    if solution_type:
+        extra["solution_type"] = solution_type
+    if status:
+        extra["status"] = status
+    if no_fix_from_scanner_tokens(solution_type, status):
+        extra["no_fix_available"] = True
+    return extra
 
 
 def _greenbone_cves(row: dict[str, Any]) -> list[str]:
@@ -256,6 +276,8 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
             "port": port,
             "cvss": row.get("cvss") or "",
             "threat": row.get("threat") or "",
+            **_no_fix_extra(row.get("solution_type")),
+            **({"solution": str(row.get("solution"))} if row.get("solution") else {}),
             **({"scan_time": str(row.get("scan_time"))} if row.get("scan_time") else {}),
         },
     )
@@ -322,8 +344,13 @@ def parse_file(path: Path) -> list[dict]:
     except Exception:
         peek = None
     if peek is not None and is_testssl(peek):
+        testssl_at = ""
+        if isinstance(peek, dict):
+            testssl_at = str(peek.get("at") or "")
         for row in iter_testssl_findings(peek):
             host = str(row.get("host") or "unknown")
+            if testssl_at and not row.get("scan_time"):
+                row = {**row, "scan_time": testssl_at}
             add_asset(host)
             records.append(_emit_testssl_row(row, host, now))
         if records:
@@ -367,6 +394,9 @@ def parse_file(path: Path) -> list[dict]:
                 continue
             host = str(row.get("host") or "unknown")
             add_asset(host)
+            extra = {"url": url, "id": rid}
+            if row.get("scan_time"):
+                extra["scan_time"] = row.get("scan_time")
             records.append(
                 make_record(
                     kind="finding",
@@ -381,7 +411,7 @@ def parse_file(path: Path) -> list[dict]:
                     assets=[host],
                     labels=LABELS + ["nikto"],
                     collected_at=now,
-                    extra={"url": url, "id": rid},
+                    extra=extra,
                 )
             )
         return records
@@ -416,6 +446,8 @@ def parse_file(path: Path) -> list[dict]:
                 extra["scan_time"] = row.get("scan_time")
             if cves:
                 extra["cve"] = " ".join(cves)
+            if row.get("solution"):
+                extra["solution"] = str(row.get("solution"))
             records.append(
                 make_record(
                     kind="finding",
@@ -523,6 +555,12 @@ def parse_file(path: Path) -> list[dict]:
                 extra_blob["rule"] = vid
                 extra_blob["check_id"] = vid
             extra = stamp_ids(extra_blob, **ids)
+            extra.update(
+                _no_fix_extra(
+                    "",
+                    vuln.get("Status") or vuln.get("status") or vuln.get("VulnerabilityStatus"),
+                )
+            )
             if trivy_created:
                 extra["scan_time"] = trivy_created
             records.append(
@@ -543,19 +581,37 @@ def parse_file(path: Path) -> list[dict]:
         return records
 
     if is_testssl(payload):
+        testssl_at = ""
+        if isinstance(payload, dict):
+            testssl_at = str(payload.get("at") or payload.get("scanTime") or "")
+            # scanTime is elapsed seconds in real testssl.sh JSON — only keep clock strings.
+            if testssl_at.isdigit():
+                testssl_at = str(payload.get("at") or "")
         for row in iter_testssl_findings(payload):
             host = str(row.get("host") or "unknown")
+            if testssl_at and not row.get("scan_time"):
+                row = {**row, "scan_time": testssl_at}
             add_asset(host)
             records.append(_emit_testssl_row(row, host, now))
         if records:
             return records
 
+    gb_stamp = ""
+    if isinstance(payload, dict):
+        gb_stamp = str(payload.get("timestamp") or payload.get("scan_start") or "")
     for row in _greenbone_rows(payload):
         nvt = row.get("nvt") if isinstance(row.get("nvt"), dict) else {}
         vid = str(nvt.get("oid") or row.get("name") or "openvas")
         host = str(row.get("host") or "unknown")
         raw_sev = row.get("severity") or nvt.get("cvss_base") or "medium"
         sev = cvss_band(raw_sev) or str(raw_sev)
+        solution = nvt.get("solution") if isinstance(nvt.get("solution"), dict) else {}
+        solution_type = (
+            row.get("solution_type")
+            or solution.get("type")
+            or nvt.get("solution_type")
+            or ""
+        )
         add_asset(host)
         records.append(
             make_record(
@@ -575,6 +631,16 @@ def parse_file(path: Path) -> list[dict]:
                     "oid": vid,
                     "cve": row.get("cve") or "",
                     "cves": _greenbone_cves(row),
+                    **_no_fix_extra(solution_type),
+                    **(
+                        {
+                            "scan_time": str(
+                                row.get("timestamp") or row.get("scan_start") or gb_stamp
+                            )
+                        }
+                        if (row.get("timestamp") or row.get("scan_start") or gb_stamp)
+                        else {}
+                    ),
                 },
             )
         )

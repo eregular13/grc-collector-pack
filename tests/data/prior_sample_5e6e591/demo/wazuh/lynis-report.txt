@@ -1,0 +1,11 @@
+# lynis report — DEMO fixture, not a client estate
+Lynis 3.1.4
+
+Hostname = jump-unmanaged
+
+Warnings (2):
+! No firewall software installed [FIRE-4590]
+! SSH PermitRootLogin is enabled [SSH-7408]
+
+Suggestions (1):
+* Enable process accounting [ACCT-9622]

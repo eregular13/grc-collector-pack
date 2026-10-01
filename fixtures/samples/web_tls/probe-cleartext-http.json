@@ -1,0 +1,38 @@
+{
+  "schema": "web_tls.probe.v1",
+  "target": "192.0.2.10",
+  "ports": [80, 443, 22],
+  "open_ports": [80],
+  "http": {
+    "http://192.0.2.10/": {
+      "status": 200,
+      "headers": {
+        "server": "nginx/1.18.0",
+        "x-powered-by": "PHP/7.4.33"
+      },
+      "set_cookie": ["sid=abc123; Path=/"],
+      "body": "Welcome to nginx",
+      "allow": "GET, POST, TRACE, PUT",
+      "server": "nginx/1.18.0"
+    },
+    "http://192.0.2.10/.git/HEAD": {
+      "kind": "dir",
+      "url": "http://192.0.2.10/.git/HEAD",
+      "status": 200,
+      "body": "ref: refs/heads/main\n",
+      "git_head": true
+    },
+    "http://192.0.2.10/static/": {
+      "kind": "dir",
+      "url": "http://192.0.2.10/static/",
+      "status": 200,
+      "body": "<html><title>Index of /static/</title><a href=\"/static/../\">Parent Directory</a>",
+      "content_type": "text/html"
+    }
+  },
+  "tls": {
+    "443": {"open": false, "port": 443}
+  },
+  "ssh": {},
+  "live": false
+}

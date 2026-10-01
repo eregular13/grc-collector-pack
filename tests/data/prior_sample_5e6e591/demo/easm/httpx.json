@@ -1,0 +1,16 @@
+[
+  {
+    "host": "admin.example.com",
+    "url": "https://admin.example.com/login",
+    "status_code": 200,
+    "title": "Admin login",
+    "tech": ["okta"],
+    "failed": false
+  },
+  {
+    "host": "vpn.example.com",
+    "url": "https://vpn.example.com",
+    "failed": true,
+    "error": "timeout"
+  }
+]

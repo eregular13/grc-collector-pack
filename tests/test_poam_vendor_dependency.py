@@ -11,9 +11,11 @@ from pathlib import Path
 
 from shared.kev import KevCatalog, KevEntry, join_kev
 from shared.poam_fedramp import item_to_row, write_fedramp_poam
+from shared.poam_fields import local_run_date
 from shared.poam_ledger import apply_ledger, fp_v1
 from shared.vendor_dependency import (
     CHECKIN_OVERDUE_AFTER_DAYS,
+    DEFAULT_COMMENT,
     KEV_NOT_SUSPENDED_COMMENT,
     SUGGEST_COMMENT,
     VD_INVALID_OVERRIDE,
@@ -25,6 +27,7 @@ from shared.vendor_dependency import (
     VENDOR_CHECKIN_OVERDUE,
     canon_yes_no,
     format_vendor_product,
+    no_fix_from_scanner_tokens,
     scanner_suggests_no_fix,
 )
 
@@ -79,6 +82,8 @@ def test_default_o_is_no_with_vd_source_default() -> None:
     assert row[13] == VD_NO
     assert row[14] == ""
     assert row[15] == ""
+    assert DEFAULT_COMMENT in item["vd_comments"]
+    assert DEFAULT_COMMENT in row[23]
 
 
 def test_never_invent_yes() -> None:
@@ -95,6 +100,7 @@ def test_scanner_no_fix_is_suggestion_only() -> None:
     assert item["vendor_dependency"] == VD_NO
     assert item["vd_source"] == "suggested"
     assert SUGGEST_COMMENT in item["vd_comments"]
+    assert DEFAULT_COMMENT not in item["vd_comments"]
     assert item["vendor_product"] == ""
 
 
@@ -181,7 +187,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     item1 = next(iter(run1["items"].values()))
     pid = item1["poam_id"]
     fp = item1["fp"]
-    assert item1["status_date"] == "2026-09-10"
+    assert item1["status_date"] == local_run_date(_run("2026-09-10T00:00:00Z")).isoformat()
     assert item1["vd_source"] == "default"
 
     run2 = _apply(
@@ -193,7 +199,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     item2 = next(iter(run2["items"].values()))
     assert item2["vendor_dependency"] == VD_NO
     assert item2["vd_source"] == "operator"
-    assert item2["status_date"] == "2026-09-11"
+    assert item2["status_date"] == local_run_date(_run("2026-09-11T00:00:00Z")).isoformat()
     vd_events = [
         e
         for e in run2["events"]
@@ -223,7 +229,7 @@ def test_vendor_field_change_updates_status_date_and_writes_event() -> None:
     )
     item3 = next(iter(run3["items"].values()))
     assert item3["vendor_dependency"] == VD_YES
-    assert item3["status_date"] == "2026-09-12"
+    assert item3["status_date"] == local_run_date(_run("2026-09-12T00:00:00Z")).isoformat()
     yes_events = [
         e
         for e in run3["events"]
@@ -355,7 +361,10 @@ def test_yes_without_product_flags_vd_missing_product() -> None:
 
 def test_vendor_checkin_overdue_fires_at_32_not_31() -> None:
     rec = _rec()
-    first = _apply([rec], when="2026-09-01T00:00:00Z")
+    # Naive local noon — T00:00:00Z is the previous local day west of UTC,
+    # and T12:00:00Z is the next local day at UTC+14. apply_ledger treats
+    # naive as local, so the civil day is exact in every zone.
+    first = _apply([rec], when="2026-09-01T12:00:00")
     pid = next(iter(first["items"].values()))["poam_id"]
     ov = {
         pid: {
@@ -364,12 +373,12 @@ def test_vendor_checkin_overdue_fires_at_32_not_31() -> None:
             "vendor_product": "Vendor – Product",
         }
     }
-    at_31 = _apply([rec], ledger=first, when="2026-10-02T00:00:00Z", overrides=ov)
+    at_31 = _apply([rec], ledger=first, when="2026-10-02T12:00:00", overrides=ov)
     item_31 = next(iter(at_31["items"].values()))
     assert (datetime(2026, 10, 2) - datetime(2026, 9, 1)).days == CHECKIN_OVERDUE_AFTER_DAYS
     assert VENDOR_CHECKIN_OVERDUE not in item_31["vd_flags"]
 
-    at_32 = _apply([rec], ledger=first, when="2026-10-03T00:00:00Z", overrides=ov)
+    at_32 = _apply([rec], ledger=first, when="2026-10-03T12:00:00", overrides=ov)
     item_32 = next(iter(at_32["items"].values()))
     assert VENDOR_CHECKIN_OVERDUE in item_32["vd_flags"]
 
@@ -498,6 +507,12 @@ def test_poam_md_states_default_is_not_verified(tmp_path: Path, monkeypatch) -> 
     ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
     for item in ledger["items"].values():
         assert item["vd_source"] in {"default", "operator", "suggested"}
+        if item["vd_source"] == "default":
+            assert DEFAULT_COMMENT in (item.get("vd_comments") or [])
+    for row in rows:
+        if row["Vendor Dependency"] == VD_NO:
+            comments = row.get("Comments") or ""
+            assert DEFAULT_COMMENT in comments or "no fix available" in comments.lower()
 
 
 def test_format_and_canon_helpers() -> None:
@@ -506,3 +521,123 @@ def test_format_and_canon_helpers() -> None:
     assert format_vendor_product("Acme - Widget") == "Acme – Widget"
     assert canon_yes_no("YES") == VD_YES
     assert canon_yes_no("maybe") is None
+    assert no_fix_from_scanner_tokens("WillNotFix")
+    assert no_fix_from_scanner_tokens("NoneAvailable")
+    assert no_fix_from_scanner_tokens("will_not_fix")
+    assert no_fix_from_scanner_tokens("end_of_life")
+    assert not no_fix_from_scanner_tokens("VendorFix")
+    assert not no_fix_from_scanner_tokens("Mitigation")
+    assert not no_fix_from_scanner_tokens("affected")
+    assert not no_fix_from_scanner_tokens("fixed")
+
+
+def test_greenbone_solution_type_maps_to_no_fix(tmp_path: Path) -> None:
+    from collectors import vuln_scan
+
+    xml = tmp_path / "willnotfix.xml"
+    xml.write_text(
+        """<?xml version="1.0"?>
+<report extension="xml" content_type="text/xml">
+  <report>
+    <gmp><version>22.4</version></gmp>
+    <results>
+      <result>
+        <name>Abandoned NVT</name>
+        <host>10.0.0.9</host>
+        <port>general/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.999001">
+          <name>Abandoned NVT</name>
+          <solution type="WillNotFix">Vendor will not provide a patch.</solution>
+        </nvt>
+        <threat>High</threat>
+        <severity>7.5</severity>
+        <description>No vendor patch.</description>
+      </result>
+    </results>
+  </report>
+</report>
+""",
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(xml) if r.get("kind") == "finding"]
+    assert recs
+    extra = recs[0]["extra"]
+    assert extra.get("solution_type") == "WillNotFix"
+    assert extra.get("no_fix_available") is True
+    assert scanner_suggests_no_fix(recs[0])
+    item = next(iter(_apply(recs)["items"].values()))
+    assert item["vd_source"] == "suggested"
+    assert item["vendor_dependency"] == VD_NO
+    assert SUGGEST_COMMENT in item["vd_comments"]
+    assert DEFAULT_COMMENT not in item["vd_comments"]
+
+
+def test_greenbone_csv_mitigation_is_not_suggested() -> None:
+    from collectors import vuln_scan
+
+    recs = [
+        r
+        for r in vuln_scan.parse_file(
+            Path(__file__).resolve().parents[1] / "fixtures" / "samples" / "greenbone" / "one_vuln.csv"
+        )
+        if r.get("kind") == "finding"
+    ]
+    assert recs
+    extra = recs[0]["extra"]
+    assert extra.get("solution_type") == "Mitigation"
+    assert extra.get("no_fix_available") is not True
+    assert not scanner_suggests_no_fix(recs[0])
+    item = next(iter(_apply(recs)["items"].values()))
+    assert item["vd_source"] == "default"
+    assert DEFAULT_COMMENT in item["vd_comments"]
+
+
+def test_trivy_status_maps_to_no_fix(tmp_path: Path) -> None:
+    from collectors import vuln_scan
+
+    dest = tmp_path / "trivy-wontfix.json"
+    dest.write_text(
+        json.dumps(
+            {
+                "Results": [
+                    {
+                        "Target": "app:latest",
+                        "Class": "os-pkgs",
+                        "Vulnerabilities": [
+                            {
+                                "VulnerabilityID": "CVE-2024-0001",
+                                "PkgName": "legacy-lib",
+                                "Severity": "HIGH",
+                                "Title": "legacy-lib will not fix",
+                                "Description": "Vendor declined a patch.",
+                                "Status": "will_not_fix",
+                            },
+                            {
+                                "VulnerabilityID": "CVE-2024-0002",
+                                "PkgName": "ok-lib",
+                                "Severity": "HIGH",
+                                "Title": "ok-lib has a fix",
+                                "Description": "Upgrade available.",
+                                "Status": "fixed",
+                            },
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    recs = [r for r in vuln_scan.parse_file(dest) if r.get("kind") == "finding"]
+    by_cve = {str(r["extra"].get("cve")): r for r in recs}
+    wont = by_cve["CVE-2024-0001"]
+    fixed = by_cve["CVE-2024-0002"]
+    assert wont["extra"].get("status") == "will_not_fix"
+    assert wont["extra"].get("no_fix_available") is True
+    assert scanner_suggests_no_fix(wont)
+    assert fixed["extra"].get("status") == "fixed"
+    assert fixed["extra"].get("no_fix_available") is not True
+    assert not scanner_suggests_no_fix(fixed)
+    ledger = _apply(recs)
+    sources = {item["vd_source"] for item in ledger["items"].values()}
+    assert "suggested" in sources
+    assert "default" in sources

@@ -1,0 +1,26 @@
+{
+  "commandline": "ffuf",
+  "results": [
+    {
+      "url": "https://admin.example.com/admin",
+      "status": 200,
+      "length": 2048,
+      "input": {"FUZZ": "admin"},
+      "position": 1
+    },
+    {
+      "url": "https://admin.example.com/robots.txt",
+      "status": 200,
+      "length": 40,
+      "input": {"FUZZ": "robots.txt"},
+      "position": 2
+    },
+    {
+      "url": "https://admin.example.com/nonesuch",
+      "status": 404,
+      "length": 0,
+      "input": {"FUZZ": "nonesuch"},
+      "position": 3
+    }
+  ]
+}
