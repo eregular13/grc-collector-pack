@@ -2585,9 +2585,11 @@ def iter_poam_decisions(
         prev = prior.get(id(rec)) or {}
         prev_reason = str(prev.get("reason") or "")
         if is_merged_into_reason(str(d.get("reason") or "")):
+            # Only flood-guard fold/E1 origins — never a leftover include code.
             if prev_reason in {"telemetry_duplicate", "superseded_by_specific"}:
                 d["flood_guard_origin"] = prev_reason
-                winner = str(
+                merged_parent = str(d.get("reason") or "").split(":", 1)[-1]
+                winner = merged_parent or str(
                     prev.get("rolled_into_ref")
                     or prev.get("superseded_by_ref")
                     or d.get("superseded_by_ref")
@@ -2600,8 +2602,6 @@ def iter_poam_decisions(
                     d["detail"] = (
                         f"port-fold superseded_by_specific; folded into {winner}"
                     ).strip()
-            elif prev_reason and prev_reason != str(d.get("reason") or ""):
-                d["flood_guard_origin"] = prev_reason
         d["reason_code"] = reason_code_of(
             d.get("reason"), include=bool(d.get("include"))
         )

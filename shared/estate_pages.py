@@ -1530,14 +1530,15 @@ def _reconcile(
     merged_aliases: int = 0,
     c5_extras: int = 0,
 ) -> str | None:
-    """Identity: POA&M + (excluded − off-register) + kind-excluded = register
+    """Identity: POA&M + (excluded − off-register) = register
     and weaknesses + kind-excluded − merged = register.
 
     Printed sums are the computed totals, never the register count. A
     mismatch always warns, even when extras (duplicates_merged) exist.
-    kind:excluded rows stay on the register as accept (#181).
+    kind:excluded rows stay on the register as accept (#181) and are
+    already counted in ``excluded_poam`` (excluded.csv row count). Do
+    not add ``kind_excluded`` to the plan equation.
     merged_into aliases and C5 DUPLICATE_INSTANCE extras stay off it.
-    ``excluded_poam`` is excluded.csv row count.
     """
     merged_n = max(0, int(merged_aliases or 0))
     c5_n = max(0, int(c5_extras or 0))
@@ -1549,16 +1550,16 @@ def _reconcile(
         and not off_n
     ):
         return None
-    plan_sum = poam_n + (excluded_poam - off_n) + kind_excluded
+    plan_sum = poam_n + (excluded_poam - off_n)
     weak_sum = findings_n + kind_excluded - merged_n
     if off_n:
         equations = (
-            f"{poam_n} + ({excluded_poam} - {off_n}) + {kind_excluded} = {plan_sum}; "
+            f"{poam_n} + ({excluded_poam} - {off_n}) = {plan_sum}; "
             f"{findings_n} + {kind_excluded} - {merged_n} = {weak_sum}"
         )
     else:
         equations = (
-            f"{poam_n} + {excluded_poam} + {kind_excluded} = {plan_sum}; "
+            f"{poam_n} + {excluded_poam} = {plan_sum}; "
             f"{findings_n} + {kind_excluded} = {weak_sum}"
         )
     parts: list[str] = [

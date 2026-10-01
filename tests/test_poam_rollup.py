@@ -462,6 +462,12 @@ def test_port_fold_same_egp_twins_one_scenario(
     assert len(dropped) == 1
     assert is_merged_into_reason(str(dropped[0]["reason"]))
     assert dropped[0]["reason_code"] == "DUPLICATE_INSTANCE"
+    # leftover include codes (key_medium on 445) must not become origin
+    assert dropped[0].get("flood_guard_origin") not in {
+        "key_medium",
+        "severity_medium",
+        "severity_high_critical",
+    }
     summary = _load_recs(tmp_path, monkeypatch, [_asset(host)] + [port, twin])
     scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
     assert len(scenarios) == 1
@@ -645,6 +651,9 @@ def test_prowler_muted_kind_excluded_is_register_accept(
     by_name = {row.get("name"): row.get("treatment") for row in scenarios}
     assert by_name.get("S3 public") == "mitigate"
     assert by_name.get("Muted check") == "accept"
+    muted_scenario = next(row for row in scenarios if row.get("name") == "Muted check")
+    assert "muted in Prowler" in (muted_scenario.get("threats") or "")
+    assert "muted in Prowler" in (muted_scenario.get("description") or "")
     assert summary["kind_excluded"] == 1
     assert summary["flood_guard"]["excluded_by_code"].get("MUTED") == 1
 
@@ -770,3 +779,167 @@ def test_c5_excluded_by_code_counts_duplicate_instance(
     summary = _load_recs(tmp_path, monkeypatch, [_asset("box"), a, b])
     assert summary["flood_guard"]["excluded_by_code"].get("DUPLICATE_INSTANCE") == 1
     assert summary["flood_guard"]["duplicates_merged"] == 1
+
+
+def test_port_fold_smbv1_specific_kills_accept_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bare 445/tcp folds into an SMBv1-style specific. Re-adding a port-fold
+    override that leaves the folded row on the register as accept (same EGP)
+    fails REGISTER_TREATMENT_FAIL.
+    """
+    from shared.port_fold import SUPERSEDED_REASON, is_specific_port_finding
+
+    host = "filesrv.corp.local"
+    port = _finding(
+        ref_id="NMAP-445-bare",
+        name="Open port 445/tcp",
+        description="Open port 445/tcp",
+        severity="medium",
+        category="exposure",
+        assets=[host],
+        extra={"port": "445", "proto": "tcp", "service": ""},
+    )
+    smbv1 = _finding(
+        source="vuln-scan",
+        ref_id="VULN-smbv1",
+        name="SMBv1 enabled",
+        description="SMBv1 dialect confirmed on 445/tcp",
+        severity="high",
+        category="vulnerability",
+        assets=[host],
+        labels=["nuclei", "vuln"],
+        extra={
+            "port": "445",
+            "proto": "tcp",
+            "template_id": "smb-protocols",
+            "tool": "nuclei",
+        },
+    )
+    assert is_specific_port_finding(smbv1)
+    pairs = iter_poam_decisions([port, smbv1], lighter=False)
+    by_ref = {r["ref_id"]: d for r, d in pairs}
+    assert by_ref["VULN-smbv1"].get("include") is True
+    folded = by_ref["NMAP-445-bare"]
+    assert folded.get("include") is False
+    reason = str(folded.get("reason") or "")
+    assert reason == SUPERSEDED_REASON or is_merged_into_reason(reason)
+    origin = str(folded.get("flood_guard_origin") or "")
+    assert origin in {"", SUPERSEDED_REASON}
+    assert origin not in {"key_medium", "severity_medium", "severity_high_critical"}
+    if is_merged_into_reason(reason):
+        parent = reason.split(":", 1)[-1]
+        assert parent
+        assert parent in str(folded.get("detail") or "")
+        assert folded.get("flood_guard_origin") == SUPERSEDED_REASON
+    summary = _load_recs(tmp_path, monkeypatch, [_asset(host), port, smbv1])
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    smbv1_rows = [row for row in scenarios if row.get("name") == "SMBv1 enabled"]
+    assert len(smbv1_rows) == 1
+    assert smbv1_rows[0]["treatment"] == "mitigate"
+    overlap = assert_register_no_double_treatment(tmp_path)
+    assert overlap["ok"] is True
+    assert not overlap["title_host_overlap"]
+    assert not overlap["egp_overlap"]
+    assert summary["flood_guard"]["UNEXPLAINED"] == 0
+
+
+def test_c5_double_drop_same_ref_two_assets_writes_two_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """X@.5→Y and X@.6→W must both land as C5 extras. Keying skip by
+    ref alone (claimed_refs.add) silently drops the second row.
+    """
+    y = _finding(
+        ref_id="NMAP-Y",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    w = _finding(
+        ref_id="NMAP-W",
+        assets=["10.0.0.6"],
+        extra={"port": "445", "check_id": "smb", "id": "smb-open"},
+    )
+    x_a = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x_b = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.6"],
+        extra={"port": "445", "check_id": "smb", "id": "smb-open"},
+    )
+    summary = _load_recs(
+        tmp_path,
+        monkeypatch,
+        [_asset("10.0.0.5"), _asset("10.0.0.6"), y, w, x_a, x_b],
+    )
+    excluded = csv_rows(tmp_path / "poam" / "excluded.csv")
+    c5 = [
+        row
+        for row in excluded
+        if row.get("finding_ref_id") == "NMAP-X"
+        and row.get("excluded_reason") == "DUPLICATE_INSTANCE"
+    ]
+    assert len(c5) == 2
+    assets = {row.get("asset") for row in c5}
+    assert assets == {"10.0.0.5", "10.0.0.6"}
+    poam_refs = {row.get("finding_ref_id") for row in csv_rows(tmp_path / "poam" / "poam.csv")}
+    assert "NMAP-X" not in poam_refs
+    assert summary["flood_guard"]["excluded_by_code"].get("DUPLICATE_INSTANCE") == 2
+    assert_flood_guard(tmp_path, summary)
+
+
+def test_assert_flood_guard_rejects_dropped_excluded_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """n12: dropping one excluded.csv row must fail the flood-guard guard."""
+    from shared.ciso_shape import RegisterShapeError
+
+    info = _finding(
+        ref_id="NMAP-info",
+        name="Host discovered",
+        severity="info",
+        extra={"port": "80"},
+    )
+    live = _finding(
+        ref_id="NMAP-keep",
+        severity="high",
+        extra={"port": "445", "service": "microsoft-ds"},
+    )
+    naw = _finding(
+        extra={"exclude_reason": "NOT_A_WEAKNESS", "check_id": "cost-policy"},
+        ref_id="CLD-cost",
+        source="cloud-prowler",
+        name="Stop underutilized VM",
+        severity="medium",
+        category="cloud-misconfiguration",
+    )
+    summary = _load_recs(tmp_path, monkeypatch, [_asset("box"), live, info, naw])
+    path = tmp_path / "poam" / "excluded.csv"
+    rows = csv_rows(path)
+    assert len(rows) >= 2
+    fieldnames = list(rows[0].keys())
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows[:-1])
+    with pytest.raises(RegisterShapeError, match="excluded"):
+        assert_flood_guard(tmp_path, summary)
+
+
+def test_export_csv_rel_lists_poam_members() -> None:
+    """n13: dropping poam_members.csv from EXPORT_CSV_REL must fail."""
+    from shared.estate_pages import EXPORT_CSV_REL
+
+    assert "poam/poam_members.csv" in EXPORT_CSV_REL
+
+
+def test_refresh_script_lists_poam_members() -> None:
+    """n14: dropping poam_members.csv from the regen files list must fail."""
+    src = (ROOT / "scripts" / "refresh_product_lab_drop_sinks.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"poam/poam_members.csv"' in src
+    assert src.count("poam/poam_members.csv") >= 2

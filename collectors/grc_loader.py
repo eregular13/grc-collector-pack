@@ -33,6 +33,7 @@ from shared.control_map import (
 from shared.poam_rollup import (
     POAM_MEMBERS_FIELDS,
     collect_finding_merges,
+    extra_exclude_token,
     flood_guard_summary,
     reason_code_of,
 )
@@ -475,13 +476,20 @@ def _load(*, run_at: datetime | None = None) -> dict:
         else:
             resid = level
             cid = ""
+        threats = rec.get("category") or rec.get("source") or ""
+        description = rec.get("description") or ""
+        if extra_exclude_token(rec) == "MUTED" or str(decision.get("reason") or "") == "MUTED":
+            muted_label = "muted in Prowler (operator mutelist)"
+            threats = f"{threats}|{muted_label}".strip("|") if threats else muted_label
+            if "muted in prowler" not in description.lower():
+                description = f"{description} ({muted_label})".strip()
         scenarios.append(
             [
                 f"RSK-{ref_slug(str(rec.get('ref_id') or rec.get('name')))}",
                 "|".join(rec.get("assets") or []),
-                rec.get("category") or rec.get("source"),
+                threats,
                 rec.get("name"),
-                rec.get("description"),
+                description,
                 register["existing_controls"],
                 level,
                 level,
@@ -767,11 +775,18 @@ def _load(*, run_at: datetime | None = None) -> dict:
         for row in excluded_rows
         if len(row) > 1 and row[1]
     )
+    written_c5: set[tuple[str, str]] = set()
     c5_merges = []
+    c5_skipped = 0
     for merge in c5_candidates:
         rec = merge.get("rec") or {}
         rec_ref = str(rec.get("ref_id") or "").strip().lower()
+        rec_asset = str(primary_asset(rec) or "").strip().lower()
         if rec_ref and rec_ref in claimed_refs:
+            c5_skipped += 1
+            continue
+        slot = (rec_ref, rec_asset)
+        if rec_ref and slot in written_c5:
             continue
         kept = merge.get("kept") or {}
         kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "")
@@ -798,7 +813,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
         )
         c5_merges.append(merge)
         if rec_ref:
-            claimed_refs.add(rec_ref)
+            written_c5.add(slot)
     if c5_merges:
         breakdown["weaknesses_total"] = int(breakdown.get("weaknesses_total") or 0) + len(
             c5_merges
@@ -925,6 +940,11 @@ def _load(*, run_at: datetime | None = None) -> dict:
         for row in excluded_rows
         if str(row[reason_idx] if len(row) > reason_idx else "") == "DUPLICATE_INSTANCE"
     )
+    # findings_in is the listed unit (members + excluded.csv), not raw
+    # parsed input. Raw input would break B3 (same ref already on
+    # poam/excluded → C5 skip) and silent same-ref+asset collapses:
+    # raw ≠ members + excluded. Dropped input shows up as C5
+    # DUPLICATE_INSTANCE extras / c5_skipped, not a findings_in delta.
     findings_in_n = len(member_rows) + len(excluded_rows)
     sensor_rows = load_sensor_coverage(out_dir())
     summary = {
