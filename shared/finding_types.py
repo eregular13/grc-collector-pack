@@ -943,7 +943,8 @@ _SG_COMPOUND_ID_RE = re.compile(
 )
 _APP_SG_RE = re.compile(r"application\s+security\s+group", re.I)
 _APP_SG_COMPACT_RE = re.compile(r"applicationsecuritygroup(?:s)?", re.I)
-# Longest needles first so rdgw does not steal rdgateway.
+# Longest needles first so rdgatewaylogs remainder is "logs", not
+# rdgw + "atewaylogs" (which would miss the artifact suffix).
 _RD_GATEWAY_COMPACT = (
     "remotedesktopgateway",
     "rdpgateway",
@@ -952,24 +953,36 @@ _RD_GATEWAY_COMPACT = (
     "rdpgw",
     "rdgw",
 )
-_RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp", "rds", "ts"})
+# rd / rdp only. rds is not a lead — it steals AWS rds_public
+# (rds-gateway-public). ts is not a general lead (nest-ts-gateway).
+_RD_GATEWAY_LEAD_TOKENS = frozenset({"rd", "rdp"})
 _RD_GATEWAY_TRAIL_TOKENS = frozenset({"gateway", "gateways"})
 _RD_GATEWAY_PHRASE_LEAD = ("remote", "desktop")
-# Compact openrdgateway / publicrdgateway / exposedrdgateway / internetrdgateway.
+_RD_GATEWAY_TS_PHRASE = ("terminal", "services")
+# Compact openrdgateway / publicrdgateway / internetrdgateway / devrdgateway.
 # Not a contains scan — *rd+gateway compounds (birdgateway, onboardgateway) stay off.
-# prod is an environment prefix: master typed prodrdgateway, and prod-2-rd-gateway
-# already types, so the compact form stays consistent when exposure is present.
+# Environment prefixes match the hyphenated forms (dev-rdgateway already types):
+# prod plus the common siblings so compact and kebab stay consistent.
 _RD_GATEWAY_COMPACT_PREFIXES = (
+    "staging",
     "internet",
     "external",
     "exposed",
     "public",
+    "stage",
     "open",
+    "test",
     "prod",
+    "uat",
+    "dev",
 )
-# Artifact suffixes after a real RD Gateway stem (rdgatewaylogs, rd-gateway-cert*).
-# log (singular) is kebab-only so rdgatewaylogin still types.
-_RD_GATEWAY_ARTIFACT_PREFIXES = ("logs", "audit", "cert", "backup")
+# Under-drop artifact names: only clear non-exposure leftovers immediately
+# after the stem — logs, audit/audits, cert* (certexpiry / certificate).
+# Not backup (standby gateway), not log (log in / Log4j / login / logging),
+# not auditor. Only the token (or compact remainder) right after the stem
+# is checked, so rdgateway-public-logs still types.
+_RD_GATEWAY_ARTIFACT_EXACT = frozenset({"logs", "audit", "audits"})
+_RD_GATEWAY_ARTIFACT_STARTS = ("logs", "cert")
 
 
 def _policy_token_seq(*parts: str) -> list[str]:
@@ -1085,21 +1098,25 @@ def _rd_gateway_compact_remainder(tok: str) -> str | None:
 
 
 def _is_rd_gateway_artifact_remainder(remainder: str) -> bool:
-    return bool(remainder) and remainder.startswith(_RD_GATEWAY_ARTIFACT_PREFIXES)
+    if not remainder:
+        return False
+    if remainder in _RD_GATEWAY_ARTIFACT_EXACT:
+        return True
+    return remainder.startswith(_RD_GATEWAY_ARTIFACT_STARTS)
 
 
 def _is_rd_gateway_artifact_token(tok: str) -> bool:
-    if tok == "log":
+    if tok in _RD_GATEWAY_ARTIFACT_EXACT:
         return True
-    return tok.startswith(_RD_GATEWAY_ARTIFACT_PREFIXES)
+    return tok.startswith("cert")
 
 
 def _is_rd_gateway_compact_token(tok: str) -> bool:
-    """True when a token starts with rdgateway/rdpgateway (or RDGW / RDS / TS).
+    """True when a token starts with rdgateway/rdpgateway (or RDGW / TS).
 
     Allowlisted prefixes restore openrdgateway / internetrdgateway.
     A contains scan is not used — birdgateway / onboardgateway stay off.
-    Artifact suffixes (logs / audit / cert* / backup) stay off.
+    Clear artifact suffixes (logs / audit / cert*) stay off.
     """
     remainder = _rd_gateway_compact_remainder(tok)
     if remainder is None:
@@ -1112,8 +1129,52 @@ def _alnum_segments(text: str) -> list[str]:
     return [m.group(0).lower() for m in re.finditer(r"[A-Za-z0-9]+", str(text or ""))]
 
 
+def _phrase_is_rd_gateway(tokens: list[str], lead: tuple[str, str]) -> bool:
+    """Adjacent lead pair + gateway(s), with an optional artifact skip after."""
+    if len(tokens) < 3:
+        return False
+    for i, tok in enumerate(tokens[:-2]):
+        if tok != lead[0] or tokens[i + 1] != lead[1]:
+            continue
+        if tokens[i + 2] not in _RD_GATEWAY_TRAIL_TOKENS:
+            continue
+        if i + 3 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 3]):
+            continue
+        return True
+    return False
+
+
+def _field_is_windows_rds_gateway(tokens: list[str]) -> bool:
+    """Windows feature id RDS-Gateway as a whole field — not a general rds lead.
+
+    rds-gateway-public / aws-rds-gateway-public stay with rds_public
+    (PubliclyAccessible=false), not MFA/NLA at the RD Gateway.
+    """
+    return tokens in (["rds", "gateway"], ["rds", "gateways"])
+
+
+def _field_starts_with_ts_gateway(tokens: list[str]) -> bool:
+    """TSGateway / ts-gateway as the leading segment, not nest-ts-gateway.
+
+    An allowlisted prefix may lead (open-ts-gateway / opentsgateway).
+    """
+    if len(tokens) < 2:
+        return False
+    start = 0
+    if tokens[0] in _RD_GATEWAY_COMPACT_PREFIXES and len(tokens) >= 3:
+        start = 1
+    if tokens[start] != "ts":
+        return False
+    if start + 1 >= len(tokens) or tokens[start + 1] not in _RD_GATEWAY_TRAIL_TOKENS:
+        return False
+    after = start + 2
+    if after < len(tokens) and _is_rd_gateway_artifact_token(tokens[after]):
+        return False
+    return True
+
+
 def _field_is_rd_gateway(text: str) -> bool:
-    """Adjacent rd/rdp/rds/ts + gateway(s), remote desktop gateway, or compact.
+    """Adjacent rd/rdp + gateway(s), remote/terminal phrases, or compact.
 
     Skip 'rd' (or a compact rdgateway* token) only when a digit run starts
     the alphanumeric segment (3rd, 3rdGateway, 3rdgateway). A host/site/
@@ -1124,6 +1185,11 @@ def _field_is_rd_gateway(text: str) -> bool:
     Mixed-case compacts (RDgateway, RDPgateway, openRDgateway) are recovered
     by applying the compact rule to each lowercased alphanumeric segment:
     the camel splitter otherwise cuts them into R + Dgateway.
+
+    rds is not a lead token. Only the whole-field Windows feature
+    RDS-Gateway types; rds-gateway-public stays rds_public. ts matches
+    only as a leading TSGateway / ts-gateway (or Terminal Services
+    Gateway), not nest-ts-gateway.
     """
     raw = str(text or "")
     segments = _alnum_segments(raw)
@@ -1143,16 +1209,14 @@ def _field_is_rd_gateway(text: str) -> bool:
         if i + 1 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 1]):
             continue
         return True
-    if len(tokens) >= 3:
-        for i, tok in enumerate(tokens[:-2]):
-            if (
-                tok == _RD_GATEWAY_PHRASE_LEAD[0]
-                and tokens[i + 1] == _RD_GATEWAY_PHRASE_LEAD[1]
-                and tokens[i + 2] in _RD_GATEWAY_TRAIL_TOKENS
-            ):
-                if i + 3 < len(tokens) and _is_rd_gateway_artifact_token(tokens[i + 3]):
-                    continue
-                return True
+    if _phrase_is_rd_gateway(tokens, _RD_GATEWAY_PHRASE_LEAD):
+        return True
+    if _phrase_is_rd_gateway(tokens, _RD_GATEWAY_TS_PHRASE):
+        return True
+    if _field_is_windows_rds_gateway(tokens):
+        return True
+    if _field_starts_with_ts_gateway(tokens):
+        return True
     for i, tok in enumerate(tokens[:-1]):
         if tok not in _RD_GATEWAY_LEAD_TOKENS:
             continue
@@ -1173,8 +1237,10 @@ def _is_rd_gateway(check_id: str, title: str) -> bool:
     cannot pair with a leading 'gateway' on the title. Compact
     rdgateway / rdpgateway must start the token (rdgatewaypublic) or
     follow an allowlisted prefix (openrdgateway, internetrdgateway).
-    Adjacent rd/rdp/rds/ts + gateway(s) still match, as does
-    'Remote Desktop Gateway'. A glued ordinal digit+'rd' (3rdGateway)
+    Adjacent rd/rdp + gateway(s) still match, as does
+    'Remote Desktop Gateway' and 'Terminal Services Gateway'. The
+    Windows feature id RDS-Gateway matches as a whole field; a general
+    rds + gateway lead does not. A glued ordinal digit+'rd' (3rdGateway)
     does not; a host-glued digit (vm3rdgateway) does. A bare gateway
     is not enough.
     """

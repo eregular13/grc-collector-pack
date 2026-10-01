@@ -782,6 +782,20 @@ _RD_GATEWAY_V4_CASES = (
     ("RemoteDesktopGateway", "Cloud Custodian RemoteDesktopGateway", True),
     ("remote-desktop-gateway", "Cloud Custodian remote-desktop-gateway", True),
     ("policy-open", "Remote Desktop Gateways public", True),
+    # A1 / A2 compact needles (not only camel/kebab).
+    ("remotedesktopgateway", "Cloud Custodian remotedesktopgateway", True),
+    ("REMOTEDESKTOPGATEWAY", "Cloud Custodian REMOTEDESKTOPGATEWAY", True),
+    ("TSGATEWAY", "Cloud Custodian TSGATEWAY", True),
+    ("tsgatewaypublic", "Cloud Custodian tsgatewaypublic", True),
+    ("tsgateway-public", "Cloud Custodian tsgateway-public", True),
+    ("opentsgateway", "Cloud Custodian opentsgateway", True),
+    ("policy-open", "Terminal Services Gateway", True),
+    # Environment compact prefixes (hyphenated siblings already type).
+    ("devrdgateway", "Cloud Custodian devrdgateway", True),
+    ("testrdgateway", "Cloud Custodian testrdgateway", True),
+    ("stagerdgateway", "Cloud Custodian stagerdgateway", True),
+    ("stagingrdgateway", "Cloud Custodian stagingrdgateway", True),
+    ("uatrdgateway", "Cloud Custodian uatrdgateway", True),
     # #214 forms that must keep typing, including rd.gateway and 3389.
     ("rd.gateway", "Cloud Custodian rd.gateway", True),
     ("policy-open", "3389 RD Gateway open", True),
@@ -789,6 +803,18 @@ _RD_GATEWAY_V4_CASES = (
     ("rdgatewaypublic", "Cloud Custodian rdgatewaypublic", True),
     ("openrdgateway", "Cloud Custodian openrdgateway", True),
     ("rdp-gateways-open", "Cloud Custodian rdp-gateways-open", True),
+    # X10: login is not the logs artifact.
+    ("rdgatewaylogin", "Cloud Custodian rdgatewaylogin", True),
+    ("rdgatewaylogin-public", "Cloud Custodian rdgatewaylogin-public", True),
+    # Under-drop artifacts: backup / log / auditor / logging stay typed.
+    ("rdgateway-backup-public", "Cloud Custodian rdgateway-backup-public", True),
+    ("policy-open", "RD Gateway backup server public", True),
+    ("policy-open", "Backup RD Gateway public", True),
+    ("rd-gateway-log-public", "Cloud Custodian rd-gateway-log-public", True),
+    ("policy-open", "RD Gateway log in page public", True),
+    ("rdgateway-auditor-public", "Cloud Custodian rdgateway-auditor-public", True),
+    ("rdgateway-logging-open", "Cloud Custodian rdgateway-logging-open", True),
+    ("rdgateway-public-logs", "Cloud Custodian rdgateway-public-logs", True),
     # Ordinals and unrelated compounds stay untyped.
     ("3rd", "Cloud Custodian 3rd", False),
     ("2rd", "Cloud Custodian 2rd", False),
@@ -808,11 +834,20 @@ _RD_GATEWAY_V4_CASES = (
     ("cardgateway", "Cloud Custodian cardgateway", False),
     ("thirdgateway", "Cloud Custodian thirdgateway", False),
     ("boardgateway", "Cloud Custodian boardgateway", False),
-    # Artifact-suffix FPs: log/cert bucket hygiene, not gateway exposure.
+    # ts lead is only TSGateway / ts-gateway, not a mid-field ts token.
+    ("nest-ts-gateway-public", "Cloud Custodian nest-ts-gateway-public", False),
+    ("grpc-ts-gateway-open", "Cloud Custodian grpc-ts-gateway-open", False),
+    ("iot-ts-gateway-public", "Cloud Custodian iot-ts-gateway-public", False),
+    # PH3: phrase requires 'remote'. PH4: logs after the phrase.
+    ("desktop-gateway-public", "Cloud Custodian desktop-gateway-public", False),
+    ("remote-desktop-gateway-logs-public", "Cloud Custodian remote-desktop-gateway-logs-public", False),
+    # Clear artifacts only: logs / audit / cert expiry.
     ("rdgatewaylogs-public", "Cloud Custodian rdgatewaylogs-public", False),
     ("rdgatewaycertexpiry-open", "Cloud Custodian rdgatewaycertexpiry-open", False),
     ("rd-gateway-logs-public", "Cloud Custodian rd-gateway-logs-public", False),
     ("rdgateway-logs-public", "Cloud Custodian rdgateway-logs-public", False),
+    ("rdgatewayaudit", "Cloud Custodian rdgatewayaudit", False),
+    ("rdgateway-audit-open", "Cloud Custodian rdgateway-audit-open", False),
 )
 
 
@@ -831,6 +866,27 @@ def test_rd_gateway_v4_forms(check_id: str, name: str, expect: bool) -> None:
             assert SG_INGRESS_FIX not in map_finding(rec)["recommended_fix"]
     else:
         assert got != "rd_gateway_exposed", (check_id, name, got)
+
+
+_RDS_PUBLIC_NOT_RD_GATEWAY = (
+    ("rds-gateway-public", "Cloud Custodian rds-gateway-public"),
+    ("aws-rds-gateway-public", "Cloud Custodian aws-rds-gateway-public"),
+    ("policy-open", "RDS Gateway endpoint public"),
+)
+
+
+@pytest.mark.parametrize("check_id,name", _RDS_PUBLIC_NOT_RD_GATEWAY)
+def test_aws_rds_gateway_stays_rds_public(check_id: str, name: str) -> None:
+    """rds is not a general RD Gateway lead — AWS RDS keeps PubliclyAccessible=false."""
+    rec = _custodian_finding(
+        name=name,
+        description="open to 0.0.0.0/0",
+        extra={"check_id": check_id, "classification": "security"},
+    )
+    assert finding_type(rec) == "rds_public", (check_id, name, finding_type(rec))
+    fix = map_finding(rec)["recommended_fix"]
+    assert "PubliclyAccessible=false" in fix
+    assert "MFA / NLA" not in fix
 
 
 def test_nat_gateway_in_description_does_not_untype_public_rdp() -> None:
