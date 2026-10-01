@@ -2401,7 +2401,8 @@ def poam_decision(rec: dict[str, Any], *, lighter: bool | None = None) -> dict[s
     Custodian cost, MUTED) land in excluded.csv. Informational is excluded
     (telemetry_info for telemetry-only rows). Status is not a gate.
     Repeated telemetry lows are collapsed by iter_poam_decisions →
-    poam_rollup.build (E1), not here.
+    poam_rollup.build (E1). Same-EGP twins then become merged_into:<EGP>
+    aliases (#192); flood-guard origin stays in reason_code/detail.
 
     GRC_POAM_LIGHTER=1 restores the lighter plan: Lows and non-key Mediums
     are excluded (severity_low / severity_medium_not_key) and recorded.
@@ -2555,6 +2556,7 @@ def iter_poam_decisions(
     finding is excluded as superseded_by_specific (winner = highest
     severity, then lowest EGP- id). The row stays in the finding set.
     """
+    from shared.egp_collapse import collapse_same_egp, is_merged_into_reason
     from shared.poam_rollup import build, reason_code_of
 
     if lighter is None:
@@ -2573,23 +2575,36 @@ def iter_poam_decisions(
         assets_n=assets_n,
         ledger=ledger,
     )
-    from shared.egp_collapse import collapse_same_egp
-
-    # collapse_same_egp rewrites same-EGP extras to merged_into (info twins).
-    # Keep flood-guard E1 / port-fold reasons — those are not pack_drop aliases.
-    _keep_reasons = {"telemetry_duplicate", "superseded_by_specific"}
-    prior = {id(rec): decision for rec, decision in pairs}
+    # #192: same-EGP extras are off-register aliases (merged_into:<EGP>).
+    # Recompute reason_code after collapse so include-path codes do not stick.
+    # Flood-guard E1 / port-fold origin is recorded on the decision, not the reason.
+    prior = {id(rec): dict(decision) for rec, decision in pairs}
     out: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for rec, decision in collapse_same_egp(pairs):
+        d = dict(decision)
         prev = prior.get(id(rec)) or {}
-        if not prev.get("include") and str(prev.get("reason") or "") in _keep_reasons:
-            d = dict(prev)
-        else:
-            d = dict(decision)
-        if not d.get("reason_code"):
-            d["reason_code"] = reason_code_of(
-                d.get("reason"), include=bool(d.get("include"))
-            )
+        prev_reason = str(prev.get("reason") or "")
+        if is_merged_into_reason(str(d.get("reason") or "")):
+            if prev_reason in {"telemetry_duplicate", "superseded_by_specific"}:
+                d["flood_guard_origin"] = prev_reason
+                winner = str(
+                    prev.get("rolled_into_ref")
+                    or prev.get("superseded_by_ref")
+                    or d.get("superseded_by_ref")
+                    or d.get("superseded_by")
+                    or ""
+                )
+                if prev_reason == "telemetry_duplicate":
+                    d["detail"] = f"E1 same rule+asset as {winner}".strip()
+                else:
+                    d["detail"] = (
+                        f"port-fold superseded_by_specific; folded into {winner}"
+                    ).strip()
+            elif prev_reason and prev_reason != str(d.get("reason") or ""):
+                d["flood_guard_origin"] = prev_reason
+        d["reason_code"] = reason_code_of(
+            d.get("reason"), include=bool(d.get("include"))
+        )
         out.append((rec, d))
     return out
 

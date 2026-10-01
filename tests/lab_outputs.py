@@ -223,6 +223,7 @@ def assert_lab() -> None:
 
     members = _csv_rows(members_path, ",".join(POAM_MEMBERS_FIELDS))
     assert int(fg.get("poam_members") or 0) == len(members)
+    assert all(row.get("estate") for row in members)
     md = (OUT / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "Pentera" not in md
     assert "excluded.csv" in md.lower() or "excluded" in md.lower()

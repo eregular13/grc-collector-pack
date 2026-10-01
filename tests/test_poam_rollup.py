@@ -10,13 +10,22 @@ from pathlib import Path
 import pytest
 
 from collectors.grc_loader import _dedupe, load
-from shared.ciso_shape import EXCLUDED_HEADER, assert_flood_guard, csv_rows
+from collectors import code_secrets
+from shared.ciso_shape import (
+    EXCLUDED_HEADER,
+    assert_flood_guard,
+    assert_register_no_double_treatment,
+    csv_rows,
+)
 from shared.control_map import (
     POAM_EXCLUDE_REASONS,
     REASON_CODES,
+    is_poam_exclude_reason,
     iter_poam_decisions,
+    map_finding,
     poam_decision,
 )
+from shared.egp_collapse import is_merged_into_reason
 from shared.io_util import write_canonical
 from shared.kev import KevCatalog
 from shared.poam_ledger import apply_ledger, apply_rollups, fp_v1
@@ -109,29 +118,81 @@ def test_classify_extra_exclude_tokens() -> None:
     assert poam_decision(info)["reason"] == "severity_info"
     assert poam_decision(info)["reason_code"] == "INFO_ONLY"
 
+    accepted = _finding(extra={"accepted_risk": True, "port": "22"})
+    assert extra_exclude_token(accepted) == "ACCEPTED_RISK"
+    assert classify(accepted)[0] == "accepted_risk"
 
-def test_e1_telemetry_collapse_is_rollup_rule() -> None:
-    alerts = [
+    unverified = _finding(extra={"exclude_reason": "UNVERIFIED_BANNER_CVE", "port": "22"})
+    assert extra_exclude_token(unverified) == "UNVERIFIED_BANNER_CVE"
+    assert classify(unverified)[0] == "unverified_banner"
+
+    honeypot = _finding(
+        source="honeypot",
+        extra={"honesty": "deception-sensor", "stage": 1, "port": "22"},
+        category="deception-sensor",
+    )
+    assert classify(honeypot)[0] == "honeypot"
+
+    muted_flag = _finding(extra={"muted": True, "port": "22"})
+    assert extra_exclude_token(muted_flag) == "MUTED"
+    assert classify(muted_flag)[0] == "muted"
+    assert map_finding(muted_flag)["include_poam"] is False
+
+    port_only = _finding(
+        name="Open port 80/tcp",
+        extra={"port": "80", "proto": "tcp", "service": ""},
+    )
+    assert classify(port_only)[0] == "port_only"
+
+    high = _finding(
+        source="cloud-prowler",
+        severity="high",
+        category="cloud-misconfiguration",
+        extra={"check_id": "s3_public"},
+    )
+    pairs = iter_poam_decisions([high], lighter=False)
+    assert pairs[0][1].get("include") is True
+    assert pairs[0][1].get("reason") == "severity_high_critical"
+    assert classify(high)[0] == "weakness"
+    from shared.poam_rollup import build
+
+    stamped = build(
+        [(high, {"include": True, "reason": "", "severity": "high"})],
+        profile="full",
+        assets_n=1,
+    )
+    assert stamped[0][1]["reason"] == "escalate"
+    assert stamped[0][1]["budget_status"] in {"ok", "exceeded"}
+
+
+def _wazuh_e1_alerts(n: int = 3, host: str = "web-01.invalid") -> list[dict]:
+    return [
         _finding(
             source="host-wazuh",
             ref_id=f"WAZ-{i}",
             name="sshd brute",
             severity="low",
             category="incident",
-            assets=["web-01"],
+            assets=[host],
             labels=["wazuh", "alert"],
             extra={"rule_id": "5710", "telemetry": True, "rule_level": 12},
         )
-        for i in range(3)
+        for i in range(n)
     ]
+
+
+def test_e1_telemetry_collapse_is_rollup_rule() -> None:
+    """Same-EGP E1 twins are #192 aliases (merged_into), not register accept."""
+    alerts = _wazuh_e1_alerts()
     pairs = iter_poam_decisions(alerts, lighter=False)
     included = [d for _r, d in pairs if d.get("include")]
     excluded = [d for _r, d in pairs if not d.get("include")]
     assert len(included) == 1
     assert len(excluded) == 2
-    assert {d["reason"] for d in excluded} == {"telemetry_duplicate"}
+    assert all(is_merged_into_reason(str(d["reason"])) for d in excluded)
     assert {d["reason_code"] for d in excluded} == {"DUPLICATE_INSTANCE"}
-    assert all(d.get("rolled_into_ref") == "WAZ-0" for d in excluded)
+    assert {d.get("flood_guard_origin") for d in excluded} == {"telemetry_duplicate"}
+    assert all("E1 same rule+asset" in str(d.get("detail") or "") for d in excluded)
 
 
 def test_build_rejects_e4_late_only() -> None:
@@ -312,6 +373,7 @@ def test_c5_merges_land_in_excluded_and_reconcile(tmp_path: Path, monkeypatch: p
     members = csv_rows(tmp_path / "poam" / "poam_members.csv")
     assert any(row["finding_ref_id"] == "NMAP-keep" for row in members)
     assert all(row["finding_ref_id"] != "NMAP-dup" for row in members)
+    assert all(row.get("estate") for row in members)
     assert_flood_guard(tmp_path, summary)
 
 
@@ -323,3 +385,388 @@ def test_accepted_risk_and_unverified_banner_codes() -> None:
 
     banner = _finding(extra={"exclude_reason": "UNVERIFIED_BANNER_CVE", "port": "22"})
     assert poam_decision(banner)["reason_code"] == "UNVERIFIED_BANNER_CVE"
+
+
+def _asset(name: str, ref: str | None = None) -> dict:
+    return make_record(
+        kind="asset",
+        source="inventory-nmap",
+        ref_id=ref or f"AST-{name}",
+        name=name,
+        description=name,
+        severity="",
+        category="host",
+        assets=[name],
+        extra={},
+    )
+
+
+def _load_recs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, recs: list[dict]) -> dict:
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(tmp_path / "empty-in"))
+    (tmp_path / "empty-in").mkdir(exist_ok=True)
+    write_canonical("mixed", recs)
+    return load()
+
+
+def test_e1_same_egp_twins_one_scenario_no_double_treatment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    host = "web-01.invalid"
+    recs = [_asset(host)] + _wazuh_e1_alerts(3, host)
+    summary = _load_recs(tmp_path, monkeypatch, recs)
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    assert len(scenarios) == 1
+    assert scenarios[0]["treatment"] == "mitigate"
+    excluded = csv_rows(tmp_path / "poam" / "excluded.csv")
+    twins = [row for row in excluded if is_merged_into_reason(row.get("excluded_reason") or "")]
+    assert len(twins) == 2
+    assert {row["reason_code"] for row in twins} == {"DUPLICATE_INSTANCE"}
+    assert all("E1 same rule+asset" in (row.get("detail") or "") for row in twins)
+    overlap = assert_register_no_double_treatment(tmp_path)
+    assert overlap["ok"] is True
+    assert not overlap["title_host_overlap"]
+    assert summary["flood_guard"]["findings_in"] == (
+        summary["flood_guard"]["poam_members"] + summary["flood_guard"]["excluded"]
+    )
+
+
+def test_port_fold_same_egp_twins_one_scenario(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    host = "10.0.0.5"
+    port = _finding(
+        ref_id="NMAP-445-bare",
+        name="Open port 445/tcp",
+        description="Open port 445/tcp",
+        severity="medium",
+        category="exposure",
+        assets=[host],
+        extra={"port": "445", "proto": "tcp", "service": ""},
+    )
+    twin = _finding(
+        ref_id="NMAP-445-keep",
+        name="Open port 445/tcp",
+        description="Open port 445/tcp",
+        severity="medium",
+        category="exposure",
+        assets=[host],
+        extra={"port": "445", "proto": "tcp", "service": "microsoft-ds", "check_id": "nmap-port-445"},
+    )
+    pairs = iter_poam_decisions([port, twin], lighter=False)
+    by_ref = {r["ref_id"]: d for r, d in pairs}
+    kept = [d for d in by_ref.values() if d.get("include")]
+    dropped = [d for d in by_ref.values() if not d.get("include")]
+    assert len(kept) == 1
+    assert len(dropped) == 1
+    assert is_merged_into_reason(str(dropped[0]["reason"]))
+    assert dropped[0]["reason_code"] == "DUPLICATE_INSTANCE"
+    summary = _load_recs(tmp_path, monkeypatch, [_asset(host)] + [port, twin])
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    assert len(scenarios) == 1
+    overlap = assert_register_no_double_treatment(tmp_path)
+    assert overlap["ok"] is True
+    assert not overlap["title_host_overlap"]
+    assert summary["flood_guard"]["UNEXPLAINED"] == 0
+
+
+def test_trivy_same_ref_two_targets_counts_findings_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = {
+        "Results": [
+            {
+                "Target": "svc_a/requirements.txt",
+                "Vulnerabilities": [
+                    {
+                        "VulnerabilityID": "CVE-2024-3651",
+                        "Title": "idna mishandles domain labels",
+                        "Severity": "HIGH",
+                        "PkgName": "idna",
+                        "Description": "idna",
+                    }
+                ],
+            },
+            {
+                "Target": "svc-a/requirements.txt",
+                "Vulnerabilities": [
+                    {
+                        "VulnerabilityID": "CVE-2024-3651",
+                        "Title": "idna mishandles domain labels",
+                        "Severity": "HIGH",
+                        "PkgName": "idna",
+                        "Description": "idna",
+                    }
+                ],
+            },
+        ]
+    }
+    dest = tmp_path / "trivy.json"
+    dest.write_text(json.dumps(payload), encoding="utf-8")
+    parsed = code_secrets.parse_file(dest)
+    findings = [r for r in parsed if r.get("kind") == "finding"]
+    refs = {r["ref_id"] for r in findings}
+    assert len(findings) == 2
+    assert len(refs) == 1
+    assets = [_asset(str((r.get("assets") or ["t"])[0])) for r in findings]
+    summary = _load_recs(tmp_path, monkeypatch, assets + findings)
+    fg = summary["flood_guard"]
+    assert fg["findings_in"] == fg["poam_members"] + fg["excluded"]
+    assert fg["poam_members"] == 2
+    assert fg["findings_in"] == 2
+    assert_flood_guard(tmp_path, summary)
+
+
+def test_c5_skip_when_ref_already_on_register(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    y = _finding(
+        ref_id="NMAP-Y",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x_same = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x_other = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.6"],
+        extra={"port": "445", "check_id": "smb", "id": "smb-open"},
+    )
+    summary = _load_recs(
+        tmp_path,
+        monkeypatch,
+        [_asset("10.0.0.5"), _asset("10.0.0.6"), y, x_same, x_other],
+    )
+    poam = csv_rows(tmp_path / "poam" / "poam.csv")
+    excluded = csv_rows(tmp_path / "poam" / "excluded.csv")
+    poam_refs = {row.get("finding_ref_id") for row in poam}
+    ex_refs = {row.get("finding_ref_id") for row in excluded}
+    assert "NMAP-X" in poam_refs
+    assert "NMAP-X" not in ex_refs
+    assert summary["flood_guard"]["findings_in"] == (
+        summary["flood_guard"]["poam_members"] + summary["flood_guard"]["excluded"]
+    )
+    assert_flood_guard(tmp_path, summary)
+
+
+def test_c5_skip_when_ref_already_on_excluded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A ref already listed as info must not also land as a C5 extra."""
+    y = _finding(
+        ref_id="NMAP-Y",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x_dup = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x_info = _finding(
+        ref_id="NMAP-X",
+        name="Host discovered",
+        severity="info",
+        assets=["10.0.0.9"],
+        extra={"port": "80"},
+    )
+    summary = _load_recs(
+        tmp_path,
+        monkeypatch,
+        [_asset("10.0.0.5"), _asset("10.0.0.9"), y, x_dup, x_info],
+    )
+    poam = csv_rows(tmp_path / "poam" / "poam.csv")
+    excluded = csv_rows(tmp_path / "poam" / "excluded.csv")
+    poam_refs = {row.get("finding_ref_id") for row in poam}
+    x_ex = [row for row in excluded if row.get("finding_ref_id") == "NMAP-X"]
+    assert "NMAP-X" not in poam_refs
+    assert len(x_ex) == 1
+    assert x_ex[0]["excluded_reason"] == "severity_info"
+    assert summary["flood_guard"]["findings_in"] == (
+        summary["flood_guard"]["poam_members"] + summary["flood_guard"]["excluded"]
+    )
+    assert_flood_guard(tmp_path, summary)
+
+
+def test_merged_into_reason_code_is_duplicate_instance() -> None:
+    rows = _wazuh_e1_alerts()
+    pairs = iter_poam_decisions(rows, lighter=False)
+    dropped = [d for _r, d in pairs if not d.get("include")]
+    assert dropped
+    assert all(is_merged_into_reason(str(d["reason"])) for d in dropped)
+    assert {d["reason_code"] for d in dropped} == {"DUPLICATE_INSTANCE"}
+    assert reason_code_of(dropped[0]["reason"]) == "DUPLICATE_INSTANCE"
+
+
+def test_map_finding_exclude_class_forces_include_poam_false() -> None:
+    muted = _finding(extra={"exclude_reason": "MUTED"})
+    assert classify(muted)[0] == "muted"
+    assert map_finding(muted)["include_poam"] is False
+    fp = _finding(extra={"false_positive": True})
+    assert map_finding(fp)["include_poam"] is False
+    accepted = _finding(extra={"exclude_reason": "ACCEPTED_RISK"})
+    assert map_finding(accepted)["include_poam"] is False
+
+
+def test_prowler_muted_kind_excluded_is_register_accept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    live = _finding(
+        source="cloud-prowler",
+        ref_id="CLD-live",
+        name="S3 public",
+        severity="high",
+        category="cloud-misconfiguration",
+        extra={"check_id": "s3_public"},
+    )
+    muted = {
+        "kind": "excluded",
+        "source": "cloud-prowler",
+        "ref_id": "CLD-muted-1",
+        "name": "Muted check",
+        "description": "muted",
+        "severity": "medium",
+        "category": "excluded",
+        "assets": ["acct"],
+        "labels": ["muted"],
+        "extra": {"exclude_reason": "MUTED", "check_id": "muted-check", "status": "MUTED"},
+    }
+    summary = _load_recs(tmp_path, monkeypatch, [_asset("acct"), live, muted])
+    excluded = csv_rows(tmp_path / "poam" / "excluded.csv")
+    muted_rows = [row for row in excluded if row.get("finding_ref_id") == "CLD-muted-1"]
+    assert muted_rows
+    assert muted_rows[0]["excluded_reason"] == "MUTED"
+    assert muted_rows[0]["reason_code"] == "MUTED"
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    by_name = {row.get("name"): row.get("treatment") for row in scenarios}
+    assert by_name.get("S3 public") == "mitigate"
+    assert by_name.get("Muted check") == "accept"
+    assert summary["kind_excluded"] == 1
+    assert summary["flood_guard"]["excluded_by_code"].get("MUTED") == 1
+
+
+def test_is_poam_exclude_reason_covers_rollup_codes() -> None:
+    assert is_poam_exclude_reason("ACCEPTED_RISK")
+    assert is_poam_exclude_reason("LIGHTER_LOW")
+    assert is_poam_exclude_reason("MUTED")
+    assert is_poam_exclude_reason("merged_into:EGP-70CD0ED0D4")
+    # rollup-only token (not in POAM_EXCLUDE_REASONS) still counts
+    assert is_poam_exclude_reason("escalate")
+    assert "ACCEPTED_RISK" in REASON_CODES
+
+
+def test_kind_excluded_counts_in_findings_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rec = {
+        "kind": "excluded",
+        "source": "cloud-prowler",
+        "ref_id": "CLD-cost",
+        "name": "Stop underutilized VM",
+        "description": "cost",
+        "severity": "medium",
+        "category": "excluded",
+        "assets": ["acct"],
+        "labels": [],
+        "extra": {"exclude_reason": "not_a_weakness", "check_id": "cost-policy"},
+    }
+    live = _finding(
+        source="cloud-prowler",
+        ref_id="CLD-live",
+        name="S3 public",
+        severity="high",
+        extra={"check_id": "s3_public"},
+    )
+    summary = _load_recs(tmp_path, monkeypatch, [_asset("acct"), live, rec])
+    fg = summary["flood_guard"]
+    assert fg["findings_in"] == fg["poam_members"] + fg["excluded"]
+    assert fg["excluded"] >= 1
+    assert summary["kind_excluded"] == 1
+
+
+def test_apply_rollups_persisted_fields_and_include(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rec = _finding(
+        ref_id="NMAP-keep",
+        severity="high",
+        extra={"port": "445", "service": "microsoft-ds"},
+    )
+    info = _finding(
+        ref_id="NMAP-info",
+        name="Host discovered",
+        severity="info",
+        extra={"port": "80"},
+    )
+    summary = _load_recs(tmp_path, monkeypatch, [_asset("box"), rec, info])
+    ledger = json.loads((tmp_path / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    items = list((ledger.get("items") or {}).values())
+    assert items
+    for item in items:
+        assert "include" in item
+        assert "poam_decision" in item
+        assert "reason_code" in item
+        assert "klass" in item
+        assert "rollup_key" in item
+        assert "band" in item
+        assert "rolled_into" in item
+    by_ref = {str(item.get("ref_id")): item for item in items}
+    assert by_ref["NMAP-keep"]["include"] is True
+    assert by_ref["NMAP-info"]["include"] is False
+    assert by_ref["NMAP-info"]["reason_code"] == "INFO_ONLY"
+    assert summary["flood_guard"]["UNEXPLAINED"] == 0
+
+
+def test_assert_flood_guard_rejects_mismatched_findings_in(tmp_path: Path) -> None:
+    (tmp_path / "poam").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "poam" / "excluded.csv").write_text(
+        "id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,"
+        "reason_code,rolled_into,source,detail\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "poam" / "poam_members.csv").write_text(
+        "poam_id,finding_ref_id,egp_id,asset,severity,estate\n"
+        "EGP-1,NMAP-1,EGP-1,box,low,DEMO: NOT A CLIENT\n",
+        encoding="utf-8",
+    )
+    from shared.ciso_shape import RegisterShapeError
+
+    with pytest.raises(RegisterShapeError, match="findings_in"):
+        assert_flood_guard(
+            tmp_path,
+            {
+                "flood_guard": {
+                    "findings_in": 9,
+                    "poam_members": 1,
+                    "excluded": 0,
+                    "UNEXPLAINED": 0,
+                    "budget": {"status": "ok"},
+                }
+            },
+        )
+    assert_flood_guard(
+        tmp_path,
+        {
+            "flood_guard": {
+                "findings_in": 1,
+                "poam_members": 1,
+                "excluded": 0,
+                "UNEXPLAINED": 0,
+                "budget": {"status": "ok"},
+            }
+        },
+    )
+
+
+def test_c5_excluded_by_code_counts_duplicate_instance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a = _finding(ref_id="NMAP-keep", extra={"port": "22", "check_id": "ssh", "id": "ssh-open"})
+    b = _finding(ref_id="NMAP-dup", extra={"port": "22", "check_id": "ssh", "id": "ssh-open"})
+    summary = _load_recs(tmp_path, monkeypatch, [_asset("box"), a, b])
+    assert summary["flood_guard"]["excluded_by_code"].get("DUPLICATE_INSTANCE") == 1
+    assert summary["flood_guard"]["duplicates_merged"] == 1

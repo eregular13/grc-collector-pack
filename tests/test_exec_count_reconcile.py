@@ -57,6 +57,10 @@ MERGED_LINE_RE = re.compile(
     r"^(\d+) merged-into aliases stay off the register\.\s*$",
     re.M,
 )
+C5_LINE_RE = re.compile(
+    r"^(\d+) C5 duplicate-instance extras stay off the register\.\s*$",
+    re.M,
+)
 NOT_RECONCILED = "counts not reconciled."
 
 
@@ -75,21 +79,23 @@ def _parse_equations(eq: str) -> dict[str, int]:
     assert plan, eq
     assert weak, eq
     excluded = int(plan.group("e") or plan.group("e2"))
-    merged = int(plan.group("m") or 0)
-    assert int(weak.group("m") or 0) == merged
+    plan_off = int(plan.group("m") or 0)
+    weak_off = int(weak.group("m") or 0)
     sum1 = int(plan.group("sum1"))
     sum2 = int(weak.group("sum2"))
     poam = int(plan.group("p"))
     kind = int(plan.group("k"))
     weaknesses = int(weak.group("w"))
     assert int(weak.group("k")) == kind
-    assert sum1 == poam + (excluded - merged) + kind
-    assert sum2 == weaknesses + kind - merged
+    assert weak_off <= plan_off
+    assert sum1 == poam + (excluded - plan_off) + kind
+    assert sum2 == weaknesses + kind - weak_off
     return {
         "eq_poam": poam,
         "eq_excluded": excluded,
         "eq_kind": kind,
-        "eq_merged": merged,
+        "eq_merged": plan_off,
+        "eq_weak_merged": weak_off,
         "eq_weaknesses": weaknesses,
         "plan_sum": sum1,
         "weak_sum": sum2,
@@ -136,6 +142,9 @@ def _parse_exec_counts(text: str) -> dict[str, int]:
     merged_m = MERGED_LINE_RE.search(text)
     if merged_m:
         out["merged_line"] = int(merged_m.group(1))
+    c5_m = C5_LINE_RE.search(text)
+    if c5_m:
+        out["c5_line"] = int(c5_m.group(1))
     if recon_m and out.get("plan_sum") != out.get("register"):
         assert NOT_RECONCILED in text
     if recon_m and out.get("weak_sum") != out.get("register"):
@@ -171,16 +180,19 @@ def _assert_exec_matches_csvs(out: Path) -> dict[str, int]:
         if str(row.get("excluded_reason") or "") == "DUPLICATE_INSTANCE"
     )
     if "excluded" in parsed:
-        assert parsed["excluded"] + parsed["kind_excluded"] + c5 == len(excluded)
+        assert parsed["excluded"] == len(excluded)
         assert parsed["weaknesses"] == weaknesses
-        assert parsed.get("merged_aliases", 0) == merged
+        off = merged + c5
+        assert parsed.get("merged_aliases", 0) == off
         assert (
             parsed["weaknesses"] + parsed["kind_excluded"] - merged == parsed["register"]
         )
         assert (
-            parsed["poam"] + (parsed["excluded"] - merged) + parsed["kind_excluded"]
+            parsed["poam"] + (parsed["excluded"] - off) + parsed["kind_excluded"]
             == parsed["register"]
         )
+        if c5:
+            assert parsed.get("c5_line") == c5
         assert parsed["plan_sum"] == parsed["register"]
         assert parsed["weak_sum"] == parsed["register"]
         assert NOT_RECONCILED not in exec_text
@@ -283,6 +295,15 @@ def test_reconcile_argus_merged_aliases() -> None:
 
 def test_reconcile_silent_when_counts_already_match() -> None:
     assert _reconcile(4, 4, 4) is None
+
+
+def test_reconcile_c5_extras_match_excluded_csv() -> None:
+    text = _reconcile(125, 119, 125, excluded_poam=13, kind_excluded=0, c5_extras=7)
+    assert text is not None
+    assert "125 weaknesses, 119 POA&M, 13 excluded" in text
+    assert "119 + (13 - 7) + 0 = 125" in text
+    assert "7 C5 duplicate-instance extras stay off the register." in text
+    assert NOT_RECONCILED not in text
 
 
 def test_exec_headline_open_is_poam_not_ledger_open() -> None:

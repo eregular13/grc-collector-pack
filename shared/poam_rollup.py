@@ -379,7 +379,10 @@ def _apply_budget(
     for rec, decision in pairs:
         d = dict(decision)
         if d.get("include") and str(d.get("band") or d.get("severity") or "") in _ESCALATE_BANDS:
-            d["reason"] = d.get("reason") or "escalate"
+            existing = str(d.get("reason") or "")
+            if not existing or existing in {"unexplained", "UNEXPLAINED"}:
+                d["reason"] = "escalate"
+                d["reason_code"] = reason_code_of("escalate", include=True)
         d["budget_target"] = snapshot["target"]
         d["budget_cap"] = snapshot["cap"]
         d["budget_status"] = snapshot["status"]
@@ -502,11 +505,12 @@ def flood_guard_summary(
     }
 
 
-# §12.6: poam_id, finding_ref_id, egp_id, asset, severity
+# §12.6: poam_id, finding_ref_id, egp_id, asset, severity, estate
 POAM_MEMBERS_FIELDS = (
     "poam_id",
     "finding_ref_id",
     "egp_id",
     "asset",
     "severity",
+    "estate",
 )
