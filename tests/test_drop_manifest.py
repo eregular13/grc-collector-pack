@@ -20,8 +20,15 @@ HASHED = (
     "ciso/findings.csv",
     "ciso/risk_scenarios.csv",
     "ciso/vulnerabilities.csv",
+    "ciso/ESTATE.txt",
     "poam/poam.csv",
     "poam/poam.md",
+    "poam/excluded.csv",
+    "poam/poam_fedramp.csv",
+    "poam/poam-ledger.json",
+    "poam/ESTATE.txt",
+    "EXECUTIVE_SUMMARY.md",
+    "SCOPE_AND_TRUST.md",
     "opengrc/risks.csv",
     "opengrc/assets.csv",
     "opengrc/implementations.csv",
@@ -58,6 +65,9 @@ def test_drop_manifest_hashes_match_files() -> None:
     assert "blank" in text.lower()
     rows = ROW.findall(text)
     assert len(rows) >= 7
+    listed = {rel for rel, _count, _digest in rows}
+    for rel in HASHED:
+        assert rel in listed, rel
     for rel, _count, digest in rows:
         path = DROP / rel
         assert path.is_file(), rel
