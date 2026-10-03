@@ -64,7 +64,11 @@ SLA_NOTE = (
     "The same local status_date is written on poam.csv, poam_fedramp.csv, "
     "simplerisk/poam.csv, and poam-ledger.json on a first run and on rows that "
     "change this run. Reobserved unchanged rows and unobserved carried rows keep "
-    "the ledger last-change date on all four surfaces. The same "
+    "the ledger last-change date on all four surfaces when that date is a "
+    "YYYY-MM-DD civil day. Blank or malformed ledger status_date is not copied "
+    "through — the host-local run day is used instead (local, not UTC). "
+    "Description, name, and display-asset edits are not tracked fields, so they "
+    "keep the last-change date. The same "
     "local run day also drives VENDOR_CHECKIN_OVERDUE, VD_HIGH_NOT_MITIGATED, "
     "missed_dates, pending-verification dates, and the default closed_on. Naive "
     "POA&M clocks (including load(run_at=) naive) are local wall time — load() "
@@ -93,6 +97,22 @@ def local_run_date(now: datetime | None = None) -> date:
 def _to_date(raw: Any) -> date | None:
     """Parse a date without converting an offset timestamp onto the next UTC day."""
     return calendar_date(raw)
+
+
+def parse_status_date(raw: Any) -> date | None:
+    """YYYY-MM-DD civil day only. Blank or malformed is not a status_date.
+
+    Integers (20260101), timestamps, and garbage must not be copied onto
+    poam.csv. ``date.fromisoformat`` accepts YYYYMMDD from 3.11+, so the
+    hyphenated form is required.
+    """
+    text = str(raw if raw is not None else "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
 
 
 def risk_rating(severity: Any) -> str:
@@ -210,8 +230,9 @@ def apply_ledger_detection(
     out = dict(fields)
     if item.get("poam_id"):
         out["poam_id"] = str(item["poam_id"])
-    if item.get("status_date"):
-        out["status_date"] = str(item["status_date"])
+    parsed = parse_status_date(item.get("status_date"))
+    if parsed is not None:
+        out["status_date"] = parsed.isoformat()
     stored = str(item.get("original_detection_date") or NOT_RECORDED)
     incoming, _basis, _tz = artifact_detection(rec)
     odd = merge_detection(stored, incoming)

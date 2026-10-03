@@ -287,11 +287,30 @@ def md_safe_text(value: Any) -> str:
 
 
 def md_code_span(value: Any) -> str:
-    """Markdown code span that cannot break out via a backtick in the value."""
-    text = _one_line(value).replace("`", "")
+    """Markdown code span that cannot break out via a backtick in the value.
+
+    CommonMark: the fence is one tick longer than the longest inner run.
+    Inner ticks are kept (``a`b`` stays ``a`b``, not ``ab``).
+    """
+    text = _one_line(value)
     if not text:
         text = NOT_RECORDED
-    return f"`{text}`"
+    longest = 0
+    run = 0
+    for ch in text:
+        if ch == "`":
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 0
+    fence = "`" * (longest + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
+def md_table_code_span(value: Any) -> str:
+    """Code span safe inside a GFM table cell — `|` would split the row."""
+    return md_code_span(_one_line(value).replace("|", "/"))
 
 
 def _lede_label(label: str, kind: str, name: str) -> str:
@@ -1805,7 +1824,7 @@ def build_executive_summary(ctx: PageContext) -> str:
         action = md_safe_text(recorded(mapped.get("recommended_fix")))
         ref = recorded(rec.get("ref_id"))
         lines.append(
-            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | {md_code_span(ref)} |"
+            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | {md_table_code_span(ref)} |"
         )
     if not ranked:
         lines.append(

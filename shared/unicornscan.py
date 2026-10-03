@@ -59,7 +59,7 @@ def looks_like_unicornscan(text: str, name: str = "") -> bool:
 
 def _port(raw: str) -> str:
     token = str(raw or "").strip()
-    if token.isdigit() and 1 <= int(token) <= 65535:
+    if token.isascii() and token.isdigit() and 1 <= int(token) <= 65535:
         return token
     return ""
 

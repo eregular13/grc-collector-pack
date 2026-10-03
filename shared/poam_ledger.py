@@ -50,7 +50,7 @@ from shared.kev import (
     template_due_date,
     KevCatalog,
 )
-from shared.poam_fields import _to_date
+from shared.poam_fields import _to_date, parse_status_date
 from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
 from shared.vendor_dependency import (
@@ -2200,6 +2200,8 @@ def apply_ledger(
                     ledger["events"].append(
                         _event(run_iso, fp, str(item.get("poam_id") or ""), "reobserved")
                     )
+                if parse_status_date(item.get("status_date")) is None:
+                    item["status_date"] = run_date.isoformat()
 
         ov = overrides.get(str(item.get("poam_id") or ""))
         before_vd = _vd_snapshot(item)

@@ -113,7 +113,13 @@ def _host_port_from_token(text: str) -> tuple[str, str]:
         return "", ""
     elif host.count(":") == 1:
         left, right = host.rsplit(":", 1)
-        host, port = left, _valid_port(right)
+        parsed = _valid_port(right)
+        if parsed:
+            host, port = left, parsed
+        elif right and not any(ch.isascii() and ch.isalpha() for ch in right):
+            # Invalid digit-only port (99999 / ²) — keep the host, drop the port.
+            host, port = left, ""
+        # else image:tag / account:id — do not truncate.
     return host, port
 
 
@@ -210,9 +216,9 @@ def finding_hosts(rec: dict[str, Any]) -> set[str]:
 
 def finding_port(rec: dict[str, Any]) -> str:
     extra = extra_dict(rec)
-    port = str(extra.get("port") or "").strip()
-    if port and port != "0":
-        return port
+    port = _valid_port(str(extra.get("port") or ""))
+    if port:
+        return str(int(port))
     for raw in list(rec.get("assets") or []) + [
         extra.get("host"),
         extra.get("matched-at"),
