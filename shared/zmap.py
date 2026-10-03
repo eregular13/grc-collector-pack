@@ -82,7 +82,7 @@ def _load_json(text: str) -> Any:
 
 def _port(raw: Any) -> str:
     token = str(raw or "").strip()
-    if token.isdigit() and 1 <= int(token) <= 65535:
+    if token.isascii() and token.isdigit() and 1 <= int(token) <= 65535:
         return token
     return ""
 

@@ -54,7 +54,14 @@ from shared.iiw import write_iiw
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.egp_collapse import bind_alias_targets_to_ledger
 from shared.poam_fedramp import kev_md_footer, plan_by_poam_id, write_fedramp_poam
-from shared.poam_fields import POAM_EXTRA_FIELDS, SLA_NOTE, apply_ledger_detection, poam_fields, local_run_date
+from shared.poam_fields import (
+    POAM_EXTRA_FIELDS,
+    SLA_NOTE,
+    apply_ledger_detection,
+    local_run_date,
+    parse_status_date,
+    poam_fields,
+)
 from shared.scan_time import bind_run_clock
 from shared.poam_ledger import (
     fingerprints_for,
@@ -618,7 +625,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
             str(item.get("weakness_key") or "")
         )
         fields["original_detection_date"] = str(item.get("original_detection_date") or "")
-        fields["status_date"] = str(item.get("status_date") or "")
+        carried = parse_status_date(item.get("status_date"))
+        fields["status_date"] = carried.isoformat() if carried else today.isoformat()
         fields["original_risk_rating"] = str(item.get("original_risk_rating") or "")
         fields["controls"] = mapped["controls"]
         poam_rows.append(

@@ -542,6 +542,106 @@ def test_url_has_explicit_port_branches() -> None:
     assert _url_has_explicit_port("http://h:99999/") is True
 
 
+def test_image_tag_and_account_id_are_not_truncated() -> None:
+    assert _strip_host("app-server:latest") == ("app-server:latest", "", "")
+    assert _strip_host("account:unknown") == ("account:unknown", "", "")
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-image",
+        name="Image CVE",
+        description="container",
+        severity="high",
+        category="vulnerability",
+        assets=["app-server:latest"],
+        labels=["trivy"],
+        extra={"template_id": "cve-2024-3094", "port": "443"},
+    )
+    assert finding_hosts(rec) == {"app-server:latest"}
+    assert ("app-server", "443") not in {(h, finding_port(rec)) for h in finding_hosts(rec)}
+
+
+def test_extra_port_rejects_invalid_and_normalizes_leading_zeros() -> None:
+    def _rec(port: str, assets: list[str] | None = None) -> dict:
+        rec = make_record(
+            kind="finding",
+            source="vuln-scan",
+            ref_id="VULN-extra-port",
+            name="TLS",
+            description="port field",
+            severity="low",
+            category="exposure",
+            assets=assets or ["h.invalid"],
+            labels=["nuclei"],
+            extra={"template_id": "tls", "port": port},
+        )
+        return rec
+
+    assert finding_port(_rec("080")) == "80"
+    assert finding_port(_rec("443")) == "443"
+    assert finding_port(_rec("abc")) == ""
+    assert finding_port(_rec("99999")) == ""
+    later = _rec("abc", assets=["http://h.invalid/"])
+    later["extra"]["port"] = "abc"
+    assert finding_port(later) == "80"
+
+
+def test_url_has_explicit_port_rejects_unbracketed_ipv6() -> None:
+    """m78: colon count != 1, not < 1 — 1:2:3:4 is not an explicit port."""
+    assert _url_has_explicit_port("http://1:2:3:4/") is False
+    assert _url_has_explicit_port("http://2001:db8::1/") is False
+
+
+def test_bracketed_empty_port_uses_scheme_default() -> None:
+    """m88: http://[::1]:/ → 80."""
+    rec = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-v6-empty",
+        name="HTTP",
+        description="bracket empty port",
+        severity="low",
+        category="exposure",
+        assets=["http://[::1]:/"],
+        labels=["nuclei"],
+        extra={"template_id": "http-default"},
+    )
+    rec["extra"].pop("port", None)
+    assert finding_port(rec) == "80"
+
+
+def test_finding_port_userinfo_and_bracket_space_keep_port() -> None:
+    """m91 / m92: userinfo strip and bracket branch survive a trailing space."""
+    userinfo = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-userinfo",
+        name="TLS",
+        description="userinfo",
+        severity="low",
+        category="exposure",
+        assets=["http://u:p@h:443 /"],
+        labels=["nuclei"],
+        extra={"template_id": "tls"},
+    )
+    userinfo["extra"].pop("port", None)
+    assert finding_port(userinfo) == "443"
+    bracket = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-v6-space",
+        name="TLS",
+        description="bracket space",
+        severity="low",
+        category="exposure",
+        assets=["https://[::1]:443 /x"],
+        labels=["nuclei"],
+        extra={"template_id": "tls"},
+    )
+    bracket["extra"].pop("port", None)
+    assert finding_port(bracket) == "443"
+
+
 def test_finding_port_continues_past_invalid_explicit() -> None:
     rec = make_record(
         kind="finding",

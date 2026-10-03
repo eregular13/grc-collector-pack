@@ -22,7 +22,7 @@ import pytest
 
 from shared.control_map import map_finding
 from shared.kev import KevCatalog
-from shared.poam_fields import SLA_NOTE, local_run_date, poam_fields
+from shared.poam_fields import SLA_NOTE, local_run_date, parse_status_date, poam_fields
 from shared.poam_ledger import apply_ledger
 from shared.vendor_dependency import VENDOR_CHECKIN_OVERDUE, VD_NOTE
 
@@ -99,6 +99,16 @@ def _rec() -> dict:
     }
 
 
+def test_parse_status_date_rejects_blank_and_garbage() -> None:
+    assert parse_status_date("2026-10-01").isoformat() == "2026-10-01"
+    assert parse_status_date("") is None
+    assert parse_status_date("   ") is None
+    assert parse_status_date("garbage") is None
+    assert parse_status_date("2026-13-45") is None
+    assert parse_status_date(20260101) is None
+    assert parse_status_date(None) is None
+
+
 def test_local_run_date_none_matches_host_wall_clock() -> None:
     # Capture around the call so a local-midnight straddle cannot flake.
     before = datetime.now().astimezone().date()
@@ -130,6 +140,8 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "VENDOR_CHECKIN_OVERDUE" in SLA_NOTE
     assert "scan_time.bind_run_clock treats naive as UTC" in SLA_NOTE
     assert "load(run_at=)" in SLA_NOTE
+    assert "Blank or malformed ledger status_date" in SLA_NOTE
+    assert "not tracked fields" in SLA_NOTE
     assert "host-local run day" in VD_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
     assert "host-local civil day" in schema
@@ -142,16 +154,22 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "all four surfaces" in schema
     assert "load(run_at=)" in schema
     assert "bind_run_clock treats naive as UTC" in schema
+    assert "Blank or malformed ledger" in schema
+    assert "not tracked fields" in schema
     assert "UTC calendar day" not in schema
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "load(run_at=)" in changelog
     assert "ledger_sha" in changelog
     assert "America/Los_Angeles" in changelog
+    assert "before this change, including #215" in changelog
     yml = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
     assert "America/Los_Angeles" in yml
     assert "Pacific/Kiritimati" in yml
     assert "pytest-tz:" in yml
     assert "TZ: ${{ matrix.tz }}" in yml
+    assert "time.tzname" in yml
+    assert "permissions:" in yml
+    assert "timeout-minutes:" in yml
 
 
 @pytest.mark.parametrize("zone,clock,utc_day,local_day", _ZONES)
@@ -495,3 +513,83 @@ def test_reobserved_unchanged_status_date_agrees_on_all_surfaces(
     assert {row["status_date"] for row in poam} == {"2026-10-01"}
     assert {row["status_date"] for row in sr} == {"2026-10-01"}
     assert {row["Status Date"] for row in fed} == {"2026-10-01"}
+
+
+def _tamper_ledger_status_date(path: Path, value: object) -> None:
+    ledger = json.loads(path.read_text(encoding="utf-8"))
+    item = next(iter(ledger["items"].values()))
+    item["status_date"] = value
+    path.write_text(json.dumps(ledger) + "\n", encoding="utf-8")
+
+
+def test_blank_ledger_status_date_falls_back_to_local_run_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: blank ledger date → local run day on all four surfaces."""
+    rec = _rec()
+    first = apply_ledger(
+        [rec],
+        catalog=_catalog(),
+        run_at=datetime(2026, 10, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    out = _write_canonical(tmp_path, monkeypatch, rec)
+    incoming = Path(os.environ["IN_DIR"])
+    (incoming / "poam").mkdir(parents=True, exist_ok=True)
+    ledger_path = incoming / "poam" / "poam-ledger.json"
+    ledger_path.write_text(json.dumps(first) + "\n", encoding="utf-8")
+    _tamper_ledger_status_date(ledger_path, "")
+    import collectors.grc_loader as loader
+
+    importlib.reload(loader)
+    with pinned_tz("America/Los_Angeles"):
+        loader.load(run_at=datetime(2026, 10, 3, 12, 0, 0))
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    sr = csv_rows(out / "simplerisk" / "poam.csv")
+    with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = next(iter(ledger["items"].values()))
+    assert item["status_date"] == "2026-10-03"
+    assert {row["status_date"] for row in poam} == {"2026-10-03"}
+    assert {row["status_date"] for row in sr} == {"2026-10-03"}
+    assert {row["Status Date"] for row in fed} == {"2026-10-03"}
+
+
+def test_malformed_ledger_status_date_falls_back_to_local_run_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: garbage / 2026-13-45 is not copied; local run day on all four surfaces."""
+    rec = _rec()
+    first = apply_ledger(
+        [rec],
+        catalog=_catalog(),
+        run_at=datetime(2026, 10, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    out = _write_canonical(tmp_path, monkeypatch, rec)
+    incoming = Path(os.environ["IN_DIR"])
+    (incoming / "poam").mkdir(parents=True, exist_ok=True)
+    ledger_path = incoming / "poam" / "poam-ledger.json"
+    ledger_path.write_text(json.dumps(first) + "\n", encoding="utf-8")
+    _tamper_ledger_status_date(ledger_path, "garbage")
+    import collectors.grc_loader as loader
+
+    importlib.reload(loader)
+    with pinned_tz("America/Los_Angeles"):
+        loader.load(run_at=datetime(2026, 10, 3, 12, 0, 0))
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    sr = csv_rows(out / "simplerisk" / "poam.csv")
+    with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = next(iter(ledger["items"].values()))
+    assert item["status_date"] == "2026-10-03"
+    assert "garbage" not in {row["status_date"] for row in poam}
+    assert {row["status_date"] for row in poam} == {"2026-10-03"}
+    assert {row["status_date"] for row in sr} == {"2026-10-03"}
+    assert {row["Status Date"] for row in fed} == {"2026-10-03"}

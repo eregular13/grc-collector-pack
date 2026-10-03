@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- REVIEW_FOLLOW_UPS_216_218: #216 carry parses ledger `status_date` as
+  a `YYYY-MM-DD` civil day; blank or malformed falls back to the
+  host-local run day (not UTC) on all four surfaces. Description,
+  name, and display-asset edits stay untracked. pytest-tz prints the
+  effective zone. #217 pins P7 / `rds-gateway-rdp-3389-open` / R4 /
+  T3 / T5 / T6 / X1b / X2b / X3; ts-lead is id-only so a title
+  "TS gateway … public" is not RD Gateway. #218 kills leftover
+  escape/port mutants, `isascii` on zmap/unicornscan `_port`, keeps
+  `image:tag` / `account:id` hosts, validates `extra.port`, and
+  fences `md_code_span` (ticks kept; `|` in a table ref stays one
+  cell). No POST `/api/risks`.
 - POAM_STATUS_DATE_LOCAL_CI: #215 follow-up. CI runs the full pytest
   suite under `America/Los_Angeles` and `Pacific/Kiritimati` (pytest
   only — SAMPLE/farm/collectors stay on the UTC lab job). `load()`
@@ -11,8 +22,10 @@
   `run_at` / ledger event `at` are stamped at load start (seconds
   earlier than the old `apply_ledger` read, so `ledger_sha` moves).
   Reobserved unchanged rows now keep the ledger last-change date on
-  `poam.csv` and SimpleRisk as well as FedRAMP / the ledger (pre-#215
-  those two CSVs restamped the run day). No POST `/api/risks`.
+  `poam.csv` and SimpleRisk as well as FedRAMP / the ledger (before this change, including #215,
+  those two CSVs restamped the run day).
+  Description, name, and display-asset edits are not tracked fields
+  and keep the last-change date. No POST `/api/risks`.
 - POAM_STATUS_DATE_LOCAL: `status_date` is the host-local civil day
   (`YYYY-MM-DD`) at generation (`datetime.now().astimezone()`, honoring
   `TZ` / `tzset`). No extra env var or CLI flag. Format stays a date
