@@ -466,7 +466,7 @@ def test_valid_port_rejects_unicode_digits_and_bounds() -> None:
     assert _valid_port("1") == "1"
     assert _valid_port("0") == ""
     assert _valid_port("65536") == ""
-    assert _valid_port("0443") == "0443"
+    assert _valid_port("0443") == "443"
     assert _valid_port("²") == ""
     assert _valid_port("³¹") == ""
     assert _valid_port("٤٤٣") == ""
@@ -545,6 +545,10 @@ def test_url_has_explicit_port_branches() -> None:
 def test_image_tag_and_account_id_are_not_truncated() -> None:
     assert _strip_host("app-server:latest") == ("app-server:latest", "", "")
     assert _strip_host("account:unknown") == ("account:unknown", "", "")
+    # Empty tag / IP-left still split as on master (not kept as a host name).
+    assert _strip_host("host:") == ("host", "", "")
+    assert _strip_host("10.0.0.5:https") == ("10.0.0.5", "", "")
+    assert _strip_host("h:0443") == ("h", "443", "")
     rec = make_record(
         kind="finding",
         source="vuln-scan",

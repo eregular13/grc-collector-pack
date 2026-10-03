@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from collectors import cloud_prowler, code_secrets, grc_loader, vuln_scan
+from shared import estate_pages
 from shared.estate_pages import (
     COVERAGE_GAPS_HEADING,
     COVERAGE_GAPS_NONE,
@@ -376,7 +377,7 @@ def test_coverage_gap_source_files_reason_are_escaped() -> None:
 
 
 def test_scope_row_cells_and_out_of_scope_phrase_are_escaped() -> None:
-    """m98–m104: six scope-row cells and the out-of-scope phrase are escaped."""
+    """m98–m104: area, targets, tool, version, collected, records, and the out-of-scope phrase are escaped."""
     rec = {
         "kind": "finding",
         "source": "hostile**src",
@@ -430,6 +431,46 @@ def test_scope_row_cells_and_out_of_scope_phrase_are_escaped() -> None:
     assert md_safe_text("nmap**") in trust
     assert md_safe_text("1`<img>") in trust
     assert md_safe_text("out**scope|<img>") in trust
+    assert "<img" not in trust
+    assert not re.search(r"(?m)^# ", trust)
+
+
+def test_scope_row_collected_and_records_cells_are_escaped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """m102 / m103: collected and records go through md_safe_text."""
+    hostile_collected = "2026-10-01**|<img>"
+    hostile_records = "3**|<img>"
+
+    def _hostile_rows(*_a, **_k):
+        return [
+            {
+                "source": "nmap",
+                "area": "nmap",
+                "targets": "t",
+                "tool": "nmap",
+                "version": "1",
+                "collected": hostile_collected,
+                "records": hostile_records,
+                "in_scope": "true",
+                "status": "ok",
+            }
+        ]
+
+    monkeypatch.setattr(estate_pages, "coverage_scope_rows", _hostile_rows)
+    trust = build_scope_and_trust(
+        PageContext(
+            stamp=EstateStamp(
+                kind="SAMPLE",
+                label=LABEL_FOR_KIND["SAMPLE"],
+                sentence=SENTENCE_FOR_KIND["SAMPLE"],
+            ),
+            records=[],
+            sensor_rows=[],
+        )
+    )
+    assert md_safe_text(hostile_collected) in trust
+    assert md_safe_text(hostile_records) in trust
     assert "<img" not in trust
     assert not re.search(r"(?m)^# ", trust)
 

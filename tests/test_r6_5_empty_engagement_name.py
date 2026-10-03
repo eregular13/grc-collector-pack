@@ -171,7 +171,8 @@ HOSTILE = "Acme**\n\n# PWNED [x](javascript:void(0)) <script>"
 
 def test_md_safe_text_keeps_normal_names_readable() -> None:
     assert md_safe_text("Acme Health") == "Acme Health"
-    assert md_safe_text("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
+    assert md_safe_text("&") == "&amp;"
+    assert md_safe_text("O'Reilly & Co-Santé") == "O'Reilly &amp; Co-Santé"
     assert md_safe_text("Ac\u200cme") == "Ac\u200cme"
     assert md_safe_text("\ufeffAcme\u200b") == "Acme"
     assert engagement_name("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"

@@ -247,11 +247,12 @@ def engagement_name(value: Any) -> str:
 
 
 # Markdown / HTML metacharacters that must not stay raw in deliverables.
-# Hyphen, ampersand, apostrophe, and Unicode letters are left as-is so
-# names like O'Reilly & Co-Santé stay readable. Newlines are collapsed
-# separately so a name cannot open a heading or break a blockquote.
+# Hyphen, apostrophe, and Unicode letters stay readable (O'Reilly,
+# Co-Santé). Ampersand joins < and > as an HTML entity so a name cannot
+# start a character reference. Newlines are collapsed separately so a
+# name cannot open a heading or break a blockquote.
 _MD_META = frozenset("\\`*_{}[]()#!|~")
-_HTML_ENTS = {"<": "&lt;", ">": "&gt;"}
+_HTML_ENTS = {"&": "&amp;", "<": "&lt;", ">": "&gt;"}
 _LINE_BREAKS = r"[\r\n\u2028\u2029\u0085\v\f]+"
 
 
