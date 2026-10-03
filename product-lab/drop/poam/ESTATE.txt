@@ -1,4 +1,4 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run not recorded · generated 2026-10-01 20:55 UTC · pack 9e8e570
+> Run not recorded · generated 2026-10-03 23:27 UTC · pack 6bc3849
 
-POA&M is an operator draft, not a CISO Assistant import. poam.csv, poam_fedramp.csv, and poam_fedramp_closed.csv start with the operator header (no # preamble). Banner lives in ESTATE.txt. Ledger and kev_provenance.json are JSON (no # banner). poam.csv carries a per-row estate column. SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.
+POA&M is an operator draft, not a CISO Assistant import. poam.csv, poam_fedramp.csv, poam_fedramp_closed.csv, excluded.csv, and poam_members.csv start with the operator header (no # preamble). Banner lives in ESTATE.txt. Ledger and kev_provenance.json are JSON (no # banner). poam.csv and poam_members.csv carry a per-row estate column. SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.

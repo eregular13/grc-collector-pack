@@ -1,7 +1,14 @@
-id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by
-NMAP-filesrv-corp-local-445-tcp,NMAP-filesrv-corp-local-445-tcp,SMB 445 exposed,filesrv.corp.local,high,superseded_by_specific,EGP-38702B2F4D
-HPOT-ssh-canary-01-sess-canary-001-session,HPOT-ssh-canary-01-sess-canary-001-session,Deception-sensor session sess-canary-001 on ssh-canary-01,ssh-canary-01,medium,honeypot,
-HPOT-ssh-canary-01-sess-canary-001-s2-2026-09-08t00-01-08z-cat-etc-passwd,HPOT-ssh-canary-01-sess-canary-001-s2-2026-09-08t00-01-08z-cat-etc-passwd,Deception-sensor stage-2 hit on ssh-canary-01,ssh-canary-01,medium,honeypot,
-WAZ-alert-5710-web-01,WAZ-alert-5710-web-01,sshd: brute force trying to get access,web-01,medium,telemetry,
-HPOT-ssh-canary-01-sess-canary-001-s1-2026-09-08t00-01-00z-whoami,HPOT-ssh-canary-01-sess-canary-001-s1-2026-09-08t00-01-00z-whoami,Deception-sensor stage-1 hit on ssh-canary-01,ssh-canary-01,low,honeypot,
-NMAP-telnet-legacy-corp-local-80-tcp,NMAP-telnet-legacy-corp-local-80-tcp,HTTP exposed,telnet-legacy.corp.local,low,superseded_by_specific,EGP-3F2616BFEB
+id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,reason_code,rolled_into,source,detail
+NMAP-filesrv-corp-local-445-tcp,NMAP-filesrv-corp-local-445-tcp,SMB 445 exposed,filesrv.corp.local,high,superseded_by_specific,EGP-38702B2F4D,DUPLICATE_INSTANCE,EGP-38702B2F4D,inventory-nmap,folded into NMAP-filesrv-corp-local-share-c
+HPOT-ssh-canary-01-sess-canary-001-session,HPOT-ssh-canary-01-sess-canary-001-session,Deception-sensor session sess-canary-001 on ssh-canary-01,ssh-canary-01,medium,honeypot,,HONEYPOT,,honeypot,
+HPOT-ssh-canary-01-sess-canary-001-s2-2026-09-08t00-01-08z-cat-etc-passwd,HPOT-ssh-canary-01-sess-canary-001-s2-2026-09-08t00-01-08z-cat-etc-passwd,Deception-sensor stage-2 hit on ssh-canary-01,ssh-canary-01,medium,honeypot,,HONEYPOT,,honeypot,
+WAZ-alert-5710-web-01,WAZ-alert-5710-web-01,sshd: brute force trying to get access,web-01,medium,telemetry,,TELEMETRY,,host-wazuh,detection/telemetry; not a posture weakness
+HPOT-ssh-canary-01-sess-canary-001-s1-2026-09-08t00-01-00z-whoami,HPOT-ssh-canary-01-sess-canary-001-s1-2026-09-08t00-01-00z-whoami,Deception-sensor stage-1 hit on ssh-canary-01,ssh-canary-01,low,honeypot,,HONEYPOT,,honeypot,
+NMAP-telnet-legacy-corp-local-80-tcp,NMAP-telnet-legacy-corp-local-80-tcp,HTTP exposed,telnet-legacy.corp.local,low,superseded_by_specific,EGP-3F2616BFEB,DUPLICATE_INSTANCE,EGP-3F2616BFEB,inventory-nmap,folded into VULN-nikto-admin-http-10-0-0-20-admin
+WAZ-diskenc-jamf-fleet-laptop-07,WAZ-diskenc-jamf-fleet-laptop-07,Disk encryption disabled on fleet-laptop-07,fleet-laptop-07,high,DUPLICATE_INSTANCE,EGP-124FDB7417,DUPLICATE_INSTANCE,EGP-124FDB7417,host-wazuh,same finding_identity + primary_asset
+WAZ-edr-jamf-fleet-laptop-07,WAZ-edr-jamf-fleet-laptop-07,Missing EDR on fleet-laptop-07,fleet-laptop-07,high,DUPLICATE_INSTANCE,EGP-2AE478D2A9,DUPLICATE_INSTANCE,EGP-2AE478D2A9,host-wazuh,same finding_identity + primary_asset
+ID-backup-operators-privileged-group-backup-operators,ID-backup-operators-privileged-group-backup-operators,Backup Operators privileged group,Backup Operators,high,DUPLICATE_INSTANCE,EGP-E1558E18BC,DUPLICATE_INSTANCE,EGP-E1558E18BC,identity-ad,same finding_identity + primary_asset
+ID-high-value-identity-domain-admins,ID-high-value-identity-domain-admins,High-value identity,Domain Admins,medium,DUPLICATE_INSTANCE,EGP-667BD345E8,DUPLICATE_INSTANCE,EGP-667BD345E8,identity-ad,same finding_identity + primary_asset
+K8S-c-0057-prod-cluster,K8S-c-0057-prod-cluster,Privileged container,prod-cluster,critical,DUPLICATE_INSTANCE,EGP-BB7125EC27,DUPLICATE_INSTANCE,EGP-BB7125EC27,k8s-kubescape,dedupe_weaknesses
+SAAS-standing-admin-gacontoso-onmicrosoft-com,SAAS-standing-admin-gacontoso-onmicrosoft-com,Standing Global Administrator,ga@contoso.onmicrosoft.com|contoso.onmicrosoft.com,critical,DUPLICATE_INSTANCE,EGP-F18CA5E082,DUPLICATE_INSTANCE,EGP-F18CA5E082,saas-idp,dedupe_weaknesses
+SAAS-graph-ga-gacontoso-onmicrosoft-com,SAAS-graph-ga-gacontoso-onmicrosoft-com,Entra Global Administrator via Graph,ga@contoso.onmicrosoft.com|contoso.onmicrosoft.com,critical,DUPLICATE_INSTANCE,EGP-F18CA5E082,DUPLICATE_INSTANCE,EGP-F18CA5E082,saas-idp,dedupe_weaknesses

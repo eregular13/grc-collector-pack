@@ -30,6 +30,11 @@ def _seed_out(src_out: Path) -> None:
         (ciso / name).write_text(body, encoding="utf-8")
     (ciso / "ESTATE.txt").write_text("DEMO: NOT A CLIENT\n", encoding="utf-8")
     (poam / "poam.csv").write_text("poam_id\nEGP-1\n", encoding="utf-8")
+    (poam / "poam_members.csv").write_text(
+        "poam_id,finding_ref_id,egp_id,asset,severity,estate\n"
+        "EGP-1,NMAP-1,EGP-1,box,high,DEMO: NOT A CLIENT\n",
+        encoding="utf-8",
+    )
     (poam / "excluded.csv").write_text(
         "id,excluded_reason\nNMAP-filesrv-corp-local-445-tcp,superseded_by_specific\n",
         encoding="utf-8",
@@ -145,7 +150,7 @@ def test_manifest_writer_keeps_estate_and_ledger_rows(tmp_path: Path, monkeypatc
     assert "poam/poam-ledger.json" in rels
     assert "poam/excluded.csv" in rels
     assert "poam/poam_fedramp.csv" in rels
-    assert all("poam_members.csv" not in rel for rel in rels)
+    assert "poam/poam_members.csv" in rels
 
     dest = tmp_path / "drop"
     dest.mkdir()
@@ -157,7 +162,7 @@ def test_manifest_writer_keeps_estate_and_ledger_rows(tmp_path: Path, monkeypatc
     assert "| ciso/ESTATE.txt |" in text
     assert "| poam/poam-ledger.json |" in text
     assert "| poam/ESTATE.txt |" in text
-    assert "poam_members.csv" not in text
+    assert "| poam/poam_members.csv |" in text
 
 
 def test_main_from_out_uses_outdir_env_when_path_omitted(

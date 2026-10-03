@@ -461,6 +461,7 @@ def flood_guard_summary(
     poam_rows: int = 0,
     excluded_n: int | None = None,
     lighter: bool = False,
+    c5_skipped: int = 0,
 ) -> dict[str, Any]:
     """§12.6 flood_guard block. UNEXPLAINED stays a convenience field (must be 0)."""
     pair_list = list(pairs)
@@ -492,6 +493,7 @@ def flood_guard_summary(
     return {
         "findings_in": incoming,
         "duplicates_merged": int(merges_n or 0),
+        "c5_skipped": int(c5_skipped or 0),
         "poam_rows": int(poam_rows or included),
         "poam_members": members,
         "excluded": excluded_total,

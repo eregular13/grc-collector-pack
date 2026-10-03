@@ -75,6 +75,15 @@ def iso_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+_CSV_FORMULA_PREFIXES = frozenset("=+-@")
+
+
+def is_csv_formula(value: Any) -> bool:
+    """True for spreadsheet-formula cells (``=cmd|' /C calc'!A0`` and kin)."""
+    text = str(value or "").lstrip("\ufeff \t\r")
+    return bool(text) and text[0] in _CSV_FORMULA_PREFIXES
+
+
 def redact(value: Any) -> Any:
     if isinstance(value, dict):
         return {k: redact(v) for k, v in value.items()}

@@ -24,6 +24,7 @@ HASHED = (
     "poam/poam.csv",
     "poam/poam.md",
     "poam/excluded.csv",
+    "poam/poam_members.csv",
     "poam/poam_fedramp.csv",
     "poam/poam-ledger.json",
     "poam/ESTATE.txt",

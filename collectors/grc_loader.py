@@ -83,6 +83,7 @@ from shared.io_util import (
     load_sensor_coverage,
     out_dir,
     read_jsonl,
+    is_csv_formula,
     redact,
     stable_hash as _stable_hash,
     write_json,
@@ -476,17 +477,25 @@ def _load(*, run_at: datetime | None = None) -> dict:
         else:
             resid = level
             cid = ""
+        assets = [str(a) for a in (rec.get("assets") or []) if a]
+        if any(is_csv_formula(a) for a in assets):
+            continue
         threats = rec.get("category") or rec.get("source") or ""
         description = rec.get("description") or ""
         if extra_exclude_token(rec) == "MUTED" or str(decision.get("reason") or "") == "MUTED":
-            muted_label = "muted in Prowler (operator mutelist)"
+            source = str(rec.get("source") or "")
+            if "prowler" in source.lower():
+                muted_label = "muted in Prowler (operator mutelist)"
+            else:
+                muted_label = "muted (operator mutelist)"
             threats = f"{threats}|{muted_label}".strip("|") if threats else muted_label
-            if "muted in prowler" not in description.lower():
+            needle = "muted in prowler" if "prowler" in source.lower() else "muted (operator mutelist)"
+            if needle not in description.lower():
                 description = f"{description} ({muted_label})".strip()
         scenarios.append(
             [
                 f"RSK-{ref_slug(str(rec.get('ref_id') or rec.get('name')))}",
-                "|".join(rec.get("assets") or []),
+                "|".join(assets),
                 threats,
                 rec.get("name"),
                 description,
@@ -787,6 +796,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
             continue
         slot = (rec_ref, rec_asset)
         if rec_ref and slot in written_c5:
+            c5_skipped += 1
             continue
         kept = merge.get("kept") or {}
         kept_ref = str(merge.get("rolled_into") or kept.get("ref_id") or "")
@@ -987,6 +997,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
             poam_rows=len(poam_rows),
             excluded_n=len(excluded_rows),
             lighter=lighter,
+            c5_skipped=c5_skipped,
         ),
         "sensors": {row["source"]: row for row in sensor_rows},
         "coverage": {"sensors": sensor_rows},

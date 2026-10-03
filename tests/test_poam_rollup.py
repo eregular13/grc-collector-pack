@@ -342,6 +342,7 @@ def test_flood_guard_summary_counts_unexplained() -> None:
     assert set(fg) >= {
         "findings_in",
         "duplicates_merged",
+        "c5_skipped",
         "poam_rows",
         "poam_members",
         "excluded",
@@ -553,6 +554,7 @@ def test_c5_skip_when_ref_already_on_register(
     ex_refs = {row.get("finding_ref_id") for row in excluded}
     assert "NMAP-X" in poam_refs
     assert "NMAP-X" not in ex_refs
+    assert summary["flood_guard"]["c5_skipped"] >= 1
     assert summary["flood_guard"]["findings_in"] == (
         summary["flood_guard"]["poam_members"] + summary["flood_guard"]["excluded"]
     )
@@ -656,6 +658,69 @@ def test_prowler_muted_kind_excluded_is_register_accept(
     assert "muted in Prowler" in (muted_scenario.get("description") or "")
     assert summary["kind_excluded"] == 1
     assert summary["flood_guard"]["excluded_by_code"].get("MUTED") == 1
+
+
+def test_muted_label_is_source_specific(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    live = _finding(
+        source="host-wazuh",
+        ref_id="WAZ-live",
+        name="sshd brute",
+        severity="high",
+        extra={"rule_id": "5710", "rule_level": 12},
+    )
+    muted = {
+        "kind": "excluded",
+        "source": "host-wazuh",
+        "ref_id": "WAZ-muted-1",
+        "name": "Muted Wazuh check",
+        "description": "muted",
+        "severity": "critical",
+        "category": "excluded",
+        "assets": ["web-01"],
+        "labels": ["muted"],
+        "extra": {"exclude_reason": "MUTED", "status": "MUTED"},
+    }
+    _load_recs(tmp_path, monkeypatch, [_asset("web-01"), live, muted])
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    muted_scenario = next(row for row in scenarios if row.get("name") == "Muted Wazuh check")
+    assert muted_scenario.get("treatment") == "accept"
+    threats = muted_scenario.get("threats") or ""
+    desc = muted_scenario.get("description") or ""
+    assert "muted (operator mutelist)" in threats
+    assert "muted (operator mutelist)" in desc
+    assert "Prowler" not in threats
+    assert "Prowler" not in desc
+
+
+def test_csv_formula_asset_is_dropped_from_risk_scenarios(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Master drops spreadsheet-formula assets from risk_scenarios.csv."""
+    from shared.io_util import is_csv_formula
+
+    hostile = "=cmd|' /C calc'!A0"
+    assert is_csv_formula(hostile)
+    live = _finding(
+        ref_id="NMAP-ok",
+        name="SSH exposed",
+        assets=["box"],
+        extra={"port": "22", "service": "ssh"},
+    )
+    formula = _finding(
+        ref_id="NMAP-formula",
+        name="Formula host",
+        assets=[hostile],
+        extra={"port": "22", "service": "ssh"},
+    )
+    _load_recs(tmp_path, monkeypatch, [_asset("box"), live, formula])
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    blob = "\n".join("|".join(row.values()) for row in scenarios)
+    assert hostile not in blob
+    assert "=cmd|" not in blob
+    assert any(row.get("name") == "SSH exposed" for row in scenarios)
+    assert not any(row.get("name") == "Formula host" for row in scenarios)
 
 
 def test_is_poam_exclude_reason_covers_rollup_codes() -> None:
@@ -784,11 +849,13 @@ def test_c5_excluded_by_code_counts_duplicate_instance(
 def test_port_fold_smbv1_specific_kills_accept_override(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Bare 445/tcp folds into an SMBv1-style specific. Re-adding a port-fold
-    override that leaves the folded row on the register as accept (same EGP)
-    fails REGISTER_TREATMENT_FAIL.
+    """Bare 445/tcp and SMBv1-style specific share one EGP so the fold
+    becomes ``merged_into``. Re-adding a port-fold override that leaves
+    the folded row on the register as accept fails REGISTER_TREATMENT_FAIL
+    (same EGP in mitigate and accept).
     """
-    from shared.port_fold import SUPERSEDED_REASON, is_specific_port_finding
+    from shared.poam_ledger import fp_v1
+    from shared.port_fold import SUPERSEDED_REASON, egp_id_for, is_specific_port_finding
 
     host = "filesrv.corp.local"
     port = _finding(
@@ -801,42 +868,46 @@ def test_port_fold_smbv1_specific_kills_accept_override(
         extra={"port": "445", "proto": "tcp", "service": ""},
     )
     smbv1 = _finding(
-        source="vuln-scan",
-        ref_id="VULN-smbv1",
-        name="SMBv1 enabled",
+        source="inventory-nmap",
+        ref_id="NMAP-smbv1",
+        name="SMB version 1 dialect",
         description="SMBv1 dialect confirmed on 445/tcp",
         severity="high",
-        category="vulnerability",
+        category="exposure",
         assets=[host],
-        labels=["nuclei", "vuln"],
+        labels=["nuclei", "nmap"],
         extra={
             "port": "445",
             "proto": "tcp",
-            "template_id": "smb-protocols",
+            "claim": "open_port_observed",
             "tool": "nuclei",
         },
     )
     assert is_specific_port_finding(smbv1)
+    assert fp_v1(port) == fp_v1(smbv1)
+    assert egp_id_for(port) == egp_id_for(smbv1)
     pairs = iter_poam_decisions([port, smbv1], lighter=False)
     by_ref = {r["ref_id"]: d for r, d in pairs}
-    assert by_ref["VULN-smbv1"].get("include") is True
+    assert by_ref["NMAP-smbv1"].get("include") is True
     folded = by_ref["NMAP-445-bare"]
     assert folded.get("include") is False
     reason = str(folded.get("reason") or "")
-    assert reason == SUPERSEDED_REASON or is_merged_into_reason(reason)
-    origin = str(folded.get("flood_guard_origin") or "")
-    assert origin in {"", SUPERSEDED_REASON}
-    assert origin not in {"key_medium", "severity_medium", "severity_high_critical"}
-    if is_merged_into_reason(reason):
-        parent = reason.split(":", 1)[-1]
-        assert parent
-        assert parent in str(folded.get("detail") or "")
-        assert folded.get("flood_guard_origin") == SUPERSEDED_REASON
+    assert is_merged_into_reason(reason)
+    parent = reason.split(":", 1)[-1]
+    assert parent == egp_id_for(smbv1)
+    assert parent in str(folded.get("detail") or "")
+    assert folded.get("flood_guard_origin") == SUPERSEDED_REASON
+    assert folded.get("flood_guard_origin") not in {
+        "key_medium",
+        "severity_medium",
+        "severity_high_critical",
+    }
     summary = _load_recs(tmp_path, monkeypatch, [_asset(host), port, smbv1])
     scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
-    smbv1_rows = [row for row in scenarios if row.get("name") == "SMBv1 enabled"]
+    smbv1_rows = [row for row in scenarios if row.get("name") == "SMB version 1 dialect"]
     assert len(smbv1_rows) == 1
     assert smbv1_rows[0]["treatment"] == "mitigate"
+    assert not any(row.get("name") == "Open port 445/tcp" for row in scenarios)
     overlap = assert_register_no_double_treatment(tmp_path)
     assert overlap["ok"] is True
     assert not overlap["title_host_overlap"]
@@ -929,17 +1000,15 @@ def test_assert_flood_guard_rejects_dropped_excluded_row(
         assert_flood_guard(tmp_path, summary)
 
 
+def test_manifest_rows_lists_poam_members() -> None:
+    """n13: dropping poam_members.csv from the regen MANIFEST_ROWS list must fail."""
+    from scripts.refresh_product_lab_drop_sinks import MANIFEST_ROWS
+
+    assert ("poam/poam_members.csv", "poam/poam_members.csv") in MANIFEST_ROWS
+
+
 def test_export_csv_rel_lists_poam_members() -> None:
-    """n13: dropping poam_members.csv from EXPORT_CSV_REL must fail."""
+    """n14: dropping poam_members.csv from EXPORT_CSV_REL must fail."""
     from shared.estate_pages import EXPORT_CSV_REL
 
     assert "poam/poam_members.csv" in EXPORT_CSV_REL
-
-
-def test_refresh_script_lists_poam_members() -> None:
-    """n14: dropping poam_members.csv from the regen files list must fail."""
-    src = (ROOT / "scripts" / "refresh_product_lab_drop_sinks.py").read_text(
-        encoding="utf-8"
-    )
-    assert '"poam/poam_members.csv"' in src
-    assert src.count("poam/poam_members.csv") >= 2
