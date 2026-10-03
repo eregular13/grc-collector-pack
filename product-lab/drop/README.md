@@ -1,6 +1,6 @@
 # Drop package
 
-**Copied:** 2026-10-01T20:55:27Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** 2026-10-03T23:53:21Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). SAMPLE/DEMO. Not a client. Not a LAB dest_in prove.
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
