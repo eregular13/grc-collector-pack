@@ -368,6 +368,13 @@ def test_c5_merges_land_in_excluded_and_reconcile(tmp_path: Path, monkeypatch: p
     summary = load()
     fg = summary["flood_guard"]
     assert fg["duplicates_merged"] == 1
+    assert fg["c5_duplicates_merged"] == fg["duplicates_merged"]
+    assert summary["intake_collapsed"] == summary["duplicates_merged"]
+    assert summary["duplicates_merged_basis"] == "intake_collapse"
+    assert summary["duplicates_merged"] == max(
+        0, int(summary["canonical_in"]) - int(summary["canonical"])
+    )
+    assert fg["duplicates_merged"] != summary["duplicates_merged"] or fg["duplicates_merged"] == 1
     assert fg["findings_in"] == fg["poam_members"] + fg["excluded"]
     assert summary["excluded_by_reason"].get("DUPLICATE_INSTANCE") == 1
     excluded = csv_rows(tmp_path / "poam" / "excluded.csv")

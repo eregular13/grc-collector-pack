@@ -202,7 +202,11 @@ class AssetLedger:
         dest = Path(path) if path is not None else out_dir() / OUT_LEDGER_REL
         dest.parent.mkdir(parents=True, exist_ok=True)
         payload = self.to_dict()
-        dest.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        dest.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
         return dest
 
     def apply_overrides(self, path: Path | None = None, *, now: str | None = None) -> None:

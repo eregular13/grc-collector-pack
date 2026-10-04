@@ -18,10 +18,11 @@ export DROPBOX_LIVE=0
 PYTHON="${PYTHON:-python3}"
 WORK="$ROOT/prove/work"
 VERIFY_ONLY=0
+PRIOR_OUT=""
 
 usage() {
   cat <<'EOF'
-usage: scripts/farm_drop_to_sor.sh [--work DIR] [--verify-only]
+usage: scripts/farm_drop_to_sor.sh [--work DIR] [--verify-only] [--prior-out DIR]
 
 Farm leave-behind twin of sample_to_sor: fixtures/pack_drop -> prove/work/out/ciso-assistant/
 Forces PYTHONPATH + DRY_RUN=1 GRC_LIVE_SCAN=0 CISO_PUSH=0 RISKREADY_PUSH=0 DROPBOX_LIVE=0
@@ -50,6 +51,10 @@ while [[ $# -gt 0 ]]; do
       VERIFY_ONLY=1
       shift
       ;;
+    --prior-out|--prior-ledger)
+      PRIOR_OUT="$(abs_path "$2")"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -69,7 +74,11 @@ POAM_MD="$WORK/out/poam/poam.md"
 
 if [[ "$VERIFY_ONLY" -eq 0 ]]; then
   echo "farm_drop_to_sor: python3 scripts/prove_ciso.py (pack_drop -> CISO)"
-  "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK"
+  if [[ -n "$PRIOR_OUT" ]]; then
+    "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK" --prior-out "$PRIOR_OUT"
+  else
+    "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK"
+  fi
 fi
 
 echo "farm_drop_to_sor: verify prove-ciso.json honesty"

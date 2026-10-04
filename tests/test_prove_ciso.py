@@ -872,12 +872,53 @@ def test_use_existing_in_cli_alias_and_docs(tmp_path: Path) -> None:
     src = (ROOT / "scripts" / "prove_ciso.py").read_text(encoding="utf-8")
     assert "--use-existing-in" in src
     assert "--no-seed" in src
+    assert "--prior-out" in src
+    assert "--prior-ledger" in src
     docs = DOCS.read_text(encoding="utf-8")
     assert "--use-existing-in" in docs
     assert "--no-seed" in docs
+    assert "--prior-out" in docs
     assert "lab_drop_to_sor" in docs
     assert "LAB/DEMO" in docs
     assert "not a client" in docs.lower()
+    ps1 = (ROOT / "scripts" / "lab_drop_to_sor.ps1").read_text(encoding="utf-8")
+    assert "PriorOut" in ps1
+    assert "--prior-out" in ps1
+
+
+def test_prior_out_carries_poam_ids_and_clears_ledger_lost(tmp_path: Path) -> None:
+    """Second prove with --prior-out keeps IDs; LEDGER_LOST clears; new=0 / closed=0."""
+    dest = tmp_path / "prove"
+    _stage_tiny_nmap_pack_drop(dest / "in")
+    first = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
+    assert first["status"] == "pass", first.get("reason")
+    out1 = Path(first["out_dir"])
+    poam1 = (out1 / "poam" / "poam.csv").read_text(encoding="utf-8")
+    summary1 = json.loads((out1 / "summary.json").read_text(encoding="utf-8"))
+    assert "LEDGER_LOST" in (summary1.get("ledger_warnings") or [])
+    import csv
+    from io import StringIO
+
+    rows1 = list(csv.DictReader(StringIO(poam1)))
+    ids1 = [r["poam_id"] for r in rows1 if r.get("poam_id")]
+    assert ids1
+
+    second = prove_ciso(
+        root=ROOT, dest=dest, use_existing_in=True, prior_out=out1
+    )
+    assert second["status"] == "pass", second.get("reason")
+    assert second.get("prior_ledgers")
+    out2 = Path(second["out_dir"])
+    poam2 = (out2 / "poam" / "poam.csv").read_text(encoding="utf-8")
+    rows2 = list(csv.DictReader(StringIO(poam2)))
+    ids2 = [r["poam_id"] for r in rows2 if r.get("poam_id")]
+    assert ids2 == ids1
+    summary2 = json.loads((out2 / "summary.json").read_text(encoding="utf-8"))
+    assert "LEDGER_LOST" not in (summary2.get("ledger_warnings") or [])
+    exec_text = (out2 / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    changed = next(ln for ln in exec_text.splitlines() if ln.startswith("Changed since last run:"))
+    assert "new=0" in changed
+    assert "closed=0" in changed
 
 
 def sys_executable() -> str:

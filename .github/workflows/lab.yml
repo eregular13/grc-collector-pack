@@ -128,6 +128,29 @@ jobs:
       - name: Pytest under ${{ matrix.tz }}
         run: python -m pytest tests -q
 
+  # Windows 11 operators hit CRLF MANIFEST + missing sha256sum. Core suite
+  # only — POSIX shell / chmod +x PATH stubs skip with a reason.
+  pytest-windows:
+    name: pytest (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      OUT_DIR: ${{ github.workspace }}/out
+      DRY_RUN: "1"
+      GRC_LIVE_SCAN: "0"
+      CISO_PUSH: "0"
+      RISKREADY_PUSH: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Pytest (Windows)
+        run: python -m pytest tests -q
+
   # Clean-checkout cold SAMPLE→SoR. Full git clone (keep/__main__.py present).
   # No Docker — keep-lab is file-drop only. Honesty-only; not a paying_day PASS.
   sample-to-sor-cold:

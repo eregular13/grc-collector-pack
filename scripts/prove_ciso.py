@@ -381,11 +381,15 @@ def prove_ciso(
     dest: Path | None = None,
     *,
     use_existing_in: bool = False,
+    prior_out: Path | str | None = None,
 ) -> dict[str, Any]:
     """Fixture seed (default) or operator dest_in → run_ciso_path → out/ciso-assistant.
 
     Default reseeds fixtures/pack_drop into dest/in (SAMPLE != client).
     --use-existing-in / --no-seed keeps dest/in as-is (LAB/DEMO != SAMPLE != client).
+    --prior-out DIR copies that run's poam-ledger.json and asset-ledger.json
+    into dest/in before processing (same integrity checks as a hand drop).
+    Copy happens before dest/out is wiped so ``--prior-out dest/out`` works.
     """
     from dropbox.orchestrator.ciso_path import run_ciso_path
     from dropbox.orchestrator.estate import fingerprint, pack_in_dir
@@ -394,6 +398,7 @@ def prove_ciso(
     dest = Path(dest or (root / "prove" / "work"))
     dest_in = dest / "in"
     dest_out = dest / "out"
+    prior_carry: dict[str, Any] = {}
     saved = {key: os.environ.get(key) for key in ENV_KEYS}
     pack = pack_in_dir()
     before = fingerprint(pack)
@@ -417,6 +422,14 @@ def prove_ciso(
             # Default seed wipes dest_in first; LAB.txt gone => no-op.
             # If a lab stamp somehow survived the wipe, refuse seeded=true.
             assert_lab_dest_in_shape(dest_in, seeded=seed.get("seeded"))
+        prior_carry: dict[str, Any] = {}
+        if prior_out not in (None, ""):
+            from shared.poam_ledger import carry_prior_ledgers, resolve_prior_out
+
+            resolved = resolve_prior_out(prior_out)
+            if resolved is None:
+                raise FileNotFoundError("PRIOR_OUT_FAIL: empty --prior-out")
+            prior_carry = carry_prior_ledgers(resolved, dest_in)
         if dest_out.exists():
             shutil.rmtree(dest_out)
         dest_out.mkdir(parents=True)
@@ -549,6 +562,8 @@ def prove_ciso(
         "seed": seed,
         "in_dir": str(dest_in),
         "out_dir": str(dest_out),
+        "prior_out": prior_carry.get("prior_out") if prior_carry else None,
+        "prior_ledgers": prior_carry.get("copied") if prior_carry else [],
         "note": (
             (
                 "Operator dest_in (no fixture reseed) -> existing collectors -> "
@@ -600,7 +615,9 @@ def prove_ciso(
             "poam": poam_n,
         }
     dest.mkdir(parents=True, exist_ok=True)
-    (dest / "prove-ciso.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    (dest / "prove-ciso.json").write_text(
+        json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     return stamp
 
 
@@ -616,6 +633,8 @@ def main(argv: list[str] | None = None) -> int:
         description=(
             "SAMPLE/DEMO Covey pack_drop + honeypot -> prove/work/out/ciso-assistant "
             "(default seeds fixtures). --use-existing-in keeps dest/in (LAB/DEMO). "
+            "--prior-out DIR copies that run's poam/asset ledgers into dest/in "
+            "before processing (before dest/out is wiped). "
             "Never writes pack in/. Not a client estate. Paying-day stays FAIL."
         )
     )
@@ -639,6 +658,18 @@ def main(argv: list[str] | None = None) -> int:
             "(LAB compose pack_drop or operator copy). LAB/DEMO != SAMPLE != client."
         ),
     )
+    parser.add_argument(
+        "--prior-out",
+        "--prior-ledger",
+        dest="prior_out",
+        default="",
+        help=(
+            "Prior run out/ directory (or path to poam-ledger.json). Copies "
+            "poam-ledger.json and asset-ledger.json into dest/in before "
+            "processing, with the same integrity checks as a hand-supplied "
+            "ledger. Safe to pass this run's out/ — copy happens before wipe."
+        ),
+    )
     args = parser.parse_args(argv)
     dest = _resolve_work(args.work)
     if args.verify_only:
@@ -658,11 +689,21 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        stamp = prove_ciso(dest=dest, use_existing_in=args.use_existing_in)
+        stamp = prove_ciso(
+            dest=dest,
+            use_existing_in=args.use_existing_in,
+            prior_out=args.prior_out or None,
+        )
     except ExistingInError as exc:
         print(str(exc), file=sys.stderr)
         return 1
     except LabShapeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except FileNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(stamp, indent=2, default=str))

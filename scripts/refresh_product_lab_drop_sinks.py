@@ -125,7 +125,7 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         "POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row."
     )
     lines.append("")
-    (DROP / "MANIFEST").write_text("\n".join(lines), encoding="utf-8")
+    (DROP / "MANIFEST").write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
 
 def _write_readme(counts: dict[str, int]) -> None:
@@ -192,7 +192,7 @@ Probo drafts (`addFinding` / `addRisk`). File-true, posted=false, documentation-
 
 Do not POST `/api/risks`.
 """
-    (DROP / "README.md").write_text(text, encoding="utf-8")
+    (DROP / "README.md").write_text(text, encoding="utf-8", newline="\n")
 
 
 def main(argv: list[str] | None = None) -> int:

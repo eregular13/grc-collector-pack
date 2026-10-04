@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.posix_only import requires_unix_shell
+
 from dropbox.scope import FORBIDDEN_TOOLS, GateError
 from farm.adapters.catalog import (
     FILE_DROP_ONLY,
@@ -250,6 +252,7 @@ def test_forbidden_slots_are_file_drop_not_wired() -> None:
             assert slot.get("scope_key") == "file_drop", name
 
 
+@requires_unix_shell
 def test_wired_slots_invoke_path_stubs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -305,6 +308,7 @@ def test_missing_binary_stays_plan_only(tmp_path: Path, monkeypatch: pytest.Monk
     assert not dest.exists()
 
 
+@requires_unix_shell
 def test_non_allowlisted_and_file_drop_never_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -322,6 +326,7 @@ def test_non_allowlisted_and_file_drop_never_run(tmp_path: Path, monkeypatch: py
         argv_for("nuclei", "/stub/nuclei", ".", 8)
 
 
+@requires_unix_shell
 def test_plan_only_when_live_false(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -336,6 +341,7 @@ def test_plan_only_when_live_false(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert not marker.exists()
 
 
+@requires_unix_shell
 def test_file_drop_stubs_and_license_lock_never_subprocess(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

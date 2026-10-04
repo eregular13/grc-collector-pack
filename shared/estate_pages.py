@@ -1305,7 +1305,7 @@ def write_estate_sidecar(sink_dir: Path, stamp: EstateStamp, *, note: str = "") 
         )
     )
     path = dest / "ESTATE.txt"
-    path.write_text(stamp.banner_plain() + "\n\n" + extra + "\n", encoding="utf-8")
+    path.write_text(stamp.banner_plain() + "\n\n" + extra + "\n", encoding="utf-8", newline="\n")
     return path
 
 
@@ -2112,7 +2112,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
             "",
             "### Integrity and traceability",
             "- Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.",
-            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST'))}.",
+            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST'))} (Git Bash / Linux) or {md_code_span('python scripts/verify_manifest.py')}.",
             f"- Contact for questions or corrections: {md_safe_text(recorded(_env(None, 'GRC_CONTACT')))}.",
             "",
         ]
@@ -2231,8 +2231,8 @@ def write_client_pages(out: Path, ctx: PageContext) -> dict[str, str]:
                 raise ValueError(f"client page leaked internal token: {tok}")
     exec_path = dest / "EXECUTIVE_SUMMARY.md"
     trust_path = dest / "SCOPE_AND_TRUST.md"
-    exec_path.write_text(exec_text, encoding="utf-8")
-    trust_path.write_text(trust_text, encoding="utf-8")
+    exec_path.write_text(exec_text, encoding="utf-8", newline="\n")
+    trust_path.write_text(trust_text, encoding="utf-8", newline="\n")
     return {"executive_summary": str(exec_path), "scope_and_trust": str(trust_path)}
 
 
@@ -2254,7 +2254,11 @@ def write_export_manifest(out: Path, stamp: EstateStamp | None = None) -> Path:
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         lines.append(f"{digest}  {rel_posix}")
-    manifest_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    manifest_path.write_text(
+        "\n".join(lines) + ("\n" if lines else ""),
+        encoding="utf-8",
+        newline="\n",
+    )
     return manifest_path
 
 
@@ -2373,6 +2377,11 @@ def assert_manifest_sha256sum(out: Path) -> None:
         parsed.append((digest, rel))
     if not parsed:
         raise AssertionError("MANIFEST has no checksum lines")
+    from scripts.verify_manifest import verify_manifest
+
+    verify_manifest(dest)
+    # GNU sha256sum is the operator command on Linux / Git Bash. The Python
+    # verifier is the portable path (Windows). Run sha256sum when present.
     try:
         proc = subprocess.run(
             ["sha256sum", "-c", "MANIFEST"],
@@ -2382,8 +2391,8 @@ def assert_manifest_sha256sum(out: Path) -> None:
             check=False,
             timeout=30,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise AssertionError(f"sha256sum -c MANIFEST could not run: {exc}") from exc
+    except (OSError, subprocess.TimeoutExpired):
+        return
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "").strip()
         raise AssertionError(f"sha256sum -c MANIFEST failed: {detail}")
@@ -2399,4 +2408,4 @@ def assert_client_export_honesty(out: Path, sensor_rows: list[dict] | None = Non
 
 def stamp_text_file(path: Path, stamp: EstateStamp, body: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(prepend_banner_md(body, stamp), encoding="utf-8")
+    path.write_text(prepend_banner_md(body, stamp), encoding="utf-8", newline="\n")

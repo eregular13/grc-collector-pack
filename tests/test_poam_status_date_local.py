@@ -142,6 +142,9 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "load(run_at=)" in SLA_NOTE
     assert "Blank or malformed ledger status_date" in SLA_NOTE
     assert "not tracked fields" in SLA_NOTE
+    assert "20:30" in SLA_NOTE
+    assert "carried as-is" in SLA_NOTE
+    assert "same local-day rule" in SLA_NOTE or "host-local civil day" in SLA_NOTE
     assert "host-local run day" in VD_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
     assert "host-local civil day" in schema
@@ -157,6 +160,8 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "Blank or malformed ledger" in schema
     assert "not tracked fields" in schema
     assert "UTC calendar day" not in schema
+    assert "20:30" in schema
+    assert "carried as-is" in schema
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "load(run_at=)" in changelog
     assert "ledger_sha" in changelog
@@ -167,6 +172,9 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "Pacific/Kiritimati" in yml
     assert "pytest-tz:" in yml
     assert "TZ: ${{ matrix.tz }}" in yml
+    assert "windows-latest" in yml
+    assert "pytest-windows:" in yml
+    assert "pytest (windows-latest)" in yml
     assert "time.tzname" in yml
     assert "permissions:" in yml
     assert "timeout-minutes:" in yml
@@ -197,7 +205,7 @@ def test_poam_fields_status_date_is_local_civil_day(
         fields = poam_fields(rec, map_finding(rec), local_run_date(clock))
         assert fields["status_date"] == local_day
         assert fields["status_date"] != utc_day
-        # Detection date stays the artifact calendar day (out of scope).
+        # Noon UTC is the same civil day in LA / Sydney.
         assert fields["original_detection_date"] == "2026-09-01"
 
 
@@ -221,6 +229,56 @@ def test_ledger_status_date_is_local_civil_day(
         assert item["last_seen"].endswith("Z")
         utc_iso = clock.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert item["first_seen"] == utc_iso
+
+
+def test_original_detection_date_local_day_at_2030_los_angeles() -> None:
+    """20:30 America/Los_Angeles: detection date matches status_date, not next UTC day."""
+    clock = datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc)  # 20:30 PDT Oct 3
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-04T03:30:00Z"
+    with pinned_tz("America/Los_Angeles"):
+        assert clock.astimezone().date().isoformat() == "2026-10-03"
+        assert clock.astimezone(timezone.utc).date().isoformat() == "2026-10-04"
+        fields = poam_fields(rec, map_finding(rec), local_run_date(clock))
+        assert fields["status_date"] == "2026-10-03"
+        assert fields["original_detection_date"] == "2026-10-03"
+        assert fields["original_detection_date"] != "2026-10-04"
+        ledger = apply_ledger(
+            [rec],
+            catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+            run_at=clock,
+            prior_existed=False,
+        )
+        item = next(iter(ledger["items"].values()))
+        assert item["status_date"] == "2026-10-03"
+        assert item["original_detection_date"] == "2026-10-03"
+
+
+def test_carried_ledger_original_detection_date_not_rewritten() -> None:
+    """Existing ledger dates stay as stored; evening local conversion does not rewrite."""
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-04T03:30:00Z"
+    first = apply_ledger(
+        [rec],
+        catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+        run_at=datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc),
+        prior_existed=True,
+    )
+    item = next(iter(first["items"].values()))
+    item["original_detection_date"] = "2026-10-04"
+    first["sha256"] = ""
+    clock = datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc)
+    with pinned_tz("America/Los_Angeles"):
+        second = apply_ledger(
+            [rec],
+            catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+            run_at=clock,
+            ledger_in=first,
+            prior_existed=True,
+        )
+        item2 = next(iter(second["items"].values()))
+        assert item2["original_detection_date"] == "2026-10-04"
+        assert item2["poam_id"] == item["poam_id"]
 
 
 def _catalog():

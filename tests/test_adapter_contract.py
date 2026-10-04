@@ -7,6 +7,10 @@ from pathlib import Path
 
 import pytest
 
+from tests.posix_only import requires_unix_shell
+
+pytestmark = requires_unix_shell
+
 from dropbox.orchestrator.farm import Farm
 from dropbox.orchestrator.pipeline import collect_discover_hosts, deepen_stage, discover_stage
 from dropbox.scope import GateError, load_scope

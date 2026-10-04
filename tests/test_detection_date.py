@@ -5,14 +5,20 @@ from __future__ import annotations
 import csv
 import importlib
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
-from shared.poam_fields import NOT_RECORDED, PENDING_DUE, _to_date, poam_fields
+from shared.poam_fields import NOT_RECORDED, PENDING_DUE, SLA_DAYS, _to_date, poam_fields
 from shared.poam_ledger import apply_ledger
-from shared.scan_time import calendar_date, extra_scan_raw, format_detection_date, merge_detection
+from shared.scan_time import (
+    calendar_date,
+    extra_scan_raw,
+    format_detection_date,
+    local_calendar_date,
+    merge_detection,
+)
 from shared.kev import KevCatalog
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,11 +53,21 @@ def _rec(**kw) -> dict:
     return rec
 
 
+def _local_odd(raw: str) -> str:
+    got = local_calendar_date(raw)
+    assert got is not None
+    return got.isoformat()
+
+
 def test_scan_time_taken_from_artifact() -> None:
-    rec = _rec(extra={"id": "p1", "tool": "nessus", "scan_time": "2026-09-01T12:00:00Z"})
+    stamp = "2026-09-01T12:00:00Z"
+    rec = _rec(extra={"id": "p1", "tool": "nessus", "scan_time": stamp})
     fields = poam_fields(rec, _mapped(), date(2026, 9, 26))
-    assert fields["original_detection_date"] == "2026-09-01"
-    assert fields["scheduled_completion_date"] == "2026-10-01"
+    odd = _local_odd(stamp)
+    assert fields["original_detection_date"] == odd
+    sched = local_calendar_date(stamp)
+    assert sched is not None
+    assert fields["scheduled_completion_date"] == (sched + timedelta(days=SLA_DAYS["High"])).isoformat()
 
 
 def test_argus_b4_scan_time_keys_are_case_insensitive() -> None:
@@ -62,9 +78,15 @@ def test_argus_b4_scan_time_keys_are_case_insensitive() -> None:
     assert extra_scan_raw(greenbone) == "2023-09-28T14:48:02Z"
     assert extra_scan_raw(scuba) == "2024-03-20T18:42:05.043Z"
     assert extra_scan_raw(mixed) == "2026-09-01T12:00:00Z"
-    assert poam_fields(greenbone, _mapped(), date(2026, 9, 26))["original_detection_date"] == "2023-09-28"
-    assert poam_fields(scuba, _mapped(), date(2026, 9, 26))["original_detection_date"] == "2024-03-20"
-    assert poam_fields(mixed, _mapped(), date(2026, 9, 26))["original_detection_date"] == "2026-09-01"
+    assert poam_fields(greenbone, _mapped(), date(2026, 9, 26))["original_detection_date"] == _local_odd(
+        "2023-09-28T14:48:02Z"
+    )
+    assert poam_fields(scuba, _mapped(), date(2026, 9, 26))["original_detection_date"] == _local_odd(
+        "2024-03-20T18:42:05.043Z"
+    )
+    assert poam_fields(mixed, _mapped(), date(2026, 9, 26))["original_detection_date"] == _local_odd(
+        "2026-09-01T12:00:00Z"
+    )
     assert poam_fields(greenbone, _mapped(), date(2026, 9, 26))["scheduled_completion_date"] != PENDING_DUE
 
 
@@ -88,8 +110,11 @@ def test_pt_2300_keeps_labeled_calendar_day() -> None:
     assert _to_date(utc_next) == date(2026, 9, 26)
     rec = _rec(extra={"id": "p1", "tool": "nessus", "scan_time": pt})
     fields = poam_fields(rec, _mapped(), date(2026, 9, 26))
-    assert fields["original_detection_date"] == "2026-09-25"
-    assert fields["scheduled_completion_date"] == "2026-10-25"
+    odd = _local_odd(pt)
+    assert fields["original_detection_date"] == odd
+    sched = local_calendar_date(pt)
+    assert sched is not None
+    assert fields["scheduled_completion_date"] == (sched + timedelta(days=SLA_DAYS["High"])).isoformat()
 
 
 def test_ledger_keeps_original_date_across_later_scan() -> None:

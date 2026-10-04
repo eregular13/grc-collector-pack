@@ -128,6 +128,11 @@ keep that dest_in with `lab_drop_to_sor` / `--use-existing-in`:
 # DESKTOP: .\scripts\lab_drop_to_sor.ps1 -Work DIR
 python3 scripts/prove_ciso.py --work DIR --use-existing-in
 # alias: --no-seed
+# Repeat scan: carry the previous out/ ledgers (clears LEDGER_LOST):
+#   python3 scripts/prove_ciso.py --work DIR --use-existing-in --prior-out DIR/out
+#   ./scripts/lab_drop_to_sor.sh --work DIR --prior-out DIR/out
+#   .\scripts\lab_drop_to_sor.ps1 -Work DIR -PriorOut DIR\out
+# --prior-ledger is an alias (dir or poam-ledger.json). Copy happens before dest/out wipe.
 # MCP conductor (pack dropbox.mcp_stub): tools/call lab_drop
 #   arguments.work = DIR  (or arguments.dest_in = DIR/in)
 #   without work: arguments.lab_out = lab-estate/out  (reads LAST_LAB_PROVE; auto-hint, no re-prove)

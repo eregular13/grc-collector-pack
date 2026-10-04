@@ -16,6 +16,7 @@ import csv
 import hashlib
 import json
 import re
+import shutil
 from copy import deepcopy
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -863,7 +864,11 @@ def persist_ledger(ledger: dict[str, Any], out_root: Path | None = None) -> Path
     ledger["sha256"] = payload_sha256(ledger)
     dest = (out_root or out_dir()) / LEDGER_OUT_REL
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    dest.write_text(
+        json.dumps(ledger, indent=2, default=str) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     ledger.update(transient)
     return dest
 
@@ -912,9 +917,27 @@ def next_reopen_id(base_id: str, existing: set[str]) -> str:
     return f"{core}-R{n}"
 
 
-def detection_time(rec: dict[str, Any], run_date: date | None = None) -> tuple[date | None, str]:
-    """Artifact scan timestamp only. Never the pack run date or collected_at."""
+def detection_time(
+    rec: dict[str, Any],
+    run_date: date | None = None,
+    *,
+    host_local: bool = False,
+) -> tuple[date | None, str]:
+    """Artifact scan timestamp only. Never the pack run date or collected_at.
+
+    ``host_local=True`` uses the same local-day rule as status_date for
+    newly minted rows. Reobserve / merge keep the default recorded-zone
+    parse so existing ledger dates are not rewritten.
+    """
     del run_date
+    if host_local:
+        from shared.scan_time import extra_scan_raw, local_calendar_date
+
+        raw = extra_scan_raw(rec)
+        detected = local_calendar_date(raw)
+        if detected is None:
+            return None, "not_recorded"
+        return detected, "scanner"
     detected, basis, _tz = artifact_detection(rec)
     return detected, basis
 
@@ -1387,7 +1410,7 @@ def _new_item(
     kev: dict[str, Any],
     catalog_sha: str,
 ) -> dict[str, Any]:
-    detected, basis = detection_time(rec, run_date)
+    detected, basis = detection_time(rec, run_date, host_local=True)
     rating = fedramp_risk_for_col_r(rec.get("severity"))
     scanner = ciso_finding_severity(rec.get("severity"))
     kev_due = kev.get("kev_due")
@@ -2296,7 +2319,7 @@ def apply_ledger(
                 closed_copy = deepcopy(item)
                 ledger["closed"].append(closed_copy)
                 new_id = next_reopen_id(str(item.get("poam_id") or ""), _existing_id_set(ledger) | {closed_copy.get("poam_id", "")})
-                detected, basis = detection_time(rec)
+                detected, basis = detection_time(rec, host_local=True)
                 fresh = _new_item(
                     rec,
                     fp=fp,
@@ -2588,15 +2611,48 @@ def ledger_run_delta(
         open_n = ledger_open_n
     else:
         open_n = sum(1 for item in live if str(item.get("poam_id") or "") in plan_ids)
+
+    def _event_pid(event: dict[str, Any]) -> str:
+        pid = str(event.get("poam_id") or "").strip()
+        if pid:
+            return pid
+        fp = str(event.get("fp") or "").strip()
+        item = items.get(fp) if fp else None
+        if isinstance(item, dict):
+            return str(item.get("poam_id") or "").strip()
+        return ""
+
+    def _on_plan(event: dict[str, Any]) -> bool:
+        if plan_ids is None:
+            return True
+        pid = _event_pid(event)
+        if not pid:
+            # Older fixture events may omit poam_id; do not drop them.
+            return True
+        return pid in plan_ids
+
+    created = [e for e in events if e.get("kind") == "created"]
+    new_n = sum(1 for e in created if _on_plan(e))
+    new_excluded = 0
+    if plan_ids is not None:
+        new_excluded = sum(1 for e in created if _event_pid(e) and _event_pid(e) not in plan_ids)
+    pending_items = [
+        item
+        for item in items.values()
+        if str(item.get("status") or "") == "pending_verification"
+    ]
+    if plan_ids is None:
+        pending_n = len(pending_items)
+    else:
+        pending_n = sum(1 for item in pending_items if str(item.get("poam_id") or "") in plan_ids)
     return {
         "open": open_n,
         "ledger_open": ledger_open_n,
-        "new": sum(1 for e in events if e.get("kind") == "created"),
-        "pending_verification": sum(
-            1 for item in items.values() if str(item.get("status") or "") == "pending_verification"
-        ),
-        "reopened": sum(1 for e in events if e.get("kind") == "reopened"),
-        "closed": sum(1 for e in events if e.get("kind") == "closed"),
+        "new": new_n,
+        "new_excluded": new_excluded,
+        "pending_verification": pending_n,
+        "reopened": sum(1 for e in events if e.get("kind") == "reopened" and _on_plan(e)),
+        "closed": sum(1 for e in events if e.get("kind") == "closed" and _on_plan(e)),
     }
 
 
@@ -2651,3 +2707,63 @@ def run_ledger(
     ledger["_first_run"] = bool(lost and not history)
     persist_ledger(ledger, out_root)
     return ledger
+
+
+PRIOR_POAM_REL = LEDGER_OUT_REL
+PRIOR_ASSET_REL = Path("assets") / "asset-ledger.json"
+
+
+def resolve_prior_out(raw: str | Path | None) -> Path | None:
+    """Accept ``--prior-out DIR`` or ``--prior-ledger`` (dir or poam-ledger.json)."""
+    if raw in (None, ""):
+        return None
+    path = Path(raw)
+    if path.is_file() and path.name == "poam-ledger.json":
+        # ledger file → its out/ root (…/poam/poam-ledger.json → …)
+        if path.parent.name == "poam":
+            return path.parent.parent
+        return path.parent
+    return path
+
+
+def carry_prior_ledgers(prior_out: Path, dest_in: Path) -> dict[str, Any]:
+    """Copy prior ``out/`` ledgers into dest_in with the same integrity checks.
+
+    Call this **before** wiping dest_out when ``prior_out`` is that dest_out
+    (repeat prove in the same work dir). Hand-supplied ledgers use the same
+    ``load_ledger_file`` / ``AssetLedger.load`` checks.
+    """
+    from shared.asset_ledger import AssetLedger
+
+    prior = Path(prior_out)
+    dest_in = Path(dest_in)
+    copied: list[str] = []
+    warnings: list[str] = []
+    poam_src = prior / PRIOR_POAM_REL
+    if not poam_src.is_file() and (prior / "poam-ledger.json").is_file():
+        poam_src = prior / "poam-ledger.json"
+    if poam_src.is_file():
+        dest = dest_in / LEDGER_IN_REL
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(poam_src, dest)
+        _prior, load_warnings = load_ledger_file(dest)
+        warnings.extend(load_warnings)
+        copied.append("poam-ledger.json")
+    asset_src = prior / PRIOR_ASSET_REL
+    if not asset_src.is_file() and (prior / "asset-ledger.json").is_file():
+        asset_src = prior / "asset-ledger.json"
+    if asset_src.is_file():
+        dest = dest_in / PRIOR_ASSET_REL
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(asset_src, dest)
+        AssetLedger.load(dest)
+        copied.append("asset-ledger.json")
+    if not copied:
+        raise FileNotFoundError(
+            f"PRIOR_OUT_FAIL: no poam-ledger.json or asset-ledger.json under {prior}"
+        )
+    return {
+        "prior_out": str(prior),
+        "copied": copied,
+        "warnings": warnings,
+    }

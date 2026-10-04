@@ -310,6 +310,35 @@ def calendar_date(raw: Any, *, now: datetime | date | None = None) -> date | Non
     return parsed[0].date()
 
 
+def local_calendar_date(raw: Any, *, now: datetime | date | None = None) -> date | None:
+    """Host-local civil day of an artifact timestamp (same rule as status_date).
+
+    Aware stamps convert to the generating host timezone
+    (``datetime.astimezone()``, honoring ``TZ`` / ``time.tzset``) before
+    taking the date. Naive stamps and bare ``YYYY-MM-DD`` civil days stay
+    as recorded — stored ledger dates are never reinterpreted.
+    """
+    if raw in (None, ""):
+        return None
+    if isinstance(raw, date) and not isinstance(raw, datetime):
+        return raw
+    text = str(raw).strip() if not isinstance(raw, datetime) else ""
+    if text.lower() == NOT_RECORDED:
+        return None
+    if text and re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        try:
+            return date.fromisoformat(text)
+        except ValueError:
+            return None
+    parsed = parse_scan_datetime(raw, now=now)
+    if not parsed:
+        return None
+    dt = parsed[0]
+    if dt.tzinfo is None:
+        return dt.date()
+    return dt.astimezone().date()
+
+
 def to_date(raw: Any, *, now: datetime | date | None = None) -> date | None:
     """Public date parse used by ledger / KEV. No silent UTC day-shift."""
     return calendar_date(raw, now=now)

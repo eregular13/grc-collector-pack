@@ -1071,11 +1071,18 @@ def test_ledger_run_delta_open_follows_plan_ids() -> None:
             "excluded": {"status": "open", "poam_id": "EGP-X"},
             "closed": {"status": "closed", "poam_id": "EGP-C"},
         },
-        "events_this_run": [],
+        "events_this_run": [
+            {"kind": "created", "poam_id": "EGP-PLAN", "fp": "on-plan"},
+            {"kind": "created", "poam_id": "EGP-X", "fp": "excluded"},
+        ],
     }
     delta = ledger_run_delta(ledger, plan_ids={"EGP-PLAN"})
     assert delta["open"] == 1
     assert delta["ledger_open"] == 2
+    assert delta["new"] == 1
+    assert delta["new_excluded"] == 1
+    all_items = ledger_run_delta(ledger)
+    assert all_items["new"] == 2
 
 
 def test_ledger_run_delta_same_second_runs_do_not_inflate_new() -> None:

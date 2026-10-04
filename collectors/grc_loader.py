@@ -996,12 +996,15 @@ def _load(*, run_at: datetime | None = None) -> dict:
         "open_risks": len(poam_rows),
         "ocsf": len(ocsf),
         "canonical": len(records),
+        "canonical_in": len(raw),
         "severity_unmapped": severity_unmapped,
         "demo": any("demo" in (r.get("labels") or []) for r in records),
         "estate": estate,
         "estate_kind": estate_kind,
         "client": False if estate_kind != "CLIENT" else True,
         "duplicates_merged": merged_n,
+        "intake_collapsed": merged_n,
+        "duplicates_merged_basis": "intake_collapse",
         "flood_guard": flood_guard_summary(
             decision_pairs,
             profile=str(breakdown.get("poam_plan") or ("lighter" if lighter else "full")),
@@ -1030,7 +1033,12 @@ def _load(*, run_at: datetime | None = None) -> dict:
             "pack_drop twins are excluded as merged_into:<survivor ledger EGP> and "
             "stay off the register; "
             "port-only rows superseded by a specific finding on the same host+port "
-            "are excluded as superseded_by_specific"
+            "are excluded as superseded_by_specific; "
+            "duplicates_merged / intake_collapsed is raw-record collapse "
+            "(canonical_in minus canonical after weakness+hardening dedupe) and is "
+            "not flood_guard.duplicates_merged / c5_duplicates_merged (C5 "
+            "DUPLICATE_INSTANCE extras only); merged_into aliases live on "
+            "excluded.csv and are a third count"
         ),
         "generated_at": now,
     }

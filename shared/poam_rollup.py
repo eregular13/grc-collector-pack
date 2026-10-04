@@ -493,6 +493,7 @@ def flood_guard_summary(
     return {
         "findings_in": incoming,
         "duplicates_merged": int(merges_n or 0),
+        "c5_duplicates_merged": int(merges_n or 0),
         "c5_skipped": int(c5_skipped or 0),
         "poam_rows": int(poam_rows or included),
         "poam_members": members,

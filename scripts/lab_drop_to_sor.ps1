@@ -4,7 +4,8 @@
 # DESKTOP (no make / no gh): .\scripts\lab_drop_to_sor.ps1 -Work DIR
 param(
     [string]$Work = "",
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+    [string]$PriorOut = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,7 +41,12 @@ $Start = Get-Date
 
 if (-not $VerifyOnly) {
     Write-Host "lab_drop_to_sor: python scripts/prove_ciso.py --use-existing-in (LAB dest_in -> CISO)"
-    & $Python $ProvePy --work $Work --use-existing-in
+    if ([string]::IsNullOrWhiteSpace($PriorOut)) {
+        & $Python $ProvePy --work $Work --use-existing-in
+    } else {
+        $PriorOut = Resolve-RepoPath $PriorOut
+        & $Python $ProvePy --work $Work --use-existing-in --prior-out $PriorOut
+    }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
