@@ -3,8 +3,9 @@
 Argus drafts (2026-09-25) are the spec. Exactly one allowed label. Fail
 closed to the most restrictive when unsure. SAMPLE/DEMO/LAB and any
 product-lab/drop fallback cannot be suppressed and cannot become CLIENT.
-Missing values print "not recorded". Human narrative slots stay marked
-placeholders. No cycle/CoS/adapter-list/agent notes on client pages.
+Missing values print "not recorded". Finding names use the same failure
+wording as poam.csv. Client pages have no leftover reviewer placeholders.
+No cycle/CoS/adapter-list/agent notes on client pages.
 """
 
 from __future__ import annotations
@@ -58,7 +59,7 @@ SENTENCE_FOR_KIND = {
     ),
 }
 
-# Human-written slots — never generated prose.
+# Leftover template holes — never print these on a client page.
 REVIEWER_WHAT_WE_FOUND = (
     "[reviewer: one to three plain sentences — not generated]"
 )
@@ -67,6 +68,11 @@ REVIEWER_WHY_IT_MATTERS = (
 )
 REVIEWER_NEXT_STEP = "[reviewer: one sentence — not generated]"
 REVIEWER_NOT_REVIEWED = "not human-reviewed"
+REVIEWER_PLACEHOLDERS = (
+    REVIEWER_WHAT_WE_FOUND,
+    REVIEWER_WHY_IT_MATTERS,
+    REVIEWER_NEXT_STEP,
+)
 
 SAMPLE_AUTH = "No client authorization applies. No client systems were touched."
 
@@ -99,9 +105,10 @@ CLIENT_PAGE_FORBIDDEN = (
     'print "not human-reviewed"',
     "print 'not human-reviewed'",
     "fell back to fixtures, by name",
+    "[reviewer:",
 )
 
-# Generator instructions / unfilled template holes. [reviewer: …] slots stay.
+# Generator instructions / unfilled template holes, including leftover [reviewer:] slots.
 INSTRUCTION_LEAKS = (
     "list every collector folder",
     "if no one did, print",
@@ -111,6 +118,7 @@ INSTRUCTION_LEAKS = (
     "collected by not recorded",
     "[insert ",
     "[fill in",
+    "[reviewer:",
     "{{",
     "todo:",
     "fixme",
@@ -1375,6 +1383,102 @@ def _risk_key(rec: dict, mapped: dict | None) -> tuple[int, int, int, str]:
     return (SEV_RANK.get(sev, 9), -poam, -refs, str(rec.get("ref_id") or ""))
 
 
+def exec_finding_name(rec: dict, mapped: dict | None = None) -> str:
+    """Failure wording, same field poam.csv uses. Never the pass-style check title."""
+    from shared.control_map import weakness_name_for
+
+    mapped = mapped or {}
+    name = str(mapped.get("weakness_name") or "").strip()
+    if name:
+        return name
+    return weakness_name_for(rec, mapped)
+
+
+def _first_sentence(text: str) -> str:
+    raw = " ".join(str(text or "").split())
+    if not raw:
+        return ""
+    for sep in (". ", "? ", "! "):
+        idx = raw.find(sep)
+        if idx != -1:
+            return raw[: idx + 1]
+    if raw[-1] not in ".?!":
+        return raw + "."
+    return raw
+
+
+def _what_we_found_line(
+    tot_f: int, headline_open: int, find_sev: dict[str, int]
+) -> str:
+    if tot_f <= 0 and headline_open <= 0:
+        return f"{NOT_RECORDED} findings on this page."
+    crit = int(find_sev.get("critical") or 0)
+    high = int(find_sev.get("high") or 0)
+    return (
+        f"{tot_f} weaknesses, {headline_open} on the open POA&M "
+        f"({crit} Critical, {high} High)."
+    )
+
+
+def _why_it_matters(rec: dict) -> str:
+    desc = _first_sentence(str(rec.get("description") or "").strip())
+    return desc or NOT_RECORDED
+
+
+def _next_step_line(stamp: EstateStamp) -> str:
+    if stamp.kind in {"SAMPLE", "DEMO"}:
+        return (
+            "This is demo/sample data, not a live scan of a client estate. "
+            "Review poam.csv after a real-environment engagement."
+        )
+    if stamp.kind == "LAB":
+        return (
+            "Review poam.csv and assign owners and due dates for this "
+            "test environment."
+        )
+    if stamp.kind == "MIXED":
+        return (
+            "Do not forward until bundled sample files are removed. "
+            "Then assign owners and due dates on the POA&M."
+        )
+    return "Review poam.csv and assign owners and due dates."
+
+
+def _exec_limit_lines(
+    stamp: EstateStamp,
+    uncovered_s: str,
+    outside: list[dict[str, str]],
+    owner_who: str,
+) -> list[str]:
+    lines = ["### What this does not tell you"]
+    if stamp.kind in {"SAMPLE", "DEMO"}:
+        lines.append(
+            "- Demo/sample estate — no live scan of a client environment. "
+            "Findings come from bundled fixtures, not a real estate."
+        )
+    elif stamp.kind == "LAB":
+        lines.append(
+            "- Lab/test environment — not a client estate and not a live "
+            "production scan."
+        )
+    elif stamp.kind == "MIXED":
+        lines.append(
+            "- Mixed estate includes bundled sample files. Not a client-ready scan."
+        )
+    if outside:
+        lines.append(
+            f"- {uncovered_s}. These areas were out of scope or had no scanner "
+            "output. See the scope statement."
+        )
+    lines.extend(
+        [
+            "- This is a point-in-time review of scanner artifacts. It is not a penetration test and not continuous monitoring.",
+            f"- Owners and due dates in the POA&M are blank until {owner_who} assigns them.",
+        ]
+    )
+    return lines
+
+
 def _exec_top_findings(
     findings: list[dict],
     mapped_by_ref: dict[str, dict],
@@ -1765,6 +1869,9 @@ def build_executive_summary(ctx: PageContext) -> str:
     merged_by = {s: merged_total if s == "critical" else NOT_RECORDED for s in SEV_TABLE}
     # Per-severity merge is not tracked; print not recorded rather than invent 0.
     merged_by = {s: NOT_RECORDED for s in SEV_TABLE}
+    tot_f = sum(find_sev[sev] for sev in SEV_TABLE)
+    tot_p = sum(poam_sev[sev] for sev in SEV_TABLE)
+    headline_open = int(ctx.poam_n or tot_p)
 
     lines = [
         stamp.banner_md(),
@@ -1772,21 +1879,17 @@ def build_executive_summary(ctx: PageContext) -> str:
         f"{exec_lede(stamp)} Assessment window {scan_start} to {scan_end} ({dated_n} of {dated_total} rows dated).",
         "",
         "### What we found",
-        REVIEWER_WHAT_WE_FOUND,
+        _what_we_found_line(tot_f, headline_open, find_sev),
         "",
         "| Severity | Findings | In POA&M | Duplicates merged |",
         "|---|---|---|---|",
     ]
-    tot_f = tot_p = 0
     for sev in SEV_TABLE:
         n_f = find_sev[sev]
         n_p = poam_sev[sev]
-        tot_f += n_f
-        tot_p += n_p
         lines.append(f"| {sev.title()} | {n_f} | {n_p} | {merged_by[sev]} |")
     lines.append(f"| **Total** | {tot_f} | {tot_p} | {merged_total} |")
     lines.append("")
-    headline_open = int(ctx.poam_n or tot_p)
     lines.append(f"Open POA&M (poam.csv): {headline_open}")
     lines.append("")
     if ctx.run_delta:
@@ -1830,19 +1933,20 @@ def build_executive_summary(ctx: PageContext) -> str:
     )
     for i, rec in enumerate(ranked, 1):
         mapped = ctx.mapped_by_ref.get(str(rec.get("ref_id"))) or {}
-        weakness = md_safe_text(recorded(rec.get("name") or rec.get("ref_id")))
+        weakness = md_safe_text(recorded(exec_finding_name(rec, mapped)))
         assets = rec.get("assets") or []
         affected = md_safe_text(
             recorded("|".join(str(a) for a in assets) if assets else None)
         )
         action = md_safe_text(recorded(mapped.get("recommended_fix")))
         ref = recorded(rec.get("ref_id"))
+        why = md_safe_text(recorded(_why_it_matters(rec)))
         lines.append(
-            f"| {i} | {weakness} | {affected} | {REVIEWER_WHY_IT_MATTERS} | {action} | {md_table_code_span(ref)} |"
+            f"| {i} | {weakness} | {affected} | {why} | {action} | {md_table_code_span(ref)} |"
         )
     if not ranked:
         lines.append(
-            f"| 1 | {NOT_RECORDED} | {NOT_RECORDED} | {REVIEWER_WHY_IT_MATTERS} | {NOT_RECORDED} | `{NOT_RECORDED}` |"
+            f"| 1 | {NOT_RECORDED} | {NOT_RECORDED} | {NOT_RECORDED} | {NOT_RECORDED} | `{NOT_RECORDED}` |"
         )
     lines.append("")
 
@@ -1879,15 +1983,12 @@ def build_executive_summary(ctx: PageContext) -> str:
     )
     lines.extend(
         [
-            "### What this does not tell you",
-            f"- {uncovered_s}. These areas were out of scope or had no scanner output. See the scope statement.",
-            "- This is a point-in-time review of scanner artifacts. It is not a penetration test and not continuous monitoring.",
-            f"- Owners and due dates in the POA&M are blank until {owner_who} assigns them.",
+            *_exec_limit_lines(stamp, uncovered_s, outside, owner_who),
             "",
             *format_coverage_gaps(ctx.sensor_rows),
             "",
             "### Next step",
-            REVIEWER_NEXT_STEP,
+            _next_step_line(stamp),
             "",
             "Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes).",
             "",

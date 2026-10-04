@@ -1,8 +1,8 @@
 """Estate banner + exec summary + SCOPE_AND_TRUST.md (Argus drafts).
 
 Banner on every named export. SAMPLE/DEMO/LAB/fallback never CLIENT and
-cannot be suppressed. Missing values print 'not recorded'. No generated
-reviewer prose.
+cannot be suppressed. Missing values print 'not recorded'. No leftover
+reviewer placeholders. Finding names match poam.csv failure wording.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from shared.estate_pages import (
     MAX_PAGE_LINES,
     NOT_RECORDED,
     REVIEWER_NEXT_STEP,
+    REVIEWER_PLACEHOLDERS,
     REVIEWER_WHAT_WE_FOUND,
     REVIEWER_WHY_IT_MATTERS,
     SAMPLE_AUTH,
@@ -35,8 +36,10 @@ from shared.estate_pages import (
     _manifest_matches,
     _sha256_bytes,
     assert_client_export_honesty,
+    build_executive_summary,
     build_fixture_manifest,
     classify_estate,
+    exec_finding_name,
     file_content_fingerprints,
     fingerprints_from_bytes,
     fixture_content_hashes,
@@ -216,9 +219,10 @@ def test_banner_and_estate_column_on_every_export(
     trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
     assert exec_text.startswith("> **")
     assert trust.startswith("> **")
-    assert REVIEWER_WHAT_WE_FOUND in exec_text
-    assert REVIEWER_WHY_IT_MATTERS in exec_text
-    assert REVIEWER_NEXT_STEP in exec_text
+    assert REVIEWER_WHAT_WE_FOUND not in exec_text
+    assert REVIEWER_WHY_IT_MATTERS not in exec_text
+    assert REVIEWER_NEXT_STEP not in exec_text
+    assert "[reviewer:" not in exec_text
     assert "No client authorization applies" in trust
     for blob in (exec_text, trust):
         assert "CoS #" not in blob
@@ -1213,4 +1217,136 @@ def test_non_demo_does_not_inherit_demo_scope_dates(
     assert DEMO_SCOPE_START not in window
     assert DEMO_SCOPE_END not in window
     assert NOT_RECORDED in window
+
+
+def _pass_title_finding(
+    ref: str,
+    name: str,
+    desc: str,
+    check_id: str,
+    asset: str,
+) -> dict:
+    return {
+        "kind": "finding",
+        "source": "cloud-prowler",
+        "ref_id": ref,
+        "name": name,
+        "description": desc,
+        "severity": "critical",
+        "category": "cloud-misconfiguration",
+        "assets": [asset],
+        "labels": ["demo", "prowler"],
+        "extra": {"check_id": check_id},
+    }
+
+
+def _fix_these_first_names(exec_text: str) -> list[str]:
+    names: list[str] = []
+    in_table = False
+    for line in exec_text.splitlines():
+        if line.startswith("### Fix these first"):
+            in_table = True
+            continue
+        if in_table and line.startswith("### "):
+            break
+        if not in_table or not line.startswith("| "):
+            continue
+        if line.startswith("| #") or line.startswith("|---"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 2 and cells[1] and cells[1] != NOT_RECORDED:
+            names.append(cells[1].replace("\\", ""))
+    return names
+
+
+def test_exec_finding_name_uses_failure_wording_not_pass_title() -> None:
+    from shared.control_map import map_finding
+
+    rec = _pass_title_finding(
+        "CLD-s3",
+        "S3 bucket prohibits public access",
+        "Bucket ACL and policy allow public List/Get.",
+        "s3_bucket_public_access",
+        "demo-public-assets",
+    )
+    iam = _pass_title_finding(
+        "CLD-iam",
+        "IAM user does not have AdministratorAccess",
+        "User has AdministratorAccess attached directly.",
+        "iam_user_administrator_access",
+        "iam-admin-breakglass",
+    )
+    assert exec_finding_name(rec, map_finding(rec)) == "S3 bucket allows public access"
+    assert exec_finding_name(iam, map_finding(iam)) == (
+        "IAM user has standing AdministratorAccess"
+    )
+    assert exec_finding_name(rec, {}) == "S3 bucket allows public access"
+
+
+def test_exec_fix_these_first_matches_poam_failure_wording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: exec 'Fix these first' used CheckTitle pass-text (#143 drop)."""
+    recs = [
+        _asset(),
+        _pass_title_finding(
+            "CLD-s3-bucket-public-access-123456789012-demo-public-assets",
+            "S3 bucket prohibits public access",
+            "Bucket ACL and policy allow public List/Get.",
+            "s3_bucket_public_access",
+            "demo-public-assets",
+        ),
+        _pass_title_finding(
+            "CLD-iam-user-administrator-access-123456789012-iam-admin-breakglass",
+            "IAM user does not have AdministratorAccess",
+            "User has AdministratorAccess attached directly.",
+            "iam_user_administrator_access",
+            "iam-admin-breakglass",
+        ),
+    ]
+    out = _run_loader(tmp_path, monkeypatch, recs, GRC_ESTATE_LABEL="DEMO")
+    exec_text = (out / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    poam = csv_rows(out / "poam" / "poam.csv")
+    poam_names = {row["weakness"] for row in poam}
+    assert "S3 bucket allows public access" in poam_names
+    assert "IAM user has standing AdministratorAccess" in poam_names
+    exec_names = _fix_these_first_names(exec_text)
+    assert exec_names
+    for name in exec_names:
+        assert name in poam_names, (name, poam_names)
+    for blob in REVIEWER_PLACEHOLDERS:
+        assert blob not in exec_text
+    assert "[reviewer:" not in exec_text
+    assert "S3 bucket prohibits public access" not in exec_text
+    assert "IAM user does not have AdministratorAccess" not in exec_text
+    limits = exec_text.split("### What this does not tell you", 1)[1]
+    limits_body = limits.split("###", 1)[0].lower()
+    assert "no live scan" in limits_body or "demo/sample" in limits_body
+    assert not limits_body.lstrip().startswith("- none")
+    assert "demo/sample data" in exec_text.lower() or "bundled fixtures" in limits_body
+
+
+def test_exec_page_has_no_reviewer_placeholders_or_none_limits() -> None:
+    rec = _pass_title_finding(
+        "CLD-s3",
+        "S3 bucket prohibits public access",
+        "Bucket ACL and policy allow public List/Get.",
+        "s3_bucket_public_access",
+        "demo-public-assets",
+    )
+    stamp = EstateStamp(
+        kind="DEMO",
+        label=LABEL_FOR_KIND["DEMO"],
+        sentence=SENTENCE_FOR_KIND["DEMO"],
+    )
+    text = build_executive_summary(
+        PageContext(stamp=stamp, findings=[rec], mapped_by_ref={})
+    )
+    assert "S3 bucket allows public access" in text
+    assert "S3 bucket prohibits public access" not in text
+    for blob in REVIEWER_PLACEHOLDERS:
+        assert blob not in text
+    assert "[reviewer:" not in text
+    limits = text.split("### What this does not tell you", 1)[1]
+    assert "- none." not in limits.split("###", 1)[0]
 
