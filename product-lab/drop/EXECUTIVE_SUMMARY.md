@@ -1,5 +1,5 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-10-04 01:26 UTC · pack `8202a0c`
+> Run `not recorded` · generated 2026-10-04 03:26 UTC · pack `21c5ef8`
 
 **DEMO: NOT A CLIENT**. Assessment window 2026-09-04 to 2026-09-24 (66 of 210 rows dated).
 
@@ -17,7 +17,7 @@
 
 Open POA&M (poam.csv): 119
 
-Changed since last run: open=119 new=125 pending verification=0 reopened=0 closed=0.
+Changed since last run: open=119 new=119 pending verification=0 reopened=0 closed=0.
 Ledger open including excluded: 125.
 
 Ledger warning: LEDGER_LOST (first run: no prior ledger).
@@ -52,4 +52,4 @@ None. Every sensor that received input was assessed.
 ### Next step
 This is demo/sample data, not a live scan of a client estate. Review poam.csv after a real-environment engagement.
 
-Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes).
+Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes). Verify with `sha256sum -c MANIFEST` (Git Bash / Linux) or `python scripts/verify_manifest.py`.

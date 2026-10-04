@@ -381,6 +381,8 @@ def test_exec_and_trust_generated_from_run_counts(
     assert "sha256sum -c MANIFEST" in trust
     assert "python scripts/verify_manifest.py" in trust
     assert "Git Bash" in trust
+    assert "sha256sum -c MANIFEST" in exec_text
+    assert "python scripts/verify_manifest.py" in exec_text
     assert "Open POA&M (poam.csv):" in exec_text
     assert "| Critical |" in exec_text
     assert "| High |" in exec_text

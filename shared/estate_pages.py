@@ -2005,7 +2005,13 @@ def build_executive_summary(ctx: PageContext) -> str:
             "### Next step",
             _next_step_line(stamp),
             "",
-            "Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes).",
+            "Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes). Verify with "
+            + md_code_span(
+                recorded(_env(None, "GRC_VERIFY_COMMAND") or "sha256sum -c MANIFEST")
+            )
+            + " (Git Bash / Linux) or "
+            + md_code_span("python scripts/verify_manifest.py")
+            + ".",
             "",
         ]
     )
