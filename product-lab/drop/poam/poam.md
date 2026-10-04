@@ -1,5 +1,5 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-10-04 00:31 UTC · pack `b9b1814`
+> Run `not recorded` · generated 2026-10-04 00:33 UTC · pack `938ee03`
 
 # POA&M (operator draft)
 
@@ -137,6 +137,7 @@ Scheduled Completion Date (col M) is blank in this CSV — the FedRAMP template 
 
 kev_evaluated: false
 No in/kev/ snapshot. Binding Operational Directive 22-01 columns are blank (not 'checked, not in KEV').
+ledger_warnings: LEDGER_LOST
 Vendor Dependency = No is a default, not a verified determination. O stays No until an operator override confirms Yes. A scanner 'no fix available' hint is suggestion-only (vd_source=suggested). Vendor Dependency does not suspend KEV / BOD 22-01 due dates. Last Vendor Check-in Date and Vendor Dependent Product Name are blank when O=No (never N/A or None). Product Name uses 'Vendor – Product' when O=Yes. Aging (VENDOR_CHECKIN_OVERDUE, VD_HIGH_NOT_MITIGATED) uses the host-local run day, so a flag can fire a day earlier or later than the UTC calendar day.
 Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.
 FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).
