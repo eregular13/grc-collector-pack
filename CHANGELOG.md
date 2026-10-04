@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- METIS_219_158_FOLLOW_UPS: Persist `LEDGER_CHAIN_BROKEN` / dropped POA&M
+  IDs on the executive summary and `summary.json` until a valid ledger
+  is supplied (re-signed recovered output does not clear the flag).
+  Unseen OPEN rows whose ledger item was discarded are listed in the
+  warning and are not closed. LAB/SAMPLE/DEMO first-run `LEDGER_LOST`
+  stays the machine code and renders as
+  `LEDGER_LOST (first run: no prior ledger)` — no seeded prior —
+  and only when there is no leftover POA&M history. Dropped IDs that
+  are back on the plan this run are not listed. Sticky
+  `LEDGER_CHAIN_BROKEN` clears only when a valid ledger is supplied
+  (no reset flag; see `fixtures/lab-lifecycle/README.md`).
+  CLIENT estates do not fail closed. Padded `status_date` is trimmed to
+  `YYYY-MM-DD` on all four surfaces. `iiw.py` and the OpenGRC writer
+  route cells through `neutralize_csv_formula`; `-(1)` and `--` are
+  formulas. `host.corp:http` → host + port 80; `user@h:22` → host `h`
+  port 22; `redis:7` is image:tag only in a container-image context.
+  No POST `/api/risks`.
 - REVIEW_FOLLOW_UPS_216_218: #216 carry parses ledger `status_date` as
   a `YYYY-MM-DD` civil day; blank, missing, or malformed falls back to
   the host-local run day (not UTC) on all four surfaces, including

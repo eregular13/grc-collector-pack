@@ -688,3 +688,67 @@ def test_unobserved_malformed_status_date_agrees_on_all_surfaces(
     if bad not in {None, ""}:
         assert bad not in {row["status_date"] for row in rec_poam}
         assert bad not in {row["Status Date"] for row in rec_fed}
+
+
+def test_padded_status_date_is_trimmed_on_all_four_surfaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """\"  2026-10-01  \" becomes 2026-10-01 on poam.csv, SR, FedRAMP, and the ledger."""
+    rec = _rec()
+    cover = _cover_rec()
+    first = apply_ledger(
+        [rec, cover],
+        catalog=_catalog(),
+        run_at=datetime(2026, 9, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    rec_fp = next(
+        fp
+        for fp, it in first["items"].items()
+        if "plugin-1" in str(it.get("weakness_key") or "")
+    )
+    rec_pid = str(first["items"][rec_fp].get("poam_id") or "")
+    out = _write_canonical(tmp_path, monkeypatch, cover)
+    incoming = Path(os.environ["IN_DIR"])
+    (incoming / "poam").mkdir(parents=True, exist_ok=True)
+    ledger_path = incoming / "poam" / "poam-ledger.json"
+    first["items"][rec_fp]["status_date"] = "  2026-10-01  "
+    ledger_path.write_text(json.dumps(first) + "\n", encoding="utf-8")
+    _load_at_la_evening()
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    sr = csv_rows(out / "simplerisk" / "poam.csv")
+    with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = ledger["items"][rec_fp]
+    assert item["status_date"] == "2026-10-01"
+    assert item["status_date"] != "  2026-10-01  "
+    rec_poam = [row for row in poam if row.get("finding_ref_id") == rec["ref_id"]]
+    rec_sr = [row for row in sr if row.get("finding_ref_id") == rec["ref_id"]]
+    rec_fed = [row for row in fed if row.get("POAM ID") == rec_pid]
+    assert rec_poam and rec_sr and rec_fed
+    assert {row["status_date"] for row in rec_poam} == {"2026-10-01"}
+    assert {row["status_date"] for row in rec_sr} == {"2026-10-01"}
+    assert {row["Status Date"] for row in rec_fed} == {"2026-10-01"}
+
+
+def test_parse_status_date_trims_padding() -> None:
+    assert parse_status_date("  2026-10-01  ").isoformat() == "2026-10-01"
+
+
+def test_fedramp_trims_padded_status_date_on_closed_row() -> None:
+    """Closed rows skip ledger _normalize_status_date; FedRAMP still trims."""
+    from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, item_to_row
+
+    row = item_to_row(
+        {
+            "poam_id": "EGP-CLOSE0001",
+            "name": "closed leftover",
+            "status": "closed",
+            "status_date": "  2026-10-01  ",
+        }
+    )
+    idx = list(FEDRAMP_CSV_HEADERS).index("Status Date")
+    assert row[idx] == "2026-10-01"

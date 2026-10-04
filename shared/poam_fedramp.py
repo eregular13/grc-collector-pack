@@ -18,7 +18,8 @@ from shared.kev import (
     format_cves,
 )
 from shared.finding_types import strip_secret_hash_from_key
-from shared.poam_ledger import pending_comment
+from shared.poam_fields import parse_status_date
+from shared.poam_ledger import format_ledger_warning_line, pending_comment
 from shared.io_util import neutralize_csv_formula, redact
 from shared.vendor_dependency import (
     DEFAULT_COMMENT,
@@ -165,6 +166,8 @@ def item_to_row(
         item.get("remediation_plan") or ""
     )
     tags = _plan_cell(plan, "framework_refs") or str(item.get("framework_refs") or "")
+    parsed_status = parse_status_date(item.get("status_date"))
+    status_date = parsed_status.isoformat() if parsed_status is not None else ""
     return [
         str(item.get("poam_id") or ""),
         controls,
@@ -178,7 +181,7 @@ def item_to_row(
         remediation,
         str(item.get("original_detection_date") or ""),
         "",  # M — template formula; never written
-        str(item.get("status_date") or ""),
+        status_date,
         vd,
         str(item.get("last_vendor_checkin") or "") if vd == VD_YES else "",
         format_vendor_product(item.get("vendor_product")) if vd == VD_YES else "",
@@ -274,7 +277,12 @@ def write_fedramp_poam(
     return {"open": open_path, "closed": closed_path}
 
 
-def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
+def kev_md_footer(
+    catalog: KevCatalog,
+    ledger: dict[str, Any],
+    *,
+    estate_kind: str = "",
+) -> str:
     lines = [
         "",
         "## KEV catalog (offline snapshot)",
@@ -301,8 +309,14 @@ def kev_md_footer(catalog: KevCatalog, ledger: dict[str, Any]) -> str:
         )
         if catalog.stale:
             lines.append(f"stale: {catalog.stale}")
-    if ledger.get("warnings"):
-        lines.append("ledger_warnings: " + ", ".join(ledger["warnings"]))
+    warn_line = format_ledger_warning_line(
+        list(ledger.get("warnings") or []),
+        list(ledger.get("dropped_poam_ids") or []),
+        estate_kind=estate_kind,
+        first_run=bool(ledger.get("_first_run", True)),
+    )
+    if warn_line:
+        lines.append("ledger_warnings: " + warn_line)
     lines.append(VD_NOTE)
     lines.append("Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.")
     lines.append("FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).")

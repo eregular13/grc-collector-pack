@@ -467,6 +467,55 @@ def test_asset_uid_and_resolve_asset_id_same_signature() -> None:
     assert len(a) == 4 + 10
 
 
+def test_iiw_routes_signed_digit_formulas_through_neutraliser(tmp_path: Path) -> None:
+    """iiw_inventory / iiw_gaps prefix formula UAIs; safe names stay raw."""
+    from shared.io_util import is_csv_formula, neutralize_csv_formula
+
+    hostile = "-2+3+cmd|' /C calc'!A0"
+    plus = "+1+1"
+    ledger = AssetLedger()
+    rec = _asset(hostile, now=NOW1, fqdn=hostile, ip="10.9.9.8")
+    rec["assets"] = [hostile]
+    rec["name"] = hostile
+    uid = _observe(ledger, rec, NOW1)
+    ledger.assets[uid]["uai"] = hostile
+    plus_rec = _asset(plus, now=NOW1, fqdn=plus, ip="10.9.9.7")
+    plus_rec["assets"] = [plus]
+    plus_rec["name"] = plus
+    plus_uid = _observe(ledger, plus_rec, NOW1)
+    ledger.assets[plus_uid]["uai"] = plus
+    cmd = "=cmd"
+    cmd_rec = _asset(cmd, now=NOW1, fqdn=cmd, ip="10.9.9.5")
+    cmd_rec["assets"] = [cmd]
+    cmd_rec["name"] = cmd
+    cmd_uid = _observe(ledger, cmd_rec, NOW1)
+    ledger.assets[cmd_uid]["uai"] = cmd
+    safe_rec = _asset("safe.corp.local", now=NOW1, fqdn="safe.corp.local", ip="10.9.9.6")
+    safe_uid = _observe(ledger, safe_rec, NOW1)
+    paths = write_iiw(
+        ledger, dest_dir=tmp_path, observed={uid, plus_uid, cmd_uid, safe_uid}
+    )
+    inv = paths["inventory"].read_text(encoding="utf-8")
+    assert "'" + hostile in inv
+    assert "'" + plus in inv
+    assert "'" + cmd in inv
+    assert "safe.corp.local" in inv
+    assert not any(
+        is_csv_formula(cell)
+        for row in csv.reader(inv.splitlines())
+        for cell in row
+    )
+    assert neutralize_csv_formula(hostile) == "'" + hostile
+    gaps_text = paths["gaps"].read_text(encoding="utf-8")
+    assert "'" + plus in gaps_text
+    assert "'" + cmd in gaps_text
+    assert not any(
+        is_csv_formula(cell)
+        for row in csv.reader(gaps_text.splitlines())
+        for cell in row
+    )
+
+
 def test_iiw_headers_exact_and_never_na(tmp_path: Path) -> None:
     ledger = AssetLedger()
     rec = _asset("gap.corp.local", now=NOW1, fqdn="gap.corp.local", ip="10.9.9.9")

@@ -61,6 +61,32 @@ def test_load_pack_estate_from_ciso_headers(tmp_path: Path) -> None:
     assert len(estate.controls) == 1
 
 
+def test_opengrc_neutralizes_signed_digit_formula_cells(tmp_path: Path) -> None:
+    """OpenGRC writer prefixes DDE / +1+1 even when CISO input was raw."""
+    from shared.io_util import is_csv_formula
+
+    hostile = "-2+3+cmd|' /C calc'!A0"
+    plus = "+1+1"
+    out = _tiny_ciso(tmp_path)
+    assets = out / "ciso-assistant" / "assets.csv"
+    text = assets.read_text(encoding="utf-8")
+    text += (
+        f"A-hostile,{hostile},host 10.9.8.6,Global,PR,,,\"demo\", \n"
+        f"A-plus,{plus},host 10.9.8.5,Global,PR,,,\"demo\", \n"
+    )
+    assets.write_text(text, encoding="utf-8")
+    stamp = write_opengrc(out)
+    dest = Path(stamp["dir"])
+    og_assets = csv_rows(dest / "assets.csv")
+    names = {row["name"] for row in og_assets}
+    assert "'" + hostile in names
+    assert "'" + plus in names
+    assert "filesrv.corp.local" in names
+    for row in og_assets:
+        for value in row.values():
+            assert not is_csv_formula(value), value
+
+
 def test_opengrc_writes_wizard_csvs(tmp_path: Path) -> None:
     out = _tiny_ciso(tmp_path)
     stamp = write_opengrc(out)

@@ -726,6 +726,8 @@ def test_is_csv_formula_narrow_prefixes() -> None:
     assert is_csv_formula("@SUM(1,1)")
     assert is_csv_formula("+cmd")
     assert is_csv_formula("-cmd|")
+    assert is_csv_formula("-(1)")
+    assert is_csv_formula("--")
     assert is_csv_formula("\t=cmd")
     assert is_csv_formula("\r@SUM(A1)")
     for payload in _SIGNED_DIGIT_FORMULAS:

@@ -895,7 +895,11 @@ def _load(*, run_at: datetime | None = None) -> dict:
         out_poam, poam_ledger, plan_by_id=plan_by_poam_id(poam_header, poam_rows)
     )
     write_json(out_poam / "kev_provenance.json", kev_catalog.provenance())
-    write_text(out_poam / "poam.md", "\n".join(lines) + kev_md_footer(kev_catalog, poam_ledger))
+    write_text(
+        out_poam / "poam.md",
+        "\n".join(lines)
+        + kev_md_footer(kev_catalog, poam_ledger, estate_kind=estate_kind),
+    )
     write_estate_sidecar(
         out_poam,
         stamp,
@@ -1010,6 +1014,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
             lighter=lighter,
             c5_skipped=c5_skipped,
         ),
+        "ledger_warnings": list(poam_ledger.get("warnings") or []),
+        "ledger_dropped_poam_ids": list(poam_ledger.get("dropped_poam_ids") or []),
         "sensors": {row["source"]: row for row in sensor_rows},
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
@@ -1061,6 +1067,9 @@ def _load(*, run_at: datetime | None = None) -> dict:
         generated_at=now,
         run_delta=ledger_run_delta(poam_ledger, plan_ids=listed_ids),
         sensor_rows=sensor_rows,
+        ledger_warnings=list(poam_ledger.get("warnings") or []),
+        ledger_dropped_poam_ids=list(poam_ledger.get("dropped_poam_ids") or []),
+        ledger_first_run=bool(poam_ledger.get("_first_run", True)),
     )
     write_client_pages(out_dir(), ctx)
     payload = json.dumps(summary, indent=2)
