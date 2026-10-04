@@ -66,7 +66,7 @@ PACKAGED_COUNTS = {
     "risk_scenarios.csv": 125,
 }
 PACKAGED_POAM = 119
-PACKAGED_EXCLUDED = 6
+PACKAGED_EXCLUDED = 13
 # IDs that exist in both packaged drop and a fresh generator run.
 KEY_ASSET_IDS = {
     "NMAP-asset-10-0-0-50",

@@ -1,5 +1,5 @@
 > **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled example files. None describes any real organization.
-> Run `not recorded` · generated 2026-10-03 23:53 UTC · pack `88be2bc`
+> Run `not recorded` · generated 2026-10-04 00:33 UTC · pack `938ee03`
 
 # OpenGRC import drop (file-only)
 

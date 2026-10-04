@@ -33,8 +33,8 @@ CISO_CSVS = (
     "vulnerabilities.csv",
 )
 ESTATE_PAGES = ("EXECUTIVE_SUMMARY.md", "SCOPE_AND_TRUST.md")
-# One row list for hashes + MANIFEST. #158 may append poam_members.csv later;
-# do not add it here. Count is "draft" or a counts[] key (same as rel).
+# One row list for hashes + MANIFEST. Count is "draft" or a counts[] key
+# (same as rel). poam_members.csv is this-scan plan members (#158).
 MANIFEST_ROWS: tuple[tuple[str, str], ...] = (
     ("ciso/applied_controls.csv", "ciso/applied_controls.csv"),
     ("ciso/assets.csv", "ciso/assets.csv"),
@@ -46,6 +46,7 @@ MANIFEST_ROWS: tuple[tuple[str, str], ...] = (
     ("poam/poam.csv", "poam/poam.csv"),
     ("poam/poam.md", "draft"),
     ("poam/excluded.csv", "poam/excluded.csv"),
+    ("poam/poam_members.csv", "poam/poam_members.csv"),
     ("poam/poam_fedramp.csv", "poam/poam_fedramp.csv"),
     ("poam/poam-ledger.json", "draft"),
     ("poam/ESTATE.txt", "draft"),
@@ -161,7 +162,11 @@ Operator draft. Not a CISO import. Owner and due stay blank. `poam.csv` has an `
 | File | Rows |
 |---|---|
 | `poam.csv` | {counts["poam/poam.csv"]} |
+| `excluded.csv` | {counts.get("poam/excluded.csv", "")} |
+| `poam_members.csv` | {counts.get("poam/poam_members.csv", "")} |
 | `poam.md` | same draft, markdown |
+
+`poam.csv` and `poam_members.csv` carry a per-row `estate` column. Member rows are this-scan plan rows (pending carried items can appear on `poam.csv` without a member row).
 
 Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
 

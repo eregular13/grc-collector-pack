@@ -1,6 +1,6 @@
 # Drop package
 
-**Copied:** 2026-10-03T23:53:21Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** 2026-10-04T00:33:47Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). SAMPLE/DEMO. Not a client. Not a LAB dest_in prove.
 
 See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
@@ -31,7 +31,11 @@ Operator draft. Not a CISO import. Owner and due stay blank. `poam.csv` has an `
 | File | Rows |
 |---|---|
 | `poam.csv` | 119 |
+| `excluded.csv` | 13 |
+| `poam_members.csv` | 119 |
 | `poam.md` | same draft, markdown |
+
+`poam.csv` and `poam_members.csv` carry a per-row `estate` column. Member rows are this-scan plan rows (pending carried items can appear on `poam.csv` without a member row).
 
 Example: open TCP/445 on `filesrv.corp.local` → restrict SMB / confirm SMBv1 disabled (`cpg_2_W`, `csf_PR`). Port finding, not a CVE.
 
