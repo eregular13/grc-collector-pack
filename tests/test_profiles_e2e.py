@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import csv
 import subprocess
 from pathlib import Path
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_internal_external_scripts_leave_demo_artifacts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    skip_unless_bash()
     work = tmp_path / "in"
     out = tmp_path / "out"
     monkeypatch.setenv("IN_DIR", str(work))

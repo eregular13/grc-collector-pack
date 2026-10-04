@@ -12,6 +12,7 @@ never client KEEP. No POST /api/risks.
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import re
@@ -369,6 +370,7 @@ def test_exec_counts_match_demo_csvs(
 
 
 def test_exec_counts_match_sample_csvs(tmp_path: Path) -> None:
+    skip_unless_bash()
     script = ROOT / "scripts" / "sample_to_sor.sh"
     if not script.is_file():
         pytest.skip("sample_to_sor.sh absent")
@@ -391,6 +393,7 @@ def test_exec_counts_match_sample_csvs(tmp_path: Path) -> None:
 
 
 def test_exec_counts_match_farm_csvs(tmp_path: Path) -> None:
+    skip_unless_bash()
     script = ROOT / "scripts" / "farm_drop_to_sor.sh"
     if not script.is_file():
         pytest.skip("farm_drop_to_sor.sh absent")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import subprocess
@@ -146,6 +147,7 @@ def test_farm_drop_honesty_ok_line_is_ascii_cp1252() -> None:
 
 
 def test_verify_only_stdout_encodes_under_cp1252(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "work"
     _honest_prove(work)
     env = os.environ.copy()
@@ -219,6 +221,7 @@ def test_verify_farm_drop_sor_fail_closed_when_findings_without_poam(tmp_path: P
 
 
 def test_farm_drop_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "work"
     _honest_prove(work)
     env = os.environ.copy()
@@ -259,6 +262,7 @@ def test_farm_drop_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
 
 
 def test_farm_drop_to_sor_sh_isolated_prove(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "prove-work"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -160,7 +161,7 @@ def test_cross_wire_cli_and_jsonrpc_fail_closed() -> None:
     from dropbox.mcp_stub import handle_jsonrpc
 
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "mcp", "check_scope", "--scope", str(SCOPE)],
+        [sys.executable, "-m", "dropbox", "mcp", "check_scope", "--scope", str(SCOPE)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -193,7 +194,7 @@ def test_mcp_cli_scope_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     isolate_farm_path(monkeypatch, tmp_path)
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "mcp", "scope_status", "--scope", str(SCOPE)],
+        [sys.executable, "-m", "dropbox", "mcp", "scope_status", "--scope", str(SCOPE)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -251,7 +252,7 @@ def test_mcp_serve_lists_tools_no_hexstrike() -> None:
     import subprocess
 
     proc = subprocess.run(
-        ["python3", "-m", "dropbox.mcp_stub", "serve"],
+        [sys.executable, "-m", "dropbox.mcp_stub", "serve"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -264,7 +265,7 @@ def test_mcp_serve_lists_tools_no_hexstrike() -> None:
     assert data["hexstrike"] is False
     assert data["exploit_api"] is False
     cli = subprocess.run(
-        ["python3", "-m", "dropbox", "mcp", "serve", "--scope", str(SCOPE)],
+        [sys.executable, "-m", "dropbox", "mcp", "serve", "--scope", str(SCOPE)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -759,14 +760,14 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
     import subprocess
 
     init = _rpc_once(
-        ["python3", "-m", "dropbox.mcp_stub", "serve", "--once"],
+        [sys.executable, "-m", "dropbox.mcp_stub", "serve", "--once"],
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
     )
     assert init["result"]["serverInfo"]["name"] == "dropbox-operator-mcp"
     assert "hexstrike" not in json.dumps(init).lower()
 
     listed = _rpc_once(
-        ["python3", "-m", "dropbox.mcp_stub", "serve", "--once"],
+        [sys.executable, "-m", "dropbox.mcp_stub", "serve", "--once"],
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
     )
     names = [t["name"] for t in listed["result"]["tools"]]
@@ -782,7 +783,7 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
         assert banned not in names
 
     stdio = subprocess.run(
-        ["python3", "-m", "dropbox.mcp_stub", "serve", "--stdio"],
+        [sys.executable, "-m", "dropbox.mcp_stub", "serve", "--stdio"],
         input=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n",
         cwd=str(ROOT),
         capture_output=True,
@@ -805,7 +806,7 @@ def test_stdio_once_initialize_list_and_refuse_empty_unsigned_scope(tmp_path: Pa
     call = {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "scope_status"}}
     for scope in (empty, unsigned):
         body = _rpc_once(
-            ["python3", "-m", "dropbox", "mcp", "serve", "--once", "--scope", str(scope)],
+            [sys.executable, "-m", "dropbox", "mcp", "serve", "--once", "--scope", str(scope)],
             call,
         )
         assert body.get("error"), body

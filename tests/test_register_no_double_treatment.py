@@ -7,6 +7,7 @@ Never POST /api/risks.
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import subprocess
@@ -213,6 +214,7 @@ def test_farm_register_has_no_mitigate_accept_overlap(tmp_path: Path) -> None:
 
 
 def test_sample_to_sor_register_has_no_mitigate_accept_overlap(tmp_path: Path) -> None:
+    skip_unless_bash()
     script = ROOT / "scripts" / "sample_to_sor.sh"
     work = tmp_path / "sample-work"
     proc = subprocess.run(
@@ -311,6 +313,7 @@ def test_bind_alias_targets_uses_survivor_ledger_id() -> None:
 
 
 def _run_farm_drop(work: Path) -> Path:
+    skip_unless_bash()
     script = ROOT / "scripts" / "farm_drop_to_sor.sh"
     proc = subprocess.run(
         ["bash", str(script), "--work", str(work)],

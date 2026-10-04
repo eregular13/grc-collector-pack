@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import subprocess
@@ -71,6 +72,7 @@ def test_lab_honesty_ok_line_is_ascii_cp1252() -> None:
 
 
 def test_lab_drop_to_sor_sh_uses_existing_in(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "lab-work"
     dest_in = work / "in"
     marker = stage_lab_drop_dest_in(dest_in)
@@ -119,6 +121,7 @@ def test_lab_drop_to_sor_sh_uses_existing_in(tmp_path: Path) -> None:
 
 
 def test_lab_drop_verify_only_after_prove(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "lab-work"
     stage_lab_drop_dest_in(work / "in")
     stamp = prove_ciso(root=ROOT, dest=work, use_existing_in=True)

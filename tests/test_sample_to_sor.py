@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import hashlib
 import json
 import os
@@ -265,6 +266,7 @@ def test_verify_sample_sor_fail_closed_when_findings_without_poam(tmp_path: Path
 
 
 def test_sample_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "work"
     ciso = work / "out" / "ciso-assistant"
     _honest_bundle(ciso)
@@ -304,6 +306,7 @@ def test_sample_to_sor_verify_only_fail_closed(tmp_path: Path) -> None:
 def _run_sample_to_sor_isolated(
     tmp_path: Path, *, exporters: bool = False
 ) -> subprocess.CompletedProcess[str]:
+    skip_unless_bash()
     empty = tmp_path / "empty-in"
     empty.mkdir(exist_ok=True)
     work = tmp_path / ("work-exporters" if exporters else "work")

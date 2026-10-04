@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import subprocess
@@ -233,6 +234,7 @@ def test_poam_breakdown_identity_lab(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
 
 def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
+    skip_unless_bash()
     script = ROOT / "scripts" / "sample_to_sor.sh"
     if not script.is_file():
         pytest.skip("sample_to_sor.sh absent")
@@ -255,6 +257,7 @@ def test_poam_breakdown_identity_sample(tmp_path: Path) -> None:
 
 
 def test_poam_breakdown_identity_farm_drop(tmp_path: Path) -> None:
+    skip_unless_bash()
     script = ROOT / "scripts" / "farm_drop_to_sor.sh"
     if not script.is_file():
         pytest.skip("farm_drop_to_sor.sh absent")

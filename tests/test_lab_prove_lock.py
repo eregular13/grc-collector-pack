@@ -8,6 +8,7 @@ LAB/DEMO != SAMPLE != client. paying_day FAIL.
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import re
@@ -347,6 +348,7 @@ def test_lab_dest_in_prove_writes_opengrc_probo_file_true(tmp_path: Path) -> Non
 
 
 def test_lab_drop_to_sor_on_lab_drop_fixture(tmp_path: Path) -> None:
+    skip_unless_bash()
     work = tmp_path / "lab-work"
     dest_in = work / "in"
     marker = stage_lab_drop_dest_in(dest_in)
@@ -383,6 +385,7 @@ def test_lab_drop_to_sor_on_lab_drop_fixture(tmp_path: Path) -> None:
 
 
 def test_use_existing_in_fail_closed_on_empty_in(tmp_path: Path) -> None:
+    skip_unless_bash()
     dest = tmp_path / "empty"
     dest_in = dest / "in"
     dest_in.mkdir(parents=True)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import csv
 import importlib
 import json
@@ -890,6 +891,7 @@ def test_demo_fedramp_open_matches_poam(tmp_path: Path, monkeypatch) -> None:
 
 
 def _farm_drop_out(tmp_path: Path) -> Path:
+    skip_unless_bash()
     import os
     import subprocess
 
