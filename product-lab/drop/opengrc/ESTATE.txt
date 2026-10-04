@@ -1,4 +1,4 @@
 > **SAMPLE DATA: NOT A CLIENT**: Every finding below comes from bundled example files. None describes any real organization.
-> Run not recorded · generated 2026-10-03 23:27 UTC · pack 6bc3849
+> Run not recorded · generated 2026-10-04 00:31 UTC · pack b9b1814
 
 OpenGRC Data Manager CSVs start with the wizard header (no # preamble). Estate label is in ESTATE.txt and in description/notes text. SAMPLE/DEMO/LAB cannot be suppressed and is never client KEEP.

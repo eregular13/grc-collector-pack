@@ -1,7 +1,7 @@
 # product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M + OpenGRC + Probo
 
 Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.
-Copied from out/ after host lab 2026-10-03T23:27:18Z (this Linux VM).
+Copied from out/ after host lab 2026-10-04T00:31:42Z (this Linux VM).
 OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).
 Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
 OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.
@@ -12,20 +12,20 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 |---|---|---|
 | ciso/applied_controls.csv | 119 | `9c516d06f0a0c2839e318dcddbae8e7555b7853df14ab5ba9b0fb40124b65cd9` |
 | ciso/assets.csv | 79 | `8d5cf4aed706f714a54e24a8f11e2a1d71ebe1cfceacf5b1e2f1b2a8f8bddfba` |
-| ciso/evidences.csv | 34 | `99f17ebfee5ec34361ac98c29d3dce3e85e90f1052cadf7c38ea33a52dd73fae` |
+| ciso/evidences.csv | 34 | `39d3ab76045c0c635465044adf50960f06c0808dff73ec178496442e86f36eb2` |
 | ciso/findings.csv | 103 | `3693b80bb7c60115dd8ca857eeb73eecebead44e389e9405b9094e206b12605a` |
 | ciso/risk_scenarios.csv | 125 | `5083363cbe02cb4f1954926a4d055c74adbe65439eff5e4c3d2980ddb68e002a` |
 | ciso/vulnerabilities.csv | 22 | `9427285183d236db88d1b6803910116b27116e676cf30d20b96e8591809f3156` |
-| ciso/ESTATE.txt | draft | `79ce0113516aaf23c273cd62f992e7a34a5fa01cc9d518a3690f3d89320760e3` |
+| ciso/ESTATE.txt | draft | `e7ac7ebabb1e41261e2f05488d85074dedcfa8c05f328bffea69231fb21787e4` |
 | poam/poam.csv | 119 | `b1babee39af7f5bd0471eeedc9ea177c542f3bc799d6fb2530201455d2020732` |
-| poam/poam.md | draft | `dfa57fe839c4df857db0958a675f4a07375f563f97be2561067ba556347fb983` |
+| poam/poam.md | draft | `d3ee15db483608b33d4aade6956fa53ee058668bad50a45b684f6e6e6a4ef1f2` |
 | poam/excluded.csv | 13 | `073c8ba4a42596a6436acab17196774c8b339ba49ad72592a147f579363fc4f8` |
 | poam/poam_members.csv | 119 | `3e38ca7507842514ad7d20fe61424100a37759e5beb8d359e886bd5be07d06ef` |
 | poam/poam_fedramp.csv | 119 | `6497c4154af3247453c726c8a5c33c773c9b1d021f5f94913087f280932c0155` |
-| poam/poam-ledger.json | draft | `8d4f97d8c08a46818a0b23dbe4018fd8be78e8f3bd5e9c32f62d0ddad88e1a61` |
-| poam/ESTATE.txt | draft | `037f13ceb12acd59745abc1576920f4c4169b58eef434e11609566849099e9cb` |
-| EXECUTIVE_SUMMARY.md | draft | `c7f067fa097b39d48dd438273c9b688c5a827e21d39854c479f92b2993952099` |
-| SCOPE_AND_TRUST.md | draft | `b20da5e9d513ee284b284a550af573ce204e65398e92c457db0030ce9f25f0cd` |
+| poam/poam-ledger.json | draft | `46d7e03fa54407d8e68baef5145b0cebf664e1edb3e378fdc577ea8be98d83e6` |
+| poam/ESTATE.txt | draft | `a6c77e89de03e2e0cc48189a6fdb9dda1f7793f78715c877c3ec0fac73c1ec55` |
+| EXECUTIVE_SUMMARY.md | draft | `9f9e0acae6d7a1f09e0f49bdda475eda175271a458624417d2f807cc950de4ed` |
+| SCOPE_AND_TRUST.md | draft | `1501d71dadc1564c727d6d5fbda5c50f851b35a362622fdc5930ec8341d87c26` |
 | opengrc/risks.csv | 125 | `17ed995d306e2ec070505f8e5a1ab10b21231e9713c38b2d05ece13b25e6f4e4` |
 | opengrc/assets.csv | 79 | `37f90c7910426452a3777348fe4270390eaf916cabac672f2ea09d342102ad46` |
 | opengrc/implementations.csv | 119 | `0c73006406347edb5b82f298898a9992ce04ff28df75ac928c9fe7554b42aaca` |
