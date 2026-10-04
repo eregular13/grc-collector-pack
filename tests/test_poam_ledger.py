@@ -526,6 +526,9 @@ def test_format_ledger_warning_line_first_run_note() -> None:
     assert format_ledger_warning_line([LEDGER_LOST], estate_kind="DEMO") == (
         f"{LEDGER_LOST} ({LEDGER_LOST_FIRST_RUN_NOTE})"
     )
+    assert format_ledger_warning_line(
+        [LEDGER_LOST], estate_kind="DEMO", first_run=False
+    ) == LEDGER_LOST
     assert format_ledger_warning_line([LEDGER_LOST], estate_kind="CLIENT") == LEDGER_LOST
     assert "EGP-AAA" in format_ledger_warning_line(
         [LEDGER_CHAIN_BROKEN], ["EGP-AAA"], estate_kind="DEMO"
@@ -594,6 +597,111 @@ def _rec_as_asset(rec: dict) -> dict:
         "labels": [],
         "extra": {},
     }
+
+
+def test_load_ledger_file_carry_sticks_through_pipeline_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two real loader runs: corrupt, then out/ fallback with no valid prior.
+
+    Removing ``_integrity_flags(doc)`` in ``load_ledger_file`` clears the
+    warning on the fallback run; this test must fail that mutant.
+    """
+    from collectors.grc_loader import load
+    from shared.io_util import write_canonical
+
+    rec = _rec()
+    cover = _cover_rec()
+    first = _apply([rec, cover], when="2026-09-10T00:00:00Z")
+    rec_fp = next(
+        fp
+        for fp, it in first["items"].items()
+        if "plugin-1" in str(it.get("weakness_key") or "")
+    )
+    rec_pid = str(first["items"][rec_fp].get("poam_id") or "")
+    listed = {
+        "items": [dict(it) for it in first["items"].values()],
+        "closed": [],
+    }
+    _resign(listed)
+    incoming = tmp_path / "empty-in"
+    incoming.mkdir()
+    (incoming / "poam").mkdir()
+    corrupt = incoming / "poam" / "poam-ledger.json"
+    corrupt.write_text(json.dumps(listed), encoding="utf-8")
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(incoming))
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    write_canonical("mixed", [cover, _rec_as_asset(cover)])
+    first_load = load()
+    assert LEDGER_CHAIN_BROKEN in first_load["ledger_warnings"]
+    assert rec_pid in first_load["ledger_dropped_poam_ids"]
+    recovered = json.loads((tmp_path / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    assert LEDGER_CHAIN_BROKEN in recovered.get("warnings", [])
+    corrupt.unlink()
+    second_load = load()
+    assert LEDGER_CHAIN_BROKEN in second_load["ledger_warnings"]
+    exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    assert LEDGER_CHAIN_BROKEN in exec_text
+    (incoming / "poam" / "poam-ledger.json").write_text(
+        json.dumps(first), encoding="utf-8"
+    )
+    third_load = load()
+    assert LEDGER_CHAIN_BROKEN not in third_load["ledger_warnings"]
+    assert rec_pid not in (third_load.get("ledger_dropped_poam_ids") or [])
+
+
+def test_dropped_id_back_on_plan_is_not_listed() -> None:
+    """Seen-again row remints the same ID; it is not listed as dropped."""
+    rec = _rec()
+    first = _apply([rec], when="2026-09-10T00:00:00Z")
+    item = next(iter(first["items"].values()))
+    rec_pid = str(item.get("poam_id") or "")
+    listed = {"items": [dict(item)], "closed": []}
+    _resign(listed)
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "listed.json"
+        path.write_text(json.dumps(listed), encoding="utf-8")
+        doc, warns = load_ledger_file(path)
+    assert LEDGER_CHAIN_BROKEN in warns
+    assert rec_pid in doc["dropped_poam_ids"]
+    second = _apply([rec], ledger=doc, when="2026-09-11T00:00:00Z")
+    assert LEDGER_CHAIN_BROKEN in second["warnings"]
+    live = {str(it.get("poam_id") or "") for it in second["items"].values()}
+    assert rec_pid in live
+    assert rec_pid not in second["dropped_poam_ids"]
+
+
+def test_ledger_lost_after_history_is_not_first_run_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from collectors.grc_loader import load
+    from shared.io_util import write_canonical
+
+    rec = _rec()
+    incoming = tmp_path / "empty-in"
+    incoming.mkdir()
+    monkeypatch.setenv("OUT_DIR", str(tmp_path))
+    monkeypatch.setenv("IN_DIR", str(incoming))
+    monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
+    write_canonical("mixed", [rec, _rec_as_asset(rec)])
+    first = load()
+    assert LEDGER_LOST in first["ledger_warnings"]
+    assert LEDGER_LOST_FIRST_RUN_NOTE in (
+        tmp_path / "EXECUTIVE_SUMMARY.md"
+    ).read_text(encoding="utf-8")
+    (tmp_path / "poam" / "poam-ledger.json").unlink()
+    (incoming / "poam" / "poam-ledger.json").unlink(missing_ok=True)
+    second = load()
+    assert LEDGER_LOST in second["ledger_warnings"]
+    exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    poam_md = (tmp_path / "poam" / "poam.md").read_text(encoding="utf-8")
+    assert LEDGER_LOST in exec_text
+    assert LEDGER_LOST_FIRST_RUN_NOTE not in exec_text
+    assert LEDGER_LOST in poam_md
+    assert LEDGER_LOST_FIRST_RUN_NOTE not in poam_md
 
 
 def test_first_run_ledger_lost_is_a_note_on_sample_surfaces(

@@ -1069,6 +1069,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
         sensor_rows=sensor_rows,
         ledger_warnings=list(poam_ledger.get("warnings") or []),
         ledger_dropped_poam_ids=list(poam_ledger.get("dropped_poam_ids") or []),
+        ledger_first_run=bool(poam_ledger.get("_first_run", True)),
     )
     write_client_pages(out_dir(), ctx)
     payload = json.dumps(summary, indent=2)

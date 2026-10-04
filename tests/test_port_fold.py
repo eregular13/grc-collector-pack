@@ -18,6 +18,7 @@ from shared.port_fold import (
     _strip_host,
     _url_has_explicit_port,
     _valid_port,
+    is_image_tag_context,
     egp_id_for,
     finding_hosts,
     finding_port,
@@ -554,8 +555,14 @@ def test_image_tag_and_account_id_are_not_truncated() -> None:
     assert _strip_host("host.corp:https") == ("host.corp", "443", "")
     # userinfo@host:port — host is h, not user.
     assert _strip_host("user@h:22") == ("h", "22", "")
+    # No-port identity stays sAMAccount-before-@. Always-splitting @ would
+    # yield domain.local.
+    assert _strip_host("user@domain.local") == ("user", "", "")
     # redis:7 is host:port unless the finding is a container image.
     assert _strip_host("redis:7") == ("redis", "7", "")
+    # Image-context redis:7 stays whole; host.corp:7 still splits (dot check).
+    assert _strip_host("redis:7", image_tag_context=True) == ("redis:7", "", "")
+    assert _strip_host("host.corp:7", image_tag_context=True) == ("host.corp", "7", "")
     image = make_record(
         kind="finding",
         source="vuln-scan",
@@ -598,6 +605,21 @@ def test_image_tag_and_account_id_are_not_truncated() -> None:
     )
     assert finding_hosts(rec) == {"app-server:latest"}
     assert ("app-server", "443") not in {(h, finding_port(rec)) for h in finding_hosts(rec)}
+    extra_image = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-extra-image",
+        name="Image CVE",
+        description="container",
+        severity="high",
+        category="vulnerability",
+        assets=["redis:7"],
+        labels=["nuclei"],
+        extra={"template_id": "cve-2024-2", "image": "redis:7"},
+    )
+    assert is_image_tag_context(extra_image)
+    assert finding_hosts(extra_image) == {"redis:7"}
+    assert finding_port(extra_image) == ""
 
 
 def test_extra_port_rejects_invalid_and_normalizes_leading_zeros() -> None:

@@ -736,3 +736,19 @@ def test_padded_status_date_is_trimmed_on_all_four_surfaces(
 
 def test_parse_status_date_trims_padding() -> None:
     assert parse_status_date("  2026-10-01  ").isoformat() == "2026-10-01"
+
+
+def test_fedramp_trims_padded_status_date_on_closed_row() -> None:
+    """Closed rows skip ledger _normalize_status_date; FedRAMP still trims."""
+    from shared.poam_fedramp import FEDRAMP_CSV_HEADERS, item_to_row
+
+    row = item_to_row(
+        {
+            "poam_id": "EGP-CLOSE0001",
+            "name": "closed leftover",
+            "status": "closed",
+            "status_date": "  2026-10-01  ",
+        }
+    )
+    idx = list(FEDRAMP_CSV_HEADERS).index("Status Date")
+    assert row[idx] == "2026-10-01"

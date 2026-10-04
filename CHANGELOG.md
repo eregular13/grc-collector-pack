@@ -8,7 +8,11 @@
   Unseen OPEN rows whose ledger item was discarded are listed in the
   warning and are not closed. LAB/SAMPLE/DEMO first-run `LEDGER_LOST`
   stays the machine code and renders as
-  `LEDGER_LOST (first run: no prior ledger)` — no seeded prior.
+  `LEDGER_LOST (first run: no prior ledger)` — no seeded prior —
+  and only when there is no leftover POA&M history. Dropped IDs that
+  are back on the plan this run are not listed. Sticky
+  `LEDGER_CHAIN_BROKEN` clears only when a valid ledger is supplied
+  (no reset flag; see `fixtures/lab-lifecycle/README.md`).
   CLIENT estates do not fail closed. Padded `status_date` is trimmed to
   `YYYY-MM-DD` on all four surfaces. `iiw.py` and the OpenGRC writer
   route cells through `neutralize_csv_formula`; `-(1)` and `--` are

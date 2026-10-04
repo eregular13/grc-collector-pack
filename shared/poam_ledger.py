@@ -859,10 +859,12 @@ def item_is_excluded(item: dict[str, Any]) -> bool:
 
 def persist_ledger(ledger: dict[str, Any], out_root: Path | None = None) -> Path:
     """Rewrite out/poam/poam-ledger.json after in-memory stamps."""
+    transient = {key: ledger.pop(key) for key in ("_first_run",) if key in ledger}
     ledger["sha256"] = payload_sha256(ledger)
     dest = (out_root or out_dir()) / LEDGER_OUT_REL
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(ledger, indent=2, default=str) + "\n", encoding="utf-8")
+    ledger.update(transient)
     return dest
 
 
@@ -982,19 +984,87 @@ def _integrity_flags(doc: dict[str, Any] | None) -> tuple[list[str], list[str]]:
     return warns, dropped
 
 
+def _live_poam_ids(ledger: dict[str, Any] | None) -> set[str]:
+    """POA&M IDs currently on ledger items (back on this run's plan)."""
+    live: set[str] = set()
+    items = (ledger or {}).get("items")
+    if not isinstance(items, dict):
+        return live
+    for item in items.values():
+        if not isinstance(item, dict):
+            continue
+        pid = str(item.get("poam_id") or "").strip()
+        if pid:
+            live.add(pid)
+    return live
+
+
+def _prune_restored_dropped_ids(
+    dropped: list[str], ledger: dict[str, Any] | None
+) -> list[str]:
+    live = _live_poam_ids(ledger)
+    return [pid for pid in dropped if pid and pid not in live]
+
+
+_HISTORY_MARKER_RELS = (
+    Path("poam") / "poam.csv",
+    Path("poam") / "poam.md",
+    Path("poam") / "excluded.csv",
+    Path("poam") / "poam_members.csv",
+    Path("poam") / "poam-ledger.json",
+)
+
+
+def _ledger_history_present(
+    in_root: Path | None,
+    out_root: Path | None,
+    prior: dict[str, Any] | None,
+    existed: bool,
+) -> bool:
+    """True when a prior ledger file or leftover POA&M surfaces exist."""
+    if existed:
+        return True
+    if isinstance(prior, dict):
+        items = prior.get("items")
+        if isinstance(items, dict) and items:
+            return True
+        if prior.get("closed") or prior.get("events") or prior.get("prev_sha256"):
+            return True
+        if prior.get("dropped_poam_ids") or prior.get("warnings"):
+            return True
+    for root in (out_root, in_root):
+        if root is None:
+            continue
+        for rel in _HISTORY_MARKER_RELS:
+            path = Path(root) / rel
+            if path.is_file() and path.stat().st_size > 0:
+                return True
+    return False
+
+
 def format_ledger_warning_line(
     warnings: list[str] | None,
     dropped_poam_ids: list[str] | None = None,
     *,
     estate_kind: str = "",
+    first_run: bool = True,
 ) -> str:
-    """Human ledger_warnings line. Codes stay intact for machine readers."""
+    """Human ledger_warnings line. Codes stay intact for machine readers.
+
+    ``LEDGER_LOST (first run: no prior ledger)`` is LAB/SAMPLE/DEMO only,
+    and only when ``first_run`` is true (no prior ledger file and no
+    leftover POA&M history). A later missing ledger stays ``LEDGER_LOST``.
+    """
     parts: list[str] = []
     for raw in warnings or []:
         token = str(raw or "")
         if not token:
             continue
-        if token == LEDGER_LOST and estate_kind in _FIRST_RUN_NOTE_ESTATES:
+        if (
+            token == LEDGER_LOST
+            and first_run
+            and estate_kind in _FIRST_RUN_NOTE_ESTATES
+        ):
             parts.append(f"{LEDGER_LOST} ({LEDGER_LOST_FIRST_RUN_NOTE})")
         else:
             parts.append(token)
@@ -2420,7 +2490,9 @@ def apply_ledger(
             )
 
     ledger["warnings"] = sorted(set(warnings + list(catalog.warnings)))
-    ledger["dropped_poam_ids"] = sorted({pid for pid in dropped_ids if pid})
+    ledger["dropped_poam_ids"] = sorted(
+        {pid for pid in _prune_restored_dropped_ids(dropped_ids, ledger) if pid}
+    )
     ledger["run_at"] = run_iso
     ledger["prev_sha256"] = str((ledger_in or {}).get("sha256") or "")
     ledger["events_this_run"] = list(ledger["events"][prior_events_n:])
@@ -2545,15 +2617,18 @@ def run_ledger(
     out_root: Path | None = None,
 ) -> dict[str, Any]:
     """Load in/poam/poam-ledger.json, apply, write out/poam/poam-ledger.json."""
-    src = (in_root or in_dir()) / LEDGER_IN_REL
+    in_root = in_root or in_dir()
+    out_root = out_root or out_dir()
+    src = in_root / LEDGER_IN_REL
     existed = src.is_file()
     if not existed:
-        fallback = (out_root or out_dir()) / LEDGER_OUT_REL
+        fallback = out_root / LEDGER_OUT_REL
         if fallback.is_file():
             src = fallback
             existed = True
     prior, load_warnings = load_ledger_file(src)
-    overrides = load_overrides((in_root or in_dir()) / OVERRIDES_REL)
+    history = _ledger_history_present(in_root, out_root, prior, existed)
+    overrides = load_overrides(in_root / OVERRIDES_REL)
     ledger = apply_ledger(
         findings,
         catalog=catalog,
@@ -2569,6 +2644,10 @@ def run_ledger(
         token = str(pid or "").strip()
         if token:
             dropped.append(token)
-    ledger["dropped_poam_ids"] = sorted({pid for pid in dropped if pid})
+    ledger["dropped_poam_ids"] = sorted(
+        {pid for pid in _prune_restored_dropped_ids(dropped, ledger) if pid}
+    )
+    lost = LEDGER_LOST in (ledger.get("warnings") or [])
+    ledger["_first_run"] = bool(lost and not history)
     persist_ledger(ledger, out_root)
     return ledger

@@ -313,6 +313,7 @@ def kev_md_footer(
         list(ledger.get("warnings") or []),
         list(ledger.get("dropped_poam_ids") or []),
         estate_kind=estate_kind,
+        first_run=bool(ledger.get("_first_run", True)),
     )
     if warn_line:
         lines.append("ledger_warnings: " + warn_line)
