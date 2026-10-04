@@ -948,7 +948,17 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
         },
     ),
     (
-        re.compile(r"open.?relay|smtp captur|anonymous bind", re.I),
+        re.compile(r"open.?relay|smtp captur", re.I),
+        {
+            "rule_id": "smtp-open-relay",
+            "weakness_class": "exposure_network",
+            "nist_800_53": ("SC-7", "CM-7"),
+            "cis_v8_internal": ("16.2",),
+            "csf20": "PR.IR-01",
+        },
+    ),
+    (
+        re.compile(r"anonymous bind", re.I),
         {
             "rule_id": "insecure-service",
             "weakness_class": "exposure_access",
@@ -958,13 +968,13 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
         },
     ),
     (
-        re.compile(r"world.?writ|0?777|permissions too open", re.I),
+        re.compile(r"world.?writ|\b0?777\b|permissions too open", re.I),
         {
             "rule_id": "perms",
             "weakness_class": "config_benchmark",
-            "nist_800_53": ("AC-3",),
+            "nist_800_53": ("AC-6", "CM-6"),
             "cis_v8_internal": ("5.2",),
-            "csf20": "PR.AA-05",
+            "csf20": "PR.PS-01",
         },
     ),
 ]

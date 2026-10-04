@@ -175,9 +175,11 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "windows-latest" in yml
     assert "pytest-windows:" in yml
     assert "pytest (windows-latest)" in yml
+    assert "tzdata" in yml
     assert "tests/test_lf_writers.py" in yml
     assert "tests/test_prove_ciso.py" in yml
     assert "tests/test_poam_status_date_local.py" in yml
+    assert "tests/test_framework_env_eval.py" in yml
     gitattributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
     assert "text=auto eol=lf" in gitattributes
     assert "time.tzname" in yml
@@ -484,11 +486,19 @@ def test_load_bind_converts_local_aware_to_true_utc(
 
     monkeypatch.setattr(loader, "bind_run_clock", _capture)
     try:
-        from zoneinfo import ZoneInfo
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
     except ImportError:
         pytest.skip("zoneinfo missing")
-    local = datetime(2026, 9, 30, 21, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
-    with pinned_tz("America/Los_Angeles"):
+    try:
+        local = datetime(2026, 9, 30, 21, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
+    except ZoneInfoNotFoundError:
+        pytest.skip("tzdata missing America/Los_Angeles")
+    # Aware run_at carries the zone; tzset is only needed to pin host local.
+    # Windows has no tzset /usr/share/zoneinfo — still run the bind assert.
+    if hasattr(time, "tzset") and (_zoneinfo_root() / "America/Los_Angeles").exists():
+        with pinned_tz("America/Los_Angeles"):
+            loader.load(run_at=local)
+    else:
         loader.load(run_at=local)
     assert captured
     bound = captured[0]

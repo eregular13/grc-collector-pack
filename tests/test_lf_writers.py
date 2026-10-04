@@ -35,6 +35,7 @@ PACK_WRITER_MODULES = (
     ROOT / "shared" / "poam_ledger.py",
     ROOT / "shared" / "asset_ledger.py",
     ROOT / "shared" / "drop_manifest.py",
+    ROOT / "shared" / "ciso_shape.py",
     ROOT / "shared" / "kev.py",
     ROOT / "collectors" / "grc_loader.py",
     ROOT / "exporters" / "opengrc.py",
