@@ -836,6 +836,25 @@ ENV_EVAL_SENSOR_RULES: dict[str, dict[str, Any]] = {
     },
 }
 
+_SMTP_NEGATIVE = re.compile(
+    r"not an open relay|relay access denied|check:\s*closed",
+    re.I,
+)
+
+
+def _env_eval_heuristic_hit(blob: str) -> dict[str, Any] | None:
+    """First heuristic match. SMTP negatives never classify as open-relay."""
+    if not blob:
+        return None
+    smtp_neg = bool(_SMTP_NEGATIVE.search(blob))
+    for pat, hit in ENV_EVAL_HEURISTICS:
+        if smtp_neg and hit.get("rule_id") == "smtp-open-relay":
+            continue
+        if pat.search(blob):
+            return dict(hit)
+    return None
+
+
 ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
     (
         re.compile(r"smbv?1|smb\s*v1", re.I),
@@ -949,8 +968,7 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
     ),
     (
         re.compile(
-            r"(?i)(?!.*(?:not an open relay|relay access denied|check:\s*closed))"
-            r"(?:open.?relay|smtp captur)"
+            r"(?i)(?<!not an )(?<!not a )open.?relay|smtp captur"
         ),
         {
             "rule_id": "smtp-open-relay",
@@ -1001,10 +1019,7 @@ def _lookup_env_eval_rule(
     if ftype.startswith("sense-") and ftype in ENV_EVAL_SENSOR_RULES:
         return {"sensor": ftype, **ENV_EVAL_SENSOR_RULES[ftype]}
     blob = " ".join(x for x in (title, description, finding_type, sensor) if x)
-    for pat, hit in ENV_EVAL_HEURISTICS:
-        if pat.search(blob):
-            return dict(hit)
-    return None
+    return _env_eval_heuristic_hit(blob)
 
 
 def _dedupe_ids(ids: Any) -> list[str]:
@@ -1061,10 +1076,9 @@ def nist_800_53_ids(
     if rule:
         return _dedupe_ids(rule.get("nist_800_53"))
     blob = " ".join(x for x in (title, description) if x)
-    if blob:
-        for pat, hit in ENV_EVAL_HEURISTICS:
-            if pat.search(blob):
-                return _dedupe_ids(hit.get("nist_800_53"))
+    hit = _env_eval_heuristic_hit(blob)
+    if hit:
+        return _dedupe_ids(hit.get("nist_800_53"))
     return []
 
 
