@@ -219,7 +219,9 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
         ),
         **estate.honesty(),
     }
-    (dest / "MANIFEST.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (dest / "MANIFEST.json").write_text(
+        json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     (dest / "README.md").write_text(
         estate_stamp.banner_md()
         + "\n\n# OpenGRC import drop (file-only)\n\n"
@@ -240,6 +242,7 @@ def write_opengrc(out: Path | None = None, estate: PackEstate | None = None) -> 
         "5. Status is **Not Assessed**. Owner / department / taxonomy FKs stay blank.\n\n"
         "posted=false. No REST. This is not a paying-day PASS.\n",
         encoding="utf-8",
+        newline="\n",
     )
     report["dir"] = str(dest)
     return report

@@ -231,7 +231,7 @@ def run_ciso_path(
         "simplerisk_dir": str(dest_out / "simplerisk"),
     }
     quote_path = dest_out / "quote-shaped.json"
-    quote_path.write_text(json.dumps(quote, indent=2) + "\n", encoding="utf-8")
+    quote_path.write_text(json.dumps(quote, indent=2) + "\n", encoding="utf-8", newline="\n")
     pack_after = fingerprint(pack_in_dir())
     pack_in_written = pack_before != pack_after
     if pack_in_written and not allow_write:

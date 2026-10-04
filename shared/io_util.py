@@ -321,12 +321,12 @@ def stable_hash(*parts: str) -> str:
 
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(redact(data), indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(redact(data), indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(redact(text), encoding="utf-8")
+    path.write_text(redact(text), encoding="utf-8", newline="\n")
 
 
 def write_canonical(source: str, records: list[dict[str, Any]]) -> Path:
@@ -335,7 +335,7 @@ def write_canonical(source: str, records: list[dict[str, Any]]) -> Path:
     lines = []
     for rec in records:
         lines.append(json.dumps(redact(rec), separators=(",", ":")))
-    dest.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    dest.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8", newline="\n")
     return dest
 
 
@@ -346,7 +346,7 @@ def write_raw_copy(source: str, path: Path, parsed: Any | None = None) -> None:
         write_json(dest_dir / f"{path.stem}.parsed.json", parsed)
     else:
         text = redact(read_text(path))
-        (dest_dir / path.name).write_text(text, encoding="utf-8")
+        (dest_dir / path.name).write_text(text, encoding="utf-8", newline="\n")
 
 
 def mark_demo(records: list[dict[str, Any]], used_demo: bool) -> list[dict[str, Any]]:

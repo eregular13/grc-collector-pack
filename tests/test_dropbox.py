@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import hashlib
 import os
 import subprocess
@@ -100,7 +101,7 @@ def test_attest_write_stamps_hash_then_gate_passes(tmp_path: Path) -> None:
     with pytest.raises(GateError, match="hash mismatch"):
         load_scope(scope)
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "attest", "--write", "--scope", str(scope)],
+        [sys.executable, "-m", "dropbox", "attest", "--write", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -113,7 +114,7 @@ def test_attest_write_stamps_hash_then_gate_passes(tmp_path: Path) -> None:
     assert digest in scope.read_text(encoding="utf-8")
     load_scope(scope)
     gate = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--scope", str(scope)],
+        [sys.executable, "-m", "dropbox", "gate", "--scope", str(scope)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -128,7 +129,7 @@ def test_gate_has_no_skip_hash() -> None:
     help_text = build_parser().format_help()
     assert "--skip-hash" not in help_text
     refused = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--skip-hash"],
+        [sys.executable, "-m", "dropbox", "gate", "--skip-hash"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -283,7 +284,7 @@ def test_demo_ingest_writes_existing_formats(tmp_path: Path, monkeypatch: pytest
 
 def test_cli_gate_and_missing(tmp_path: Path) -> None:
     default_ok = subprocess.run(
-        ["python3", "-m", "dropbox", "gate"],
+        [sys.executable, "-m", "dropbox", "gate"],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -292,7 +293,7 @@ def test_cli_gate_and_missing(tmp_path: Path) -> None:
     assert default_ok.returncode == 0, default_ok.stderr
     assert "SCOPE gate OK" in default_ok.stdout
     ok = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [sys.executable, "-m", "dropbox", "gate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -301,7 +302,7 @@ def test_cli_gate_and_missing(tmp_path: Path) -> None:
     assert ok.returncode == 0, ok.stderr
     assert "SCOPE gate OK" in ok.stdout
     bad = subprocess.run(
-        ["python3", "-m", "dropbox", "gate", "--scope", str(tmp_path / "nope.yaml")],
+        [sys.executable, "-m", "dropbox", "gate", "--scope", str(tmp_path / "nope.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -335,7 +336,7 @@ def test_dropbox_lab_cli_uses_work_in(tmp_path: Path, monkeypatch: pytest.Monkey
     work = tmp_path / "work-in"
     monkeypatch.setenv("DROPBOX_WORK_IN", str(work))
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "lab", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [sys.executable, "-m", "dropbox", "lab", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

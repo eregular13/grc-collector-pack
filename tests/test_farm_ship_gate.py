@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import json
 import os
 import shutil
@@ -256,7 +257,7 @@ def test_farm_ship_surface_cli_writes_github_output(tmp_path: Path) -> None:
     env_path = tmp_path / "gha.env"
     proc = subprocess.run(
         [
-            "python3",
+            sys.executable,
             str(SURFACE),
             "--root",
             str(repo),

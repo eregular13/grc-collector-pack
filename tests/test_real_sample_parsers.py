@@ -22,6 +22,7 @@ from shared.greenbone import is_greenbone_xml, parse_greenbone
 from shared.kev import collect_cves
 from shared.nikto import is_nikto_payload, parse_nikto
 from shared.poam_fields import SLA_NOTE, poam_fields, local_run_date
+from shared.scan_time import local_calendar_date
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.testssl import iter_testssl_findings
 
@@ -972,7 +973,9 @@ def test_greenbone_scan_start_feeds_detection_date() -> None:
     hit = _findings(recs)[0]
     assert hit["extra"].get("scan_time") == "2023-09-28T14:48:02Z"
     fields = poam_fields(hit, map_finding(hit), local_run_date())
-    assert fields["original_detection_date"] == "2023-09-28"
+    odd = local_calendar_date("2023-09-28T14:48:02Z")
+    assert odd is not None
+    assert fields["original_detection_date"] == odd.isoformat()
     assert fields["scheduled_completion_date"] != "pending due date"
     assert fields["scheduled_completion_date"] != "not recorded"
 
@@ -980,7 +983,9 @@ def test_greenbone_scan_start_feeds_detection_date() -> None:
     csv_hit = _findings(csv_recs)[0]
     assert csv_hit["extra"].get("scan_time") == "2021-02-25T20:01:27Z"
     csv_fields = poam_fields(csv_hit, map_finding(csv_hit), local_run_date())
-    assert csv_fields["original_detection_date"] == "2021-02-25"
+    csv_odd = local_calendar_date("2021-02-25T20:01:27Z")
+    assert csv_odd is not None
+    assert csv_fields["original_detection_date"] == csv_odd.isoformat()
 
 
 def test_scuba_timestamp_zulu_feeds_detection_date() -> None:
@@ -988,7 +993,9 @@ def test_scuba_timestamp_zulu_feeds_detection_date() -> None:
     hit = _findings(recs)[0]
     assert hit["extra"].get("scan_time") == "2024-03-20T18:42:05.043Z"
     fields = poam_fields(hit, map_finding(hit), local_run_date())
-    assert fields["original_detection_date"] == "2024-03-20"
+    odd = local_calendar_date("2024-03-20T18:42:05.043Z")
+    assert odd is not None
+    assert fields["original_detection_date"] == odd.isoformat()
     assert fields["scheduled_completion_date"] != "pending due date"
 
 
@@ -1012,7 +1019,9 @@ def test_pingcastle_generation_date_feeds_detection_date() -> None:
     hit = next(r for r in _findings(recs) if r["extra"].get("risk_id") == "A-MinPwdLen")
     assert hit["extra"].get("scan_time") == "2024-06-06T13:01:09+02:00"
     fields = poam_fields(hit, map_finding(hit), local_run_date())
-    assert fields["original_detection_date"] == "2024-06-06"
+    odd = local_calendar_date("2024-06-06T13:01:09+02:00")
+    assert odd is not None
+    assert fields["original_detection_date"] == odd.isoformat()
 
 
 def test_pingcastle_rule_specific_remediation() -> None:

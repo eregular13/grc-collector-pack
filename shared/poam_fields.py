@@ -3,9 +3,11 @@
 No invented owners. Scheduled completion dates follow the Evergreen default
 schedule (15/30/90/180 days from original detection by risk rating), clearly
 labeled as such; `due` stays the human-committed date and is left blank.
-Detection dates come from the artifact scan timestamp (labeled UTC / recorded
-offset in poam.md). Missing scan time is the literal ``not recorded`` — never
-the pack run date. The separate FedRAMP export keeps its own template values.
+Detection dates come from the artifact scan timestamp. Newly minted
+``original_detection_date`` values use the same host-local civil-day rule as
+``status_date``. Existing ledger dates are carried as-is. Missing scan time
+is the literal ``not recorded`` — never the pack run date. The separate
+FedRAMP export keeps its own template values.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from shared.scan_time import (  # noqa: F401 — re-exported for callers/tests
     PENDING_DUE,
     artifact_detection,
     calendar_date,
+    local_calendar_date,
     merge_detection,
 )
 from shared.schema import ciso_finding_severity
@@ -51,16 +54,22 @@ SLA_NOTE = (
     "original detection date + risk rating (Critical 15 days, High 30, Moderate 90, "
     "Low 180). They are not a committed date: `due` stays blank until a human commits "
     "one. Owner and point of contact are blank for a human to assign. Original Detection "
-    "Date is the artifact scan timestamp's calendar day in the recorded timezone (UTC "
-    "when the artifact is Zulu; offset-preserving when the artifact carries one — a "
-    "23:00 PT scan stays that calendar day, not the next UTC day). The poam.csv column "
-    "name is unchanged; this UTC / recorded-zone note lives here. When the artifact has "
+    "Date is the artifact scan timestamp's host-local civil day — the same local-day "
+    "rule as status_date (datetime.astimezone(), honoring TZ / time.tzset). A 20:30 "
+    "America/Los_Angeles first detection is that local day, not the next UTC day. "
+    "Bare YYYY-MM-DD and naive stamps stay as recorded. Existing ledger "
+    "original_detection_date values are carried as-is and are not rewritten "
+    "(reobserve does not min() against this-run UTC day — that flipped "
+    "Kiritimati 2026-10-04 to 2026-10-03 on a repeat of the same scan). "
+    "Zone-move: the stored civil day is the first-mint host's local day; "
+    "moving the pack to another TZ does not rewrite it. The "
+    "poam.csv column name is unchanged. When the artifact has "
     "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
     "scheduled / milestone dates stay 'pending due date'. status_date is the host-local "
     "civil day (YYYY-MM-DD) at generation — datetime.now().astimezone(), honoring TZ / "
     "time.tzset. No extra env var or CLI flag. The cell stays a date (no offset). "
     "first_seen / last_seen stay UTC ISO (…Z). status_date can be a day off "
-    "first_seen's UTC day and original_detection_date (local vs UTC / recorded zone). "
+    "first_seen's UTC day (local vs UTC). "
     "The same local status_date is written on poam.csv, poam_fedramp.csv, "
     "simplerisk/poam.csv, and poam-ledger.json on a first run and on rows that "
     "change this run. Reobserved unchanged rows and unobserved carried rows keep "
@@ -122,11 +131,14 @@ def risk_rating(severity: Any) -> str:
 def detection_date(rec: dict[str, Any], fallback: date | None = None) -> date | None:
     """Artifact scan timestamp only. Never collected_at or the pack run date.
 
-    ``fallback`` is accepted for call-site compatibility and ignored.
+    Newly minted dates use the host-local civil day (same rule as
+    ``status_date``). ``fallback`` is accepted for call-site compatibility
+    and ignored.
     """
     del fallback
-    detected, _basis, _tz = artifact_detection(rec)
-    return detected
+    from shared.scan_time import extra_scan_raw
+
+    return local_calendar_date(extra_scan_raw(rec))
 
 
 def detector_source(rec: dict[str, Any]) -> str:

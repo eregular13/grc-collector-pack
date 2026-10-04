@@ -74,6 +74,39 @@ def test_heuristics_smb_s3_rdp_weak_tls() -> None:
     assert len(ENV_EVAL_HEURISTICS) >= 8
 
 
+def test_heuristics_smtp_open_relay_and_world_writable() -> None:
+    """nmap smtp-open-relay / Lynis world-writable; 777 is word-bounded."""
+    nmap_relay = "Host is an open relay (smtp-open-relay NSE)"
+    assert nist_800_53_ids(title=nmap_relay) == ["SC-7", "CM-7"]
+    assert nist_800_53_ids(title="SMTP capture / open mail relay") == ["SC-7", "CM-7"]
+    assert nist_800_53_ids(title="SMTP banner on port 25") == []
+    assert nist_800_53_ids(title="captured packet on 25/tcp") == []
+    assert nist_800_53_ids(title="not an open relay") == []
+    assert nist_800_53_ids(title="relay access denied") == []
+    assert nist_800_53_ids(title="check: closed") == []
+
+    lynis = "World-writable file /etc/cron.d/backup (mode 0777)"
+    assert nist_800_53_ids(title=lynis) == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="File permissions too open") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="mode 0777") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="chmod 0777 /tmp/x") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="octal 777") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="Plugin 17770") == []
+    assert nist_800_53_ids(title="Port 17770/tcp open") == []
+    assert nist_800_53_ids(title="Build 27770") == []
+    assert nist_800_53_ids(title="10.0.777.1") == []
+    assert nist_800_53_ids(title="1.7.777") == []
+    assert nist_800_53_ids(title="SN-777-0042") == []
+    assert nist_800_53_ids(title="CVE-2017-0777") == []
+    assert nist_800_53_ids(title="error code 777") == []
+    from shared.framework_class_map import CSF20_SUBCATEGORIES, _lookup_env_eval_rule
+
+    smtp = _lookup_env_eval_rule(title=nmap_relay)
+    perms = _lookup_env_eval_rule(title=lynis)
+    assert smtp and smtp["csf20"] in CSF20_SUBCATEGORIES
+    assert perms and perms["csf20"] in CSF20_SUBCATEGORIES
+
+
 def test_cis_v8_never_on_client_framework_refs() -> None:
     recs = parse_file(SAMPLES / "probe-cleartext-http.json")
     git = next(r for r in recs if r["extra"]["sensor"] == "sense-git-exposed")

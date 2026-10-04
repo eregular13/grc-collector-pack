@@ -122,6 +122,7 @@ def _run(root: Path) -> dict:
     (work_in / "nmap" / "FARM-E2E-DEMO.txt").write_text(
         "DEMO — farm-toolbin-e2e stubs. Not a client estate. Not pack in/.\n",
         encoding="utf-8",
+        newline="\n",
     )
 
     env = os.environ.copy()
@@ -211,7 +212,7 @@ def _run(root: Path) -> dict:
     elif not stamp["live_discover"] or not stamp["live_deepen"]:
         stamp["status"] = "fail"
         stamp["reason"] = "discover/deepen stub invoke did not run"
-    (work / "farm-toolbin-e2e.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    (work / "farm-toolbin-e2e.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n")
     return stamp
 
 

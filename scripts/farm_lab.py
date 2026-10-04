@@ -104,7 +104,7 @@ def _farm_lab(root: Path) -> dict:
         for path in fixture.iterdir():
             if path.is_file() and not (dest / path.name).exists():
                 shutil.copy2(path, dest / path.name)
-    (work_in / "nmap" / "FARM-DEMO.txt").write_text("DEMO — not a client estate\n", encoding="utf-8")
+    (work_in / "nmap" / "FARM-DEMO.txt").write_text("DEMO — not a client estate\n", encoding="utf-8", newline="\n")
 
     env = os.environ.copy()
     env["IN_DIR"] = str(work_in)
@@ -153,7 +153,7 @@ def _farm_lab(root: Path) -> dict:
     if summary.get("demo") is not True:
         stamp["status"] = "fail"
         stamp["reason"] = "summary.demo is not true"
-    (work / "farm-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    (work / "farm-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n")
     return stamp
 
 

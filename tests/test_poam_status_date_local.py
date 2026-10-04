@@ -142,6 +142,9 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "load(run_at=)" in SLA_NOTE
     assert "Blank or malformed ledger status_date" in SLA_NOTE
     assert "not tracked fields" in SLA_NOTE
+    assert "20:30" in SLA_NOTE
+    assert "carried as-is" in SLA_NOTE
+    assert "same local-day rule" in SLA_NOTE or "host-local civil day" in SLA_NOTE
     assert "host-local run day" in VD_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
     assert "host-local civil day" in schema
@@ -157,6 +160,8 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "Blank or malformed ledger" in schema
     assert "not tracked fields" in schema
     assert "UTC calendar day" not in schema
+    assert "20:30" in schema
+    assert "carried as-is" in schema
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "load(run_at=)" in changelog
     assert "ledger_sha" in changelog
@@ -167,6 +172,16 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "Pacific/Kiritimati" in yml
     assert "pytest-tz:" in yml
     assert "TZ: ${{ matrix.tz }}" in yml
+    assert "windows-latest" in yml
+    assert "pytest-windows:" in yml
+    assert "pytest (windows-latest)" in yml
+    assert "tzdata" in yml
+    assert "tests/test_lf_writers.py" in yml
+    assert "tests/test_prove_ciso.py" in yml
+    assert "tests/test_poam_status_date_local.py" in yml
+    assert "tests/test_framework_env_eval.py" in yml
+    gitattributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    assert "text=auto eol=lf" in gitattributes
     assert "time.tzname" in yml
     assert "permissions:" in yml
     assert "timeout-minutes:" in yml
@@ -197,7 +212,7 @@ def test_poam_fields_status_date_is_local_civil_day(
         fields = poam_fields(rec, map_finding(rec), local_run_date(clock))
         assert fields["status_date"] == local_day
         assert fields["status_date"] != utc_day
-        # Detection date stays the artifact calendar day (out of scope).
+        # Noon UTC is the same civil day in LA / Sydney.
         assert fields["original_detection_date"] == "2026-09-01"
 
 
@@ -221,6 +236,123 @@ def test_ledger_status_date_is_local_civil_day(
         assert item["last_seen"].endswith("Z")
         utc_iso = clock.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert item["first_seen"] == utc_iso
+
+
+def test_original_detection_date_local_day_at_2030_los_angeles() -> None:
+    """20:30 America/Los_Angeles: detection date matches status_date, not next UTC day."""
+    clock = datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc)  # 20:30 PDT Oct 3
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-04T03:30:00Z"
+    with pinned_tz("America/Los_Angeles"):
+        assert clock.astimezone().date().isoformat() == "2026-10-03"
+        assert clock.astimezone(timezone.utc).date().isoformat() == "2026-10-04"
+        fields = poam_fields(rec, map_finding(rec), local_run_date(clock))
+        assert fields["status_date"] == "2026-10-03"
+        assert fields["original_detection_date"] == "2026-10-03"
+        assert fields["original_detection_date"] != "2026-10-04"
+        ledger = apply_ledger(
+            [rec],
+            catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+            run_at=clock,
+            prior_existed=False,
+        )
+        item = next(iter(ledger["items"].values()))
+        assert item["status_date"] == "2026-10-03"
+        assert item["original_detection_date"] == "2026-10-03"
+
+
+def test_carried_ledger_original_detection_date_not_rewritten() -> None:
+    """Existing ledger dates stay as stored. No TZ pin — carry-as-is is zone-free."""
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-04T03:30:00Z"
+    first = apply_ledger(
+        [rec],
+        catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+        run_at=datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc),
+        prior_existed=True,
+    )
+    item = next(iter(first["items"].values()))
+    item["original_detection_date"] = "2026-10-04"
+    first["sha256"] = ""
+    clock = datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc)
+    second = apply_ledger(
+        [rec],
+        catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+        run_at=clock,
+        ledger_in=first,
+        prior_existed=True,
+    )
+    item2 = next(iter(second["items"].values()))
+    assert item2["original_detection_date"] == "2026-10-04"
+    assert item2["poam_id"] == item["poam_id"]
+
+
+def test_kiritimati_two_run_detection_date_and_due_unchanged() -> None:
+    """Same host, same scan at 2026-10-03T20:30Z under Pacific/Kiritimati.
+
+    Run 1 mints local 2026-10-04 (High due 2026-11-03). Run 2 must carry
+    both cells; only a reobserved event. merge_detection vs UTC would
+    flip to 2026-10-03 / 2026-11-02.
+    """
+    clock = datetime(2026, 10, 3, 20, 30, tzinfo=timezone.utc)
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-03T20:30:00Z"
+    with pinned_tz("Pacific/Kiritimati"):
+        assert clock.astimezone().date().isoformat() == "2026-10-04"
+        first = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            prior_existed=False,
+        )
+        item = next(iter(first["items"].values()))
+        assert item["original_detection_date"] == "2026-10-04"
+        assert item["template_due"] == "2026-11-03"
+        second = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            ledger_in=first,
+            prior_existed=True,
+        )
+        item2 = next(iter(second["items"].values()))
+        assert item2["original_detection_date"] == "2026-10-04"
+        assert item2["template_due"] == "2026-11-03"
+        assert item2["effective_due"] == item["effective_due"]
+        kinds = [e.get("kind") for e in (second.get("events_this_run") or [])]
+        assert kinds == ["reobserved"]
+
+
+def test_reopen_mints_host_local_detection_date_not_utc() -> None:
+    """Mutant c5: reopen uses _new_item host-local mint, not a UTC overwrite."""
+    clock = datetime(2026, 10, 3, 20, 30, tzinfo=timezone.utc)
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-03T20:30:00Z"
+    with pinned_tz("Pacific/Kiritimati"):
+        first = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            prior_existed=False,
+        )
+        item = next(iter(first["items"].values()))
+        item["status"] = "closed"
+        item["closed_date"] = "2026-10-04"
+        first["sha256"] = ""
+        second = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            ledger_in=first,
+            prior_existed=True,
+        )
+        item2 = next(iter(second["items"].values()))
+        assert item2["status"] == "reopened"
+        assert item2["original_detection_date"] == "2026-10-04"
+        assert item2["original_detection_date"] != "2026-10-03"
+        assert item2["template_due"] == "2026-11-03"
+        kinds = [e.get("kind") for e in (second.get("events_this_run") or [])]
+        assert "reopened" in kinds
 
 
 def _catalog():
@@ -421,11 +553,19 @@ def test_load_bind_converts_local_aware_to_true_utc(
 
     monkeypatch.setattr(loader, "bind_run_clock", _capture)
     try:
-        from zoneinfo import ZoneInfo
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
     except ImportError:
         pytest.skip("zoneinfo missing")
-    local = datetime(2026, 9, 30, 21, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
-    with pinned_tz("America/Los_Angeles"):
+    try:
+        local = datetime(2026, 9, 30, 21, 0, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
+    except ZoneInfoNotFoundError:
+        pytest.skip("tzdata missing America/Los_Angeles")
+    # Aware run_at carries the zone; tzset is only needed to pin host local.
+    # Windows has no tzset /usr/share/zoneinfo — still run the bind assert.
+    if hasattr(time, "tzset") and (_zoneinfo_root() / "America/Los_Angeles").exists():
+        with pinned_tz("America/Los_Angeles"):
+            loader.load(run_at=local)
+    else:
         loader.load(run_at=local)
     assert captured
     bound = captured[0]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import hashlib
 import json
 import subprocess
@@ -148,7 +149,7 @@ def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
     out = tmp_path / "sched-out"
     proc = subprocess.run(
         [
-            "python3",
+            sys.executable,
             "-m",
             "dropbox",
             "schedule",
@@ -179,7 +180,7 @@ def test_schedule_cli_refuses_vanity_and_demo_live(tmp_path: Path) -> None:
     assert data["plan_only"] is True
     live = subprocess.run(
         [
-            "python3",
+            sys.executable,
             "-m",
             "dropbox",
             "schedule",
@@ -216,7 +217,7 @@ def test_ciso_cli_sor_posted_false_riskready_no_http(tmp_path: Path) -> None:
     env["DROPBOX_LIVE"] = "0"
     proc = subprocess.run(
         [
-            "python3",
+            sys.executable,
             "-m",
             "dropbox",
             "ciso",
@@ -249,7 +250,7 @@ def test_schedule_cli_scope_and_keep_samples(tmp_path: Path) -> None:
     empty = tmp_path / "empty.yaml"
     empty.write_text("", encoding="utf-8")
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "schedule", "--scope", str(empty)],
+        [sys.executable, "-m", "dropbox", "schedule", "--scope", str(empty)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -260,7 +261,7 @@ def test_schedule_cli_scope_and_keep_samples(tmp_path: Path) -> None:
     out = tmp_path / "sched-out"
     proc = subprocess.run(
         [
-            "python3",
+            sys.executable,
             "-m",
             "dropbox",
             "schedule",
@@ -322,7 +323,7 @@ def test_schedule_cli_never_writes_pack_in(tmp_path: Path) -> None:
     before = fingerprint(pack)
     proc = subprocess.run(
         [
-            "python3",
+            sys.executable,
             "-m",
             "dropbox",
             "schedule",

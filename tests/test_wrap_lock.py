@@ -8,6 +8,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+from tests.posix_only import requires_unix_shell
+
 ROOT = Path(__file__).resolve().parents[1]
 RR = ROOT / "push_riskready.sh"
 CISO = ROOT / "push_ciso.sh"
@@ -46,6 +48,7 @@ def test_riskready_script_has_no_http_client() -> None:
         assert path not in code, f"wrap path in executable line: {path}"
 
 
+@requires_unix_shell
 def test_riskready_push_1_is_review_only(tmp_path: Path) -> None:
     """RISKREADY_PUSH=1 stays fail-closed: no login, no HTTP, no POST."""
     markers: dict[str, Path] = {}

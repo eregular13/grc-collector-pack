@@ -153,7 +153,7 @@ def write_ciso_import_manifest(
             "",
         ]
     )
-    guide.write_text("\n".join(lines), encoding="utf-8")
+    guide.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     return dest
 
 

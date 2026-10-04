@@ -3,7 +3,8 @@
 # DESKTOP (no make / no gh): .\scripts\farm_drop_to_sor.ps1
 param(
     [string]$Work = "",
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+    [string]$PriorOut = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,7 +40,12 @@ $Start = Get-Date
 
 if (-not $VerifyOnly) {
     Write-Host "farm_drop_to_sor: python scripts/prove_ciso.py (pack_drop -> CISO)"
-    & $Python $ProvePy --work $Work
+    if ([string]::IsNullOrWhiteSpace($PriorOut)) {
+        & $Python $ProvePy --work $Work
+    } else {
+        $PriorOut = Resolve-RepoPath $PriorOut
+        & $Python $ProvePy --work $Work --prior-out $PriorOut
+    }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

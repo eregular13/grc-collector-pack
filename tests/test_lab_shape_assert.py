@@ -8,6 +8,7 @@ assert_risk_register_and_poam runs on out/. LAB != SAMPLE != client.
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import json
 import os
 import shutil
@@ -156,6 +157,7 @@ def test_prove_use_existing_in_fail_closed_on_rustscan_sibling(tmp_path: Path) -
 
 
 def test_lab_shape_fail_cli_and_wrapper_are_stable(tmp_path: Path) -> None:
+    skip_unless_bash()
     dest = tmp_path / "prove"
     dest_in = dest / "in"
     stage_lab_drop_dest_in(dest_in)

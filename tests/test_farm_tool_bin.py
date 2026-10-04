@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.posix_only import requires_unix_shell
+
 from dropbox.orchestrator.byo import farm_which
 from dropbox.orchestrator.pipeline import external_stage, orchestrate
 from dropbox.scanner_free import LAB_STUB_DIR, is_demo_lab_stub
@@ -140,6 +142,7 @@ def test_farm_tool_bin_dry_invoke_deepen_external_adjacent(
             assert needle in blob, (slot, needle)
 
 
+@requires_unix_shell
 def test_farm_which_refuses_every_license_lock_spawn_in_tool_bin_and_lab(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

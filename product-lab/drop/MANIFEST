@@ -1,7 +1,7 @@
 # product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M + OpenGRC + Probo
 
 Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.
-Copied from out/ after host lab 2026-10-04T01:26:05Z (this Linux VM).
+Copied from out/ after host lab 2026-10-04T05:19:10Z (this Linux VM).
 OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).
 Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
 OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.
@@ -12,20 +12,20 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 |---|---|---|
 | ciso/applied_controls.csv | 119 | `9c516d06f0a0c2839e318dcddbae8e7555b7853df14ab5ba9b0fb40124b65cd9` |
 | ciso/assets.csv | 79 | `8d5cf4aed706f714a54e24a8f11e2a1d71ebe1cfceacf5b1e2f1b2a8f8bddfba` |
-| ciso/evidences.csv | 34 | `e01fabba9c99f37b28ec1a15525815a2421d32abe5a75b75fee36385a109d37a` |
+| ciso/evidences.csv | 34 | `a2703904515b9eb39d6ca3ac964b511395e8f926d727a48c7b5bc7cc60732112` |
 | ciso/findings.csv | 103 | `3693b80bb7c60115dd8ca857eeb73eecebead44e389e9405b9094e206b12605a` |
 | ciso/risk_scenarios.csv | 125 | `5083363cbe02cb4f1954926a4d055c74adbe65439eff5e4c3d2980ddb68e002a` |
 | ciso/vulnerabilities.csv | 22 | `9427285183d236db88d1b6803910116b27116e676cf30d20b96e8591809f3156` |
-| ciso/ESTATE.txt | draft | `672280df30d4fffa62fdcd1fe97f148a3d6f822ecf69bf057477e85b2cf2a907` |
+| ciso/ESTATE.txt | draft | `790881a3f5b03d0a456c4d71a5b1437c994d829160e382fc2448d59c74aceee6` |
 | poam/poam.csv | 119 | `0380af9e12027844c58d3c6ada612b5b244cfae9b0f6b3aae5a889d93ceae083` |
-| poam/poam.md | draft | `5b06ed67852a3c176a03e618a7df187f64079e4f9399d11ae63042b056967ba6` |
+| poam/poam.md | draft | `3c5790e1054c272ce6f76d9e47286a2739f43dbeb6a6313c386624d1b3e2aafb` |
 | poam/excluded.csv | 13 | `073c8ba4a42596a6436acab17196774c8b339ba49ad72592a147f579363fc4f8` |
 | poam/poam_members.csv | 119 | `3e38ca7507842514ad7d20fe61424100a37759e5beb8d359e886bd5be07d06ef` |
 | poam/poam_fedramp.csv | 119 | `ea97c4750815f86ae8d8072add1cb49d7813ea762196f9167db6f8e6e1945491` |
-| poam/poam-ledger.json | draft | `7658578b72f14b6316488ae8c050481bf87d10aa655cc90aa9ae951b4b9edeba` |
-| poam/ESTATE.txt | draft | `64b366c1ecf69d85c1096a5bff4ca201b8cc5ace959def1de51d6f66e2c29958` |
-| EXECUTIVE_SUMMARY.md | draft | `d87e70522fce1e533f9b071c12d567a1252e6e9a33bed2cfed26a7847888d243` |
-| SCOPE_AND_TRUST.md | draft | `56beedb46ee899eda2a8043da5033b7c3114ec83ce0162cfdb90c93b366a7301` |
+| poam/poam-ledger.json | draft | `d3f8d65c135f24419fbae560b4ee117e5d24ba994a8fdad1dcdba67ea80209dd` |
+| poam/ESTATE.txt | draft | `b4d00b63cf80757556ea059509f4820aabcbae813f011cc43252df2a35b968ea` |
+| EXECUTIVE_SUMMARY.md | draft | `50299c1be7ec5448df7799d043ebe45ef5d96febbc3fc2eed82aef2a13fb1b87` |
+| SCOPE_AND_TRUST.md | draft | `009caa783240c67459fc1909fcd04779755a68e0650a6a95ac6e6cecb4daaa3e` |
 | opengrc/risks.csv | 125 | `17ed995d306e2ec070505f8e5a1ab10b21231e9713c38b2d05ece13b25e6f4e4` |
 | opengrc/assets.csv | 79 | `37f90c7910426452a3777348fe4270390eaf916cabac672f2ea09d342102ad46` |
 | opengrc/implementations.csv | 119 | `0c73006406347edb5b82f298898a9992ce04ff28df75ac928c9fe7554b42aaca` |
@@ -34,3 +34,5 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 Do not POST /api/risks.
 
 POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row.
+
+Verify hashes with `sha256sum -c SHA256SUMS` or `python scripts/verify_manifest.py product-lab/drop` (MANIFEST is this count table, not sha256sum format).

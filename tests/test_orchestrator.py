@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import json
 import subprocess
 from pathlib import Path
@@ -104,7 +105,7 @@ def test_orchestrate_cli_plan_only(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("DROPBOX_ORCH_DIR", str(tmp_path / "orch"))
     monkeypatch.setenv("PYTHONPATH", str(ROOT))
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
+        [sys.executable, "-m", "dropbox", "orchestrate", "--scope", str(ROOT / "dropbox" / "SCOPE.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -123,7 +124,7 @@ def test_orchestrate_cli_plan_only(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 def test_orchestrate_requires_scope_gate(tmp_path: Path) -> None:
     proc = subprocess.run(
-        ["python3", "-m", "dropbox", "orchestrate", "--scope", str(tmp_path / "none.yaml")],
+        [sys.executable, "-m", "dropbox", "orchestrate", "--scope", str(tmp_path / "none.yaml")],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

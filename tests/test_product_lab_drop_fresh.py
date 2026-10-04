@@ -6,10 +6,12 @@ drop drifts from collectors + grc_loader + refresh on HEAD.
 
 Compares masked content (not just IDs/counts) for CISO CSVs, poam.csv,
 poam.md, FedRAMP, excluded.csv, and the POA&M ledger. Masks the
-status_date column, run-clock phrases (ingested-from / loader
-canonical-records ISO-Z), pack/commit lines (hex or ``not recorded``),
-and ledger clocks so the check stays TZ- and date-proof in git and
-archive trees. Artifact ISO-Z times (honeypot scan) stay compared.
+status_date column, original_detection_date / scheduled SLA civil days
+(now host-local like status_date), run-clock phrases (ingested-from /
+loader canonical-records ISO-Z), pack/commit lines (hex or
+``not recorded``), and ledger clocks so the check stays TZ- and
+date-proof in git and archive trees. Artifact ISO-Z times (honeypot
+scan) stay compared.
 The drop has no simplerisk/ folder — that surface is not locked here.
 
 DEMO/SAMPLE fixtures. Never client KEEP. No POST /api/risks.
@@ -78,7 +80,7 @@ KEY_ASSET_IDS = {
 }
 EGP_RE = re.compile(r"EGP-[0-9A-F]{10}")
 # Run-clock phrases only. Artifact ISO-Z (honeypot scan time) stays compared.
-# SLA scheduled dates and artifact calendar days are not masked.
+# Host-local civil days (status / original detection / SLA schedule) are masked.
 _RUN_ISO_RE = re.compile(
     r"((?:ingested from \S+|Normalized \d+ canonical records) at )"
     r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
@@ -98,7 +100,18 @@ _STAMP_ALT_RE = re.compile(
     re.IGNORECASE,
 )
 LEDGER_CLOCK_KEYS = frozenset(
-    {"first_seen", "last_seen", "run_at", "status_date", "sha256", "at"}
+    {
+        "first_seen",
+        "last_seen",
+        "run_at",
+        "status_date",
+        "original_detection_date",
+        "scheduled_completion_date",
+        "effective_due",
+        "template_due",
+        "sha256",
+        "at",
+    }
 )
 
 
@@ -164,8 +177,18 @@ def _fedramp_rows(path: Path) -> list[dict[str, str]]:
     return rows
 
 
-def _is_status_date_key(key: str) -> bool:
-    return key.strip().lower().replace("_", " ") == "status date"
+def _is_host_local_civil_day_key(key: str) -> bool:
+    """status_date, original_detection_date, and SLA schedule cells follow TZ."""
+    norm = key.strip().lower().replace("_", " ")
+    return norm in {
+        "status date",
+        "original detection date",
+        "scheduled completion date",
+        "planned milestones",
+        "milestones",
+        "effective due",
+        "template due",
+    }
 
 
 def _mask_run_stamps(text: str) -> str:
@@ -194,8 +217,8 @@ def _mask_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
         out: dict[str, str] = {}
         for key, value in row.items():
             cell = str(value or "")
-            if _is_status_date_key(str(key or "")):
-                out[str(key)] = "<STATUS_DATE>"
+            if _is_host_local_civil_day_key(str(key or "")):
+                out[str(key)] = "<LOCAL_DAY>"
             else:
                 out[str(key)] = _mask_run_stamps(cell)
         masked.append(out)

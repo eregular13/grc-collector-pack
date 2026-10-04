@@ -7,7 +7,7 @@ import hashlib
 import importlib
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -25,7 +25,8 @@ from shared.kev import (
     write_snapshot_files,
 )
 from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
-from shared.poam_fields import _to_date
+from shared.poam_fields import SLA_DAYS, _to_date
+from shared.scan_time import local_calendar_date
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -192,9 +193,11 @@ def test_1_6_4_col_m_never_written_effective_due_min(
     assert rows[0]["Scheduled Completion Date"] == ""
     ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
     item = next(iter(ledger["items"].values()))
-    # High +30 from 2026-09-01 = 2026-10-01; KEV due 2026-09-05 is earlier
+    # High +30 from the host-local detection day; KEV due 2026-09-05 is earlier
+    detected = local_calendar_date("2026-09-01T00:00:00Z")
+    assert detected is not None
     assert item["effective_due"] == "2026-09-05"
-    assert item["template_due"] == "2026-10-01"
+    assert item["template_due"] == (detected + timedelta(days=SLA_DAYS["High"])).isoformat()
     md = (out / "poam" / "poam.md").read_text(encoding="utf-8")
     assert "template formula" in md.lower() or "blank" in md.lower()
 

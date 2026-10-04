@@ -531,7 +531,7 @@ def write_attestation_hash(scope_path: Path, digest: str) -> None:
             out.append(line)
     if not updated:
         raise GateError("consent.attestation_sha256 line not found")
-    scope_path.write_text("".join(out), encoding="utf-8")
+    scope_path.write_text("".join(out), encoding="utf-8", newline="\n")
 
 
 def _key_is_ascii(key: str) -> bool:

@@ -1,8 +1,10 @@
 """Artifact scan timestamps for original_detection_date.
 
 Never use the pack run date. When the artifact records no scan time the
-literal ``not recorded`` is written. Calendar dates keep the timestamp's
-own zone (no silent UTC day-shift).
+literal ``not recorded`` is written. New ``original_detection_date``
+values use ``local_calendar_date`` (same host-local civil-day rule as
+``status_date``). ``calendar_date`` / ``merge_detection`` keep the
+timestamp's recorded zone so existing ledger dates are not rewritten.
 
 The future-epoch cutoff (tiny/1970 epochs and stamps past the run) is
 tied to the pack run clock — the run start passed through the pipeline
@@ -310,6 +312,35 @@ def calendar_date(raw: Any, *, now: datetime | date | None = None) -> date | Non
     return parsed[0].date()
 
 
+def local_calendar_date(raw: Any, *, now: datetime | date | None = None) -> date | None:
+    """Host-local civil day of an artifact timestamp (same rule as status_date).
+
+    Aware stamps convert to the generating host timezone
+    (``datetime.astimezone()``, honoring ``TZ`` / ``time.tzset``) before
+    taking the date. Naive stamps and bare ``YYYY-MM-DD`` civil days stay
+    as recorded — stored ledger dates are never reinterpreted.
+    """
+    if raw in (None, ""):
+        return None
+    if isinstance(raw, date) and not isinstance(raw, datetime):
+        return raw
+    text = str(raw).strip() if not isinstance(raw, datetime) else ""
+    if text.lower() == NOT_RECORDED:
+        return None
+    if text and re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        try:
+            return date.fromisoformat(text)
+        except ValueError:
+            return None
+    parsed = parse_scan_datetime(raw, now=now)
+    if not parsed:
+        return None
+    dt = parsed[0]
+    if dt.tzinfo is None:
+        return dt.date()
+    return dt.astimezone().date()
+
+
 def to_date(raw: Any, *, now: datetime | date | None = None) -> date | None:
     """Public date parse used by ledger / KEV. No silent UTC day-shift."""
     return calendar_date(raw, now=now)
@@ -376,7 +407,17 @@ def merge_detection(
     *,
     now: datetime | date | None = None,
 ) -> str:
-    """First observed wins; earliest real wins over ``not recorded``; never later."""
+    """Alias-collapse earliest-wins only. Reobserve does **not** call this.
+
+    A stored YYYY-MM-DD is the host-local civil day of first mint. Later
+    runs keep that cell (see ``apply_ledger``). Using this helper on
+    reobserve against the scan instant's UTC day rewrites a Kiritimati
+    first-run ``2026-10-04`` to ``2026-10-03``. Zone-move edge: an estate
+    that first-ran east of UTC keeps that later civil day when later
+    processed in UTC; a UTC first-run keeps the earlier day in Kiritimati.
+    We do not store a first-seen instant (YYYY-MM-DD is the wire); carry
+    as-is is the non-invasive fix.
+    """
     stored_d = calendar_date(stored, now=now) if stored and stored != NOT_RECORDED else None
     incoming_d = calendar_date(incoming_raw, now=now)
     if stored_d and incoming_d:

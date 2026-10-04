@@ -687,7 +687,7 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
         ),
     }
     for name, text in payloads.items():
-        (folder / name).write_text(text, encoding="utf-8")
+        (folder / name).write_text(text, encoding="utf-8", newline="\n")
     if with_poam:
         poam = folder.parent / "poam" / "poam.csv"
         poam.parent.mkdir(parents=True, exist_ok=True)
@@ -697,14 +697,17 @@ def write_minimal_register(ciso: Path, *, with_poam: bool = True) -> None:
             + "POAM-DEMO-F,DEMO-F,SC-7,SAMPLE stub,sample,,2026-01-01,2026-01-31,2026-01-01,"
             + "M1 2026-01-08 Validate; M2 2026-01-24 Apply fix; M3 2026-01-31 Rescan,High,,\n",
             encoding="utf-8",
+            newline="\n",
         )
         (folder.parent / "poam" / "poam.md").write_text(
             "# POA&M (operator draft)\nSAMPLE stub. Not a client.\n",
             encoding="utf-8",
+            newline="\n",
         )
         (folder.parent / "poam" / "excluded.csv").write_text(
             EXCLUDED_HEADER + "\n"
             "DEMO-I,DEMO-I,sample-info,sample-asset,info,severity_info,,INFO_ONLY,,demo,info-only\n"
             "DEMO-H,DEMO-H,sample-honeypot,sample-asset,high,honeypot,,HONEYPOT,,demo,honeypot\n",
             encoding="utf-8",
+            newline="\n",
         )

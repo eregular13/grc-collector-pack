@@ -6,6 +6,7 @@ path and demand a full git clone — not ModuleNotFoundError.
 
 from __future__ import annotations
 
+from tests.posix_only import skip_unless_bash
 import os
 import subprocess
 import sys
@@ -120,6 +121,7 @@ def test_sample_to_sor_scripts_name_keep_files_and_full_clone() -> None:
 
 @pytest.mark.parametrize("skip", KEEP_PACKAGE_FILES)
 def test_sample_to_sor_sh_fails_closed_on_partial_clone(tmp_path: Path, skip: str) -> None:
+    skip_unless_bash()
     scripts = tmp_path / "scripts"
     scripts.mkdir()
     dest = scripts / "sample_to_sor.sh"

@@ -1,3 +1,7 @@
+# Default LF so windows-latest checkout matches Linux pytest / MANIFEST hashes.
+# Binary detection stays on (text=auto). Existing eol=lf pins below still win.
+* text=auto eol=lf
+
 # Consent bytes are hashed into SCOPE.yaml. Keep LF so Windows autocrlf
 # cannot rewrite dropbox/consent/* and drift attestation_sha256.
 dropbox/consent/** text eol=lf
@@ -8,3 +12,6 @@ dropbox/SCOPE.example.yaml text eol=lf
 product-lab/drop/** text eol=lf
 # LAB dest_in hardening drop (Lynis/OpenSCAP/HardeningKitty) SHA256 is of LF blobs.
 fixtures/lab-drop/** text eol=lf
+fixtures/** text eol=lf
+scripts/** text eol=lf
+*.sh text eol=lf

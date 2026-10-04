@@ -1,9 +1,9 @@
 # Drop package
 
-**Copied:** 2026-10-04T01:26:05Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
+**Copied:** 2026-10-04T05:19:10Z from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). SAMPLE/DEMO. Not a client. Not a LAB dest_in prove.
 
-See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
+See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts. Verify bytes with `SHA256SUMS` (`sha256sum -c SHA256SUMS` or `python scripts/verify_manifest.py product-lab/drop`).
 
 Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 

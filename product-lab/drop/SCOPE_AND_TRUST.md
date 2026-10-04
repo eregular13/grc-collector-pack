@@ -1,7 +1,7 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-10-04 01:26 UTC · pack `8202a0c`
+> Run `not recorded` · generated 2026-10-04 05:19 UTC · pack `05c1551`
 
-**DEMO: NOT A CLIENT**. Run `not recorded`, pack `8202a0c`, generated 2026-10-04 01:26 UTC.
+**DEMO: NOT A CLIENT**. Run `not recorded`, pack `05c1551`, generated 2026-10-04 05:19 UTC.
 
 ### Authorization
 - No client authorization applies. No client systems were touched.
@@ -41,5 +41,5 @@ Covers only the listed scanners at collection time. A clean area is not proof of
 
 ### Integrity and traceability
 - Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.
-- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with `sha256sum -c MANIFEST`.
+- SHA-256 hashes for every exported file are in `SHA256SUMS`. Verify with `sha256sum -c SHA256SUMS` (Git Bash / Linux) or `python scripts/verify_manifest.py`.
 - Contact for questions or corrections: not recorded.

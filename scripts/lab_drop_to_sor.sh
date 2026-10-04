@@ -19,10 +19,11 @@ export DROPBOX_LIVE=0
 PYTHON="${PYTHON:-python3}"
 WORK="$ROOT/prove/work"
 VERIFY_ONLY=0
+PRIOR_OUT=""
 
 usage() {
   cat <<'EOF'
-usage: scripts/lab_drop_to_sor.sh [--work DIR] [--verify-only]
+usage: scripts/lab_drop_to_sor.sh [--work DIR] [--verify-only] [--prior-out DIR]
 
 LAB dest_in -> prove/work/out/ciso-assistant/ (no fixture reseed).
 Requires DIR/in already populated (DESKTOP compose lab pack_drop or operator copy).
@@ -54,6 +55,10 @@ while [[ $# -gt 0 ]]; do
       VERIFY_ONLY=1
       shift
       ;;
+    --prior-out|--prior-ledger)
+      PRIOR_OUT="$(abs_path "$2")"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -73,7 +78,11 @@ POAM_MD="$WORK/out/poam/poam.md"
 
 if [[ "$VERIFY_ONLY" -eq 0 ]]; then
   echo "lab_drop_to_sor: python3 scripts/prove_ciso.py --use-existing-in (LAB dest_in -> CISO)"
-  "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK" --use-existing-in
+  if [[ -n "$PRIOR_OUT" ]]; then
+    "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK" --use-existing-in --prior-out "$PRIOR_OUT"
+  else
+    "$PYTHON" "$ROOT/scripts/prove_ciso.py" --work "$WORK" --use-existing-in
+  fi
 fi
 
 echo "lab_drop_to_sor: verify prove-ciso.json honesty"

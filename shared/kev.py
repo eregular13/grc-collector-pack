@@ -284,7 +284,7 @@ def write_snapshot_files(
         raw = (json.dumps(catalog, indent=2) + "\n").encode("utf-8")
     sha = hashlib.sha256(raw).hexdigest()
     (dest / KEV_JSON_NAME).write_bytes(raw)
-    (dest / KEV_SHA_NAME).write_text(sha + "\n", encoding="utf-8")
+    (dest / KEV_SHA_NAME).write_text(sha + "\n", encoding="utf-8", newline="\n")
     prov = {
         "source_url": source_url,
         "fetched_at_utc": fetched_at_utc,
@@ -293,7 +293,9 @@ def write_snapshot_files(
         "count": catalog.get("count"),
         "sha256": sha,
     }
-    (dest / KEV_PROV_NAME).write_text(json.dumps(prov, indent=2) + "\n", encoding="utf-8")
+    (dest / KEV_PROV_NAME).write_text(
+        json.dumps(prov, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     return prov
 
 
