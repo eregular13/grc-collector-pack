@@ -87,7 +87,7 @@ def is_csv_formula(value: Any) -> bool:
 
     Bare ``-``, numeric ``-1`` / ``-1.5``, and phone-style ``+44…`` are not
     formulas. ``=``, ``@SUM(``, ``+cmd``, ``-cmd|``, ``+1+1``, ``-1+1``,
-    ``-2+3+cmd|…``, and tab/CR-prefixed forms are.
+    ``-2+3+cmd|…``, ``-(1)``, ``--``, and tab/CR-prefixed forms are.
     """
     text = str(value or "").lstrip("\ufeff \t\r")
     if not text:

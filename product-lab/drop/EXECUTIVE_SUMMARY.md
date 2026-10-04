@@ -1,5 +1,5 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-10-04 00:33 UTC · pack `938ee03`
+> Run `not recorded` · generated 2026-10-04 01:13 UTC · pack `b4f2ffc`
 
 **DEMO: NOT A CLIENT**. Assessment window 2026-09-04 to 2026-09-24 (66 of 210 rows dated).
 
@@ -19,6 +19,8 @@ Open POA&M (poam.csv): 119
 
 Changed since last run: open=119 new=125 pending verification=0 reopened=0 closed=0.
 Ledger open including excluded: 125.
+
+Ledger warning: LEDGER_LOST (first run: no prior ledger).
 
 125 weaknesses, 119 POA&M, 13 excluded, 0 kind-excluded, 125 register (119 + (13 - 7) = 125; 125 + 0 - 0 = 125).
 7 C5 duplicate-instance extras stay off the register.

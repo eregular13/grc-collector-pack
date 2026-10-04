@@ -24,6 +24,7 @@ from exporters.model import (
     score_severity,
 )
 from shared.estate_pages import write_csv_with_estate, write_estate_sidecar
+from shared.io_util import neutralize_csv_formula
 
 # OpenGRC Risk fillable (app/Models/Risk.php) + import-by-code upsert.
 # Wizard maps known field names; extra columns are omitted.
@@ -55,14 +56,18 @@ IMPLEMENTATIONS_HEADER = ["title", "details", "notes"]
 
 
 def _write_csv(path: Path, header: list[str], rows: list[list[Any]], stamp=None) -> None:
+    cleaned = [
+        [neutralize_csv_formula(c) if isinstance(c, str) else c for c in row]
+        for row in rows
+    ]
     if stamp is None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8", newline="") as fh:
             writer = csv.writer(fh)
             writer.writerow(header)
-            writer.writerows(rows)
+            writer.writerows(cleaned)
         return
-    write_csv_with_estate(path, header, rows, stamp)
+    write_csv_with_estate(path, header, cleaned, stamp)
 
 
 def _risk_row_from_scenario(scenario, estate: PackEstate) -> list[Any]:

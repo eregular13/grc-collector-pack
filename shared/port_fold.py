@@ -7,6 +7,16 @@ second POA&M weakness.
 Match: normalized host identity (asset, IP, hostname, URL host) + port.
 Protocol is considered when both sides name one; a missing proto still matches.
 
+Host:port vs image:tag (``_host_port_from_token`` / ``_strip_host``):
+
+- ``host.corp:http`` / ``:https`` → host + scheme default port (80 / 443).
+  IP-left ``10.0.0.5:https`` still splits with an empty port (master).
+- ``user@h:22`` is userinfo@host:port → host ``h``, port 22.
+  ``user@domain`` with no port stays sAMAccount-before-@ identity.
+- ``redis:7`` is host:port unless the finding is a container image
+  (trivy / grype / docker / ``extra.image`` / category container|image),
+  in which case it is image:tag (no port). ``app-server:latest`` stays whole.
+
 Multiple specifics on the same host+port: pick one stable winner —
 highest severity, then lowest EGP- id (then lowest ref_id). Documented here
 so excluded.csv is deterministic.
@@ -85,6 +95,9 @@ _PORT_ONLY_NAME = re.compile(
     re.I,
 )
 _SCHEME_DEFAULT_PORT = {"http": "80", "https": "443"}
+# Bare host:service (no ://) uses the same defaults. Not image:tag.
+_SERVICE_DEFAULT_PORT = dict(_SCHEME_DEFAULT_PORT)
+_IMAGE_TAG_LABELS = frozenset({"trivy", "grype", "docker", "container", "syft"})
 
 
 def _labels(rec: dict[str, Any]) -> set[str]:
@@ -107,10 +120,48 @@ def _left_is_ip(left: str) -> bool:
         return False
 
 
-def _host_port_from_token(text: str) -> tuple[str, str]:
-    """Parse host:port, [IPv6]:port, or a bare host. No urlsplit."""
+def _looks_image_name(left: str) -> bool:
+    """Single-name image (redis, nginx), not host.corp or an IP."""
+    text = str(left or "").strip()
+    if not text or _left_is_ip(text):
+        return False
+    if "." in text:
+        return False
+    return True
+
+
+def is_image_tag_context(rec: dict[str, Any]) -> bool:
+    """True when the finding is about a container image, not a scanned host.
+
+    ``redis:7`` is image:tag (no port) here; the same token on an nmap row
+    stays host ``redis`` port ``7``.
+    """
+    extra = extra_dict(rec)
+    if _labels(rec) & _IMAGE_TAG_LABELS:
+        return True
+    tool = str(
+        extra.get("tool") or extra.get("scanner") or extra.get("adapter") or ""
+    ).strip().lower()
+    if tool in _IMAGE_TAG_LABELS:
+        return True
+    if str(extra.get("image") or extra.get("image_name") or "").strip():
+        return True
+    cat = str(rec.get("category") or "").strip().lower()
+    return cat in {"container", "image"}
+
+
+def _host_port_from_token(
+    text: str, *, image_tag_context: bool = False
+) -> tuple[str, str]:
+    """Parse host:port, [IPv6]:port, user@host:port, or a bare host. No urlsplit."""
     host = str(text or "").split("/", 1)[0]
     port = ""
+    if "@" in host and not host.startswith("["):
+        after = host.rsplit("@", 1)[-1]
+        # user@h:22 is userinfo@host:port. user@domain (no port) stays
+        # sAMAccount-before-@ for normalize_asset_id.
+        if ":" in after:
+            host = after
     if host.startswith("[") and "]" in host:
         end = host.find("]")
         maybe = host[end + 1 :]
@@ -123,8 +174,17 @@ def _host_port_from_token(text: str) -> tuple[str, str]:
     elif host.count(":") == 1:
         left, right = host.rsplit(":", 1)
         parsed = _valid_port(right)
+        service = _SERVICE_DEFAULT_PORT.get(right.strip().lower())
         if parsed:
-            host, port = left, parsed
+            if image_tag_context and _looks_image_name(left):
+                # redis:7 in a container-image finding — keep the whole token.
+                pass
+            else:
+                host, port = left, parsed
+        elif service and not _left_is_ip(left):
+            # host.corp:http — pre-image:tag split + scheme default port.
+            # IP-left :https stays master's empty-port split (below).
+            host, port = left, service
         elif not right or _left_is_ip(left):
             # host: (empty tag) or 10.0.0.5:https — split like master.
             host, port = left, ""
@@ -159,7 +219,7 @@ def _url_has_explicit_port(raw: Any) -> bool:
     return bool(rest.rsplit(":", 1)[-1].strip())
 
 
-def _strip_host(raw: Any) -> tuple[str, str, str]:
+def _strip_host(raw: Any, *, image_tag_context: bool = False) -> tuple[str, str, str]:
     """Return (host, port, scheme) parsed from a URL, host:port, or bare host.
 
     Malformed IPv6 brackets (``https://[notanip]:6379``, unclosed
@@ -203,9 +263,11 @@ def _strip_host(raw: Any) -> tuple[str, str, str]:
                 rest = text.lstrip("/")
             if "@" in rest:
                 rest = rest.rsplit("@", 1)[-1]
-            host, port = _host_port_from_token(rest)
+            host, port = _host_port_from_token(
+                rest, image_tag_context=image_tag_context
+            )
     else:
-        host, port = _host_port_from_token(text)
+        host, port = _host_port_from_token(text, image_tag_context=image_tag_context)
     host = normalize_asset_id(host)
     if host.startswith("www."):
         host = host[4:]
@@ -219,8 +281,9 @@ def finding_hosts(rec: dict[str, Any]) -> set[str]:
     candidates = list(rec.get("assets") or [])
     for key in ("ip", "host", "hostname", "addr", "address"):
         candidates.append(extra.get(key))
+    image_ctx = is_image_tag_context(rec)
     for raw in candidates:
-        host, _port, _scheme = _strip_host(raw)
+        host, _port, _scheme = _strip_host(raw, image_tag_context=image_ctx)
         if host:
             out.add(host)
     return out
@@ -231,13 +294,14 @@ def finding_port(rec: dict[str, Any]) -> str:
     port = _valid_port(str(extra.get("port") or ""))
     if port:
         return str(int(port))
+    image_ctx = is_image_tag_context(rec)
     for raw in list(rec.get("assets") or []) + [
         extra.get("host"),
         extra.get("matched-at"),
         extra.get("matched_at"),
         extra.get("url"),
     ]:
-        host, parsed, scheme = _strip_host(raw)
+        host, parsed, scheme = _strip_host(raw, image_tag_context=image_ctx)
         if parsed:
             return parsed
         if _url_has_explicit_port(raw):

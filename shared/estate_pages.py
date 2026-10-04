@@ -1752,6 +1752,8 @@ class PageContext:
     generated_at: str = ""
     run_delta: dict[str, int] = field(default_factory=dict)
     sensor_rows: list[dict] = field(default_factory=list)
+    ledger_warnings: list[str] = field(default_factory=list)
+    ledger_dropped_poam_ids: list[str] = field(default_factory=list)
 
 
 def build_executive_summary(ctx: PageContext) -> str:
@@ -1802,6 +1804,17 @@ def build_executive_summary(ctx: PageContext) -> str:
         if ledger_open and ledger_open != headline_open:
             lines.append(f"Ledger open including excluded: {ledger_open}.")
         lines.append("")
+    if ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
+        from shared.poam_ledger import format_ledger_warning_line
+
+        warn_line = format_ledger_warning_line(
+            ctx.ledger_warnings,
+            ctx.ledger_dropped_poam_ids,
+            estate_kind=stamp.kind,
+        )
+        if warn_line:
+            lines.append(f"Ledger warning: {warn_line}.")
+            lines.append("")
     weaknesses_n = ctx.findings_csv_n + ctx.vuln_n or tot_f
     recon = _reconcile(
         weaknesses_n,

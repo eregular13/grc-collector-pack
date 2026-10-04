@@ -13,7 +13,7 @@ from typing import Any
 
 from shared.asset_ids import display_uai, extra_dict, id_values
 from shared.asset_ledger import AssetLedger, ledger_ids
-from shared.io_util import out_dir, redact
+from shared.io_util import neutralize_csv_formula, out_dir, redact
 
 # S22 Inventory tab row 2, columns B→Z. Trailing space on End-of-Life is required.
 IIW_HEADERS: tuple[str, ...] = (
@@ -202,12 +202,22 @@ def write_iiw(
         fh.write(",".join(IIW_HEADERS) + "\n")
         writer = csv.writer(fh, lineterminator="\n")
         for row in rows:
-            writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
+            writer.writerow(
+                [
+                    neutralize_csv_formula(redact(c) if isinstance(c, str) else c)
+                    for c in row
+                ]
+            )
     with gaps_path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, lineterminator="\n")
         writer.writerow(list(GAPS_HEADERS))
         for row in gaps:
-            writer.writerow(row)
+            writer.writerow(
+                [
+                    neutralize_csv_formula(c) if isinstance(c, str) else c
+                    for c in row
+                ]
+            )
     return {"inventory": inv, "gaps": gaps_path}
 
 

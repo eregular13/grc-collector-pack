@@ -549,6 +549,41 @@ def test_image_tag_and_account_id_are_not_truncated() -> None:
     assert _strip_host("host:") == ("host", "", "")
     assert _strip_host("10.0.0.5:https") == ("10.0.0.5", "", "")
     assert _strip_host("h:0443") == ("h", "443", "")
+    # Pre-image:tag master split + scheme default port (not image:tag).
+    assert _strip_host("host.corp:http") == ("host.corp", "80", "")
+    assert _strip_host("host.corp:https") == ("host.corp", "443", "")
+    # userinfo@host:port — host is h, not user.
+    assert _strip_host("user@h:22") == ("h", "22", "")
+    # redis:7 is host:port unless the finding is a container image.
+    assert _strip_host("redis:7") == ("redis", "7", "")
+    image = make_record(
+        kind="finding",
+        source="vuln-scan",
+        ref_id="VULN-redis-image",
+        name="Image CVE",
+        description="container",
+        severity="high",
+        category="vulnerability",
+        assets=["redis:7"],
+        labels=["trivy"],
+        extra={"template_id": "cve-2024-1", "image": "redis:7"},
+    )
+    assert finding_hosts(image) == {"redis:7"}
+    assert finding_port(image) == ""
+    nmap = make_record(
+        kind="finding",
+        source="inventory-nmap",
+        ref_id="NMAP-redis-7",
+        name="Open port 7/tcp",
+        description="open port",
+        severity="low",
+        category="exposure",
+        assets=["redis:7"],
+        labels=["nmap"],
+        extra={"port": "", "check_id": "nmap-port-7/tcp"},
+    )
+    assert finding_hosts(nmap) == {"redis"}
+    assert finding_port(nmap) == "7"
     rec = make_record(
         kind="finding",
         source="vuln-scan",
