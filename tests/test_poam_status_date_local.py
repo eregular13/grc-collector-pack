@@ -22,7 +22,7 @@ import pytest
 
 from shared.control_map import map_finding
 from shared.kev import KevCatalog
-from shared.poam_fields import SLA_NOTE, local_run_date, poam_fields
+from shared.poam_fields import SLA_NOTE, local_run_date, parse_status_date, poam_fields
 from shared.poam_ledger import apply_ledger
 from shared.vendor_dependency import VENDOR_CHECKIN_OVERDUE, VD_NOTE
 
@@ -99,6 +99,16 @@ def _rec() -> dict:
     }
 
 
+def test_parse_status_date_rejects_blank_and_garbage() -> None:
+    assert parse_status_date("2026-10-01").isoformat() == "2026-10-01"
+    assert parse_status_date("") is None
+    assert parse_status_date("   ") is None
+    assert parse_status_date("garbage") is None
+    assert parse_status_date("2026-13-45") is None
+    assert parse_status_date(20260101) is None
+    assert parse_status_date(None) is None
+
+
 def test_local_run_date_none_matches_host_wall_clock() -> None:
     # Capture around the call so a local-midnight straddle cannot flake.
     before = datetime.now().astimezone().date()
@@ -130,6 +140,8 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "VENDOR_CHECKIN_OVERDUE" in SLA_NOTE
     assert "scan_time.bind_run_clock treats naive as UTC" in SLA_NOTE
     assert "load(run_at=)" in SLA_NOTE
+    assert "Blank or malformed ledger status_date" in SLA_NOTE
+    assert "not tracked fields" in SLA_NOTE
     assert "host-local run day" in VD_NOTE
     schema = (ROOT / "schemas" / "ciso-assistant.md").read_text(encoding="utf-8")
     assert "host-local civil day" in schema
@@ -142,16 +154,25 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "all four surfaces" in schema
     assert "load(run_at=)" in schema
     assert "bind_run_clock treats naive as UTC" in schema
+    assert "Blank or malformed ledger" in schema
+    assert "not tracked fields" in schema
     assert "UTC calendar day" not in schema
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "load(run_at=)" in changelog
     assert "ledger_sha" in changelog
     assert "America/Los_Angeles" in changelog
+    assert "before this change, including #215" in changelog
     yml = (ROOT / ".github" / "workflows" / "lab.yml").read_text(encoding="utf-8")
     assert "America/Los_Angeles" in yml
     assert "Pacific/Kiritimati" in yml
     assert "pytest-tz:" in yml
     assert "TZ: ${{ matrix.tz }}" in yml
+    assert "time.tzname" in yml
+    assert "permissions:" in yml
+    assert "timeout-minutes:" in yml
+    assert "concurrency:" in yml
+    assert "lab-${{ github.event_name }}-${{ github.ref }}" in yml
+    assert "cancel-in-progress: true" in yml
 
 
 @pytest.mark.parametrize("zone,clock,utc_day,local_day", _ZONES)
@@ -495,3 +516,175 @@ def test_reobserved_unchanged_status_date_agrees_on_all_surfaces(
     assert {row["status_date"] for row in poam} == {"2026-10-01"}
     assert {row["status_date"] for row in sr} == {"2026-10-01"}
     assert {row["Status Date"] for row in fed} == {"2026-10-01"}
+
+
+# 20:30 PDT = 2026-10-02 03:30 UTC — local day != UTC day (kills M01 / heal-UTC).
+_LA_EVENING = datetime(2026, 10, 1, 20, 30, 0)
+_LA_EVENING_LOCAL = "2026-10-01"
+_LA_EVENING_UTC = "2026-10-02"
+
+
+def _tamper_ledger_status_date(
+    path: Path, value: object = "", *, missing: bool = False, fp: str | None = None
+) -> None:
+    ledger = json.loads(path.read_text(encoding="utf-8"))
+    item = ledger["items"][fp] if fp else next(iter(ledger["items"].values()))
+    if missing:
+        item.pop("status_date", None)
+    else:
+        item["status_date"] = value
+    path.write_text(json.dumps(ledger) + "\n", encoding="utf-8")
+
+
+def _assert_four_surfaces_local_day(out: Path, *, local_day: str, utc_day: str) -> None:
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    sr = csv_rows(out / "simplerisk" / "poam.csv")
+    with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = next(iter(ledger["items"].values()))
+    assert item["status_date"] == local_day
+    assert item["status_date"] != utc_day
+    assert {row["status_date"] for row in poam} == {local_day}
+    assert {row["status_date"] for row in sr} == {local_day}
+    assert {row["Status Date"] for row in fed} == {local_day}
+
+
+def _seed_observed_ledger(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rec: dict
+) -> tuple[Path, Path]:
+    first = apply_ledger(
+        [rec],
+        catalog=_catalog(),
+        run_at=datetime(2026, 9, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    out = _write_canonical(tmp_path, monkeypatch, rec)
+    incoming = Path(os.environ["IN_DIR"])
+    (incoming / "poam").mkdir(parents=True, exist_ok=True)
+    ledger_path = incoming / "poam" / "poam-ledger.json"
+    ledger_path.write_text(json.dumps(first) + "\n", encoding="utf-8")
+    return out, ledger_path
+
+
+def _load_at_la_evening() -> None:
+    import collectors.grc_loader as loader
+
+    importlib.reload(loader)
+    with pinned_tz("America/Los_Angeles"):
+        loader.load(run_at=_LA_EVENING)
+
+
+def test_blank_ledger_status_date_falls_back_to_local_run_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: blank ledger date → local run day on all four surfaces."""
+    out, ledger_path = _seed_observed_ledger(tmp_path, monkeypatch, _rec())
+    _tamper_ledger_status_date(ledger_path, "")
+    _load_at_la_evening()
+    _assert_four_surfaces_local_day(
+        out, local_day=_LA_EVENING_LOCAL, utc_day=_LA_EVENING_UTC
+    )
+
+
+def test_missing_ledger_status_date_key_falls_back_to_local_run_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N2: missing status_date key → local run day on all four surfaces."""
+    out, ledger_path = _seed_observed_ledger(tmp_path, monkeypatch, _rec())
+    _tamper_ledger_status_date(ledger_path, missing=True)
+    _load_at_la_evening()
+    _assert_four_surfaces_local_day(
+        out, local_day=_LA_EVENING_LOCAL, utc_day=_LA_EVENING_UTC
+    )
+
+
+@pytest.mark.parametrize("bad", ["garbage", "2026-13-45"])
+def test_malformed_ledger_status_date_falls_back_to_local_run_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bad: str
+) -> None:
+    """N2: garbage and 2026-13-45 are not copied; local run day on all four surfaces."""
+    out, ledger_path = _seed_observed_ledger(tmp_path, monkeypatch, _rec())
+    _tamper_ledger_status_date(ledger_path, bad)
+    _load_at_la_evening()
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    assert bad not in {row["status_date"] for row in poam}
+    _assert_four_surfaces_local_day(
+        out, local_day=_LA_EVENING_LOCAL, utc_day=_LA_EVENING_UTC
+    )
+
+
+def _cover_rec() -> dict:
+    return {
+        "kind": "finding",
+        "source": "vuln-scan",
+        "ref_id": "VULN-status-date-cover",
+        "name": "cover peer",
+        "description": "same host so the miss is covered",
+        "severity": "high",
+        "category": "vulnerability",
+        "assets": ["10.0.0.5"],
+        "labels": ["vuln", "nessus"],
+        "collected_at": "2026-09-01T00:00:00Z",
+        "extra": {
+            "id": "plugin-cover",
+            "tool": "nessus",
+            "port": "80",
+            "protocol": "tcp",
+            "scan_time": "2026-09-01T12:00:00Z",
+        },
+    }
+
+
+@pytest.mark.parametrize("bad", ["", "garbage", "2026-13-45", None])
+def test_unobserved_malformed_status_date_agrees_on_all_surfaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bad: str | None
+) -> None:
+    """Unseen open row: parse-or-fallback heals FedRAMP + ledger too."""
+    rec = _rec()
+    cover = _cover_rec()
+    first = apply_ledger(
+        [rec, cover],
+        catalog=_catalog(),
+        run_at=datetime(2026, 9, 1, 12, 0, 0),
+        prior_existed=False,
+    )
+    rec_fp = next(
+        fp
+        for fp, it in first["items"].items()
+        if "plugin-1" in str(it.get("weakness_key") or "")
+    )
+    rec_pid = str(first["items"][rec_fp].get("poam_id") or "")
+    out = _write_canonical(tmp_path, monkeypatch, cover)
+    incoming = Path(os.environ["IN_DIR"])
+    (incoming / "poam").mkdir(parents=True, exist_ok=True)
+    ledger_path = incoming / "poam" / "poam-ledger.json"
+    ledger_path.write_text(json.dumps(first) + "\n", encoding="utf-8")
+    _tamper_ledger_status_date(
+        ledger_path, "" if bad is None else bad, missing=bad is None, fp=rec_fp
+    )
+    _load_at_la_evening()
+    from shared.ciso_shape import csv_rows
+
+    poam = csv_rows(out / "poam" / "poam.csv")
+    sr = csv_rows(out / "simplerisk" / "poam.csv")
+    with (out / "poam" / "poam_fedramp.csv").open(encoding="utf-8", newline="") as fh:
+        fed = list(csv.DictReader(fh))
+    ledger = json.loads((out / "poam" / "poam-ledger.json").read_text(encoding="utf-8"))
+    item = ledger["items"][rec_fp]
+    assert item["status_date"] == _LA_EVENING_LOCAL
+    assert item["status_date"] != _LA_EVENING_UTC
+    rec_poam = [row for row in poam if row.get("finding_ref_id") == rec["ref_id"]]
+    rec_sr = [row for row in sr if row.get("finding_ref_id") == rec["ref_id"]]
+    rec_fed = [row for row in fed if row.get("POAM ID") == rec_pid]
+    assert rec_poam and rec_sr and rec_fed
+    assert {row["status_date"] for row in rec_poam} == {_LA_EVENING_LOCAL}
+    assert {row["status_date"] for row in rec_sr} == {_LA_EVENING_LOCAL}
+    assert {row["Status Date"] for row in rec_fed} == {_LA_EVENING_LOCAL}
+    if bad not in {None, ""}:
+        assert bad not in {row["status_date"] for row in rec_poam}
+        assert bad not in {row["Status Date"] for row in rec_fed}

@@ -50,7 +50,7 @@ from shared.kev import (
     template_due_date,
     KevCatalog,
 )
-from shared.poam_fields import _to_date
+from shared.poam_fields import _to_date, parse_status_date
 from shared.scan_time import NOT_RECORDED, artifact_detection, merge_detection
 from shared.schema import PREFIX, ciso_finding_severity
 from shared.vendor_dependency import (
@@ -969,8 +969,30 @@ def load_ledger_file(path: Path) -> tuple[dict[str, Any], list[str]]:
     computed = payload_sha256(doc)
     if stored and stored != computed:
         warnings.append(LEDGER_CHAIN_BROKEN)
-    doc.setdefault("items", {})
-    doc.setdefault("closed", [])
+    items = doc.get("items")
+    if not isinstance(items, dict):
+        warnings.append(LEDGER_CHAIN_BROKEN)
+        doc["items"] = {}
+    else:
+        cleaned: dict[str, Any] = {}
+        for fp, item in items.items():
+            if isinstance(item, dict):
+                cleaned[str(fp)] = item
+            else:
+                warnings.append(LEDGER_CHAIN_BROKEN)
+        doc["items"] = cleaned
+    closed = doc.get("closed")
+    if not isinstance(closed, list):
+        warnings.append(LEDGER_CHAIN_BROKEN)
+        doc["closed"] = []
+    else:
+        cleaned_closed: list[Any] = []
+        for item in closed:
+            if isinstance(item, dict):
+                cleaned_closed.append(item)
+            else:
+                warnings.append(LEDGER_CHAIN_BROKEN)
+        doc["closed"] = cleaned_closed
     doc.setdefault("events", [])
     doc.setdefault("fp_migrations", [])
     doc.setdefault("warnings", [])
@@ -992,18 +1014,26 @@ def load_overrides(path: Path) -> dict[str, dict[str, str]]:
 
 def _used_ids(ledger: dict[str, Any]) -> dict[str, str]:
     used: dict[str, str] = {}
-    for fp, item in (ledger.get("items") or {}).items():
-        pid = str(item.get("poam_id") or "")
-        if pid:
-            used[pid] = fp
-        for alias in item.get("aliased_poam_ids") or []:
-            token = str(alias or "")
-            if token and token not in used:
-                used[token] = fp
-    for item in ledger.get("closed") or []:
-        pid = str(item.get("poam_id") or "")
-        if pid:
-            used[pid] = str(item.get("fp") or "")
+    items = ledger.get("items")
+    if isinstance(items, dict):
+        for fp, item in items.items():
+            if not isinstance(item, dict):
+                continue
+            pid = str(item.get("poam_id") or "")
+            if pid:
+                used[pid] = fp
+            for alias in item.get("aliased_poam_ids") or []:
+                token = str(alias or "")
+                if token and token not in used:
+                    used[token] = fp
+    closed = ledger.get("closed")
+    if isinstance(closed, list):
+        for item in closed:
+            if not isinstance(item, dict):
+                continue
+            pid = str(item.get("poam_id") or "")
+            if pid:
+                used[pid] = str(item.get("fp") or "")
     return used
 
 
@@ -2051,6 +2081,10 @@ def apply_ledger(
     # first_seen / last_seen stay UTC ISO (out of scope for status_date).
     run_iso = clock.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ledger = deepcopy(ledger_in) if ledger_in is not None else empty_ledger()
+    if not isinstance(ledger.get("items"), dict):
+        ledger["items"] = {}
+    if not isinstance(ledger.get("closed"), list):
+        ledger["closed"] = []
     ledger.setdefault("items", {})
     ledger.setdefault("closed", [])
     ledger.setdefault("events", [])
@@ -2200,6 +2234,8 @@ def apply_ledger(
                     ledger["events"].append(
                         _event(run_iso, fp, str(item.get("poam_id") or ""), "reobserved")
                     )
+                if parse_status_date(item.get("status_date")) is None:
+                    item["status_date"] = run_date.isoformat()
 
         ov = overrides.get(str(item.get("poam_id") or ""))
         before_vd = _vd_snapshot(item)
@@ -2261,6 +2297,8 @@ def apply_ledger(
     for fp, item in list(ledger["items"].items()):
         if fp in seen:
             continue
+        if not isinstance(item, dict):
+            continue
         if str(item.get("status") or "") == "closed":
             continue
         persist_mapped_fields(item, overwrite_plan=False)
@@ -2279,6 +2317,8 @@ def apply_ledger(
                     {"before": before_vd, "after": after_vd},
                 )
             )
+        if parse_status_date(item.get("status_date")) is None:
+            item["status_date"] = run_date.isoformat()
         if str(item.get("vendor_dependency") or "").strip().lower() == "yes":
             continue
         if str(item.get("operational_requirement") or "").strip().lower() in {"yes", "or"}:

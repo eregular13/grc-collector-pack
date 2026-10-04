@@ -21,6 +21,7 @@ from shared.estate_pages import (
     exec_lede,
     md_code_span,
     md_safe_text,
+    md_table_code_span,
     write_csv_with_estate,
     write_estate_sidecar,
 )
@@ -170,7 +171,8 @@ HOSTILE = "Acme**\n\n# PWNED [x](javascript:void(0)) <script>"
 
 def test_md_safe_text_keeps_normal_names_readable() -> None:
     assert md_safe_text("Acme Health") == "Acme Health"
-    assert md_safe_text("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
+    assert md_safe_text("&") == "&amp;"
+    assert md_safe_text("O'Reilly & Co-Santé") == "O'Reilly &amp; Co-Santé"
     assert md_safe_text("Ac\u200cme") == "Ac\u200cme"
     assert md_safe_text("\ufeffAcme\u200b") == "Acme"
     assert engagement_name("O'Reilly & Co-Santé") == "O'Reilly & Co-Santé"
@@ -276,7 +278,7 @@ def test_estate_txt_does_not_escape_fallback_underscores() -> None:
     assert "c4rtographer\\_udpConnect" in stamp.banner_md()
 
 
-def test_banner_code_span_strips_backticks() -> None:
+def test_banner_code_span_fences_inner_ticks() -> None:
     stamp = _stamp(
         kind="SAMPLE",
         run_id="r1` <img src=x onerror=alert(2)> `",
@@ -284,11 +286,11 @@ def test_banner_code_span_strips_backticks() -> None:
     )
     banner = stamp.banner_md()
     assert md_code_span(stamp.run_id) in banner
-    assert "` <img" not in banner
-    assert "dead`beef" not in banner
+    assert md_code_span(stamp.pack_commit) in banner
+    assert md_code_span(stamp.run_id).startswith("``")
     trust = build_scope_and_trust(PageContext(stamp=stamp, records=[]))
     assert md_code_span(stamp.run_id) in trust
-    assert "` <img" not in trust
+    assert md_code_span(stamp.pack_commit) in trust
 
 
 def test_exec_summary_escapes_scanner_hostnames() -> None:
@@ -356,6 +358,42 @@ def test_md_safe_text_autolink_uses_html_entities() -> None:
         assert "\\>" not in escaped
 
 
+def test_estate_txt_client_metachar_stays_plain(tmp_path) -> None:
+    """m62: ESTATE.txt is banner_plain — CLIENT metachars are not md_safe_text."""
+    stamp = _stamp(
+        kind="CLIENT",
+        label="CLIENT: Acme**#x",
+        client_name="Acme**#x",
+    )
+    path = write_estate_sidecar(tmp_path, stamp)
+    text = path.read_text(encoding="utf-8")
+    assert "Acme**#x" in text
+    assert "\\*" not in text
+    assert md_safe_text("Acme**#x") not in text
+
+
+def test_exec_summary_pipe_in_ref_stays_one_cell() -> None:
+    rec = {
+        "kind": "finding",
+        "source": "inventory-nmap",
+        "ref_id": "NMAP-A|B",
+        "name": "Open port 21",
+        "description": "x",
+        "severity": "high",
+        "category": "exposure",
+        "assets": ["h"],
+        "labels": ["nmap"],
+        "extra": {"port": "21", "check_id": "nmap-port-21"},
+    }
+    text = build_executive_summary(
+        PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
+    )
+    row = next(line for line in text.splitlines() if line.startswith("| 1 |"))
+    assert row.count("|") == 7
+    assert md_table_code_span("NMAP-A|B") in row
+    assert "`NMAP-A|" not in row
+
+
 def test_estate_txt_is_plain_via_banner_plain(tmp_path) -> None:
     stamp = _stamp(
         kind="SAMPLE",
@@ -377,11 +415,16 @@ def test_estate_txt_is_plain_via_banner_plain(tmp_path) -> None:
     assert "`" in md
 
 
-def test_md_code_span_collapses_newlines_and_strips_ticks() -> None:
+def test_md_code_span_collapses_newlines_and_keeps_ticks() -> None:
     assert "\n" not in md_code_span("r1\n# heading")
-    assert "`" not in md_code_span("a`b`c").strip("`")
-    assert md_code_span("a`b`c") == "`abc`"
+    assert md_code_span("a`b`c") == "``a`b`c``"
     assert md_code_span("") == f"`{NOT_RECORDED}`"
+    assert md_code_span("``ab") == "``` ``ab ```"
+
+
+def test_md_table_code_span_does_not_split_on_pipe() -> None:
+    assert "|" not in md_table_code_span("A|B")
+    assert md_table_code_span("A|B") == "`A/B`"
 
 
 def test_exec_summary_code_spans_ref_id(tmp_path) -> None:
@@ -401,8 +444,8 @@ def test_exec_summary_code_spans_ref_id(tmp_path) -> None:
         PageContext(stamp=_stamp(kind="SAMPLE"), records=[rec], findings=[rec])
     )
     assert md_code_span(rec["ref_id"]) in text
-    assert "`evil`" not in text
-    assert rec["ref_id"] not in text
+    assert rec["ref_id"] in md_code_span(rec["ref_id"])
+    assert md_code_span(rec["ref_id"]).startswith("``")
 
 
 def test_scope_env_fields_are_escaped(monkeypatch, tmp_path) -> None:
@@ -417,4 +460,4 @@ def test_scope_env_fields_are_escaped(monkeypatch, tmp_path) -> None:
     assert "<script>" not in trust
     assert "&lt;script&gt;" in trust
     assert md_code_span("sha` <img src=x>") in trust
-    assert "` <img" not in trust
+    assert md_code_span("sha` <img src=x>").startswith("``")

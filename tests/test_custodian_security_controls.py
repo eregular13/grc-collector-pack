@@ -848,6 +848,23 @@ _RD_GATEWAY_V4_CASES = (
     ("rdgateway-logs-public", "Cloud Custodian rdgateway-logs-public", False),
     ("rdgatewayaudit", "Cloud Custodian rdgatewayaudit", False),
     ("rdgateway-audit-open", "Cloud Custodian rdgateway-audit-open", False),
+    # P7: prefix must start the compact token, not sit inside an English stem.
+    ("contestrdgateway-public", "Cloud Custodian contestrdgateway-public", False),
+    ("latestrdgateway-open", "Cloud Custodian latestrdgateway-open", False),
+    # R4: whole-field Windows feature plural.
+    ("rds-gateways", "Cloud Custodian rds-gateways", True),
+    ("RDS-Gateways", "Cloud Custodian RDS-Gateways", True),
+    # T3: allowlisted prefix + leading ts-gateway.
+    ("dev-ts-gateway-public", "Cloud Custodian dev-ts-gateway-public", True),
+    # T5: ts artifact skip. T6: ts must be followed by gateway, not api.
+    ("ts-gateway-logs-public", "Cloud Custodian ts-gateway-logs-public", False),
+    ("ts-api-gateway-public", "Cloud Custodian ts-api-gateway-public", False),
+    # X1b / X2b / X3: logs* / audits / cert* remain artifacts.
+    ("rdgatewaylogsarchive-public", "Cloud Custodian rdgatewaylogsarchive-public", False),
+    ("rdgateway-audits-open", "Cloud Custodian rdgateway-audits-open", False),
+    ("rdgateway-cert-open", "Cloud Custodian rdgateway-cert-open", False),
+    # Title "TS gateway … public" is TypeScript-named, not Terminal Services.
+    ("policy-open", "TS gateway public", False),
 )
 
 
@@ -873,6 +890,27 @@ _RDS_PUBLIC_NOT_RD_GATEWAY = (
     ("aws-rds-gateway-public", "Cloud Custodian aws-rds-gateway-public"),
     ("policy-open", "RDS Gateway endpoint public"),
 )
+
+
+def test_rds_gateway_rdp_3389_open_stays_sg_ingress() -> None:
+    """Whole-field RDS-Gateway only — rds-gateway-rdp-3389-open is SG RDP."""
+    rec = _custodian_finding(
+        name="Cloud Custodian rds-gateway-rdp-3389-open",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "rds-gateway-rdp-3389-open", "classification": "security"},
+    )
+    assert finding_type(rec) == "sg_ingress_open"
+    assert finding_type(rec) != "rd_gateway_exposed"
+    assert SG_INGRESS_FIX in map_finding(rec)["recommended_fix"]
+
+
+def test_rds_gateway_open_is_not_rd_gateway() -> None:
+    rec = _custodian_finding(
+        name="Cloud Custodian rds-gateway-open",
+        description="open to 0.0.0.0/0",
+        extra={"check_id": "rds-gateway-open", "classification": "security"},
+    )
+    assert finding_type(rec) != "rd_gateway_exposed"
 
 
 @pytest.mark.parametrize("check_id,name", _RDS_PUBLIC_NOT_RD_GATEWAY)

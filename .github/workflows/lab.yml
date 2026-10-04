@@ -6,9 +6,17 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lab:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       PYTHONPATH: ${{ github.workspace }}
       OUT_DIR: ${{ github.workspace }}/out
@@ -93,6 +101,7 @@ jobs:
   pytest-tz:
     name: pytest (${{ matrix.tz }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -114,6 +123,8 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -r requirements.txt
+      - name: Show effective zone
+        run: python -c "import time,datetime;print(time.tzname, datetime.datetime.now().astimezone().utcoffset())"
       - name: Pytest under ${{ matrix.tz }}
         run: python -m pytest tests -q
 
@@ -122,6 +133,7 @@ jobs:
   sample-to-sor-cold:
     name: cold SAMPLE→SoR
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       PYTHONPATH: ${{ github.workspace }}
       DRY_RUN: "1"
@@ -214,6 +226,7 @@ jobs:
   farm-drop-to-sor-cold:
     name: cold farm_drop→SoR ship-gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       PYTHONPATH: ${{ github.workspace }}
       DRY_RUN: "1"

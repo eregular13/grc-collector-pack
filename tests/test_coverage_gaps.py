@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 import threading
 import urllib.request
 from pathlib import Path
@@ -17,12 +18,19 @@ from pathlib import Path
 import pytest
 
 from collectors import cloud_prowler, code_secrets, grc_loader, vuln_scan
+from shared import estate_pages
 from shared.estate_pages import (
     COVERAGE_GAPS_HEADING,
     COVERAGE_GAPS_NONE,
-    LABEL_FOR_KIND,
     MAX_PAGE_LINES,
+    LABEL_FOR_KIND,
+    EstateStamp,
+    PageContext,
+    SENTENCE_FOR_KIND,
+    build_scope_and_trust,
     classify_estate,
+    coverage_scope_rows,
+    format_coverage_gaps,
     md_safe_text,
 )
 from shared.io_util import UNRECOGNIZED_STATUS, load_sensor_coverage, run_collector
@@ -343,6 +351,128 @@ def test_coverage_gaps_none_when_clean(
         assert COVERAGE_GAPS_NONE in blob
         assert "None" in blob
         assert len(blob.splitlines()) <= MAX_PAGE_LINES
+
+
+def test_coverage_gap_source_files_reason_are_escaped() -> None:
+    """m94 / m95 / m97: hostile coverage-gap cells go through md_safe_text."""
+    rows = [
+        {
+            "source": "nmap**|<img>",
+            "status": "parse_error",
+            "issues": [
+                {
+                    "file": "x|y<img src=x>.xml",
+                    "status": "parse_error",
+                    "reason": "bad**\n# heading",
+                }
+            ],
+        }
+    ]
+    blob = "\n".join(format_coverage_gaps(rows))
+    assert md_safe_text("nmap**|<img>") in blob
+    assert md_safe_text("x|y<img src=x>.xml") in blob
+    assert md_safe_text("bad** # heading") in blob
+    assert "<img" not in blob
+    assert not re.search(r"(?m)^# heading", blob)
+
+
+def test_scope_row_cells_and_out_of_scope_phrase_are_escaped() -> None:
+    """m98–m104: area, targets, tool, version, collected, records, and the out-of-scope phrase are escaped."""
+    rec = {
+        "kind": "finding",
+        "source": "hostile**src",
+        "ref_id": "f1",
+        "name": "x",
+        "description": "x",
+        "severity": "low",
+        "category": "exposure",
+        "assets": ["h"],
+        "labels": ["nmap"],
+        "extra": {
+            "target": "evil|img<img>",
+            "tool": "nmap**",
+            "version": "1`<img>",
+            "scan_time": "2026-10-01T00:00:00Z",
+        },
+    }
+    empty = {
+        "source": "out**scope|<img>",
+        "status": "empty",
+        "records": 0,
+        "issues": [],
+    }
+    sensor_rows = [
+        {"source": "hostile**src", "status": "ok", "records": 1},
+        empty,
+    ]
+    rows = coverage_scope_rows(sensor_rows, [rec])
+    scoped = {row["source"]: row for row in rows}
+    assert scoped["hostile**src"]["area"] == "hostile**src"
+    assert scoped["hostile**src"]["targets"] == "evil|img<img>"
+    assert scoped["hostile**src"]["tool"] == "nmap**"
+    assert scoped["hostile**src"]["version"] == "1`<img>"
+    assert scoped["hostile**src"]["in_scope"] == "true"
+    assert scoped["out**scope|<img>"]["in_scope"] == "false"
+    assert scoped["out**scope|<img>"]["area"] == "out**scope|<img>"
+
+    trust = build_scope_and_trust(
+        PageContext(
+            stamp=EstateStamp(
+                kind="SAMPLE",
+                label=LABEL_FOR_KIND["SAMPLE"],
+                sentence=SENTENCE_FOR_KIND["SAMPLE"],
+            ),
+            records=[rec],
+            sensor_rows=sensor_rows,
+        )
+    )
+    assert md_safe_text("hostile**src") in trust
+    assert md_safe_text("evil|img<img>") in trust
+    assert md_safe_text("nmap**") in trust
+    assert md_safe_text("1`<img>") in trust
+    assert md_safe_text("out**scope|<img>") in trust
+    assert "<img" not in trust
+    assert not re.search(r"(?m)^# ", trust)
+
+
+def test_scope_row_collected_and_records_cells_are_escaped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """m102 / m103: collected and records go through md_safe_text."""
+    hostile_collected = "2026-10-01**|<img>"
+    hostile_records = "3**|<img>"
+
+    def _hostile_rows(*_a, **_k):
+        return [
+            {
+                "source": "nmap",
+                "area": "nmap",
+                "targets": "t",
+                "tool": "nmap",
+                "version": "1",
+                "collected": hostile_collected,
+                "records": hostile_records,
+                "in_scope": "true",
+                "status": "ok",
+            }
+        ]
+
+    monkeypatch.setattr(estate_pages, "coverage_scope_rows", _hostile_rows)
+    trust = build_scope_and_trust(
+        PageContext(
+            stamp=EstateStamp(
+                kind="SAMPLE",
+                label=LABEL_FOR_KIND["SAMPLE"],
+                sentence=SENTENCE_FOR_KIND["SAMPLE"],
+            ),
+            records=[],
+            sensor_rows=[],
+        )
+    )
+    assert md_safe_text(hostile_collected) in trust
+    assert md_safe_text(hostile_records) in trust
+    assert "<img" not in trust
+    assert not re.search(r"(?m)^# ", trust)
 
 
 def test_unread_file_does_not_look_like_empty_sensor(

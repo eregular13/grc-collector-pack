@@ -799,6 +799,40 @@ def test_zmap_empty(tmp_path) -> None:
     assert inventory_nmap.parse_file(dest) == []
 
 
+def test_zmap_unicornscan_port_rejects_unicode_digits(tmp_path) -> None:
+    from shared.unicornscan import _port as uni_port
+    from shared.unicornscan import parse_unicornscan
+    from shared.zmap import _port as zmap_port
+    from shared.zmap import parse_zmap
+
+    assert zmap_port("21") == "21"
+    assert zmap_port("²") == ""
+    assert zmap_port("³¹") == ""
+    assert uni_port("21") == "21"
+    assert uni_port("²") == ""
+    zmap = tmp_path / "zmap.json"
+    zmap.write_text(
+        '{"saddr":"10.0.0.50","dport":"²","classification":"synack","hostname":"bad.invalid"}\n'
+        '{"saddr":"10.0.0.51","dport":21,"classification":"synack","hostname":"ok.invalid"}\n',
+        encoding="utf-8",
+    )
+    hosts = parse_zmap(zmap)
+    assert hosts is not None
+    ports = {p for slot in hosts for p, _ in slot["ports"]}
+    assert "21" in ports
+    assert "²" not in ports
+    uni = tmp_path / "unicornscan.txt"
+    uni.write_text(
+        "TCP open ftp[²] from 10.0.0.50 ttl 64\nTCP open ftp[21] from 10.0.0.51 ttl 64\n",
+        encoding="utf-8",
+    )
+    uhosts = parse_unicornscan(uni)
+    assert uhosts is not None
+    uports = {p for slot in uhosts for p, _ in slot["ports"]}
+    assert "21" in uports
+    assert "²" not in uports
+
+
 def test_zmap_unicornscan_parser_no_live() -> None:
     for rel in (
         "collectors/inventory_nmap.py",
