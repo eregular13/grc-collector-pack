@@ -1,7 +1,7 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-10-04 03:26 UTC · pack `21c5ef8`
+> Run `not recorded` · generated 2026-10-04 05:19 UTC · pack `05c1551`
 
-**DEMO: NOT A CLIENT**. Run `not recorded`, pack `21c5ef8`, generated 2026-10-04 03:26 UTC.
+**DEMO: NOT A CLIENT**. Run `not recorded`, pack `05c1551`, generated 2026-10-04 05:19 UTC.
 
 ### Authorization
 - No client authorization applies. No client systems were touched.
