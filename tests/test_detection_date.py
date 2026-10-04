@@ -158,7 +158,14 @@ def test_ledger_real_scan_time_wins_over_not_recorded() -> None:
         ledger_in=first,
         prior_existed=True,
     )
-    assert next(iter(second["items"].values()))["original_detection_date"] == "2026-09-01"
+    from shared.scan_time import local_calendar_date
+
+    filled = next(iter(second["items"].values()))["original_detection_date"]
+    # Missing stored date mints like a new ID (host-local). Under UTC this
+    # is 2026-09-01; under America/Los_Angeles the Z-midnight is 2026-08-31.
+    expected = local_calendar_date("2026-09-01T00:00:00Z")
+    assert expected is not None
+    assert filled == expected.isoformat()
 
 
 def test_merge_detection_never_moves_later() -> None:
