@@ -75,13 +75,32 @@ def iso_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-_CSV_FORMULA_PREFIXES = frozenset("=+-@")
+_CSV_FORMULA_ALWAYS = frozenset("=@")
+_CSV_FORMULA_SIGNED = frozenset("+-")
 
 
 def is_csv_formula(value: Any) -> bool:
-    """True for spreadsheet-formula cells (``=cmd|' /C calc'!A0`` and kin)."""
+    """True for spreadsheet-formula cells (``=cmd|' /C calc'!A0`` and kin).
+
+    Bare ``-``, numeric ``-1``, and phone-style ``+44…`` are not formulas.
+    ``=``, ``@SUM(``, ``+cmd``, ``-cmd|``, and tab/CR-prefixed forms are.
+    """
     text = str(value or "").lstrip("\ufeff \t\r")
-    return bool(text) and text[0] in _CSV_FORMULA_PREFIXES
+    if not text:
+        return False
+    first = text[0]
+    if first in _CSV_FORMULA_ALWAYS:
+        return True
+    if first in _CSV_FORMULA_SIGNED:
+        return len(text) > 1 and not text[1].isdigit()
+    return False
+
+
+def neutralize_csv_formula(value: Any) -> Any:
+    """OWASP CSV-injection: prefix a formula cell with a leading single quote."""
+    if not isinstance(value, str) or not is_csv_formula(value):
+        return value
+    return "'" + value
 
 
 def redact(value: Any) -> Any:

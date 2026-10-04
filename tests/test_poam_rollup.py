@@ -13,6 +13,7 @@ from collectors.grc_loader import _dedupe, load
 from collectors import code_secrets
 from shared.ciso_shape import (
     EXCLUDED_HEADER,
+    assert_count_consistency,
     assert_flood_guard,
     assert_register_no_double_treatment,
     csv_rows,
@@ -694,10 +695,37 @@ def test_muted_label_is_source_specific(
     assert "Prowler" not in desc
 
 
-def test_csv_formula_asset_is_dropped_from_risk_scenarios(
+def _no_formula_cells(rows: list[dict]) -> None:
+    from shared.io_util import is_csv_formula
+
+    for row in rows:
+        for value in row.values():
+            assert not is_csv_formula(value), value
+
+
+def test_is_csv_formula_narrow_prefixes() -> None:
+    from shared.io_util import is_csv_formula, neutralize_csv_formula
+
+    hostile = "=cmd|' /C calc'!A0"
+    assert is_csv_formula(hostile)
+    assert is_csv_formula("@SUM(1,1)")
+    assert is_csv_formula("+cmd")
+    assert is_csv_formula("-cmd|")
+    assert is_csv_formula("\t=cmd")
+    assert is_csv_formula("\r@SUM(A1)")
+    assert not is_csv_formula("-")
+    assert not is_csv_formula("-1")
+    assert not is_csv_formula("+44 7700 900123")
+    assert not is_csv_formula("box")
+    assert neutralize_csv_formula(hostile) == "'" + hostile
+    assert neutralize_csv_formula("-1") == "-1"
+    assert neutralize_csv_formula("+44") == "+44"
+
+
+def test_csv_formula_asset_is_neutralized_in_risk_scenarios(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Master drops spreadsheet-formula assets from risk_scenarios.csv."""
+    """Keep the scenario; prefix the formula cell. Do not drop the row."""
     from shared.io_util import is_csv_formula
 
     hostile = "=cmd|' /C calc'!A0"
@@ -714,13 +742,115 @@ def test_csv_formula_asset_is_dropped_from_risk_scenarios(
         assets=[hostile],
         extra={"port": "22", "service": "ssh"},
     )
-    _load_recs(tmp_path, monkeypatch, [_asset("box"), live, formula])
+    summary = _load_recs(tmp_path, monkeypatch, [_asset("box"), live, formula])
     scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
-    blob = "\n".join("|".join(row.values()) for row in scenarios)
-    assert hostile not in blob
-    assert "=cmd|" not in blob
+    formula_row = next(row for row in scenarios if row.get("name") == "Formula host")
     assert any(row.get("name") == "SSH exposed" for row in scenarios)
-    assert not any(row.get("name") == "Formula host" for row in scenarios)
+    assets = formula_row.get("assets") or ""
+    assert assets.startswith("'")
+    assert assets.endswith(hostile)
+    assert not is_csv_formula(assets)
+    _no_formula_cells(scenarios)
+    assert_count_consistency(tmp_path, summary)
+    for rel in ("poam/poam.csv", "poam/excluded.csv", "poam/poam_members.csv"):
+        path = tmp_path / rel
+        if path.is_file():
+            _no_formula_cells(csv_rows(path))
+
+
+def test_csv_formula_asset_on_muted_row_keeps_reconcile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Muted fixture: 1 live + 2 muted, formula on muted-2. Keep all 3 scenarios."""
+    hostile = "=cmd|' /C calc'!A0"
+    live = _finding(
+        source="cloud-prowler",
+        ref_id="CLD-live",
+        name="S3 public",
+        severity="high",
+        category="cloud-misconfiguration",
+        extra={"check_id": "s3_public"},
+    )
+    muted_ok = {
+        "kind": "excluded",
+        "source": "cloud-prowler",
+        "ref_id": "CLD-muted-1",
+        "name": "Muted check one",
+        "description": "muted",
+        "severity": "critical",
+        "category": "excluded",
+        "assets": ["acct"],
+        "labels": ["muted"],
+        "extra": {"exclude_reason": "MUTED", "check_id": "muted-1", "status": "MUTED"},
+    }
+    muted_formula = {
+        "kind": "excluded",
+        "source": "cloud-prowler",
+        "ref_id": "CLD-muted-2",
+        "name": "Muted check two",
+        "description": "muted",
+        "severity": "critical",
+        "category": "excluded",
+        "assets": [hostile],
+        "labels": ["muted"],
+        "extra": {"exclude_reason": "MUTED", "check_id": "muted-2", "status": "MUTED"},
+    }
+    summary = _load_recs(
+        tmp_path, monkeypatch, [_asset("acct"), live, muted_ok, muted_formula]
+    )
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    names = {row.get("name") for row in scenarios}
+    assert names >= {"S3 public", "Muted check one", "Muted check two"}
+    assert len(scenarios) == 3
+    hostile_row = next(row for row in scenarios if row.get("name") == "Muted check two")
+    assets = hostile_row.get("assets") or ""
+    assert assets.startswith("'")
+    assert assets.endswith(hostile)
+    from shared.io_util import is_csv_formula
+
+    assert not is_csv_formula(assets)
+    _no_formula_cells(scenarios)
+    assert_count_consistency(tmp_path, summary)
+    exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    assert "counts not reconciled." not in exec_text
+
+
+def test_c5_slot_dup_skip_is_reached(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two same-ref+asset C5 candidates: first writes, second increments c5_skipped."""
+    y = _finding(
+        ref_id="NMAP-Y",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x1 = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    x2 = _finding(
+        ref_id="NMAP-X",
+        assets=["10.0.0.5"],
+        extra={"port": "22", "check_id": "ssh", "id": "ssh-open"},
+    )
+    summary = _load_recs(
+        tmp_path, monkeypatch, [_asset("10.0.0.5"), y, x1, x2]
+    )
+    poam_refs = {
+        row.get("finding_ref_id") for row in csv_rows(tmp_path / "poam" / "poam.csv")
+    }
+    c5 = [
+        row
+        for row in csv_rows(tmp_path / "poam" / "excluded.csv")
+        if row.get("finding_ref_id") == "NMAP-X"
+        and row.get("excluded_reason") == "DUPLICATE_INSTANCE"
+    ]
+    assert "NMAP-Y" in poam_refs
+    assert "NMAP-X" not in poam_refs
+    assert len(c5) == 1
+    assert summary["flood_guard"]["c5_skipped"] == 1
+    assert_flood_guard(tmp_path, summary)
 
 
 def test_is_poam_exclude_reason_covers_rollup_codes() -> None:

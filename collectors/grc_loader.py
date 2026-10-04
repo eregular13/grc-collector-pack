@@ -83,7 +83,7 @@ from shared.io_util import (
     load_sensor_coverage,
     out_dir,
     read_jsonl,
-    is_csv_formula,
+    neutralize_csv_formula,
     redact,
     stable_hash as _stable_hash,
     write_json,
@@ -291,7 +291,10 @@ def _is_vuln(rec: dict) -> bool:
 
 
 def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str = ",", stamp=None) -> None:
-    cleaned = [[redact(c) if isinstance(c, str) else c for c in row] for row in rows]
+    cleaned = [
+        [neutralize_csv_formula(redact(c) if isinstance(c, str) else c) for c in row]
+        for row in rows
+    ]
     if stamp is None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8", newline="") as fh:
@@ -477,9 +480,9 @@ def _load(*, run_at: datetime | None = None) -> dict:
         else:
             resid = level
             cid = ""
-        assets = [str(a) for a in (rec.get("assets") or []) if a]
-        if any(is_csv_formula(a) for a in assets):
-            continue
+        assets = [
+            neutralize_csv_formula(str(a)) for a in (rec.get("assets") or []) if a
+        ]
         threats = rec.get("category") or rec.get("source") or ""
         description = rec.get("description") or ""
         if extra_exclude_token(rec) == "MUTED" or str(decision.get("reason") or "") == "MUTED":
