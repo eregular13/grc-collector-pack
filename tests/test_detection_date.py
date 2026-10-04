@@ -126,7 +126,8 @@ def test_ledger_keeps_original_date_across_later_scan() -> None:
         prior_existed=True,
     )
     item = next(iter(first["items"].values()))
-    assert item["original_detection_date"] == "2026-09-01"
+    first_odd = _local_odd("2026-09-01T00:00:00Z")
+    assert item["original_detection_date"] == first_odd
     rec2 = _rec(extra={"id": "p1", "tool": "nessus", "port": "443", "scan_time": "2026-09-20T00:00:00Z"})
     second = apply_ledger(
         [rec2],
@@ -136,7 +137,7 @@ def test_ledger_keeps_original_date_across_later_scan() -> None:
         prior_existed=True,
     )
     item2 = next(iter(second["items"].values()))
-    assert item2["original_detection_date"] == "2026-09-01"
+    assert item2["original_detection_date"] == first_odd
     assert item2["poam_id"] == item["poam_id"]
 
 

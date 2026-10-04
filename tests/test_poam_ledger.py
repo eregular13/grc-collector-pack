@@ -18,6 +18,7 @@ from shared.ciso_shape import POAM_HEADER
 from shared.kev import KevCatalog
 from shared.poam_fedramp import FEDRAMP_OPEN_HEADERS
 from shared.poam_fields import local_run_date
+from shared.scan_time import local_calendar_date
 from shared.poam_ledger import (
     LEDGER_CHAIN_BROKEN,
     LEDGER_LOST,
@@ -249,7 +250,9 @@ def test_3_5_9_reopen_after_closure() -> None:
     reopened = _apply([rec2], ledger=closed, when="2026-09-20T00:00:00Z")
     item = next(iter(reopened["items"].values()))
     assert item["poam_id"] == f"{pid}-R1"
-    assert item["original_detection_date"] == "2026-09-20"
+    reopen_odd = local_calendar_date("2026-09-20T00:00:00Z")
+    assert reopen_odd is not None
+    assert item["original_detection_date"] == reopen_odd.isoformat()
     assert item["prior_poam_id"] == pid
     assert any(c["poam_id"] == pid and c["status"] == "closed" for c in reopened["closed"])
     assert any("Reopened from" in c for c in item["kev_comments"])

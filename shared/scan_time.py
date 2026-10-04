@@ -1,8 +1,10 @@
 """Artifact scan timestamps for original_detection_date.
 
 Never use the pack run date. When the artifact records no scan time the
-literal ``not recorded`` is written. Calendar dates keep the timestamp's
-own zone (no silent UTC day-shift).
+literal ``not recorded`` is written. New ``original_detection_date``
+values use ``local_calendar_date`` (same host-local civil-day rule as
+``status_date``). ``calendar_date`` / ``merge_detection`` keep the
+timestamp's recorded zone so existing ledger dates are not rewritten.
 
 The future-epoch cutoff (tiny/1970 epochs and stamps past the run) is
 tied to the pack run clock — the run start passed through the pipeline
