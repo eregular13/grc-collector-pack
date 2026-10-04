@@ -703,6 +703,21 @@ def _no_formula_cells(rows: list[dict]) -> None:
             assert not is_csv_formula(value), value
 
 
+_SIGNED_DIGIT_FORMULAS = (
+    "-2+3+cmd|' /C calc'!A0",
+    "+1+1",
+    "-1+1",
+    "+1-cmd|' /C calc'!A0",
+)
+_SIGNED_SAFE = (
+    "-",
+    "-1",
+    "-1.5",
+    "+44 20 7946 0958",
+    "+1 (555) 010-0000",
+)
+
+
 def test_is_csv_formula_narrow_prefixes() -> None:
     from shared.io_util import is_csv_formula, neutralize_csv_formula
 
@@ -713,10 +728,19 @@ def test_is_csv_formula_narrow_prefixes() -> None:
     assert is_csv_formula("-cmd|")
     assert is_csv_formula("\t=cmd")
     assert is_csv_formula("\r@SUM(A1)")
+    for payload in _SIGNED_DIGIT_FORMULAS:
+        assert is_csv_formula(payload), payload
+        assert neutralize_csv_formula(payload) == "'" + payload
     assert not is_csv_formula("-")
     assert not is_csv_formula("-1")
+    assert not is_csv_formula("-1.5")
     assert not is_csv_formula("+44 7700 900123")
+    assert not is_csv_formula("+44 20 7946 0958")
+    assert not is_csv_formula("+1 (555) 010-0000")
     assert not is_csv_formula("box")
+    for safe in _SIGNED_SAFE:
+        assert not is_csv_formula(safe), safe
+        assert neutralize_csv_formula(safe) == safe
     assert neutralize_csv_formula(hostile) == "'" + hostile
     assert neutralize_csv_formula("-1") == "-1"
     assert neutralize_csv_formula("+44") == "+44"
@@ -813,6 +837,75 @@ def test_csv_formula_asset_on_muted_row_keeps_reconcile(
     assert_count_consistency(tmp_path, summary)
     exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     assert "counts not reconciled." not in exec_text
+
+
+def test_csv_formula_signed_digit_payloads_are_neutralized(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Signed-digit DDE / +1+1 cells get a quote prefix on every export CSV."""
+    from shared.io_util import is_csv_formula
+
+    recs: list[dict] = [_asset("box")]
+    for i, payload in enumerate(_SIGNED_DIGIT_FORMULAS):
+        recs.append(
+            _finding(
+                ref_id=f"NMAP-signed-{i}",
+                name=f"Signed formula {i}",
+                assets=[payload],
+                extra={"port": str(22 + i), "service": "ssh"},
+            )
+        )
+    summary = _load_recs(tmp_path, monkeypatch, recs)
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    for i, payload in enumerate(_SIGNED_DIGIT_FORMULAS):
+        row = next(r for r in scenarios if r.get("name") == f"Signed formula {i}")
+        assets = row.get("assets") or ""
+        assert assets == "'" + payload
+        assert not is_csv_formula(assets)
+    _no_formula_cells(scenarios)
+    assert_count_consistency(tmp_path, summary)
+    for rel in (
+        "poam/poam.csv",
+        "poam/excluded.csv",
+        "poam/poam_members.csv",
+        "simplerisk/poam.csv",
+        "poam/poam_fedramp.csv",
+    ):
+        path = tmp_path / rel
+        assert path.is_file(), rel
+        _no_formula_cells(csv_rows(path))
+
+
+def test_csv_formula_multi_asset_neutralizes_per_asset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One formula among several assets: only that asset is quote-prefixed."""
+    from shared.io_util import is_csv_formula
+
+    hostile = "-2+3+cmd|' /C calc'!A0"
+    recs = [
+        _asset("box"),
+        _asset("other"),
+        _finding(
+            ref_id="NMAP-multi",
+            name="Multi asset formula",
+            assets=["box", hostile, "other"],
+            extra={"port": "22", "service": "ssh"},
+        ),
+    ]
+    summary = _load_recs(tmp_path, monkeypatch, recs)
+    scenarios = csv_rows(tmp_path / "ciso-assistant" / "risk_scenarios.csv", delimiter=";")
+    row = next(r for r in scenarios if r.get("name") == "Multi asset formula")
+    assets = row.get("assets") or ""
+    # Payload itself contains `|`; compare the joined cell, not a split.
+    assert assets == "box|" + "'" + hostile + "|other"
+    assert assets.startswith("box|")
+    assert assets.endswith("|other")
+    assert "'" + hostile in assets
+    assert not assets.startswith("'")
+    assert not is_csv_formula(assets)
+    _no_formula_cells(scenarios)
+    assert_count_consistency(tmp_path, summary)
 
 
 def test_c5_slot_dup_skip_is_reached(

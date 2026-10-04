@@ -77,13 +77,17 @@ def iso_now() -> str:
 
 _CSV_FORMULA_ALWAYS = frozenset("=@")
 _CSV_FORMULA_SIGNED = frozenset("+-")
+# Whole-cell safe signed values only: negatives, decimals, phone numbers.
+# ``+1+1`` / ``-2+3+cmd|…`` must stay formulas (second-char digit is not enough).
+_CSV_SIGNED_SAFE = re.compile(r"^[+-][0-9][0-9 ().-]*$")
 
 
 def is_csv_formula(value: Any) -> bool:
     """True for spreadsheet-formula cells (``=cmd|' /C calc'!A0`` and kin).
 
-    Bare ``-``, numeric ``-1``, and phone-style ``+44…`` are not formulas.
-    ``=``, ``@SUM(``, ``+cmd``, ``-cmd|``, and tab/CR-prefixed forms are.
+    Bare ``-``, numeric ``-1`` / ``-1.5``, and phone-style ``+44…`` are not
+    formulas. ``=``, ``@SUM(``, ``+cmd``, ``-cmd|``, ``+1+1``, ``-1+1``,
+    ``-2+3+cmd|…``, and tab/CR-prefixed forms are.
     """
     text = str(value or "").lstrip("\ufeff \t\r")
     if not text:
@@ -92,7 +96,9 @@ def is_csv_formula(value: Any) -> bool:
     if first in _CSV_FORMULA_ALWAYS:
         return True
     if first in _CSV_FORMULA_SIGNED:
-        return len(text) > 1 and not text[1].isdigit()
+        if _CSV_SIGNED_SAFE.fullmatch(text):
+            return False
+        return len(text) > 1
     return False
 
 

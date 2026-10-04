@@ -19,7 +19,7 @@ from shared.kev import (
 )
 from shared.finding_types import strip_secret_hash_from_key
 from shared.poam_ledger import pending_comment
-from shared.io_util import redact
+from shared.io_util import neutralize_csv_formula, redact
 from shared.vendor_dependency import (
     DEFAULT_COMMENT,
     VD_NO,
@@ -203,7 +203,12 @@ def _write_csv(path: Path, rows: list[list[str]]) -> None:
         writer = csv.writer(fh, lineterminator="\n")
         writer.writerow(list(FEDRAMP_CSV_HEADERS))
         for row in rows:
-            writer.writerow([redact(c) if isinstance(c, str) else c for c in row])
+            writer.writerow(
+                [
+                    neutralize_csv_formula(redact(c) if isinstance(c, str) else c)
+                    for c in row
+                ]
+            )
 
 
 def _vendor_dependent(item: dict[str, Any]) -> bool:
