@@ -42,6 +42,12 @@ PACK_WRITER_MODULES = (
     ROOT / "scripts" / "prove_ciso.py",
     ROOT / "scripts" / "refresh_product_lab_drop_sinks.py",
     ROOT / "scripts" / "verify_manifest.py",
+    ROOT / "keep" / "lab.py",
+    ROOT / "keep" / "ciso_import.py",
+    ROOT / "scripts" / "farm_lab.py",
+    ROOT / "scripts" / "farm_toolbin_e2e.py",
+    ROOT / "scripts" / "farm_toolbin_lab.py",
+    ROOT / "scripts" / "farm_compose_lab.py",
 )
 
 

@@ -81,7 +81,7 @@ def _stamp_sample_labels(out: Path) -> None:
                         if stamp not in labels:
                             labels.append(stamp)
             lines.append(json.dumps(rec, separators=(",", ":")))
-        path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+        path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8", newline="\n")
 
 
 _PACK_SKIP = frozenset({".gitkeep", ".DS_Store"})
@@ -189,7 +189,7 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
                 "ciso_files": [],
             }
             work.mkdir(parents=True, exist_ok=True)
-            (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+            (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n")
             return stamp
         sample_groups = {str(row.get("group") or "") for row in sources}
         unparseable = [name for name in KEEP_FAMILIES if name not in sample_groups]
@@ -214,7 +214,7 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
                 ),
             }
             work.mkdir(parents=True, exist_ok=True)
-            (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+            (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n")
             return stamp
     landed = land_keep_files(sources, work_in)
     groups = {str(row.get("group") or "") for row in landed}
@@ -225,7 +225,7 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
         for sensor in ("identity", "saas", "vuln", "cloud"):
             dest = work_in / sensor
             dest.mkdir(parents=True, exist_ok=True)
-            (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+            (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8", newline="\n")
 
     os.environ["IN_DIR"] = str(work_in)
     os.environ["OUT_DIR"] = str(work_out)
@@ -387,7 +387,7 @@ def _run_once(root: Path, pack_in: Path, work: Path) -> dict[str, Any]:
     elif wrote_pack and origin == "keep-samples":
         stamp["status"] = "fail"
         stamp["reason"] = "keep-lab wrote pack in/ this run"
-    (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    (work / "keep-lab.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n")
     return stamp
 
 

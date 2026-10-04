@@ -49,7 +49,7 @@ def farm_toolbin_lab(root: Path | None = None) -> dict:
             "note": "plan only. No network. No compose. LICENSE-LOCK names not invoked.",
         }
         dest = work / "toolbin-lab.json"
-        dest.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+        dest.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8", newline="\n")
         return stamp
     finally:
         for key, value in saved.items():

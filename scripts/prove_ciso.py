@@ -256,15 +256,15 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     for name in E2E_PROVEN_PACK_DROP_ADAPTERS:
         dest = pack_drop_seed_dest(dest_in, name)
         _copy_tree(root / "fixtures" / "pack_drop" / name, dest)
-        (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+        (dest / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8", newline="\n")
         adapters[name] = str(dest)
     honeypot = dest_in / "honeypot"
     beelzebub = dest_in / "honeypot" / "pack_drop"
     _copy_tree(root / "fixtures" / "demo" / "honeypot", honeypot)
     _copy_tree(root / "fixtures" / "demo" / "honeypot_beelzebub", beelzebub)
-    (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
-    (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8")
+    (dest_in / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8", newline="\n")
+    (honeypot / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8", newline="\n")
+    (beelzebub / "SAMPLE.txt").write_text(SAMPLE_BANNER, encoding="utf-8", newline="\n")
     seeded = {name: adapters[name] for name in E2E_PROVEN_PACK_DROP_ADAPTERS if name != "nmap"}
     return {
         "dest_in": str(dest_in),
