@@ -366,12 +366,12 @@ def write_stamp(data: dict[str, Any]) -> Path:
     data = dict(data)
     data.setdefault("generated_at", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     path = _stamp_path()
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
     out = os.environ.get("OUT_DIR")
     if out:
         extra = Path(out) / "compose_lab.json"
         extra.parent.mkdir(parents=True, exist_ok=True)
-        extra.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        extra.write_text(path.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
     return path
 
 

@@ -262,7 +262,7 @@ def test_original_detection_date_local_day_at_2030_los_angeles() -> None:
 
 
 def test_carried_ledger_original_detection_date_not_rewritten() -> None:
-    """Existing ledger dates stay as stored; evening local conversion does not rewrite."""
+    """Existing ledger dates stay as stored. No TZ pin — carry-as-is is zone-free."""
     rec = _rec()
     rec["extra"]["scan_time"] = "2026-10-04T03:30:00Z"
     first = apply_ledger(
@@ -275,17 +275,84 @@ def test_carried_ledger_original_detection_date_not_rewritten() -> None:
     item["original_detection_date"] = "2026-10-04"
     first["sha256"] = ""
     clock = datetime(2026, 10, 4, 3, 30, tzinfo=timezone.utc)
-    with pinned_tz("America/Los_Angeles"):
+    second = apply_ledger(
+        [rec],
+        catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+        run_at=clock,
+        ledger_in=first,
+        prior_existed=True,
+    )
+    item2 = next(iter(second["items"].values()))
+    assert item2["original_detection_date"] == "2026-10-04"
+    assert item2["poam_id"] == item["poam_id"]
+
+
+def test_kiritimati_two_run_detection_date_and_due_unchanged() -> None:
+    """Same host, same scan at 2026-10-03T20:30Z under Pacific/Kiritimati.
+
+    Run 1 mints local 2026-10-04 (High due 2026-11-03). Run 2 must carry
+    both cells; only a reobserved event. merge_detection vs UTC would
+    flip to 2026-10-03 / 2026-11-02.
+    """
+    clock = datetime(2026, 10, 3, 20, 30, tzinfo=timezone.utc)
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-03T20:30:00Z"
+    with pinned_tz("Pacific/Kiritimati"):
+        assert clock.astimezone().date().isoformat() == "2026-10-04"
+        first = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            prior_existed=False,
+        )
+        item = next(iter(first["items"].values()))
+        assert item["original_detection_date"] == "2026-10-04"
+        assert item["template_due"] == "2026-11-03"
         second = apply_ledger(
             [rec],
-            catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+            catalog=_catalog(),
             run_at=clock,
             ledger_in=first,
             prior_existed=True,
         )
         item2 = next(iter(second["items"].values()))
         assert item2["original_detection_date"] == "2026-10-04"
-        assert item2["poam_id"] == item["poam_id"]
+        assert item2["template_due"] == "2026-11-03"
+        assert item2["effective_due"] == item["effective_due"]
+        kinds = [e.get("kind") for e in (second.get("events_this_run") or [])]
+        assert kinds == ["reobserved"]
+
+
+def test_reopen_mints_host_local_detection_date_not_utc() -> None:
+    """Mutant c5: reopen uses _new_item host-local mint, not a UTC overwrite."""
+    clock = datetime(2026, 10, 3, 20, 30, tzinfo=timezone.utc)
+    rec = _rec()
+    rec["extra"]["scan_time"] = "2026-10-03T20:30:00Z"
+    with pinned_tz("Pacific/Kiritimati"):
+        first = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            prior_existed=False,
+        )
+        item = next(iter(first["items"].values()))
+        item["status"] = "closed"
+        item["closed_date"] = "2026-10-04"
+        first["sha256"] = ""
+        second = apply_ledger(
+            [rec],
+            catalog=_catalog(),
+            run_at=clock,
+            ledger_in=first,
+            prior_existed=True,
+        )
+        item2 = next(iter(second["items"].values()))
+        assert item2["status"] == "reopened"
+        assert item2["original_detection_date"] == "2026-10-04"
+        assert item2["original_detection_date"] != "2026-10-03"
+        assert item2["template_due"] == "2026-11-03"
+        kinds = [e.get("kind") for e in (second.get("events_this_run") or [])]
+        assert "reopened" in kinds
 
 
 def _catalog():

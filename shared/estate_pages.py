@@ -137,9 +137,6 @@ CLIENT_FACING_RELS = (
     "MANIFEST",
 )
 
-# GNU coreutils: "<hash><two spaces><path>" (text) or "<hash><space>*<path>" (binary).
-SHA256SUM_LINE = re.compile(r"^([0-9a-f]{64}) [ *](.+)$")
-
 COLLECTOR_AREAS = {
     "cloud": "Cloud configuration",
     "cloud-prowler": "Cloud configuration",
@@ -2005,9 +2002,9 @@ def build_executive_summary(ctx: PageContext) -> str:
             "### Next step",
             _next_step_line(stamp),
             "",
-            "Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes). Verify with "
+            "Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `SHA256SUMS` (hashes). Verify with "
             + md_code_span(
-                recorded(_env(None, "GRC_VERIFY_COMMAND") or "sha256sum -c MANIFEST")
+                recorded(_env(None, "GRC_VERIFY_COMMAND") or "sha256sum -c SHA256SUMS")
             )
             + " (Git Bash / Linux) or "
             + md_code_span("python scripts/verify_manifest.py")
@@ -2118,7 +2115,7 @@ def build_scope_and_trust(ctx: PageContext) -> str:
             "",
             "### Integrity and traceability",
             "- Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.",
-            f"- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c MANIFEST'))} (Git Bash / Linux) or {md_code_span('python scripts/verify_manifest.py')}.",
+            f"- SHA-256 hashes for every exported file are in `SHA256SUMS`. Verify with {md_code_span(recorded(_env(None, 'GRC_VERIFY_COMMAND') or 'sha256sum -c SHA256SUMS'))} (Git Bash / Linux) or {md_code_span('python scripts/verify_manifest.py')}.",
             f"- Contact for questions or corrections: {md_safe_text(recorded(_env(None, 'GRC_CONTACT')))}.",
             "",
         ]
@@ -2243,28 +2240,34 @@ def write_client_pages(out: Path, ctx: PageContext) -> dict[str, str]:
 
 
 def write_export_manifest(out: Path, stamp: EstateStamp | None = None) -> Path:
-    """Write `out/MANIFEST` last in GNU sha256sum format. Never list itself."""
+    """Write `out/MANIFEST` and `out/SHA256SUMS` last in GNU sha256sum format.
+
+    Never list MANIFEST or SHA256SUMS. Both files carry the same lines so
+    ``sha256sum -c`` and ``verify_manifest.py`` agree on either name.
+    """
     dest = Path(out)
     dest.mkdir(parents=True, exist_ok=True)
-    manifest_path = dest / "MANIFEST"
-    if manifest_path.is_file():
-        manifest_path.unlink()
+    skip_names = {"MANIFEST", "SHA256SUMS"}
+    for name in skip_names:
+        stale = dest / name
+        if stale.is_file():
+            stale.unlink()
     rels = list(EXPORT_CSV_REL) + list(EXPORT_MD_REL) + list(EXPORT_OTHER_REL)
     lines: list[str] = []
     for rel in rels:
         rel_posix = str(rel).replace("\\", "/")
-        if rel_posix == "MANIFEST" or Path(rel_posix).name == "MANIFEST":
+        if rel_posix in skip_names or Path(rel_posix).name in skip_names:
             continue
         path = dest / rel_posix
         if not path.is_file():
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         lines.append(f"{digest}  {rel_posix}")
-    manifest_path.write_text(
-        "\n".join(lines) + ("\n" if lines else ""),
-        encoding="utf-8",
-        newline="\n",
-    )
+    body = "\n".join(lines) + ("\n" if lines else "")
+    manifest_path = dest / "MANIFEST"
+    sums_path = dest / "SHA256SUMS"
+    manifest_path.write_text(body, encoding="utf-8", newline="\n")
+    sums_path.write_text(body, encoding="utf-8", newline="\n")
     return manifest_path
 
 
@@ -2364,33 +2367,17 @@ def assert_scope_from_coverage(out: Path, sensor_rows: list[dict] | None = None)
 
 def assert_manifest_sha256sum(out: Path) -> None:
     dest = Path(out)
-    manifest = dest / "MANIFEST"
-    if not manifest.is_file():
-        raise AssertionError("MANIFEST missing")
-    text = manifest.read_text(encoding="utf-8")
-    parsed: list[tuple[str, str]] = []
-    for line in text.splitlines():
-        if not line.strip():
-            continue
-        match = SHA256SUM_LINE.match(line)
-        if not match:
-            raise AssertionError(f"MANIFEST is not sha256sum format: {line!r}")
-        digest, rel = match.group(1), match.group(2)
-        if rel.startswith("/") or ".." in Path(rel).parts:
-            raise AssertionError(f"MANIFEST path must be relative: {rel!r}")
-        if rel == "MANIFEST" or Path(rel).name == "MANIFEST":
-            raise AssertionError("MANIFEST must not list itself")
-        parsed.append((digest, rel))
-    if not parsed:
-        raise AssertionError("MANIFEST has no checksum lines")
     from scripts.verify_manifest import verify_manifest
 
+    # Python verifier always runs. Never treat a missing sha256sum binary
+    # as success — that mutant reports OK without hashing.
     verify_manifest(dest)
-    # GNU sha256sum is the operator command on Linux / Git Bash. The Python
-    # verifier is the portable path (Windows). Run sha256sum when present.
+    target = "SHA256SUMS" if (dest / "SHA256SUMS").is_file() else "MANIFEST"
+    if not (dest / target).is_file():
+        raise AssertionError("SHA256SUMS or MANIFEST missing")
     try:
         proc = subprocess.run(
-            ["sha256sum", "-c", "MANIFEST"],
+            ["sha256sum", "-c", target],
             cwd=str(dest),
             capture_output=True,
             text=True,
@@ -2401,7 +2388,7 @@ def assert_manifest_sha256sum(out: Path) -> None:
         return
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout or "").strip()
-        raise AssertionError(f"sha256sum -c MANIFEST failed: {detail}")
+        raise AssertionError(f"sha256sum -c {target} failed: {detail}")
 
 
 def assert_client_export_honesty(out: Path, sensor_rows: list[dict] | None = None) -> None:

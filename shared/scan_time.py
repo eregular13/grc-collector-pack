@@ -407,7 +407,17 @@ def merge_detection(
     *,
     now: datetime | date | None = None,
 ) -> str:
-    """First observed wins; earliest real wins over ``not recorded``; never later."""
+    """Alias-collapse earliest-wins only. Reobserve does **not** call this.
+
+    A stored YYYY-MM-DD is the host-local civil day of first mint. Later
+    runs keep that cell (see ``apply_ledger``). Using this helper on
+    reobserve against the scan instant's UTC day rewrites a Kiritimati
+    first-run ``2026-10-04`` to ``2026-10-03``. Zone-move edge: an estate
+    that first-ran east of UTC keeps that later civil day when later
+    processed in UTC; a UTC first-run keeps the earlier day in Kiritimati.
+    We do not store a first-seen instant (YYYY-MM-DD is the wire); carry
+    as-is is the non-invasive fix.
+    """
     stored_d = calendar_date(stored, now=now) if stored and stored != NOT_RECORDED else None
     incoming_d = calendar_date(incoming_raw, now=now)
     if stored_d and incoming_d:

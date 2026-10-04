@@ -161,6 +161,8 @@ jobs:
           tests/test_estate_pages.py
           tests/test_asset_ledger.py
           tests/test_framework_env_eval.py
+          tests/test_verify_manifest.py
+          tests/test_prior_out_carry.py
 
   # Clean-checkout cold SAMPLE→SoR. Full git clone (keep/__main__.py present).
   # No Docker — keep-lab is file-drop only. Honesty-only; not a paying_day PASS.

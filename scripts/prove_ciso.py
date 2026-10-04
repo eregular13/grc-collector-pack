@@ -398,7 +398,6 @@ def prove_ciso(
     dest = Path(dest or (root / "prove" / "work"))
     dest_in = dest / "in"
     dest_out = dest / "out"
-    prior_carry: dict[str, Any] = {}
     saved = {key: os.environ.get(key) for key in ENV_KEYS}
     pack = pack_in_dir()
     before = fingerprint(pack)
@@ -453,6 +452,25 @@ def prove_ciso(
     summary: dict[str, Any] = {}
     if (dest_out / "summary.json").is_file():
         summary = json.loads((dest_out / "summary.json").read_text(encoding="utf-8"))
+        extra = list(prior_carry.get("warnings") or [])
+        if extra:
+            summary["prior_out_warnings"] = extra
+            summary["ledger_warnings"] = sorted(
+                set(list(summary.get("ledger_warnings") or []) + extra)
+            )
+            asset_extra = [
+                w
+                for w in extra
+                if "asset" in w.lower() or w.startswith("PRIOR_")
+            ]
+            summary["asset_ledger_warnings"] = sorted(
+                set(list(summary.get("asset_ledger_warnings") or []) + asset_extra)
+            )
+            (dest_out / "summary.json").write_text(
+                json.dumps(summary, indent=2) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
     paying = "FAIL"
     for line in (root / "STATUS.md").read_text(encoding="utf-8").splitlines():
         if line.startswith("paying_day:"):
@@ -564,6 +582,7 @@ def prove_ciso(
         "out_dir": str(dest_out),
         "prior_out": prior_carry.get("prior_out") if prior_carry else None,
         "prior_ledgers": prior_carry.get("copied") if prior_carry else [],
+        "prior_warnings": list(prior_carry.get("warnings") or []) if prior_carry else [],
         "note": (
             (
                 "Operator dest_in (no fixture reseed) -> existing collectors -> "
@@ -698,9 +717,6 @@ def main(argv: list[str] | None = None) -> int:
         print(str(exc), file=sys.stderr)
         return 1
     except LabShapeError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
         return 1
     except FileNotFoundError as exc:

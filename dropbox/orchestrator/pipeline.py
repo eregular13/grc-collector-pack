@@ -57,7 +57,7 @@ def _orch_dir() -> Path:
 
 def _write_json(path: Path, data) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
     return path
 
 
@@ -269,6 +269,7 @@ def deepen_stage(scope: Scope, farm: Farm, live_hosts: list[str] | None = None, 
         "Evergreen only plans batches. It does not download Nessus or plugins.\n"
         "Deepen is louder than discover and stays gated by orchestrator.stages.deepen.\n",
         encoding="utf-8",
+        newline="\n",
     )
     if not scope.stage_deepen:
         if live:

@@ -81,13 +81,24 @@ def test_heuristics_smtp_open_relay_and_world_writable() -> None:
     assert nist_800_53_ids(title="SMTP capture / open mail relay") == ["SC-7", "CM-7"]
     assert nist_800_53_ids(title="SMTP banner on port 25") == []
     assert nist_800_53_ids(title="captured packet on 25/tcp") == []
+    assert nist_800_53_ids(title="not an open relay") == []
+    assert nist_800_53_ids(title="relay access denied") == []
+    assert nist_800_53_ids(title="check: closed") == []
 
     lynis = "World-writable file /etc/cron.d/backup (mode 0777)"
     assert nist_800_53_ids(title=lynis) == ["AC-6", "CM-6"]
     assert nist_800_53_ids(title="File permissions too open") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="mode 0777") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="chmod 0777 /tmp/x") == ["AC-6", "CM-6"]
+    assert nist_800_53_ids(title="octal 777") == ["AC-6", "CM-6"]
     assert nist_800_53_ids(title="Plugin 17770") == []
     assert nist_800_53_ids(title="Port 17770/tcp open") == []
     assert nist_800_53_ids(title="Build 27770") == []
+    assert nist_800_53_ids(title="10.0.777.1") == []
+    assert nist_800_53_ids(title="1.7.777") == []
+    assert nist_800_53_ids(title="SN-777-0042") == []
+    assert nist_800_53_ids(title="CVE-2017-0777") == []
+    assert nist_800_53_ids(title="error code 777") == []
     from shared.framework_class_map import CSF20_SUBCATEGORIES, _lookup_env_eval_rule
 
     smtp = _lookup_env_eval_rule(title=nmap_relay)

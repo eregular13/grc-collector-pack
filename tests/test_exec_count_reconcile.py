@@ -361,12 +361,23 @@ def test_exec_headline_open_is_poam_not_ledger_open() -> None:
     assert "Ledger open including excluded: 2." in text
 
 
+def test_loader_passes_plan_ids_to_ledger_run_delta() -> None:
+    """s6: DEMO new= cannot silently revert to register 125."""
+    src = (ROOT / "collectors" / "grc_loader.py").read_text(encoding="utf-8")
+    assert "ledger_run_delta(poam_ledger, plan_ids=listed_ids)" in src
+
+
 def test_exec_counts_match_demo_csvs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _run_lab(tmp_path, monkeypatch)
     parsed = _assert_exec_matches_csvs(tmp_path)
     assert parsed["open"] >= 1
+    text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
+    new_m = re.search(r"\bnew=(\d+)", text)
+    assert new_m, text
+    assert int(new_m.group(1)) == parsed["open"]
+    assert int(new_m.group(1)) != 125
 
 
 def test_exec_counts_match_sample_csvs(tmp_path: Path) -> None:

@@ -948,7 +948,10 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
         },
     ),
     (
-        re.compile(r"open.?relay|smtp captur", re.I),
+        re.compile(
+            r"(?i)(?!.*(?:not an open relay|relay access denied|check:\s*closed))"
+            r"(?:open.?relay|smtp captur)"
+        ),
         {
             "rule_id": "smtp-open-relay",
             "weakness_class": "exposure_network",
@@ -968,7 +971,11 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
         },
     ),
     (
-        re.compile(r"world.?writ|\b0?777\b|permissions too open", re.I),
+        re.compile(
+            r"(?i)world.?writ|permissions too open|"
+            r"(?:mode|chmod|permissions|world|octal)\W{0,24}0?777\b|"
+            r"\b0?777\W{0,24}(?:mode|chmod|permissions|world|octal)"
+        ),
         {
             "rule_id": "perms",
             "weakness_class": "config_benchmark",

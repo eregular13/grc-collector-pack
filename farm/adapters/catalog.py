@@ -713,5 +713,5 @@ def render_slots_md() -> str:
 
 def write_slots_md() -> Path:
     dest = FARM_ROOT / "SLOTS.md"
-    dest.write_text(render_slots_md(), encoding="utf-8")
+    dest.write_text(render_slots_md(), encoding="utf-8", newline="\n")
     return dest

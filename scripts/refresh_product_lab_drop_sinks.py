@@ -125,7 +125,19 @@ def _write_manifest(counts: dict[str, int], hashes: dict[str, str]) -> None:
         "POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row."
     )
     lines.append("")
+    lines.append(
+        "Verify hashes with `sha256sum -c SHA256SUMS` or "
+        "`python scripts/verify_manifest.py product-lab/drop` "
+        "(MANIFEST is this count table, not sha256sum format)."
+    )
+    lines.append("")
     (DROP / "MANIFEST").write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    sums = [f"{hashes[rel]}  {rel}" for rel, _count_key in MANIFEST_ROWS]
+    (DROP / "SHA256SUMS").write_text(
+        "\n".join(sums) + ("\n" if sums else ""),
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def _write_readme(counts: dict[str, int]) -> None:
@@ -134,7 +146,7 @@ def _write_readme(counts: dict[str, int]) -> None:
 **Copied:** {_copied_at()} from this Linux VM `out/` after host lab (`scripts/lab.sh`).  
 **Estate:** demo (`in/` empty → fixtures). SAMPLE/DEMO. Not a client. Not a LAB dest_in prove.
 
-See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts and SHA256.
+See `MANIFEST` for CISO CSV + POA&M + OpenGRC + Probo row counts. Verify bytes with `SHA256SUMS` (`sha256sum -c SHA256SUMS` or `python scripts/verify_manifest.py product-lab/drop`).
 
 Hand `poam/poam.csv` with the CISO CSVs. Owner and due are blank.
 

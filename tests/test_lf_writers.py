@@ -1,7 +1,8 @@
 """Pack text writers must not use platform newlines.
 
-MANIFEST / .md / ESTATE.txt / json stay LF so ``sha256sum -c MANIFEST``
-and ``python scripts/verify_manifest.py`` agree on Windows and Linux.
+MANIFEST / SHA256SUMS / .md / ESTATE.txt / json stay LF so
+``sha256sum -c SHA256SUMS`` and ``python scripts/verify_manifest.py``
+agree on Windows and Linux.
 CSVs keep the csv module terminator the pack already emits on Linux (LF
 via lineterminator='\\n' + open newline='').
 """
@@ -49,6 +50,14 @@ PACK_WRITER_MODULES = (
     ROOT / "scripts" / "farm_toolbin_e2e.py",
     ROOT / "scripts" / "farm_toolbin_lab.py",
     ROOT / "scripts" / "farm_compose_lab.py",
+    ROOT / "dropbox" / "orchestrator" / "ciso_path.py",
+    ROOT / "dropbox" / "orchestrator" / "pipeline.py",
+    ROOT / "dropbox" / "orchestrator" / "byo.py",
+    ROOT / "dropbox" / "scanner_free.py",
+    ROOT / "dropbox" / "runners.py",
+    ROOT / "dropbox" / "scope.py",
+    ROOT / "dropbox" / "mcp_stub.py",
+    ROOT / "farm" / "adapters" / "catalog.py",
 )
 
 
@@ -117,6 +126,7 @@ def test_writers_stay_lf_when_linesep_is_crlf(
         out / "EXECUTIVE_SUMMARY.md",
         out / "SCOPE_AND_TRUST.md",
         out / "MANIFEST",
+        out / "SHA256SUMS",
         out / "poam" / "poam-ledger.json",
         out / "assets" / "asset-ledger.json",
     ):

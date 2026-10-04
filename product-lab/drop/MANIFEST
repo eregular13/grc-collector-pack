@@ -1,7 +1,7 @@
 # product-lab/drop MANIFEST — CISO Assistant CSVs + POA&M + OpenGRC + Probo
 
 Estate: demo (`in/` empty → fixtures/demo). Not a client. SAMPLE/DEMO ≠ LAB dest_in.
-Copied from out/ after host lab 2026-10-04T03:26:40Z (this Linux VM).
+Copied from out/ after host lab 2026-10-04T05:15:23Z (this Linux VM).
 OpenGRC/Probo files regenerated from packaged `ciso/` via `python -m exporters` (file-true, posted=false).
 Do not invent FindingsAssessment UUIDs. Import CISO CSVs with clica or the CISO Assistant UI.
 OpenGRC Data Manager CSVs are leave-behind only — not live import. Do not POST /api/risks.
@@ -24,8 +24,8 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 | poam/poam_fedramp.csv | 119 | `ea97c4750815f86ae8d8072add1cb49d7813ea762196f9167db6f8e6e1945491` |
 | poam/poam-ledger.json | draft | `faac2ce82118c94f2e77f8162ceb9db27f7ec9d59c248fd177d42b66575459fc` |
 | poam/ESTATE.txt | draft | `eeeb642c1cb41d0a52348b7c543fccc231333e8907958d0776a298733e0a7483` |
-| EXECUTIVE_SUMMARY.md | draft | `8a6ccb47d85260d25d230bffa94eeb0c7aa5db777842e77c271872e38f0dc632` |
-| SCOPE_AND_TRUST.md | draft | `8e1c20808ec842cbe3c2ff2e94587bfb6ca65cb12d598d1e9027a727fea220ef` |
+| EXECUTIVE_SUMMARY.md | draft | `388cecd34edbe5ba89909c9d72b4cb7f8506169af467b59b1b8b81d2ab3a853e` |
+| SCOPE_AND_TRUST.md | draft | `f3a9efc2793682c03ea16886d40ccdf6575ce77ac722e1d2332f2a3f501b3869` |
 | opengrc/risks.csv | 125 | `17ed995d306e2ec070505f8e5a1ab10b21231e9713c38b2d05ece13b25e6f4e4` |
 | opengrc/assets.csv | 79 | `37f90c7910426452a3777348fe4270390eaf916cabac672f2ea09d342102ad46` |
 | opengrc/implementations.csv | 119 | `0c73006406347edb5b82f298898a9992ce04ff28df75ac928c9fe7554b42aaca` |
@@ -34,3 +34,5 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 Do not POST /api/risks.
 
 POA&M goldens this lab: SMB/445 (SMBv1 confirm, not a CVE), open RDP/3389, TLS weak cipher, admin shares, Telnet/23. Owner and due blank on every row.
+
+Verify hashes with `sha256sum -c SHA256SUMS` or `python scripts/verify_manifest.py product-lab/drop` (MANIFEST is this count table, not sha256sum format).

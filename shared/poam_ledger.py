@@ -926,8 +926,8 @@ def detection_time(
     """Artifact scan timestamp only. Never the pack run date or collected_at.
 
     ``host_local=True`` uses the same local-day rule as status_date for
-    newly minted rows. Reobserve / merge keep the default recorded-zone
-    parse so existing ledger dates are not rewritten.
+    newly minted and reopened rows. A stored ledger date is carried
+    as-is on reobserve (not merged against this-run UTC).
     """
     del run_date
     if host_local:
@@ -2319,7 +2319,8 @@ def apply_ledger(
                 closed_copy = deepcopy(item)
                 ledger["closed"].append(closed_copy)
                 new_id = next_reopen_id(str(item.get("poam_id") or ""), _existing_id_set(ledger) | {closed_copy.get("poam_id", "")})
-                detected, basis = detection_time(rec, host_local=True)
+                # Same mint rule as _new_item (host-local civil day). Do not
+                # overwrite with a recorded-zone/UTC parse (mutant c5).
                 fresh = _new_item(
                     rec,
                     fp=fp,
@@ -2331,10 +2332,6 @@ def apply_ledger(
                 )
                 fresh["status"] = "reopened"
                 fresh["prior_poam_id"] = str(item.get("poam_id") or "")
-                fresh["original_detection_date"] = (
-                    detected.isoformat() if detected is not None else NOT_RECORDED
-                )
-                fresh["detection_date_basis"] = basis if detected is not None else "not_recorded"
                 fresh["kev_comments"] = list(fresh.get("kev_comments") or []) + [
                     f"Reopened from {item.get('poam_id')}; closed row remains on Closed."
                 ]
@@ -2362,15 +2359,21 @@ def apply_ledger(
                     item["ref_id"] = str(rec.get("ref_id") or "")
                 item["name"] = str(rec.get("name") or item.get("name") or "")
                 item["description"] = str(rec.get("description") or item.get("description") or "")
-                incoming, incoming_basis = detection_time(rec)
-                item["original_detection_date"] = merge_detection(
-                    str(item.get("original_detection_date") or NOT_RECORDED),
-                    incoming,
-                )
-                if incoming is not None and item["original_detection_date"] != NOT_RECORDED:
-                    if item.get("detection_date_basis") in {"", "not_recorded", "run", "collected_at"}:
+                # Carry a stored civil day untouched. merge_detection's
+                # earliest-wins vs this-run UTC day rewrites Kiritimati
+                # 2026-10-04 → 2026-10-03 on the same scan instant.
+                stored_odd = str(item.get("original_detection_date") or "")
+                stored_d = _to_date(stored_odd)
+                if stored_d is None:
+                    incoming, incoming_basis = detection_time(rec, host_local=True)
+                    item["original_detection_date"] = (
+                        incoming.isoformat() if incoming is not None else NOT_RECORDED
+                    )
+                    if incoming is not None:
                         item["detection_date_basis"] = incoming_basis
-                detected = _to_date(item.get("original_detection_date"))
+                    detected = incoming
+                else:
+                    detected = stored_d
                 if detected is not None:
                     tmpl = template_due_date(detected, rec.get("severity"))
                     item["template_due"] = tmpl.isoformat()
@@ -2726,26 +2729,85 @@ def resolve_prior_out(raw: str | Path | None) -> Path | None:
     return path
 
 
+def _paths_overlap(a: Path, b: Path) -> bool:
+    try:
+        left, right = a.resolve(), b.resolve()
+    except OSError:
+        return False
+    if left == right:
+        return True
+    try:
+        left.relative_to(right)
+        return True
+    except ValueError:
+        pass
+    try:
+        right.relative_to(left)
+        return True
+    except ValueError:
+        return False
+
+
+def _estate_label_of(root: Path) -> str:
+    summary = root / "summary.json"
+    if summary.is_file():
+        try:
+            kind = str(json.loads(summary.read_text(encoding="utf-8")).get("estate_kind") or "")
+        except (OSError, json.JSONDecodeError, TypeError):
+            kind = ""
+        if kind:
+            return kind
+    if (root / "LAB.txt").is_file():
+        return "LAB"
+    if (root / "SAMPLE.txt").is_file():
+        return "SAMPLE"
+    return ""
+
+
 def carry_prior_ledgers(prior_out: Path, dest_in: Path) -> dict[str, Any]:
     """Copy prior ``out/`` ledgers into dest_in with the same integrity checks.
 
     Call this **before** wiping dest_out when ``prior_out`` is that dest_out
     (repeat prove in the same work dir). Hand-supplied ledgers use the same
     ``load_ledger_file`` / ``AssetLedger.load`` checks.
+
+    Copies stay under dest/in so the next ``--use-existing-in`` run will
+    reuse them unless dest/in is wiped (default seed) or replaced. One
+    ledger missing → ``PRIOR_OUT_PARTIAL`` warning (still copies the
+    other). Both missing → ``PRIOR_OUT_FAIL``. ``--prior-out`` pointing
+    at dest/in raises. A hand ledger already in dest/in is overwritten
+    by ``--prior-out`` with ``PRIOR_OUT_OVERWRITES_HAND``.
     """
     from shared.asset_ledger import AssetLedger
 
     prior = Path(prior_out)
     dest_in = Path(dest_in)
+    if _paths_overlap(prior, dest_in):
+        raise FileNotFoundError(
+            f"PRIOR_OUT_FAIL: --prior-out {prior} points at dest in/ "
+            "(SameFileError — pass the prior out/ directory, not dest/in)"
+        )
     copied: list[str] = []
     warnings: list[str] = []
+    hand_poam = (dest_in / LEDGER_IN_REL).is_file()
+    hand_asset = (dest_in / PRIOR_ASSET_REL).is_file()
+    if hand_poam or hand_asset:
+        warnings.append(
+            "PRIOR_OUT_OVERWRITES_HAND: --prior-out replaced dest/in ledger(s); "
+            "prior-out won"
+        )
     poam_src = prior / PRIOR_POAM_REL
     if not poam_src.is_file() and (prior / "poam-ledger.json").is_file():
         poam_src = prior / "poam-ledger.json"
     if poam_src.is_file():
         dest = dest_in / LEDGER_IN_REL
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(poam_src, dest)
+        try:
+            shutil.copy2(poam_src, dest)
+        except shutil.SameFileError as exc:
+            raise FileNotFoundError(
+                f"PRIOR_OUT_FAIL: --prior-out copies onto itself ({exc})"
+            ) from exc
         _prior, load_warnings = load_ledger_file(dest)
         warnings.extend(load_warnings)
         copied.append("poam-ledger.json")
@@ -2755,12 +2817,33 @@ def carry_prior_ledgers(prior_out: Path, dest_in: Path) -> dict[str, Any]:
     if asset_src.is_file():
         dest = dest_in / PRIOR_ASSET_REL
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(asset_src, dest)
-        AssetLedger.load(dest)
+        try:
+            shutil.copy2(asset_src, dest)
+        except shutil.SameFileError as exc:
+            raise FileNotFoundError(
+                f"PRIOR_OUT_FAIL: --prior-out copies onto itself ({exc})"
+            ) from exc
+        loaded = AssetLedger.load(dest)
+        warnings.extend(str(w) for w in (loaded.warnings or []) if w)
         copied.append("asset-ledger.json")
     if not copied:
         raise FileNotFoundError(
             f"PRIOR_OUT_FAIL: no poam-ledger.json or asset-ledger.json under {prior}"
+        )
+    if "poam-ledger.json" not in copied or "asset-ledger.json" not in copied:
+        missing = (
+            "asset-ledger.json"
+            if "asset-ledger.json" not in copied
+            else "poam-ledger.json"
+        )
+        warnings.append(
+            f"PRIOR_OUT_PARTIAL: {missing} missing under {prior}; copied {copied}"
+        )
+    prior_estate = _estate_label_of(prior)
+    dest_estate = _estate_label_of(dest_in)
+    if prior_estate and dest_estate and prior_estate != dest_estate:
+        warnings.append(
+            f"PRIOR_ESTATE_MISMATCH: prior {prior_estate} vs dest {dest_estate}"
         )
     return {
         "prior_out": str(prior),

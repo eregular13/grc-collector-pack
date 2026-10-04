@@ -86,7 +86,7 @@ def write_inventory(scope: Scope, demo: bool = DEMO) -> Path:
     for name, (addr, ports) in hosts.items():
         port_s = ", ".join(f"{p}/open/tcp//{svc}///" for p, svc in ports) or "22/open/tcp//ssh///"
         lines.append(f"Host: {addr} ({name})\tPorts: {port_s}")
-    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    dest.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     return dest
 
 
@@ -102,14 +102,14 @@ def write_lynis(scope: Scope, demo: bool = DEMO) -> Path | None:
         proc = _run_cmd([lynis, "audit", "system", "--quick", "--no-colors"], timeout=120)
         report = (proc.stdout or "")[:8000]
         raw = _sensor_dir("wazuh") / "dropbox-lynis-report.txt"
-        raw.write_text(report or "# lynis produced no stdout\n", encoding="utf-8")
+        raw.write_text(report or "# lynis produced no stdout\n", encoding="utf-8", newline="\n")
     payload = {
         "osquery": [{"hostname": host, "status": "active", "source": "dropbox-lynis"}],
         "notes": "Lynis findings are not parsed (no Lynis collector). Host ingested via osquery shape.",
         "demo": demo or not bool(lynis),
         "label": "DEMO — not a client estate" if demo else "host lynis",
     }
-    dest_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    dest_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n")
     return dest_json
 
 
@@ -175,7 +175,7 @@ def write_tls_headers(scope: Scope, demo: bool = DEMO, live: bool = LIVE) -> Pat
             row["title"] = "TLS header grab"
             row["tech"] = ["dropbox-tls"]
         rows.append(row)
-    dest.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    dest.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8", newline="\n")
     return dest
 
 
@@ -203,7 +203,7 @@ def write_byo(scope: Scope, demo: bool = DEMO) -> list[Path]:
         proc = _run_cmd(argv, timeout=int(item.get("timeout") or 30))
         sensor = str(item.get("sensor") or "nmap")
         dest = _sensor_dir(sensor) / f"dropbox-byo-{tool}.txt"
-        dest.write_text((proc.stdout or "") + (proc.stderr or ""), encoding="utf-8")
+        dest.write_text((proc.stdout or "") + (proc.stderr or ""), encoding="utf-8", newline="\n")
         written.append(dest)
     return written
 

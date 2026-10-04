@@ -2173,6 +2173,7 @@ def run_live_collectors(
             "LAB/DEMO -- not a client estate.\n"
             "Operator live dest_in (GRC_LIVE_SCAN=1). Not SAMPLE. Not client KEEP.\n",
             encoding="utf-8",
+            newline="\n",
         )
     pack = dest_in / "nmap" / "pack_drop"
     if pack.is_dir():

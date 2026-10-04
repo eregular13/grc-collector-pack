@@ -200,7 +200,15 @@ def run_allowed(
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        dest.write_text((exc.stdout or "") if isinstance(exc.stdout, str) else "", encoding="utf-8")
+        dest.write_text(
+            (exc.stdout or "") if isinstance(exc.stdout, str) else "",
+            encoding="utf-8",
+            newline="\n",
+        )
         raise TimeoutError("timeout (host_timeout_sec)") from exc
-    dest.write_text((proc.stdout or "") or (proc.stderr or ""), encoding="utf-8")
+    dest.write_text(
+        (proc.stdout or "") or (proc.stderr or ""),
+        encoding="utf-8",
+        newline="\n",
+    )
     return int(proc.returncode)

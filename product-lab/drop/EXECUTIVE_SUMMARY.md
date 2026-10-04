@@ -52,4 +52,4 @@ None. Every sensor that received input was assessed.
 ### Next step
 This is demo/sample data, not a live scan of a client estate. Review poam.csv after a real-environment engagement.
 
-Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `MANIFEST` (hashes). Verify with `sha256sum -c MANIFEST` (Git Bash / Linux) or `python scripts/verify_manifest.py`.
+Companion files: `poam.csv`, `risk_register` (`ciso/risk_scenarios.csv`), the scope and trust statement, and `SHA256SUMS` (hashes). Verify with `sha256sum -c SHA256SUMS` (Git Bash / Linux) or `python scripts/verify_manifest.py`.

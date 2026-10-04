@@ -133,6 +133,15 @@ python3 scripts/prove_ciso.py --work DIR --use-existing-in
 #   ./scripts/lab_drop_to_sor.sh --work DIR --prior-out DIR/out
 #   .\scripts\lab_drop_to_sor.ps1 -Work DIR -PriorOut DIR\out
 # --prior-ledger is an alias (dir or poam-ledger.json). Copy happens before dest/out wipe.
+# Copies land under DIR/in/poam/ and DIR/in/assets/ and stay there. The next
+# --use-existing-in run reuses those in/ copies unless you reseed (default
+# prove wipes in/) or pass --prior-out again. Wipe leftover ledgers if you
+# do not want reuse: rm -rf DIR/in/poam DIR/in/assets
+# --prior-out DIR/in is PRIOR_OUT_FAIL (SameFileError). One ledger missing
+# is PRIOR_OUT_PARTIAL (warn, copy the other). Both missing is PRIOR_OUT_FAIL.
+# A hand ledger already in dest/in is overwritten (PRIOR_OUT_OVERWRITES_HAND;
+# prior-out wins). PRIOR_ESTATE_MISMATCH warns when the prior estate label
+# disagrees with dest/in.
 # MCP conductor (pack dropbox.mcp_stub): tools/call lab_drop
 #   arguments.work = DIR  (or arguments.dest_in = DIR/in)
 #   without work: arguments.lab_out = lab-estate/out  (reads LAST_LAB_PROVE; auto-hint, no re-prove)

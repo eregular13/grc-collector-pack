@@ -41,5 +41,5 @@ Covers only the listed scanners at collection time. A clean area is not proof of
 
 ### Integrity and traceability
 - Every POA&M row carries a `ref_id` that links to its finding and to the raw artifact under `evidence/`.
-- SHA-256 hashes for every exported file are in `MANIFEST`. Verify with `sha256sum -c MANIFEST` (Git Bash / Linux) or `python scripts/verify_manifest.py`.
+- SHA-256 hashes for every exported file are in `SHA256SUMS`. Verify with `sha256sum -c SHA256SUMS` (Git Bash / Linux) or `python scripts/verify_manifest.py`.
 - Contact for questions or corrections: not recorded.

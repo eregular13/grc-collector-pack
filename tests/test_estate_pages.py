@@ -378,10 +378,10 @@ def test_exec_and_trust_generated_from_run_counts(
     assert "Changed since last run:" in exec_text
     assert "new=" in exec_text
     trust = (out / "SCOPE_AND_TRUST.md").read_text(encoding="utf-8")
-    assert "sha256sum -c MANIFEST" in trust
+    assert "sha256sum -c SHA256SUMS" in trust
     assert "python scripts/verify_manifest.py" in trust
     assert "Git Bash" in trust
-    assert "sha256sum -c MANIFEST" in exec_text
+    assert "sha256sum -c SHA256SUMS" in exec_text
     assert "python scripts/verify_manifest.py" in exec_text
     assert "Open POA&M (poam.csv):" in exec_text
     assert "| Critical |" in exec_text
@@ -574,10 +574,14 @@ def test_manifest_verifies_with_sha256sum_c(
         GRC_ESTATE_LABEL="LAB",
     )
     manifest = (out / "MANIFEST").read_text(encoding="utf-8")
+    sums = (out / "SHA256SUMS").read_text(encoding="utf-8")
     assert manifest
+    assert sums == manifest
     assert not manifest.lstrip().startswith(">")
     assert "| File |" not in manifest
-    assert "MANIFEST" not in {line.split()[-1] for line in manifest.splitlines() if line.strip()}
+    listed = {line.split()[-1] for line in manifest.splitlines() if line.strip()}
+    assert "MANIFEST" not in listed
+    assert "SHA256SUMS" not in listed
     assert_client_export_honesty(out)
 
 

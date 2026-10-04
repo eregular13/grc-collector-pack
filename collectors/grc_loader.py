@@ -1042,9 +1042,12 @@ def _load(*, run_at: datetime | None = None) -> dict:
         ),
         "generated_at": now,
     }
-    write_json(out_dir() / "summary.json", summary)
     families = {str(r.get("source") or "") for r in records if r.get("source")}
     asset_ledger.close_run(now=now, source_families=families)
+    summary["asset_ledger_warnings"] = [
+        str(w) for w in (asset_ledger.warnings or []) if w
+    ]
+    write_json(out_dir() / "summary.json", summary)
     asset_ledger.save(out_dir() / "assets" / "asset-ledger.json")
     write_iiw(asset_ledger, dest_dir=out_dir() / "iiw", observed=set(asset_ledger._observed))
     poam_dicts = [
