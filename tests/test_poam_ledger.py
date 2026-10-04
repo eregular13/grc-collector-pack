@@ -379,6 +379,50 @@ def test_3_5_14_integrity() -> None:
         assert LEDGER_CHAIN_BROKEN in warnings
 
 
+def test_load_ledger_file_skips_non_dict_items(tmp_path: Path) -> None:
+    """A valid JSON ledger with None / string / list items must not crash."""
+    rec = _rec()
+    first = _apply([rec], when="2026-09-10T00:00:00Z")
+    fp, item = next(iter(first["items"].items()))
+    first["items"]["bad-none"] = None
+    first["items"]["bad-str"] = "oops"
+    first["items"]["bad-list"] = ["not", "a", "dict"]
+    first["closed"] = [None, "oops", [], dict(item)]
+    path = tmp_path / "poam-ledger.json"
+    path.write_text(json.dumps(first), encoding="utf-8")
+    doc, warnings = load_ledger_file(path)
+    assert LEDGER_CHAIN_BROKEN in warnings
+    assert fp in doc["items"]
+    assert "bad-none" not in doc["items"]
+    assert "bad-str" not in doc["items"]
+    assert "bad-list" not in doc["items"]
+    assert all(isinstance(row, dict) for row in doc["closed"])
+    # apply_ledger must not AttributeError on the sanitized prior.
+    second = apply_ledger(
+        [rec],
+        catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+        run_at=datetime(2026, 9, 11, tzinfo=timezone.utc),
+        ledger_in=doc,
+        prior_existed=True,
+    )
+    assert fp in second["items"]
+
+    listed = {"sha256": "", "items": [{"poam_id": "EGP-LIST0001"}], "closed": "nope"}
+    listed_path = tmp_path / "listed-ledger.json"
+    listed_path.write_text(json.dumps(listed), encoding="utf-8")
+    listed_doc, listed_warn = load_ledger_file(listed_path)
+    assert LEDGER_CHAIN_BROKEN in listed_warn
+    assert listed_doc["items"] == {}
+    assert listed_doc["closed"] == []
+    apply_ledger(
+        [rec],
+        catalog=KevCatalog(kev_evaluated=False, reason="snapshot_missing"),
+        run_at=datetime(2026, 9, 11, tzinfo=timezone.utc),
+        ledger_in=listed_doc,
+        prior_existed=True,
+    )
+
+
 def test_migration_map_name_to_asset_id_port_keeps_id_and_earliest_date() -> None:
     """Fingerprint inputs change (name-based → asset-ID+port): keep existing ID and earliest detection date."""
     rec = {

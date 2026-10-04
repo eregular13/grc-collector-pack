@@ -1,5 +1,5 @@
 > **DEMO: NOT A CLIENT**: Built from demo fixtures because no scanner output was supplied. None describes any real organization.
-> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `9e8e570`
+> Run `not recorded` · generated 2026-10-03 23:53 UTC · pack `88be2bc`
 
 **DEMO: NOT A CLIENT**. Assessment window 2026-09-04 to 2026-09-24 (66 of 210 rows dated).
 

@@ -1173,7 +1173,7 @@ def _field_starts_with_ts_gateway(tokens: list[str]) -> bool:
     return True
 
 
-def _field_is_rd_gateway(text: str) -> bool:
+def _field_is_rd_gateway(text: str, *, allow_ts_lead: bool = True) -> bool:
     """Adjacent rd/rdp + gateway(s), remote/terminal phrases, or compact.
 
     Skip 'rd' (or a compact rdgateway* token) only when a digit run starts
@@ -1187,9 +1187,10 @@ def _field_is_rd_gateway(text: str) -> bool:
     the camel splitter otherwise cuts them into R + Dgateway.
 
     rds is not a lead token. Only the whole-field Windows feature
-    RDS-Gateway types; rds-gateway-public stays rds_public. ts matches
-    only as a leading TSGateway / ts-gateway (or Terminal Services
-    Gateway), not nest-ts-gateway.
+    RDS-Gateway types; rds-gateway-public stays rds_public. ts-lead
+    (TSGateway / ts-gateway) is id-only — a title "TS gateway … public"
+    is not RD Gateway (TypeScript-named gateways). Terminal Services
+    Gateway still types from the phrase.
     """
     raw = str(text or "")
     segments = _alnum_segments(raw)
@@ -1215,7 +1216,7 @@ def _field_is_rd_gateway(text: str) -> bool:
         return True
     if _field_is_windows_rds_gateway(tokens):
         return True
-    if _field_starts_with_ts_gateway(tokens):
+    if allow_ts_lead and _field_starts_with_ts_gateway(tokens):
         return True
     for i, tok in enumerate(tokens[:-1]):
         if tok not in _RD_GATEWAY_LEAD_TOKENS:
@@ -1240,11 +1241,14 @@ def _is_rd_gateway(check_id: str, title: str) -> bool:
     Adjacent rd/rdp + gateway(s) still match, as does
     'Remote Desktop Gateway' and 'Terminal Services Gateway'. The
     Windows feature id RDS-Gateway matches as a whole field; a general
-    rds + gateway lead does not. A glued ordinal digit+'rd' (3rdGateway)
-    does not; a host-glued digit (vm3rdgateway) does. A bare gateway
-    is not enough.
+    rds + gateway lead does not. Leading ts-gateway is check_id only
+    so a TypeScript title "TS gateway … public" stays off. A glued
+    ordinal digit+'rd' (3rdGateway) does not; a host-glued digit
+    (vm3rdgateway) does. A bare gateway is not enough.
     """
-    return _field_is_rd_gateway(check_id) or _field_is_rd_gateway(title)
+    return _field_is_rd_gateway(check_id) or _field_is_rd_gateway(
+        title, allow_ts_lead=False
+    )
 
 
 def _has_sg_id_token(words: set[str]) -> bool:

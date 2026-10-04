@@ -22,6 +22,7 @@ winner's EGP- id.
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from typing import Any, Iterable
 from urllib.parse import urlsplit
@@ -94,8 +95,16 @@ def _valid_port(token: str) -> str:
     """ASCII decimal 1..65535 only. Superscript / Arabic digits must not reach int()."""
     token = str(token or "").strip()
     if token.isascii() and token.isdigit() and 1 <= int(token) <= 65535:
-        return token
+        return str(int(token))
     return ""
+
+
+def _left_is_ip(left: str) -> bool:
+    try:
+        ipaddress.ip_address(str(left or "").strip())
+        return True
+    except ValueError:
+        return False
 
 
 def _host_port_from_token(text: str) -> tuple[str, str]:
@@ -113,7 +122,16 @@ def _host_port_from_token(text: str) -> tuple[str, str]:
         return "", ""
     elif host.count(":") == 1:
         left, right = host.rsplit(":", 1)
-        host, port = left, _valid_port(right)
+        parsed = _valid_port(right)
+        if parsed:
+            host, port = left, parsed
+        elif not right or _left_is_ip(left):
+            # host: (empty tag) or 10.0.0.5:https — split like master.
+            host, port = left, ""
+        elif right and not any(ch.isascii() and ch.isalpha() for ch in right):
+            # Invalid digit-only port (99999 / ²) — keep the host, drop the port.
+            host, port = left, ""
+        # else image:tag / account:id — do not truncate.
     return host, port
 
 
@@ -210,9 +228,9 @@ def finding_hosts(rec: dict[str, Any]) -> set[str]:
 
 def finding_port(rec: dict[str, Any]) -> str:
     extra = extra_dict(rec)
-    port = str(extra.get("port") or "").strip()
-    if port and port != "0":
-        return port
+    port = _valid_port(str(extra.get("port") or ""))
+    if port:
+        return str(int(port))
     for raw in list(rec.get("assets") or []) + [
         extra.get("host"),
         extra.get("matched-at"),
