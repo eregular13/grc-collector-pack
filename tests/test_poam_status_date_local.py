@@ -175,6 +175,9 @@ def test_docs_say_host_local_not_utc() -> None:
     assert "windows-latest" in yml
     assert "pytest-windows:" in yml
     assert "pytest (windows-latest)" in yml
+    assert "tests/test_lf_writers.py" in yml
+    assert "tests/test_prove_ciso.py" in yml
+    assert "tests/test_poam_status_date_local.py" in yml
     gitattributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
     assert "text=auto eol=lf" in gitattributes
     assert "time.tzname" in yml
