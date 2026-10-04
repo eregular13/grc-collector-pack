@@ -602,10 +602,11 @@ def _rec_as_asset(rec: dict) -> dict:
 def test_load_ledger_file_carry_sticks_through_pipeline_fallback(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Two real loader runs: corrupt, then out/ fallback with no valid prior.
+    """Real loader: corrupt, out/ fallback, seen-again prune, then valid prior.
 
     Removing ``_integrity_flags(doc)`` in ``load_ledger_file`` clears the
-    warning on the fallback run; this test must fail that mutant.
+    warning on the fallback run. Removing the ``run_ledger`` back-on-plan
+    prune lists the reminted ID as dropped; this test must fail both.
     """
     from collectors.grc_loader import load
     from shared.io_util import write_canonical
@@ -643,6 +644,12 @@ def test_load_ledger_file_carry_sticks_through_pipeline_fallback(
     assert LEDGER_CHAIN_BROKEN in second_load["ledger_warnings"]
     exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     assert LEDGER_CHAIN_BROKEN in exec_text
+    write_canonical(
+        "mixed", [rec, cover, _rec_as_asset(rec), _rec_as_asset(cover)]
+    )
+    seen_again = load()
+    assert LEDGER_CHAIN_BROKEN in seen_again["ledger_warnings"]
+    assert rec_pid not in (seen_again.get("ledger_dropped_poam_ids") or [])
     (incoming / "poam" / "poam-ledger.json").write_text(
         json.dumps(first), encoding="utf-8"
     )
