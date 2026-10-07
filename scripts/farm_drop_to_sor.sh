@@ -84,7 +84,7 @@ fi
 echo "farm_drop_to_sor: verify prove-ciso.json honesty"
 "$PYTHON" "$ROOT/scripts/prove_ciso.py" --verify-only --work "$WORK"
 
-ELAPSED="$("$PYTHON" -c "import time; print(f'{time.perf_counter() - float('$START'):.3f}')")"
+ELAPSED="$("$PYTHON" -c 'import time,sys; print("%.3f" % (time.perf_counter() - float(sys.argv[1])))' "$START")"
 
 echo "farm_drop_to_sor: elapsed=${ELAPSED}s"
 echo "farm_drop_to_sor: ciso=$CISO"
