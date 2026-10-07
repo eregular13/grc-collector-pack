@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "unicornscan-fixture",
   "adapter": "unicornscan",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey unicornscan export fixture"
+    "purpose": "lab-farm unicornscan export fixture"
   },
   "honesty": {
     "surface_map": true,

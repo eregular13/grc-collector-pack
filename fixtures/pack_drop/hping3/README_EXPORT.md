@@ -1,9 +1,9 @@
-# Covey hping3 pack_drop fixture (SAMPLE/DEMO)
+# Farm hping3 pack_drop fixture (SAMPLE/DEMO)
 
-SAMPLE/DEMO — not a client estate. Shaped like evergreen-covey `export_pack`
+SAMPLE/DEMO — not a client estate. Shaped like lab-farm `export_pack`
 (`evergreen.pack_drop.v1`) for the **hping3** stdout-class adapter.
 
-hping3 is a **host-only** Covey adapter (ICMP discover). This drop lists
+hping3 is a **host-only** Farm adapter (ICMP discover). This drop lists
 live hosts. It does **not** invent open ports or fake services to look
 like rustscan/httpx.
 
@@ -13,7 +13,7 @@ review-only.
 
 | This drop is | This drop is not |
 | --- | --- |
-| A host-up surface map Covey observed via ICMP | An open-port / service map |
+| A host-up surface map Farm observed via ICMP | An open-port / service map |
 | Conservative `host_up_observed` rows | `open_port_observed` or a rustscan-shaped service list |
 | SoR-ready assets / findings / evidence | A RiskReady wrap, POST, or API push |
 | Host-only ICMP discover | Honeypot validated traffic or control OE |

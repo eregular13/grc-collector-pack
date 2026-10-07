@@ -1,6 +1,6 @@
 # CISO Assistant export prove (SAMPLE/DEMO)
 
-**Farm leave-behind (Covey pack_drop → CISO):** `./scripts/farm_drop_to_sor.sh`
+**Farm leave-behind (Farm pack_drop → CISO):** `./scripts/farm_drop_to_sor.sh`
 or `make farm-drop-to-sor` (DESKTOP: `.\scripts\farm_drop_to_sor.ps1`).
 That is the operator twin of `sample_to_sor` — it runs
 `python3 scripts/prove_ciso.py` under `prove/work/` (never pack `in/`)
@@ -13,7 +13,7 @@ and fail-closes if prove JSON claims a client estate or `paying_day` PASS.
 `demo: true` / SAMPLE ≠ client / `paying_day: FAIL`. See
 `keep/OPERATOR.md`. `python3 -m keep ciso` is the same command.
 
-Separate fixture prove below: **Covey pack_drop** + **Palisade/Beelzebub
+Separate fixture prove below: **Farm pack_drop** + **Palisade/Beelzebub
 honeypot** → existing collectors → `grc_loader` → **`out/ciso-assistant/*.csv`**.
 
 This is not a client estate. It is not a paying-day PASS. HITL stays required
@@ -45,44 +45,44 @@ What that does (isolated under `prove/work/`, never pack `in/`):
 
 1. Copy `fixtures/pack_drop/nmap/` → `prove/work/in/nmap/pack_drop/`
 2. Copy `fixtures/pack_drop/rustscan/` → `prove/work/in/nmap/pack_drop/rustscan/`
-   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
+   (stdout-class Farm `export_pack`; `farm.pack_drop.v1`)
 3. Copy `fixtures/pack_drop/httpx/` → `prove/work/in/nmap/pack_drop/httpx/`
-   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
+   (stdout-class Farm `export_pack`; `farm.pack_drop.v1`)
 4. Copy `fixtures/pack_drop/unicornscan/` → `prove/work/in/nmap/pack_drop/unicornscan/`
-   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
+   (stdout-class Farm `export_pack`; `farm.pack_drop.v1`)
 5. Copy `fixtures/pack_drop/sslscan/` → `prove/work/in/nmap/pack_drop/sslscan/`
-   (stdout/XML-class Covey `export_pack`; `covey.pack_drop.v1`)
+   (stdout/XML-class Farm `export_pack`; `farm.pack_drop.v1`)
 6. Copy `fixtures/pack_drop/tlsx/` → `prove/work/in/nmap/pack_drop/tlsx/`
-   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
+   (stdout-class Farm `export_pack`; `farm.pack_drop.v1`)
 7. Copy `fixtures/pack_drop/whatweb/` → `prove/work/in/nmap/pack_drop/whatweb/`
-   (stdout-class Covey `export_pack`; `covey.pack_drop.v1`)
+   (stdout-class Farm `export_pack`; `farm.pack_drop.v1`)
 8. Copy `fixtures/pack_drop/hping3/` → `prove/work/in/nmap/pack_drop/hping3/`
-   (host-only ICMP stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
+   (host-only ICMP stdout-class Farm `export_pack`; `farm.pack_drop.v1`;
    no invented open ports)
 9. Copy `fixtures/pack_drop/onesixtyone/` → `prove/work/in/nmap/pack_drop/onesixtyone/`
-   (SNMP community/sysDescr stdout-class Covey `export_pack`;
-   `covey.pack_drop.v1`; no invented open TCP ports)
+   (SNMP community/sysDescr stdout-class Farm `export_pack`;
+   `farm.pack_drop.v1`; no invented open TCP ports)
 10. Copy `fixtures/pack_drop/fping/` → `prove/work/in/nmap/pack_drop/fping/`
-   (host-only ICMP/reachability stdout-class Covey `export_pack`;
-   `covey.pack_drop.v1`; no invented open ports)
+   (host-only ICMP/reachability stdout-class Farm `export_pack`;
+   `farm.pack_drop.v1`; no invented open ports)
 11. Copy `fixtures/pack_drop/naabu/` → `prove/work/in/nmap/pack_drop/naabu/`
-   (port/service stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
+   (port/service stdout-class Farm `export_pack`; `farm.pack_drop.v1`;
    open TCP ports + `open_port_observed` only)
 12. Copy `fixtures/pack_drop/nping/` → `prove/work/in/nmap/pack_drop/nping/`
-   (port/service stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
+   (port/service stdout-class Farm `export_pack`; `farm.pack_drop.v1`;
    ICMP echo + TCP handshake completed; open TCP ports + `open_port_observed` only)
 13. Copy `fixtures/pack_drop/nbtscan/` → `prove/work/in/nmap/pack_drop/nbtscan/`
-   (host-only NetBIOS name-table stdout-class Covey `export_pack`;
-   `covey.pack_drop.v1`; no invented open TCP ports)
+   (host-only NetBIOS name-table stdout-class Farm `export_pack`;
+   `farm.pack_drop.v1`; no invented open TCP ports)
 14. Copy `fixtures/pack_drop/braa/` → `prove/work/in/nmap/pack_drop/braa/`
-   (host-only SNMP GET sweeper stdout-class Covey `export_pack`;
-   `covey.pack_drop.v1`; community/OID/sysDescr; no invented open TCP ports)
+   (host-only SNMP GET sweeper stdout-class Farm `export_pack`;
+   `farm.pack_drop.v1`; community/OID/sysDescr; no invented open TCP ports)
 15. Copy `fixtures/pack_drop/ike-scan/` → `prove/work/in/nmap/pack_drop/ike-scan/`
-   (host-only IKE Main Mode / Aggressive Mode sweeper stdout-class Covey
-   `export_pack`; `covey.pack_drop.v1`; handshake / VPN responder;
+   (host-only IKE Main Mode / Aggressive Mode sweeper stdout-class Farm
+   `export_pack`; `farm.pack_drop.v1`; handshake / VPN responder;
    IKE/VPN discover ≠ open TCP port; no invented open TCP ports)
 16. Copy `fixtures/pack_drop/svmap/` → `prove/work/in/nmap/pack_drop/svmap/`
-   (SIP Device/UA stdout-class Covey `export_pack`; `covey.pack_drop.v1`;
+   (SIP Device/UA stdout-class Farm `export_pack`; `farm.pack_drop.v1`;
    real User-Agent only; UDP SIP from the svmap table only, default 5060;
    unique observation ids; no invented TCP)
 17. Copy `fixtures/demo/honeypot/` → `prove/work/in/honeypot/` (Palisade stages)
@@ -255,7 +255,7 @@ FAIL. Not client KEEP.
 | Posted | `false` unless an operator sets `CISO_PUSH=1` and `DRY_RUN!=1` |
 | RiskReady | Review-only. `RISKREADY_PUSH` ignored. No wrap. No `/api/risks`. |
 | Pack `in/` | Read-only. Prove never writes it. |
-| Live scan | Never. Parse-only. No Covey/Nmap/honeypot spawn. |
+| Live scan | Never. Parse-only. No Farm/Nmap/honeypot spawn. |
 | Catalog | Unchanged. No new collector. Honeypot is not an 11th compose service. |
 | KEEP-minimum | Unchanged. Pack_drop/honeypot are already-on-disk sensor dirs, not new schedule slots. |
 
@@ -281,22 +281,22 @@ Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item
 Reid-only real KEEP `in/` drop (0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER /
 prove_ciso sixteen-set includes unicornscan (joined from
-`E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD `c012dd24`
+`E2E_PROVEN_PACK_DROP_ADAPTERS`). Farm HEAD `c012dd24`
 (farm PR #23 unit-only GHA CI already on main; client-day path
 already on main).
 pack_drop schema seam **CLOSED**.
 Integrity **PARKED**.
-20-adapter lane **CLOSED** stands. Covey `E2E_PROVEN` sixteen-set
+20-adapter lane **CLOSED** stands. Farm `E2E_PROVEN` sixteen-set
 remains: nmap + rustscan + fping + naabu + nping + httpx + sslscan +
 tlsx + whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not start
-Covey adapter work. Stop for CoS #49. Reid-only
+Farm adapter work. Stop for CoS #49. Reid-only
 blockers remain (CTA; real KEEP `in/`; Eval `npm start`; compose on this
 agent/CI VM still ABSENT — ABSENT ≠ DESKTOP-222GHQV compose_lab
 pass_desktop at pack 2680a5b2, not a pass on this VM).
 
-Lane map: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
+Lane map: [FARM_PACK_DROP.md](FARM_PACK_DROP.md), [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 CSV headers: [../schemas/ciso-assistant.md](../schemas/ciso-assistant.md).
 
 ## Other sinks (same intermediate, not a second prove)

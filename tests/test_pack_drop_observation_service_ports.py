@@ -26,7 +26,7 @@ from typing import Any
 import pytest
 
 from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_ADAPTERS
-from tests.test_status_honesty import COVEY_E2E_PROVEN, COVEY_E2E_UNPROVEN
+from tests.test_status_honesty import FARM_E2E_PROVEN, FARM_E2E_UNPROVEN
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DROP = ROOT / "fixtures" / "pack_drop"
@@ -207,22 +207,22 @@ def _nested_matches(
 
 
 def test_observation_service_port_set_matches_e2e_proven_sixteen() -> None:
-    assert frozenset(E2E_PROVEN_PACK_DROP_ADAPTERS) == frozenset(COVEY_E2E_PROVEN)
-    assert E2E_PROVEN_PACK_DROP_ADAPTERS is COVEY_E2E_PROVEN or tuple(
+    assert frozenset(E2E_PROVEN_PACK_DROP_ADAPTERS) == frozenset(FARM_E2E_PROVEN)
+    assert E2E_PROVEN_PACK_DROP_ADAPTERS is FARM_E2E_PROVEN or tuple(
         E2E_PROVEN_PACK_DROP_ADAPTERS
-    ) == tuple(COVEY_E2E_PROVEN)
+    ) == tuple(FARM_E2E_PROVEN)
     assert len(E2E_PROVEN_PACK_DROP_ADAPTERS) == 16
     assert len(set(E2E_PROVEN_PACK_DROP_ADAPTERS)) == 16
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in E2E_PROVEN_PACK_DROP_ADAPTERS
 
 
 def test_unproven_adapters_absent_from_pack_drop_observation_service_ports() -> None:
     names = {path.name for path in PACK_DROP.iterdir() if path.is_dir()}
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in names, f"UNPROVEN {name} must not be a pack_drop fixture dir"
     assert names == set(E2E_PROVEN_PACK_DROP_ADAPTERS)
-    assert names == set(COVEY_E2E_PROVEN)
+    assert names == set(FARM_E2E_PROVEN)
     assert len(names) == 16
 
 
@@ -234,9 +234,9 @@ def test_observation_service_port_class_partition_matches_e2e_proven_sixteen() -
         assert not overlap, f"observation-service-port-class overlap: {sorted(overlap)}"
         union |= set(group)
     assert union == set(E2E_PROVEN_PACK_DROP_ADAPTERS)
-    assert union == set(COVEY_E2E_PROVEN)
+    assert union == set(FARM_E2E_PROVEN)
     assert len(union) == 16
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in union
 
 

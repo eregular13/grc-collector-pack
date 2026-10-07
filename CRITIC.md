@@ -647,24 +647,24 @@ Item **COS47-HONESTY** = DONE. Item
 16 E2E_PROVEN pack_drop void CLOSED. Next brick named = Reid-only
 real KEEP `in/` drop (0/4) — SAMPLE ≠ client; no pack_drop vanity.
 SAMPLE_BANNER / prove_ciso sixteen-set includes
-unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Covey HEAD
+unicornscan (joined from `E2E_PROVEN_PACK_DROP_ADAPTERS`). Farm HEAD
 `c012dd24` (farm PR #23 unit-only GHA CI already on main;
 client-day path already on main).
 pack_drop schema seam **CLOSED**. Integrity **PARKED**.
 20-adapter
 lane **CLOSED** stands. STATUS `next_action` is current
-truth — Covey `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
+truth — Farm `E2E_PROVEN` sixteen-set remains: nmap + rustscan +
 fping + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan.
 UNPROVEN fail-closed: masscan, arp-scan, netdiscover, zmap — do not
-claim a 17th live. Pack does not start Covey adapter work. Stop for CoS #49.
+claim a 17th live. Pack does not start Farm adapter work. Stop for CoS #49.
 Pytest locks STATUS `next_action` and PLAN this-window so they
 cannot lag CoS #48 / pack HEAD `a3a3651b` / `farm_drop_to_sor` /
-Covey HEAD `c012dd24`
+Farm HEAD `c012dd24`
 / Eval HEAD `ebaa9f50`,
 and so `compose_lab` cannot flip to bare pass (pass_desktop is
 DESKTOP-only; this VM stays absent) or name a stale
-Covey HEAD as current. Paying-day stays
+Farm HEAD as current. Paying-day stays
 **FAIL**. Wrap **dead**. SAMPLE KEEP **0/4**. `argus_pack_truth`
 evergreen_assessment_mcp only. `mcp_stub` conductor only. Cycle 173
 honesty restamp + SAMPLE → CISO one command stands as history.

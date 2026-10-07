@@ -12,11 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Shared all-16 set (prove_ciso seed + fixtures/pack_drop/). STATUS
 # next_action + PLAN this-window must name every tool so the pack
-# cannot lag a later Covey brick again.
-COVEY_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
-COVEY_E2E_HEAD = "c012dd24"
+# cannot lag a later Farm brick again.
+FARM_E2E_PROVEN = E2E_PROVEN_PACK_DROP_ADAPTERS
+FARM_E2E_HEAD = "c012dd24"
 STALE_E2E_HEAD = "3cf8bb86"
-COVEY_PACK_HEAD = "a3a3651b"
+FARM_PACK_HEAD = "a3a3651b"
 STALE_PACK_HEAD = "9a872ef5"
 STALE_PACK_PRIOR = "899e44c8"
 STALE_PACK_OLDER = "b77cfc0e"
@@ -27,7 +27,7 @@ STALE_EVAL_HEAD = "5f40f9ff"
 LIVE_PACK_HEAD = "2680a5b2"
 COMPOSE_LAB_DESKTOP = "pass_desktop"
 COMPOSE_LAB_HOST = "DESKTOP-222GHQV"
-COVEY_E2E_UNPROVEN = (
+FARM_E2E_UNPROVEN = (
     "masscan",
     "arp-scan",
     "netdiscover",
@@ -149,7 +149,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "vanity" in brick, "next brick must refuse pack_drop vanity"
     assert "in/" in action, "next brick path is real KEEP in/"
     assert "source" not in brick or "identity" not in brick, "source identity lock is DONE, not the next brick"
-    assert "evergreen-covey" not in brick, "pack_drop source lock is DONE, not the next brick"
+    assert "lab-farm" not in brick, "pack_drop source lock is DONE, not the next brick"
     assert "port→service" not in brick and "port->service" not in brick, "port→service is DONE, not the next brick"
     assert not ("port" in brick and "service" in brick), "port→service is DONE, not the next brick"
     assert "observation" not in brick or "finding" not in brick, "observation/finding port→service is DONE, not the next brick"
@@ -158,26 +158,26 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "16 e2e_proven pack_drop void closed" in low
     assert "schema seam" in low, "pack_drop schema seam must be named CLOSED"
     assert "parked" in low, "integrity PARKED must be current truth"
-    assert "covey head still" not in low, "Covey HEAD is live c012dd24, not stuck"
+    assert "farm head still" not in low, "Farm HEAD is live c012dd24, not stuck"
     assert "sample_banner" in low
     assert "unicornscan" in low
     assert "after cos #1" not in low
     assert "after cos #2/#3" not in low
     for n in range(4, 48):
         assert not _has_bare_cos(low, n), f"STATUS next_action still stamps CoS #{n}"
-    assert "covey" in low
+    assert "farm" in low
     assert "e2e_proven" in low
     assert "closed" in low
     assert "20-adapter" in low
     assert "pack_drop" in low
-    assert len(COVEY_E2E_PROVEN) == 16
-    for name in COVEY_E2E_PROVEN:
-        assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
-    for name in COVEY_E2E_UNPROVEN:
+    assert len(FARM_E2E_PROVEN) == 16
+    for name in FARM_E2E_PROVEN:
+        assert name in low, f"STATUS next_action lags Farm E2E set; missing {name}"
+    for name in FARM_E2E_UNPROVEN:
         assert name in low, f"STATUS next_action dropped UNPROVEN fail-closed {name}"
     assert "17th" in low
-    assert COVEY_E2E_HEAD in low
-    assert COVEY_PACK_HEAD in low
+    assert FARM_E2E_HEAD in low
+    assert FARM_PACK_HEAD in low
     assert STALE_E2E_HEAD not in low
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_PRIOR not in low
@@ -185,7 +185,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert STALE_PACK_HONESTY not in low
     assert STALE_EVAL_HEAD not in low
     assert "no pack" in low and "adapter" in low
-    # Pack HEAD a3a3651b (this PR farm_drop_to_sor). Covey HEAD c012dd24
+    # Pack HEAD a3a3651b (this PR farm_drop_to_sor). Farm HEAD c012dd24
     # (farm PR #23 unit CI). Eval HEAD ebaa9f50 (PR #4). Docs must
     # not name 9a872ef5 / 899e44c8 / b77cfc0e / 5f40f9ff / 3cf8bb86
     # as current.
@@ -200,7 +200,7 @@ def test_status_next_action_is_reid_only_blockers() -> None:
     assert "no fake greens" in low
     assert "absent" in low and "not a pass" in low
     assert LIVE_PACK_HEAD in action
-    assert COVEY_E2E_HEAD in action
+    assert FARM_E2E_HEAD in action
     assert EVAL_HEAD in action
     assert STALE_EVAL_HEAD not in action
     assert "sample_to_sor" in low
@@ -299,16 +299,16 @@ def _plan_this_window() -> str:
     return text[idx:].split("## STOP", 1)[0] if idx >= 0 else ""
 
 
-def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
-    """STATUS next_action and PLAN this-window must name every Covey E2E tool."""
+def test_status_and_plan_cannot_lag_farm_e2e_set() -> None:
+    """STATUS next_action and PLAN this-window must name every Farm E2E tool."""
     action = _status().get("next_action", "")
     window = _plan_this_window()
     assert action and window
     for where, text in (("STATUS next_action", action), ("PLAN this-window", window)):
         low = text.lower()
-        assert len(COVEY_E2E_PROVEN) == 16, f"{where} honesty lock is not the sixteen-name set"
-        missing = [name for name in COVEY_E2E_PROVEN if name not in low]
-        assert not missing, f"{where} lags Covey E2E set; missing {missing}"
+        assert len(FARM_E2E_PROVEN) == 16, f"{where} honesty lock is not the sixteen-name set"
+        missing = [name for name in FARM_E2E_PROVEN if name not in low]
+        assert not missing, f"{where} lags Farm E2E set; missing {missing}"
         assert "e2e_proven" in low, f"{where} missing E2E_PROVEN"
         assert "cos #48" in low, f"{where} missing CoS #48 stamp"
         assert "farm_drop_to_sor" in low, f"{where} missing farm_drop_to_sor"
@@ -332,7 +332,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "0/4" in brick, f"{where} next brick missing 0/4"
         assert "vanity" in brick, f"{where} next brick missing no pack_drop vanity"
         assert "source" not in brick or "identity" not in brick, f"{where} still names source identity as next brick"
-        assert "evergreen-covey" not in brick, f"{where} still names pack_drop source lock as next brick"
+        assert "lab-farm" not in brick, f"{where} still names pack_drop source lock as next brick"
         assert "port→service" not in brick and "port->service" not in brick, f"{where} still names port→service as next brick"
         assert not ("port" in brick and "service" in brick), f"{where} still names port→service as next brick"
         assert "service→host" not in brick and "service->host" not in brick, f"{where} still names service→host as next brick"
@@ -340,7 +340,7 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "void" in low and "closed" in low, f"{where} missing 16 E2E_PROVEN pack_drop void CLOSED"
         assert "schema seam" in low, f"{where} missing pack_drop schema seam CLOSED"
         assert "parked" in low, f"{where} missing integrity PARKED"
-        assert "covey head still" not in low, f"{where} still implies Covey is stuck"
+        assert "farm head still" not in low, f"{where} still implies Farm is stuck"
         assert "cos45-pack-drop-source-lock" in low, f"{where} missing COS45-PACK-DROP-SOURCE-LOCK DONE"
         assert "cos46-honesty" in low, f"{where} missing COS46-HONESTY DONE"
         assert "cos47-honesty" in low, f"{where} missing COS47-HONESTY DONE"
@@ -349,8 +349,8 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert "unit" in low, f"{where} missing farm PR #23 unit CI"
         assert EVAL_HEAD in low, f"{where} missing Eval HEAD {EVAL_HEAD}"
         assert "eval_pack_handoff" in low, f"{where} missing EVAL_PACK_HANDOFF"
-        assert COVEY_E2E_HEAD in low, f"{where} missing Covey HEAD {COVEY_E2E_HEAD}"
-        assert COVEY_PACK_HEAD in low, f"{where} missing pack HEAD {COVEY_PACK_HEAD}"
+        assert FARM_E2E_HEAD in low, f"{where} missing Farm HEAD {FARM_E2E_HEAD}"
+        assert FARM_PACK_HEAD in low, f"{where} missing pack HEAD {FARM_PACK_HEAD}"
         assert STALE_E2E_HEAD not in low, f"{where} still stamps stale HEAD {STALE_E2E_HEAD}"
         assert STALE_PACK_HEAD not in low, f"{where} still stamps stale pack HEAD {STALE_PACK_HEAD}"
         assert STALE_PACK_PRIOR not in low, f"{where} still stamps prior pack HEAD {STALE_PACK_PRIOR}"
@@ -359,12 +359,12 @@ def test_status_and_plan_cannot_lag_covey_e2e_set() -> None:
         assert STALE_EVAL_HEAD not in low, f"{where} still stamps stale Eval HEAD {STALE_EVAL_HEAD}"
         assert "pack_drop" in low, f"{where} missing pack_drop export stamp"
         assert "closed" in low, f"{where} missing CLOSED lane"
-        unproven = [name for name in COVEY_E2E_UNPROVEN if name not in low]
+        unproven = [name for name in FARM_E2E_UNPROVEN if name not in low]
         assert not unproven, f"{where} dropped UNPROVEN fail-closed {unproven}"
         assert "17th" in low, f"{where} dropped no-17th-live lock"
 
 
-def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
+def test_status_and_live_docs_match_cos47_farm_e2e_proven() -> None:
     """Pack next_action / this-window docs follow CoS #48 live farm HEAD E2E_PROVEN."""
     from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_NAMED, SAMPLE_BANNER
 
@@ -378,10 +378,10 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
     assert status.get("argus_pack_truth") == "evergreen_assessment_mcp only"
     assert "e2e_proven" in low
     assert "pack_drop" in low
-    for name in COVEY_E2E_PROVEN:
-        assert name in low, f"STATUS next_action lags Covey E2E set; missing {name}"
-    assert COVEY_E2E_HEAD in low
-    assert COVEY_PACK_HEAD in low
+    for name in FARM_E2E_PROVEN:
+        assert name in low, f"STATUS next_action lags Farm E2E set; missing {name}"
+    assert FARM_E2E_HEAD in low
+    assert FARM_PACK_HEAD in low
     assert STALE_E2E_HEAD not in low
     assert STALE_PACK_HEAD not in low
     assert STALE_PACK_PRIOR not in low
@@ -420,7 +420,7 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
     assert "held" not in low
     assert "missing" not in low
     assert "not in flight" not in low
-    joined = " + ".join(COVEY_E2E_PROVEN)
+    joined = " + ".join(FARM_E2E_PROVEN)
     assert joined == E2E_PROVEN_PACK_DROP_NAMED
     assert joined.endswith("unicornscan")
     assert "unicornscan" in SAMPLE_BANNER
@@ -476,7 +476,7 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
         assert "0/4" in brick, f"{path} this-window next brick missing 0/4"
         assert "vanity" in brick, f"{path} this-window next brick missing no pack_drop vanity"
         assert "source" not in brick or "identity" not in brick, f"{path} this-window still names source identity as next brick"
-        assert "evergreen-covey" not in brick, f"{path} this-window still names pack_drop source lock as next brick"
+        assert "lab-farm" not in brick, f"{path} this-window still names pack_drop source lock as next brick"
         assert "port→service" not in brick and "port->service" not in brick, f"{path} this-window still names port→service as next brick"
         assert not ("port" in brick and "service" in brick), f"{path} this-window still names port→service as next brick"
         assert "service→host" not in brick and "service->host" not in brick, f"{path} this-window still names service→host as next brick"
@@ -484,14 +484,14 @@ def test_status_and_live_docs_match_cos47_covey_e2e_proven() -> None:
         assert "void" in win_low, f"{path} this-window missing void CLOSED"
         assert "schema seam" in win_low, f"{path} this-window missing pack_drop schema seam CLOSED"
         assert "parked" in win_low, f"{path} this-window missing integrity PARKED"
-        assert "covey head still" not in win_low, f"{path} this-window still implies Covey is stuck"
+        assert "farm head still" not in win_low, f"{path} this-window still implies Farm is stuck"
         assert "e2e_proven" in win_low, f"{path} this-window missing E2E_PROVEN"
         assert "closed" in win_low, f"{path} this-window missing CLOSED lane"
         assert "pack_drop" in win_low, f"{path} this-window missing pack_drop export"
-        missing = [name for name in COVEY_E2E_PROVEN if name not in win_low]
-        assert not missing, f"{path} this-window lags Covey E2E set; missing {missing}"
-        assert COVEY_E2E_HEAD in win_low, f"{path} this-window missing HEAD {COVEY_E2E_HEAD}"
-        assert COVEY_PACK_HEAD in win_low, f"{path} this-window missing pack HEAD {COVEY_PACK_HEAD}"
+        missing = [name for name in FARM_E2E_PROVEN if name not in win_low]
+        assert not missing, f"{path} this-window lags Farm E2E set; missing {missing}"
+        assert FARM_E2E_HEAD in win_low, f"{path} this-window missing HEAD {FARM_E2E_HEAD}"
+        assert FARM_PACK_HEAD in win_low, f"{path} this-window missing pack HEAD {FARM_PACK_HEAD}"
         assert STALE_E2E_HEAD not in win_low, f"{path} this-window still stamps stale HEAD"
         assert STALE_PACK_HEAD not in win_low, f"{path} this-window still stamps stale pack HEAD"
         assert STALE_PACK_PRIOR not in win_low, f"{path} this-window still stamps prior pack HEAD"

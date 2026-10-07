@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "braa-fixture",
   "adapter": "braa",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. SNMP GET sweeper (OID/sysDescr/sysName); no invented open TCP ports.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey braa export fixture"
+    "purpose": "lab-farm braa export fixture"
   },
   "honesty": {
     "surface_map": true,

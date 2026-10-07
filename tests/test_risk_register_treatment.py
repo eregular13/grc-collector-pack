@@ -331,7 +331,7 @@ def test_pack_drop_twin_is_merged_into_not_accept(
             "ip": "10.0.0.10",
             "id": "nmap-10-microsoftds-445",
             "adapter": "nmap",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     )
     assert fp_v1(xml) == fp_v1(twin)
@@ -375,7 +375,7 @@ def test_same_egp_info_twin_is_merged_not_accept(
             "protocol": "tcp",
             "id": "naabu-c40-svc-22",
             "adapter": "naabu",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     )
     info = _finding(
@@ -389,7 +389,7 @@ def test_same_egp_info_twin_is_merged_not_accept(
             "protocol": "tcp",
             "id": "naabu-c40-tcp-22",
             "adapter": "naabu",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     )
     assert fp_v1(low) == fp_v1(info)

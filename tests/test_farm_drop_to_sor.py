@@ -1,4 +1,4 @@
-"""Cold-start Covey pack_drop → CISO farm leave-behind. SAMPLE/DEMO ≠ client."""
+"""Cold-start Farm pack_drop → CISO farm leave-behind. SAMPLE/DEMO ≠ client."""
 
 from __future__ import annotations
 
@@ -101,8 +101,8 @@ def test_readme_and_operator_first_lines_point_at_farm_drop_twin() -> None:
     readme_head = "".join((ROOT / "README.md").read_text(encoding="utf-8").splitlines()[:12])
     op_head = "".join((ROOT / "keep" / "OPERATOR.md").read_text(encoding="utf-8").splitlines()[:16])
     prove_head = "".join((ROOT / "docs" / "PROVE_CISO.md").read_text(encoding="utf-8").splitlines()[:16])
-    covey_head = "".join(
-        (ROOT / "docs" / "COVEY_PACK_DROP.md").read_text(encoding="utf-8").splitlines()[:12]
+    farm_head = "".join(
+        (ROOT / "docs" / "FARM_PACK_DROP.md").read_text(encoding="utf-8").splitlines()[:12]
     )
     assert "farm_drop_to_sor.sh" in readme_head
     assert "farm-drop-to-sor" in readme_head or "farm_drop_to_sor" in readme_head
@@ -115,9 +115,9 @@ def test_readme_and_operator_first_lines_point_at_farm_drop_twin() -> None:
     assert "primary" in op_head.lower() or "KEEP" in op_head
     assert "farm_drop_to_sor.sh" in prove_head
     assert "prove_ciso" in prove_head or "prove/work" in prove_head
-    assert "farm_drop_to_sor.sh" in covey_head
-    assert "sample_to_sor" in covey_head
-    assert "SAMPLE" in covey_head or "DEMO" in covey_head
+    assert "farm_drop_to_sor.sh" in farm_head
+    assert "sample_to_sor" in farm_head
+    assert "SAMPLE" in farm_head or "DEMO" in farm_head
 
 
 def test_farm_drop_honesty_ok_line_is_ascii_cp1252() -> None:

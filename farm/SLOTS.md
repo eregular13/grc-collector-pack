@@ -230,7 +230,7 @@ invent nothing. Parse-only — Layer C never queries DNS. Optional
 file_drop after a signed domain allowlist (`dig` already on PATH).
 Empty `in/` still loads `fixtures/demo/dns_email/`. The farm `dig`
 invoke slot lands `in/dns_email/*.txt` (catalog not inflated).
-No RiskReady POST. See `docs/DNS_EMAIL.md` (Covey `email_dns` lane).
+No RiskReady POST. See `docs/DNS_EMAIL.md` (Farm `email_dns` lane).
 
 ## Nuclei JSON file-drop (Layer C)
 

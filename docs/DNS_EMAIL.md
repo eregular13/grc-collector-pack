@@ -1,7 +1,7 @@
 # Email / DNS Seen lane (`in/dns_email/`)
 
-Pack twin of Covey evidence-matrix lane **`email_dns`**.
-Machine contract: [evergreen-covey `docs/evidence_matrix.yaml`](https://github.com/eregular13/evergreen-covey/blob/main/docs/evidence_matrix.yaml).
+Pack twin of Farm evidence-matrix lane **`email_dns`**.
+Machine contract: lab farm `docs/evidence_matrix.yaml`.
 
 | Said | Seen | Shown |
 |---|---|---|

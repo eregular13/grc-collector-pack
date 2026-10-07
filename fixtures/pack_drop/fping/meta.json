@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "fping-fixture",
   "adapter": "fping",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. Host-only ICMP/reachability discover; no invented open ports.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey fping export fixture"
+    "purpose": "lab-farm fping export fixture"
   },
   "honesty": {
     "surface_map": true,

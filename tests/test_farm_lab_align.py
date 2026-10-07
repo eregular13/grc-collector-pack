@@ -20,7 +20,7 @@ LAB_NET = "192.168.64."
 ALIGN_DOCS = (
     ROOT / "docs" / "FARM_SHIP_GATE.md",
     ROOT / "docs" / "PROVE_CISO.md",
-    ROOT / "docs" / "COVEY_PACK_DROP.md",
+    ROOT / "docs" / "FARM_PACK_DROP.md",
 )
 
 
@@ -53,7 +53,7 @@ def test_farm_and_lab_nmap_meta_do_not_share_claim_class_labels() -> None:
     farm = json.loads((FARM_NMAP / "meta.json").read_text(encoding="utf-8"))
     lab = json.loads((LAB_PACK / "meta.json").read_text(encoding="utf-8"))
     for meta in (farm, lab):
-        assert meta["schema"] == "covey.pack_drop.v1"
+        assert meta["schema"] == "farm.pack_drop.v1"
         assert meta["adapter"] == "nmap"
         assert meta["demo"] is True
         assert meta.get("client") is False

@@ -85,11 +85,11 @@ keep-lab:
 sample-to-sor:
 	bash scripts/sample_to_sor.sh
 
-# Farm leave-behind twin: Covey fixtures/pack_drop → prove/work/out/ciso-assistant (prove_ciso). Never pack in/. SAMPLE keep remains primary. DESKTOP: scripts/farm_drop_to_sor.ps1
+# Farm leave-behind twin: Farm fixtures/pack_drop → prove/work/out/ciso-assistant (prove_ciso). Never pack in/. SAMPLE keep remains primary. DESKTOP: scripts/farm_drop_to_sor.ps1
 farm-drop-to-sor:
 	bash scripts/farm_drop_to_sor.sh
 
-# SAMPLE/DEMO: fixture Covey pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
+# SAMPLE/DEMO: fixture Farm pack_drop (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu) + honeypot → out/ciso-assistant. Not a client. Paying-day stays FAIL.
 prove-ciso:
 	$(PYTHON) scripts/prove_ciso.py
 

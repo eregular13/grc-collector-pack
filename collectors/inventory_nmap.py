@@ -403,7 +403,7 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
 def parse_file(path: Path) -> list[dict]:
     raw = read_text(path)
     now = iso_now()
-    covey = parse_pack_drop(
+    farm = parse_pack_drop(
         path,
         raw,
         now,
@@ -411,9 +411,9 @@ def parse_file(path: Path) -> list[dict]:
         labels=list(LABELS),
         host_emitter=_emit_host,
     )
-    if covey is not None:
-        _stamp_demo(covey, _is_dropbox_demo(path, raw))
-        return covey
+    if farm is not None:
+        _stamp_demo(farm, _is_dropbox_demo(path, raw))
+        return farm
     mass = parse_masscan(path, raw)
     if mass is not None:
         records: list[dict] = []

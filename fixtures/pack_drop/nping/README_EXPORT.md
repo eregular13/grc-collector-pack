@@ -1,9 +1,9 @@
-# Covey nping pack_drop fixture (SAMPLE/DEMO)
+# Farm nping pack_drop fixture (SAMPLE/DEMO)
 
-SAMPLE/DEMO — not a client estate. Shaped like evergreen-covey `export_pack`
+SAMPLE/DEMO — not a client estate. Shaped like lab-farm `export_pack`
 (`evergreen.pack_drop.v1`) for the **nping** stdout-class adapter.
 
-Nping is **port/service discovery** (not host-only). Covey parses live hosts
+Nping is **port/service discovery** (not host-only). Farm parses live hosts
 from ICMP echo replies and open ports from TCP handshake completed (not
 RST/refused). This drop emits hosts plus open TCP services and matching
 `open_port_observed` rows only. No invented vulnerability, control_failure,
@@ -15,6 +15,6 @@ review-only.
 
 | This drop is | This drop is not |
 | --- | --- |
-| A surface map of hosts/services Covey observed | Honeypot validated traffic |
+| A surface map of hosts/services Farm observed | Honeypot validated traffic |
 | Conservative `open_port_observed` rows | A control operating-effectiveness test |
 | SoR-ready assets / findings / evidence | A RiskReady wrap, POST, or API push |

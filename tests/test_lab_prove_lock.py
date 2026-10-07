@@ -107,7 +107,7 @@ def test_lab_drop_fixture_is_lab_not_sample_not_client() -> None:
     assert (LAB_PACK / "evidence" / "note.md").is_file()
 
     meta = json.loads((LAB_PACK / "meta.json").read_text(encoding="utf-8"))
-    assert meta["schema"] == "covey.pack_drop.v1"
+    assert meta["schema"] == "farm.pack_drop.v1"
     assert meta["adapter"] == "nmap"
     assert meta["demo"] is True
     assert meta.get("lab") is True
@@ -224,8 +224,8 @@ def test_lab_dest_in_lab_txt_stamps_lab_demo_without_meta_lab(tmp_path: Path) ->
     (drop / "meta.json").write_text(
         json.dumps(
             {
-                "schema": "covey.pack_drop.v1",
-                "source": "evergreen-covey",
+                "schema": "farm.pack_drop.v1",
+                "source": "lab-farm",
                 "adapter": "nmap",
                 "lane": "nmap",
                 "generated_at": "2026-09-23T00:00:00Z",

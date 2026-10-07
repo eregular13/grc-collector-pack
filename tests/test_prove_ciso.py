@@ -212,50 +212,50 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     rust_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "rustscan" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in rust_meta
+    assert "farm.pack_drop.v1" in rust_meta
     assert "rustscan" in rust_meta
     assert "SAMPLE/DEMO — not a client estate" in rust_meta
     httpx_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "httpx" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in httpx_meta
+    assert "farm.pack_drop.v1" in httpx_meta
     assert "httpx" in httpx_meta
     assert "SAMPLE/DEMO — not a client estate" in httpx_meta
     uni_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "unicornscan" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in uni_meta
+    assert "farm.pack_drop.v1" in uni_meta
     assert "unicornscan" in uni_meta
     assert "SAMPLE/DEMO — not a client estate" in uni_meta
     ssl_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "sslscan" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in ssl_meta
+    assert "farm.pack_drop.v1" in ssl_meta
     assert "sslscan" in ssl_meta
     assert "SAMPLE/DEMO — not a client estate" in ssl_meta
     tlsx_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "tlsx" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in tlsx_meta
+    assert "farm.pack_drop.v1" in tlsx_meta
     assert "tlsx" in tlsx_meta
     assert "SAMPLE/DEMO — not a client estate" in tlsx_meta
     whatweb_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "whatweb" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in whatweb_meta
+    assert "farm.pack_drop.v1" in whatweb_meta
     assert "whatweb" in whatweb_meta
     assert "SAMPLE/DEMO — not a client estate" in whatweb_meta
     hping3_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "hping3" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in hping3_meta
+    assert "farm.pack_drop.v1" in hping3_meta
     assert "hping3" in hping3_meta
     assert "SAMPLE/DEMO — not a client estate" in hping3_meta
     assert "host_only" in hping3_meta or "host-only" in hping3_meta
     onesixtyone_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "onesixtyone" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in onesixtyone_meta
+    assert "farm.pack_drop.v1" in onesixtyone_meta
     assert "onesixtyone" in onesixtyone_meta
     assert "SAMPLE/DEMO — not a client estate" in onesixtyone_meta
     assert "host_only" in onesixtyone_meta or "host-only" in onesixtyone_meta
@@ -263,26 +263,26 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     fping_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "fping" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in fping_meta
+    assert "farm.pack_drop.v1" in fping_meta
     assert "fping" in fping_meta
     assert "SAMPLE/DEMO — not a client estate" in fping_meta
     assert "host_only" in fping_meta or "host-only" in fping_meta
     naabu_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "naabu" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in naabu_meta
+    assert "farm.pack_drop.v1" in naabu_meta
     assert "naabu" in naabu_meta
     assert "SAMPLE/DEMO — not a client estate" in naabu_meta
     nping_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nping" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in nping_meta
+    assert "farm.pack_drop.v1" in nping_meta
     assert "nping" in nping_meta
     assert "SAMPLE/DEMO — not a client estate" in nping_meta
     nbtscan_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "nbtscan" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in nbtscan_meta
+    assert "farm.pack_drop.v1" in nbtscan_meta
     assert "nbtscan" in nbtscan_meta
     assert "SAMPLE/DEMO — not a client estate" in nbtscan_meta
     assert "host_only" in nbtscan_meta or "host-only" in nbtscan_meta
@@ -300,7 +300,7 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     braa_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "braa" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in braa_meta
+    assert "farm.pack_drop.v1" in braa_meta
     assert "braa" in braa_meta
     assert "SAMPLE/DEMO — not a client estate" in braa_meta
     assert "host_only" in braa_meta or "host-only" in braa_meta
@@ -319,7 +319,7 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     ike_scan_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "ike-scan" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in ike_scan_meta
+    assert "farm.pack_drop.v1" in ike_scan_meta
     assert "ike-scan" in ike_scan_meta
     assert "SAMPLE/DEMO — not a client estate" in ike_scan_meta
     assert "host_only" in ike_scan_meta or "host-only" in ike_scan_meta
@@ -337,7 +337,7 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     svmap_meta = (
         Path(stamp["in_dir"]) / "nmap" / "pack_drop" / "svmap" / "meta.json"
     ).read_text(encoding="utf-8")
-    assert "covey.pack_drop.v1" in svmap_meta
+    assert "farm.pack_drop.v1" in svmap_meta
     assert "svmap" in svmap_meta
     assert "SAMPLE/DEMO — not a client estate" in svmap_meta
     assert "open_ports_invented" in svmap_meta
@@ -367,7 +367,7 @@ def test_prove_ciso_pack_drop_and_honeypot_to_sor(tmp_path: Path) -> None:
     assert '"protocol":"tcp"' not in svmap_assets
     assert '"protocol": "tcp"' not in svmap_assets
     assert "unknown" not in svmap_assets.lower()
-    assert "covey" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
+    assert "farm" in evid.lower() or "pack_drop" in evid.lower() or "honeypot" in evid.lower()
     assert int((stamp["counts"] or {}).get("assets") or 0) >= 2
     assert int((stamp["counts"] or {}).get("findings") or 0) >= 2
     assert fingerprint(pack_in_dir()) == pack_before
@@ -408,7 +408,7 @@ def test_ciso_path_sees_pack_drop_without_keepmin(tmp_path: Path) -> None:
     assert (tmp_path / "out" / "ciso-assistant" / "findings.csv").is_file()
     keepmin_names = set(KEEP_MINIMUM)
     assert "honeypot" not in keepmin_names
-    assert "covey" not in keepmin_names
+    assert "farm" not in keepmin_names
 
 
 def test_prove_ciso_cli_and_docs() -> None:
@@ -618,43 +618,43 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "SAMPLE/DEMO — not a client estate" in rust_meta
     assert "SAMPLE/DEMO — not a client estate" in rust_note
     assert "not a client" in rust_sample.lower() and "SAMPLE" in rust_sample
-    assert "covey.pack_drop.v1" in rust_meta
+    assert "farm.pack_drop.v1" in rust_meta
     assert '"adapter": "rustscan"' in rust_meta or '"adapter":"rustscan"' in rust_meta
     assert "SAMPLE/DEMO — not a client estate" in httpx_meta
     assert "SAMPLE/DEMO — not a client estate" in httpx_note
     assert "not a client" in httpx_sample.lower() and "SAMPLE" in httpx_sample
-    assert "covey.pack_drop.v1" in httpx_meta
+    assert "farm.pack_drop.v1" in httpx_meta
     assert '"adapter": "httpx"' in httpx_meta or '"adapter":"httpx"' in httpx_meta
     assert "SAMPLE/DEMO — not a client estate" in uni_meta
     assert "SAMPLE/DEMO — not a client estate" in uni_note
     assert "not a client" in uni_sample.lower() and "SAMPLE" in uni_sample
-    assert "covey.pack_drop.v1" in uni_meta
+    assert "farm.pack_drop.v1" in uni_meta
     assert '"adapter": "unicornscan"' in uni_meta or '"adapter":"unicornscan"' in uni_meta
     assert "SAMPLE/DEMO — not a client estate" in ssl_meta
     assert "SAMPLE/DEMO — not a client estate" in ssl_note
     assert "not a client" in ssl_sample.lower() and "SAMPLE" in ssl_sample
-    assert "covey.pack_drop.v1" in ssl_meta
+    assert "farm.pack_drop.v1" in ssl_meta
     assert '"adapter": "sslscan"' in ssl_meta or '"adapter":"sslscan"' in ssl_meta
     assert "SAMPLE/DEMO — not a client estate" in tlsx_meta
     assert "SAMPLE/DEMO — not a client estate" in tlsx_note
     assert "not a client" in tlsx_sample.lower() and "SAMPLE" in tlsx_sample
-    assert "covey.pack_drop.v1" in tlsx_meta
+    assert "farm.pack_drop.v1" in tlsx_meta
     assert '"adapter": "tlsx"' in tlsx_meta or '"adapter":"tlsx"' in tlsx_meta
     assert "SAMPLE/DEMO — not a client estate" in whatweb_meta
     assert "SAMPLE/DEMO — not a client estate" in whatweb_note
     assert "not a client" in whatweb_sample.lower() and "SAMPLE" in whatweb_sample
-    assert "covey.pack_drop.v1" in whatweb_meta
+    assert "farm.pack_drop.v1" in whatweb_meta
     assert '"adapter": "whatweb"' in whatweb_meta or '"adapter":"whatweb"' in whatweb_meta
     assert "SAMPLE/DEMO — not a client estate" in hping3_meta
     assert "SAMPLE/DEMO — not a client estate" in hping3_note
     assert "not a client" in hping3_sample.lower() and "SAMPLE" in hping3_sample
-    assert "covey.pack_drop.v1" in hping3_meta
+    assert "farm.pack_drop.v1" in hping3_meta
     assert '"adapter": "hping3"' in hping3_meta or '"adapter":"hping3"' in hping3_meta
     assert '"host_only": true' in hping3_meta or '"host_only":true' in hping3_meta
     assert "SAMPLE/DEMO — not a client estate" in onesixtyone_meta
     assert "SAMPLE/DEMO — not a client estate" in onesixtyone_note
     assert "not a client" in onesixtyone_sample.lower() and "SAMPLE" in onesixtyone_sample
-    assert "covey.pack_drop.v1" in onesixtyone_meta
+    assert "farm.pack_drop.v1" in onesixtyone_meta
     assert '"adapter": "onesixtyone"' in onesixtyone_meta or '"adapter":"onesixtyone"' in onesixtyone_meta
     assert '"host_only": true' in onesixtyone_meta or '"host_only":true' in onesixtyone_meta
     assert "open_ports_invented" in onesixtyone_meta
@@ -662,24 +662,24 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "SAMPLE/DEMO — not a client estate" in fping_meta
     assert "SAMPLE/DEMO — not a client estate" in fping_note
     assert "not a client" in fping_sample.lower() and "SAMPLE" in fping_sample
-    assert "covey.pack_drop.v1" in fping_meta
+    assert "farm.pack_drop.v1" in fping_meta
     assert '"adapter": "fping"' in fping_meta or '"adapter":"fping"' in fping_meta
     assert '"host_only": true' in fping_meta or '"host_only":true' in fping_meta
     assert "open_ports_invented" in fping_meta
     assert "SAMPLE/DEMO — not a client estate" in naabu_meta
     assert "SAMPLE/DEMO — not a client estate" in naabu_note
     assert "not a client" in naabu_sample.lower() and "SAMPLE" in naabu_sample
-    assert "covey.pack_drop.v1" in naabu_meta
+    assert "farm.pack_drop.v1" in naabu_meta
     assert '"adapter": "naabu"' in naabu_meta or '"adapter":"naabu"' in naabu_meta
     assert "SAMPLE/DEMO — not a client estate" in nping_meta
     assert "SAMPLE/DEMO — not a client estate" in nping_note
     assert "not a client" in nping_sample.lower() and "SAMPLE" in nping_sample
-    assert "covey.pack_drop.v1" in nping_meta
+    assert "farm.pack_drop.v1" in nping_meta
     assert '"adapter": "nping"' in nping_meta or '"adapter":"nping"' in nping_meta
     assert "SAMPLE/DEMO — not a client estate" in nbtscan_meta
     assert "SAMPLE/DEMO — not a client estate" in nbtscan_note
     assert "not a client" in nbtscan_sample.lower() and "SAMPLE" in nbtscan_sample
-    assert "covey.pack_drop.v1" in nbtscan_meta
+    assert "farm.pack_drop.v1" in nbtscan_meta
     assert '"adapter": "nbtscan"' in nbtscan_meta or '"adapter":"nbtscan"' in nbtscan_meta
     assert '"host_only": true' in nbtscan_meta or '"host_only":true' in nbtscan_meta
     assert "open_ports_invented" in nbtscan_meta
@@ -688,7 +688,7 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "SAMPLE/DEMO — not a client estate" in braa_meta
     assert "SAMPLE/DEMO — not a client estate" in braa_note
     assert "not a client" in braa_sample.lower() and "SAMPLE" in braa_sample
-    assert "covey.pack_drop.v1" in braa_meta
+    assert "farm.pack_drop.v1" in braa_meta
     assert '"adapter": "braa"' in braa_meta or '"adapter":"braa"' in braa_meta
     assert '"host_only": true' in braa_meta or '"host_only":true' in braa_meta
     assert "open_ports_invented" in braa_meta
@@ -697,7 +697,7 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "SAMPLE/DEMO — not a client estate" in ike_scan_meta
     assert "SAMPLE/DEMO — not a client estate" in ike_scan_note
     assert "not a client" in ike_scan_sample.lower() and "SAMPLE" in ike_scan_sample
-    assert "covey.pack_drop.v1" in ike_scan_meta
+    assert "farm.pack_drop.v1" in ike_scan_meta
     assert '"adapter": "ike-scan"' in ike_scan_meta or '"adapter":"ike-scan"' in ike_scan_meta
     assert '"host_only": true' in ike_scan_meta or '"host_only":true' in ike_scan_meta
     assert "open_ports_invented" in ike_scan_meta
@@ -706,7 +706,7 @@ def test_fixture_banners_are_sample_not_client() -> None:
     assert "SAMPLE/DEMO — not a client estate" in svmap_meta
     assert "SAMPLE/DEMO — not a client estate" in svmap_note
     assert "not a client" in svmap_sample.lower() and "SAMPLE" in svmap_sample
-    assert "covey.pack_drop.v1" in svmap_meta
+    assert "farm.pack_drop.v1" in svmap_meta
     assert '"adapter": "svmap"' in svmap_meta or '"adapter":"svmap"' in svmap_meta
     assert "open_ports_invented" in svmap_meta
     assert "reject_ua_unknown" in svmap_meta

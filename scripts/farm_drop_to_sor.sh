@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Covey pack_drop fixtures → CISO Assistant CSVs (farm leave-behind SoR).
+# Farm pack_drop fixtures → CISO Assistant CSVs (farm leave-behind SoR).
 # SAMPLE keep remains the primary KEEP path (./scripts/sample_to_sor.sh).
 # From a clean checkout: ./scripts/farm_drop_to_sor.sh
 set -euo pipefail

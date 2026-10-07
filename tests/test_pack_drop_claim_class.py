@@ -13,12 +13,12 @@ from typing import Any
 import pytest
 
 from scripts.prove_ciso import E2E_PROVEN_PACK_DROP_ADAPTERS
-from tests.test_status_honesty import COVEY_E2E_PROVEN, COVEY_E2E_UNPROVEN
+from tests.test_status_honesty import FARM_E2E_PROVEN, FARM_E2E_UNPROVEN
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DROP = ROOT / "fixtures" / "pack_drop"
 
-ALLOWED_SCHEMAS = frozenset({"covey.pack_drop.v1"})
+ALLOWED_SCHEMAS = frozenset({"farm.pack_drop.v1"})
 
 PORT_SERVICE = frozenset(
     {
@@ -180,10 +180,10 @@ def _assert_no_invented_tcp(rows: list[dict[str, Any]], adapter: str) -> None:
 
 
 def test_claim_class_partition_matches_e2e_proven_sixteen() -> None:
-    assert frozenset(E2E_PROVEN_PACK_DROP_ADAPTERS) == frozenset(COVEY_E2E_PROVEN)
-    assert E2E_PROVEN_PACK_DROP_ADAPTERS is COVEY_E2E_PROVEN or tuple(
+    assert frozenset(E2E_PROVEN_PACK_DROP_ADAPTERS) == frozenset(FARM_E2E_PROVEN)
+    assert E2E_PROVEN_PACK_DROP_ADAPTERS is FARM_E2E_PROVEN or tuple(
         E2E_PROVEN_PACK_DROP_ADAPTERS
-    ) == tuple(COVEY_E2E_PROVEN)
+    ) == tuple(FARM_E2E_PROVEN)
     parts = (PORT_SERVICE, HOST_ONLY_ICMP, SNMP, NETBIOS, IKE, SIP)
     union: set[str] = set()
     for group in parts:
@@ -192,16 +192,16 @@ def test_claim_class_partition_matches_e2e_proven_sixteen() -> None:
         union |= set(group)
     assert union == set(E2E_PROVEN_PACK_DROP_ADAPTERS)
     assert len(union) == 16
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in union
 
 
 def test_unproven_adapters_absent_from_pack_drop() -> None:
     names = {path.name for path in PACK_DROP.iterdir() if path.is_dir()}
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in names, f"UNPROVEN {name} must not be a pack_drop fixture dir"
     assert names == set(E2E_PROVEN_PACK_DROP_ADAPTERS)
-    assert names == set(COVEY_E2E_PROVEN)
+    assert names == set(FARM_E2E_PROVEN)
 
 
 @pytest.mark.parametrize(
