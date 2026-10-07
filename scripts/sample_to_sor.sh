@@ -120,7 +120,7 @@ if [[ "$EXPORTERS" -eq 1 ]]; then
   "$PYTHON" -m exporters --sink all --out-dir "$WORK/out"
 fi
 
-ELAPSED="$("$PYTHON" -c "import time; print(f'{time.perf_counter() - float('$START'):.3f}')")"
+ELAPSED="$("$PYTHON" -c 'import time,sys; print("%.3f" % (time.perf_counter() - float(sys.argv[1])))' "$START")"
 
 echo "sample_to_sor: elapsed=${ELAPSED}s"
 echo "sample_to_sor: ciso=$CISO"
