@@ -82,7 +82,7 @@ def test_pack_drop_smb445_falls_through_to_nmap_port_check() -> None:
         "severity": "high",
         "category": "exposure",
         "assets": ["dc.corp.local"],
-        "labels": ["nmap", "covey"],
+        "labels": ["nmap", "farm"],
         "extra": {
             "port": "445",
             "protocol": "tcp",
@@ -90,7 +90,7 @@ def test_pack_drop_smb445_falls_through_to_nmap_port_check() -> None:
             "ip": "10.0.0.10",
             "id": "nmap-10-microsoftds-445",
             "adapter": "nmap",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     }
     assert weakness_key(xml_style) == weakness_key(pack_row) == "nmap:nmap-port-445/tcp"
@@ -161,7 +161,7 @@ def _nmap_pack(name: str, extra_id: str, severity: str = "high") -> dict:
         "severity": severity,
         "category": "exposure",
         "assets": ["dc.corp.local"],
-        "labels": ["nmap", "covey"],
+        "labels": ["nmap", "farm"],
         "extra": {
             "port": "445",
             "protocol": "tcp",
@@ -169,7 +169,7 @@ def _nmap_pack(name: str, extra_id: str, severity: str = "high") -> dict:
             "ip": "10.0.0.10",
             "id": extra_id,
             "adapter": "nmap",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     }
 
@@ -209,7 +209,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
         "severity": "high",
         "category": "exposure",
         "assets": ["10.9.8.50"],
-        "labels": ["sslscan", "covey"],
+        "labels": ["sslscan", "farm"],
         "extra": {
             "port": "443",
             "protocol": "tcp",
@@ -217,7 +217,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
             "ip": "10.9.8.50",
             "id": "sslscan-50-tls10-443",
             "adapter": "sslscan",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     }
     rc4 = {
@@ -228,7 +228,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
         "severity": "high",
         "category": "exposure",
         "assets": ["10.9.8.50"],
-        "labels": ["sslscan", "covey"],
+        "labels": ["sslscan", "farm"],
         "extra": {
             "port": "443",
             "protocol": "tcp",
@@ -236,7 +236,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
             "ip": "10.9.8.50",
             "id": "sslscan-50-rc4-443",
             "adapter": "sslscan",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     }
     git = {
@@ -247,7 +247,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
         "severity": "high",
         "category": "exposure",
         "assets": ["10.9.8.20"],
-        "labels": ["httpx", "covey"],
+        "labels": ["httpx", "farm"],
         "extra": {
             "port": "80",
             "protocol": "tcp",
@@ -255,7 +255,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
             "ip": "10.9.8.20",
             "id": "httpx-20-git-80",
             "adapter": "httpx",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
             "path": "/.git",
         },
     }
@@ -267,7 +267,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
         "severity": "high",
         "category": "exposure",
         "assets": ["10.9.8.20"],
-        "labels": ["httpx", "covey"],
+        "labels": ["httpx", "farm"],
         "extra": {
             "port": "80",
             "protocol": "tcp",
@@ -275,7 +275,7 @@ def test_specific_findings_on_same_host_port_stay_distinct() -> None:
             "ip": "10.9.8.20",
             "id": "httpx-20-admin-80",
             "adapter": "httpx",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
             "path": "/admin",
         },
     }

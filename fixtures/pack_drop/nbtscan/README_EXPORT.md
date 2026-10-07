@@ -1,9 +1,9 @@
-# Covey nbtscan pack_drop fixture (SAMPLE/DEMO)
+# Farm nbtscan pack_drop fixture (SAMPLE/DEMO)
 
-SAMPLE/DEMO — not a client estate. Shaped like evergreen-covey `export_pack`
+SAMPLE/DEMO — not a client estate. Shaped like lab-farm `export_pack`
 (`evergreen.pack_drop.v1`) for the **nbtscan** stdout-class adapter.
 
-nbtscan is **NetBIOS name-table** host discover. Covey only parses live
+nbtscan is **NetBIOS name-table** host discover. Farm only parses live
 hosts that printed a real NetBIOS name (not `<unknown>` / MAC-only). This
 drop lists those hosts plus the observed names. It does **not** invent
 open TCP ports or fake services to look like rustscan/httpx.
@@ -14,7 +14,7 @@ review-only.
 
 | This drop is | This drop is not |
 | --- | --- |
-| A NetBIOS name-table surface map Covey observed | An open-TCP-port / service map |
+| A NetBIOS name-table surface map Farm observed | An open-TCP-port / service map |
 | Conservative `netbios_name_observed` rows | `open_port_observed` or a rustscan-shaped service list |
 | SoR-ready assets / findings / evidence | A RiskReady wrap, POST, or API push |
 | Host-only NetBIOS name discover | Honeypot validated traffic or control OE |

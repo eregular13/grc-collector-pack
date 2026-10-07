@@ -1,4 +1,4 @@
-# Covey pack_drop → `in/nmap/`
+# Farm pack_drop → `in/nmap/`
 
 **Operator entrypoint:** `./scripts/farm_drop_to_sor.sh` /
 `make farm-drop-to-sor` (DESKTOP: `.\scripts\farm_drop_to_sor.ps1`) —
@@ -16,18 +16,18 @@ paying_day FAIL. See [PROVE_CISO.md](PROVE_CISO.md) (Lab / live dest_in)
 and [FARM_SHIP_GATE.md](FARM_SHIP_GATE.md). Not a new Makefile / README
 first-line.
 
-[evergreen-covey](https://github.com/eregular13/evergreen-covey) is BYO orchestration.
+The lab farm is BYO orchestration.
 A sibling export lands a **pack_drop** (not a scanner binary) that this pack accepts
 on the existing **inventory-nmap** lane. CISO Assistant remains the system of record.
 RiskReady stays review-only — never wrap or POST.
 
-Covey HEAD `30d2197f` `export_pack` writes the same layout for all 16
+Farm HEAD `30d2197f` `export_pack` writes the same layout for all 16
 `E2E_PROVEN` adapters. This pack lifts **nmap** (XML/gnmap-class) and
 stdout/XML-class fixtures (**rustscan**, **httpx**, **unicornscan**,
 **sslscan**, **tlsx**, **whatweb**, **hping3**, **onesixtyone**,
 **fping**, **naabu**, **nping**, **nbtscan**, **braa**, **ike-scan**,
 **svmap**). After svmap the 16 `E2E_PROVEN` pack_drop void closes —
-no 17th live adapter, no pack Covey adapter work. Pytest locks
+no 17th live adapter, no pack Farm adapter work. Pytest locks
 `fixtures/pack_drop/` to exactly those sixteen dirs (each with
 non-empty `meta.json` / `assets.jsonl` / `findings.jsonl`) and
 `seed_prove_in` 1:1 via `E2E_PROVEN_PACK_DROP_ADAPTERS`. Pytest also
@@ -40,10 +40,10 @@ global asset/host/service identity
 on every `assets.jsonl` `asset` / `host` / `service` row; unique within
 each file and across all sixteen; disjoint from finding/observation ids),
 global `meta.json` schema + adapter identity
-(`tests/test_pack_drop_meta.py`; `schema` `covey.pack_drop.v1` exact),
+(`tests/test_pack_drop_meta.py`; `schema` `farm.pack_drop.v1` exact),
 global JSONL row schema + adapter identity
 (`tests/test_pack_drop_row_schema.py`; every `assets.jsonl` /
-`findings.jsonl` object `schema` `covey.pack_drop.v1` exact and
+`findings.jsonl` object `schema` `farm.pack_drop.v1` exact and
 `adapter` == directory name),
 global assets/findings kind-partition
 (`tests/test_pack_drop_kind_partition.py`; `assets.jsonl` `kind`
@@ -98,17 +98,17 @@ in/nmap/pack_drop/evidence/<artifact>
 
 | File | Accepted as |
 |---|---|
-| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Covey `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Every `asset` / `host` / `service` row carries a stable namespaced `id` (`nmap-50-asset`, `fping-10-host`, `rustscan-7-svc-80`, `svmap-96-sip-svc`, …) unique within the adapter file and globally across the sixteen-set, and disjoint from finding/observation ids. Host-only adapters (hping3/fping ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName; nbtscan NetBIOS name-table; ike-scan IKE/VPN handshake) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. svmap emits hosts plus **UDP/5060 sip** service rows from the SIP Device/UA table (protocol=`udp`; not invented TCP). |
-| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Covey `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP/reachability), `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone), `claim:snmp_community_observed` / `claim:sysdescr_observed` / `claim:oid_observed` (braa), `claim:netbios_name_observed` (nbtscan), or `claim:ike_handshake_observed` / `claim:ike_responder_observed` (ike-scan) with no `port`. Every claim / finding / observation row carries a stable namespaced `id` (`fping-10-host-up`, `nmap-50-smb-445`, `svmap-96-sip-ua`, …) unique within the adapter file and globally across the sixteen-set so sibling ids cannot collapse CISO rows. svmap rows use `claim:sip_user_agent_observed` / `claim:sip_udp_port_observed` (UDP/5060 sip from the table; not invented TCP). |
-| `meta.json` | One evidence attestation. Fixture lock is `covey.pack_drop.v1` exact (`tests/test_pack_drop_meta.py`; adapter == directory; `source` `evergreen-covey`; `demo` true; SAMPLE/DEMO ≠ client). Ingest still accepts `evergreen.pack_drop.v1`. Empty invents nothing. |
+| `assets.jsonl` | Host-shaped `{ip,hostname,ports}` rows reuse `_emit_host` (same SMB/RDP/Telnet POA&M). Canonical `{kind:asset,…}` rows lift through `make_record`. Farm `export_pack` `{kind:host,address}` / `{kind:service,address,port}` (`evergreen.pack_drop.v1`) lift as assets + open-port findings. Every `asset` / `host` / `service` row carries a stable namespaced `id` (`nmap-50-asset`, `fping-10-host`, `rustscan-7-svc-80`, `svmap-96-sip-svc`, …) unique within the adapter file and globally across the sixteen-set, and disjoint from finding/observation ids. Host-only adapters (hping3/fping ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName; nbtscan NetBIOS name-table; ike-scan IKE/VPN handshake) emit `{kind:host,address}` with no service/port rows — `_emit_host` writes the asset and invents nothing. svmap emits hosts plus **UDP/5060 sip** service rows from the SIP Device/UA table (protocol=`udp`; not invented TCP). |
+| `findings.jsonl` | `{kind:finding,…}` rows lift through `make_record` into the same CISO findings CSV. Farm `{kind:observation,claim:open_port_observed}` rows lift the same way (info observation, not a vulnerability claim). Host-only rows use `claim:host_up_observed` (ICMP/reachability), `claim:snmp_community_observed` / `claim:sysdescr_observed` (onesixtyone), `claim:snmp_community_observed` / `claim:sysdescr_observed` / `claim:oid_observed` (braa), `claim:netbios_name_observed` (nbtscan), or `claim:ike_handshake_observed` / `claim:ike_responder_observed` (ike-scan) with no `port`. Every claim / finding / observation row carries a stable namespaced `id` (`fping-10-host-up`, `nmap-50-smb-445`, `svmap-96-sip-ua`, …) unique within the adapter file and globally across the sixteen-set so sibling ids cannot collapse CISO rows. svmap rows use `claim:sip_user_agent_observed` / `claim:sip_udp_port_observed` (UDP/5060 sip from the table; not invented TCP). |
+| `meta.json` | One evidence attestation. Fixture lock is `farm.pack_drop.v1` exact (`tests/test_pack_drop_meta.py`; adapter == directory; `source` `lab-farm`; `demo` true; SAMPLE/DEMO ≠ client). Ingest still accepts `evergreen.pack_drop.v1`. Empty invents nothing. |
 | `evidence/` | Artifact rows (or `kind:evidence` JSON). Not parsed as Nmap XML. |
 
-Detection is filename + `schema` / `source: evergreen-covey`. Ordinary gnmap / XML /
+Detection is filename + `schema` / `source: lab-farm`. Ordinary gnmap / XML /
 masscan / naabu drops are unchanged. Empty / header-only invent nothing.
 
 ## Rails
 
-- Parse-only. This pack does not run Nmap, OpenVAS, Nuclei, or Covey workers.
+- Parse-only. This pack does not run Nmap, OpenVAS, Nuclei, or Farm workers.
 - OpenVAS-class remains file_drop only — never vendor a scanner.
 - `python collectors/inventory_nmap.py` is the same collector the nine-service lab
   already runs. No eleventh compose service. No farm slot inflation.
@@ -129,7 +129,7 @@ SNMP GET sweeper (OID/sysDescr/sysName) stdout-class
 `fixtures/pack_drop/braa/`, host-only IKE/VPN handshake
 stdout-class `fixtures/pack_drop/ike-scan/`, and SIP Device/UA
 stdout-class `fixtures/pack_drop/svmap/`
-(Covey `export_pack` shape).
+(Farm `export_pack` shape).
 **SAMPLE/DEMO ≠ client.** End-to-end CISO
 prove: [PROVE_CISO.md](PROVE_CISO.md)
 (`./scripts/farm_drop_to_sor.sh` / `python3 scripts/prove_ciso.py` →

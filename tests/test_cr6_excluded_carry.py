@@ -235,7 +235,7 @@ def test_shared_egp_excluded_duplicate_does_not_mark_plan_item() -> None:
         "severity": "info",
         "category": "exposure",
         "assets": ["dc.corp.local"],
-        "labels": ["nmap", "covey"],
+        "labels": ["nmap", "farm"],
         "extra": {
             "port": "445",
             "protocol": "tcp",
@@ -243,7 +243,7 @@ def test_shared_egp_excluded_duplicate_does_not_mark_plan_item() -> None:
             "ip": "10.0.0.10",
             "id": "nmap-10-microsoftds-445",
             "adapter": "nmap",
-            "pack_drop": "covey",
+            "pack_drop": "farm",
         },
     }
     assert fp_v1(specific) == fp_v1(duplicate)

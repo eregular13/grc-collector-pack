@@ -98,7 +98,7 @@ _UUIDISH = re.compile(
 )
 _HOST_PORT_PROTO_SLUG = re.compile(r".+-\d+-(tcp|udp|sctp)$", re.I)
 _IPV4_PORT_SLUG = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}-\d+", re.I)
-# Covey pack_drop observation/service row ids (nmap-10-microsoftds-445,
+# Farm pack_drop observation/service row ids (nmap-10-microsoftds-445,
 # rustscan-7-tcp-80). Not plugin/check ids. nmap-port-445/tcp is excluded.
 _PACK_DROP_ROW_ADAPTERS = frozenset(
     {
@@ -294,7 +294,7 @@ def _is_literal_host_port_slug(text: str) -> bool:
 
 
 def _is_pack_drop_row_id(val: str) -> bool:
-    """True for Covey row ids that must not become weakness identity.
+    """True for Farm row ids that must not become weakness identity.
 
     ``nmap-10-microsoftds-445`` / ``rustscan-7-tcp-80`` are lift keys.
     ``nmap-port-445/tcp`` is the stable XML/check id and stays accepted.

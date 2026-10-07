@@ -1,6 +1,6 @@
-# Covey onesixtyone pack_drop fixture (SAMPLE/DEMO)
+# Farm onesixtyone pack_drop fixture (SAMPLE/DEMO)
 
-SAMPLE/DEMO — not a client estate. Shaped like evergreen-covey `export_pack`
+SAMPLE/DEMO — not a client estate. Shaped like lab-farm `export_pack`
 (`evergreen.pack_drop.v1`) for the **onesixtyone** stdout-class adapter.
 
 onesixtyone is **SNMP community / sysDescr** discover. This drop lists
@@ -13,7 +13,7 @@ review-only.
 
 | This drop is | This drop is not |
 | --- | --- |
-| A community / sysDescr surface map Covey observed via SNMP | An open-TCP-port / service map |
+| A community / sysDescr surface map Farm observed via SNMP | An open-TCP-port / service map |
 | Conservative `snmp_community_observed` / `sysdescr_observed` rows | `open_port_observed` or a rustscan-shaped service list |
 | SoR-ready assets / findings / evidence | A RiskReady wrap, POST, or API push |
 | SNMP community/sysDescr discover | Honeypot validated traffic or control OE |

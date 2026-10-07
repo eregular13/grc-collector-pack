@@ -10,7 +10,7 @@ from scripts.prove_ciso import (
     pack_drop_seed_dest,
     seed_prove_in,
 )
-from tests.test_status_honesty import COVEY_E2E_PROVEN, COVEY_E2E_UNPROVEN
+from tests.test_status_honesty import FARM_E2E_PROVEN, FARM_E2E_UNPROVEN
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DROP = ROOT / "fixtures" / "pack_drop"
@@ -32,7 +32,7 @@ def test_pack_drop_fixture_dirs_are_exactly_sixteen() -> None:
     missing = expected - names
     assert not extra, f"17th (or extra) pack_drop fixture dir: {sorted(extra)}"
     assert not missing, f"missing pack_drop fixture dir: {sorted(missing)}"
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in names, f"UNPROVEN {name} must not be a pack_drop fixture dir"
 
 
@@ -76,21 +76,21 @@ def test_seed_prove_in_adapters_match_sixteen_1_to_1(tmp_path: Path) -> None:
             assert path.is_file(), f"seed missing {name}/{filename}"
             assert path.stat().st_size > 0, f"seed emptied {name}/{filename}"
         if name == "nmap":
-            assert seed["covey"] == str(dest)
+            assert seed["farm"] == str(dest)
         else:
             assert seed[name] == str(dest)
 
-    seeded_keys = {key for key in seed if key in PACK_DROP_ADAPTERS or key == "covey"}
-    assert seeded_keys == {"covey"} | nested_adapters
+    seeded_keys = {key for key in seed if key in PACK_DROP_ADAPTERS or key == "farm"}
+    assert seeded_keys == {"farm"} | nested_adapters
     assert "nmap" not in seed
 
 
-def test_shared_constant_matches_honesty_covey_e2e_proven() -> None:
-    assert PACK_DROP_ADAPTERS is COVEY_E2E_PROVEN or tuple(PACK_DROP_ADAPTERS) == tuple(
-        COVEY_E2E_PROVEN
+def test_shared_constant_matches_honesty_farm_e2e_proven() -> None:
+    assert PACK_DROP_ADAPTERS is FARM_E2E_PROVEN or tuple(PACK_DROP_ADAPTERS) == tuple(
+        FARM_E2E_PROVEN
     )
-    assert frozenset(PACK_DROP_ADAPTERS) == frozenset(COVEY_E2E_PROVEN)
+    assert frozenset(PACK_DROP_ADAPTERS) == frozenset(FARM_E2E_PROVEN)
     assert len(PACK_DROP_ADAPTERS) == 16
     assert len(set(PACK_DROP_ADAPTERS)) == 16
-    for name in COVEY_E2E_UNPROVEN:
+    for name in FARM_E2E_UNPROVEN:
         assert name not in PACK_DROP_ADAPTERS

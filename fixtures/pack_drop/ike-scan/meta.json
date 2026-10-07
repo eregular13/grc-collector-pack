@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "ike-scan-fixture",
   "adapter": "ike-scan",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. IKE Main Mode / Aggressive Mode sweeper (nonzero responder cookie); IKE/VPN discover \u2260 open TCP port. No invented open TCP ports.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey ike-scan export fixture"
+    "purpose": "lab-farm ike-scan export fixture"
   },
   "honesty": {
     "surface_map": true,

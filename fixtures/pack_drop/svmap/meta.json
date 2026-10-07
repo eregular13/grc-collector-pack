@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "svmap-fixture",
   "adapter": "svmap",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. SIP Device/UA discover (svmap ASCII table). UDP SIP ports from the table only (default 5060). No invented TCP. Reject UA unknown/empty/user agent/disabled.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey svmap export fixture"
+    "purpose": "lab-farm svmap export fixture"
   },
   "honesty": {
     "surface_map": true,

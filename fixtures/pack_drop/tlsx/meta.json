@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "tlsx-fixture",
   "adapter": "tlsx",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey tlsx export fixture"
+    "purpose": "lab-farm tlsx export fixture"
   },
   "honesty": {
     "surface_map": true,

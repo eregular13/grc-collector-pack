@@ -1,5 +1,5 @@
 # Assessment lane → pack in/<lane>/.
-# Names align with evergreen-covey docs/evidence_matrix.yaml (sibling; do not block).
+# Names align with lab-farm docs/evidence_matrix.yaml (sibling; do not block).
 version: 1
 sor: ciso-assistant
 wrap: stay-out
@@ -15,11 +15,11 @@ lanes:
     notes: Prowler / ScoutSuite / ASFF file_drop
   - assessment: DNS/email
     pack_in: dns_email
-    notes: SPF/DKIM/DMARC/MX/cert Seen (Covey email_dns); missing DMARC is a control gap
+    notes: SPF/DKIM/DMARC/MX/cert Seen (Farm email_dns); missing DMARC is a control gap
   - assessment: DNS/email EASM
     pack_in: easm
     notes: Amass / Subfinder / httpx / WhatWeb file_drop
-  - assessment: Covey
+  - assessment: Farm
     pack_in: nmap
     notes: pack_drop assets.jsonl + findings.jsonl + meta.json + evidence/ (nmap + rustscan + httpx + unicornscan + sslscan + tlsx + whatweb + hping3 + onesixtyone + fping + naabu + nping + nbtscan + braa + ike-scan + svmap stdout/XML-class; hping3/fping host-only ICMP; onesixtyone SNMP community/sysDescr; braa SNMP GET OID/sysDescr/sysName host-only; nbtscan NetBIOS name-table host-only; ike-scan IKE/VPN handshake host-only; svmap SIP Device/UA + UDP/5060 sip from the table only, no invented TCP; naabu/nping port/service open_port_observed)
   - assessment: VM

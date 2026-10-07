@@ -21,7 +21,7 @@ SAMPLE keep-lab → CISO + OpenGRC + Probo DESKTOP dry-run
 cannot PASS from SAMPLE; Eval day-of ≠ pack paying_day PASS;
 SAMPLE keep cannot stamp client-ready; RiskReady stay-out).
 Item **COS48-FARM-DROP-TO-SOR**. Item **COS47-HONESTY** = DONE. Item **COS46-HONESTY** = DONE. Item **COS45-PACK-DROP-SOURCE-LOCK** = DONE.
-Covey HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on
+Farm HEAD `c012dd24` (farm PR #23 unit-only GHA CI already on
 main; client-day path already on main). Eval HEAD `ebaa9f50`
 (PR #4 one-command DESKTOP SAMPLE loopback prove already on
 main; unit CI green on merge). Eval DESKTOP-222GHQV day-of
@@ -35,12 +35,12 @@ void CLOSED. Next brick named = Reid-only real KEEP `in/` drop
 SAMPLE_BANNER / prove_ciso
 sixteen-set includes unicornscan.
 20-adapter lane **CLOSED** stands. STATUS `next_action`
-is current truth — Covey `E2E_PROVEN` sixteen-set remains: nmap
+is current truth — Farm `E2E_PROVEN` sixteen-set remains: nmap
 + rustscan + fping + naabu + nping + httpx + sslscan + tlsx +
 whatweb + hping3 + onesixtyone + nbtscan + braa + ike-scan +
 svmap + unicornscan. UNPROVEN fail-closed: masscan, arp-scan,
 netdiscover, zmap — do not claim a 17th live. Pack does not
-start Covey adapter work. Stop for CoS #49. Reid-only
+start Farm adapter work. Stop for CoS #49. Reid-only
 blockers remain (CTA; real KEEP `in/` drop; Eval `npm start`;
 Docker compose on this agent/CI VM still **ABSENT** — ABSENT on
 agent/CI VM ≠ DESKTOP-222GHQV compose_lab pass_desktop at pack
@@ -118,15 +118,15 @@ Compose **ABSENT**. Gate/hash already on master
 (`python -m dropbox gate`).
 
 **Cycle 113 (stands):** CoS #19 honesty sync. STATUS
-`next_action` was Covey 20-adapter lane **CLOSED** at Covey
+`next_action` was Farm 20-adapter lane **CLOSED** at Farm
 HEAD `40583459` / pack `c6f67e07`. That claim is historical —
-Covey later shipped multi-adapter pack_drop export at HEAD
+Farm later shipped multi-adapter pack_drop export at HEAD
 `30d2197f`. Reid-only blockers remain. Catalog unchanged
 (111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
 **dead**. Compose **ABSENT**.
 
 **Cycle 112 (stands):** CoS #18 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap + unicornscan
 at HEAD `0906c29c`. That claim is historical — the 20-adapter
@@ -135,114 +135,114 @@ blockers remain. Catalog unchanged (111 / 32 wired / 30
 invoke / 81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 111 (stands):** CoS #17 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan + svmap at HEAD
-`f15756ce`. That claim is historical — Covey later proved
+`f15756ce`. That claim is historical — Farm later proved
 unicornscan at HEAD `0906c29c`. Reid-only blockers remain.
 Catalog unchanged (111 / 32 wired / 30 invoke / 81
 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 110 (stands):** CoS #16 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa + ike-scan at HEAD `b8f6e124`.
-That claim is historical — Covey later proved svmap at HEAD
+That claim is historical — Farm later proved svmap at HEAD
 `f15756ce`. Reid-only blockers remain. Catalog unchanged
 (111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
 **dead**. Compose **ABSENT**.
 
 **Cycle 109 (stands):** CoS #15 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan + braa at HEAD `417ac399`. That claim is
-historical — Covey later proved ike-scan at HEAD `b8f6e124`.
+historical — Farm later proved ike-scan at HEAD `b8f6e124`.
 Reid-only blockers remain. Catalog unchanged (111 / 32 wired
 / 30 invoke / 81 file_drop). Wrap stays **dead**. Compose
 **ABSENT**.
 
 **Cycle 108 (stands):** CoS #14 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone + nbtscan at HEAD `d7e36421`. That claim is
-historical — Covey later proved braa at HEAD `417ac399`.
+historical — Farm later proved braa at HEAD `417ac399`.
 Reid-only blockers remain. Catalog unchanged (111 / 32 wired
 / 30 invoke / 81 file_drop). Wrap stays **dead**. Compose
 **ABSENT**.
 
 **Cycle 107 (stands):** CoS #13 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 +
 onesixtyone at HEAD `1dc36844`. That claim is historical —
-Covey later proved nbtscan at HEAD `d7e36421`. Reid-only
+Farm later proved nbtscan at HEAD `d7e36421`. Reid-only
 blockers remain. Catalog unchanged (111 / 32 wired / 30
 invoke / 81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 106 (stands):** CoS #12 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb + hping3 at
-HEAD `d522922`. That claim is historical — Covey later proved
+HEAD `d522922`. That claim is historical — Farm later proved
 onesixtyone at HEAD `1dc36844`. Reid-only blockers remain.
 Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
 Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 105 (stands):** CoS #11 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx + whatweb at HEAD
-`c7e77b9`. That claim is historical — Covey later proved
+`c7e77b9`. That claim is historical — Farm later proved
 hping3 at HEAD `d522922`. Reid-only blockers remain. Catalog
 unchanged (111 / 32 wired / 30 invoke / 81 file_drop). Wrap
 stays **dead**. Compose **ABSENT**.
 
 **Cycle 104 (stands):** CoS #10 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan + tlsx at HEAD `1f1a4c7`.
-That claim is historical — Covey later proved whatweb at HEAD
+That claim is historical — Farm later proved whatweb at HEAD
 `c7e77b9`. Reid-only blockers remain. Catalog unchanged
 (111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
 **dead**. Compose **ABSENT**.
 
 **Cycle 103 (stands):** CoS #9 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx + sslscan at HEAD `e29c4e4`. That
-claim is historical — Covey later proved tlsx at HEAD
+claim is historical — Farm later proved tlsx at HEAD
 `1f1a4c7`. Reid-only blockers remain. Catalog unchanged
 (111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
 **dead**. Compose **ABSENT**.
 
 **Cycle 102 (stands):** CoS #8 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping + httpx at HEAD `a4b84d7`. That claim is
-historical — Covey later proved sslscan at HEAD `e29c4e4`.
+historical — Farm later proved sslscan at HEAD `e29c4e4`.
 Reid-only blockers remain. Catalog unchanged (111 / 32 wired /
 30 invoke / 81 file_drop). Wrap stays **dead**. Compose
 **ABSENT**.
 
 **Cycle 101 (stands):** CoS #7 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
 + naabu + nping at HEAD `16eaadc`. That claim is historical —
-Covey later proved httpx at HEAD `a4b84d7`. Reid-only blockers
+Farm later proved httpx at HEAD `a4b84d7`. Reid-only blockers
 remain. Catalog unchanged (111 / 32 wired / 30 invoke /
 81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 100 (stands):** CoS #6 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
-+ naabu at HEAD `14a41bd`. That claim is historical — Covey
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
++ naabu at HEAD `14a41bd`. That claim is historical — Farm
 later proved nping at HEAD `16eaadc`. Reid-only blockers
 remain. Catalog unchanged (111 / 32 wired / 30 invoke /
 81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 99 (stands):** CoS #5 honesty sync. STATUS
-`next_action` was Covey `E2E_PROVEN` = nmap + rustscan + fping
-at HEAD `1c7fb46`. That claim is historical — Covey later proved
+`next_action` was Farm `E2E_PROVEN` = nmap + rustscan + fping
+at HEAD `1c7fb46`. That claim is historical — Farm later proved
 naabu at HEAD `14a41bd`. Reid-only blockers remain. Catalog
 unchanged (111 / 32 wired / 30 invoke / 81 file_drop). Wrap
 stays **dead**. Compose **ABSENT**.
 
 **Cycle 98 (stands):** CoS #4 refine-only. STATUS
-`next_action` was third live Covey brick **held** (fping
+`next_action` was third live Farm brick **held** (fping
 preferred; BYO fping missing on this VM, not in flight). That
-claim is historical — Covey later proved fping at HEAD
+claim is historical — Farm later proved fping at HEAD
 `1c7fb46`. Reid-only blockers remain. Catalog unchanged
 (111 / 32 wired / 30 invoke / 81 file_drop). Wrap stays
 **dead**. Compose **ABSENT**.
@@ -255,7 +255,7 @@ refuse. Catalog unchanged (111 / 32 wired / 30 invoke /
 81 file_drop). Wrap stays **dead**. Compose **ABSENT**.
 
 **Cycle 96 (stands):** CISO Assistant export prove,
-rebased onto Beelzebub #11. Fixture Covey pack_drop +
+rebased onto Beelzebub #11. Fixture Farm pack_drop +
 Palisade/Beelzebub honeypot → existing `dropbox ciso` SoR →
 `out/ciso-assistant`. SAMPLE/DEMO ≠ client. Paying-day stays
 **FAIL**. Catalog unchanged (111 / 32 wired / 30 invoke /
@@ -281,22 +281,22 @@ Compose **ABSENT**.
 **Cycle 93 (stands):** CoS prove bar — fixture file_drop
 → `collectors/dns_email.py` → `out/canonical/dns-email.jsonl`.
 SAMPLE/DEMO ≠ client. No RiskReady POST. Paying-day **FAIL**.
-Cycle **92** DNS/email Seen collector (`in/dns_email/`, Covey
-`email_dns`) rebased onto honeypot + Covey pack_drop stands.
+Cycle **92** DNS/email Seen collector (`in/dns_email/`, Farm
+`email_dns`) rebased onto honeypot + Farm pack_drop stands.
 Catalog unchanged (111 / 32 wired / 30 invoke / 81 file_drop).
 Compose **11** services; honeypot stays an optional stub. Wrap
 stays **dead**. Compose **ABSENT**.
 
 **Cycle 92 (stands):** Email/DNS Seen collector
-(`in/dns_email/`, Covey `email_dns`) rebased onto honeypot +
-Covey pack_drop. File-drop SPF/DKIM/DMARC/MX + optional cert
+(`in/dns_email/`, Farm `email_dns`) rebased onto honeypot +
+Farm pack_drop. File-drop SPF/DKIM/DMARC/MX + optional cert
 snapshot. Missing DMARC is a control gap, not a breach. Live DNS
 only behind `--live` + signed SCOPE. Catalog unchanged (111 / 32
 wired / 30 invoke / 81 file_drop). Compose **11** services;
 honeypot stays an optional stub. Wrap stays **dead**. Paying-day
 **FAIL**. Compose **ABSENT**.
 
-**Cycle 91 (stands):** Honeypot file_drop lane + Covey
+**Cycle 91 (stands):** Honeypot file_drop lane + Farm
 pack_drop on existing `in/nmap/` + evidence matrix. Not a compose
 service. Catalog unchanged (111 / 32 wired / 30 invoke /
 81 file_drop). Wrap stays **dead**. Paying-day **FAIL**. Compose

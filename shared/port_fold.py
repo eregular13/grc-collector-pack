@@ -87,7 +87,7 @@ _PORT_SCAN_LABELS = frozenset(
 _PORT_ONLY_SOURCES = frozenset(
     {
         "inventory-nmap",
-        "evergreen-covey",
+        "lab-farm",
     }
 )
 _PORT_ONLY_NAME = re.compile(

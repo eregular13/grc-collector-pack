@@ -126,5 +126,5 @@ Gate/hash is already on master (`python -m dropbox gate`).
 - Treat this dry-run as a client estate or a paying-day PASS
 - POST `/api/risks` or restore RiskReady wrap
 - Set `CISO_PUSH=1` / `DRY_RUN=0` on SAMPLE
-- Live-scan, apt-install scanners, or start Covey adapters
+- Live-scan, apt-install scanners, or start Farm adapters
 - Add pack_drop integrity vanity bricks

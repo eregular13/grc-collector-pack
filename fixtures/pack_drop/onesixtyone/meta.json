@@ -1,14 +1,14 @@
 {
-  "schema": "covey.pack_drop.v1",
+  "schema": "farm.pack_drop.v1",
   "run_id": "onesixtyone-fixture",
   "adapter": "onesixtyone",
-  "source": "evergreen-covey",
+  "source": "lab-farm",
   "lane": "nmap",
   "demo": true,
   "note": "SAMPLE/DEMO — not a client estate. Fixture pack_drop, not a client export. SNMP community/sysDescr discover; no invented open TCP ports.",
   "scope": {
     "signer": "prove-lab",
-    "purpose": "evergreen-covey onesixtyone export fixture"
+    "purpose": "lab-farm onesixtyone export fixture"
   },
   "honesty": {
     "surface_map": true,

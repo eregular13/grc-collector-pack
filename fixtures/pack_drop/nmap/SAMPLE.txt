@@ -1,5 +1,5 @@
 SAMPLE/DEMO — not a client estate.
-Covey pack_drop fixture for the CISO Assistant export prove.
+Farm pack_drop fixture for the CISO Assistant export prove.
 Dual-net SAMPLE nmap-ish -sV leaf: 10.0.0.0/24 corp + 172.16.10.0/24 SAMPLE lab segment.
 The 172.16.10.0/24 "lab" prefix is a SAMPLE estate segment, not fixtures/lab-drop
 dest_in (192.168.64.0/24). farm_drop_to_sor seeds this tree; lab_drop_to_sor does not.

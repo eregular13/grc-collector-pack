@@ -1,6 +1,6 @@
-# Covey naabu pack_drop fixture (SAMPLE/DEMO)
+# Farm naabu pack_drop fixture (SAMPLE/DEMO)
 
-SAMPLE/DEMO — not a client estate. Shaped like evergreen-covey `export_pack`
+SAMPLE/DEMO — not a client estate. Shaped like lab-farm `export_pack`
 (`evergreen.pack_drop.v1`) for the **naabu** stdout-class adapter.
 
 Naabu is **port/service discovery** (not host-only). This drop emits hosts
@@ -14,6 +14,6 @@ review-only.
 
 | This drop is | This drop is not |
 | --- | --- |
-| A surface map of hosts/services Covey observed | Honeypot validated traffic |
+| A surface map of hosts/services Farm observed | Honeypot validated traffic |
 | Conservative `open_port_observed` rows | A control operating-effectiveness test |
 | SoR-ready assets / findings / evidence | A RiskReady wrap, POST, or API push |

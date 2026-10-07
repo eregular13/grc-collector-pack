@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SAMPLE/DEMO CISO prove: fixture Covey pack_drop + honeypot → out/ciso-assistant.
+"""SAMPLE/DEMO CISO prove: fixture Farm pack_drop + honeypot → out/ciso-assistant.
 
 Uses the existing operator SoR path (`run_ciso_path` / `python3 -m dropbox ciso`).
 Not a client estate. Never writes pack in/. Never POSTs. Paying-day stays FAIL.
@@ -54,7 +54,7 @@ E2E_PROVEN_PACK_DROP_ADAPTERS = (
 E2E_PROVEN_PACK_DROP_NAMED = " + ".join(E2E_PROVEN_PACK_DROP_ADAPTERS)
 SAMPLE_BANNER = (
     "SAMPLE/DEMO — not a client estate.\n"
-    f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED}) + honeypot file_drop. Not a client export.\n"
+    f"Fixture Farm pack_drop ({E2E_PROVEN_PACK_DROP_NAMED}) + honeypot file_drop. Not a client export.\n"
     "Not a paying-day stamp. RiskReady wrap stays review-only.\n"
 )
 # Lab/live dest_in is operator-populated. Not SAMPLE fixture reseed. Not a client.
@@ -268,7 +268,7 @@ def seed_prove_in(dest_in: Path, root: Path | None = None) -> dict[str, Any]:
     seeded = {name: adapters[name] for name in E2E_PROVEN_PACK_DROP_ADAPTERS if name != "nmap"}
     return {
         "dest_in": str(dest_in),
-        "covey": adapters["nmap"],
+        "farm": adapters["nmap"],
         **seeded,
         "honeypot": str(honeypot),
         "beelzebub": str(beelzebub),
@@ -591,7 +591,7 @@ def prove_ciso(
             )
             if use_existing_in
             else (
-                f"Fixture Covey pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot -> "
+                f"Fixture Farm pack_drop ({E2E_PROVEN_PACK_DROP_NAMED} stdout-class) + honeypot -> "
                 "existing collectors -> grc_loader -> out/ciso-assistant. SAMPLE != client. "
                 "This prove is not a paying-day PASS."
             )
@@ -650,7 +650,7 @@ def _resolve_work(raw: str | None) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "SAMPLE/DEMO Covey pack_drop + honeypot -> prove/work/out/ciso-assistant "
+            "SAMPLE/DEMO Farm pack_drop + honeypot -> prove/work/out/ciso-assistant "
             "(default seeds fixtures). --use-existing-in keeps dest/in (LAB/DEMO). "
             "--prior-out DIR copies that run's poam/asset ledgers into dest/in "
             "before processing (before dest/out is wiped). "

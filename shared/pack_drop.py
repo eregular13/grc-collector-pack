@@ -1,4 +1,4 @@
-"""Accept Covey pack_drop (assets.jsonl / findings.jsonl / meta.json / evidence/).
+"""Accept Farm pack_drop (assets.jsonl / findings.jsonl / meta.json / evidence/).
 
 Thin adapter for the existing inventory-nmap lane. Parse-only. No scanner spawn.
 """
@@ -14,8 +14,8 @@ from shared.schema import make_record, make_ref
 
 PACK_DROP_NAMES = frozenset({"assets.jsonl", "findings.jsonl", "meta.json"})
 PACK_DROP_SCHEMAS = {
-    "covey.pack_drop.v1",
-    "evergreen-covey.pack_drop.v1",
+    "farm.pack_drop.v1",
+    "farm.pack_drop.v1",
     "evergreen.pack_drop.v1",
     "pack_drop.v1",
 }
@@ -55,7 +55,7 @@ def looks_like_pack_drop(path: Path, raw: str = "") -> bool:
     if schema in PACK_DROP_SCHEMAS:
         return True
     source = str(first.get("source") or "").strip().lower()
-    if "covey" in source or source == "evergreen-covey":
+    if "farm" in source or source == "lab-farm":
         return True
     return False
 
@@ -119,8 +119,8 @@ def _row_name(row: dict[str, Any], default_kind: str) -> str:
     if addr:
         return addr
     if default_kind == "finding":
-        return "covey-observation"
-    return "covey-row"
+        return "farm-observation"
+    return "farm-row"
 
 
 def _ports(row: dict[str, Any]) -> list[tuple[str, str]]:
@@ -173,7 +173,7 @@ def _lift_record(
     name = _row_name(row, kind)
     extra = row.get("extra") if isinstance(row.get("extra"), dict) else {}
     extra_out = dict(extra)
-    extra_out.setdefault("pack_drop", "covey")
+    extra_out.setdefault("pack_drop", "farm")
     for key in (
         "ip",
         "addr",
@@ -213,8 +213,8 @@ def _lift_record(
     adapter = str(row.get("adapter") or "").strip()
     if adapter and adapter not in rec_labels:
         rec_labels.append(adapter)
-    if "covey" not in rec_labels:
-        rec_labels.append("covey")
+    if "farm" not in rec_labels:
+        rec_labels.append("farm")
     assets = row.get("assets") or []
     if not assets:
         host = str(row.get("hostname") or row.get("name") or row.get("ip") or row.get("address") or "")
@@ -268,9 +268,9 @@ def _meta_evidence(
 ) -> dict[str, Any]:
     adapter = str(row.get("adapter") or row.get("tool") or "nmap")
     generated = str(row.get("generated_at") or row.get("created_at") or row.get("ts") or now)
-    schema = str(row.get("schema") or "covey.pack_drop.v1")
+    schema = str(row.get("schema") or "farm.pack_drop.v1")
     honesty = row.get("honesty") if isinstance(row.get("honesty"), dict) else {}
-    extra_labels = list(labels) + ["covey", "pack_drop"]
+    extra_labels = list(labels) + ["farm", "pack_drop"]
     if adapter and adapter not in extra_labels:
         extra_labels.append(adapter)
     lab = _dest_in_is_lab(path, row)
@@ -281,10 +281,10 @@ def _meta_evidence(
     return make_record(
         kind="evidence",
         source=source,
-        ref_id=make_ref(source, f"covey-meta-{adapter}-{generated}"),
-        name=f"Covey pack_drop ({adapter})",
+        ref_id=make_ref(source, f"farm-meta-{adapter}-{generated}"),
+        name=f"Farm pack_drop ({adapter})",
         description=(
-            f"Accepted evergreen-covey pack_drop {schema} ({adapter}) via in/nmap/ at {generated}. "
+            f"Accepted lab-farm pack_drop {schema} ({adapter}) via in/nmap/ at {generated}. "
             "Parse-only file_drop into the existing inventory-nmap → CISO Assistant path. "
             f"Not a live scan. {estate}"
         ),
@@ -296,7 +296,7 @@ def _meta_evidence(
             "schema": schema,
             "adapter": adapter,
             "lane": str(row.get("lane") or "nmap"),
-            "source": str(row.get("source") or "evergreen-covey"),
+            "source": str(row.get("source") or "lab-farm"),
             "demo": bool(row.get("demo")),
             "run_id": str(row.get("run_id") or ""),
             "honesty": honesty,
@@ -310,17 +310,17 @@ def _file_evidence(path: Path, now: str, *, source: str, labels: list[str]) -> d
     return make_record(
         kind="evidence",
         source=source,
-        ref_id=make_ref(source, f"covey-evidence-{path.name}"),
-        name=f"Covey pack_drop evidence {path.name}",
+        ref_id=make_ref(source, f"farm-evidence-{path.name}"),
+        name=f"Farm pack_drop evidence {path.name}",
         description=(
-            f"Evidence artifact {path.name} from Covey pack_drop evidence/ "
+            f"Evidence artifact {path.name} from Farm pack_drop evidence/ "
             "(file_drop; not a live scan)."
         ),
         severity="info",
         category="pack_drop",
-        labels=list(labels) + ["covey", "evidence"],
+        labels=list(labels) + ["farm", "evidence"],
         collected_at=now,
-        extra={"artifact": path.name, "pack_drop": "covey"},
+        extra={"artifact": path.name, "pack_drop": "farm"},
     )
 
 
@@ -333,7 +333,7 @@ def parse_pack_drop(
     labels: list[str],
     host_emitter: HostEmitter | None = None,
 ) -> list[dict[str, Any]] | None:
-    """Return records if this is a Covey pack_drop file; None otherwise."""
+    """Return records if this is a Farm pack_drop file; None otherwise."""
     if not looks_like_pack_drop(path, raw):
         return None
     name = path.name.lower()
@@ -409,10 +409,10 @@ def parse_pack_drop(
                 for k in ("mac", "vendor", "user_agent", "user-agent", "ua")
                 if row.get(k)
             }
-            extra["pack_drop"] = "covey"
+            extra["pack_drop"] = "farm"
             if row.get("adapter"):
                 extra["adapter"] = row.get("adapter")
-            extra_labels = ["covey", "pack_drop"]
+            extra_labels = ["farm", "pack_drop"]
             adapter = str(row.get("adapter") or "").strip()
             if adapter and adapter not in extra_labels:
                 extra_labels.append(adapter)

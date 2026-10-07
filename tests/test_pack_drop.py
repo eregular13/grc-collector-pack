@@ -1,4 +1,4 @@
-"""Covey pack_drop on the existing inventory-nmap lane."""
+"""Farm pack_drop on the existing inventory-nmap lane."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def test_pack_drop_assets_reuse_emit_host() -> None:
     findings = [r for r in recs if r["kind"] == "finding"]
     assert any((r.get("extra") or {}).get("port") == "445" for r in findings)
     smb = next(r for r in findings if (r.get("extra") or {}).get("port") == "445")
-    assert "covey" in (smb.get("labels") or [])
+    assert "farm" in (smb.get("labels") or [])
     mapped = map_finding(smb)
     assert mapped["include_poam"] is True
     assert "CVE-" not in mapped["recommended_fix"]
@@ -55,7 +55,7 @@ def test_pack_drop_meta_and_evidence_dir() -> None:
     meta = inventory_nmap.parse_file(DROP / "meta.json")
     evid = [r for r in meta if r["kind"] == "evidence"]
     assert evid
-    assert "covey" in evid[0]["name"].lower() or "pack_drop" in evid[0]["description"].lower()
+    assert "farm" in evid[0]["name"].lower() or "pack_drop" in evid[0]["description"].lower()
     note = inventory_nmap.parse_file(DROP / "evidence" / "note.md")
     assert note
     assert all(r["kind"] == "evidence" for r in note)
@@ -93,7 +93,7 @@ def test_pack_drop_rustscan_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.7" in names
     assert "10.9.8.8" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
     assert {"80", "443", "22"} <= ports
@@ -127,7 +127,7 @@ def test_pack_drop_rustscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "rustscan"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -157,7 +157,7 @@ def test_pack_drop_httpx_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.20" in names
     assert "10.9.8.21" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
     assert {"80", "8080", "443"} <= ports
@@ -191,7 +191,7 @@ def test_pack_drop_httpx_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "httpx"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -226,7 +226,7 @@ def test_pack_drop_unicornscan_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.40" in names
     assert "10.9.8.41" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
     assert {"21", "23", "53"} <= ports
@@ -260,7 +260,7 @@ def test_pack_drop_unicornscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "unicornscan"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -300,7 +300,7 @@ def test_pack_drop_sslscan_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.50" in names
     assert "10.9.8.51" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
     assert {"443", "8443"} <= ports
@@ -333,7 +333,7 @@ def test_pack_drop_sslscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "sslscan"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -391,7 +391,7 @@ def test_pack_drop_tlsx_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.60" in names
     assert "10.9.8.61" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
     assert {"443", "853", "636"} <= ports
@@ -425,7 +425,7 @@ def test_pack_drop_tlsx_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "tlsx"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -475,7 +475,7 @@ def test_pack_drop_whatweb_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.70" in names
     assert "10.9.8.71" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
     assert {"8000", "8888", "9000"} <= ports
@@ -509,7 +509,7 @@ def test_pack_drop_whatweb_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "whatweb"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("control_operating_effectiveness") is False
@@ -565,7 +565,7 @@ def test_pack_drop_hping3_hosts_only() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.80" in names
     assert "10.9.8.81" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("hping3" in (r.get("labels") or []) for r in assets)
     assert findings == []
     assert all(not (r.get("extra") or {}).get("port") for r in recs)
@@ -601,7 +601,7 @@ def test_pack_drop_hping3_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "hping3"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -660,7 +660,7 @@ def test_pack_drop_onesixtyone_hosts_only() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.90" in names
     assert "10.9.8.91" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("onesixtyone" in (r.get("labels") or []) for r in assets)
     assert findings == []
     assert all(not (r.get("extra") or {}).get("port") for r in recs)
@@ -710,7 +710,7 @@ def test_pack_drop_onesixtyone_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "onesixtyone"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -776,7 +776,7 @@ def test_pack_drop_fping_hosts_only() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.10" in names
     assert "10.9.8.11" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("fping" in (r.get("labels") or []) for r in assets)
     assert findings == []
     assert all(not (r.get("extra") or {}).get("port") for r in recs)
@@ -812,7 +812,7 @@ def test_pack_drop_fping_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "fping"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -878,7 +878,7 @@ def test_pack_drop_naabu_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.30" in names
     assert "10.9.8.31" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("naabu" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
@@ -917,7 +917,7 @@ def test_pack_drop_naabu_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "naabu"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("honeypot_validated") is False
@@ -959,7 +959,7 @@ def test_pack_drop_nping_hosts_and_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.32" in names
     assert "10.9.8.33" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("nping" in (r.get("labels") or []) for r in assets)
     findings = [r for r in recs if r["kind"] == "finding"]
     ports = {str((r.get("extra") or {}).get("port") or "") for r in findings}
@@ -998,7 +998,7 @@ def test_pack_drop_nping_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "nping"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("honeypot_validated") is False
@@ -1046,7 +1046,7 @@ def test_pack_drop_nbtscan_hosts_only() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.34" in names
     assert "10.9.8.35" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("nbtscan" in (r.get("labels") or []) for r in assets)
     assert findings == []
     assert all(not (r.get("extra") or {}).get("port") for r in recs)
@@ -1091,7 +1091,7 @@ def test_pack_drop_nbtscan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "nbtscan"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -1172,7 +1172,7 @@ def test_pack_drop_braa_hosts_only() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.92" in names
     assert "10.9.8.93" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("braa" in (r.get("labels") or []) for r in assets)
     assert findings == []
     assert all(not (r.get("extra") or {}).get("port") for r in recs)
@@ -1229,7 +1229,7 @@ def test_pack_drop_braa_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "braa"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -1317,7 +1317,7 @@ def test_pack_drop_ike_scan_hosts_only() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.94" in names
     assert "10.9.8.95" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("ike-scan" in (r.get("labels") or []) for r in assets)
     assert findings == []
     assert all(not (r.get("extra") or {}).get("port") for r in recs)
@@ -1362,7 +1362,7 @@ def test_pack_drop_ike_scan_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "ike-scan"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("host_only") is True
@@ -1452,7 +1452,7 @@ def test_pack_drop_svmap_hosts_and_udp_sip_services() -> None:
     names = {r["name"] for r in assets}
     assert "10.9.8.96" in names
     assert "10.9.8.97" in names
-    assert all("covey" in (r.get("labels") or []) for r in assets)
+    assert all("farm" in (r.get("labels") or []) for r in assets)
     assert all("svmap" in (r.get("labels") or []) for r in assets)
     assert all(r["source"] == "inventory-nmap" for r in recs)
     assert all(r["ref_id"].startswith("NMAP-") for r in recs)
@@ -1462,7 +1462,7 @@ def test_pack_drop_svmap_hosts_and_udp_sip_services() -> None:
         if (r.get("extra") or {}).get("user_agent")
     }
     assert any("Asterisk PBX SAMPLE" in ua for ua in host_uas)
-    assert any("covey-sip-lab SAMPLE/DEMO" in ua for ua in host_uas)
+    assert any("farm-sip-lab SAMPLE/DEMO" in ua for ua in host_uas)
     assert all(ua.strip().lower() not in {"unknown", "", "user agent", "disabled"} for ua in host_uas)
     assert findings
     extras = [r.get("extra") or {} for r in findings]
@@ -1472,7 +1472,7 @@ def test_pack_drop_svmap_hosts_and_udp_sip_services() -> None:
     assert all("tcp" not in (r.get("name") or "").lower() for r in findings)
     uas = {str(e.get("user_agent") or "") for e in extras if e.get("user_agent")}
     assert any("Asterisk PBX SAMPLE" in ua for ua in uas)
-    assert any("covey-sip-lab SAMPLE/DEMO" in ua for ua in uas)
+    assert any("farm-sip-lab SAMPLE/DEMO" in ua for ua in uas)
     raw = (SVMAP / "assets.jsonl").read_text(encoding="utf-8")
     assert "unknown" not in raw.lower() or "reject" in raw.lower()
     assert '"protocol":"tcp"' not in raw
@@ -1508,7 +1508,7 @@ def test_pack_drop_svmap_observations_lift_unique_ids() -> None:
     assert all(str(e.get("protocol") or "").lower() != "tcp" for e in extras)
     uas = {str(e.get("user_agent") or "") for e in extras if e.get("user_agent")}
     assert any("Asterisk PBX SAMPLE" in ua for ua in uas)
-    assert any("covey-sip-lab SAMPLE/DEMO" in ua for ua in uas)
+    assert any("farm-sip-lab SAMPLE/DEMO" in ua for ua in uas)
     assert all(ua.strip().lower() not in {"unknown", "", "user agent", "disabled"} for ua in uas)
     assert any("10.9.8.96" in (r.get("assets") or []) for r in findings)
     assert any("10.9.8.97" in (r.get("assets") or []) for r in findings)
@@ -1532,7 +1532,7 @@ def test_pack_drop_svmap_meta_and_evidence() -> None:
     assert evid
     extra = evid[0].get("extra") or {}
     assert extra.get("adapter") == "svmap"
-    assert extra.get("schema") == "covey.pack_drop.v1"
+    assert extra.get("schema") == "farm.pack_drop.v1"
     honesty = extra.get("honesty") or {}
     assert honesty.get("surface_map") is True
     assert honesty.get("open_ports_invented") is False
@@ -1626,7 +1626,7 @@ def test_pack_drop_svmap_does_not_break_prior_adapters() -> None:
 
 
 def test_pack_drop_docs_and_matrix() -> None:
-    docs = (ROOT / "docs" / "COVEY_PACK_DROP.md").read_text(encoding="utf-8")
+    docs = (ROOT / "docs" / "FARM_PACK_DROP.md").read_text(encoding="utf-8")
     assert "assets.jsonl" in docs
     assert "in/nmap/" in docs
     assert "CISO" in docs
@@ -1646,7 +1646,7 @@ def test_pack_drop_docs_and_matrix() -> None:
     assert "braa" in docs.lower()
     assert "ike-scan" in docs.lower()
     assert "svmap" in docs.lower()
-    assert "covey.pack_drop.v1" in docs
+    assert "farm.pack_drop.v1" in docs
     assert "evergreen.pack_drop.v1" in docs
     assert "fixtures/pack_drop/rustscan" in docs or "pack_drop/rustscan" in docs
     assert "fixtures/pack_drop/httpx" in docs or "pack_drop/httpx" in docs

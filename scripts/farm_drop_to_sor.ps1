@@ -1,4 +1,4 @@
-# Covey pack_drop fixtures → CISO Assistant CSVs (farm leave-behind SoR).
+# Farm pack_drop fixtures → CISO Assistant CSVs (farm leave-behind SoR).
 # SAMPLE keep remains the primary KEEP path (.\scripts\sample_to_sor.ps1).
 # DESKTOP (no make / no gh): .\scripts\farm_drop_to_sor.ps1
 param(

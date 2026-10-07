@@ -13,10 +13,10 @@ Names are unique. Floor after this pack: **≥ 18** evidence rows. That is still
 Import these as CISO evidences. A human attaches screenshots later if the GRC requires them. RiskReady stay-out — no wrap, no POST.
 
 Assessment lane → `in/<lane>/` map: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
-Covey pack_drop on the nmap lane: [COVEY_PACK_DROP.md](COVEY_PACK_DROP.md).
+Farm pack_drop on the nmap lane: [FARM_PACK_DROP.md](FARM_PACK_DROP.md).
 Beelzebub pack_drop on the honeypot lane (stages are Palisade-only): [HONEYPOT_BEELZEBUB.md](HONEYPOT_BEELZEBUB.md).
 SAMPLE/DEMO CISO prove: [PROVE_CISO.md](PROVE_CISO.md).
-Email / DNS (`in/dns_email/`) is the pack **Seen** twin of Covey lane `email_dns`.
+Email / DNS (`in/dns_email/`) is the pack **Seen** twin of Farm lane `email_dns`.
 Missing DMARC is a control-gap candidate. A TXT record is not mailbox proof
 and not a breach. See [DNS_EMAIL.md](DNS_EMAIL.md).
 

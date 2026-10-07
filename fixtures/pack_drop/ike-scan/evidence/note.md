@@ -1,5 +1,5 @@
 SAMPLE/DEMO — not a client estate.
-Covey ike-scan pack_drop evidence stub. Parse-only file_drop into in/nmap/.
+Farm ike-scan pack_drop evidence stub. Parse-only file_drop into in/nmap/.
 Stdout-class export_pack (hosts + IKE handshake / VPN responder). No invented open TCP ports.
 IKE/VPN discover ≠ open TCP port.
 Typical SAMPLE stdout (not a live scan):

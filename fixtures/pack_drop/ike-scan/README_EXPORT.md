@@ -1,10 +1,10 @@
-# Covey ike-scan pack_drop fixture (SAMPLE/DEMO)
+# Farm ike-scan pack_drop fixture (SAMPLE/DEMO)
 
-SAMPLE/DEMO — not a client estate. Shaped like evergreen-covey `export_pack`
+SAMPLE/DEMO — not a client estate. Shaped like lab-farm `export_pack`
 (`evergreen.pack_drop.v1`) for the **ike-scan** stdout-class adapter
-(hyphen; Covey registry id `ike-scan`).
+(hyphen; Farm registry id `ike-scan`).
 
-ike-scan is an **IKE Main Mode / Aggressive Mode sweeper**. Covey only
+ike-scan is an **IKE Main Mode / Aggressive Mode sweeper**. Farm only
 counts live hosts that printed a handshake with a nonzero responder
 cookie. This drop lists those IKE/VPN responders. It does **not** invent
 open TCP ports or fake services to look like rustscan/httpx. UDP/500 IKE
@@ -16,7 +16,7 @@ review-only.
 
 | This drop is | This drop is not |
 | --- | --- |
-| An IKE/VPN host surface map Covey observed via Main Mode handshake | An open-TCP-port / service map |
+| An IKE/VPN host surface map Farm observed via Main Mode handshake | An open-TCP-port / service map |
 | Conservative `ike_handshake_observed` / `ike_responder_observed` rows | `open_port_observed` or a rustscan-shaped service list |
 | SoR-ready assets / findings / evidence | A RiskReady wrap, POST, or API push |
 | IKE/VPN discover (nonzero responder cookie) | Honeypot validated traffic or control OE |

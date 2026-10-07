@@ -1,6 +1,6 @@
 {
-  "schema": "covey.pack_drop.v1",
-  "source": "evergreen-covey",
+  "schema": "farm.pack_drop.v1",
+  "source": "lab-farm",
   "adapter": "nmap",
   "lane": "nmap",
   "generated_at": "2026-09-21T00:00:00Z",
