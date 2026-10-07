@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- CISO_WIZARD_MAP_PQ4589: Productize lab-proven CISO Data-Wizard import
+  mapping. Export (`grc_loader`) writes AppliedControl / Finding names as
+  `title [ref_id]` (PQ-7) and Vulnerability names the same with a hard
+  ≤200-char cap (PQ-8). `GRC_DOMAIN` / `CISO_FOLDER_NAME` stamp assets +
+  controls domain for folder-filtered counts (PQ-4/5). New
+  `shared/ciso_wizard_map.py` + `scripts/prepare_ciso_wizard.py` rewrite
+  legacy CSV trees, drop vulns whose assets FK is not an imported asset
+  name, and plan/write Vulnerability wizard chunks (default 500, PQ-9).
+  File-only; no HTTP; never POST `/api/risks`.
+- PQ3_FIRST_RUN_UX: True first-run (no prior ledger file, no leftover
+  POA&M history) no longer emits machine `LEDGER_LOST` in
+  `summary.json` / ledger warnings. Surfaces print a plain
+  `Ledger note: new ledger created, N items` instead of
+  `Ledger warning: LEDGER_LOST (first run: no prior ledger)`. Real
+  `LEDGER_LOST` (prior history present, ledger file missing; or items
+  vanished without a migration entry on fixstack paths) is unchanged.
+  Overnight `pipeline-summary` therefore no longer pairs rc with a
+  ledger warning on a clean first run. No POST `/api/risks`.
 - METIS_219_158_FOLLOW_UPS: Persist `LEDGER_CHAIN_BROKEN` / dropped POA&M
   IDs on the executive summary and `summary.json` until a valid ledger
   is supplied (re-signed recovered output does not clear the flag).
