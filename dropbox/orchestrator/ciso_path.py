@@ -58,6 +58,72 @@ SKIP_INPUT_NAMES = frozenset(
     {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
 )
 
+# Top-level dest_in dirs that are pipeline sinks / meta — not sensor inputs.
+NON_SENSOR_META_DIRS = frozenset(
+    {
+        "out",
+        "canonical",
+        "ciso-assistant",
+        "poam",
+        "assets",  # prior-out asset-ledger.json land
+        "evidence",
+        "simplerisk",
+        "opengrc",
+        "probo",
+        "coverage",
+        "import_preview",
+        "ocsf",
+        "iiw",
+        "raw",
+        ".git",
+    }
+)
+
+UNREAD_SENSOR_DIR = "UNREAD_SENSOR_DIR"
+
+
+class UnreadSensorDirError(RuntimeError):
+    """Non-empty input dir has no collector on the CISO SoR path."""
+
+    def __init__(self, dirs: list[str]):
+        self.dirs = list(dirs)
+        named = ", ".join(self.dirs) if self.dirs else "(none)"
+        super().__init__(
+            f"{UNREAD_SENSOR_DIR} non-empty input dir(s) with no collector: {named}. "
+            f"Known collectors: {', '.join(sorted(SENSOR_COLLECTORS))}. "
+            "Empty or absent dirs stay silent."
+        )
+
+
+def unread_sensor_dirs(stage_in: Path) -> list[str]:
+    """Return sorted top-level non-empty dirs under stage_in with no collector.
+
+    Empty/absent dirs are silent. SENSOR_COLLECTORS and NON_SENSOR_META_DIRS
+    are never unread. Root-level banner files are ignored.
+    """
+    stage_in = Path(stage_in)
+    if not stage_in.is_dir():
+        return []
+    bad: list[str] = []
+    for child in sorted(stage_in.iterdir()):
+        if not child.is_dir():
+            continue
+        name = child.name
+        if name in SENSOR_COLLECTORS or name in NON_SENSOR_META_DIRS:
+            continue
+        if name.startswith("."):
+            continue
+        if _has_input_files(child):
+            bad.append(name)
+    return bad
+
+
+def assert_no_unread_sensor_dirs(stage_in: Path) -> None:
+    bad = unread_sensor_dirs(stage_in)
+    if bad:
+        raise UnreadSensorDirError(bad)
+
+
 
 def _has_input_files(sensor_dir: Path) -> bool:
     if not sensor_dir.is_dir():
@@ -152,6 +218,9 @@ def run_ciso_path(
     disk_sensors = {s for s in SENSOR_COLLECTORS if _has_input_files(stage_in / s)}
     sensors = sorted(keepmin_sensors | disk_sensors)
     sensors = [s for s in sensors if _has_input_files(stage_in / s)]
+    assert_no_unread_sensor_dirs(dest_in)
+    if stage_in.resolve() != dest_in.resolve():
+        assert_no_unread_sensor_dirs(stage_in)
     sample = (
         any(row.get("sample") for row in rows)
         or "DEMO" in scope.client_name.upper()
