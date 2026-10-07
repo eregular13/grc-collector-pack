@@ -6,9 +6,11 @@ Lab-proven rules (jobs 08–18), productized for export + dry-run prep:
    name (not bare ``Global``) so folder-filtered GET counts match creates.
 2. **PQ-7** — AppliedControl / Finding / Vulnerability display
    ``name = "{title} [{ref_id}]"`` so names stay unique across tenants.
-3. **PQ-8** — Vulnerability ``name`` length ≤ 200 after the suffix
-   (truncate **title**, keep `` [ref_id]`` tail; overlong ref alone →
-   first 180 of ref + 8-char hash).
+3. **PQ-8** — Wizard ``name`` length ≤ 200 after the suffix for
+   Vulnerability, Finding, and AppliedControl (CISO Community max_length;
+   lab job 43b Findings rejected >200). Truncate **title**, keep
+   `` [ref_id]`` tail; overlong ref alone → first 180 of ref + 8-char hash.
+   Full untruncated title is preserved in ``description`` when truncated.
 4. **PQ-9** — split Vulnerability CSV into chunks (default 500 rows) for
    Data-Wizard loads; single ~5k-row POSTs can WORKER TIMEOUT on SQLite.
 
@@ -27,10 +29,12 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable
 
-# CISO Community Vulnerability.name max_length (lab job 10).
+# CISO Community wizard name max_length (Vulnerability lab job 10;
+# Findings confirmed 200 in job 43b import stop).
 VULN_NAME_MAX = 200
-# AppliedControl / Finding name room (Django often 255; still uniquify).
-DEFAULT_NAME_MAX = 255
+WIZARD_NAME_MAX = 200
+# AppliedControl / Finding share the wizard 200 cap (not Django 255).
+DEFAULT_NAME_MAX = WIZARD_NAME_MAX
 # PQ-9 lab-proven safe wizard chunk size.
 DEFAULT_VULN_CHUNK = 500
 
@@ -69,6 +73,19 @@ def unique_display_name(
     if keep < 1:
         return suffix[-max_len:]
     return f"{orig[:keep]}{suffix}"
+
+
+
+def _preserve_full_title_in_description(row: dict[str, str], orig_title: str, mapped_name: str) -> None:
+    """If title was truncated for max_len, keep full text in description."""
+    full = strip_ref_suffix(orig_title)
+    mapped_title = strip_ref_suffix(mapped_name)
+    if not full or len(full) <= len(mapped_title):
+        return
+    desc = row.get("description") or ""
+    if full in desc:
+        return
+    row["description"] = f"{full}\n\n{desc}".strip() if desc else full
 
 
 def plan_vuln_chunks(
@@ -172,6 +189,11 @@ def map_ciso_csvs(
     for row in assets:
         if "domain" in a_fields:
             row["domain"] = folder
+        if "name" in a_fields:
+            n = row.get("name") or ""
+            if len(n) > other_name_max:
+                _preserve_full_title_in_description(row, n, n[:other_name_max])
+                row["name"] = n[:other_name_max]
     _write_csv(dest / "assets.csv", a_fields, assets)
     asset_names = {(r.get("name") or "").strip() for r in assets if (r.get("name") or "").strip()}
     asset_ref_ids = {(r.get("ref_id") or "").strip() for r in assets if (r.get("ref_id") or "").strip()}
@@ -193,7 +215,9 @@ def map_ciso_csvs(
         seen_ctl.add(rid)
         if "domain" in c_fields:
             row["domain"] = folder
-        row["name"] = unique_display_name(row.get("name") or "", rid, max_len=other_name_max)
+        _orig_name = row.get("name") or ""
+        row["name"] = unique_display_name(_orig_name, rid, max_len=other_name_max)
+        _preserve_full_title_in_description(row, _orig_name, row["name"])
         controls.append(row)
     _write_csv(dest / "applied_controls.csv", c_fields, controls)
     ctl_ref_ids = {(r.get("ref_id") or "").strip() for r in controls}
@@ -203,6 +227,12 @@ def map_ciso_csvs(
 
     if (src / "evidences.csv").is_file():
         e_fields, evidences = _read_csv(src / "evidences.csv")
+        if "name" in e_fields:
+            for row in evidences:
+                n = row.get("name") or ""
+                if len(n) > other_name_max:
+                    _preserve_full_title_in_description(row, n, n[:other_name_max])
+                    row["name"] = n[:other_name_max]
         _write_csv(dest / "evidences.csv", e_fields, evidences)
         stats["counts"]["evidences"] = len(evidences)
         stats["paths"]["evidences"] = str(dest / "evidences.csv")
@@ -210,7 +240,9 @@ def map_ciso_csvs(
     f_fields, findings = _read_csv(src / "findings.csv")
     for row in findings:
         rid = (row.get("ref_id") or "").strip()
-        row["name"] = unique_display_name(row.get("name") or "", rid, max_len=other_name_max)
+        _orig_name = row.get("name") or ""
+        row["name"] = unique_display_name(_orig_name, rid, max_len=other_name_max)
+        _preserve_full_title_in_description(row, _orig_name, row["name"])
     _write_csv(dest / "findings.csv", f_fields, findings)
     stats["counts"]["findings"] = len(findings)
     stats["paths"]["findings"] = str(dest / "findings.csv")
@@ -255,7 +287,9 @@ def map_ciso_csvs(
                 ctl_trimmed += 1
             row["applied_controls"] = ",".join(kept_parts)
         rid = (row.get("ref_id") or "").strip()
-        row["name"] = unique_display_name(row.get("name") or "", rid, max_len=vuln_name_max)
+        _orig_name = row.get("name") or ""
+        row["name"] = unique_display_name(_orig_name, rid, max_len=vuln_name_max)
+        _preserve_full_title_in_description(row, _orig_name, row["name"])
         kept.append(row)
     _write_csv(dest / "vulnerabilities.csv", v_fields, kept)
     stats["counts"]["vulnerabilities"] = len(kept)
@@ -282,11 +316,13 @@ def map_ciso_csvs(
     def _maxlen(rows: list[dict[str, str]]) -> int:
         return max((len((r.get("name") or "")) for r in rows), default=0)
 
+    _ev_for_len = locals().get("evidences") or []
     stats["max_name_len"] = {
         "assets": _maxlen(assets),
         "applied_controls": _maxlen(controls),
         "findings": _maxlen(findings),
         "vulnerabilities": _maxlen(kept),
+        "evidences": _maxlen(_ev_for_len),
     }
     stats["dup_names"] = {
         "assets": _dups(assets),
@@ -300,6 +336,10 @@ def map_ciso_csvs(
         and stats["dup_name_counts"]["findings"] == 0
         and stats["dup_name_counts"]["vulnerabilities"] == 0
         and stats["max_name_len"]["vulnerabilities"] <= vuln_name_max
+        and stats["max_name_len"]["findings"] <= other_name_max
+        and stats["max_name_len"]["applied_controls"] <= other_name_max
+        and stats["max_name_len"]["assets"] <= other_name_max
+        and stats["max_name_len"]["evidences"] <= other_name_max
     )
     return stats
 
