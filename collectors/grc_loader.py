@@ -50,6 +50,7 @@ from shared.estate_pages import (
 from shared.evidence import build_evidence_rows
 from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
 from shared.finding_types import (
+    SEV_RANK,
     dedupe_weaknesses,
     finding_identity,
     primary_asset,
@@ -195,6 +196,27 @@ class _DedupeResult(list):
     merges: list[dict]
 
 
+def _dedupe_prefer(kept: dict, cand: dict) -> bool:
+    """True when cand should replace kept for the same finding_identity slot.
+
+    Lets nmap -sV XML (product/version + EOL severity bump) win over a
+    earlier gnmap twin that shares check_id but has no version text.
+    Equal-severity tool twins without product/version keep first-wins
+    (stable golden / multi-scanner port rows).
+    """
+    ks = SEV_RANK.get(str(kept.get("severity") or "info").lower(), 0)
+    cs = SEV_RANK.get(str(cand.get("severity") or "info").lower(), 0)
+    if cs > ks:
+        return True
+    if cs < ks:
+        return False
+    ke = kept.get("extra") if isinstance(kept.get("extra"), dict) else {}
+    ce = cand.get("extra") if isinstance(cand.get("extra"), dict) else {}
+    k_rich = bool(ke.get("product") or ke.get("version") or ke.get("version_sev_rule"))
+    c_rich = bool(ce.get("product") or ce.get("version") or ce.get("version_sev_rule"))
+    return c_rich and not k_rich
+
+
 def _dedupe(records: list[dict]) -> list[dict]:
     """Collapse exact dupes. Findings key on full identity + normalized asset.
 
@@ -229,16 +251,29 @@ def _dedupe(records: list[dict]) -> list[dict]:
                 others[slot] = rec
             else:
                 kept = others[slot]
-                merges.append(
-                    {
-                        "rec": rec,
-                        "kept": kept,
-                        "reason_code": "DUPLICATE_INSTANCE",
-                        "rolled_into": str(kept.get("ref_id") or ""),
-                        "source": rec.get("source") or "",
-                        "detail": "same finding_identity + primary_asset",
-                    }
-                )
+                if _dedupe_prefer(kept, rec):
+                    merges.append(
+                        {
+                            "rec": kept,
+                            "kept": rec,
+                            "reason_code": "DUPLICATE_INSTANCE",
+                            "rolled_into": str(rec.get("ref_id") or ""),
+                            "source": kept.get("source") or "",
+                            "detail": "same finding_identity + primary_asset; preferred richer/higher-sev twin",
+                        }
+                    )
+                    others[slot] = rec
+                else:
+                    merges.append(
+                        {
+                            "rec": rec,
+                            "kept": kept,
+                            "reason_code": "DUPLICATE_INSTANCE",
+                            "rolled_into": str(kept.get("ref_id") or ""),
+                            "source": rec.get("source") or "",
+                            "detail": "same finding_identity + primary_asset",
+                        }
+                    )
             continue
         if kind and ref:
             slot = (str(kind), ref.lower())

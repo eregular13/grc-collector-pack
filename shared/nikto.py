@@ -345,6 +345,24 @@ def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:
         root = ET.fromstring(text)
     except ET.ParseError:
         return
+    # job44_nikto_scan_time: pin original_detection_date from scan timestamps
+    root_start = ""
+    if _tag(root) in {"niktoscan", "nikto"}:
+        root_start = (
+            root.attrib.get("scanstart")
+            or root.attrib.get("starttime")
+            or root.attrib.get("start_time")
+            or ""
+        ).strip()
+    else:
+        for el in root.iter():
+            if _tag(el) == "niktoscan":
+                root_start = (
+                    el.attrib.get("scanstart")
+                    or el.attrib.get("starttime")
+                    or ""
+                ).strip()
+                break
     for details in root.iter():
         if _tag(details) != "scandetails":
             continue
@@ -353,6 +371,16 @@ def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:
             or details.attrib.get("targetip")
             or "unknown"
         )
+        start = (
+            details.attrib.get("starttime")
+            or details.attrib.get("start_time")
+            or details.attrib.get("scanstart")
+            or root_start
+            or ""
+        ).strip()
+        # Prefer ISO-ish starttime; fall back to Nikto GMT helper for text forms
+        if start and "GMT" in start:
+            start = _nikto_start_time(start)
         for item in list(details):
             if _tag(item) != "item":
                 continue
@@ -364,12 +392,15 @@ def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:
                     desc = (child.text or "").strip()
                 elif ctag == "uri":
                     uri = (child.text or "").strip()
-            yield {
+            row = {
                 "host": host,
                 "url": uri or "/",
                 "msg": desc,
                 "id": item.attrib.get("id") or item.attrib.get("osvdbid") or "nikto",
             }
+            if start:
+                row["scan_time"] = start
+            yield row
 
 
 def parse_nikto(path: Path) -> list[dict[str, Any]] | None:
