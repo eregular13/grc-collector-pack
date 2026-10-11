@@ -116,6 +116,9 @@ def plan_by_poam_id(
             "recommended_fix": cell(row, "recommended_fix"),
             "original_risk_rating": cell(row, "original_risk_rating"),
             "framework_refs": cell(row, "framework_refs"),
+            # Operator plan weakness (failure wording) — not raw check title.
+            "weakness": cell(row, "weakness"),
+            "weakness_description": cell(row, "weakness_description"),
         }
     return out
 
@@ -168,11 +171,17 @@ def item_to_row(
     tags = _plan_cell(plan, "framework_refs") or str(item.get("framework_refs") or "")
     parsed_status = parse_status_date(item.get("status_date"))
     status_date = parsed_status.isoformat() if parsed_status is not None else ""
+    # Weakness Name must match poam.csv failure wording (not pass-style check title).
+    weakness_name = _plan_cell(plan, "weakness") or str(item.get("name") or "")
+    weakness_desc = (
+        _plan_cell(plan, "weakness_description")
+        or str(item.get("description") or "")
+    )
     return [
         str(item.get("poam_id") or ""),
         controls,
-        str(item.get("name") or ""),
-        str(item.get("description") or ""),
+        weakness_name,
+        weakness_desc,
         str(item.get("source_family") or ""),
         strip_secret_hash_from_key(str(item.get("weakness_key") or "")),
         str(item.get("display_asset") or item.get("asset_key") or ""),
