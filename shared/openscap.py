@@ -250,3 +250,71 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
             }
         )
     return out
+
+def openscap_applicability(text: str) -> dict[str, Any]:
+    """Explain empty fail/error sets: NOT_APPLICABLE vs all-pass vs empty.
+
+    OpenSCAP datastream/profile mismatch often yields only
+    notapplicable/notselected rule-results. That is not "zero findings"
+    in the sense of a clean host — surface NOT_APPLICABLE explicitly.
+    """
+    raw = text or ""
+    if not raw.lstrip().startswith("<"):
+        return {
+            "status": "EMPTY",
+            "message": "OpenSCAP input empty or not XML",
+            "counts": {},
+        }
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return {
+            "status": "UNPARSEABLE",
+            "message": "OpenSCAP XML parse error",
+            "counts": {},
+        }
+    counts: dict[str, int] = {}
+    for el in _iter_rule_results(root):
+        result = (_result_value(el) or "unknown").lower().replace("-", "")
+        counts[result] = counts.get(result, 0) + 1
+    fails = iter_openscap_failures(raw)
+    if fails:
+        return {
+            "status": "OK",
+            "message": f"OpenSCAP findings={len(fails)}",
+            "counts": counts,
+        }
+    total = sum(counts.values())
+    na = counts.get("notapplicable", 0)
+    ns = counts.get("notselected", 0)
+    npass = counts.get("pass", 0) + counts.get("passed", 0)
+    if total == 0:
+        return {
+            "status": "NOT_APPLICABLE",
+            "message": (
+                "OpenSCAP NOT_APPLICABLE: no rule-results in TestResult "
+                "(datastream/profile may not match host); not zero findings"
+            ),
+            "counts": counts,
+        }
+    if na + ns == total or (na > 0 and npass == 0 and counts.get("fail", 0) == 0):
+        return {
+            "status": "NOT_APPLICABLE",
+            "message": (
+                "OpenSCAP NOT_APPLICABLE: datastream/profile does not match host "
+                f"(notapplicable={na}, notselected={ns}, total_rules={total}); "
+                "not zero findings"
+            ),
+            "counts": counts,
+        }
+    if npass and not fails:
+        return {
+            "status": "OK",
+            "message": f"OpenSCAP all pass (pass={npass}); no fail/error rows",
+            "counts": counts,
+        }
+    return {
+        "status": "NOT_APPLICABLE",
+        "message": f"OpenSCAP NOT_APPLICABLE: no fail/error rows (counts={counts})",
+        "counts": counts,
+    }
