@@ -162,8 +162,9 @@ COLLECTOR_AREAS = {
 }
 
 AREA_HINTS = (
-    ("identity", ("identity", "saas", "idp", "ad", "entra", "okta")),
-    ("external exposure", ("easm", "nmap", "exposure", "honeypot", "dns")),
+    ("tls / certificates", ("testssl", "tls", "ssl", "certificate", "cipher", "x509")),
+    ("identity", ("identity", "saas", "idp", "ad", "entra", "okta", "saml", "oauth")),
+    ("external exposure", ("easm", "nmap", "exposure", "honeypot", "dns", "nikto", "vuln-scan")),
     ("cloud configuration", ("cloud", "prowler", "k8s", "kubescape")),
     ("code secrets", ("code", "secret", "gitleaks", "truffle", "sast")),
 )
@@ -1339,17 +1340,30 @@ def _sev(rec: dict) -> str:
     return "low"
 
 
+def _area_hint_match(hint: str, blob: str) -> bool:
+    """Substring match; short tokens (ad/idp) require word-ish boundaries."""
+    h = (hint or "").strip().lower()
+    if not h:
+        return False
+    if len(h) <= 3:
+        return re.search(rf"(?<![a-z0-9]){re.escape(h)}(?![a-z0-9])", blob) is not None
+    return h in blob
+
+
 def _area_for(rec: dict) -> str:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     blob = " ".join(
         str(x or "")
         for x in (
             rec.get("category"),
             rec.get("source"),
             rec.get("name"),
+            extra.get("tool"),
+            extra.get("check_id"),
         )
     ).lower()
     for area, hints in AREA_HINTS:
-        if any(h in blob for h in hints):
+        if any(_area_hint_match(h, blob) for h in hints):
             return area
     cat = str(rec.get("category") or rec.get("source") or "").strip()
     return COLLECTOR_AREAS.get(cat, cat or "other")
@@ -1481,24 +1495,51 @@ def _exec_top_findings(
     mapped_by_ref: dict[str, dict],
     n: int,
 ) -> list[dict]:
-    """Top-N by risk, one row per host/port EGP (pack_drop id ≠ weakness)."""
-    from shared.poam_ledger import fp_v1
+    """Top-N by risk; collapse same weakness across hosts into one row."""
+    from shared.poam_ledger import _weakness_key_core, fp_v1, weakness_key
 
     ranked: list[dict] = []
-    seen: set[str] = set()
+    seen_fp: set[str] = set()
+    by_wk: dict[str, dict] = {}
+
     def _exec_sort(rec: dict) -> tuple:
         sev, poam, refs, ref = _risk_key(rec, mapped_by_ref.get(str(rec.get("ref_id"))))
         extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
         port_first = 0 if str(extra.get("check_id") or "").startswith("nmap-port-") else 1
         return (sev, poam, refs, port_first, ref)
 
+    def _wk(rec: dict) -> str:
+        # Top-5 UX: collapse identical weakness *titles* across hosts (cert flood).
+        # Prefer human name; fall back to weakness core / key.
+        name = re.sub(r"\s+", " ", str(rec.get("name") or "").strip().lower())
+        if name:
+            return "name:" + name
+        core = str(_weakness_key_core(rec) or "").strip()
+        if core:
+            return "core:" + core
+        return "wk:" + str(weakness_key(rec) or rec.get("ref_id") or "").strip().lower()
+
     ordered = sorted(findings, key=_exec_sort)
     for rec in ordered:
         ident = fp_v1(rec)
-        if ident in seen:
+        if ident in seen_fp:
             continue
-        seen.add(ident)
-        ranked.append(rec)
+        seen_fp.add(ident)
+        wk = _wk(rec)
+        if wk and wk in by_wk:
+            prev = by_wk[wk]
+            assets = list(prev.get("assets") or [])
+            for a in rec.get("assets") or []:
+                s = str(a).strip()
+                if s and s not in assets:
+                    assets.append(s)
+            prev["assets"] = assets
+            continue
+        row = dict(rec)
+        row["assets"] = list(rec.get("assets") or [])
+        if wk:
+            by_wk[wk] = row
+        ranked.append(row)
         if len(ranked) >= n:
             break
     return ranked
