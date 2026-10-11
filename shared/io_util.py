@@ -72,7 +72,24 @@ def fixtures_dir() -> Path:
 
 
 def iso_now() -> str:
+    """UTC now, or SOURCE_DATE_EPOCH / GRC_RUN_TS when set (reproducible stamps)."""
+    raw = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
+    if raw:
+        try:
+            if raw.isdigit():
+                dt = datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            else:
+                text = raw.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(text)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    dt = dt.astimezone(timezone.utc)
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except (ValueError, OSError, OverflowError):
+            pass
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 
 _CSV_FORMULA_ALWAYS = frozenset("=@")
