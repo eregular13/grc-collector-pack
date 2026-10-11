@@ -448,14 +448,31 @@ def pack_commit() -> str:
 
 
 def generated_at_local(iso_utc: str | None = None) -> str:
+    """Human stamp for estate banners.
+
+    Default: host-local wall clock (``astimezone()``, honors ``TZ``).
+    When ``SOURCE_DATE_EPOCH`` / ``GRC_RUN_TS`` is set, always render **UTC**
+    so cold SAMPLE / CI banners do not drift across timezones.
+    """
+    from shared.io_util import utc_now
+
+    sde = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
+    force_utc = bool(sde)
     raw = (iso_utc or "").strip()
     if raw:
         try:
             stamp = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            if force_utc:
+                stamp = stamp.astimezone(timezone.utc)
+                return stamp.strftime("%Y-%m-%d %H:%M UTC")
             local = stamp.astimezone()
             return local.strftime("%Y-%m-%d %H:%M %Z")
         except ValueError:
             pass
+    if force_utc:
+        return utc_now().strftime("%Y-%m-%d %H:%M UTC")
     now = datetime.now().astimezone()
     return now.strftime("%Y-%m-%d %H:%M %Z")
 
