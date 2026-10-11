@@ -33,8 +33,9 @@ Hand-stripping `warnings` / `dropped_poam_ids` on a re-signed file also
 clears the flag because `payload_sha256` is unkeyed and does not cover
 those fields. That is **not** a supported reset path.
 
-`LEDGER_LOST` is this-run-only once any ledger file is supplied. On
-LAB/SAMPLE/DEMO the first-run note (`first run: no prior ledger`) prints
-only when there is no prior ledger file and no leftover POA&M history
-(`poam.csv` / `poam.md` / members / excluded). A later missing ledger
-stays `LEDGER_LOST` without that note.
+`LEDGER_LOST` is this-run-only once any ledger file is supplied. On a
+true first run (no prior ledger file and no leftover POA&M history) the
+pack prints a plain note `new ledger created, N items` and does **not**
+put `LEDGER_LOST` in `ledger_warnings` (so overnight pipeline-summary does
+not pair rc with a ledger warning). A later missing ledger stays
+`LEDGER_LOST` without that note.
