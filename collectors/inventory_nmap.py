@@ -49,11 +49,50 @@ RISKY = {
     ("80", "tcp"): ("low", "HTTP exposed"),
     ("161", "udp"): ("medium", "SNMP 161/udp exposed"),
     ("69", "udp"): ("high", "TFTP 69/udp exposed"),
+    ("1524", "tcp"): ("critical", "Bind shell 1524 exposed"),
+    ("512", "tcp"): ("high", "rexec 512 exposed"),
+    ("513", "tcp"): ("high", "rlogin 513 exposed"),
+    ("514", "tcp"): ("high", "rsh 514 exposed"),
+    ("5900", "tcp"): ("high", "VNC 5900 exposed"),
+    ("3306", "tcp"): ("medium", "MySQL 3306 exposed"),
+    ("5432", "tcp"): ("medium", "PostgreSQL 5432 exposed"),
+    ("3632", "tcp"): ("high", "distcc 3632 exposed"),
+    ("1099", "tcp"): ("high", "Java RMI 1099 exposed"),
+    ("6667", "tcp"): ("high", "IRC/UnrealIRCd 6667 exposed"),
 }
 NMAP_PORT_CHECK_PREFIX = "nmap-port-"
 RISKY_TCP = {port: val for (port, proto), val in RISKY.items() if proto == "tcp"}
 # Confirmed-open UDP only. open|filtered never uses this table.
 RISKY_UDP = {port: val for (port, proto), val in RISKY.items() if proto == "udp"}
+
+def _service_product_severity(portid, svc, product, version, base_sev, base_title):
+    """Raise severity for dangerous service/product (prior-unit). check_id unchanged.
+
+    Do not rewrite titles already set by the RISKY port table (keeps golden/lab-drop
+    names like "Telnet exposed" stable). Only overlay product backdoors and
+    off-table service names (e.g. telnet on non-23).
+    """
+    blob = f"{svc} {product} {version}".lower()
+    sev, title = base_sev, base_title
+    base_l = (base_title or "").lower()
+    already_named = base_l and not base_l.startswith("open port")
+    if "vsftpd" in blob and "2.3.4" in (version or blob):
+        return "critical", (
+            base_title if already_named and "vsftpd" in base_l
+            else f"vsftpd 2.3.4 exposed on port {portid}"
+        )
+    if "unrealircd" in blob:
+        return "high", (
+            base_title if already_named and "unreal" in base_l
+            else f"UnrealIRCd exposed on port {portid}"
+        )
+    if already_named:
+        return sev, title
+    if "telnet" in blob:
+        return "critical", f"Telnet service exposed on port {portid}"
+    return sev, title
+
+
 
 
 def _is_dropbox_demo(path: Path, raw: str) -> bool:
@@ -267,6 +306,9 @@ def _emit_host(
             script_blob=script_blob,
         )
         title = enrich_port_title(title, pv_label)
+        sev, title = _service_product_severity(
+            portid, svc or "", product or "", version or "", sev, title
+        )
         if portid == "443" and proto == "tcp":
             continue
         find_labels = list(LABELS) + [f"port-{portid}"]
