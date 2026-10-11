@@ -24,6 +24,7 @@ File-only. No HTTP. Never POST ``/api/risks``. Never print tokens.
 from __future__ import annotations
 
 import csv
+import json
 import hashlib
 import re
 from collections import Counter
@@ -186,14 +187,17 @@ def map_risk_scenarios_for_wizard(
     dest_path: Path,
     *,
     controls: list[dict[str, str]],
+    matrix_profile: str | None = None,
+    apply_5x5_label_map: bool = False,
+    label_map_path: Path | None = None,
 ) -> dict[str, Any]:
     """Rewrite pack risk_scenarios.csv into RiskAssessment wizard shape.
 
     - threats → threat
     - existing_controls → existing_applied_controls
     - additional_controls: CTL- ref_id → applied_controls.name (newline-separated)
-    - delimiter stays semicolon
-    Proba/impact labels pass through (Low/Moderate/High); matrix load is separate.
+    - delimiter: comma (wizard/prepare path ONLY; pack SoR writers stay semicolon)
+    - optional 5x5 label map (Moderate→Medium etc.), off by default, with provenance
     """
     src_path = Path(src_path)
     dest_path = Path(dest_path)
@@ -201,7 +205,6 @@ def map_risk_scenarios_for_wizard(
     header = text.splitlines()[0] if text else ""
     delim = ";" if header.count(";") >= header.count(",") else ","
     rows_in = list(csv.DictReader(text.splitlines(), delimiter=delim))
-    # Wizard RiskAssessment wants control *titles*, not PQ-7 "title [CTL-ref]" display.
     ref_to_name = {
         (r.get("ref_id") or "").strip(): strip_ref_suffix((r.get("name") or "").strip())
         for r in controls
@@ -231,6 +234,27 @@ def map_risk_scenarios_for_wizard(
         "residual_risk",
         "treatment",
     ]
+    level_cols = (
+        "current_impact",
+        "current_proba",
+        "current_risk",
+        "residual_impact",
+        "residual_proba",
+        "residual_risk",
+    )
+    map_5x5 = {
+        "Very Low": "Very Low",
+        "Low": "Low",
+        "Moderate": "Medium",
+        "Medium": "Medium",
+        "High": "High",
+        "Very High": "Very High",
+    }
+    want_map = bool(apply_5x5_label_map) or (
+        (matrix_profile or "").strip().lower()
+        in {"critical_5x5", "5x5", "critical-risk-matrix-5x5"}
+    )
+    renames: list[dict[str, str]] = []
     for r in rows_in:
         threat = (r.get("threat") or r.get("threats") or "").strip()
         existing = (r.get("existing_applied_controls") or r.get("existing_controls") or "").strip()
@@ -240,32 +264,66 @@ def map_risk_scenarios_for_wizard(
         existing_m = _map_control_tokens(existing, ref_to_name, names)
         if additional_m != before:
             ctl_mapped += 1
-        out_rows.append(
-            {
-                "ref_id": r.get("ref_id") or "",
-                "assets": r.get("assets") or "",
-                "threat": threat,
-                "name": r.get("name") or "",
-                "description": r.get("description") or "",
-                "existing_applied_controls": existing_m,
-                "current_impact": r.get("current_impact") or "",
-                "current_proba": r.get("current_proba") or "",
-                "current_risk": r.get("current_risk") or "",
-                "additional_controls": additional_m,
-                "residual_impact": r.get("residual_impact") or "",
-                "residual_proba": r.get("residual_proba") or "",
-                "residual_risk": r.get("residual_risk") or "",
-                "treatment": r.get("treatment") or "",
-            }
-        )
+        row = {
+            "ref_id": r.get("ref_id") or "",
+            "assets": r.get("assets") or "",
+            "threat": threat,
+            "name": r.get("name") or "",
+            "description": r.get("description") or "",
+            "existing_applied_controls": existing_m,
+            "current_impact": r.get("current_impact") or "",
+            "current_proba": r.get("current_proba") or "",
+            "current_risk": r.get("current_risk") or "",
+            "additional_controls": additional_m,
+            "residual_impact": r.get("residual_impact") or "",
+            "residual_proba": r.get("residual_proba") or "",
+            "residual_risk": r.get("residual_risk") or "",
+            "treatment": r.get("treatment") or "",
+        }
+        if want_map:
+            for col in level_cols:
+                old = (row.get(col) or "").strip()
+                if not old:
+                    continue
+                new = map_5x5.get(old, old)
+                if new != old:
+                    renames.append(
+                        {
+                            "ref_id": row.get("ref_id") or "",
+                            "field": col,
+                            "from": old,
+                            "to": new,
+                        }
+                    )
+                    row[col] = new
+        out_rows.append(row)
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     with dest_path.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=fields, delimiter=";", lineterminator="\n")
+        w = csv.DictWriter(fh, fieldnames=fields, delimiter=",", lineterminator="\n")
         w.writeheader()
         for row in out_rows:
             w.writerow(row)
-    return {"rows": len(out_rows), "ctl_rows_mapped": ctl_mapped, "delimiter": ";"}
-
+    if want_map and label_map_path is not None:
+        Path(label_map_path).write_text(
+            json.dumps(
+                {
+                    "matrix_profile": matrix_profile
+                    or ("critical_5x5" if apply_5x5_label_map else None),
+                    "renames": renames,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    return {
+        "rows": len(out_rows),
+        "ctl_rows_mapped": ctl_mapped,
+        "delimiter": ",",
+        "label_map_applied": want_map,
+        "label_map_renames": renames,
+        "matrix_profile": matrix_profile,
+    }
 
 def map_ciso_csvs(
     src_dir: Path,
@@ -275,6 +333,9 @@ def map_ciso_csvs(
     vuln_name_max: int = VULN_NAME_MAX,
     other_name_max: int = DEFAULT_NAME_MAX,
     drop_unmatched_asset_vulns: bool = True,
+    matrix_profile: str | None = None,
+    apply_5x5_label_map: bool = False,
+    label_map_path: Path | None = None,
 ) -> dict[str, Any]:
     """Rewrite a ciso-assistant/ tree for wizard import (PQ-4/5/7/8).
 
@@ -417,6 +478,9 @@ def map_ciso_csvs(
             src / "risk_scenarios.csv",
             dest / "risk_scenarios.csv",
             controls=controls,
+            matrix_profile=matrix_profile,
+            apply_5x5_label_map=apply_5x5_label_map,
+            label_map_path=label_map_path,
         )
         stats["paths"]["risk_scenarios"] = str(dest / "risk_scenarios.csv")
         stats["risk_scenarios_wizard"] = scen_stats

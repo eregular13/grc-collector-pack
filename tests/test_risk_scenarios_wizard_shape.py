@@ -50,11 +50,12 @@ def test_map_ciso_csvs_risk_scenarios_wizard_headers(tmp_path: Path) -> None:
     assert "risk_scenarios" in stats.get("paths", {})
     text = (dest / "risk_scenarios.csv").read_text(encoding="utf-8")
     header = text.splitlines()[0]
-    assert "threat;" in header or header.startswith("ref_id;assets;threat;")
+    # prior-unit: wizard prepare path emits comma (Data Wizard default)
+    assert "threat," in header or header.startswith("ref_id,assets,threat,")
     assert "existing_applied_controls" in header
-    assert "threats;" not in header
-    assert "existing_controls;" not in header
-    rows = list(csv.DictReader(text.splitlines(), delimiter=";"))
+    assert "threats," not in header and "threats;" not in header
+    assert "existing_controls," not in header and "existing_controls;" not in header
+    rows = list(csv.DictReader(text.splitlines()))  # default comma
     assert len(rows) == 2
     assert rows[0]["additional_controls"] == "Lock down SSH"
     assert rows[1]["additional_controls"] == "Fix web issue"
@@ -64,3 +65,5 @@ def test_map_ciso_csvs_risk_scenarios_wizard_headers(tmp_path: Path) -> None:
         assert "[" not in ac
         assert "CTL-" not in ac
     assert "Lock down SSH" in text
+    wiz = stats.get("risk_scenarios_wizard") or {}
+    assert wiz.get("delimiter") == ","
