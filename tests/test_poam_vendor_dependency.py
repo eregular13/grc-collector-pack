@@ -30,6 +30,13 @@ from shared.vendor_dependency import (
     no_fix_from_scanner_tokens,
     scanner_suggests_no_fix,
 )
+import pytest
+
+@pytest.fixture(autouse=True)
+def _clear_sde_for_host_local_dates(monkeypatch):
+    """Host-local civil-date tests must not inherit process SOURCE_DATE_EPOCH."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    yield
 
 
 def _unevaluated() -> KevCatalog:

@@ -36,6 +36,12 @@ from shared.io_util import run_collector
 from shared.scan_time import NOT_RECORDED, PENDING_DUE, format_detection_date
 from tests.test_lab_prove_lock import stage_lab_drop_dest_in
 
+@pytest.fixture(autouse=True)
+def _clear_sde_for_host_local_dates(monkeypatch):
+    """Host-local civil-date tests must not inherit process SOURCE_DATE_EPOCH."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    yield
+
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "fixtures" / "demo"
 LAB_DROP = ROOT / "fixtures" / "lab-drop"
