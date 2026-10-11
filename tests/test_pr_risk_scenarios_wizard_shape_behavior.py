@@ -64,9 +64,11 @@ def test_map_ciso_csvs_risk_scenarios_wizard_headers(tmp_path: Path) -> None:
     assert "existing_controls" not in cols, header
     rows = list(csv.DictReader(text.splitlines(), delimiter=delim))
     assert len(rows) == 2
-    assert rows[0]["additional_controls"] == "Lock down SSH", rows[0]["additional_controls"]
-    assert rows[1]["additional_controls"] == "Fix web issue", rows[1]["additional_controls"]
+    assert rows[0]["additional_controls"] == "Lock down SSH [CTL-ssh-lock]", rows[0]["additional_controls"]
+    assert rows[1]["additional_controls"] == "Fix web issue [CTL-web-fix]", rows[1]["additional_controls"]
     for row in rows:
         ac = (row.get("additional_controls") or "").strip()
         assert ac and not ac.startswith("CTL-"), ac
-        assert "CTL-" not in ac
+        # exact imported applied_controls name (wizard links by name; a
+        # suffix-stripped title would make it create a duplicate control)
+        assert ac.endswith("]"), ac
