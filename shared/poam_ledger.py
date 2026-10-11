@@ -83,8 +83,11 @@ TRACKED_FIELDS = (
 REOPEN_SUFFIX = re.compile(r"-R(\d+)$")
 LEDGER_CHAIN_BROKEN = "LEDGER_CHAIN_BROKEN"
 LEDGER_LOST = "LEDGER_LOST"
+# Legacy human parenthetical (pre-PQ-3 UX). Prefer LEDGER_FIRST_RUN_NOTE_FMT.
 LEDGER_LOST_FIRST_RUN_NOTE = "first run: no prior ledger"
-# LAB/SAMPLE/DEMO first-run LEDGER_LOST is expected, not an alarm.
+# Plain first-run operator note — not an alarm and not LEDGER_LOST.
+LEDGER_FIRST_RUN_NOTE_FMT = "new ledger created, {n} items"
+# LAB/SAMPLE/DEMO first-run with no prior ledger is expected, not an alarm.
 _FIRST_RUN_NOTE_ESTATES = frozenset({"LAB", "SAMPLE", "DEMO"})
 _NMAP_PORT_REF = re.compile(r"^(NMAP-.+-)(\d+)$", re.I)
 _NMAP_PORT_PROTO_REF = re.compile(r"^(NMAP-.+-)(\d+)-(tcp|udp|sctp)$", re.I)
@@ -860,7 +863,11 @@ def item_is_excluded(item: dict[str, Any]) -> bool:
 
 def persist_ledger(ledger: dict[str, Any], out_root: Path | None = None) -> Path:
     """Rewrite out/poam/poam-ledger.json after in-memory stamps."""
-    transient = {key: ledger.pop(key) for key in ("_first_run",) if key in ledger}
+    transient = {
+        key: ledger.pop(key)
+        for key in ("_first_run", "first_run_note")
+        if key in ledger
+    }
     ledger["sha256"] = payload_sha256(ledger)
     dest = (out_root or out_dir()) / LEDGER_OUT_REL
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -1065,20 +1072,36 @@ def _ledger_history_present(
     return False
 
 
+def format_ledger_first_run_note(item_count: int | None = None, note: str = "") -> str:
+    """Plain first-run note (no LEDGER_LOST token)."""
+    text = str(note or "").strip()
+    if text:
+        return text
+    n = int(item_count or 0)
+    return LEDGER_FIRST_RUN_NOTE_FMT.format(n=n)
+
+
 def format_ledger_warning_line(
     warnings: list[str] | None,
     dropped_poam_ids: list[str] | None = None,
     *,
     estate_kind: str = "",
     first_run: bool = True,
+    first_run_note: str = "",
+    item_count: int | None = None,
 ) -> str:
     """Human ledger_warnings line. Codes stay intact for machine readers.
 
-    ``LEDGER_LOST (first run: no prior ledger)`` is LAB/SAMPLE/DEMO only,
-    and only when ``first_run`` is true (no prior ledger file and no
-    leftover POA&M history). A later missing ledger stays ``LEDGER_LOST``.
+    True first-run (LAB/SAMPLE/DEMO, no prior ledger, no leftover POA&M
+    history) should not surface ``LEDGER_LOST`` — callers strip that code
+    and pass ``first_run_note`` (``new ledger created, N items``). A later
+    missing ledger stays bare ``LEDGER_LOST``. Legacy: if ``LEDGER_LOST`` is
+    still present with ``first_run`` on those estates, render the plain note
+    instead of ``LEDGER_LOST (first run: no prior ledger)``.
     """
     parts: list[str] = []
+    note = format_ledger_first_run_note(item_count=item_count, note=first_run_note)
+    saw_lost = False
     for raw in warnings or []:
         token = str(raw or "")
         if not token:
@@ -1088,9 +1111,13 @@ def format_ledger_warning_line(
             and first_run
             and estate_kind in _FIRST_RUN_NOTE_ESTATES
         ):
-            parts.append(f"{LEDGER_LOST} ({LEDGER_LOST_FIRST_RUN_NOTE})")
-        else:
-            parts.append(token)
+            saw_lost = True
+            continue
+        parts.append(token)
+    if first_run and estate_kind in _FIRST_RUN_NOTE_ESTATES and (first_run_note or saw_lost):
+        # Prefer a single plain note; do not pair with LEDGER_LOST.
+        if note and note not in parts:
+            parts.insert(0, note)
     ids = [str(pid).strip() for pid in (dropped_poam_ids or []) if str(pid).strip()]
     if ids:
         parts.append("dropped POA&M IDs (not closed): " + ", ".join(ids))
@@ -1101,6 +1128,238 @@ def _normalize_status_date(item: dict[str, Any], run_date: date) -> None:
     """Trim/heal status_date onto YYYY-MM-DD so every surface agrees."""
     parsed = parse_status_date(item.get("status_date"))
     item["status_date"] = parsed.isoformat() if parsed is not None else run_date.isoformat()
+
+
+
+def load_id_migration_map(path: Path) -> list[dict[str, str]]:
+    """prior-unit: load poam/poam-id-migration.csv (old_id,new_id,disposition,reason).
+
+    Consumed by apply_ledger / fixstack_apply. Empty list when missing.
+    """
+    if not path.is_file():
+        return []
+    out: list[dict[str, str]] = []
+    with path.open(encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            old_id = str(row.get("old_id") or "").strip()
+            if not old_id:
+                continue
+            out.append(
+                {
+                    "old_id": old_id,
+                    "new_id": str(row.get("new_id") or "").strip(),
+                    "disposition": str(row.get("disposition") or "").strip(),
+                    "reason": str(row.get("reason") or "").strip(),
+                }
+            )
+    return out
+
+
+def _earliest_iso_token(values: list[str]) -> str:
+    clean = [
+        v
+        for v in values
+        if v and str(v).strip().lower() not in {"not recorded", "n/a", ""}
+    ]
+    return sorted(clean)[0] if clean else ""
+
+
+def _derive_status_from_children(statuses: list[str]) -> tuple[str, str]:
+    norms = [str(s or "open").strip().lower() or "open" for s in statuses]
+    if not norms:
+        return "open", "empty_children_default_open"
+    if any(s in {"open", "reopened"} for s in norms):
+        return "open", "child_open_or_reopened"
+    if any(s == "pending_verification" for s in norms):
+        return "pending_verification", "child_pending_verification"
+    if all(s == "closed" for s in norms):
+        return "closed", "all_children_closed"
+    return norms[0], f"first_child_status:{norms[0]}"
+
+
+def _excluded_reason_for_migration(disp: str, reason: str, new_id: str) -> str:
+    d = (disp or "").strip()
+    r = (reason or "").strip().lower()
+    if new_id:
+        return f"rolled_into:{new_id}"
+    if "grade" in d or "grade" in r:
+        return "retired_grade_row"
+    if "failed" in d or "failed" in r or "scan" in r:
+        return "coverage_gap_failed_connect"
+    return d or "retired_dropped"
+
+
+def _apply_id_migration_map_inplace(
+    ledger: dict[str, Any],
+    *,
+    run_iso: str,
+    run_date: date,
+) -> None:
+    """Apply ledger['id_migration_map'] once at start of apply_ledger.
+
+    - retired old IDs → closed with explicit excluded_reason
+    - rolled children → closed rolled_into:<parent>; parent earliest dates kept
+    - parent status derived from children with status_derivation recorded
+    - re-sign is left to persist_ledger / caller
+    """
+    rows = ledger.get("id_migration_map")
+    if not isinstance(rows, list) or not rows:
+        return
+    if ledger.get("_id_migration_applied"):
+        return
+    items = ledger.get("items") if isinstance(ledger.get("items"), dict) else {}
+    closed = list(ledger.get("closed") or []) if isinstance(ledger.get("closed"), list) else []
+    # prior-unit: never re-append an old ID already present on closed
+    closed_pids = {
+        str(c.get("poam_id") or "").strip()
+        for c in closed
+        if isinstance(c, dict) and str(c.get("poam_id") or "").strip()
+    }
+    closed_fps = {
+        str(c.get("fp") or "").strip()
+        for c in closed
+        if isinstance(c, dict) and str(c.get("fp") or "").strip()
+    }
+    mig_keys = {
+        (str(m.get("from") or ""), str(m.get("to") or ""), str(m.get("poam_id") or ""))
+        for m in (ledger.get("fp_migrations") or [])
+        if isinstance(m, dict)
+    }
+
+    def _append_closed(item: dict[str, Any]) -> None:
+        pid = str(item.get("poam_id") or "").strip()
+        fp = str(item.get("fp") or "").strip()
+        if pid and pid in closed_pids:
+            return
+        if fp and fp in closed_fps and not pid:
+            return
+        closed.append(item)
+        if pid:
+            closed_pids.add(pid)
+        if fp:
+            closed_fps.add(fp)
+
+    def _append_mig(row: dict[str, Any]) -> None:
+        key = (str(row.get("from") or ""), str(row.get("to") or ""), str(row.get("poam_id") or ""))
+        if key in mig_keys:
+            return
+        mig_keys.add(key)
+        ledger.setdefault("fp_migrations", []).append(row)
+
+    by_pid: dict[str, tuple[str, dict[str, Any]]] = {}
+    for fp, item in list(items.items()):
+        if not isinstance(item, dict):
+            continue
+        pid = str(item.get("poam_id") or "").strip()
+        if pid and pid not in by_pid:
+            by_pid[pid] = (str(fp), item)
+
+    children_by_new: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    remove_fps: set[str] = set()
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        old_id = str(row.get("old_id") or "").strip()
+        new_id = str(row.get("new_id") or "").strip()
+        disp = str(row.get("disposition") or "").strip()
+        reason = str(row.get("reason") or "").strip()
+        if not old_id:
+            continue
+        if old_id in closed_pids:
+            # already closed/excluded — drop any live twin from items, never re-append closed
+            if old_id in by_pid:
+                live_fp, _live = by_pid[old_id]
+                remove_fps.add(live_fp)
+            continue
+        if old_id not in by_pid:
+            continue
+        fp, item = by_pid[old_id]
+        if disp == "kept_same_id":
+            continue
+        if disp == "retired_dropped" or not new_id:
+            closed_item = dict(item)
+            closed_item["status"] = "closed"
+            closed_item["excluded_reason"] = _excluded_reason_for_migration(disp, reason, new_id)
+            closed_item["status_date"] = run_date.isoformat()
+            _append_closed(closed_item)
+            remove_fps.add(fp)
+            ledger.setdefault("events", []).append(
+                _event(
+                    run_iso,
+                    fp,
+                    old_id,
+                    "migrated_retired",
+                    {"disposition": disp or "retired_dropped", "excluded_reason": closed_item["excluded_reason"]},
+                )
+            )
+            continue
+        children_by_new.setdefault(new_id, []).append((fp, item))
+
+    for new_id, kids in children_by_new.items():
+        # locate or mint parent
+        parent_fp = ""
+        parent: dict[str, Any] | None = None
+        if new_id in by_pid:
+            parent_fp, parent = by_pid[new_id]
+            parent = dict(parent)
+        else:
+            parent_fp = hashlib.sha256(f"mig-parent|{new_id}".encode()).hexdigest()
+            parent = dict(kids[0][1])
+            parent["poam_id"] = new_id
+            parent["fp"] = parent_fp
+        statuses = [str(k[1].get("status") or "open") for k in kids]
+        status, derivation = _derive_status_from_children(statuses)
+        parent["status"] = status
+        parent["status_derivation"] = derivation
+        parent["excluded_reason"] = ""
+        firsts = [str(k[1].get("first_seen") or "") for k in kids] + [str(parent.get("first_seen") or "")]
+        odds = [str(k[1].get("original_detection_date") or "") for k in kids] + [
+            str(parent.get("original_detection_date") or "")
+        ]
+        earliest_fs = _earliest_iso_token(firsts)
+        earliest_odd = _earliest_iso_token(odds)
+        if earliest_fs:
+            parent["first_seen"] = earliest_fs
+        if earliest_odd:
+            parent["original_detection_date"] = earliest_odd
+        parent["child_count"] = len(kids)
+        items[parent_fp] = parent
+        for fp, item in kids:
+            if str(item.get("poam_id") or "") == new_id and fp == parent_fp:
+                continue
+            closed_item = dict(item)
+            closed_item["status"] = "closed"
+            closed_item["excluded_reason"] = f"rolled_into:{new_id}"
+            closed_item["status_date"] = run_date.isoformat()
+            _append_closed(closed_item)
+            remove_fps.add(fp)
+            _append_mig(
+                {
+                    "from": fp,
+                    "to": parent_fp,
+                    "poam_id": new_id,
+                    "original_detection_date": parent.get("original_detection_date") or "",
+                    "reason": f"id_migration_map:{item.get('poam_id')}->{new_id}",
+                    "excluded_reason": f"rolled_into:{new_id}",
+                }
+            )
+            ledger.setdefault("events", []).append(
+                _event(
+                    run_iso,
+                    parent_fp,
+                    new_id,
+                    "migrated_rolled",
+                    {"from": fp, "old_poam_id": item.get("poam_id")},
+                )
+            )
+
+    for fp in remove_fps:
+        items.pop(fp, None)
+    ledger["items"] = items
+    ledger["closed"] = closed
+    ledger["_id_migration_applied"] = True
 
 
 def load_ledger_file(path: Path) -> tuple[dict[str, Any], list[str]]:
@@ -1159,6 +1418,14 @@ def load_ledger_file(path: Path) -> tuple[dict[str, Any], list[str]]:
         doc["closed"] = cleaned_closed
     doc.setdefault("events", [])
     doc.setdefault("fp_migrations", [])
+    # prior-unit: optional sibling poam-id-migration.csv next to ledger
+    try:
+        mig = load_id_migration_map(path.parent / "poam-id-migration.csv")
+        if mig:
+            doc.setdefault("id_migration_map", mig)
+            doc.setdefault("id_migration_map_path", str(path.parent / "poam-id-migration.csv"))
+    except OSError:
+        pass
     warnings = sorted(set(warnings))
     dropped = sorted({pid for pid in dropped if pid})
     doc["warnings"] = list(warnings)
@@ -2269,6 +2536,8 @@ def apply_ledger(
         warnings.extend(carried_broken)
         dropped_ids.extend(carried_dropped)
     overrides = overrides or {}
+    # prior-unit: apply id_migration_map before matching findings (closed/excluded + parent carry)
+    _apply_id_migration_map_inplace(ledger, run_iso=run_iso, run_date=run_date)
     instances = fan_out_instances(findings)
     coverage = build_coverage(instances)
     seen: set[str] = set()
@@ -2707,7 +2976,17 @@ def run_ledger(
         {pid for pid in _prune_restored_dropped_ids(dropped, ledger) if pid}
     )
     lost = LEDGER_LOST in (ledger.get("warnings") or [])
-    ledger["_first_run"] = bool(lost and not history)
+    first_run = bool(lost and not history)
+    ledger["_first_run"] = first_run
+    if first_run:
+        # PQ-3 UX: plain note, not LEDGER_LOST — so pipeline-summary does not
+        # pair rc with a ledger warning on a clean first run.
+        items = ledger.get("items") or {}
+        n_items = len(items) if isinstance(items, dict) else 0
+        ledger["warnings"] = [
+            w for w in (ledger.get("warnings") or []) if w != LEDGER_LOST
+        ]
+        ledger["first_run_note"] = LEDGER_FIRST_RUN_NOTE_FMT.format(n=n_items)
     persist_ledger(ledger, out_root)
     return ledger
 
