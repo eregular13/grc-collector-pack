@@ -24,6 +24,12 @@ from shared.pack_drop import parse_pack_drop
 from shared.smbmap import parse_smbmap
 from shared.kev import KevSnapshotError, load_kev_catalog
 from shared.schema import canon_severity, make_record, make_ref
+from shared.nmap_version_sev import (
+    apply_version_severity,
+    enrich_port_description,
+    enrich_port_title,
+    format_product_version,
+)
 from shared.unicornscan import parse_unicornscan
 from shared.zmap import parse_zmap
 
@@ -241,6 +247,26 @@ def _emit_host(
                 title = f"Open port {portid}/{svc or proto or 'unknown'}"
         else:
             sev, title = "info", f"Open port {portid}/{svc or proto}"
+        # Optional product/version carried in extended port tuples (XML -sV).
+        product = str(item[4]) if isinstance(item, (tuple, list)) and len(item) > 4 else ""
+        version = str(item[5]) if isinstance(item, (tuple, list)) and len(item) > 5 else ""
+        extrainfo = str(item[6]) if isinstance(item, (tuple, list)) and len(item) > 6 else ""
+        script_blob = str(item[7]) if isinstance(item, (tuple, list)) and len(item) > 7 else ""
+        pv_label = format_product_version(
+            product=product,
+            version=version,
+            extrainfo=extrainfo,
+            script_blob=script_blob,
+        )
+        sev, ver_rule = apply_version_severity(
+            sev,
+            product=product,
+            version=version,
+            extrainfo=extrainfo,
+            service=svc,
+            script_blob=script_blob,
+        )
+        title = enrich_port_title(title, pv_label)
         if portid == "443" and proto == "tcp":
             continue
         find_labels = list(LABELS) + [f"port-{portid}"]
@@ -256,6 +282,14 @@ def _emit_host(
             "check_id": f"{NMAP_PORT_CHECK_PREFIX}{portid}/{proto}",
             "tool": "nmap",
         }
+        if product:
+            extra_find["product"] = product
+        if version:
+            extra_find["version"] = version
+        if extrainfo:
+            extra_find["extrainfo"] = extrainfo
+        if ver_rule:
+            extra_find["version_sev_rule"] = ver_rule
         if state and state != "open":
             extra_find["state"] = state
         if not_a_weakness:
@@ -276,6 +310,7 @@ def _emit_host(
             )
         else:
             desc = f"{name} has open {proto.upper()}/{portid} ({svc or 'unknown'})."
+        desc = enrich_port_description(desc, pv_label, rule_id=ver_rule)
         records.append(
             make_record(
                 kind="finding",
@@ -757,11 +792,18 @@ def parse_file(path: Path) -> list[dict]:
                     samba_ports.add(portid)
                 if portid in {"445", "139"} and not smb_port:
                     smb_port = portid
-                ports.append((portid, svc, proto, state_name))
                 scripts = [
                     (sc.attrib.get("id", ""), sc.attrib.get("output", ""))
                     for sc in port.findall("script")
                 ]
+                version = service.attrib.get("version", "") if service is not None else ""
+                extrainfo = service.attrib.get("extrainfo", "") if service is not None else ""
+                script_blob = " ".join(
+                    f"{sid} {out}" for sid, out in scripts if sid or out
+                )
+                ports.append(
+                    (portid, svc, proto, state_name, product, version, extrainfo, script_blob)
+                )
                 for spec in nse_findings(name, addr, portid, svc, product, scripts):
                     nse_specs.append((portid, svc, spec))
                 for sc in port.findall("script"):
