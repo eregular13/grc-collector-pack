@@ -11,6 +11,32 @@ Conductor `export_ciso_poam` reads `out/ciso-assistant/` + `out/poam/` (+ Simple
 
 Files land in `out/ciso-assistant/`.
 
+## Data-Wizard import mapping (PQ-4/5/7/8 + PQ-9)
+
+Lab-proven rules for CISO Assistant Community CSV import:
+
+1. Set `GRC_DOMAIN` (or `CISO_FOLDER_NAME`) to the **import folder name** so
+   assets/controls `domain` matches folder-filtered GET counts (not bare
+   `Global` when importing into a child folder).
+2. AppliedControl / Finding / Vulnerability **display names** are
+   `{title} [{ref_id}]` so names stay unique across tenants.
+3. Vulnerability **name** length ≤ **200** after the suffix (title truncated;
+   overlong ref alone → first 180 of ref + 8-char hash).
+4. Vulnerability `assets` FK = exact imported asset **names**;
+   `applied_controls` FK ⊆ exported control ref_ids.
+5. Load Vulnerability CSVs in **chunks of ~500 rows** (SQLite lab gunicorn
+   can WORKER TIMEOUT on a single ~5k-row wizard POST).
+
+Rewrite a finished tree without re-running collectors:
+
+```bash
+python3 scripts/prepare_ciso_wizard.py \
+  --src out/ciso-assistant --dest /tmp/ciso-mapped \
+  --domain my-lab-folder --write-chunks --chunk-size 500
+```
+
+File-only. Never POST `/api/risks`. Never print tokens.
+
 ## Desktop (no make / no gh)
 
 ```bash
