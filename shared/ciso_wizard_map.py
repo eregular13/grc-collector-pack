@@ -159,6 +159,114 @@ def _write_csv(path: Path, fields: list[str], rows: Iterable[dict[str, str]]) ->
             writer.writerow({k: row.get(k, "") for k in fields})
 
 
+
+
+def _map_control_tokens(raw: str, ref_to_name: dict[str, str], names: set[str]) -> str:
+    """Map CTL- ref_ids to applied_controls names; keep already-name tokens."""
+    parts = [p.strip() for p in re.split(r"[,;|\n]+", raw or "") if p.strip()]
+    out: list[str] = []
+    for p in parts:
+        if p in names:
+            out.append(p)
+        elif p in ref_to_name and ref_to_name[p]:
+            out.append(ref_to_name[p])
+        else:
+            out.append(p)
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for x in out:
+        if x not in seen:
+            seen.add(x)
+            uniq.append(x)
+    return "\n".join(uniq)
+
+
+def map_risk_scenarios_for_wizard(
+    src_path: Path,
+    dest_path: Path,
+    *,
+    controls: list[dict[str, str]],
+) -> dict[str, Any]:
+    """Rewrite pack risk_scenarios.csv into RiskAssessment wizard shape.
+
+    - threats → threat
+    - existing_controls → existing_applied_controls
+    - additional_controls: CTL- ref_id → applied_controls.name (newline-separated)
+    - delimiter stays semicolon
+    Proba/impact labels pass through (Low/Moderate/High); matrix load is separate.
+    """
+    src_path = Path(src_path)
+    dest_path = Path(dest_path)
+    text = src_path.read_text(encoding="utf-8")
+    header = text.splitlines()[0] if text else ""
+    delim = ";" if header.count(";") >= header.count(",") else ","
+    rows_in = list(csv.DictReader(text.splitlines(), delimiter=delim))
+    # Wizard RiskAssessment wants control *titles*, not PQ-7 "title [CTL-ref]" display.
+    ref_to_name = {
+        (r.get("ref_id") or "").strip(): strip_ref_suffix((r.get("name") or "").strip())
+        for r in controls
+        if (r.get("ref_id") or "").strip()
+    }
+    names = {
+        strip_ref_suffix((r.get("name") or "").strip())
+        for r in controls
+        if (r.get("name") or "").strip()
+    }
+    names |= {(r.get("name") or "").strip() for r in controls if (r.get("name") or "").strip()}
+    out_rows: list[dict[str, str]] = []
+    ctl_mapped = 0
+    fields = [
+        "ref_id",
+        "assets",
+        "threat",
+        "name",
+        "description",
+        "existing_applied_controls",
+        "current_impact",
+        "current_proba",
+        "current_risk",
+        "additional_controls",
+        "residual_impact",
+        "residual_proba",
+        "residual_risk",
+        "treatment",
+    ]
+    for r in rows_in:
+        threat = (r.get("threat") or r.get("threats") or "").strip()
+        existing = (r.get("existing_applied_controls") or r.get("existing_controls") or "").strip()
+        additional = (r.get("additional_controls") or "").strip()
+        before = additional
+        additional_m = _map_control_tokens(additional, ref_to_name, names)
+        existing_m = _map_control_tokens(existing, ref_to_name, names)
+        if additional_m != before:
+            ctl_mapped += 1
+        out_rows.append(
+            {
+                "ref_id": r.get("ref_id") or "",
+                "assets": r.get("assets") or "",
+                "threat": threat,
+                "name": r.get("name") or "",
+                "description": r.get("description") or "",
+                "existing_applied_controls": existing_m,
+                "current_impact": r.get("current_impact") or "",
+                "current_proba": r.get("current_proba") or "",
+                "current_risk": r.get("current_risk") or "",
+                "additional_controls": additional_m,
+                "residual_impact": r.get("residual_impact") or "",
+                "residual_proba": r.get("residual_proba") or "",
+                "residual_risk": r.get("residual_risk") or "",
+                "treatment": r.get("treatment") or "",
+            }
+        )
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    with dest_path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, delimiter=";", lineterminator="\n")
+        w.writeheader()
+        for row in out_rows:
+            w.writerow(row)
+    return {"rows": len(out_rows), "ctl_rows_mapped": ctl_mapped, "delimiter": ";"}
+
+
 def map_ciso_csvs(
     src_dir: Path,
     dest_dir: Path,
@@ -170,8 +278,8 @@ def map_ciso_csvs(
 ) -> dict[str, Any]:
     """Rewrite a ciso-assistant/ tree for wizard import (PQ-4/5/7/8).
 
-    Copies evidences as-is. risk_scenarios.csv is copied unchanged (POA&M
-    path is separate; scenario names are not CISO Vulnerability.max_length).
+    Copies evidences as-is. risk_scenarios.csv is rewritten for RiskAssessment
+    wizard headers (threat, existing_applied_controls) and CTL→name mapping.
     """
     src = Path(src_dir)
     dest = Path(dest_dir)
@@ -305,10 +413,13 @@ def map_ciso_csvs(
     }
 
     if (src / "risk_scenarios.csv").is_file():
-        # Preserve byte-oriented copy for non-mapped scenario export.
-        text = (src / "risk_scenarios.csv").read_text(encoding="utf-8")
-        (dest / "risk_scenarios.csv").write_text(text, encoding="utf-8")
+        scen_stats = map_risk_scenarios_for_wizard(
+            src / "risk_scenarios.csv",
+            dest / "risk_scenarios.csv",
+            controls=controls,
+        )
         stats["paths"]["risk_scenarios"] = str(dest / "risk_scenarios.csv")
+        stats["risk_scenarios_wizard"] = scen_stats
 
     def _dups(rows: list[dict[str, str]]) -> dict[str, int]:
         c = Counter((r.get("name") or "").strip() for r in rows)
