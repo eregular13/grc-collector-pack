@@ -139,6 +139,23 @@ def _trivy_ids(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _image_scoped_target(payload: dict[str, Any], target: str) -> str:
+    """Qualify a container-image Result Target that does not name the image.
+
+    Trivy names language/binary Results generically ("Node.js", "Python",
+    "usr/local/bin/gosu"). Used bare as the asset name, those merge findings from
+    different images into one asset. OS-package Targets already start with the
+    image name ("repo/app:1.0 (debian 12)") and stay unchanged, as do
+    filesystem/repository scans.
+    """
+    if str(payload.get("ArtifactType") or "").strip().lower() != "container_image":
+        return target
+    artifact = str(payload.get("ArtifactName") or "").strip()
+    if not artifact or not target or target.startswith(artifact):
+        return target
+    return f"{artifact} :: {target}"
+
+
 def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not isinstance(payload, dict):
@@ -154,6 +171,8 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
         )
         if k8s.get("namespace"):
             target = f"{k8s.get('namespace')}/{target}"
+        elif not k8s:
+            target = _image_scoped_target(payload, target)
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
                 vuln = {**vuln, "_target": target, "_class": "vuln", "_ids": ids}
