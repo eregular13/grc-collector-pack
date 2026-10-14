@@ -372,8 +372,13 @@ def map_ciso_csvs(
     matrix_profile: str | None = None,
     apply_5x5_label_map: bool = False,
     label_map_path: Path | None = None,
+    rollup_poam_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Rewrite a ciso-assistant/ tree for wizard import (PQ-4/5/7/8).
+
+    ``rollup_poam_dir`` (opt-in, default None = unchanged): fold per-CVE
+    risks/controls/vulns into one row per multi-member POA&M parent, and write
+    the member->parent map to ``dest/rollup-map.json``.
 
     Copies evidences as-is. risk_scenarios.csv is rewritten for RiskAssessment
     wizard headers (threat, existing_applied_controls) and CTL→name mapping.
@@ -381,6 +386,18 @@ def map_ciso_csvs(
     src = Path(src_dir)
     dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
+    rollup_meta: dict[str, Any] | None = None
+    if rollup_poam_dir is not None:
+        import tempfile
+
+        from shared.ciso_rollup import rollup_ciso_dir
+
+        _rollup_tmp = tempfile.TemporaryDirectory(prefix="ciso-rollup-")
+        rollup_meta = rollup_ciso_dir(src, Path(rollup_poam_dir), Path(_rollup_tmp.name))
+        src = Path(_rollup_tmp.name)
+        (dest / "rollup-map.json").write_text(
+            json.dumps(rollup_meta, indent=2) + "\n", encoding="utf-8"
+        )
     folder = (domain or "").strip() or "Global"
     stats: dict[str, Any] = {
         "domain": folder,
@@ -543,6 +560,9 @@ def map_ciso_csvs(
         "vulnerabilities": _dups(kept),
     }
     stats["dup_name_counts"] = {k: len(v) for k, v in stats["dup_names"].items()}
+    if rollup_meta is not None:
+        stats["rollup"] = {k: v for k, v in rollup_meta.items() if k != "map"}
+        stats["paths"]["rollup_map"] = str(dest / "rollup-map.json")
     stats["ok"] = (
         stats["dup_name_counts"]["applied_controls"] == 0
         and stats["dup_name_counts"]["findings"] == 0
