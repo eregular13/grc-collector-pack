@@ -17,6 +17,15 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+try:
+    from fixstack.rollup import package_of as _rollup_package_of  # type: ignore
+except ImportError:
+    try:
+        from scripts.fixstack.rollup import package_of as _rollup_package_of  # type: ignore
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from rollup import package_of as _rollup_package_of  # type: ignore
+
 SEV_RANK = {
     "critical": 5,
     "high": 4,
@@ -113,26 +122,12 @@ def is_testssl(row: dict[str, str]) -> bool:
 
 
 def package_of(row: dict[str, str]) -> str:
-    weakness = (row.get("weakness") or "").strip()
-    if ":" in weakness:
-        left = weakness.split(":", 1)[0].strip()
-        if (
-            left
-            and len(left) <= 80
-            and " " not in left
-            and not left.lower().startswith("in the")
-        ):
-            return left
-        if left.lower() in {"kernel", "linux", "openssl", "glibc", "curl"}:
-            return left.lower() if left.lower() != "linux" else "kernel"
-    action = row.get("recommended_action") or ""
-    m = UPGRADE_RE.search(action)
-    if m:
-        return m.group(1)
-    token = (weakness.split() or ["unparsed-package"])[0].strip(",.;:")
-    if token.lower().startswith("in"):
-        return "unparsed-package"
-    return token[:80] or "unparsed-package"
+    """Same package key as the rollup stage, so old_id -> new_id hits the real parent.
+
+    The local copy had drifted from rollup.package_of (CVE-in-title, @scope
+    guard, title suffix), so most trivy rows mapped to parents that do not exist.
+    """
+    return _rollup_package_of(row)
 
 
 def image_of(row: dict[str, str]) -> str:
