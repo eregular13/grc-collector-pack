@@ -42,6 +42,8 @@ from shared.finding_types import (
     secret_has_identity_hash,
 )
 from shared.io_util import in_dir, out_dir
+from shared.trivy_image_scope import RENAME_REASON as TRIVY_RENAME_REASON
+from shared.trivy_image_scope import legacy_asset_uid, legacy_target
 from shared.kev import (
     collect_cves,
     effective_due,
@@ -1821,6 +1823,7 @@ def _record_fp_migration(
     odd: str,
     reason: str,
     alias_of: str = "",
+    extra: dict[str, str] | None = None,
 ) -> None:
     if _already_mapped(ledger, src_fp, dest_fp, poam_id):
         return
@@ -1833,6 +1836,9 @@ def _record_fp_migration(
     }
     if alias_of:
         row["alias_of"] = alias_of
+    for key, val in (extra or {}).items():
+        if val:
+            row[key] = val
     ledger.setdefault("fp_migrations", []).append(row)
 
 
@@ -1912,6 +1918,61 @@ def _nmap_legacy_title_records(rec: dict[str, Any]) -> list[dict[str, Any]]:
         fake["extra"] = fake_extra
         out.append(fake)
     return out
+
+
+def _note_image_scope_rename(
+    ledger: dict[str, Any], item: dict[str, Any], rec: dict[str, Any], run_iso: str
+) -> None:
+    """Record s7b renames (asset / VULN ref) on a carried item, once each."""
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
+    target = legacy_target(assets[0]) if assets else ""
+    if not target:
+        return
+    pairs = [
+        ("vuln_ref", str(item.get("ref_id") or ""), str(rec.get("ref_id") or "")),
+        ("asset_key", str(item.get("asset_key") or ""), asset_key(rec)),
+        ("asset_name", str(item.get("display_asset") or ""), display_asset(rec)),
+    ]
+    for kind, old, new in pairs:
+        if kind == "asset_name" and not old.startswith(target):
+            continue
+        _append_id_rename(ledger, kind, old, new, str(item.get("poam_id") or ""), run_iso)
+
+
+def _append_id_rename(
+    ledger: dict[str, Any], kind: str, old: str, new: str, poam_id: str, run_iso: str
+) -> None:
+    if not old or not new or old == new:
+        return
+    renames = ledger.setdefault("id_renames", [])
+    for r in renames:
+        if isinstance(r, dict) and (r.get("kind"), r.get("old_id"), r.get("new_id")) == (kind, old, new):
+            return
+    renames.append(
+        {
+            "kind": kind,
+            "old_id": old,
+            "new_id": new,
+            "poam_id": poam_id,
+            "reason": TRIVY_RENAME_REASON,
+            "at": run_iso,
+        }
+    )
+
+
+def _trivy_image_scope_legacy_key(rec: dict[str, Any]) -> str:
+    """Pre-s7b asset key for an image-scoped Trivy Target, else ""."""
+    if source_family(rec) != "vuln-scan":
+        return ""
+    assets = [str(a).strip() for a in (rec.get("assets") or []) if str(a).strip()]
+    if not assets:
+        return ""
+    uid = legacy_asset_uid(assets[0])
+    if not uid:
+        return ""
+    from shared.asset_key import _port_proto
+
+    return f"{uid}{_port_proto(rec)}"
 
 
 def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
@@ -2086,6 +2147,14 @@ def _legacy_fps_for(rec: dict[str, Any]) -> list[tuple[str, str]]:
                 if fp and fp not in seen:
                     seen.add(fp)
                     out.append((fp, reason))
+    # s7b: "<image> :: <target>" was keyed on the bare Target before. Map the
+    # pre-s7b fingerprint forward so the EGP- ID and detection dates survive.
+    legacy_ak = _trivy_image_scope_legacy_key(rec)
+    if legacy_ak:
+        fp = fp_v1(rec, asset_key_fn=lambda _r: legacy_ak)
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append((fp, TRIVY_RENAME_REASON))
     return out
 
 
@@ -2304,6 +2373,22 @@ def _migrate_if_needed(
         for old_fp, item in _find_stored_wazuh_by_display(rec, items):
             if old_fp not in found:
                 found[old_fp] = (item, "wazuh_add_host")
+    if not found and new_fp not in items:
+        # s7b: stored items keep asset_key/weakness_key; match on those when the
+        # stored fp came from an older scheme than fp_v1 of the bare Target.
+        legacy_ak = _trivy_image_scope_legacy_key(rec)
+        if legacy_ak:
+            idx = cache.get(-1)
+            if not isinstance(idx, dict) or idx.get("_items") is not items:
+                idx = {"_items": items}
+                for ifp, it in items.items():
+                    if isinstance(it, dict) and it.get("asset_key") and it.get("weakness_key"):
+                        idx.setdefault((str(it["asset_key"]), str(it["weakness_key"])), []).append(ifp)
+                cache[-1] = idx  # type: ignore[assignment]
+            for ifp in idx.get((legacy_ak, weakness_key(rec)), []):
+                if ifp in items and ifp != new_fp:
+                    found[ifp] = (items[ifp], TRIVY_RENAME_REASON)
+                    break
     if new_fp in items:
         found[new_fp] = (items[new_fp], "current")
     if not found or (len(found) == 1 and new_fp in found):
@@ -2313,6 +2398,22 @@ def _migrate_if_needed(
     aliases: list[str] = []
     surv_fp, (surv, surv_reason) = ranked[0]
     survivor = items.pop(surv_fp, None) or dict(surv)
+    rename_extra: dict[str, str] = {}
+    if surv_reason == TRIVY_RENAME_REASON:
+        rename_extra = {
+            "old_ref_id": str(survivor.get("ref_id") or ""),
+            "new_ref_id": str(rec.get("ref_id") or ""),
+            "old_asset_key": str(survivor.get("asset_key") or ""),
+            "new_asset_key": asset_key(rec),
+        }
+        _append_id_rename(
+            ledger,
+            "asset_key",
+            rename_extra["old_asset_key"],
+            rename_extra["new_asset_key"],
+            str(survivor.get("poam_id") or ""),
+            run_iso,
+        )
     survivor["fp"] = new_fp
     survivor["asset_key"] = asset_key(rec)
     aliases.extend(str(x) for x in (survivor.get("aliased_poam_ids") or []) if x)
@@ -2325,6 +2426,7 @@ def _migrate_if_needed(
             poam_id=str(survivor.get("poam_id") or ""),
             odd=str(survivor.get("original_detection_date") or ""),
             reason=surv_reason,
+            extra=rename_extra,
         )
         ledger["events"].append(
             _event(run_iso, new_fp, str(survivor.get("poam_id") or ""), "migrated", {"from": surv_fp})
@@ -2614,6 +2716,7 @@ def apply_ledger(
                 item = fresh
             else:
                 before = _tracked_snapshot(item)
+                _note_image_scope_rename(ledger, item, rec, run_iso)
                 item["last_seen"] = run_iso
                 item["missed_covered_runs"] = 0
                 item["current_scanner_rating"] = ciso_finding_severity(rec.get("severity"))

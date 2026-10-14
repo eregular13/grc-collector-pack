@@ -99,7 +99,7 @@ if [[ "$VERIFY_ONLY" -eq 0 ]]; then
 
   if [[ "$SKIP_FIXSTACK" -eq 0 && -f "$ROOT/scripts/fixstack_apply.py" ]]; then
     echo "lab_drop_to_sor: fixstack_apply (PQ-2 testssl -> PQ-1 rollup + runtime migration map)"
-    "$PYTHON" "$ROOT/scripts/fixstack_apply.py" "$WORK"
+    FIXSTACK_PRIOR_OUT="$PRIOR_OUT" "$PYTHON" "$ROOT/scripts/fixstack_apply.py" "$WORK"
   fi
 fi
 
