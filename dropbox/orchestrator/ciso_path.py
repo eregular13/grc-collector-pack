@@ -118,6 +118,31 @@ def _land_keepmin(rows: list[dict[str, Any]], dest_in: Path) -> list[dict[str, A
     return landed
 
 
+# Ledger state the loader reads from IN_DIR. KEEP-min drops stage under
+# dest_out/in, so carry these from dest_in or --prior-out is silently ignored.
+LEDGER_STATE_RELS = (
+    Path("poam") / "poam-ledger.json",
+    Path("poam") / "overrides.csv",
+    Path("assets") / "asset-ledger.json",
+    Path("assets") / "assets-overrides.csv",
+)
+
+
+def _carry_ledger_state(dest_in: Path, stage_in: Path) -> list[str]:
+    """Copy prior ledger/override files from dest_in into stage_in."""
+    copied: list[str] = []
+    for rel in LEDGER_STATE_RELS:
+        src = Path(dest_in) / rel
+        if not src.is_file():
+            continue
+        target = Path(stage_in) / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if src.resolve() != target.resolve():
+            shutil.copy2(src, target)
+        copied.append(rel.as_posix())
+    return copied
+
+
 def run_ciso_path(
     dest_in: Path,
     dest_out: Path,
@@ -148,6 +173,7 @@ def run_ciso_path(
     else:
         stage_in = dest_out / "in"
         landed = _land_keepmin(rows, stage_in)
+        _carry_ledger_state(dest_in, stage_in)
     keepmin_sensors = {s for s in landed_sensors(landed) if s in SENSOR_COLLECTORS}
     disk_sensors = {s for s in SENSOR_COLLECTORS if _has_input_files(stage_in / s)}
     sensors = sorted(keepmin_sensors | disk_sensors)
