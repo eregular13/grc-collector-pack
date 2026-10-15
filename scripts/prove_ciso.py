@@ -476,12 +476,14 @@ def prove_ciso(
         if line.startswith("paying_day:"):
             paying = line.split(":", 1)[1].strip()
             break
+    shape_error = None
     try:
         register_shape = assert_risk_register_and_poam(dest_out)
         shape_ok = True
-    except RegisterShapeError:
+    except RegisterShapeError as exc:
         register_shape = {}
         shape_ok = False
+        shape_error = str(exc)
     fixture_ok = (
         "filesrv.corp.local" in assets_text
         and "10.9.8.7" in assets_text
@@ -521,7 +523,14 @@ def prove_ciso(
     findings_n = int(register_shape.get("findings") or 0)
     scenarios_n = int(register_shape.get("risk_scenarios") or 0)
     poam_n = int(register_shape.get("poam_rows") or 0)
-    lab_ok = findings_n >= 1 and scenarios_n >= 1 and poam_n >= 1
+    vulns_n = int(register_shape.get("vulnerabilities") or 0)
+    # LAB dest_in may be vuln-only (CVE-class) with 0 findings.csv rows.
+    lab_ok = (
+        shape_ok
+        and poam_n >= 1
+        and scenarios_n >= 1
+        and (findings_n + vulns_n) >= 1
+    )
     common_ok = (
         bool(ciso_files)
         and shape_ok
@@ -619,6 +628,100 @@ def prove_ciso(
         stamp["probo"] = str(probo)
         stamp["sinks_posted"] = False
     if not ok:
+        failing: list[dict[str, str]] = []
+        if not ciso_files:
+            failing.append(
+                {
+                    "check": "ciso_files",
+                    "reason": "missing out/ciso-assistant CSV set",
+                }
+            )
+        if not shape_ok:
+            failing.append(
+                {
+                    "check": "register_shape",
+                    "reason": shape_error or "assert_risk_register_and_poam failed",
+                }
+            )
+        if result.get("posted") is not False:
+            failing.append(
+                {
+                    "check": "posted",
+                    "reason": f"posted must be false, got {result.get('posted')!r}",
+                }
+            )
+        if result.get("http") is not False:
+            failing.append(
+                {
+                    "check": "http",
+                    "reason": f"http must be false, got {result.get('http')!r}",
+                }
+            )
+        if after != before:
+            failing.append(
+                {
+                    "check": "pack_in_written",
+                    "reason": "pack in/ fingerprint changed during prove",
+                }
+            )
+        if paying != "FAIL":
+            failing.append(
+                {
+                    "check": "paying_day",
+                    "reason": f"paying_day must be FAIL, got {paying!r}",
+                }
+            )
+        if result.get("client_keep") is not False:
+            failing.append(
+                {
+                    "check": "client_keep",
+                    "reason": f"client_keep must be false, got {result.get('client_keep')!r}",
+                }
+            )
+        if result.get("pack_in_written") is not False:
+            failing.append(
+                {
+                    "check": "pack_in_written_flag",
+                    "reason": f"pack_in_written must be false, got {result.get('pack_in_written')!r}",
+                }
+            )
+        if use_existing_in:
+            if findings_n + vulns_n < 1:
+                failing.append(
+                    {
+                        "check": "lab_weaknesses",
+                        "reason": (
+                            f"LAB needs findings+vulnerabilities >= 1 "
+                            f"(findings={findings_n} vulns={vulns_n})"
+                        ),
+                    }
+                )
+            if scenarios_n < 1:
+                failing.append(
+                    {
+                        "check": "lab_risk_scenarios",
+                        "reason": f"LAB needs risk_scenarios >= 1 (got {scenarios_n})",
+                    }
+                )
+            if poam_n < 1:
+                failing.append(
+                    {
+                        "check": "lab_poam",
+                        "reason": f"LAB needs poam_rows >= 1 (got {poam_n})",
+                    }
+                )
+        else:
+            if not fixture_ok:
+                failing.append(
+                    {
+                        "check": "fixture_ok",
+                        "reason": (
+                            "SAMPLE fixture markers missing or sample flag false "
+                            f"(sample={result.get('sample')!r})"
+                        ),
+                    }
+                )
+        stamp["failing_checks"] = failing
         stamp["reason"] = {
             "ciso_files": ciso_files,
             "posted": result.get("posted"),
@@ -628,10 +731,13 @@ def prove_ciso(
             "sample": result.get("sample"),
             "client_keep": result.get("client_keep"),
             "register_shape": shape_ok,
+            "register_shape_error": shape_error,
             "use_existing_in": use_existing_in,
             "findings": findings_n,
+            "vulnerabilities": vulns_n if use_existing_in else register_shape.get("vulnerabilities"),
             "risk_scenarios": scenarios_n,
             "poam": poam_n,
+            "failing_checks": failing,
         }
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "prove-ciso.json").write_text(
@@ -722,6 +828,13 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
         return 1
+    except Exception as exc:
+        msg = str(exc)
+        print(msg, file=sys.stderr)
+        if "UNREAD_SENSOR_DIR" in msg:
+            print("PROVE_CISO_FAIL checks:")
+            print(f"  - unread_sensor_dir: {msg}")
+        return 1
     print(json.dumps(stamp, indent=2, default=str))
     print(
         f"PROVE_CISO={stamp['status']} sample={stamp['sample']} lab={stamp.get('lab')} "
@@ -731,6 +844,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"POAM={stamp.get('poam') or (dest / 'out' / 'poam' / 'poam.csv')}")
     if stamp.get("status") != "pass":
+        failing = stamp.get("failing_checks") or (stamp.get("reason") or {}).get("failing_checks") or []
+        if failing:
+            print("PROVE_CISO_FAIL checks:")
+            for item in failing:
+                if isinstance(item, dict):
+                    print(f"  - {item.get('check')}: {item.get('reason')}")
+                else:
+                    print(f"  - {item}")
+        else:
+            print(
+                "PROVE_CISO_FAIL: status=fail "
+                "(no failing_checks list; see prove-ciso.json reason)"
+            )
         return 1
     try:
         verify_farm_drop_sor(dest)
