@@ -16,7 +16,7 @@ from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collec
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
 from shared.nikto import nikto_severity
-from shared.nikto import parse_nikto
+from shared.nikto import parse_nikto, row_cves as nikto_row_cves
 from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import canon_severity, make_record, make_ref
@@ -465,11 +465,17 @@ def parse_file(path: Path) -> list[dict]:
             url = str(row.get("url") or "/")
             msg = str(row.get("msg") or "")
             rid = str(row.get("id") or "nikto")
-            if not nikto_interesting(url, msg, rid):
+            cves = nikto_row_cves(row)
+            # A row that names a CVE is never header noise (ETag inode leak
+            # rows carry CVE-2003-1418); dropping it lost the CVE silently.
+            if not cves and not nikto_interesting(url, msg, rid):
                 continue
             host = str(row.get("host") or "unknown")
             add_asset(host)
             extra = {"url": url, "id": rid}
+            if cves:
+                extra["cves"] = cves
+                extra["cve"] = " ".join(cves)
             if row.get("scan_time"):
                 extra["scan_time"] = row.get("scan_time")
             records.append(

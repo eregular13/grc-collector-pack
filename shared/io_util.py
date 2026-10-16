@@ -228,8 +228,28 @@ def unread_input_files(source: str, suffixes: Iterable[str] | None = None) -> li
     for folder in _sensor_folders(source):
         for path in list_files(in_dir() / folder, suffixes=None):
             if not recognized_suffix(path, suffixes):
+                if _is_nmap_text_twin(path):
+                    continue
                 unread.append(path)
     return unread
+
+
+def _is_nmap_text_twin(path: Path) -> bool:
+    """nmap -oA writes .xml/.nmap/.gnmap. XML is the parsed source of truth.
+
+    A .nmap normal-output file is a human-readable copy and is not parsed; it
+    is not counted unread when a same-stem .xml sibling exists. Without the
+    XML it stays unread (XML is required; see docs/NMAP_INPUT.md).
+    """
+    if path.suffix.lower() != ".nmap":
+        return False
+    sibling = path.with_suffix(".xml")
+    if not sibling.is_file():
+        return False
+    try:
+        return "<nmaprun" in sibling.read_text(encoding="utf-8", errors="replace")[:4096].lower()
+    except OSError:
+        return False
 
 
 def unrecognized_reason(path: Path, suffixes: Iterable[str] | None) -> str:
