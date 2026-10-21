@@ -41,6 +41,21 @@ def grype_target(payload: dict[str, Any]) -> str:
     return "image"
 
 
+def grype_host_target(payload: dict[str, Any], fallback: str) -> str:
+    """Asset name for a grype scan. A whole-filesystem ``dir:/`` scan has
+    target ``/``, which names no host (two hosts would merge into one asset).
+    Use ``source.name`` (``grype --name``) when it is a real label, else the
+    report file stem (``fallback``)."""
+    target = grype_target(payload)
+    if target.rstrip("/") != "":
+        return target
+    src = payload.get("source") if isinstance(payload.get("source"), dict) else {}
+    name = str(src.get("name") or "").strip()
+    if name and name.rstrip("/") != "":
+        return name
+    return str(fallback or "").strip() or target
+
+
 def grype_ids(payload: dict[str, Any]) -> dict[str, Any]:
     src = payload.get("source") if isinstance(payload.get("source"), dict) else {}
     tgt = src.get("target") if isinstance(src.get("target"), dict) else {}
