@@ -76,9 +76,11 @@ def test_nikto_cve_rows_are_kept_and_accounted(tmp_path: Path) -> None:
 
 
 def test_unparsed_scanner_cves_fail_closed(tmp_path: Path) -> None:
-    """A grype report has no collector: its CVEs must not vanish silently."""
+    """A scanner report no collector reads: its CVEs must not vanish silently."""
     work = _drop(tmp_path, "nikto_80.xml", NIKTO_XML)
-    (work / "in" / "vuln" / "grype-example.json").write_text(json.dumps(GRYPE), encoding="utf-8")
+    # grype misfiled under wazuh/ (no collector reads it there) must still fail closed
+    (work / "in" / "wazuh").mkdir()
+    (work / "in" / "wazuh" / "grype-example.json").write_text(json.dumps(GRYPE), encoding="utf-8")
     proc = _run(work)
     assert proc.returncode != 0, (proc.stdout + proc.stderr)[-2000:]
     assert "CVE_ACCOUNTING_FAIL" in proc.stdout + proc.stderr

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, Greenbone XML/CSV/JSON, Nikto, Nessus XML, sslscan, or SARIF.
+"""Parse Nuclei JSONL, Trivy JSON, Grype JSON, Greenbone XML/CSV/JSON, Nikto, Nessus XML, sslscan, or SARIF.
 
 Parse-only. Does not run nuclei, nikto, Nessus, or sslscan, and does not call a Nessus API.
 """
@@ -12,6 +12,7 @@ from typing import Any
 
 from shared.asset_ids import stamp_ids
 from shared.greenbone import cvss_band, parse_greenbone
+from shared.grype import grype_ids, grype_scan_time, grype_target, is_grype, iter_grype_matches
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
@@ -358,6 +359,65 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
     )
 
 
+def _grype_records(payload: dict[str, Any], now: str, add_asset) -> list[dict]:
+    """Grype JSON: one finding per match on the scanned target (Trivy-shaped).
+
+    Asset = the scan target (image/dir), not one per package. CVE rows key on
+    ``cve:<id>`` + asset like Trivy CVE rows; non-CVE ids (GHSA without a
+    related CVE) key on ``rule``. Structured CVEs: vulnerability.id and
+    relatedVulnerabilities[].id only.
+    """
+    target = grype_target(payload)
+    ids = grype_ids(payload)
+    scan_time = grype_scan_time(payload)
+    out: list[dict] = []
+    rows = iter_grype_matches(payload)
+    if rows:
+        add_asset(target, ids)
+    for row in rows:
+        vid, pkg, cves = row["vid"], row["pkg"], row["cves"]
+        is_cve = vid.upper().startswith("CVE-")
+        primary = vid.upper() if is_cve else (cves[0] if cves else "")
+        extra: dict[str, Any] = {
+            "cve": primary,
+            "cves": cves,
+            "pkg": pkg,
+            "installed_version": row["version"],
+            "pkg_type": row["pkg_type"],
+            "class": "vuln",
+            "tool": "grype",
+        }
+        if not primary:
+            extra["rule"] = vid
+            extra["check_id"] = vid
+        elif not is_cve:
+            extra["advisory"] = vid
+        if row["fixed"]:
+            extra["fixed_version_hint"] = row["fixed"]
+        extra = stamp_ids(extra, **ids)
+        extra.update(_no_fix_extra("", "will_not_fix" if row["fix_state"] == "wont-fix" else row["fix_state"]))
+        if scan_time:
+            extra["scan_time"] = scan_time
+        shown = primary or vid
+        name = f"{shown} in {pkg}" if pkg else shown
+        out.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"grype-{vid}-{target}-{pkg}-{row['version']}"),
+                name=name,
+                description=row["description"] or name,
+                severity=row["severity"] or "medium",
+                category="vulnerability",
+                assets=[target],
+                labels=LABELS + ["grype"],
+                collected_at=now,
+                extra=extra,
+            )
+        )
+    return out
+
+
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
     records: list[dict] = []
@@ -556,6 +616,9 @@ def parse_file(path: Path) -> list[dict]:
             add_asset(host)
             records.append(rec)
         return records
+
+    if peek is not None and is_grype(peek):
+        return records + _grype_records(peek, now, add_asset)
 
     nuclei = _nuclei_rows(path)
     if nuclei:

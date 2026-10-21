@@ -6,6 +6,7 @@ pass / notapplicable / notselected stay silent.
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -36,6 +37,10 @@ _SILENT = frozenset(
 )
 
 
+_CVE_ID = re.compile(r"^CVE-\d{4}-\d{4,}$", re.I)
+_OVAL_VULN_CLASSES = frozenset({"vulnerability", "patch"})
+
+
 def is_openscap(payload: Any = None, *, name: str = "", text: str = "") -> bool:
     """True for OpenSCAP / SSG XCCDF or ARF. Never claims CIS-CAT JSON."""
     n = (name or "").lower()
@@ -46,6 +51,8 @@ def is_openscap(payload: Any = None, *, name: str = "", text: str = "") -> bool:
     if any(tok in n for tok in _OSCAP_NAME):
         return True
     if raw.lstrip().startswith("<") and any(tok in low for tok in _OSCAP_MARKERS):
+        return True
+    if raw.lstrip().startswith("<") and "<oval_results" in low[:4096]:
         return True
     if isinstance(payload, dict):
         blob = " ".join(str(payload.get(k) or "") for k in ("benchmark", "Benchmark", "id", "href"))
@@ -115,6 +122,7 @@ def _target_host(root: ET.Element) -> str:
     fqdn = ""
     host = ""
     target = ""
+    oval_host = ""
     for el in root.iter():
         loc = _local(el.tag)
         val = (_text(el) or el.attrib.get("name") or "").strip()
@@ -126,7 +134,9 @@ def _target_host(root: ET.Element) -> str:
             target = target or val
         elif loc == "hostname":
             host = host or val
-    return fqdn or target or host or "openscap-host"
+        elif loc == "primary-host-name":  # OVAL results system_info
+            oval_host = oval_host or val
+    return fqdn or target or host or oval_host or "openscap-host"
 
 
 def target_ids(root: ET.Element) -> dict[str, Any]:
@@ -178,6 +188,125 @@ def _report_scan_time(root: ET.Element) -> str:
     return ""
 
 
+def _ident_cves(el: ET.Element) -> list[str]:
+    """CVE ids from direct <ident> children (structured; never URLs/prose)."""
+    out: list[str] = []
+    for child in list(el):
+        if _local(child.tag) != "ident":
+            continue
+        val = _text(child).upper()
+        if _CVE_ID.match(val) and val not in out:
+            out.append(val)
+    return out
+
+
+def _check_refs(el: ET.Element) -> list[str]:
+    """OVAL definition ids a rule-result's <check> points at."""
+    out: list[str] = []
+    for child in el.iter():
+        if _local(child.tag) == "check-content-ref":
+            name = str(child.attrib.get("name") or "").strip()
+            if name:
+                out.append(name)
+    return out
+
+
+def oval_definitions(root: ET.Element) -> dict[str, dict[str, Any]]:
+    """OVAL definition id -> class/title/severity/CVE refs (reference source=CVE)."""
+    defs: dict[str, dict[str, Any]] = {}
+    for el in root.iter():
+        if _local(el.tag) != "definition" or not el.attrib.get("class"):
+            continue
+        did = str(el.attrib.get("id") or "").strip()
+        if not did:
+            continue
+        title, sev, cves = "", "", []
+        for child in el.iter():
+            loc = _local(child.tag)
+            if loc == "title" and not title:
+                title = _text(child)
+            elif loc == "severity" and not sev:
+                sev = _text(child).lower()
+            elif loc == "reference" and str(child.attrib.get("source") or "").strip().upper() == "CVE":
+                cid = str(child.attrib.get("ref_id") or "").strip().upper()
+                if _CVE_ID.match(cid) and cid not in cves:
+                    cves.append(cid)
+            elif loc == "cve":  # Red Hat advisory <cve>CVE-…</cve>
+                cid = _text(child).upper()
+                if _CVE_ID.match(cid) and cid not in cves:
+                    cves.append(cid)
+        defs[did] = {
+            "class": str(el.attrib.get("class") or "").strip().lower(),
+            "title": title,
+            "severity": sev,
+            "cves": cves,
+        }
+    return defs
+
+
+def oval_true_definitions(root: ET.Element) -> list[str]:
+    """Definition ids that an OVAL results <system> evaluated result="true"."""
+    out: list[str] = []
+    for el in root.iter():
+        if _local(el.tag) != "definition" or el.attrib.get("class"):
+            continue
+        did = str(el.attrib.get("definition_id") or "").strip()
+        if did and str(el.attrib.get("result") or "").strip().lower() == "true" and did not in out:
+            out.append(did)
+    return out
+
+
+_OVAL_SEV = {"critical": "critical", "important": "high", "high": "high", "moderate": "medium", "medium": "medium", "low": "low"}
+
+
+def openscap_cve_findings(root: ET.Element) -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
+    """(rule idref -> CVEs, standalone OVAL vulnerability rows).
+
+    A failing rule-result carries the CVEs of its own <ident>s, of its Benchmark
+    Rule <ident>s and of every OVAL definition its <check> references. An OVAL
+    vulnerability/patch definition evaluated true that no rule-result
+    references (``oscap oval eval --results`` or ARF) becomes its own row.
+    """
+    defs = oval_definitions(root)
+    catalog_cves: dict[str, list[str]] = {}
+    for el in root.iter():
+        if _local(el.tag) == "rule" and el.attrib.get("id"):
+            catalog_cves[str(el.attrib["id"]).strip()] = _ident_cves(el)
+    by_rule: dict[str, list[str]] = {}
+    referenced: set[str] = set()
+    for el in _iter_rule_results(root):
+        rid = str(el.attrib.get("idref") or el.attrib.get("id") or "").strip()
+        refs = _check_refs(el)
+        referenced.update(refs)
+        if _result_value(el) not in _FAIL or not rid:
+            continue
+        cves = list(_ident_cves(el))
+        for cid in catalog_cves.get(rid, []):
+            if cid not in cves:
+                cves.append(cid)
+        for ref in refs:
+            for cid in (defs.get(ref) or {}).get("cves", []):
+                if cid not in cves:
+                    cves.append(cid)
+        if cves:
+            by_rule[rid] = by_rule.get(rid, []) + [c for c in cves if c not in by_rule.get(rid, [])]
+    standalone: list[dict[str, Any]] = []
+    for did in oval_true_definitions(root):
+        info = defs.get(did) or {}
+        if did in referenced or info.get("class") not in _OVAL_VULN_CLASSES:
+            continue
+        standalone.append(
+            {
+                "def_id": did,
+                "title": str(info.get("title") or did),
+                "severity": _OVAL_SEV.get(str(info.get("severity") or ""), "medium"),
+                "cves": list(info.get("cves") or []),
+                "class": info.get("class"),
+            }
+        )
+    return by_rule, standalone
+
+
 def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
     """Return fail/error rule-results. pass/notapplicable/notselected invent nothing."""
     raw = text or ""
@@ -191,6 +320,7 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
     host = _target_host(root)
     ids = target_ids(root)
     scan_time = _report_scan_time(root)
+    rule_cves, oval_rows = openscap_cve_findings(root)
     out: list[dict[str, Any]] = []
     for el in _iter_rule_results(root):
         result = _result_value(el)
@@ -235,6 +365,9 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
         )
         if scan_time:
             extra["scan_time"] = scan_time
+        if rule_cves.get(rid):
+            extra["cves"] = list(rule_cves[rid])
+            extra["cve"] = " ".join(rule_cves[rid])
         out.append(
             {
                 "id": rid,
@@ -245,6 +378,35 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
                 "severity": severity if severity in {"low", "medium", "high", "critical"} else "medium",
                 "references": clean_refs,
                 "control_key": control,
+                "extra": extra,
+                "ids": ids,
+            }
+        )
+    for row in oval_rows:
+        did = row["def_id"]
+        extra = {
+            "rule_id": did,
+            "id": did,
+            "check_id": did,
+            "result": "true",
+            "ssg_references": [],
+            "tool": "openscap",
+            "oval_class": row["class"],
+            "cves": row["cves"],
+            "cve": " ".join(row["cves"]),
+        }
+        if scan_time:
+            extra["scan_time"] = scan_time
+        out.append(
+            {
+                "id": did,
+                "short_id": did,
+                "title": row["title"],
+                "host": host,
+                "result": "true",
+                "severity": row["severity"],
+                "references": [],
+                "control_key": "",
                 "extra": extra,
                 "ids": ids,
             }

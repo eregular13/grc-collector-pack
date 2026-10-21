@@ -87,17 +87,17 @@ def _nikto(path: Path) -> set[str]:
 
 
 def _openscap(root: ET.Element) -> set[str]:
-    """XCCDF rule-results with result=fail and a CVE ident."""
+    """Failing XCCDF rule-results' CVE idents (own + Benchmark Rule) and the CVE
+    references of OVAL definitions they check, plus OVAL vulnerability/patch
+    definitions evaluated true (standalone OVAL results or ARF)."""
+    from shared.openscap import openscap_cve_findings
+
+    by_rule, standalone = openscap_cve_findings(root)
     out: set[str] = set()
-    for rr in root.iter():
-        if _tag(rr) != "rule-result":
-            continue
-        result = next((c.text for c in rr if _tag(c) == "result"), "") or ""
-        if result.strip().lower() not in {"fail", "error"}:
-            continue
-        for c in rr:
-            if _tag(c) == "ident":
-                out |= _cves(c.text)
+    for cves in by_rule.values():
+        out |= set(cves)
+    for row in standalone:
+        out |= set(row.get("cves") or [])
     return out
 
 
@@ -138,6 +138,9 @@ def _json_cves(payload: Any) -> set[str]:
     if isinstance(payload.get("matches"), list):  # grype
         for m in payload["matches"]:
             out |= _cves(((m or {}).get("vulnerability") or {}).get("id"))
+            for rel in (m or {}).get("relatedVulnerabilities") or []:
+                if isinstance(rel, dict):
+                    out |= _cves(rel.get("id"))
         return out
     if isinstance(payload.get("scanResult"), list):  # testssl --jsonfile-pretty
         for sr in payload["scanResult"]:
@@ -145,14 +148,11 @@ def _json_cves(payload: Any) -> set[str]:
                 if isinstance(rows, list):
                     out |= _json_cves(rows)
         return out
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else None
-    vuln = (data or {}).get("vulnerability") or payload.get("vulnerability")
-    if isinstance(vuln, dict):  # wazuh vulnerability-detector alert / state
-        status = str(vuln.get("status") or "").lower()
-        if status not in {"solved", "fixed"}:
-            out |= _cves(vuln.get("cve") or vuln.get("id"))
-        return out
-    for key in ("hits", "_source", "alerts", "items", "affected_items"):  # wazuh API/indexer
+    from shared.wazuh_vuln import has_wazuh_vulns, iter_wazuh_vulns
+
+    if has_wazuh_vulns(payload):  # wazuh alerts / 4.8 states / API export; latest state wins
+        return {row["cve"] for row in iter_wazuh_vulns(payload)}
+    for key in ("hits", "_source", "alerts", "items", "affected_items"):  # nested containers
         inner = payload.get(key)
         if isinstance(inner, dict):
             out |= _json_cves(inner)
@@ -171,12 +171,22 @@ def file_cves(path: Path) -> set[str]:
                 return _nmap_xml(ET.parse(path).getroot())
             if "niktoscan" in head or "<niktoscan" in head:
                 return _nikto(path)
-            if "xccdf" in head or "<benchmark" in head or "<testresult" in head or "asset-report-collection" in head:
+            if (
+                "xccdf" in head or "<benchmark" in head or "<testresult" in head
+                or "asset-report-collection" in head or "<oval_results" in head
+            ):
                 return _openscap(ET.parse(path).getroot())
             return set()
         if suffix in {".json", ".jsonl", ".ndjson"}:
             out: set[str] = set()
-            for payload in _json_rows(path):
+            rows = _json_rows(path)
+            if len(rows) > 1:  # JSON lines: wazuh latest-state must see every line
+                from shared.wazuh_vuln import has_wazuh_vulns, iter_wazuh_vulns
+
+                if has_wazuh_vulns(rows):
+                    out |= {row["cve"] for row in iter_wazuh_vulns(rows)}
+                    rows = [r for r in rows if not has_wazuh_vulns(r)]
+            for payload in rows:
                 if isinstance(payload, dict) and ("vulnerabilities" in payload or "items" in payload) and _is_nikto(payload):
                     out |= _nikto(path)
                     continue
