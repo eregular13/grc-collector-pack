@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.finding_types import secret_material_hash
-from shared.io_util import iso_now, read_json, read_jsonl, run_collector
+from shared.io_util import iso_now, read_json, read_jsonl, run_collector, fail_closed
 from shared.sarif import is_sarif, iter_sarif_results
 from shared.schema import make_record, make_ref, slug
 
@@ -167,6 +167,7 @@ def _semgrep_severity(raw: Any) -> str:
     return text or "medium"
 
 
+@fail_closed("code-scanner")
 def parse_file(path: Path) -> list[dict]:
     payload = _load(path)
     now = iso_now()
