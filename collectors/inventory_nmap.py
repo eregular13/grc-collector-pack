@@ -682,7 +682,12 @@ def parse_file(path: Path) -> list[dict]:
         records = parse_gnmap(raw, now)
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
-    root = ET.fromstring(raw)
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise ValueError(
+            f"{path.name}: not valid nmap XML (truncated or corrupt): {exc}"
+        ) from None
     now = iso_now()
     records: list[dict] = []
     run_start = root.attrib.get("start", "")
