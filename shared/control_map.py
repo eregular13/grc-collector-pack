@@ -517,6 +517,12 @@ CONTROL_CIS: dict[str, list[str]] = {
     "Enable time synchronization": ["cis_8_4"],
     "Lock down sensitive perimeter hostnames": ["cis_1_1"],
     "Rotate and revoke exposed credentials": ["cis_3_3"],
+    # Scan-derived IG1 ids: a host with no active firewall (Lynis/OpenSCAP/
+    # HardeningKitty) is direct evidence against the server and end-user
+    # host-firewall safeguards. An IdP export guest with no sign-in for
+    # STALE_GUEST_DAYS is direct evidence against the dormant-account safeguard.
+    "Enable a host firewall": ["cis_4_4", "cis_4_5"],
+    "Review and expire stale guest accounts": ["cis_5_3"],
 }
 
 
