@@ -314,8 +314,9 @@ def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
         return []
     try:
         root = ET.fromstring(raw)
-    except ET.ParseError:
-        return []
+    except ET.ParseError as exc:
+        # Malformed OpenSCAP XML is a per-file parse error, not 0 rows.
+        raise ValueError(f"OpenSCAP XML parse error: {exc}") from exc
     catalog = _rule_catalog(root)
     host = _target_host(root)
     ids = target_ids(root)

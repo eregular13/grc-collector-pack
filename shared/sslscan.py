@@ -55,8 +55,9 @@ def _weak_cipher(cipher: str, bits: str) -> bool:
 def _from_xml(text: str) -> list[dict[str, Any]]:
     try:
         root = ET.fromstring(text)
-    except ET.ParseError:
-        return []
+    except ET.ParseError as exc:
+        # Malformed sslscan XML is a per-file parse error, not 0 rows.
+        raise ValueError(f"sslscan XML parse error: {exc}") from exc
     out: list[dict[str, Any]] = []
     tests = [el for el in root.iter() if _tag(el) == "ssltest"]
     if _tag(root) == "ssltest":
@@ -168,5 +169,8 @@ def parse_sslscan(path: Path) -> list[dict[str, Any]] | None:
         return None
     stripped = text.lstrip("\ufeff")
     if stripped.startswith("<") or path.suffix.lower() == ".xml":
-        return _from_xml(stripped)
+        try:
+            return _from_xml(stripped)
+        except ValueError as exc:
+            raise ValueError(f"{path.name}: {exc}") from exc
     return _from_text(text)
