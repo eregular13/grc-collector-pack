@@ -15,6 +15,7 @@ from shared.io_util import (
     SidecarSkip,
     UnrecognizedShape,
     iso_now,
+    read_csv_dicts,
     read_json,
     read_text,
     run_collector,
@@ -589,6 +590,8 @@ def _read_prowler_csv(path: Path) -> list[dict[str, Any]]:
     text = read_text(path)
     if not _looks_prowler_csv(text):
         return []
+    # Refuse duplicate headers (DictReader collapses them silently).
+    read_csv_dicts(text, delimiters=";")
     reader = csv.DictReader(io.StringIO(text.lstrip("\ufeff")), delimiter=";")
     out: list[dict[str, Any]] = []
     for row in reader:

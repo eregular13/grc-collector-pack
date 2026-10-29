@@ -19,7 +19,7 @@ from shared.enum4linux import parse_enum4linux
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, hk_control
 from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
-from shared.io_util import iso_now, read_json, read_text, run_collector
+from shared.io_util import iso_now, read_csv_dicts, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.schema import canon_severity, make_record, make_ref, slug
 
@@ -510,22 +510,19 @@ def parse_hardeningkitty_csv(text: str, now: str, path: Path | None = None) -> l
     the invented default windows-host. Never CIS Benchmark / CIS-CAT.
     """
     records: list[dict] = []
-    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
-    if not lines:
+    # Do not pre-split lines (that breaks quoted newlines); strip # comments only.
+    cleaned = "\n".join(
+        ln for ln in (text or "").splitlines()
+        if not ln.lstrip().startswith("#")
+    )
+    if not cleaned.strip():
         return stamp_lab_labels(records, lab=path_is_lab(path))
-    sample = "\n".join(lines[:40])
-    dialect = csv.excel
-    if "," in sample or ";" in sample or "\t" in sample:
-        try:
-            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
-        except csv.Error:
-            dialect = csv.excel
-    reader = csv.DictReader(StringIO("\n".join(lines)), dialect=dialect)
     seen_hosts: set[str] = set()
-    for row in reader:
-        if not row:
-            continue
+    for row in read_csv_dicts(cleaned):
         lower = {str(k).strip().lower().replace(" ", ""): (v or "").strip() for k, v in row.items() if k}
+        for hk in ("computername", "hostname", "host", "computer"):
+            if hk in lower and lower[hk]:
+                lower[hk] = lower[hk].splitlines()[0].strip()
         host, host_source, unresolved = resolve_hk_host(path, lower)
         outcome, failed = hk_row_failed(lower)
         if not failed:
@@ -765,7 +762,7 @@ def parse_file(path: Path) -> list[dict]:
         return []
     if path.suffix.lower() == ".host" or path.name.endswith(".csv.host"):
         return []
-    text = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
+    text = read_text(path).lstrip("\ufeff")
     payload: Any = {}
     meta_kind = ""
     if path.suffix.lower() == ".csv" or ("," in text[:200] and "Severity" in text[:400]):
