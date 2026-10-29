@@ -244,6 +244,56 @@ def _strip_testssl_prefix(source_id: str) -> str:
     return s
 
 
+def _posture_poam_row(
+    pf: dict[str, str], members: list[dict[str, str]], poam_fields: list[str]
+) -> dict[str, str]:
+    """One POA&M row for a TLS-posture parent, built from its members."""
+    base = dict(members[0]) if members else {}
+    row = {k: base.get(k, "") for k in poam_fields}
+    dates = sorted(
+        d
+        for d in (str(m.get("original_detection_date") or "").strip() for m in members)
+        if re.match(r"\d{4}-\d{2}-\d{2}$", d)
+    )
+    odd = pf.get("original_detection_date") or ""
+    if not re.match(r"\d{4}-\d{2}-\d{2}$", odd):
+        odd = dates[0] if dates else odd
+    if not re.match(r"\d{4}-\d{2}-\d{2}$", odd):
+        # same last resort as keep_real rows: earliest calendar status_date
+        sds = sorted(
+            d
+            for d in (str(m.get("status_date") or "").strip() for m in members)
+            if re.match(r"\d{4}-\d{2}-\d{2}$", d)
+        )
+        if sds:
+            odd = sds[0]
+    sev = pf.get("severity") or "low"
+    row.update(
+        {
+            "weakness": f"{pf['name']} ({pf.get('member_count', '0')} checks)",
+            "asset": pf.get("assets", ""),
+            "severity": sev,
+            "status": "open",
+            "poam_id": pf.get("poam_id_proposal", ""),
+            "finding_ref_id": pf.get("ref_id", ""),
+            "weakness_description": pf.get("description", ""),
+            "detector_source": "vuln-scan (testssl) [tls-posture]",
+            "weakness_source_id": "tls-posture",
+            "original_detection_date": odd,
+            "original_risk_rating": sev[:1].upper() + sev[1:],
+            "cve": "",
+        }
+    )
+    for key in ("recommended_fix", "recommended_action"):
+        if key in row:
+            row[key] = (
+                "Fix the TLS configuration on this endpoint: install a CA-issued certificate "
+                "with a matching SAN, enable OCSP/CRL, and disable weak/CBC cipher suites. "
+                f"Checks: {pf.get('members', '')}"
+            )[:2000]
+    return row
+
+
 def classify_testssl(
     source_id: str,
     name: str,
@@ -571,6 +621,12 @@ def main() -> int:
                 "poam_id_proposal": stable_egp("tls-posture-v1", hp),
             }
         )
+
+    # D: the posture parent is an open plan item (one row per host:port, not a
+    # flood). Without it the members are closed rolled_into a parent that is
+    # live in the ledger but absent from poam.csv and the FedRAMP twin.
+    for pf in posture_findings:
+        out_poam.append(_posture_poam_row(pf, posture_members[pf["assets"]], poam_fields))
 
     # write outputs
     with (out_dir / "poam_fixed.csv").open("w", encoding="utf-8", newline="") as f:

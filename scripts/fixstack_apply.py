@@ -503,6 +503,33 @@ def apply_migration_to_ledger(
 
 
 
+def _refresh_summary_poam(out: Path, rows: list[dict[str, str]]) -> None:
+    """F: summary.json POA&M counts must match the post-fixstack poam.csv.
+
+    prove_ciso wrote the per-finding count; fixstack rewrote poam.csv. Keep the
+    pre-fixstack number under its own key so nothing is lost.
+    """
+    path = out / "summary.json"
+    if not path.is_file():
+        return
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(doc, dict):
+        return
+    n = len(rows)
+    if "poam_pre_fixstack" not in doc:
+        doc["poam_pre_fixstack"] = doc.get("poam")
+        if "poam_included" in doc:
+            doc["poam_included_pre_fixstack"] = doc.get("poam_included")
+    doc["poam"] = n
+    if "poam_included" in doc:
+        doc["poam_included"] = n
+    doc["poam_count_basis"] = "post_fixstack_poam_csv"
+    path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
 def _prior_poam_ids(prior_out: str) -> set[str]:
     """POA&M IDs on the prior run's plan (``--prior-out``), for the s7b map only."""
     if not prior_out:
@@ -696,6 +723,8 @@ def main() -> int:
             new_ids = {(r.get("poam_id") or "").strip() for r in rows if (r.get("poam_id") or "").strip()}
     map_path = out / "poam" / "poam-id-migration.csv"
     write_migration_map(map_path, map_rows)
+
+    _refresh_summary_poam(out, rows)
 
     report: dict = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
