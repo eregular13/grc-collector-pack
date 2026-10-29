@@ -116,7 +116,14 @@ LEDGER_CLOCK_KEYS = frozenset(
 
 
 def _hermetic_env(out: Path, inn: Path) -> dict[str, str]:
-    """Empty-in demo lab. Do not inherit a leaked LAB/FIXTURES_DIR from pytest."""
+    """Empty-in demo lab. Do not inherit a leaked LAB/FIXTURES_DIR from pytest.
+
+    Force TZ=UTC (do not inherit outer TZ). Packaged product-lab/drop civil days
+    for aware Z artifact stamps were minted under UTC; local_calendar_date honors
+    host TZ, so Etc/GMT+12 shifted milestone/detected days in poam.md while CSV
+    masks hid the same drift. Pinning hermetic collectors to UTC keeps drop-fresh
+    parity TZ-proof without changing product host-local semantics for live runs.
+    """
     keep = (
         "PATH",
         "HOME",
@@ -127,9 +134,10 @@ def _hermetic_env(out: Path, inn: Path) -> dict[str, str]:
         "TMPDIR",
         "TMP",
         "TEMP",
-        "TZ",
+        # TZ intentionally omitted — forced UTC below
     )
     env = {key: os.environ[key] for key in keep if os.environ.get(key)}
+    env["TZ"] = "UTC"
     env["PYTHONPATH"] = str(ROOT)
     env["OUT_DIR"] = str(out)
     env["IN_DIR"] = str(inn)
@@ -444,3 +452,30 @@ def test_pack_commit_without_git_is_not_recorded_and_masks(tmp_path: Path) -> No
     hexed = "> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `53b1b21`"
     archived = f"> Run `not recorded` · generated 2026-10-01 20:55 UTC · pack `{got}`"
     assert _mask_run_stamps(hexed) == _mask_run_stamps(archived)
+
+
+def test_drop_fresh_hermetic_forces_utc_under_west_tz(tmp_path: Path, monkeypatch) -> None:
+    """Outer Etc/GMT+12 must not break packaged-drop vs fresh.
+
+    Fail-before: hermetic inherited TZ and poam.md milestone civil days drifted.
+    Pin: _hermetic_env forces TZ=UTC for collector subprocesses.
+    """
+    monkeypatch.setenv("TZ", "Etc/GMT+12")
+    try:
+        import time as _time
+
+        _time.tzset()
+    except (AttributeError, OSError):
+        pass
+    # Document root cause: west-of-UTC host-local day differs from UTC day.
+    from shared.scan_time import local_calendar_date
+
+    stamp = "2026-09-15T08:00:00Z"
+    local_day = local_calendar_date(stamp)
+    assert local_day is not None
+    # Under Etc/GMT+12 (POSIX = UTC-12) this is 2026-09-14; under UTC 2026-09-15.
+    assert str(local_day) == "2026-09-14", local_day
+    env = _hermetic_env(tmp_path / "out", tmp_path / "in")
+    assert env.get("TZ") == "UTC", env.get("TZ")
+    # Full drop-fresh parity under the hostile outer TZ.
+    test_product_lab_drop_matches_fresh_generator(tmp_path)

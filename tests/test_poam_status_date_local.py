@@ -26,6 +26,12 @@ from shared.poam_fields import SLA_NOTE, local_run_date, parse_status_date, poam
 from shared.poam_ledger import apply_ledger
 from shared.vendor_dependency import VENDOR_CHECKIN_OVERDUE, VD_NOTE
 
+@pytest.fixture(autouse=True)
+def _clear_sde_for_host_local_dates(monkeypatch):
+    """Host-local civil-date tests must not inherit process SOURCE_DATE_EPOCH."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    yield
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

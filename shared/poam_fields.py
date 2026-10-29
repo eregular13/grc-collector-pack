@@ -12,8 +12,10 @@ FedRAMP export keeps its own template values.
 
 from __future__ import annotations
 
+import os
+
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from shared.scan_time import (  # noqa: F401 — re-exported for callers/tests
@@ -65,9 +67,11 @@ SLA_NOTE = (
     "moving the pack to another TZ does not rewrite it. The "
     "poam.csv column name is unchanged. When the artifact has "
     "no scan time the cell is the literal 'not recorded' (never the pack run date) and "
-    "scheduled / milestone dates stay 'pending due date'. status_date is the host-local "
-    "civil day (YYYY-MM-DD) at generation — datetime.now().astimezone(), honoring TZ / "
-    "time.tzset. No extra env var or CLI flag. The cell stays a date (no offset). "
+    "status_date is the host-local "
+    "civil day (YYYY-MM-DD) at generation, or the UTC day of SOURCE_DATE_EPOCH / "
+    "GRC_RUN_TS when set for reproducible runs — datetime.now().astimezone(), honoring TZ / "
+    "time.tzset. No extra env var or CLI flag beyond SOURCE_DATE_EPOCH / GRC_RUN_TS. "
+    "The cell stays a date (no offset). "
     "first_seen / last_seen stay UTC ISO (…Z). status_date can be a day off "
     "first_seen's UTC day (local vs UTC). "
     "The same local status_date is written on poam.csv, poam_fedramp.csv, "
@@ -87,15 +91,32 @@ SLA_NOTE = (
 
 
 def local_run_date(now: datetime | None = None) -> date:
-    """Host-local civil day for status_date.
+    """Host-local civil day for status_date (or SOURCE_DATE_EPOCH UTC day).
 
-    Local means the generating host's timezone at call time
-    (``datetime.now().astimezone()``, which honors ``TZ`` / ``time.tzset``).
-    There is no pack-specific override — ``TZ`` is the standard one.
+    When ``SOURCE_DATE_EPOCH`` (or ``GRC_RUN_TS``) is set, return the **UTC** civil
+    day of that stamp so cold SAMPLE / reproducible runs freeze ``status_date``.
+    This wins even when callers pass ``now`` / ledger ``clock`` (apply_ledger
+    always passes ``run_at or datetime.now()``). Unset → host-local day via
+    ``now`` or ``datetime.now().astimezone()``.
 
     Naive datetimes are treated as already-local wall time. Aware datetimes
     are converted to the host local zone before taking the date.
     """
+    raw = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
+    if raw:
+        try:
+            if raw.isdigit():
+                dt = datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            else:
+                text_raw = raw.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(text_raw)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    dt = dt.astimezone(timezone.utc)
+            return dt.date()
+        except (ValueError, OSError, OverflowError):
+            pass
     if now is None:
         return datetime.now().astimezone().date()
     if now.tzinfo is None:

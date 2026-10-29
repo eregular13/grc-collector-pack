@@ -829,8 +829,8 @@
       "raw": "9321967cf85b4341e231e24dbfd717e2abd57b6c1432f292fa64b1d16e926ece"
     },
     "samples/SOURCES.md": {
-      "norm": "eda4012ae176121be7cad3ff5e34fff43f83c57a3609aedb13f40d09faa99c06",
-      "raw": "1833f4c7199f5ee5ac5f51987700e465043b96837a16e3fee3b8f68e9973f492"
+      "norm": "d16ced30787f2adc449308ab25ea96c6d5a3f25320bee423a8fdad220b58bc2e",
+      "raw": "b01e5dbeec34d49c8bf243bee6fa285978aef94736228354c141e85409466d57"
     },
     "samples/arp-scan.txt": {
       "norm": "4900e6bc438ff39e2ca1149cd8cb7355ba164a9b12e84f5b51e7c3995535d2c5",
@@ -955,6 +955,10 @@
     "samples/greenbone/one_vuln.xml": {
       "norm": "1eb2a2213397338f9f67a418df3d616b98e3da82ba0446c221881382a78b70e9",
       "raw": "a8208e44451d06569839af0fc90ca6cc9893e6316141a93dafb087712a538a3c"
+    },
+    "samples/grype/synthetic_grype-image.json": {
+      "norm": "69e4d8b134784909df754ae726158eae2bc7519fa29a4bd45038cba18b4bd47b",
+      "raw": "5ca38d715fb2f7307e218cc84896b2502cf7ae650f7902391373292b74f5f68c"
     },
     "samples/httpx.jsonl": {
       "norm": "66b368e971f406d4802e6da7d56ee593740d6842146babd55be54e9df89c8cfa",
@@ -1144,6 +1148,18 @@
       "norm": "907b4cc373c9c9a128efecd4023dacca409261e0b80c32ae51cf8733e1d0be3d",
       "raw": "66bde4e7e12c1519c419ef888017dd8bbcde18872615b32ec1f1fe71446a324e"
     },
+    "samples/wazuh/synthetic_vuln-alerts.jsonl": {
+      "norm": "eda8ea9ba2275d69bd34f168655e3f89577ea11f4dabac3db0707dddd09d3703",
+      "raw": "d55cf45f6c509dc0e4e345d3c7da0e84229bc68046e9e29fa1c25b3254594545"
+    },
+    "samples/wazuh/synthetic_vuln-api-host-h.json": {
+      "norm": "2769747a3889bc1f5dda23f25af453dd122b3883a87f5c6802ee21d399f196c0",
+      "raw": "ac4013fc69801bc3743fb65b41389006f197365ba7ce0a77f77d968263d79669"
+    },
+    "samples/wazuh/synthetic_vuln-states.json": {
+      "norm": "6d32d6c28ba6df608794b361637c53b72b37ca0fd9a25ac73127a0782db3877e",
+      "raw": "00598d4d966752e9fb3f96583d6ae364dabc7710c3e5471308ab19421515f407"
+    },
     "samples/web_tls/probe-cleartext-http.json": {
       "norm": "f32be2bd5f2257789ad1338fe7f15b906bdbc50813d74fa48d6673897509aab5",
       "raw": "8a0a0094a104d896b73c9ffd13b8f444e9f61d81f75aeb3d6b8a835de7883095"
@@ -1163,6 +1179,14 @@
     "samples/xccdf/rule-results.xml": {
       "norm": "87a540761c84092617bd0b22c5aea663df21793de0a3e725e619dc152c55678f",
       "raw": "09d1af18d985d13932245b8a619f4777df71a324ccdcb545f2d050811518118b"
+    },
+    "samples/xccdf/synthetic_arf-oval-cves.xml": {
+      "norm": "5a00fff2a379b9b1e506a73db45a7862bbf42bbba9640ab27076b197c6691b42",
+      "raw": "253f0c578cb96a8bcd57226c22888bd6ab4b49eef11404ddaf28a7c8a2d9fc91"
+    },
+    "samples/xccdf/synthetic_oval-results.xml": {
+      "norm": "86d3030631c3410a1cd6b258a49f68b9e09b64996052e62752f27700fc553f7e",
+      "raw": "6b92ea1baf3b84e62463a320d0c23475a8612f0f9c291a2122a4b628243c2df7"
     }
   },
   "legacy_sample_sha256": [

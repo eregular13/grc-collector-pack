@@ -175,7 +175,7 @@ def test_5_7_5_autoscaling_one_class_uid() -> None:
     assert next(iter(classes)).startswith(ASSET_UID_PREFIX)
 
 
-def test_5_7_6_multihomed_one_asset_two_ips() -> None:
+def test_5_7_6_multihomed_one_asset_two_ips(tmp_path: Path) -> None:
     ledger = AssetLedger()
     a = _asset("db1.corp", now=NOW1, fqdn="db1.corp", ip="10.0.0.5")
     uid1 = _observe(ledger, a, NOW1)
@@ -184,7 +184,7 @@ def test_5_7_6_multihomed_one_asset_two_ips() -> None:
     assert uid1 == uid2
     ips = {al["value"] for al in ledger.assets[uid1]["aliases"] if al["type"] == "ip" and not al["valid_to"]}
     assert ips == {"10.0.0.5", "192.168.1.5"}
-    dest = Path("/tmp/iiw-multi")
+    dest = tmp_path / "iiw-multi"
     write_iiw(ledger, dest_dir=dest, observed={uid1})
     rows = list(csv.DictReader((dest / "iiw_inventory.csv").open(encoding="utf-8")))
     assert list(rows[0].keys()) == list(IIW_HEADERS)
@@ -275,7 +275,7 @@ def test_5_7_10_short_name_collision_two_uids() -> None:
     assert uid_a != uid_b
 
 
-def test_5_7_11_container_two_digests_one_row() -> None:
+def test_5_7_11_container_two_digests_one_row(tmp_path: Path) -> None:
     """IIW class = repo/app:1.4. Two RepoDigests stay one row (B=ref, C=digests).
 
     §6.3 keys containers on RepoDigests → ArtifactID → ImageID when no
@@ -300,7 +300,7 @@ def test_5_7_11_container_two_digests_one_row() -> None:
     uid1 = _observe(ledger, a, NOW1)
     uid2 = _observe(ledger, b, NOW1)
     assert uid1 == uid2
-    dest = Path("/tmp/iiw-container")
+    dest = tmp_path / "iiw-container"
     write_iiw(ledger, dest_dir=dest, observed={uid1})
     rows = list(csv.DictReader((dest / "iiw_inventory.csv").open(encoding="utf-8")))
     assert len(rows) == 1

@@ -1,0 +1,36 @@
+{
+  "data": {
+    "affected_items": [
+      {
+        "cve": "CVE-2099-44004",
+        "name": "sudo",
+        "version": "1.9.13",
+        "architecture": "amd64",
+        "severity": "Medium",
+        "status": "VALID",
+        "type": "PACKAGE",
+        "title": "CVE-2099-44004 affects sudo",
+        "condition": "Package less than 1.9.14",
+        "detection_time": "2099-01-02T05:00:00Z",
+        "external_references": [
+          "https://cve.example.test/CVE-2099-49995"
+        ]
+      },
+      {
+        "cve": "CVE-2099-44005",
+        "name": "vim",
+        "version": "9.0",
+        "severity": "Low",
+        "status": "OBSOLETE",
+        "type": "PACKAGE",
+        "title": "CVE-2099-44005 affects vim",
+        "detection_time": "2099-01-02T05:00:00Z"
+      }
+    ],
+    "total_affected_items": 2,
+    "total_failed_items": 0,
+    "failed_items": []
+  },
+  "message": "All selected vulnerabilities were returned",
+  "error": 0
+}

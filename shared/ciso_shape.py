@@ -59,7 +59,7 @@ POAM_LEGACY_HEADER = "weakness,asset,severity,framework_refs,recommended_fix,own
 POAM_HEADER = POAM_LEGACY_HEADER + "," + ",".join(POAM_EXTRA_FIELDS)
 EXCLUDED_HEADER = (
     "id,finding_ref_id,weakness,asset,severity,excluded_reason,superseded_by,"
-    "reason_code,rolled_into,source,detail"
+    "reason_code,rolled_into,source,detail,cves"
 )
 EXCLUDED_FIELDS = tuple(EXCLUDED_HEADER.split(","))
 POAM_REL = Path("poam") / "poam.csv"

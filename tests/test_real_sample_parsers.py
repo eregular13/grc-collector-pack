@@ -25,6 +25,13 @@ from shared.poam_fields import SLA_NOTE, poam_fields, local_run_date
 from shared.scan_time import local_calendar_date
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.testssl import iter_testssl_findings
+import pytest
+
+@pytest.fixture(autouse=True)
+def _clear_sde_for_host_local_dates(monkeypatch):
+    """Host-local civil-date tests must not inherit process SOURCE_DATE_EPOCH."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    yield
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLES = ROOT / "fixtures" / "samples"

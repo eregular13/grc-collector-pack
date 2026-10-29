@@ -80,6 +80,23 @@ _BACKUP_MSG = (
 )
 
 
+_CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
+
+
+def _refs_text(raw: Any) -> str:
+    if isinstance(raw, (list, tuple)):
+        return " ".join(str(x or "") for x in raw)
+    if isinstance(raw, dict):
+        return " ".join(str(v or "") for v in raw.values())
+    return str(raw or "")
+
+
+def row_cves(row: dict[str, Any]) -> list[str]:
+    """CVE ids a Nikto row reports (message text or references), sorted, unique."""
+    blob = f"{row.get('msg') or ''} {row.get('refs') or ''}"
+    return sorted({m.upper() for m in _CVE_RE.findall(blob)})
+
+
 def _tag(el: ET.Element) -> str:
     return el.tag.split("}")[-1].lower()
 
@@ -201,6 +218,7 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
                     "host": _host_from(row, default_host),
                     "url": str(row.get("url") or row.get("uri") or "/"),
                     "msg": str(row.get("msg") or row.get("description") or row.get("message") or ""),
+                    "refs": _refs_text(row.get("references") or row.get("refs")),
                     "id": str(row.get("id") or row.get("OSVDB") or row.get("osvdbid") or "nikto"),
                 }
             )
@@ -219,6 +237,7 @@ def _rows_from_payload(payload: Any, default_host: str = "unknown") -> list[dict
                 "host": _host_from(row, host),
                 "url": str(row.get("url") or row.get("uri") or "/"),
                 "msg": str(row.get("msg") or row.get("description") or row.get("message") or ""),
+                "refs": _refs_text(row.get("references") or row.get("refs")),
                 "id": str(row.get("id") or row.get("OSVDB") or row.get("osvdbid") or "nikto"),
             }
         )
@@ -358,16 +377,20 @@ def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:
                 continue
             desc = ""
             uri = ""
+            refs = ""
             for child in list(item):
                 ctag = _tag(child)
                 if ctag == "description":
                     desc = (child.text or "").strip()
                 elif ctag == "uri":
                     uri = (child.text or "").strip()
+                elif ctag == "references":
+                    refs = (child.text or "").strip()
             yield {
                 "host": host,
                 "url": uri or "/",
                 "msg": desc,
+                "refs": refs,
                 "id": item.attrib.get("id") or item.attrib.get("osvdbid") or "nikto",
             }
 
