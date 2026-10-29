@@ -21,7 +21,7 @@ POA&M owner/due are blank for a human. Do not POST /api/risks.
 | poam/poam.md | draft | `2a3e6fe6aaf93e7fa57bf25b2381beb3edbc20ed1fddb9d97fa1ce259f3e158d` |
 | poam/excluded.csv | 13 | `c5e490b8bd5039e9d6905966006709171a768651e26d535056d41c3c84ad7262` |
 | poam/poam_members.csv | 119 | `3e38ca7507842514ad7d20fe61424100a37759e5beb8d359e886bd5be07d06ef` |
-| poam/poam_fedramp.csv | 119 | `cfcbd01ec4a0f9cdce812376e47437144ef37525bf226f52caa73edd66e707ed` |
+| poam/poam_fedramp.csv | 119 | `24b54119537446139b50810d6acf3cb65c186ee74ee24938a61fa5c76fb901e8` |
 | poam/poam-ledger.json | draft | `8a6b2fd2b7d2d609030a304b642379d31b3fb9067b16d48ecf7ddb8f79eced8b` |
 | poam/ESTATE.txt | draft | `f955a0b84607ef1cac50ef3977ed59a4a6b2a17a3288bf92268811cd39fe311a` |
 | EXECUTIVE_SUMMARY.md | draft | `af32e4bfbd4deb5152a91d360de647d4b9b6d06bfd7a26c70c2acf2118bd033c` |
