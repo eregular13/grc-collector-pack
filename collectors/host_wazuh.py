@@ -31,6 +31,7 @@ from shared.osquery_checks import (
     osquery_hosts,
 )
 from shared.schema import canon_severity, make_record, make_ref, slug
+from shared.wazuh_vuln import is_vuln_alert, is_vuln_doc, iter_wazuh_vulns
 
 SOURCE = "host-wazuh"
 LABELS = ["wazuh", "host"]
@@ -355,12 +356,15 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
     if _is_sca_payload(payload):
         return []
     if isinstance(payload, list):
-        return [a for a in payload if isinstance(a, dict) and not _is_alert_row(a)]
+        return [a for a in payload if isinstance(a, dict) and not _is_alert_row(a) and not is_vuln_doc(a)]
     if not isinstance(payload, dict):
         return []
     data = payload.get("data")
     if isinstance(data, dict) and isinstance(data.get("affected_items"), list):
-        return [a for a in data["affected_items"] if isinstance(a, dict) and not _is_sca_item(a)]
+        return [
+            a for a in data["affected_items"]
+            if isinstance(a, dict) and not _is_sca_item(a) and not is_vuln_doc(a)
+        ]
     if isinstance(payload.get("agents"), list):
         return [a for a in payload["agents"] if isinstance(a, dict)]
     osq = payload.get("osquery")
@@ -886,6 +890,65 @@ def _emit_osquery_records(payload: Any, now: str, path: Path | None = None) -> l
     return stamp_lab_labels(records, lab=path_is_lab(path)) if path is not None else records
 
 
+def _emit_wazuh_vulns(payload: Any, now: str, path: Path) -> list[dict]:
+    """Vulnerability-detector rows -> one finding per (agent, CVE, package).
+
+    Before, these alerts were folded into one incident per (rule.id, agent),
+    so every CVE id was lost. Key: ``cve:<id>`` + agent host (Trivy-shaped).
+    """
+    out: list[dict] = []
+    seen: set[str] = set()
+    for row in iter_wazuh_vulns(payload, default_agent=path.stem):
+        agent = row["agent"]
+        if agent.lower() not in seen:
+            seen.add(agent.lower())
+            out.append(
+                make_record(
+                    kind="asset",
+                    source=SOURCE,
+                    ref_id=make_ref(SOURCE, f"asset-{agent}"),
+                    name=agent,
+                    description=f"Wazuh agent {agent} (vulnerability detector)",
+                    category="host",
+                    assets=[agent],
+                    labels=LABELS,
+                    collected_at=now,
+                    extra=stamp_ids({"asset_type": "PR"}, hostname=agent),
+                )
+            )
+        cve, pkg = row["cve"], row["pkg"]
+        extra: dict[str, Any] = {
+            "cve": cve,
+            "cves": [cve],
+            "pkg": pkg,
+            "installed_version": row["version"],
+            "vuln_status": row["status"],
+            "wazuh_shape": row["shape"],
+            "tool": "wazuh-vd",
+        }
+        if row["rule_id"]:
+            extra["wazuh_rule_id"] = row["rule_id"]
+        if row["time"]:
+            extra["scan_time"] = row["time"]
+        name = f"{cve} in {pkg}" if pkg else cve
+        out.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"vd-{cve}-{agent}-{pkg}"),
+                name=name,
+                description=row["title"] or name,
+                severity=canon_severity(row["severity"] or "medium"),
+                category="vulnerability",
+                assets=[agent],
+                labels=LABELS + ["vulnerability-detector"],
+                collected_at=now,
+                extra=extra,
+            )
+        )
+    return out
+
+
 def parse_file(path: Path) -> list[dict]:
     if path.name in SKIP_INPUT_NAMES:
         return []
@@ -1095,7 +1158,8 @@ def parse_file(path: Path) -> list[dict]:
                 },
             )
         )
-    for alert in _aggregate_alerts(_extract_alerts(payload)):
+    records.extend(_emit_wazuh_vulns(payload, now, path))
+    for alert in _aggregate_alerts([a for a in _extract_alerts(payload) if not is_vuln_alert(a)]):
         aname = str(alert["agent"])
         title = str(alert["title"])
         sev = canon_severity(alert["severity"])

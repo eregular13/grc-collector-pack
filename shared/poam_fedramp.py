@@ -323,9 +323,16 @@ def kev_md_footer(
         list(ledger.get("dropped_poam_ids") or []),
         estate_kind=estate_kind,
         first_run=bool(ledger.get("_first_run", True)),
+        first_run_note=str(ledger.get("first_run_note") or ""),
+        item_count=len(ledger.get("items") or {})
+        if isinstance(ledger.get("items"), dict)
+        else None,
     )
     if warn_line:
-        lines.append("ledger_warnings: " + warn_line)
+        if bool(ledger.get("_first_run", False)) and "LEDGER_LOST" not in warn_line:
+            lines.append("ledger_note: " + warn_line)
+        else:
+            lines.append("ledger_warnings: " + warn_line)
     lines.append(VD_NOTE)
     lines.append("Provenance copy: out/poam/kev_provenance.json. Ledger: out/poam/poam-ledger.json.")
     lines.append("FedRAMP-shaped export: out/poam/poam_fedramp.csv (existing poam.csv header unchanged).")

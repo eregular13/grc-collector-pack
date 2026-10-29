@@ -862,7 +862,8 @@ ENV_EVAL_HEURISTICS: list[tuple[re.Pattern[str], dict[str, Any]]] = [
             "rule_id": "smb-v1",
             "weakness_class": "exposure_network",
             "nist_800_53": ("CM-7",),
-            "cis_v8_internal": ("5.1",),
+            # SMBv1 enabled is an unnecessary legacy service, not an account-inventory gap.
+            "cis_v8_internal": ("4.8",),
             "csf20": "PR.AA-01",
         },
     ),

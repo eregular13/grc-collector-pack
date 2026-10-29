@@ -81,6 +81,15 @@ def dedupe_hardening(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         other_id = str((rec.get("extra") or {}).get("check_id") or rec.get("ref_id") or "")
         if other_id and other_id not in also:
             also.append(other_id)
+        donor_cves = (rec.get("extra") or {}).get("cves") or []
+        if donor_cves:
+            # Merged-away CVE ids must survive on the kept record (CVE accounting).
+            kept = extra.setdefault("cves", [])
+            for cid in donor_cves:
+                if cid not in kept:
+                    kept.append(cid)
+            if not extra.get("cve"):
+                extra["cve"] = " ".join(kept)
         labels = existing.setdefault("labels", [])
         for lab in rec.get("labels") or []:
             if lab and lab not in labels:

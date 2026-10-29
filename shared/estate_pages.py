@@ -162,8 +162,9 @@ COLLECTOR_AREAS = {
 }
 
 AREA_HINTS = (
-    ("identity", ("identity", "saas", "idp", "ad", "entra", "okta")),
-    ("external exposure", ("easm", "nmap", "exposure", "honeypot", "dns")),
+    ("tls / certificates", ("testssl", "tls", "ssl", "certificate", "cipher", "x509")),
+    ("identity", ("identity", "saas", "idp", "ad", "entra", "okta", "saml", "oauth")),
+    ("external exposure", ("easm", "nmap", "exposure", "honeypot", "dns", "nikto", "vuln-scan")),
     ("cloud configuration", ("cloud", "prowler", "k8s", "kubescape")),
     ("code secrets", ("code", "secret", "gitleaks", "truffle", "sast")),
 )
@@ -448,14 +449,31 @@ def pack_commit() -> str:
 
 
 def generated_at_local(iso_utc: str | None = None) -> str:
+    """Human stamp for estate banners.
+
+    Default: host-local wall clock (``astimezone()``, honors ``TZ``).
+    When ``SOURCE_DATE_EPOCH`` / ``GRC_RUN_TS`` is set, always render **UTC**
+    so cold SAMPLE / CI banners do not drift across timezones.
+    """
+    from shared.io_util import utc_now
+
+    sde = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
+    force_utc = bool(sde)
     raw = (iso_utc or "").strip()
     if raw:
         try:
             stamp = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            if force_utc:
+                stamp = stamp.astimezone(timezone.utc)
+                return stamp.strftime("%Y-%m-%d %H:%M UTC")
             local = stamp.astimezone()
             return local.strftime("%Y-%m-%d %H:%M %Z")
         except ValueError:
             pass
+    if force_utc:
+        return utc_now().strftime("%Y-%m-%d %H:%M UTC")
     now = datetime.now().astimezone()
     return now.strftime("%Y-%m-%d %H:%M %Z")
 
@@ -471,6 +489,44 @@ def run_id_from_records(records: list[dict] | None) -> str:
             if val:
                 return str(val).strip()
     return NOT_RECORDED
+
+
+
+def deterministic_run_id_from_inputs(
+    in_dir: Path | str | None,
+    *,
+    collected_at: str | None = None,
+) -> str:
+    """Stable engagement run_id: sha256(sorted path+content digests [+ collected_at])[:12].
+
+    No wall clock. Empty/missing in_dir → NOT_RECORDED. Operator GRC_RUN_ID still wins
+    upstream in run_id_from_records / classify_estate(run_id=).
+    """
+    if in_dir is None:
+        return NOT_RECORDED
+    root = Path(in_dir)
+    if not root.is_dir():
+        return NOT_RECORDED
+    paths = sorted(
+        (p for p in root.rglob("*") if p.is_file()),
+        key=lambda p: str(p.relative_to(root)).replace(chr(92), "/"),
+    )
+    if not paths:
+        return NOT_RECORDED
+    h = hashlib.sha256()
+    for p in paths:
+        rel = str(p.relative_to(root)).replace(chr(92), "/")
+        h.update(rel.encode("utf-8"))
+        h.update(bytes([0]))
+        fh = hashlib.sha256()
+        with p.open("rb") as f:
+            for chunk in iter(lambda: f.read(1 << 16), b""):
+                fh.update(chunk)
+        h.update(fh.digest())
+    if collected_at:
+        h.update(bytes([0]))
+        h.update(str(collected_at).strip().encode("utf-8"))
+    return h.hexdigest()[:12]
 
 
 def _marker_in(folder: Path | None, name: str) -> bool:
@@ -1339,17 +1395,30 @@ def _sev(rec: dict) -> str:
     return "low"
 
 
+def _area_hint_match(hint: str, blob: str) -> bool:
+    """Substring match; short tokens (ad/idp) require word-ish boundaries."""
+    h = (hint or "").strip().lower()
+    if not h:
+        return False
+    if len(h) <= 3:
+        return re.search(rf"(?<![a-z0-9]){re.escape(h)}(?![a-z0-9])", blob) is not None
+    return h in blob
+
+
 def _area_for(rec: dict) -> str:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
     blob = " ".join(
         str(x or "")
         for x in (
             rec.get("category"),
             rec.get("source"),
             rec.get("name"),
+            extra.get("tool"),
+            extra.get("check_id"),
         )
     ).lower()
     for area, hints in AREA_HINTS:
-        if any(h in blob for h in hints):
+        if any(_area_hint_match(h, blob) for h in hints):
             return area
     cat = str(rec.get("category") or rec.get("source") or "").strip()
     return COLLECTOR_AREAS.get(cat, cat or "other")
@@ -1481,24 +1550,51 @@ def _exec_top_findings(
     mapped_by_ref: dict[str, dict],
     n: int,
 ) -> list[dict]:
-    """Top-N by risk, one row per host/port EGP (pack_drop id ≠ weakness)."""
-    from shared.poam_ledger import fp_v1
+    """Top-N by risk; collapse same weakness across hosts into one row."""
+    from shared.poam_ledger import _weakness_key_core, fp_v1, weakness_key
 
     ranked: list[dict] = []
-    seen: set[str] = set()
+    seen_fp: set[str] = set()
+    by_wk: dict[str, dict] = {}
+
     def _exec_sort(rec: dict) -> tuple:
         sev, poam, refs, ref = _risk_key(rec, mapped_by_ref.get(str(rec.get("ref_id"))))
         extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
         port_first = 0 if str(extra.get("check_id") or "").startswith("nmap-port-") else 1
         return (sev, poam, refs, port_first, ref)
 
+    def _wk(rec: dict) -> str:
+        # Top-5 UX: collapse identical weakness *titles* across hosts (cert flood).
+        # Prefer human name; fall back to weakness core / key.
+        name = re.sub(r"\s+", " ", str(rec.get("name") or "").strip().lower())
+        if name:
+            return "name:" + name
+        core = str(_weakness_key_core(rec) or "").strip()
+        if core:
+            return "core:" + core
+        return "wk:" + str(weakness_key(rec) or rec.get("ref_id") or "").strip().lower()
+
     ordered = sorted(findings, key=_exec_sort)
     for rec in ordered:
         ident = fp_v1(rec)
-        if ident in seen:
+        if ident in seen_fp:
             continue
-        seen.add(ident)
-        ranked.append(rec)
+        seen_fp.add(ident)
+        wk = _wk(rec)
+        if wk and wk in by_wk:
+            prev = by_wk[wk]
+            assets = list(prev.get("assets") or [])
+            for a in rec.get("assets") or []:
+                s = str(a).strip()
+                if s and s not in assets:
+                    assets.append(s)
+            prev["assets"] = assets
+            continue
+        row = dict(rec)
+        row["assets"] = list(rec.get("assets") or [])
+        if wk:
+            by_wk[wk] = row
+        ranked.append(row)
         if len(ranked) >= n:
             break
     return ranked
@@ -1856,6 +1952,7 @@ class PageContext:
     ledger_warnings: list[str] = field(default_factory=list)
     ledger_dropped_poam_ids: list[str] = field(default_factory=list)
     ledger_first_run: bool = True
+    ledger_first_run_note: str = ""
 
 
 def build_executive_summary(ctx: PageContext) -> str:
@@ -1905,7 +2002,23 @@ def build_executive_summary(ctx: PageContext) -> str:
         if ledger_open and ledger_open != headline_open:
             lines.append(f"Ledger open including excluded: {ledger_open}.")
         lines.append("")
-    if ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
+    if ctx.ledger_first_run and (
+        ctx.ledger_first_run_note
+        or (ctx.ledger_warnings and "LEDGER_LOST" in ctx.ledger_warnings)
+    ):
+        from shared.poam_ledger import format_ledger_warning_line
+
+        note_line = format_ledger_warning_line(
+            ctx.ledger_warnings,
+            ctx.ledger_dropped_poam_ids,
+            estate_kind=stamp.kind,
+            first_run=True,
+            first_run_note=ctx.ledger_first_run_note,
+        )
+        if note_line:
+            lines.append(f"Ledger note: {note_line}.")
+            lines.append("")
+    elif ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
         from shared.poam_ledger import format_ledger_warning_line
 
         warn_line = format_ledger_warning_line(
@@ -1913,6 +2026,7 @@ def build_executive_summary(ctx: PageContext) -> str:
             ctx.ledger_dropped_poam_ids,
             estate_kind=stamp.kind,
             first_run=ctx.ledger_first_run,
+            first_run_note=ctx.ledger_first_run_note,
         )
         if warn_line:
             lines.append(f"Ledger warning: {warn_line}.")

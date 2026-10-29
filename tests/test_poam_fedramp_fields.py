@@ -18,6 +18,12 @@ import pytest
 
 from shared.ciso_shape import POAM_HEADER, assert_risk_register_and_poam
 
+@pytest.fixture(autouse=True)
+def _clear_sde_for_host_local_dates(monkeypatch):
+    """Host-local civil-date tests must not inherit process SOURCE_DATE_EPOCH."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    yield
+
 LEGACY = "weakness,asset,severity,framework_refs,recommended_fix,owner,due,status,estate"
 NEW = (
     "poam_id", "finding_ref_id", "controls", "weakness_description", "detector_source",

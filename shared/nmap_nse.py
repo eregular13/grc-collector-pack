@@ -142,6 +142,27 @@ def vulners_cves(output: str, elems: list[tuple[str, str]] | None = None) -> lis
     return rows
 
 
+_VULN_STATE_RE = re.compile(r"State:\s*(LIKELY\s+)?VULNERABLE", re.I)
+
+
+def vuln_script_cves(script_id: str, output: str) -> list[dict[str, str]]:
+    """CVE ids from a confirmed nmap vuln-category script (e.g. http-vuln-cve*).
+
+    Only when the script reports ``State: VULNERABLE`` (not "NOT VULNERABLE").
+    These are probe-confirmed, not version matches, so they carry ``confirmed``.
+    """
+    sid = str(script_id or "").lower()
+    if sid == "vulners" or "vuln" not in sid:
+        return []
+    out = str(output or "")
+    if not _VULN_STATE_RE.search(out) or re.search(r"NOT\s+VULNERABLE", out, re.I):
+        return []
+    rows = []
+    for cve in dict.fromkeys(m.upper() for m in _CVE_RE.findall(out)):
+        rows.append({"cve": cve, "cvss": "", "severity": "high", "nse_script": sid, "confirmed": "1"})
+    return rows
+
+
 def nse_findings(
     name: str,
     addr: str,

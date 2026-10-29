@@ -369,6 +369,22 @@ def classify_name_pre161(name: Any) -> dict[str, Any]:
 def classify_name(name: Any, *, source: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """Turn a display name into identifier fields without inventing strength."""
     text = str(name or "").strip()
+    # HOST_CANON_FOLD: surgical fold only — loopback aliases → 127.0.0.1 and
+    # single-label distro suffix (host.debian → host). Do NOT strip .local/.lan
+    # from multi-label FQDNs (web.corp.local must stay web.corp.local).
+    if text:
+        try:
+            from shared.host_canon import is_loopback_host, _DISTRO_ONE
+        except Exception:  # pragma: no cover
+            is_loopback_host = None  # type: ignore
+            _DISTRO_ONE = frozenset()  # type: ignore
+        if is_loopback_host is not None and is_loopback_host(text):
+            text = "127.0.0.1"
+        else:
+            low = text.lower().rstrip(".")
+            parts = [p for p in low.split(".") if p]
+            if len(parts) == 2 and parts[-1] in _DISTRO_ONE:
+                text = text.split(".", 1)[0]
     if not text or is_placeholder_id(text):
         return {}
     extra = extra if isinstance(extra, dict) else {}

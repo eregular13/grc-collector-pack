@@ -6,11 +6,15 @@ Parse-only. Does not run gitleaks, trufflehog, semgrep, or checkov.
 
 from __future__ import annotations
 
+import contextvars
+import os
+import posixpath
+import re
 from pathlib import Path
 from typing import Any
 
 from shared.finding_types import secret_material_hash
-from shared.io_util import iso_now, read_json, read_jsonl, run_collector
+from shared.io_util import iso_now, read_json, read_jsonl, run_collector, fail_closed
 from shared.sarif import is_sarif, iter_sarif_results
 from shared.schema import make_record, make_ref, slug
 
@@ -26,8 +30,67 @@ def _load(path: Path) -> Any:
         return rows if rows else {}
 
 
+# Scanned root for the file being parsed (common dir of its absolute paths).
+_SCAN_ROOT: contextvars.ContextVar[str] = contextvars.ContextVar("code_scan_root", default="")
+_PATH_KEYS = frozenset({"file", "File", "path", "file_abs_path", "uri", "Target"})
+# Checkov file_path / repo_file_path are already root-relative ("/infra/main.tf").
+_ROOTREL_KEYS = frozenset({"file_path", "repo_file_path"})
+_DRIVE = re.compile(r"^[A-Za-z]:/")
+_HOME = re.compile(r"^/?(home|Users|root)(/|$)")
+
+
+def _slashes(raw: Any) -> str:
+    text = str(raw or "").strip()
+    if text.lower().startswith("file://"):
+        text = text[7:]
+        if re.match(r"^/[A-Za-z]:/", text):
+            text = text[1:]
+    return text.replace("\\", "/")
+
+
+def _is_abs(text: str) -> bool:
+    return text.startswith("/") or bool(_DRIVE.match(text)) or text.startswith("~/")
+
+
+def _collect_paths(node: Any, out: list[str]) -> None:
+    if isinstance(node, dict):
+        for key, val in node.items():
+            if isinstance(val, str) and (
+                key in _PATH_KEYS or (key in _ROOTREL_KEYS and _HOME.match(_slashes(val)))
+            ):
+                out.append(val)
+            else:
+                _collect_paths(val, out)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_paths(item, out)
+
+
+def _scan_root(payload: Any) -> str:
+    """CODE_SCAN_ROOT, else the common directory of the report's absolute paths."""
+    env = _slashes(os.environ.get("CODE_SCAN_ROOT") or "").rstrip("/")
+    raw: list[str] = []
+    _collect_paths(payload, raw)
+    absolute = [t for t in (_slashes(r) for r in raw) if _is_abs(t)]
+    if env and absolute and all(a.startswith(env + "/") for a in absolute):
+        return env
+    if not absolute:
+        return ""
+    dirs = [posixpath.dirname(a) for a in absolute]
+    try:
+        return posixpath.commonpath(dirs) if len({d[:3] for d in dirs}) == 1 else ""
+    except ValueError:
+        return ""
+
+
 def _rel_path(raw: Any) -> str:
-    text = str(raw or "repo").strip()
+    """Path relative to the scanned root. Never an absolute or home-directory path."""
+    text = _slashes(raw) or "repo"
+    root = _SCAN_ROOT.get()
+    if root and (text == root or text.startswith(root.rstrip("/") + "/")):
+        text = text[len(root):]
+    if _DRIVE.match(text) or text.startswith("~/") or _HOME.match(text):
+        text = posixpath.basename(text)  # absolute path outside the root: keep only the file name
     while text.startswith("./") or text.startswith("/"):
         text = text[1:].lstrip("/") if text.startswith("/") else text[2:]
     return text or "repo"
@@ -167,8 +230,17 @@ def _semgrep_severity(raw: Any) -> str:
     return text or "medium"
 
 
+@fail_closed("code-scanner")
 def parse_file(path: Path) -> list[dict]:
     payload = _load(path)
+    token = _SCAN_ROOT.set(_scan_root(payload))
+    try:
+        return _parse_payload(payload)
+    finally:
+        _SCAN_ROOT.reset(token)
+
+
+def _parse_payload(payload: Any) -> list[dict]:
     now = iso_now()
     records: list[dict] = []
     seen_assets: set[str] = set()
@@ -200,7 +272,7 @@ def parse_file(path: Path) -> list[dict]:
             data = meta.get("Data") if isinstance(meta.get("Data"), dict) else {}
             fs = data.get("Filesystem") if isinstance(data.get("Filesystem"), dict) else {}
             git = data.get("Git") if isinstance(data.get("Git"), dict) else {}
-            fpath = str(fs.get("file") or git.get("file") or leak.get("SourceID") or "repo")
+            fpath = _rel_path(fs.get("file") or git.get("file") or leak.get("SourceID") or "repo")
             add_asset(fpath)
             detector = str(leak.get("DetectorName") or "secret")
             line = fs.get("line") or git.get("line")
@@ -231,7 +303,7 @@ def parse_file(path: Path) -> list[dict]:
     leaks = _gitleaks(payload)
     if leaks:
         for leak in leaks:
-            fpath = str(leak.get("File") or leak.get("file") or "repo")
+            fpath = _rel_path(leak.get("File") or leak.get("file") or "repo")
             add_asset(fpath)
             material = leak.get("Secret") or leak.get("Match") or ""
             records.append(
@@ -296,7 +368,7 @@ def parse_file(path: Path) -> list[dict]:
 
     if isinstance(payload, dict) and is_sarif(payload):
         for row in iter_sarif_results(payload):
-            uri = str(row.get("uri") or "repo")
+            uri = _rel_path(row.get("uri") or "repo")
             add_asset(uri)
             rid = str(row.get("rule_id") or "sarif")
             records.append(
@@ -324,7 +396,7 @@ def parse_file(path: Path) -> list[dict]:
         for hit in payload["results"]:
             if not isinstance(hit, dict):
                 continue
-            fpath = str(hit.get("path") or "repo")
+            fpath = _rel_path(hit.get("path") or "repo")
             extra = hit.get("extra") if isinstance(hit.get("extra"), dict) else {}
             add_asset(fpath)
             cid = str(hit.get("check_id") or "sast")
@@ -351,7 +423,7 @@ def parse_file(path: Path) -> list[dict]:
         for result in payload.get("Results") or []:
             if not isinstance(result, dict):
                 continue
-            target = str(result.get("Target") or "lockfile")
+            target = _rel_path(result.get("Target") or "lockfile")
             add_asset(target)
             for vuln in result.get("Vulnerabilities") or []:
                 if not isinstance(vuln, dict):
