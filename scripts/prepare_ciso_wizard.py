@@ -44,10 +44,17 @@ def main() -> int:
         help="also write vulnerabilities_chunkNN.csv under dest/vuln-chunks/",
     )
     p.add_argument("--json-out", type=Path, default=None, help="write stats JSON")
+    p.add_argument(
+        "--rollup-by-poam",
+        type=Path,
+        default=None,
+        metavar="POAM_DIR",
+        help="opt-in: one risk/control/vuln per POA&M parent (out/poam). Default off.",
+    )
     args = p.parse_args()
 
     domain = (args.domain or "").strip() or "Global"
-    stats = map_ciso_csvs(args.src, args.dest, domain=domain)
+    stats = map_ciso_csvs(args.src, args.dest, domain=domain, rollup_poam_dir=args.rollup_by_poam)
     chunk = None
     if args.write_chunks or True:
         # Always report plan; write files when --write-chunks.
