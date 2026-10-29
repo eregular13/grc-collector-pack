@@ -44,7 +44,7 @@ _OVAL_VULN_CLASSES = frozenset({"vulnerability", "patch"})
 def is_openscap(payload: Any = None, *, name: str = "", text: str = "") -> bool:
     """True for OpenSCAP / SSG XCCDF or ARF. Never claims CIS-CAT JSON."""
     n = (name or "").lower()
-    raw = text or ""
+    raw = (text or "").lstrip("\ufeff")  # UTF-8 BOM decoded as U+FEFF is not whitespace
     low = raw.lower()
     if any(tok in n for tok in _CIS_BRAND) and not any(tok in n for tok in _OSCAP_NAME):
         return False
@@ -309,7 +309,7 @@ def openscap_cve_findings(root: ET.Element) -> tuple[dict[str, list[str]], list[
 
 def iter_openscap_failures(text: str) -> list[dict[str, Any]]:
     """Return fail/error rule-results. pass/notapplicable/notselected invent nothing."""
-    raw = text or ""
+    raw = (text or "").lstrip("\ufeff")  # tolerate UTF-8 BOM before '<'
     if not raw.lstrip().startswith("<"):
         return []
     try:

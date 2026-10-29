@@ -952,7 +952,7 @@ def _emit_wazuh_vulns(payload: Any, now: str, path: Path) -> list[dict]:
 def parse_file(path: Path) -> list[dict]:
     if path.name in SKIP_INPUT_NAMES:
         return []
-    text = read_text(path)
+    text = read_text(path).lstrip("\ufeff")  # UTF-8 BOM must not hide XML/JSON shape
     try:
         maybe_osq = json.loads(text.lstrip("\ufeff"))
     except Exception:
