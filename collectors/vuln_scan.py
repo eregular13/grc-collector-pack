@@ -12,7 +12,7 @@ from typing import Any
 
 from shared.asset_ids import stamp_ids
 from shared.greenbone import cvss_band, parse_greenbone
-from shared.grype import grype_ids, grype_scan_time, grype_target, is_grype, iter_grype_matches
+from shared.grype import grype_host_target, grype_ids, grype_scan_time, grype_target, is_grype, iter_grype_matches
 from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
@@ -359,7 +359,7 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
     )
 
 
-def _grype_records(payload: dict[str, Any], now: str, add_asset) -> list[dict]:
+def _grype_records(payload: dict[str, Any], now: str, add_asset, stem: str = "") -> list[dict]:
     """Grype JSON: one finding per match on the scanned target (Trivy-shaped).
 
     Asset = the scan target (image/dir), not one per package. CVE rows key on
@@ -367,7 +367,7 @@ def _grype_records(payload: dict[str, Any], now: str, add_asset) -> list[dict]:
     related CVE) key on ``rule``. Structured CVEs: vulnerability.id and
     relatedVulnerabilities[].id only.
     """
-    target = grype_target(payload)
+    target = grype_host_target(payload, stem)
     ids = grype_ids(payload)
     scan_time = grype_scan_time(payload)
     out: list[dict] = []
@@ -618,7 +618,7 @@ def parse_file(path: Path) -> list[dict]:
         return records
 
     if peek is not None and is_grype(peek):
-        return records + _grype_records(peek, now, add_asset)
+        return records + _grype_records(peek, now, add_asset, Path(path).stem)
 
     nuclei = _nuclei_rows(path)
     if nuclei:
