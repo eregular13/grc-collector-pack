@@ -57,6 +57,7 @@ from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
 from shared.finding_types import (
     dedupe_weaknesses,
     finding_identity,
+    _structured_cves,
     primary_asset,
     strip_secret_hash_from_key,
 )
@@ -239,7 +240,15 @@ def _dedupe(records: list[dict]) -> list[dict]:
             continue
         ref = str(rec.get("ref_id") or "")
         if kind == "finding" and (ref or finding_identity(rec)):
-            slot = (str(kind), finding_identity(rec) or ref.lower(), primary_asset(rec))
+            # Distinct structured CVE sets on one asset are distinct weaknesses
+            # (two vulners rollups on :22 and :80 share check_id + host). Same
+            # CVE set from two scanners still merges. Mirrors dedupe_key().
+            slot = (
+                str(kind),
+                finding_identity(rec) or ref.lower(),
+                primary_asset(rec),
+                ",".join(_structured_cves(rec)),
+            )
             if slot not in others:
                 others[slot] = rec
             else:

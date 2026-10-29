@@ -18,7 +18,7 @@ from shared.fping import parse_fping
 from shared.io_util import iso_now, read_text, run_collector
 from shared.masscan import parse_masscan
 from shared.nbtscan import parse_nbtscan
-from shared.nmap_nse import nse_findings, vulners_cves
+from shared.nmap_nse import nse_findings, vuln_script_cves, vulners_cves
 from shared.netdiscover import parse_netdiscover
 from shared.pack_drop import parse_pack_drop
 from shared.smbmap import parse_smbmap
@@ -87,6 +87,8 @@ def _vulners_solo(hit: dict[str, Any], kev_ids: set[str]) -> bool:
     cve = str(hit.get("cve") or "").upper()
     if cve and cve in kev_ids:
         return True
+    if hit.get("confirmed"):
+        return True
     return _cvss_value(hit) >= _VULNERS_SOLO_CVSS
 
 
@@ -113,12 +115,12 @@ def _emit_vulners_hits(
                 name=cve,
                 description=(
                     f"{name} {svc or 'service'} on {portid or 'host'} matches {cve} "
-                    f"(nmap vulners, cvss={hit.get('cvss') or 'n/a'})."
+                    f"(nmap {hit.get('nse_script') or 'vulners'}, cvss={hit.get('cvss') or 'n/a'})."
                 ),
                 severity=canon_severity(hit.get("severity") or "medium"),
                 category="vulnerability",
                 assets=[name],
-                labels=LABELS + ["nse", "vulners", cve],
+                labels=LABELS + ["nse", str(hit.get("nse_script") or "vulners"), cve],
                 collected_at=now,
                 extra={
                     "port": portid,
@@ -126,7 +128,7 @@ def _emit_vulners_hits(
                     "ip": addr,
                     "cve": cve,
                     "cvss": hit.get("cvss") or "",
-                    "nse_script": "vulners",
+                    "nse_script": hit.get("nse_script") or "vulners",
                     "tool": "nmap",
                     "check_id": cve,
                 },
@@ -766,6 +768,8 @@ def parse_file(path: Path) -> list[dict]:
                     nse_specs.append((portid, svc, spec))
                 for sc in port.findall("script"):
                     if sc.attrib.get("id") != "vulners":
+                        for hit in vuln_script_cves(sc.attrib.get("id", ""), sc.attrib.get("output", "")):
+                            vuln_specs.append((portid, svc, hit))
                         continue
                     elems = [
                         (el.attrib.get("key", ""), (el.text or "").strip())
