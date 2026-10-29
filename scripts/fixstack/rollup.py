@@ -38,6 +38,12 @@ SEV_CANON = {
 UPGRADE_RE = re.compile(
     r"(?:Upgrade|upgrade|Patch|patch)\s+([A-Za-z0-9_./@+-]+)\s+to\b"
 )
+# Trivy collector title for rows whose vendor title lacks the package:
+# "<CVE/GHSA/other id> in <PkgName>" (collectors/vuln_scan.py).
+VID_IN_PKG_RE = re.compile(r"^(?:CVE|GHSA|[A-Z][A-Z0-9]*)-[A-Za-z0-9._-]+ in (\S+)$")
+# Trivy collector non-CVE form: "<vendor title> (<PkgName>)" when the title lacks the pkg.
+TITLE_PKG_SUFFIX_RE = re.compile(r"^(?P<title>.+) \((?P<pkg>[^()\s]+)\)$")
+VID_TOKEN_RE = re.compile(r"^(?:CVE|GHSA|TEMP|[A-Z]{2,})-[A-Za-z0-9._-]+$")
 FIXED_RE = re.compile(
     r"(?:fixed(?:[- ]version)?|FixedVersion)\s*[:=]\s*([^\s,;)]+)",
     re.I,
@@ -51,6 +57,22 @@ def is_trivy(row: dict[str, str]) -> bool:
 def package_of(row: dict[str, str]) -> str:
     """Best-effort package from POA&M CSV (no raw Trivy JSON)."""
     weakness = (row.get("weakness") or "").strip()
+    # Undo the OWASP CSV formula guard ("'@scope/pkg: …") so the package key is
+    # the same whichever title form carried it; output re-guards (_csv_guard).
+    if weakness[:2] in {"'=", "'+", "'-", "'@"}:
+        weakness = weakness[1:]
+    m_vid = VID_IN_PKG_RE.match(weakness)
+    if m_vid:
+        return m_vid.group(1)[:80]
+    m_sfx = TITLE_PKG_SUFFIX_RE.match(weakness)
+    if m_sfx:
+        pkg = m_sfx.group("pkg")
+        # Mirror the collector: suffix only added when title lacks the pkg.
+        if (
+            pkg.lower() not in m_sfx.group("title").lower()
+            and not VID_TOKEN_RE.match(pkg)
+        ):
+            return pkg[:80]
     if ":" in weakness:
         left = weakness.split(":", 1)[0].strip()
         # Reject sentence-like titles (kernel prose without pkg prefix).
@@ -72,6 +94,11 @@ def package_of(row: dict[str, str]) -> str:
     if token.lower().startswith("in"):
         return "unparsed-package"
     return token[:80] or "unparsed-package"
+
+
+def _csv_guard(text: str) -> str:
+    """Re-apply the pack's CSV formula guard to a cell we build (e.g. "@scope/pkg: …")."""
+    return "'" + text if text[:1] in {"=", "+", "-", "@"} else text
 
 
 def image_of(row: dict[str, str]) -> str:
@@ -203,7 +230,7 @@ def main() -> int:
 
         template.update(
             {
-                "weakness": f"{package}: package rollup ({len(members)} CVEs/findings)",
+                "weakness": _csv_guard(f"{package}: package rollup ({len(members)} CVEs/findings)"),
                 "asset": image,
                 "severity": sev,
                 "recommended_action": (
