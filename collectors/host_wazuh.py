@@ -17,7 +17,7 @@ from shared.asset_ids import stamp_ids
 from shared.cis_cat import is_cis_cat, iter_cis_failures
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, lynis_control
-from shared.io_util import UnrecognizedShape, iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.io_util import UnrecognizedShape, iso_now, load_json_prefer, read_json, read_jsonl, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.mdm_inventory import parse_mdm_file, parse_mdm_inventory
 from shared.openscap import is_openscap, iter_openscap_failures
@@ -997,7 +997,9 @@ def parse_file(path: Path) -> list[dict]:
             return []
     else:
         try:
-            payload = read_json(path)
+            payload = load_json_prefer(path)
+        except ValueError:
+            raise
         except Exception:
             payload = read_jsonl(path)
             if not payload:

@@ -6,6 +6,8 @@ Parse-only. Does not run nuclei, nikto, Nessus, or sslscan, and does not call a 
 
 from __future__ import annotations
 
+import json
+
 import re
 from pathlib import Path
 from typing import Any
@@ -67,6 +69,12 @@ def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
             return rows
     try:
         payload = read_json(path)
+    except json.JSONDecodeError as exc:
+        if path.suffix.lower() in {".json", ".sarif"}:
+            raise ValueError(
+                f"{path.name}: not valid JSON ({exc.msg}); refusing silent JSONL fallback"
+            ) from exc
+        return [r for r in read_jsonl(path) if _is_nuclei_row(r)]
     except Exception:
         return [r for r in read_jsonl(path) if _is_nuclei_row(r)]
     return _nuclei_from_payload(payload)
@@ -477,6 +485,12 @@ def parse_file(path: Path) -> list[dict]:
 
     try:
         peek = read_json(path)
+    except json.JSONDecodeError as exc:
+        if path.suffix.lower() in {".json", ".sarif"} and exc.msg != "empty":
+            raise ValueError(
+                f"{path.name}: not valid JSON ({exc.msg}); refusing silent parse continuum"
+            ) from exc
+        peek = None
     except Exception:
         peek = None
     if peek is not None and is_testssl(peek):

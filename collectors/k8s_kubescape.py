@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from shared.io_util import iso_now, read_json, read_jsonl, run_collector
+from shared.io_util import iso_now, load_json_prefer, run_collector
 from shared.schema import make_record, make_ref
 
 SOURCE = "k8s-kubescape"
@@ -162,10 +162,7 @@ def _falco_severity(priority: Any) -> str:
 
 
 def parse_file(path: Path) -> list[dict]:
-    try:
-        payload = read_json(path)
-    except Exception:
-        payload = read_jsonl(path)
+    payload = load_json_prefer(path)
     now = iso_now()
     records: list[dict] = []
     falco = _falco_events(payload)

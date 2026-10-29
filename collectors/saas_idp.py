@@ -12,7 +12,7 @@ from typing import Any, Iterator
 
 from shared.asset_ids import stamp_ids
 from shared.idp_inventory import parse_idp_file
-from shared.io_util import iso_now, read_json, read_jsonl, run_collector
+from shared.io_util import iso_now, load_json_prefer, run_collector
 from shared.scan_time import extra_scan_raw
 from shared.schema import canon_severity, make_record, make_ref
 
@@ -49,11 +49,7 @@ _CRIT_SEV = {
 
 
 def _load(path: Path) -> Any:
-    try:
-        return read_json(path)
-    except Exception:
-        rows = read_jsonl(path)
-        return rows if rows else {}
+    return load_json_prefer(path)
 
 
 def _unwrap(payload: Any) -> Any:

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.finding_types import secret_material_hash
-from shared.io_util import iso_now, read_json, read_jsonl, run_collector, fail_closed
+from shared.io_util import iso_now, load_json_prefer, run_collector, fail_closed
 from shared.sarif import is_sarif, iter_sarif_results
 from shared.schema import make_record, make_ref, slug
 
@@ -23,11 +23,7 @@ LABELS = ["code", "secrets"]
 
 
 def _load(path: Path) -> Any:
-    try:
-        return read_json(path)
-    except Exception:
-        rows = read_jsonl(path)
-        return rows if rows else {}
+    return load_json_prefer(path)
 
 
 # Scanned root for the file being parsed (common dir of its absolute paths).
