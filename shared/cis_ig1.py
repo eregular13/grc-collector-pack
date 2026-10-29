@@ -62,6 +62,12 @@ UNMAPPED_REASONS: dict[str, str] = {
     "15.1": _PROCESS, "17.1": _PROCESS, "17.2": _PROCESS, "17.3": _PROCESS,
 }
 
+# Finding types reviewed for an IG1 id and deliberately left without one.
+UNMAPPED_FINDINGS: dict[str, str] = {
+    "AUTH-9230": "password hashing rounds is credential-storage hardening; the IG1 password "
+    "safeguard is about unique, strong passwords, so no IG1 id fits honestly",
+}
+
 _REFS_TOKEN = re.compile(r"\bcis_(\d+)_(\d+)\b")
 _PREFIX_TOKEN = re.compile(r"CIS_V8_PREFIX\}(\d+)\.(\d+)")
 _INTERNAL_TUPLE = re.compile(r"\"cis_v8_internal\":\s*\(([^)]*)\)")
@@ -167,12 +173,14 @@ def render_markdown(rows: list[dict[str, Any]], sources: list[str]) -> str:
         "| Safeguard | Status | Surface | Real rows | Sample rows | Note |",
         "|---|---|---|---|---|---|",
     ]
+    lines_tail = ["", "## Findings reviewed and left without an IG1 id", ""]
+    lines_tail += [f"- {k}: {v}" for k, v in sorted(UNMAPPED_FINDINGS.items())]
     lines += [
         f"| {r['safeguard']} | {r['status']} | {r['surface']} | {r['real_rows']} | "
         f"{r['sample_rows']} | {r['note']} |"
         for r in rows
     ]
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines + lines_tail) + "\n"
 
 
 def write_report(rows: list[dict[str, Any]], out_dir: Path, sources: list[str]) -> None:

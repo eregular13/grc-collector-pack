@@ -523,6 +523,9 @@ CONTROL_CIS: dict[str, list[str]] = {
     # STALE_GUEST_DAYS is direct evidence against the dormant-account safeguard.
     "Enable a host firewall": ["cis_4_4", "cis_4_5"],
     "Review and expire stale guest accounts": ["cis_5_3"],
+    # Audit logging not enabled on the host (Lynis ACCT-9628 / auditd,
+    # HardeningKitty audit policy) is direct evidence against audit-log collection.
+    "Enable audit logging": ["cis_8_2"],
 }
 
 

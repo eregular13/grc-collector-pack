@@ -3,7 +3,7 @@
 
 Safeguard ids only. REAL = a LAB/CLIENT POA&M row carries the id. SAMPLE-ONLY = only bundled sample/demo rows do. MAPPED-NO-EVIDENCE / MAPPED-INTERNAL are not evidence that a safeguard is met.
 
-safeguards=56 mapped=16 REAL=0 SAMPLE-ONLY=9 MAPPED-NO-EVIDENCE=1 MAPPED-INTERNAL=6 UNMAPPED=40
+safeguards=56 mapped=15 REAL=0 SAMPLE-ONLY=9 MAPPED-NO-EVIDENCE=2 MAPPED-INTERNAL=4 UNMAPPED=41
 
 Inputs: drop
 
@@ -27,7 +27,7 @@ Inputs: drop
 | 4.5 | SAMPLE-ONLY | refs | 0 | 1 | only bundled sample/demo rows carry this id |
 | 4.6 | UNMAPPED | - | 0 | 0 | no collector reads how assets and software are administered |
 | 4.7 | MAPPED-NO-EVIDENCE | refs | 0 | 0 | no POA&M row in these outputs; not evidence of compliance |
-| 5.1 | MAPPED-INTERNAL | internal | 0 | 0 | id is internal-only; it never reaches POA&M framework_refs |
+| 5.1 | UNMAPPED | - | 0 | 0 | identity/SaaS collectors ingest account exports but emit findings, not an account inventory; a finding cannot show the inventory exists |
 | 5.2 | SAMPLE-ONLY | refs | 0 | 3 | only bundled sample/demo rows carry this id |
 | 5.3 | SAMPLE-ONLY | refs | 0 | 3 | only bundled sample/demo rows carry this id |
 | 5.4 | MAPPED-INTERNAL | internal | 0 | 0 | id is internal-only; it never reaches POA&M framework_refs |
@@ -41,7 +41,7 @@ Inputs: drop
 | 7.3 | SAMPLE-ONLY | refs | 0 | 5 | only bundled sample/demo rows carry this id |
 | 7.4 | SAMPLE-ONLY | refs | 0 | 5 | only bundled sample/demo rows carry this id |
 | 8.1 | UNMAPPED | - | 0 | 0 | process or policy safeguard; no scanner output can show it is met or missed (audit-log collection itself is covered by another safeguard) |
-| 8.2 | MAPPED-INTERNAL | internal | 0 | 0 | id is internal-only; it never reaches POA&M framework_refs |
+| 8.2 | MAPPED-NO-EVIDENCE | refs | 0 | 0 | no POA&M row in these outputs; not evidence of compliance |
 | 8.3 | UNMAPPED | - | 0 | 0 | no collector reads log storage capacity |
 | 9.1 | UNMAPPED | - | 0 | 0 | no collector identifies browser or mail-client versions as such |
 | 9.2 | UNMAPPED | - | 0 | 0 | dns_email checks SPF/DKIM/DMARC records only; nothing reads DNS filtering |
@@ -65,3 +65,7 @@ Inputs: drop
 | 17.1 | UNMAPPED | - | 0 | 0 | process or policy safeguard; no scanner output can show it is met or missed |
 | 17.2 | UNMAPPED | - | 0 | 0 | process or policy safeguard; no scanner output can show it is met or missed |
 | 17.3 | UNMAPPED | - | 0 | 0 | process or policy safeguard; no scanner output can show it is met or missed |
+
+## Findings reviewed and left without an IG1 id
+
+- AUTH-9230: password hashing rounds is credential-storage hardening; the IG1 password safeguard is about unique, strong passwords, so no IG1 id fits honestly
