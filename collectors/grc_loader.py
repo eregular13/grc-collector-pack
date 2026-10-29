@@ -364,7 +364,13 @@ def _load(*, run_at: datetime | None = None) -> dict:
         collect_finding_merges(after_weakness, records, detail="dedupe_hardening")
     )
     merged_n = max(0, len(raw) - len(records))
-    now = iso_now()
+    # F2: evidences.csv stamps use the run clock (ledger run_at), not a second
+    # wall-clock read. SOURCE_DATE_EPOCH already freezes that clock.
+    now = (
+        run_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if run_at is not None
+        else iso_now()
+    )
     try:
         kev_catalog = load_kev_catalog()
     except KevSnapshotError as exc:
