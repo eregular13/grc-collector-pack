@@ -887,7 +887,7 @@ def test_use_existing_in_cli_alias_and_docs(tmp_path: Path) -> None:
 
 
 def test_prior_out_carries_poam_ids_and_clears_ledger_lost(tmp_path: Path) -> None:
-    """Second prove with --prior-out keeps IDs; LEDGER_LOST clears; new=0 / closed=0."""
+    """Second prove with --prior-out keeps IDs; first-run note (no LEDGER_LOST); new=0 / closed=0."""
     dest = tmp_path / "prove"
     _stage_tiny_nmap_pack_drop(dest / "in")
     first = prove_ciso(root=ROOT, dest=dest, use_existing_in=True)
@@ -895,7 +895,11 @@ def test_prior_out_carries_poam_ids_and_clears_ledger_lost(tmp_path: Path) -> No
     out1 = Path(first["out_dir"])
     poam1 = (out1 / "poam" / "poam.csv").read_text(encoding="utf-8")
     summary1 = json.loads((out1 / "summary.json").read_text(encoding="utf-8"))
-    assert "LEDGER_LOST" in (summary1.get("ledger_warnings") or [])
+    # PQ-3 UX: true first-run does not put LEDGER_LOST in ledger_warnings
+    assert "LEDGER_LOST" not in (summary1.get("ledger_warnings") or [])
+    assert summary1.get("ledger_first_run") is True
+    note = str(summary1.get("ledger_first_run_note") or "")
+    assert note.startswith("new ledger created")
     import csv
     from io import StringIO
 

@@ -6,6 +6,7 @@ Parse-only. Does not run nuclei, nikto, Nessus, or sslscan, and does not call a 
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -530,6 +531,9 @@ def parse_file(path: Path) -> list[dict]:
     except Exception:
         return records
 
+    # prior-unit PQ-1 preferred product insertion: collapse per (image,PkgName) here or keep
+    # per-CVE for CISO vulns and roll on POA&M path (see scripts/fixstack/rollup.py).
+    # prior-unit: mint assets for image/scan Targets (e.g. example/db:1.0), not one per package.
     if _is_trivy(payload):
         trivy = _trivy_rows(payload)
         if not trivy:
@@ -537,18 +541,45 @@ def parse_file(path: Path) -> list[dict]:
         trivy_created = ""
         if isinstance(payload, dict):
             trivy_created = str(payload.get("CreatedAt") or payload.get("created_at") or "")
+        # First pass: mint one asset per image/scan Target before vulns (CSV FK order).
+        image_targets: list[tuple[str, dict[str, Any]]] = []
+        seen_targets: set[str] = set()
+        for vuln in trivy:
+            target = str(vuln.get("_target") or "image").strip() or "image"
+            ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
+            key = target.lower()
+            if key not in seen_targets:
+                seen_targets.add(key)
+                image_targets.append((target, ids))
+        for target, ids in image_targets:
+            add_asset(target, ids)
         for vuln in trivy:
             vid = str(vuln.get("VulnerabilityID") or vuln.get("id") or "CVE-UNKNOWN")
             target = str(vuln.get("_target") or "image")
             ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
-            add_asset(target, ids)
             klass = str(vuln.get("_class") or "vuln")
             is_cve = vid.upper().startswith("CVE")
+            pkg = str(vuln.get("PkgName") or "").strip()
+            fixed = str(
+                vuln.get("FixedVersion")
+                or vuln.get("fixed_version")
+                or vuln.get("FixedVersion")
+                or ""
+            ).strip()
+            # Optional prior-unit: "Upgrade X to Y" as fixed-version *hint* only
+            title = str(vuln.get("Title") or "")
+            desc = str(vuln.get("Description") or vuln.get("PkgName") or vid)
+            if not fixed:
+                m = re.search(r"(?i)upgrade\s+(\S+)\s+to\s+(\S+)", f"{title} {desc}")
+                if m:
+                    fixed = m.group(2).strip(".,;")
             extra_blob: dict[str, Any] = {
                 "cve": vid if is_cve else "",
-                "pkg": vuln.get("PkgName"),
+                "pkg": pkg or vuln.get("PkgName"),
                 "class": klass,
             }
+            if fixed:
+                extra_blob["fixed_version_hint"] = fixed
             # CVE rows stay on cve:CVE-… (master). rule/check_id is only for
             # misconfig/secret IDs (KSV/AVD/DS/RuleID).
             if not is_cve:
@@ -563,16 +594,21 @@ def parse_file(path: Path) -> list[dict]:
             )
             if trivy_created:
                 extra["scan_time"] = trivy_created
+            # Attach finding to image target asset (not one asset per package).
+            assets = [target]
+            if pkg and pkg.lower() not in {target.lower(), ""}:
+                # keep package name in description/extra only — grain stays image+package on rollup
+                pass
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
                     ref_id=make_ref(SOURCE, f"{vid}-{target}"),
                     name=str(vuln.get("Title") or vid),
-                    description=str(vuln.get("Description") or vuln.get("PkgName") or vid),
+                    description=desc,
                     severity=vuln.get("Severity") or "medium",
                     category="vulnerability",
-                    assets=[target],
+                    assets=assets,
                     labels=LABELS + ["trivy"],
                     collected_at=now,
                     extra=extra,

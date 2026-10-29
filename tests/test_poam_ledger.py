@@ -526,8 +526,12 @@ def test_dropped_unseen_open_id_is_listed_not_closed() -> None:
 
 
 def test_format_ledger_warning_line_first_run_note() -> None:
+    # PQ-3: first-run renders plain note, not LEDGER_LOST (...).
+    assert format_ledger_warning_line(
+        [LEDGER_LOST], estate_kind="DEMO", first_run_note="new ledger created, 3 items"
+    ) == "new ledger created, 3 items"
     assert format_ledger_warning_line([LEDGER_LOST], estate_kind="DEMO") == (
-        f"{LEDGER_LOST} ({LEDGER_LOST_FIRST_RUN_NOTE})"
+        "new ledger created, 0 items"
     )
     assert format_ledger_warning_line(
         [LEDGER_LOST], estate_kind="DEMO", first_run=False
@@ -698,10 +702,11 @@ def test_ledger_lost_after_history_is_not_first_run_note(
     monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
     write_canonical("mixed", [rec, _rec_as_asset(rec)])
     first = load()
-    assert LEDGER_LOST in first["ledger_warnings"]
-    assert LEDGER_LOST_FIRST_RUN_NOTE in (
-        tmp_path / "EXECUTIVE_SUMMARY.md"
-    ).read_text(encoding="utf-8")
+    # PQ-3: true first-run strips LEDGER_LOST; plain note only.
+    assert LEDGER_LOST not in first["ledger_warnings"]
+    assert "new ledger created" in (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(
+        encoding="utf-8"
+    )
     (tmp_path / "poam" / "poam-ledger.json").unlink()
     (incoming / "poam" / "poam-ledger.json").unlink(missing_ok=True)
     second = load()
@@ -709,8 +714,10 @@ def test_ledger_lost_after_history_is_not_first_run_note(
     exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     poam_md = (tmp_path / "poam" / "poam.md").read_text(encoding="utf-8")
     assert LEDGER_LOST in exec_text
+    assert "new ledger created" not in exec_text
     assert LEDGER_LOST_FIRST_RUN_NOTE not in exec_text
     assert LEDGER_LOST in poam_md
+    assert "new ledger created" not in poam_md
     assert LEDGER_LOST_FIRST_RUN_NOTE not in poam_md
 
 
@@ -727,14 +734,15 @@ def test_first_run_ledger_lost_is_a_note_on_sample_surfaces(
     monkeypatch.delenv("GRC_POAM_LIGHTER", raising=False)
     write_canonical("mixed", [rec, _rec_as_asset(rec)])
     summary = load()
-    assert LEDGER_LOST in summary["ledger_warnings"]
+    assert LEDGER_LOST not in summary["ledger_warnings"]
+    assert "new ledger created" in str(summary.get("ledger_first_run_note") or "")
     exec_text = (tmp_path / "EXECUTIVE_SUMMARY.md").read_text(encoding="utf-8")
     poam_md = (tmp_path / "poam" / "poam.md").read_text(encoding="utf-8")
-    assert LEDGER_LOST in exec_text
-    assert LEDGER_LOST_FIRST_RUN_NOTE in exec_text
-    assert LEDGER_LOST in poam_md
-    assert LEDGER_LOST_FIRST_RUN_NOTE in poam_md
-
+    assert "Ledger note:" in exec_text
+    assert "new ledger created" in exec_text
+    assert LEDGER_LOST not in exec_text
+    assert "new ledger created" in poam_md
+    assert LEDGER_LOST not in poam_md or "ledger_note:" in poam_md
 
 def test_migration_map_name_to_asset_id_port_keeps_id_and_earliest_date() -> None:
     """Fingerprint inputs change (name-based → asset-ID+port): keep existing ID and earliest detection date."""

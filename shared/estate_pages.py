@@ -1856,6 +1856,7 @@ class PageContext:
     ledger_warnings: list[str] = field(default_factory=list)
     ledger_dropped_poam_ids: list[str] = field(default_factory=list)
     ledger_first_run: bool = True
+    ledger_first_run_note: str = ""
 
 
 def build_executive_summary(ctx: PageContext) -> str:
@@ -1905,7 +1906,23 @@ def build_executive_summary(ctx: PageContext) -> str:
         if ledger_open and ledger_open != headline_open:
             lines.append(f"Ledger open including excluded: {ledger_open}.")
         lines.append("")
-    if ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
+    if ctx.ledger_first_run and (
+        ctx.ledger_first_run_note
+        or (ctx.ledger_warnings and "LEDGER_LOST" in ctx.ledger_warnings)
+    ):
+        from shared.poam_ledger import format_ledger_warning_line
+
+        note_line = format_ledger_warning_line(
+            ctx.ledger_warnings,
+            ctx.ledger_dropped_poam_ids,
+            estate_kind=stamp.kind,
+            first_run=True,
+            first_run_note=ctx.ledger_first_run_note,
+        )
+        if note_line:
+            lines.append(f"Ledger note: {note_line}.")
+            lines.append("")
+    elif ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
         from shared.poam_ledger import format_ledger_warning_line
 
         warn_line = format_ledger_warning_line(
@@ -1913,6 +1930,7 @@ def build_executive_summary(ctx: PageContext) -> str:
             ctx.ledger_dropped_poam_ids,
             estate_kind=stamp.kind,
             first_run=ctx.ledger_first_run,
+            first_run_note=ctx.ledger_first_run_note,
         )
         if warn_line:
             lines.append(f"Ledger warning: {warn_line}.")
