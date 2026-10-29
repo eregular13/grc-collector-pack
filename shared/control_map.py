@@ -1651,6 +1651,55 @@ def _highvalue_identity_playbook(rec: dict[str, Any]) -> dict[str, str]:
     }
 
 
+_LINUX_HARDENING_TOOLS = frozenset({"lynis", "openscap", "oscap"})
+_LINUX_HARDENING_FIX = {
+    "audit_logging": (
+        "Install and enable auditd (and audit rules) so security events are recorded. "
+        "This is a Lynis/OpenSCAP posture finding, not a CVE."
+    ),
+    "password_policy": (
+        "Set password hashing rounds, minimum length and aging in /etc/login.defs and PAM. "
+        "This is a Lynis/OpenSCAP posture finding, not a CVE."
+    ),
+    "account_lockout": (
+        "Configure pam_faillock (or pam_tally2) to lock accounts after repeated failures. "
+        "This is a Lynis/OpenSCAP posture finding, not a CVE."
+    ),
+    "session_lock": (
+        "Set a shell/session inactivity timeout (TMOUT or the desktop lock policy). "
+        "This is a Lynis/OpenSCAP posture finding, not a CVE."
+    ),
+    "malware_protection": (
+        "Install and enable a Linux malware scanner or EDR agent. "
+        "This is a Lynis/OpenSCAP posture finding, not a CVE."
+    ),
+    "encryption_in_transit": (
+        "Require encrypted remote sessions (SSH, TLS) and disable plaintext services. "
+        "This is a Lynis/OpenSCAP posture finding, not a CVE."
+    ),
+}
+_LINUX_HARDENING_DEFAULT = (
+    "Apply the Lynis/OpenSCAP suggestion for this check on the Linux host. "
+    "This is a Lynis/OpenSCAP posture finding, not a CVE."
+)
+
+
+def _is_linux_hardening(rec: dict[str, Any]) -> bool:
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    if str(extra.get("tool") or "").lower() in _LINUX_HARDENING_TOOLS:
+        return True
+    labels = {str(x).lower() for x in (rec.get("labels") or [])}
+    return bool(labels & _LINUX_HARDENING_TOOLS)
+
+
+def _linux_hardening_fix(rec: dict[str, Any], fix: str) -> str | None:
+    """Linux fix text for Lynis/OpenSCAP rows that fell into a Windows-only playbook."""
+    if "HardeningKitty" not in fix or not _is_linux_hardening(rec):
+        return None
+    extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+    return _LINUX_HARDENING_FIX.get(str(extra.get("control_key") or ""), _LINUX_HARDENING_DEFAULT)
+
+
 def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
     """Return stamps + a recommended fix. Does not invent CVEs or due dates."""
     extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
@@ -2238,6 +2287,10 @@ def _map_finding_legacy(rec: dict[str, Any]) -> dict[str, Any]:
             "Generic fallback — no type-specific playbook is mapped for this finding type."
         )
         generic = True
+
+    linux_fix = _linux_hardening_fix(rec, fix)
+    if linux_fix:
+        fix = linux_fix
 
     include = sev != "info"
     return {
