@@ -31,6 +31,7 @@ SENSOR_COLLECTORS = {
     "identity": "identity_ad.py",
     "saas": "saas_idp.py",
     "honeypot": "honeypot.py",
+    "code": "code_secrets.py",
 }
 CISO_CSVS = (
     "assets.csv",
