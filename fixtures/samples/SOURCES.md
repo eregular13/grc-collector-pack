@@ -28,6 +28,12 @@ BloodHound / Trivy / osquery fixtures below.
 | `xccdf/rule-results.xml` | synthetic | XCCDF 1.2 `rule-result@severity` | Fail low / medium / high + one pass. |
 | `enum4linux/enum4linux-ng.json` | synthetic | enum4linux-ng key shape (`target.host`, `sessions.null`, share listing) | One host, null session, Domain Admins, IPC$ + NETLOGON. |
 | `pingcastle/one.xml` | byte-true | [DefectDojo/django-DefectDojo](https://github.com/DefectDojo/django-DefectDojo) `unittests/scans/pingcastle/one.xml` (Engine 3.2.0.1) | One `A-MinPwdLen` rule. No `ListNoPreAuth`, no extra `HealthCheckGroupData`. |
+| `grype/synthetic_grype-image.json` | synthetic | Anchore Grype JSON output shape (`grype <image> -o json`: `matches[].vulnerability{id,severity,fix}`, `relatedVulnerabilities`, `artifact`, `source.target`, `descriptor`) | 4 matches on one image: same CVE in two packages, GHSA with related CVE, wont-fix. CVE-2099-* / example.test. |
+| `xccdf/synthetic_arf-oval-cves.xml` | synthetic | NIST ARF 1.1 + XCCDF 1.2 + OVAL 5.11 results schemas (`oscap xccdf eval` ARF layout) | Failing rule checking two OVAL patch defs (CVE refs), CVE `<ident>` rule, OVAL vulnerability def true with no rule-result, false/passing controls. |
+| `xccdf/synthetic_oval-results.xml` | synthetic | OVAL 5.11 results schema (`oscap oval eval` results) | One vulnerability def true, one false, one inventory def. |
+| `wazuh/synthetic_vuln-alerts.jsonl` | synthetic | Wazuh 4.x vulnerability-detector alert shape (`data.vulnerability{cve,package,severity,status}`) | Active on two agents; one Active then Solved. |
+| `wazuh/synthetic_vuln-states.json` | synthetic | Wazuh 4.8+ `wazuh-states-vulnerabilities-*` index document shape (`hits.hits[]._source`) | One package vulnerability. |
+| `wazuh/synthetic_vuln-api-host-h.json` | synthetic | Wazuh <=4.7 API `GET /vulnerability/{agent_id}` (`data.affected_items[]`) | One VALID, one OBSOLETE. |
 | `pingcastle/synthetic_group_membership.xml` | synthetic | Pack-constructed | 8 group-membership RiskIds (`P-BackupOperators` … `P-Administrators`) + 0-point rule. 0-member groups must emit no finding. |
 | `greenbone/one_vuln.xml` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.xml` (GMP 9.0) | One `result` kept (Firefox NVT, CVSS 10.0, **both** CVE-2023-4573 and CVE-2023-4574). Restored report `timestamp` / `scan_start` (`2023-09-28T14:48:02Z`). |
 | `greenbone/one_vuln.csv` | trimmed real | DefectDojo `unittests/scans/openvas/one_vuln.csv` | Header + the one SSH weak-cipher row. |

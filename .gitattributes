@@ -15,3 +15,6 @@ fixtures/lab-drop/** text eol=lf
 fixtures/** text eol=lf
 scripts/** text eol=lf
 *.sh text eol=lf
+# Binary garbage stress fixtures contain raw CR/LF bytes on purpose. The
+# fixtures/** text rule above would mark them modified on every checkout.
+fixtures/keep-stress/garbage-binary/** -text

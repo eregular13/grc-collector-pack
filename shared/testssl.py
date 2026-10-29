@@ -28,6 +28,23 @@ TESTSSL_TITLES: dict[str, str] = {
 _SKIP_SEV = frozenset({"ok", "info", "information", "debug", "warnok"})
 _KEEP_SEV = frozenset({"low", "medium", "high", "critical", "warn", "warning"})
 _SCAN_ERROR = frozenset({"warn", "warning"})
+# prior-unit collector PQ-2: drop overall grade rows at emit (not Exploitable).
+_GRADE_IDS = frozenset(
+    {
+        "overall_grade",
+        "overall-grade",
+        "grade",
+        "final_score",
+        "final-score",
+        "rating",
+    }
+)
+_FAIL_CONNECT_RE = re.compile(
+    r"(couldn.?t connect|could not connect|doesn.?t seem to be a tls|"
+    r"not a tls/ssl|openssl handshake didn.?t succeed|"
+    r"no server certificate could be retrieved)",
+    re.I,
+)
 # Pretty --jsonfile-pretty scanResult list sections (testssl 3.x).
 _SKIP_SECTIONS = frozenset(
     {
@@ -76,19 +93,30 @@ def is_testssl(payload: Any) -> bool:
 
 
 def _emit(row: dict[str, Any], host: str, ip: str = "") -> dict[str, Any] | None:
+    # prior-unit collector PQ-2: grade drop + failed-connect coverage-gap at emit so
+    # SAMPLE/farm paths get the same rules (fixstack hook remains for lab rollup).
     sev = str(row.get("severity") or row.get("Severity") or "").strip().lower()
     finding = str(row.get("finding") or row.get("Finding") or "")
     fid = str(row.get("id") or row.get("Id") or row.get("cve") or "testssl")
-    blob = f"{fid} {finding} {sev}".lower()
-    if "not vulnerable" in blob:
+    port = str(row.get("port") or row.get("Port") or "").strip()
+    blob = f"{fid} {finding} {sev}"
+    blob_l = blob.lower()
+    # CVE always beats posture/fail drop heuristics
+    has_cve = bool(re.search(r"\bCVE-\d{4}-\d+\b", blob, re.I)) or str(
+        row.get("cve") or ""
+    ).upper().startswith("CVE-")
+    if "not vulnerable" in blob_l:
+        return None
+    fid_norm = re.sub(r"[^a-z0-9]+", "_", fid.lower()).strip("_")
+    if not has_cve and (fid_norm in _GRADE_IDS or fid_norm.startswith("overall_grade") or "overall grade" in blob_l):
         return None
     # "not offered" is noise only when the row is already OK/INFO.
     # TLS 1.2/1.3 not offered is a real CRITICAL/HIGH/MEDIUM/LOW finding.
-    if "not offered" in blob and sev in _SKIP_SEV:
+    if "not offered" in blob_l and sev in _SKIP_SEV:
         return None
-    if sev in _SKIP_SEV:
+    if sev in _SKIP_SEV and not has_cve:
         return None
-    if sev and sev not in _KEEP_SEV:
+    if sev and sev not in _KEEP_SEV and not has_cve:
         return None
     if not sev:
         sev = "high"
@@ -96,15 +124,21 @@ def _emit(row: dict[str, Any], host: str, ip: str = "") -> dict[str, Any] | None
     if sev in _SCAN_ERROR:
         labels.append("scan-error")
         sev = "info"
+    if not has_cve and _FAIL_CONNECT_RE.search(blob):
+        labels.append("coverage-gap")
+        labels.append("failed-connect")
+        sev = "info"
     sev = canon_severity(sev)
+    host_port = f"{host}:{port}" if host and port and ":" not in host else host
     return {
-        "host": host,
+        "host": host_port,
         "ip": ip,
         "id": fid,
         "severity": sev,
         "finding": finding or fid,
         "cve": str(row.get("cve") or row.get("CVE") or ""),
         "labels": labels,
+        "port": port,
     }
 
 

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic `oscap oval eval` results output shaped from the public OVAL 5.11
+     results schema. host-d.example.test / CVE-2099-* are reserved, invented values. -->
+<oval_results xmlns="http://oval.mitre.org/XMLSchema/oval-results-5" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5">
+  <generator><oval:product_name>cpe:/a:open-scap:oscap</oval:product_name><oval:schema_version>5.11.2</oval:schema_version><oval:timestamp>2099-01-02T07:00:00</oval:timestamp></generator>
+  <oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+    <definitions>
+      <definition class="vulnerability" id="oval:org.example.test:def:101" version="1">
+        <metadata><title>CVE-2099-43001 examplepkg</title>
+          <reference ref_id="CVE-2099-43001" source="CVE"/>
+          <advisory><severity>Critical</severity></advisory>
+        </metadata>
+      </definition>
+      <definition class="vulnerability" id="oval:org.example.test:def:102" version="1">
+        <metadata><title>CVE-2099-43002 not affected</title>
+          <reference ref_id="CVE-2099-43002" source="CVE"/>
+        </metadata>
+      </definition>
+      <definition class="inventory" id="oval:org.example.test:def:103" version="1">
+        <metadata><title>Example OS is installed</title>
+          <reference ref_id="cpe:/o:example:os:1" source="CPE"/>
+        </metadata>
+      </definition>
+    </definitions>
+  </oval_definitions>
+  <results>
+    <system>
+      <definitions>
+        <definition definition_id="oval:org.example.test:def:101" result="true" version="1"/>
+        <definition definition_id="oval:org.example.test:def:102" result="false" version="1"/>
+        <definition definition_id="oval:org.example.test:def:103" result="true" version="1"/>
+      </definitions>
+      <oval_system_characteristics xmlns="http://oval.mitre.org/XMLSchema/oval-system-characteristics-5">
+        <system_info><os_name>Example OS</os_name><os_version>1</os_version><architecture>x86_64</architecture>
+          <primary_host_name>host-d.example.test</primary_host_name><interfaces/></system_info>
+      </oval_system_characteristics>
+    </system>
+  </results>
+</oval_results>

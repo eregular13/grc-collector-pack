@@ -449,14 +449,31 @@ def pack_commit() -> str:
 
 
 def generated_at_local(iso_utc: str | None = None) -> str:
+    """Human stamp for estate banners.
+
+    Default: host-local wall clock (``astimezone()``, honors ``TZ``).
+    When ``SOURCE_DATE_EPOCH`` / ``GRC_RUN_TS`` is set, always render **UTC**
+    so cold SAMPLE / CI banners do not drift across timezones.
+    """
+    from shared.io_util import utc_now
+
+    sde = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
+    force_utc = bool(sde)
     raw = (iso_utc or "").strip()
     if raw:
         try:
             stamp = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            if force_utc:
+                stamp = stamp.astimezone(timezone.utc)
+                return stamp.strftime("%Y-%m-%d %H:%M UTC")
             local = stamp.astimezone()
             return local.strftime("%Y-%m-%d %H:%M %Z")
         except ValueError:
             pass
+    if force_utc:
+        return utc_now().strftime("%Y-%m-%d %H:%M UTC")
     now = datetime.now().astimezone()
     return now.strftime("%Y-%m-%d %H:%M %Z")
 
@@ -1897,6 +1914,7 @@ class PageContext:
     ledger_warnings: list[str] = field(default_factory=list)
     ledger_dropped_poam_ids: list[str] = field(default_factory=list)
     ledger_first_run: bool = True
+    ledger_first_run_note: str = ""
 
 
 def build_executive_summary(ctx: PageContext) -> str:
@@ -1946,7 +1964,23 @@ def build_executive_summary(ctx: PageContext) -> str:
         if ledger_open and ledger_open != headline_open:
             lines.append(f"Ledger open including excluded: {ledger_open}.")
         lines.append("")
-    if ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
+    if ctx.ledger_first_run and (
+        ctx.ledger_first_run_note
+        or (ctx.ledger_warnings and "LEDGER_LOST" in ctx.ledger_warnings)
+    ):
+        from shared.poam_ledger import format_ledger_warning_line
+
+        note_line = format_ledger_warning_line(
+            ctx.ledger_warnings,
+            ctx.ledger_dropped_poam_ids,
+            estate_kind=stamp.kind,
+            first_run=True,
+            first_run_note=ctx.ledger_first_run_note,
+        )
+        if note_line:
+            lines.append(f"Ledger note: {note_line}.")
+            lines.append("")
+    elif ctx.ledger_warnings or ctx.ledger_dropped_poam_ids:
         from shared.poam_ledger import format_ledger_warning_line
 
         warn_line = format_ledger_warning_line(
@@ -1954,6 +1988,7 @@ def build_executive_summary(ctx: PageContext) -> str:
             ctx.ledger_dropped_poam_ids,
             estate_kind=stamp.kind,
             first_run=ctx.ledger_first_run,
+            first_run_note=ctx.ledger_first_run_note,
         )
         if warn_line:
             lines.append(f"Ledger warning: {warn_line}.")

@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""Parse Nuclei JSONL, Trivy JSON, Greenbone XML/CSV/JSON, Nikto, Nessus XML, sslscan, or SARIF.
+"""Parse Nuclei JSONL, Trivy JSON, Grype JSON, Greenbone XML/CSV/JSON, Nikto, Nessus XML, sslscan, or SARIF.
 
 Parse-only. Does not run nuclei, nikto, Nessus, or sslscan, and does not call a Nessus API.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 from shared.asset_ids import stamp_ids
 from shared.greenbone import cvss_band, parse_greenbone
-from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.grype import grype_host_target, grype_ids, grype_scan_time, grype_target, is_grype, iter_grype_matches
+from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector, fail_closed
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
 from shared.nikto import nikto_severity
-from shared.nikto import parse_nikto
+from shared.nikto import parse_nikto, row_cves as nikto_row_cves
 from shared.sslscan import parse_sslscan
 from shared.sarif import iter_sarif_results, load_sarif
 from shared.schema import canon_severity, make_record, make_ref
@@ -138,11 +140,82 @@ def _trivy_ids(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _image_scoped_target(payload: dict[str, Any], target: str) -> str:
+    """Qualify a container-image Result Target that does not name the image.
+
+    Trivy names language/binary Results generically ("Node.js", "Python",
+    "usr/local/bin/gosu"). Used bare as the asset name, those merge findings from
+    different images into one asset. OS-package Targets already start with the
+    image name ("repo/app:1.0 (debian 12)") and stay unchanged, as do
+    filesystem/repository scans.
+    """
+    if str(payload.get("ArtifactType") or "").strip().lower() != "container_image":
+        return target
+    artifact = str(payload.get("ArtifactName") or "").strip()
+    if not artifact or not target or target.startswith(artifact):
+        return target
+    return f"{artifact} :: {target}"
+
+
+def _trivy_title(vuln: dict[str, Any], vid: str, pkg: str, is_cve: bool) -> str:
+    """Finding name that always carries PkgName (fixstack rollup groups by it).
+
+    Trivy titles for Go stdlib CVEs name a sub-package ("net/url: ..."), not the
+    PkgName ("stdlib"). Without "<id> in <PkgName>", rollup.py reads the
+    sub-package as the package and splits one package into many POA&M rows.
+    """
+    title = str(vuln.get("Title") or vid)
+    if pkg and pkg.lower() not in title.lower():
+        return f"{vid} in {pkg}" if is_cve else f"{title} ({pkg})"
+    return title
+
+
+def _trivy_distinct_targets(payload: dict[str, Any]) -> list[str]:
+    """Unique scan Targets in document order (multi-result Trivy reports)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for result in _trivy_result_blocks(payload):
+        if not isinstance(result, dict):
+            continue
+        k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
+        target = str(
+            result.get("Target") or result.get("target") or k8s.get("name") or "image"
+        ).strip() or "image"
+        if k8s.get("namespace"):
+            target = f"{k8s.get('namespace')}/{target}"
+        elif not k8s:
+            target = _image_scoped_target(payload, target)
+        key = target.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(target)
+    return out
+
+
+def _trivy_ids_for_target(payload: dict[str, Any], target: str) -> dict[str, Any]:
+    """Per-Target identity so multi-Target scans keep one asset per Target.
+
+    A container scan with an OS Target plus language/binary Targets shares one
+    digest/ImageID. Stamped on every Target, the shared digest merges them into
+    one asset and the other Targets' findings point at assets that were never
+    written. With more than one Target, image_ref is the Target and the shared
+    digest/IDs are dropped. Single-Target scans keep their ids unchanged, so
+    their asset keys and POA&M IDs do not move.
+    """
+    ids = dict(_trivy_ids(payload))
+    t = (target or "").strip() or "image"
+    if len(_trivy_distinct_targets(payload)) > 1:
+        ids["image_ref"] = t
+        ids["image_digest"] = []
+        ids["image_id"] = ""
+        ids["artifact_id"] = ""
+    return ids
+
+
 def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not isinstance(payload, dict):
         return rows
-    ids = _trivy_ids(payload)
     for result in _trivy_result_blocks(payload):
         k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
         target = str(
@@ -153,6 +226,9 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
         )
         if k8s.get("namespace"):
             target = f"{k8s.get('namespace')}/{target}"
+        elif not k8s:
+            target = _image_scoped_target(payload, target)
+        ids = _trivy_ids_for_target(payload, target)
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
                 vuln = {**vuln, "_target": target, "_class": "vuln", "_ids": ids}
@@ -283,6 +359,66 @@ def _emit_greenbone_row(row: dict[str, Any], now: str) -> tuple[str, dict]:
     )
 
 
+def _grype_records(payload: dict[str, Any], now: str, add_asset, stem: str = "") -> list[dict]:
+    """Grype JSON: one finding per match on the scanned target (Trivy-shaped).
+
+    Asset = the scan target (image/dir), not one per package. CVE rows key on
+    ``cve:<id>`` + asset like Trivy CVE rows; non-CVE ids (GHSA without a
+    related CVE) key on ``rule``. Structured CVEs: vulnerability.id and
+    relatedVulnerabilities[].id only.
+    """
+    target = grype_host_target(payload, stem)
+    ids = grype_ids(payload)
+    scan_time = grype_scan_time(payload)
+    out: list[dict] = []
+    rows = iter_grype_matches(payload)
+    if rows:
+        add_asset(target, ids)
+    for row in rows:
+        vid, pkg, cves = row["vid"], row["pkg"], row["cves"]
+        is_cve = vid.upper().startswith("CVE-")
+        primary = vid.upper() if is_cve else (cves[0] if cves else "")
+        extra: dict[str, Any] = {
+            "cve": primary,
+            "cves": cves,
+            "pkg": pkg,
+            "installed_version": row["version"],
+            "pkg_type": row["pkg_type"],
+            "class": "vuln",
+            "tool": "grype",
+        }
+        if not primary:
+            extra["rule"] = vid
+            extra["check_id"] = vid
+        elif not is_cve:
+            extra["advisory"] = vid
+        if row["fixed"]:
+            extra["fixed_version_hint"] = row["fixed"]
+        extra = stamp_ids(extra, **ids)
+        extra.update(_no_fix_extra("", "will_not_fix" if row["fix_state"] == "wont-fix" else row["fix_state"]))
+        if scan_time:
+            extra["scan_time"] = scan_time
+        shown = primary or vid
+        name = f"{shown} in {pkg}" if pkg else shown
+        out.append(
+            make_record(
+                kind="finding",
+                source=SOURCE,
+                ref_id=make_ref(SOURCE, f"grype-{vid}-{target}-{pkg}-{row['version']}"),
+                name=name,
+                description=row["description"] or name,
+                severity=row["severity"] or "medium",
+                category="vulnerability",
+                assets=[target],
+                labels=LABELS + ["grype"],
+                collected_at=now,
+                extra=extra,
+            )
+        )
+    return out
+
+
+@fail_closed("scanner")
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
     records: list[dict] = []
@@ -390,11 +526,17 @@ def parse_file(path: Path) -> list[dict]:
             url = str(row.get("url") or "/")
             msg = str(row.get("msg") or "")
             rid = str(row.get("id") or "nikto")
-            if not nikto_interesting(url, msg, rid):
+            cves = nikto_row_cves(row)
+            # A row that names a CVE is never header noise (ETag inode leak
+            # rows carry CVE-2003-1418); dropping it lost the CVE silently.
+            if not cves and not nikto_interesting(url, msg, rid):
                 continue
             host = str(row.get("host") or "unknown")
             add_asset(host)
             extra = {"url": url, "id": rid}
+            if cves:
+                extra["cves"] = cves
+                extra["cve"] = " ".join(cves)
             if row.get("scan_time"):
                 extra["scan_time"] = row.get("scan_time")
             records.append(
@@ -476,6 +618,9 @@ def parse_file(path: Path) -> list[dict]:
             records.append(rec)
         return records
 
+    if peek is not None and is_grype(peek):
+        return records + _grype_records(peek, now, add_asset, Path(path).stem)
+
     nuclei = _nuclei_rows(path)
     if nuclei:
         for row in nuclei:
@@ -530,6 +675,9 @@ def parse_file(path: Path) -> list[dict]:
     except Exception:
         return records
 
+    # prior-unit PQ-1 preferred product insertion: collapse per (image,PkgName) here or keep
+    # per-CVE for CISO vulns and roll on POA&M path (see scripts/fixstack/rollup.py).
+    # prior-unit: mint assets for image/scan Targets (e.g. example/db:1.0), not one per package.
     if _is_trivy(payload):
         trivy = _trivy_rows(payload)
         if not trivy:
@@ -537,18 +685,45 @@ def parse_file(path: Path) -> list[dict]:
         trivy_created = ""
         if isinstance(payload, dict):
             trivy_created = str(payload.get("CreatedAt") or payload.get("created_at") or "")
+        # First pass: mint one asset per image/scan Target before vulns (CSV FK order).
+        image_targets: list[tuple[str, dict[str, Any]]] = []
+        seen_targets: set[str] = set()
+        for vuln in trivy:
+            target = str(vuln.get("_target") or "image").strip() or "image"
+            ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
+            key = target.lower()
+            if key not in seen_targets:
+                seen_targets.add(key)
+                image_targets.append((target, ids))
+        for target, ids in image_targets:
+            add_asset(target, ids)
         for vuln in trivy:
             vid = str(vuln.get("VulnerabilityID") or vuln.get("id") or "CVE-UNKNOWN")
             target = str(vuln.get("_target") or "image")
             ids = vuln.get("_ids") if isinstance(vuln.get("_ids"), dict) else {}
-            add_asset(target, ids)
             klass = str(vuln.get("_class") or "vuln")
             is_cve = vid.upper().startswith("CVE")
+            pkg = str(vuln.get("PkgName") or "").strip()
+            fixed = str(
+                vuln.get("FixedVersion")
+                or vuln.get("fixed_version")
+                or vuln.get("FixedVersion")
+                or ""
+            ).strip()
+            # Optional prior-unit: "Upgrade X to Y" as fixed-version *hint* only
+            title = str(vuln.get("Title") or "")
+            desc = str(vuln.get("Description") or vuln.get("PkgName") or vid)
+            if not fixed:
+                m = re.search(r"(?i)upgrade\s+(\S+)\s+to\s+(\S+)", f"{title} {desc}")
+                if m:
+                    fixed = m.group(2).strip(".,;")
             extra_blob: dict[str, Any] = {
                 "cve": vid if is_cve else "",
-                "pkg": vuln.get("PkgName"),
+                "pkg": pkg or vuln.get("PkgName"),
                 "class": klass,
             }
+            if fixed:
+                extra_blob["fixed_version_hint"] = fixed
             # CVE rows stay on cve:CVE-… (master). rule/check_id is only for
             # misconfig/secret IDs (KSV/AVD/DS/RuleID).
             if not is_cve:
@@ -563,16 +738,21 @@ def parse_file(path: Path) -> list[dict]:
             )
             if trivy_created:
                 extra["scan_time"] = trivy_created
+            # Attach finding to image target asset (not one asset per package).
+            assets = [target]
+            if pkg and pkg.lower() not in {target.lower(), ""}:
+                # keep package name in description/extra only — grain stays image+package on rollup
+                pass
             records.append(
                 make_record(
                     kind="finding",
                     source=SOURCE,
                     ref_id=make_ref(SOURCE, f"{vid}-{target}"),
-                    name=str(vuln.get("Title") or vid),
-                    description=str(vuln.get("Description") or vuln.get("PkgName") or vid),
+                    name=_trivy_title(vuln, vid, pkg, is_cve),
+                    description=desc,
                     severity=vuln.get("Severity") or "medium",
                     category="vulnerability",
-                    assets=[target],
+                    assets=assets,
                     labels=LABELS + ["trivy"],
                     collected_at=now,
                     extra=extra,
