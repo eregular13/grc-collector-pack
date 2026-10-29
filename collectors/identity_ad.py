@@ -19,7 +19,7 @@ from shared.enum4linux import parse_enum4linux
 from shared.hardening_dedup import dedupe_hardening
 from shared.hardening_map import extra_control_fields, hk_control
 from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
-from shared.io_util import iso_now, read_csv_dicts, read_json, read_text, run_collector
+from shared.io_util import iso_now, load_json_prefer, read_csv_dicts, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.schema import canon_severity, make_record, make_ref, slug
 
@@ -773,7 +773,12 @@ def parse_file(path: Path) -> list[dict]:
     json_payload: Any = None
     if not (path.suffix.lower() == ".xml" or text.lstrip().startswith("<")):
         try:
-            json_payload = read_json(path)
+            if path.suffix.lower() in {".json", ".sarif"}:
+                json_payload = load_json_prefer(path)
+            else:
+                json_payload = read_json(path)
+        except ValueError:
+            raise
         except Exception:
             json_payload = None
     if is_cis_cat(json_payload, name=path.name, text=text):

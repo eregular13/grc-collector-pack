@@ -440,6 +440,36 @@ _LYNIS_INDEX = re.compile(r"(?im)^hardening_index\s*[:=]\s*(\d+)")
 _LYNIS_DT = re.compile(r"(?im)^report_datetime_start\s*[:=]\s*(.+)$")
 
 
+def _looks_like_lynis_text(text: str) -> bool:
+    head = text[:4000]
+    if re.search(r"(?i)\bLynis\b", head):
+        return True
+    if re.search(r"(?i)Hostname\s*=", head):
+        return True
+    if re.search(r"(?i)report_datetime", head):
+        return True
+    if _LYNIS_BANG.search(text) or _LYNIS_STAR.search(text) or _LYNIS_DAT.search(text):
+        return True
+    return False
+
+
+def _refuse_non_lynis_text(text: str, path: Path | None) -> None:
+    """Non-empty .txt that is JSON-shaped or truncated Lynis must not silent-zero."""
+    stripped = text.lstrip("\ufeff").strip()
+    if not stripped:
+        return
+    name = path.name if path is not None else ""
+    if stripped[0] in "{[":
+        raise ValueError(
+            f"{name or 'lynis'}: JSON-shaped input is not a Lynis report; refusing silent empty"
+        )
+    if _looks_like_lynis_text(text):
+        raise ValueError(
+            f"{name or 'lynis'}: Lynis-shaped report produced no rows; refusing silent empty"
+        )
+
+
+
 def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[dict]:
     """Parse a Lynis report or report.dat.
 
@@ -974,7 +1004,10 @@ def parse_file(path: Path) -> list[dict]:
         ):
             return _emit_osquery_records(osq_payload, iso_now(), path=path)
     if path.suffix.lower() in {".txt", ".log", ".dat"}:
-        return parse_lynis_report(text, iso_now(), path=path)
+        rows = parse_lynis_report(text, iso_now(), path=path)
+        if not rows:
+            _refuse_non_lynis_text(text, path)
+        return rows
     now = iso_now()
     if path.suffix.lower() == ".csv":
         mdm = parse_mdm_file(path)

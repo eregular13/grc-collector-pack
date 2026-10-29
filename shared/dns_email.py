@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from shared.io_util import iso_now, read_json, read_jsonl, read_text
+from shared.io_util import iso_now, load_json_prefer, read_json, read_jsonl, read_text
 from shared.schema import make_record, make_ref
 
 SOURCE = "dns-email"
@@ -586,18 +586,29 @@ def parse_file(path: Path) -> list[dict]:
     """Return canonical records or []. Empty / unknown invent nothing."""
     suffix = path.suffix.lower()
     name = path.name
-    if suffix in {".json", ".jsonl"}:
-        try:
-            payload = read_json(path)
-        except (OSError, json.JSONDecodeError, ValueError):
-            payload = None
-        if payload is None:
-            rows = [r for r in read_jsonl(path) if isinstance(r, (dict, list))]
-            if not rows:
-                return []
-            payload = rows if len(rows) > 1 else rows[0]
+    if suffix == ".jsonl":
+        rows = [r for r in read_jsonl(path) if isinstance(r, (dict, list))]
+        if not rows:
+            return []
+        payload = rows if len(rows) > 1 else rows[0]
+        return parse_payload(payload, filename=name)
+    if suffix == ".json":
+        payload = load_json_prefer(path)
         return parse_payload(payload, filename=name)
     text = read_text(path)
     if not text.strip():
         return []
-    return parse_text(text, filename=name)
+    stripped = text.lstrip("\ufeff").strip()
+    if stripped[0] in "{[":
+        raise ValueError(
+            f"{name}: JSON-shaped input is not an email-DNS text snapshot; refusing silent empty"
+        )
+    rows = parse_text(text, filename=name)
+    if not rows:
+        if "Certificate:" in text or "BEGIN CERTIFICATE" in text or name.lower().endswith(
+            (".pem", ".crt", ".cer")
+        ):
+            raise ValueError(
+                f"{name}: certificate-shaped text produced no rows; refusing silent empty"
+            )
+    return rows
