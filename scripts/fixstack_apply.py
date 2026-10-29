@@ -341,8 +341,36 @@ def apply_migration_to_ledger(
         if pid and pid in new_poam_ids and pid not in existing_pids:
             new_items[fp] = dict(item)
             existing_pids.add(pid)
-        elif pid and pid not in mapped_old_ids and pid in new_poam_ids and pid not in existing_pids:
-            new_items[fp] = dict(item)
+            continue
+        # Argus / prior-unit: never silently drop open (or already-excluded) items
+        # that were reobserved or carried but are off this-run poam.csv
+        # (e.g. port-only superseded_by_specific). Keep with explicit reason.
+        status = str(item.get("status") or "open").strip().lower()
+        live = status in {"open", "pending_verification", "reopened"} or bool(
+            str(item.get("excluded_reason") or "").strip()
+        )
+        if not live:
+            continue
+        if pid and pid in existing_pids:
+            continue
+        kept = dict(item)
+        reason = str(kept.get("excluded_reason") or "").strip()
+        if not reason:
+            rolled = str(kept.get("rolled_into") or "").strip()
+            decision = str(kept.get("poam_decision") or "").strip()
+            if rolled:
+                reason = (
+                    rolled
+                    if rolled.startswith("rolled_into:")
+                    else f"rolled_into:{rolled}"
+                )
+            elif decision and decision not in {"", "pending_carried"}:
+                reason = decision
+            else:
+                reason = "not_on_plan_this_run"
+            kept["excluded_reason"] = reason
+        new_items[fp] = kept
+        if pid:
             existing_pids.add(pid)
 
     doc["items"] = new_items
