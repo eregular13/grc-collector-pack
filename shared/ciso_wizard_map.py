@@ -162,17 +162,42 @@ def _write_csv(path: Path, fields: list[str], rows: Iterable[dict[str, str]]) ->
 
 
 
-def _map_control_tokens(raw: str, ref_to_name: dict[str, str], names: set[str]) -> str:
-    """Map CTL- ref_ids to applied_controls names; keep already-name tokens."""
-    parts = [p.strip() for p in re.split(r"[,;|\n]+", raw or "") if p.strip()]
+# CISO Data Wizard splits control cells on these (``_split_multi_separator``).
+_CISO_TOKEN_SPLIT = re.compile(r"[\n|;,]")
+
+
+def _map_control_tokens(
+    raw: str,
+    ref_to_name: dict[str, str],
+    names: set[str],
+    stripped_to_name: dict[str, str] | None = None,
+    name_to_ref: dict[str, str] | None = None,
+) -> str:
+    """Map control tokens to the exact applied_controls name that is imported.
+
+    The RiskAssessment wizard resolves each token to an AppliedControl in the
+    folder by exact name (older wizard) or ref_id then case-insensitive name
+    (newer wizard), and CREATES a new control for any miss. So a token must be
+    the imported name verbatim (``title [CTL-ref]``), not the suffix-stripped
+    title. A name the wizard would split (contains newline, ``|``, ``;`` or
+    ``,``) falls back to its ref_id, which the newer wizard matches first.
+    """
+    stripped_to_name = stripped_to_name or {}
+    name_to_ref = name_to_ref or {}
+    parts = [p.strip() for p in _CISO_TOKEN_SPLIT.split(raw or "") if p.strip()]
     out: list[str] = []
     for p in parts:
         if p in names:
-            out.append(p)
+            v = p
         elif p in ref_to_name and ref_to_name[p]:
-            out.append(ref_to_name[p])
+            v = ref_to_name[p]
+        elif p in stripped_to_name:
+            v = stripped_to_name[p]
         else:
-            out.append(p)
+            v = p
+        if _CISO_TOKEN_SPLIT.search(v) and name_to_ref.get(v):
+            v = name_to_ref[v]
+        out.append(v)
     seen: set[str] = set()
     uniq: list[str] = []
     for x in out:
@@ -195,7 +220,8 @@ def map_risk_scenarios_for_wizard(
 
     - threats → threat
     - existing_controls → existing_applied_controls
-    - additional_controls: CTL- ref_id → applied_controls.name (newline-separated)
+    - additional_controls: CTL- ref_id → exact imported applied_controls.name
+      (with its `` [CTL-…]`` suffix; newline-separated) so the wizard links, not creates
     - delimiter: comma (wizard/prepare path ONLY; pack SoR writers stay semicolon)
     - optional 5x5 label map (Moderate→Medium etc.), off by default, with provenance
     """
@@ -205,17 +231,23 @@ def map_risk_scenarios_for_wizard(
     header = text.splitlines()[0] if text else ""
     delim = ";" if header.count(";") >= header.count(",") else ","
     rows_in = list(csv.DictReader(text.splitlines(), delimiter=delim))
+    # Reference controls by the name they are imported under (exact), never the
+    # suffix-stripped title: the wizard creates a new control for any miss.
     ref_to_name = {
-        (r.get("ref_id") or "").strip(): strip_ref_suffix((r.get("name") or "").strip())
+        (r.get("ref_id") or "").strip(): (r.get("name") or "").strip()
         for r in controls
         if (r.get("ref_id") or "").strip()
     }
-    names = {
-        strip_ref_suffix((r.get("name") or "").strip())
+    names = {(r.get("name") or "").strip() for r in controls if (r.get("name") or "").strip()}
+    name_to_ref = {
+        (r.get("name") or "").strip(): (r.get("ref_id") or "").strip()
         for r in controls
-        if (r.get("name") or "").strip()
+        if (r.get("name") or "").strip() and (r.get("ref_id") or "").strip()
     }
-    names |= {(r.get("name") or "").strip() for r in controls if (r.get("name") or "").strip()}
+    _stripped: dict[str, set[str]] = {}
+    for n in names:
+        _stripped.setdefault(strip_ref_suffix(n), set()).add(n)
+    stripped_to_name = {k: next(iter(v)) for k, v in _stripped.items() if len(v) == 1 and k not in names}
     out_rows: list[dict[str, str]] = []
     ctl_mapped = 0
     fields = [
@@ -260,8 +292,12 @@ def map_risk_scenarios_for_wizard(
         existing = (r.get("existing_applied_controls") or r.get("existing_controls") or "").strip()
         additional = (r.get("additional_controls") or "").strip()
         before = additional
-        additional_m = _map_control_tokens(additional, ref_to_name, names)
-        existing_m = _map_control_tokens(existing, ref_to_name, names)
+        additional_m = _map_control_tokens(
+            additional, ref_to_name, names, stripped_to_name, name_to_ref
+        )
+        existing_m = _map_control_tokens(
+            existing, ref_to_name, names, stripped_to_name, name_to_ref
+        )
         if additional_m != before:
             ctl_mapped += 1
         row = {
