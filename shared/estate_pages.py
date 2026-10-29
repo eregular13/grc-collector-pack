@@ -491,6 +491,44 @@ def run_id_from_records(records: list[dict] | None) -> str:
     return NOT_RECORDED
 
 
+
+def deterministic_run_id_from_inputs(
+    in_dir: Path | str | None,
+    *,
+    collected_at: str | None = None,
+) -> str:
+    """Stable engagement run_id: sha256(sorted path+content digests [+ collected_at])[:12].
+
+    No wall clock. Empty/missing in_dir → NOT_RECORDED. Operator GRC_RUN_ID still wins
+    upstream in run_id_from_records / classify_estate(run_id=).
+    """
+    if in_dir is None:
+        return NOT_RECORDED
+    root = Path(in_dir)
+    if not root.is_dir():
+        return NOT_RECORDED
+    paths = sorted(
+        (p for p in root.rglob("*") if p.is_file()),
+        key=lambda p: str(p.relative_to(root)).replace(chr(92), "/"),
+    )
+    if not paths:
+        return NOT_RECORDED
+    h = hashlib.sha256()
+    for p in paths:
+        rel = str(p.relative_to(root)).replace(chr(92), "/")
+        h.update(rel.encode("utf-8"))
+        h.update(bytes([0]))
+        fh = hashlib.sha256()
+        with p.open("rb") as f:
+            for chunk in iter(lambda: f.read(1 << 16), b""):
+                fh.update(chunk)
+        h.update(fh.digest())
+    if collected_at:
+        h.update(bytes([0]))
+        h.update(str(collected_at).strip().encode("utf-8"))
+    return h.hexdigest()[:12]
+
+
 def _marker_in(folder: Path | None, name: str) -> bool:
     if folder is None or not folder.is_dir():
         return False

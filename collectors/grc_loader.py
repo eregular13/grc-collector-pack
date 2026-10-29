@@ -43,6 +43,7 @@ from shared.poam_rollup import (
     reason_code_of,
 )
 from shared.estate_pages import (
+    deterministic_run_id_from_inputs,
     PageContext,
     classify_estate,
     is_merged_into_alias,
@@ -389,7 +390,9 @@ def _load(*, run_at: datetime | None = None) -> dict:
         dest_in = in_dir()
     except Exception:
         dest_in = Path(os.environ["IN_DIR"]) if os.environ.get("IN_DIR") else None
-    stamp = classify_estate(records, in_dir=dest_in, generated_at=now)
+    # Prefer env GRC_RUN_ID (classify/run_id_from_records); else deterministic from in/.
+    _rid = (os.environ.get("GRC_RUN_ID") or "").strip() or deterministic_run_id_from_inputs(dest_in)
+    stamp = classify_estate(records, in_dir=dest_in, generated_at=now, run_id=_rid if _rid else None)
     estate = stamp.label
     estate_kind = stamp.kind
     assets = [r for r in records if r.get("kind") == "asset"]
