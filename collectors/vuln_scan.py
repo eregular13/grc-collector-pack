@@ -13,7 +13,7 @@ from typing import Any
 from shared.asset_ids import stamp_ids
 from shared.greenbone import cvss_band, parse_greenbone
 from shared.grype import grype_host_target, grype_ids, grype_scan_time, grype_target, is_grype, iter_grype_matches
-from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector
+from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector, fail_closed
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
 from shared.nikto import nikto_severity
@@ -418,6 +418,7 @@ def _grype_records(payload: dict[str, Any], now: str, add_asset, stem: str = "")
     return out
 
 
+@fail_closed("scanner")
 def parse_file(path: Path) -> list[dict]:
     now = iso_now()
     records: list[dict] = []
