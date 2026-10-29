@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from shared.io_util import read_text
+from shared.io_util import read_csv_dicts, read_text
 
 IP_RE = re.compile(r"\d{1,3}(?:\.\d{1,3}){3}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[mK]")
@@ -251,11 +251,9 @@ def _from_csv(text: str) -> list[dict[str, Any]] | None:
         return None
     if "priv" not in header and "perm" not in header:
         return None
-    reader = csv.DictReader(io.StringIO(sample))
+    # Refuse dup headers; never see list-valued cells from DictReader restkey.
     grouped: dict[str, dict[str, Any]] = {}
-    for row in reader:
-        if not row:
-            continue
+    for row in read_csv_dicts(sample):
         folded = {str(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
         host = folded.get("host") or folded.get("ip") or folded.get("address") or ""
         share = folded.get("share") or folded.get("disk") or ""
