@@ -156,11 +156,65 @@ def _image_scoped_target(payload: dict[str, Any], target: str) -> str:
     return f"{artifact} :: {target}"
 
 
+def _trivy_title(vuln: dict[str, Any], vid: str, pkg: str, is_cve: bool) -> str:
+    """Finding name that always carries PkgName (fixstack rollup groups by it).
+
+    Trivy titles for Go stdlib CVEs name a sub-package ("net/url: ..."), not the
+    PkgName ("stdlib"). Without "<id> in <PkgName>", rollup.py reads the
+    sub-package as the package and splits one package into many POA&M rows.
+    """
+    title = str(vuln.get("Title") or vid)
+    if pkg and pkg.lower() not in title.lower():
+        return f"{vid} in {pkg}" if is_cve else f"{title} ({pkg})"
+    return title
+
+
+def _trivy_distinct_targets(payload: dict[str, Any]) -> list[str]:
+    """Unique scan Targets in document order (multi-result Trivy reports)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for result in _trivy_result_blocks(payload):
+        if not isinstance(result, dict):
+            continue
+        k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
+        target = str(
+            result.get("Target") or result.get("target") or k8s.get("name") or "image"
+        ).strip() or "image"
+        if k8s.get("namespace"):
+            target = f"{k8s.get('namespace')}/{target}"
+        elif not k8s:
+            target = _image_scoped_target(payload, target)
+        key = target.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(target)
+    return out
+
+
+def _trivy_ids_for_target(payload: dict[str, Any], target: str) -> dict[str, Any]:
+    """Per-Target identity so multi-Target scans keep one asset per Target.
+
+    A container scan with an OS Target plus language/binary Targets shares one
+    digest/ImageID. Stamped on every Target, the shared digest merges them into
+    one asset and the other Targets' findings point at assets that were never
+    written. With more than one Target, image_ref is the Target and the shared
+    digest/IDs are dropped. Single-Target scans keep their ids unchanged, so
+    their asset keys and POA&M IDs do not move.
+    """
+    ids = dict(_trivy_ids(payload))
+    t = (target or "").strip() or "image"
+    if len(_trivy_distinct_targets(payload)) > 1:
+        ids["image_ref"] = t
+        ids["image_digest"] = []
+        ids["image_id"] = ""
+        ids["artifact_id"] = ""
+    return ids
+
+
 def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not isinstance(payload, dict):
         return rows
-    ids = _trivy_ids(payload)
     for result in _trivy_result_blocks(payload):
         k8s = result.get("_k8s") if isinstance(result.get("_k8s"), dict) else {}
         target = str(
@@ -173,6 +227,7 @@ def _trivy_rows(payload: Any) -> list[dict[str, Any]]:
             target = f"{k8s.get('namespace')}/{target}"
         elif not k8s:
             target = _image_scoped_target(payload, target)
+        ids = _trivy_ids_for_target(payload, target)
         for vuln in result.get("Vulnerabilities") or result.get("vulnerabilities") or []:
             if isinstance(vuln, dict):
                 vuln = {**vuln, "_target": target, "_class": "vuln", "_ids": ids}
@@ -623,7 +678,7 @@ def parse_file(path: Path) -> list[dict]:
                     kind="finding",
                     source=SOURCE,
                     ref_id=make_ref(SOURCE, f"{vid}-{target}"),
-                    name=str(vuln.get("Title") or vid),
+                    name=_trivy_title(vuln, vid, pkg, is_cve),
                     description=desc,
                     severity=vuln.get("Severity") or "medium",
                     category="vulnerability",
