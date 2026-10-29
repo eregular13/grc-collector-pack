@@ -183,8 +183,9 @@ def _report_scan_time(root: ET.Element) -> str:
 def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
     try:
         root = ET.fromstring(text)
-    except ET.ParseError:
-        return
+    except ET.ParseError as exc:
+        # Malformed Greenbone/OpenVAS XML is a per-file parse error, not 0 rows.
+        raise ValueError(f"greenbone XML parse error: {exc}") from exc
     report_ts = _report_scan_time(root)
     for el in root.iter():
         if _local(el.tag) != "result":
