@@ -34,6 +34,64 @@ except ImportError:  # package layout fallback
     )
 
 
+sys.path.insert(0, str(ROOT))
+from shared.trivy_image_scope import (  # noqa: E402
+    MAP_FIELDS as RENAME_MAP_FIELDS,
+    RENAME_DISPOSITION,
+    RENAME_REASON,
+    legacy_pkg_poam_id,
+    split_scoped,
+)
+
+
+def _slug(s: str) -> str:
+    import re
+
+    out = re.sub(r"[^a-zA-Z0-9]+", "-", s).strip("-").lower()
+    return out[:80] or "asset"
+
+
+def image_scope_rename_rows(
+    rows: list[dict[str, str]], ledger_path: Path, prior_ids: set[str] | None = None
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """s7b one-time map: pre-s7b pkg-rollup parents -> image-scoped parents.
+
+    Returns (migration-map rows, id-rename-map rows). Empty unless the carried
+    ledger still holds a pre-s7b parent ID, so a first run is unchanged.
+    """
+    if not ledger_path.is_file():
+        return [], []
+    try:
+        doc = json.loads(ledger_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [], []
+    items = doc.get("items") if isinstance(doc.get("items"), dict) else {}
+    held = {str(i.get("poam_id") or "").strip() for i in items.values() if isinstance(i, dict)}
+    held |= set(prior_ids or ())
+    held.discard("")
+    mig: list[dict[str, str]] = []
+    ren: list[dict[str, str]] = []
+    for r in rows:
+        asset = str(r.get("asset") or "").strip()
+        wsid = str(r.get("weakness_source_id") or "").strip()
+        new_id = str(r.get("poam_id") or "").strip()
+        got = split_scoped(asset)
+        if not got or not wsid.startswith("pkg:") or not new_id:
+            continue
+        package = wsid[4:]
+        old_id = legacy_pkg_poam_id(asset, package)
+        if not old_id or old_id == new_id or old_id not in held:
+            continue
+        reason = f"{RENAME_REASON}|{got[1]} -> {asset}"
+        mig.append({"old_id": old_id, "new_id": new_id, "disposition": RENAME_DISPOSITION, "reason": reason})
+        ren.append({"kind": "poam_id", "old_id": old_id, "new_id": new_id, "reason": reason})
+        new_ref = str(r.get("finding_ref_id") or "").strip()
+        old_ref = f"VULN-pkg-{package}-{_slug(got[1])}"[:180]
+        if new_ref and old_ref != new_ref:
+            ren.append({"kind": "vuln_ref", "old_id": old_ref, "new_id": new_ref, "reason": reason})
+    return mig, ren
+
+
 def _sh(cmd: list[str]) -> None:
     print("+", " ".join(cmd), flush=True)
     r = subprocess.run(cmd, check=False)
@@ -249,6 +307,8 @@ def apply_migration_to_ledger(
         kid = dict(child)
         kid["excluded_reason"] = f"rolled_into:{new_id}"
         kid["migration_disposition"] = disp
+        if disp == RENAME_DISPOSITION:
+            kid["_renamed"] = True
         children_by_new[new_id].append(kid)
 
     new_items: dict[str, dict] = dict(kept_items)
@@ -307,11 +367,30 @@ def apply_migration_to_ledger(
             base["prior_poam_id"] = prior_ids[0]
         base["rolled_into"] = new_id
         base["fp"] = parent_fp
-        base["child_count"] = len(kids)
+        renamed_kids = [k for k in kids if k.get("_renamed")]
+        base.pop("_renamed", None)
+        if base.get("migration_disposition") == RENAME_DISPOSITION:
+            base.pop("migration_disposition", None)
+        base["child_count"] = len(kids) - len(renamed_kids)
+        if renamed_kids:
+            base["renamed_from"] = sorted({str(k.get("poam_id") or "") for k in renamed_kids})
         new_items[parent_fp] = base
         for k in kids:
             old_fp = str(k.get("fp") or "")
             old_pid = str(k.get("poam_id") or "")
+            if k.get("_renamed"):
+                # A rename is not a closure: no Closed row, only the migration record.
+                if old_fp and old_pid != new_id:
+                    _append_mig(
+                        {
+                            "from": old_fp,
+                            "to": parent_fp,
+                            "poam_id": new_id,
+                            "original_detection_date": base.get("original_detection_date") or "",
+                            "reason": f"{RENAME_DISPOSITION}:{old_pid}->{new_id}",
+                        }
+                    )
+                continue
             closed_child = dict(k)
             closed_child["status"] = "closed"
             closed_child["excluded_reason"] = f"rolled_into:{new_id}"
@@ -422,6 +501,44 @@ def apply_migration_to_ledger(
         "closed_count": len(closed),
     }
 
+
+
+def _prior_poam_ids(prior_out: str) -> set[str]:
+    """POA&M IDs on the prior run's plan (``--prior-out``), for the s7b map only."""
+    if not prior_out:
+        return set()
+    path = Path(prior_out) / "poam" / "poam.csv"
+    if not path.is_file():
+        return set()
+    _, prior_rows = _read_csv(path)
+    return {str(r.get("poam_id") or "").strip() for r in prior_rows} - {""}
+
+
+def _write_rename_map(
+    path: Path, ledger_path: Path, pkg_rows: list[dict[str, str]], report: dict
+) -> None:
+    """s7b one-time old->new ID map (asset / VULN ref / POA&M). Only when non-empty."""
+    rows = list(pkg_rows)
+    if ledger_path.is_file():
+        try:
+            doc = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            doc = {}
+        for r in doc.get("id_renames") or []:
+            if isinstance(r, dict) and r.get("reason") == RENAME_REASON:
+                rows.append({k: str(r.get(k) or "") for k in RENAME_MAP_FIELDS})
+    seen: set[tuple[str, ...]] = set()
+    uniq = []
+    for r in rows:
+        key = tuple(r.get(k, "") for k in RENAME_MAP_FIELDS)
+        if key not in seen:
+            seen.add(key)
+            uniq.append(r)
+    if not uniq:
+        return
+    uniq.sort(key=lambda r: tuple(r.get(k, "") for k in RENAME_MAP_FIELDS))
+    _write_csv(path, list(RENAME_MAP_FIELDS), uniq)
+    report["id_rename_map"] = {"path": str(path), "rows": len(uniq)}
 
 
 def main() -> int:
@@ -566,6 +683,17 @@ def main() -> int:
         ports = load_port_map(work / "in", work / "in")
 
     map_rows = build_migration_map(old_rows, rows, posture_rows, ports)
+    prior_ids = _prior_poam_ids(os.environ.get("FIXSTACK_PRIOR_OUT", ""))
+    rename_mig, rename_map = image_scope_rename_rows(rows, out / "poam" / "poam-ledger.json", prior_ids)
+    map_rows.extend(rename_mig)
+    if rename_mig:
+        # A carried pre-s7b parent re-rolled from stale rows is the renamed item: keep only the new ID.
+        renamed_old = {m["old_id"] for m in rename_mig}
+        kept_rows = [r for r in rows if str(r.get("poam_id") or "").strip() not in renamed_old]
+        if len(kept_rows) != len(rows):
+            rows = kept_rows
+            _write_csv(poam_path, fields, rows)
+            new_ids = {(r.get("poam_id") or "").strip() for r in rows if (r.get("poam_id") or "").strip()}
     map_path = out / "poam" / "poam-id-migration.csv"
     write_migration_map(map_path, map_rows)
 
@@ -580,6 +708,7 @@ def main() -> int:
     }
     ledger_path = out / "poam" / "poam-ledger.json"
     apply_migration_to_ledger(ledger_path, map_rows, new_ids, report)
+    _write_rename_map(out / "poam" / "id-rename-map.csv", ledger_path, rename_map, report)
 
     # prior-unit: regenerate FedRAMP twin from post-fixstack ledger + plan so Open count
     # matches poam.csv (pre-fixstack twin left 5441 rows).
