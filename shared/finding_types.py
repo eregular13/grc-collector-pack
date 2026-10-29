@@ -1869,7 +1869,29 @@ def dedupe_key(rec: dict[str, Any]) -> tuple[str, str]:
         return (register_asset_key(rec), ftype)
     if not ftype or ftype == "unknown":
         ftype = finding_identity(rec) or "finding"
+    cves = _structured_cves(rec)
+    if cves and ftype not in cves:
+        # A finding type (e.g. web_xss) groups by issue class; distinct CVE ids
+        # on one asset are distinct weaknesses and must never merge. The same
+        # CVE from two scanners still shares this key.
+        ftype = f"{ftype}|{','.join(cves)}"
     return (primary_asset(rec), ftype)
+
+
+_CVE_ID_RE = re.compile(r"\bCVE-\d{4}-\d{4,}\b", re.I)
+
+
+def _structured_cves(rec: dict[str, Any]) -> list[str]:
+    """Sorted CVE ids from structured extra.cve / extra.cves (not free text)."""
+    extra = extra_dict(rec)
+    raw: list[str] = [str(extra.get("cve") or "")]
+    cves_field = extra.get("cves")
+    if isinstance(cves_field, (list, tuple)):
+        raw.extend(str(x or "") for x in cves_field)
+    elif cves_field:
+        raw.append(str(cves_field))
+    found = {m.upper() for blob in raw for m in _CVE_ID_RE.findall(blob)}
+    return sorted(found)
 
 
 def _prefer_upn_assets(rec: dict[str, Any]) -> None:

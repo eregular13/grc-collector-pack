@@ -31,6 +31,7 @@ SENSOR_COLLECTORS = {
     "identity": "identity_ad.py",
     "saas": "saas_idp.py",
     "honeypot": "honeypot.py",
+    "code": "code_secrets.py",
 }
 CISO_CSVS = (
     "assets.csv",
@@ -57,6 +58,121 @@ ENV_KEYS = (
 SKIP_INPUT_NAMES = frozenset(
     {".gitkeep", ".DS_Store", "SAMPLE.txt", "LAB.txt", "README.md", "MANIFEST"}
 )
+
+# Top-level dest_in dirs that are pipeline sinks / meta — not sensor inputs.
+NON_SENSOR_META_DIRS = frozenset(
+    {
+        "out",
+        "canonical",
+        "ciso-assistant",
+        "poam",
+        "assets",  # prior-out asset-ledger.json land
+        "evidence",
+        "simplerisk",
+        "opengrc",
+        "probo",
+        "coverage",
+        "import_preview",
+        "ocsf",
+        "iiw",
+        "raw",
+        ".git",
+    }
+)
+
+UNREAD_SENSOR_DIR = "UNREAD_SENSOR_DIR"
+
+
+class UnreadSensorDirError(RuntimeError):
+    """Non-empty input dir has no collector on the CISO SoR path."""
+
+    def __init__(self, dirs: list[str]):
+        self.dirs = list(dirs)
+        named = ", ".join(self.dirs) if self.dirs else "(none)"
+        super().__init__(
+            f"{UNREAD_SENSOR_DIR} non-empty input dir(s) with no collector: {named}. "
+            f"Known collectors: {', '.join(sorted(SENSOR_COLLECTORS))}. "
+            "Empty or absent dirs stay silent."
+        )
+
+
+# Second-pass nmap drop dirs (e.g. in/pass2/ from a --script vuln rerun).
+# Their nmap XML is landed into <stage_in>/nmap/ so inventory_nmap reads it.
+# The .nmap/.gnmap/.console copies of the same scan are duplicates and skipped.
+NMAP_PASS_DIRS = ("pass2",)
+NMAP_PASS_PREFIX = "pass2__"
+
+
+def _land_nmap_pass_dirs(dest_in: Path, stage_in: Path) -> list[str]:
+    """Copy nmap XML from known second-pass dirs into stage_in/nmap. Return names."""
+    landed: list[str] = []
+    for name in NMAP_PASS_DIRS:
+        src = Path(dest_in) / name
+        if not src.is_dir():
+            continue
+        for f in sorted(src.iterdir()):
+            if not f.is_file() or f.suffix.lower() != ".xml":
+                continue
+            head = f.read_text(encoding="utf-8", errors="replace")[:4096]
+            if "<nmaprun" not in head:
+                continue
+            target = Path(stage_in) / "nmap" / f"{NMAP_PASS_PREFIX}{f.name}"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists() or target.read_bytes() != f.read_bytes():
+                shutil.copy2(f, target)
+            landed.append(f"{name}/{f.name}")
+    return landed
+
+
+def _all_files_read(folder: Path, read_files: set[str]) -> bool:
+    """True when every input file under folder was landed (KEEP-min drop dirs)."""
+    files = [p for p in folder.rglob("*") if p.is_file() and p.name not in SKIP_INPUT_NAMES]
+    return bool(files) and all(str(p.resolve()) in read_files for p in files)
+
+
+def _pass_dir_is_read(child: Path) -> bool:
+    """A second-pass dir counts as read only when it holds nmap XML."""
+    if child.name not in NMAP_PASS_DIRS:
+        return False
+    for f in child.iterdir():
+        if f.is_file() and f.suffix.lower() == ".xml":
+            if "<nmaprun" in f.read_text(encoding="utf-8", errors="replace")[:4096]:
+                return True
+    return False
+
+
+def unread_sensor_dirs(stage_in: Path, read_files: set[str] | None = None) -> list[str]:
+    """Return sorted top-level non-empty dirs under stage_in with no collector.
+
+    Empty/absent dirs are silent. SENSOR_COLLECTORS and NON_SENSOR_META_DIRS
+    are never unread. Root-level banner files are ignored.
+    """
+    stage_in = Path(stage_in)
+    if not stage_in.is_dir():
+        return []
+    bad: list[str] = []
+    for child in sorted(stage_in.iterdir()):
+        if not child.is_dir():
+            continue
+        name = child.name
+        if name in SENSOR_COLLECTORS or name in NON_SENSOR_META_DIRS:
+            continue
+        if name.startswith("."):
+            continue
+        if _pass_dir_is_read(child):
+            continue
+        if read_files and _all_files_read(child, read_files):
+            continue
+        if _has_input_files(child):
+            bad.append(name)
+    return bad
+
+
+def assert_no_unread_sensor_dirs(stage_in: Path, read_files: set[str] | None = None) -> None:
+    bad = unread_sensor_dirs(stage_in, read_files)
+    if bad:
+        raise UnreadSensorDirError(bad)
+
 
 
 def _has_input_files(sensor_dir: Path) -> bool:
@@ -118,6 +234,31 @@ def _land_keepmin(rows: list[dict[str, Any]], dest_in: Path) -> list[dict[str, A
     return landed
 
 
+# Ledger state the loader reads from IN_DIR. KEEP-min drops stage under
+# dest_out/in, so carry these from dest_in or --prior-out is silently ignored.
+LEDGER_STATE_RELS = (
+    Path("poam") / "poam-ledger.json",
+    Path("poam") / "overrides.csv",
+    Path("assets") / "asset-ledger.json",
+    Path("assets") / "assets-overrides.csv",
+)
+
+
+def _carry_ledger_state(dest_in: Path, stage_in: Path) -> list[str]:
+    """Copy prior ledger/override files from dest_in into stage_in."""
+    copied: list[str] = []
+    for rel in LEDGER_STATE_RELS:
+        src = Path(dest_in) / rel
+        if not src.is_file():
+            continue
+        target = Path(stage_in) / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if src.resolve() != target.resolve():
+            shutil.copy2(src, target)
+        copied.append(rel.as_posix())
+    return copied
+
+
 def run_ciso_path(
     dest_in: Path,
     dest_out: Path,
@@ -148,10 +289,18 @@ def run_ciso_path(
     else:
         stage_in = dest_out / "in"
         landed = _land_keepmin(rows, stage_in)
+        _carry_ledger_state(dest_in, stage_in)
+    pass_landed = _land_nmap_pass_dirs(dest_in, stage_in)
     keepmin_sensors = {s for s in landed_sensors(landed) if s in SENSOR_COLLECTORS}
     disk_sensors = {s for s in SENSOR_COLLECTORS if _has_input_files(stage_in / s)}
     sensors = sorted(keepmin_sensors | disk_sensors)
     sensors = [s for s in sensors if _has_input_files(stage_in / s)]
+    read_files = {
+        str(Path(str(row.get("path") or "")).resolve()) for row in landed if row.get("path")
+    }
+    assert_no_unread_sensor_dirs(dest_in, read_files)
+    if stage_in.resolve() != dest_in.resolve():
+        assert_no_unread_sensor_dirs(stage_in)
     sample = (
         any(row.get("sample") for row in rows)
         or "DEMO" in scope.client_name.upper()
@@ -248,6 +397,7 @@ def run_ciso_path(
         "dest_in": str(stage_in),
         "dest_out": str(dest_out),
         "landed": [row.get("name") for row in landed] or _disk_sensor_files(stage_in),
+        "nmap_pass_landed": pass_landed,
         "sensors": sensors,
         "collectors": ran,
         "counts": {

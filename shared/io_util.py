@@ -71,8 +71,33 @@ def fixtures_dir() -> Path:
     return env_path("FIXTURES_DIR", root_dir() / "fixtures" / "demo")
 
 
+def utc_now() -> datetime:
+    """UTC datetime now, or SOURCE_DATE_EPOCH / GRC_RUN_TS when set.
+
+    Companion to ``iso_now()``. Used by grc_loader.load / apply_ledger so
+    ledger ``run_at``, event ``at``, and first_seen/last_seen freeze under
+    reproducible runs the same way evidences.csv already does.
+    Explicit caller ``run_at=`` still wins at those call sites.
+    """
+    raw = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
+    if raw:
+        try:
+            if raw.isdigit():
+                return datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            text = raw.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(text)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except (ValueError, OSError, OverflowError):
+            pass
+    return datetime.now(timezone.utc)
+
+
 def iso_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    """UTC now, or SOURCE_DATE_EPOCH / GRC_RUN_TS when set (reproducible stamps)."""
+    return utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 
 _CSV_FORMULA_ALWAYS = frozenset("=@")
@@ -203,8 +228,28 @@ def unread_input_files(source: str, suffixes: Iterable[str] | None = None) -> li
     for folder in _sensor_folders(source):
         for path in list_files(in_dir() / folder, suffixes=None):
             if not recognized_suffix(path, suffixes):
+                if _is_nmap_text_twin(path):
+                    continue
                 unread.append(path)
     return unread
+
+
+def _is_nmap_text_twin(path: Path) -> bool:
+    """nmap -oA writes .xml/.nmap/.gnmap. XML is the parsed source of truth.
+
+    A .nmap normal-output file is a human-readable copy and is not parsed; it
+    is not counted unread when a same-stem .xml sibling exists. Without the
+    XML it stays unread (XML is required; see docs/NMAP_INPUT.md).
+    """
+    if path.suffix.lower() != ".nmap":
+        return False
+    sibling = path.with_suffix(".xml")
+    if not sibling.is_file():
+        return False
+    try:
+        return "<nmaprun" in sibling.read_text(encoding="utf-8", errors="replace")[:4096].lower()
+    except OSError:
+        return False
 
 
 def unrecognized_reason(path: Path, suffixes: Iterable[str] | None) -> str:
@@ -290,8 +335,24 @@ def load_inputs(source: str, suffixes: Iterable[str] | None = None) -> tuple[lis
     return demo, True
 
 
+_UTF16_BOMS = ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"))
+
+
+def decode_text(data: bytes) -> str:
+    """Decode scanner output: UTF-16 with a BOM is decoded as UTF-16, else UTF-8.
+
+    A UTF-8 BOM is kept (callers strip ``\ufeff``) so existing behaviour holds.
+    """
+    if data[:4] in (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff"):
+        return data.decode("utf-32", errors="replace")
+    for bom, enc in _UTF16_BOMS:
+        if data.startswith(bom):
+            return data[len(bom):].decode(enc, errors="replace")
+    return data.decode("utf-8", errors="replace")
+
+
 def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="replace")
+    return decode_text(path.read_bytes())
 
 
 def read_json(path: Path) -> Any:
@@ -425,7 +486,7 @@ def _sensor_rollup(
 def _malformed_reason(path: Path) -> str | None:
     """Name truncated/invalid JSON or XML even when a parser swallows the exception."""
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff").strip()
+        raw = read_text(path).lstrip("\ufeff").strip()
     except OSError as exc:
         return f"OSError: {exc}"
     if not raw:
@@ -442,6 +503,34 @@ def _malformed_reason(path: Path) -> str | None:
         except ET.ParseError as exc:
             return f"ParseError: {exc}"
     return None
+
+
+def refuse_if_malformed(path: Path, kind: str) -> None:
+    """Raise ValueError naming the file when a parser got 0 rows from truncated/invalid input.
+
+    An empty file stays a quiet 0-row result. Call only after the parser found nothing.
+    """
+    reason = _malformed_reason(path)
+    if reason:
+        raise ValueError(f"{path.name}: unparseable {kind} file (truncated or corrupt): {reason}")
+
+
+def fail_closed(kind: str):
+    """Decorator: a parse_file that returns no rows for malformed input raises instead."""
+
+    def wrap(fn):
+        def parse_file(path: Path) -> list[dict[str, Any]]:
+            rows = fn(path)
+            if not rows:
+                refuse_if_malformed(Path(path), kind)
+            return rows
+
+        parse_file.__name__ = getattr(fn, "__name__", "parse_file")
+        parse_file.__doc__ = fn.__doc__
+        parse_file.__wrapped__ = fn  # type: ignore[attr-defined]
+        return parse_file
+
+    return wrap
 
 
 def run_collector(

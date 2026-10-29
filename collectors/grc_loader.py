@@ -19,6 +19,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.asset_ledger import AssetLedger, attach_asset_uids
+from shared.ciso_wizard_map import (
+    DEFAULT_NAME_MAX,
+    VULN_NAME_MAX,
+    unique_display_name,
+)
 from shared.control_map import (
     LIGHTER_ENV,
     extra_labels,
@@ -53,6 +58,7 @@ from shared.ciso_shape import EXCLUDED_FIELDS, assert_input_export_accounting
 from shared.finding_types import (
     dedupe_weaknesses,
     finding_identity,
+    _structured_cves,
     primary_asset,
     strip_secret_hash_from_key,
 )
@@ -164,7 +170,17 @@ VULN_CATEGORIES = {"vulnerability", "secrets", "sast"}
 
 
 def _domain() -> str:
-    return os.environ.get("GRC_DOMAIN", "Global")
+    """CISO assets/controls domain (PQ-4/5).
+
+    Default ``Global``. For Data-Wizard import into a lab/client folder, set
+    ``GRC_DOMAIN`` (or ``CISO_FOLDER_NAME``) to that folder name so
+    folder-filtered GET counts match creates. File export only; no HTTP.
+    """
+    return (
+        os.environ.get("GRC_DOMAIN")
+        or os.environ.get("CISO_FOLDER_NAME")
+        or "Global"
+    ).strip() or "Global"
 
 
 def _load_canonical() -> list[dict]:
@@ -225,7 +241,15 @@ def _dedupe(records: list[dict]) -> list[dict]:
             continue
         ref = str(rec.get("ref_id") or "")
         if kind == "finding" and (ref or finding_identity(rec)):
-            slot = (str(kind), finding_identity(rec) or ref.lower(), primary_asset(rec))
+            # Distinct structured CVE sets on one asset are distinct weaknesses
+            # (two vulners rollups on :22 and :80 share check_id + host). Same
+            # CVE set from two scanners still merges. Mirrors dedupe_key().
+            slot = (
+                str(kind),
+                finding_identity(rec) or ref.lower(),
+                primary_asset(rec),
+                ",".join(_structured_cves(rec)),
+            )
             if slot not in others:
                 others[slot] = rec
             else:
@@ -315,10 +339,14 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load(*, run_at: datetime | None = None) -> dict:
-    # One wall-clock read for the run. today (status_date) and the ledger
+    # One clock read for the run. today (status_date) and the ledger
     # share it so a midnight straddle cannot split poam.csv vs FedRAMP.
     # bind_run_clock stays UTC (scanner future-epoch cutoff; out of scope).
-    clock = run_at or datetime.now().astimezone()
+    # SOURCE_DATE_EPOCH / GRC_RUN_TS freezes the clock (ledger run_at + iso_now)
+    # when run_at is omitted — same contract as evidences.csv.
+    from shared.io_util import utc_now
+
+    clock = run_at or utc_now().astimezone()
     if clock.tzinfo is None:
         clock = clock.astimezone()
     with bind_run_clock(clock.astimezone(timezone.utc)):
@@ -346,7 +374,13 @@ def _load(*, run_at: datetime | None = None) -> dict:
         collect_finding_merges(after_weakness, records, detail="dedupe_hardening")
     )
     merged_n = max(0, len(raw) - len(records))
-    now = iso_now()
+    # F2: evidences.csv stamps use the run clock (ledger run_at), not a second
+    # wall-clock read. SOURCE_DATE_EPOCH already freezes that clock.
+    now = (
+        run_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if run_at is not None
+        else iso_now()
+    )
     try:
         kev_catalog = load_kev_catalog()
     except KevSnapshotError as exc:
@@ -378,10 +412,12 @@ def _load(*, run_at: datetime | None = None) -> dict:
     for rec in assets:
         atype = _asset_type(rec)
         extra = rec.get("extra") if isinstance(rec.get("extra"), dict) else {}
+        asset_ref = rec.get("ref_id") or make_fallback_ref(rec)
+        asset_name = str(rec.get("name") or rec.get("ref_id") or asset_ref)
         ciso_assets.append(
             [
-                rec.get("ref_id") or make_fallback_ref(rec),
-                rec.get("name") or rec.get("ref_id"),
+                asset_ref,
+                asset_name,
                 rec.get("description") or rec.get("name"),
                 domain,
                 atype,
@@ -391,6 +427,10 @@ def _load(*, run_at: datetime | None = None) -> dict:
                 extra.get("parent_assets") or "",
             ]
         )
+    # Asset display names stay as estate labels (wizard keys off name).
+    asset_name_by_ref = {
+        str(row[0]): str(row[1]) for row in ciso_assets if row[0] and row[1]
+    }
 
     vuln_findings = [r for r in findings if _is_vuln(r)]
     other_findings = [r for r in findings if not _is_vuln(r)]
@@ -416,10 +456,12 @@ def _load(*, run_at: datetime | None = None) -> dict:
 
     ciso_findings = []
     for rec in other_findings:
+        fref = str(rec.get("ref_id") or "")
         ciso_findings.append(
             [
                 rec.get("ref_id"),
-                rec.get("name"),
+                # PQ-7: unique FindingsAssessment display names across tenants.
+                unique_display_name(str(rec.get("name") or ""), fref, max_len=DEFAULT_NAME_MAX),
                 rec.get("description"),
                 ciso_finding_severity(rec.get("severity")),
                 rec.get("status") or "identified",
@@ -443,7 +485,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
         controls.append(
             [
                 cid,
-                mapped["control_name"],
+                # PQ-7: unique AppliedControl names (title [ref_id]).
+                unique_display_name(mapped["control_name"], cid, max_len=DEFAULT_NAME_MAX),
                 mapped["recommended_fix"],
                 domain,
                 "to_do",
@@ -462,17 +505,38 @@ def _load(*, run_at: datetime | None = None) -> dict:
         uniq_controls.append(row)
 
     ciso_vulns = []
+    ctl_ref_set = {str(row[0]) for row in uniq_controls if row and row[0]}
+    asset_name_set = set(asset_name_by_ref.values())
     for rec in vuln_findings:
-        cid = control_ids_by_finding.get(str(rec.get("ref_id")), "")
+        vref = str(rec.get("ref_id") or "")
+        cid = control_ids_by_finding.get(vref, "")
+        # PQ-4: assets FK must be exact imported asset **names**.
+        raw_assets = list(rec.get("assets") or [])
+        mapped_assets: list[str] = []
+        for a in raw_assets:
+            a_s = str(a or "").strip()
+            if not a_s:
+                continue
+            if a_s in asset_name_set:
+                mapped_assets.append(a_s)
+            elif a_s in asset_name_by_ref:
+                mapped_assets.append(asset_name_by_ref[a_s])
+            else:
+                # keep original; drop only when nothing maps (PQ-4 drop path
+                # is for full rewrites of legacy CSVs via map_ciso_csvs).
+                mapped_assets.append(a_s)
+        # PQ-4: control FK ⊆ exported control ref_ids.
+        ctl_fk = cid if cid in ctl_ref_set else ""
         ciso_vulns.append(
             [
                 rec.get("ref_id"),
-                rec.get("name"),
+                # PQ-8: Vulnerability.name ≤ 200 with unique [ref_id] tail.
+                unique_display_name(str(rec.get("name") or ""), vref, max_len=VULN_NAME_MAX),
                 rec.get("description"),
                 "Exploitable",
                 ciso_vuln_severity(rec.get("severity")),
-                "|".join(rec.get("assets") or []),
-                cid,
+                "|".join(mapped_assets),
+                ctl_fk,
             ]
         )
 
@@ -680,6 +744,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
                     superseded_by or winner_ref,
                     source,
                     detail,
+                    " ".join(_structured_cves(rec)),
                 ]
             )
             continue
@@ -688,6 +753,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
         if item:
             fields = apply_ledger_detection(fields, item, rec, mapped)
             status = str(item.get("status") or "open")
+        # prior-unit PQ-1 insertion point: Trivy image+package rollup lands via
+        # scripts/fixstack/rollup.py (post-prove order A after PQ-2) until PR.
         poam_rows.append(
             [
                 weakness,
@@ -833,6 +900,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
                 parent_id or kept_ref,
                 rec.get("source") or "",
                 str(merge.get("detail") or "dedupe"),
+                " ".join(_structured_cves(rec)),
             ]
         )
         c5_merges.append(merge)
@@ -1022,6 +1090,8 @@ def _load(*, run_at: datetime | None = None) -> dict:
         ),
         "ledger_warnings": list(poam_ledger.get("warnings") or []),
         "ledger_dropped_poam_ids": list(poam_ledger.get("dropped_poam_ids") or []),
+        "ledger_first_run": bool(poam_ledger.get("_first_run", False)),
+        "ledger_first_run_note": str(poam_ledger.get("first_run_note") or ""),
         "sensors": {row["source"]: row for row in sensor_rows},
         "coverage": {"sensors": sensor_rows},
         "count_basis": (
@@ -1084,6 +1154,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
         ledger_warnings=list(poam_ledger.get("warnings") or []),
         ledger_dropped_poam_ids=list(poam_ledger.get("dropped_poam_ids") or []),
         ledger_first_run=bool(poam_ledger.get("_first_run", True)),
+        ledger_first_run_note=str(poam_ledger.get("first_run_note") or ""),
     )
     write_client_pages(out_dir(), ctx)
     payload = json.dumps(summary, indent=2)

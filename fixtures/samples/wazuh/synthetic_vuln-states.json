@@ -1,0 +1,50 @@
+{
+  "hits": {
+    "total": {
+      "value": 1
+    },
+    "hits": [
+      {
+        "_index": "wazuh-states-vulnerabilities-manager",
+        "_id": "001_x_CVE-2099-44003",
+        "_source": {
+          "agent": {
+            "id": "003",
+            "name": "host-g.example.test",
+            "version": "v4.9.0"
+          },
+          "host": {
+            "os": {
+              "name": "Ubuntu",
+              "version": "24.04"
+            }
+          },
+          "package": {
+            "name": "openssh-server",
+            "version": "1:9.6p1-3",
+            "type": "deb",
+            "architecture": "amd64"
+          },
+          "vulnerability": {
+            "id": "CVE-2099-44003",
+            "severity": "High",
+            "category": "Packages",
+            "classification": "CVSS",
+            "description": "Synthetic openssh issue.",
+            "detected_at": "2099-01-02T04:00:00.000Z",
+            "published_at": "2099-01-01T00:00:00Z",
+            "reference": "https://cve.example.test/CVE-2099-49996",
+            "scanner": {
+              "vendor": "Wazuh"
+            },
+            "score": {
+              "base": 8.1,
+              "version": "3.1"
+            },
+            "under_evaluation": false
+          }
+        }
+      }
+    ]
+  }
+}
