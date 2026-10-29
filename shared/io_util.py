@@ -71,24 +71,32 @@ def fixtures_dir() -> Path:
     return env_path("FIXTURES_DIR", root_dir() / "fixtures" / "demo")
 
 
-def iso_now() -> str:
-    """UTC now, or SOURCE_DATE_EPOCH / GRC_RUN_TS when set (reproducible stamps)."""
+def utc_now() -> datetime:
+    """UTC datetime now, or SOURCE_DATE_EPOCH / GRC_RUN_TS when set.
+
+    Companion to ``iso_now()``. Used by grc_loader.load / apply_ledger so
+    ledger ``run_at``, event ``at``, and first_seen/last_seen freeze under
+    reproducible runs the same way evidences.csv already does.
+    Explicit caller ``run_at=`` still wins at those call sites.
+    """
     raw = (os.environ.get("SOURCE_DATE_EPOCH") or os.environ.get("GRC_RUN_TS") or "").strip()
     if raw:
         try:
             if raw.isdigit():
-                dt = datetime.fromtimestamp(int(raw), tz=timezone.utc)
-            else:
-                text = raw.replace("Z", "+00:00")
-                dt = datetime.fromisoformat(text)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                else:
-                    dt = dt.astimezone(timezone.utc)
-            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                return datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            text = raw.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(text)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
         except (ValueError, OSError, OverflowError):
             pass
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc)
+
+
+def iso_now() -> str:
+    """UTC now, or SOURCE_DATE_EPOCH / GRC_RUN_TS when set (reproducible stamps)."""
+    return utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 

@@ -329,10 +329,14 @@ def _write_csv(path: Path, header: list[str], rows: list[list], delimiter: str =
 
 
 def load(*, run_at: datetime | None = None) -> dict:
-    # One wall-clock read for the run. today (status_date) and the ledger
+    # One clock read for the run. today (status_date) and the ledger
     # share it so a midnight straddle cannot split poam.csv vs FedRAMP.
     # bind_run_clock stays UTC (scanner future-epoch cutoff; out of scope).
-    clock = run_at or datetime.now().astimezone()
+    # SOURCE_DATE_EPOCH / GRC_RUN_TS freezes the clock (ledger run_at + iso_now)
+    # when run_at is omitted — same contract as evidences.csv.
+    from shared.io_util import utc_now
+
+    clock = run_at or utc_now().astimezone()
     if clock.tzinfo is None:
         clock = clock.astimezone()
     with bind_run_clock(clock.astimezone(timezone.utc)):

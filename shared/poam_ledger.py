@@ -2506,7 +2506,10 @@ def apply_ledger(
     prior_existed: bool = True,
 ) -> dict[str, Any]:
     """Apply one run to the ledger. Never auto-closes."""
-    clock = run_at or datetime.now().astimezone()
+    from shared.io_util import utc_now
+
+    # Explicit run_at wins. Else SOURCE_DATE_EPOCH / GRC_RUN_TS (utc_now), else wall clock.
+    clock = run_at or utc_now().astimezone()
     if clock.tzinfo is None:
         clock = clock.astimezone()
     from shared.poam_fields import local_run_date
