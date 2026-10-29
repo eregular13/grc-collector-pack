@@ -741,6 +741,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
                     superseded_by or winner_ref,
                     source,
                     detail,
+                    " ".join(_structured_cves(rec)),
                 ]
             )
             continue
@@ -896,6 +897,7 @@ def _load(*, run_at: datetime | None = None) -> dict:
                 parent_id or kept_ref,
                 rec.get("source") or "",
                 str(merge.get("detail") or "dedupe"),
+                " ".join(_structured_cves(rec)),
             ]
         )
         c5_merges.append(merge)

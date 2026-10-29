@@ -101,6 +101,11 @@ if [[ "$VERIFY_ONLY" -eq 0 ]]; then
     echo "lab_drop_to_sor: fixstack_apply (PQ-2 testssl -> PQ-1 rollup + runtime migration map)"
     FIXSTACK_PRIOR_OUT="$PRIOR_OUT" "$PYTHON" "$ROOT/scripts/fixstack_apply.py" "$WORK"
   fi
+
+  # Every scanner CVE must land in poam.csv, excluded.csv (cves + reason) or as a
+  # rollup member. Fails closed like the Trivy PQ-1 conservation check.
+  echo "lab_drop_to_sor: CVE accounting (all scanner sources)"
+  "$PYTHON" "$ROOT/scripts/cve_accounting.py" "$WORK"
 fi
 
 echo "lab_drop_to_sor: verify prove-ciso.json honesty"
