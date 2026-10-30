@@ -509,6 +509,13 @@ def parse_lynis_report(text: str, now: str, path: Path | None = None) -> list[di
         if bang:
             rows.append(("warning", bang.group(2), bang.group(1)))
             continue
+        # A one-byte insert that corrupts the check id (e.g. [9SSH-7408]) used
+        # to drop the warning while other bang lines still parsed OK.
+        if raw.startswith("!") and "[" in raw:
+            raise ValueError(
+                f"{(path.name if path else 'lynis-report')}: Lynis warning line "
+                f"failed check-id pattern; refusing silent drop: {raw[:80]!r}"
+            )
         star = _LYNIS_STAR.match(raw)
         if star:
             rows.append(("suggestion", star.group(2), star.group(1)))
