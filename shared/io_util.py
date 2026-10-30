@@ -342,14 +342,27 @@ def decode_text(data: bytes) -> str:
     """Decode scanner output.
 
     UTF-16 (and UTF-32) with a byte-order mark is decoded as that encoding
-    (PowerShell ``Out-File`` default). Otherwise decode as UTF-8; a UTF-8 BOM
-    is kept so callers that strip ``\ufeff`` keep existing behaviour.
+    (PowerShell ``Out-File`` default). UTF-16 without a BOM is refused with
+    UnrecognizedShape so callers never silent-zero or mojibake the file.
+    Otherwise decode as UTF-8; a UTF-8 BOM is kept so callers that strip
+    ``\ufeff`` keep existing behaviour.
     """
     if data[:4] in (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff"):
         return data.decode("utf-32", errors="replace")
     for bom, enc in _UTF16_BOMS:
         if data.startswith(bom):
             return data[len(bom):].decode(enc, errors="replace")
+    # UTF-16 without a BOM (NUL in every other byte) -> clear error, no guessing
+    head = data[:4096]
+    if len(head) >= 8 and b"\x00" in head:
+        half = len(head) // 2
+        even, odd = head[0::2].count(0), head[1::2].count(0)
+        if (odd > 0.3 * half and even < 0.05 * half) or (
+            even > 0.3 * half and odd < 0.05 * half
+        ):
+            raise UnrecognizedShape(
+                "looks like UTF-16 without a byte-order mark; re-export as UTF-8 (or UTF-16 with BOM)"
+            )
     return data.decode("utf-8", errors="replace")
 
 
