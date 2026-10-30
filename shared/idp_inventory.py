@@ -128,6 +128,39 @@ def _mfa_registered(user: dict[str, Any]) -> bool | None:
     return None
 
 
+
+_GRAPH_USER_KEYS = (
+    "signInActivity",
+    "userPrincipalName",
+    "displayName",
+    "userType",
+    "isMfaRegistered",
+    "assignedRoles",
+    "accountEnabled",
+    "createdDateTime",
+    "mail",
+)
+
+
+def _refuse_corrupted_user_keys(user: dict[str, Any]) -> None:
+    """Raise when a known Graph user key is present under the wrong casing/spelling.
+
+    A single-bit flip that turns signInActivity into signInActivIty used to drop
+    stale-guest findings while the file still reported OK.
+    """
+    by_lower = {}
+    for key in user:
+        low = str(key).lower()
+        by_lower.setdefault(low, []).append(key)
+    for expected in _GRAPH_USER_KEYS:
+        hits = by_lower.get(expected.lower()) or []
+        for hit in hits:
+            if hit != expected:
+                raise ValueError(
+                    f"entra user key {hit!r} looks like corrupted {expected!r}; "
+                    "refusing silent field drop"
+                )
+
 def _last_sign_in(user: dict[str, Any]) -> datetime | None:
     activity = user.get("signInActivity")
     if isinstance(activity, dict):
@@ -175,6 +208,7 @@ def _login(user: dict[str, Any]) -> str:
 
 
 def _normalize_user(user: dict[str, Any], now: datetime) -> dict[str, Any] | None:
+    _refuse_corrupted_user_keys(user)
     name = _login(user)
     if not name:
         return None
