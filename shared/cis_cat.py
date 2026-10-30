@@ -5,6 +5,8 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import Any
 
+from shared.schema_keys import refuse_near_list_keys
+
 
 def is_cis_cat(payload: Any = None, *, name: str = "", text: str = "") -> bool:
     from shared.openscap import is_openscap
@@ -51,6 +53,18 @@ def _row_host(row: dict[str, Any], default: str) -> str:
     )
 
 
+_RESULTS_KEYS = ("results", "RuleResults", "ruleResults", "rules", "Rules", "rule-result", "rule_result")
+
+
+def _refuse_corrupt_results(container: dict[str, Any]) -> None:
+    """Raise when a results-like list sits under a near-miss key name."""
+    refuse_near_list_keys(
+        container,
+        _RESULTS_KEYS,
+        label="cis-cat payload",
+    )
+
+
 def _iter_json_rows(payload: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     host = str(
         payload.get("target")
@@ -68,6 +82,8 @@ def _iter_json_rows(payload: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]
             or report.get("Rules")
             or []
         )
+        if not raw:
+            _refuse_corrupt_results(report)
         return host, [r for r in raw if isinstance(r, dict)]
     tr = payload.get("TestResult") or payload.get("testResult")
     if isinstance(tr, dict):
@@ -75,6 +91,8 @@ def _iter_json_rows(payload: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]
         raw = tr.get("rule-result") or tr.get("rule_result") or tr.get("results") or []
         if isinstance(raw, dict):
             raw = [raw]
+        if not raw:
+            _refuse_corrupt_results(tr)
         return host, [r for r in raw if isinstance(r, dict)]
     raw = (
         payload.get("results")
@@ -85,6 +103,10 @@ def _iter_json_rows(payload: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]
     )
     if isinstance(raw, dict):
         raw = [raw]
+    if not raw:
+        # One-byte flip renaming results (e.g. to rusults) used to return OK with
+        # zero findings on a CIS-CAT-shaped export. Refuse the near-miss key.
+        _refuse_corrupt_results(payload)
     return host, [r for r in raw if isinstance(r, dict)]
 
 
