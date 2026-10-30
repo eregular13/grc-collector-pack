@@ -87,7 +87,8 @@ def test_empty_and_hostile_invent_nothing(tmp_path: Path) -> None:
 
     empty = tmp_path / "empty.json"
     empty.write_text("{}", encoding="utf-8")
-    assert parse_file(empty) == []
+    with pytest.raises(ValueError, match="empty JSON object refused"):
+        parse_file(empty)
     trunc = tmp_path / "trunc.json"
     trunc.write_text('{"domains":[{"domain":', encoding="utf-8")
     with pytest.raises(ValueError, match="refusing silent JSONL fallback"):

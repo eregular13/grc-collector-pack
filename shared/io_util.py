@@ -428,6 +428,27 @@ def read_text(path: Path) -> str:
     return decode_text(path.read_bytes()).rstrip("\x00")
 
 
+
+def _json_shape_guard(path: Path, payload: Any) -> Any:
+    """Refuse empty objects and deep nesting that parse but yield silent zeros."""
+    name = path.name
+
+    def depth(obj: Any, d: int = 0) -> int:
+        if d > 64:
+            return d
+        if isinstance(obj, dict):
+            return max([d] + [depth(v, d + 1) for v in obj.values()]) if obj else d
+        if isinstance(obj, list):
+            return max([d] + [depth(v, d + 1) for v in obj[:32]]) if obj else d
+        return d
+
+    if isinstance(payload, dict) and len(payload) == 0:
+        raise ValueError(f"{name}: empty JSON object refused (would yield silent zero rows)")
+    if depth(payload) > 64:
+        raise ValueError(f"{name}: deeply nested JSON (depth>64) refused")
+    return payload
+
+
 def read_json(path: Path) -> Any:
     """Parse a JSON file.
 
@@ -459,7 +480,7 @@ def read_json(path: Path) -> Any:
             ) from exc
     if not raw:
         raise json.JSONDecodeError("empty", raw, 0)
-    return json.loads(raw)
+    return _json_shape_guard(path, json.loads(raw))
 
 
 JSONL_SKIPS: dict[str, list[int]] = {}
@@ -505,7 +526,9 @@ def load_json_prefer(path: Path) -> Any:
                 f"{path.name}: not valid JSON ({exc.msg}); refusing silent JSONL fallback"
             ) from exc
         rows = read_jsonl(path)
-        return rows if rows else {}
+        if not rows:
+            raise ValueError(f"{path.name}: empty JSONL fallback refused")
+        return _json_shape_guard(path, rows)
 
 
 def stable_hash(*parts: str) -> str:
