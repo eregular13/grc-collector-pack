@@ -430,7 +430,7 @@ def read_text(path: Path) -> str:
 
 
 def _json_shape_guard(path: Path, payload: Any) -> Any:
-    """Refuse empty objects, deep nesting, and huge arrays that parse but yield silent zeros."""
+    """Refuse empty objects and deep nesting that parse but yield silent zeros."""
     name = path.name
 
     def depth(obj: Any, d: int = 0) -> int:
@@ -444,8 +444,6 @@ def _json_shape_guard(path: Path, payload: Any) -> Any:
 
     if isinstance(payload, dict) and len(payload) == 0:
         raise ValueError(f"{name}: empty JSON object refused (would yield silent zero rows)")
-    if isinstance(payload, list) and len(payload) >= 10000:
-        raise ValueError(f"{name}: huge JSON array ({len(payload)} elems) refused")
     if depth(payload) > 64:
         raise ValueError(f"{name}: deeply nested JSON (depth>64) refused")
     return payload

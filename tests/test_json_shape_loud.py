@@ -1,4 +1,4 @@
-"""Refuse empty / deeply nested / huge-array JSON that used to silent-zero."""
+"""Refuse empty / deeply nested JSON that used to silent-zero."""
 from __future__ import annotations
 
 import json
@@ -44,12 +44,6 @@ def test_deeply_nested_refused(tmp_path: Path) -> None:
         read_json(p)
 
 
-def test_huge_array_refused(tmp_path: Path) -> None:
-    p = tmp_path / "huge.json"
-    # 10000 elems meets the refuse threshold.
-    p.write_text(json.dumps([0] * 10000), encoding="utf-8")
-    with pytest.raises(ValueError, match="huge JSON array"):
-        read_json(p)
 
 
 def test_load_json_prefer_empty_object_refused(tmp_path: Path) -> None:
