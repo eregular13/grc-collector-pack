@@ -83,12 +83,15 @@ def test_openssl_text_pem_snapshot() -> None:
 
 
 def test_empty_and_hostile_invent_nothing(tmp_path: Path) -> None:
+    import pytest
+
     empty = tmp_path / "empty.json"
     empty.write_text("{}", encoding="utf-8")
     assert parse_file(empty) == []
     trunc = tmp_path / "trunc.json"
     trunc.write_text('{"domains":[{"domain":', encoding="utf-8")
-    assert parse_file(trunc) == []
+    with pytest.raises(ValueError, match="refusing silent JSONL fallback"):
+        parse_file(trunc)
     blank = tmp_path / "blank.txt"
     blank.write_text("\n", encoding="utf-8")
     assert parse_file(blank) == []

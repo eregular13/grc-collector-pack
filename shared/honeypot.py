@@ -447,7 +447,7 @@ def _meta_evidence(now: str, path: Path, row: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def _iter_rows(raw: str) -> list[dict[str, Any]]:
+def _iter_rows(raw: str, path: Path | None = None) -> list[dict[str, Any]]:
     text = raw.lstrip("\ufeff").strip()
     if not text:
         return []
@@ -455,7 +455,11 @@ def _iter_rows(raw: str) -> list[dict[str, Any]]:
     if text.startswith("{") or text.startswith("["):
         try:
             payload = json.loads(text)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            if path is not None and path.suffix.lower() == ".json":
+                raise ValueError(
+                    f"{path.name}: not valid JSON ({exc.msg}); refusing silent empty"
+                ) from exc
             payload = None
         if isinstance(payload, list):
             rows.extend(r for r in payload if isinstance(r, dict))
@@ -484,10 +488,10 @@ def _iter_rows(raw: str) -> list[dict[str, Any]]:
 def parse_honeypot(path: Path, raw: str, now: str) -> list[dict[str, Any]] | None:
     """Return canonical records, [] if recognized-but-empty, or None if not this format."""
     if not looks_like_honeypot_file(path, raw) and not any(
-        looks_like_honeypot_row(r) for r in _iter_rows(raw)[:3]
+        looks_like_honeypot_row(r) for r in _iter_rows(raw, path)[:3]
     ):
         return None
-    rows = _iter_rows(raw)
+    rows = _iter_rows(raw, path)
     if not rows:
         return []
     name = path.name.lower()
