@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import json
+import warnings
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -377,17 +379,30 @@ def read_json(path: Path) -> Any:
     return json.loads(raw)
 
 
+JSONL_SKIPS: dict[str, list[int]] = {}
+
+
 def read_jsonl(path: Path) -> list[Any]:
     rows: list[Any] = []
+    skipped: list[int] = []
     # Strip a leading UTF-8 BOM so line 1 still parses as JSON.
-    for line in read_text(path).lstrip("\ufeff").splitlines():
+    for lineno, line in enumerate(read_text(path).lstrip("\ufeff").splitlines(), 1):
         line = line.strip()
         if not line:
             continue
         try:
             rows.append(json.loads(line))
         except json.JSONDecodeError:
-            continue
+            skipped.append(lineno)
+    if skipped:
+        # Keep good rows; count and report skipped corrupt lines.
+        JSONL_SKIPS[str(path)] = skipped
+        msg = (
+            f"{path.name}: skipped {len(skipped)} corrupt JSONL line(s): "
+            f"{', '.join(map(str, skipped[:20]))}"
+        )
+        warnings.warn(msg, stacklevel=2)
+        logging.getLogger("shared.io_util").warning(msg)
     return rows
 
 
@@ -581,6 +596,18 @@ def run_collector(
             error = f"{type(exc).__name__}: {exc}"
         if sidecar:
             continue
+        skipped = JSONL_SKIPS.pop(str(path), None)
+        if skipped and recs:
+            issues.append(
+                {
+                    "status": "partial_parse",
+                    "file": path.name,
+                    "reason": (
+                        f"skipped {len(skipped)} corrupt JSONL line(s): "
+                        f"{', '.join(map(str, skipped[:20]))}"
+                    ),
+                }
+            )
         if recs:
             records.extend(recs)
             write_raw_copy(source, path, recs)
