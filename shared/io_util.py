@@ -462,6 +462,25 @@ def read_jsonl(path: Path) -> list[Any]:
     return rows
 
 
+def load_json_prefer(path: Path) -> Any:
+    """read_json; JSONL fallback only for non-.json/.sarif suffixes.
+
+    Broken .json must not silently become {} via a JSONL fallback.
+    An empty file stays empty (returns {}).
+    """
+    try:
+        return read_json(path)
+    except json.JSONDecodeError as exc:
+        if path.suffix.lower() in {".json", ".sarif"}:
+            if exc.msg == "empty":
+                return {}
+            raise ValueError(
+                f"{path.name}: not valid JSON ({exc.msg}); refusing silent JSONL fallback"
+            ) from exc
+        rows = read_jsonl(path)
+        return rows if rows else {}
+
+
 def stable_hash(*parts: str) -> str:
     h = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
     return h[:12]

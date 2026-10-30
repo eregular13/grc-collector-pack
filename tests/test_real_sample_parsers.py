@@ -89,14 +89,27 @@ def test_wazuh_alerts_jsonl_maps_rule_level() -> None:
     assert "Systemd: Service exited due to a failure." in names
 
 
-def test_wazuh_alerts_json_suffix_is_jsonl(tmp_path) -> None:
-    dest = tmp_path / "alerts.json"
+def test_wazuh_alerts_jsonl_suffix_parses(tmp_path) -> None:
+    dest = tmp_path / "alerts.jsonl"
     dest.write_text(
         (SAMPLES / "wazuh" / "alerts.jsonl").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     recs = host_wazuh.parse_file(dest)
     assert [r for r in recs if r["kind"] == "finding"]
+
+
+def test_wazuh_alerts_json_suffix_refuses_jsonl_body(tmp_path) -> None:
+    """A .json file that is actually JSONL must not silent-fallback to JSONL."""
+    import pytest
+
+    dest = tmp_path / "alerts.json"
+    dest.write_text(
+        (SAMPLES / "wazuh" / "alerts.jsonl").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="refusing silent JSONL fallback"):
+        host_wazuh.parse_file(dest)
 
 
 def test_wazuh_alert_rule_level_bands(tmp_path) -> None:
