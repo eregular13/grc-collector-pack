@@ -429,7 +429,34 @@ def read_text(path: Path) -> str:
 
 
 def read_json(path: Path) -> Any:
-    raw = read_text(path).lstrip("\ufeff").strip()
+    """Parse a JSON file.
+
+    Invalid UTF-8 is refused (no ``errors=replace`` mojibake): a corrupted
+    byte in a key or value must not yield a wrong row count with status OK.
+    UTF-16/32-with-BOM still goes through decode_text so PowerShell exports
+    keep working. Trailing NUL bytes are stripped only after decoding so
+    UTF-16-LE ASCII (``XX 00``) is not corrupted.
+    """
+    data = path.read_bytes()
+    head = data[:4096]
+    use_bom_path = data[:4] in (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff") or data.startswith(
+        (b"\xff\xfe", b"\xfe\xff")
+    )
+    if not use_bom_path and len(head) >= 8 and b"\x00" in head:
+        # May be UTF-16 without BOM — let decode_text raise UnrecognizedShape.
+        use_bom_path = True
+    if use_bom_path:
+        raw = decode_text(data).lstrip("\ufeff").rstrip("\x00").strip()
+    else:
+        # Strip trailing UTF-8 NULs only (safe for single-byte encoding).
+        data = data.rstrip(b"\x00")
+        try:
+            raw = data.decode("utf-8").lstrip("\ufeff").strip()
+        except UnicodeDecodeError as exc:
+            raise ValueError(
+                f"{path.name}: invalid UTF-8 at byte {exc.start}; "
+                "refusing silent replacement that would skew row counts"
+            ) from exc
     if not raw:
         raise json.JSONDecodeError("empty", raw, 0)
     return json.loads(raw)

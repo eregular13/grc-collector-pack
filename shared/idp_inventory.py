@@ -7,7 +7,7 @@ Empty / pass-only / missing MFA fields invent nothing.
 from __future__ import annotations
 
 import csv
-from shared.io_util import read_csv_dicts, read_text
+from shared.io_util import load_json_prefer, read_csv_dicts, read_text
 import json
 from datetime import datetime, timezone
 from io import StringIO
@@ -390,14 +390,21 @@ def parse_idp_inventory(payload: Any, *, now: datetime | None = None, text: str 
 
 
 def parse_idp_file(path: Path, *, now: datetime | None = None) -> dict[str, Any] | None:
-    raw = read_text(path).lstrip("\ufeff")
     if path.suffix.lower() == ".csv":
+        raw = read_text(path).lstrip("\ufeff")
         return parse_idp_inventory({}, now=now, text=raw)
-    stripped = raw.lstrip()
-    if stripped[:1] in "{[":
+    # Prefer strict JSON load so invalid UTF-8 cannot silent-miscount.
+    try:
+        text_head = read_text(path).lstrip("\ufeff").lstrip()[:1]
+    except Exception:
+        text_head = ""
+    if text_head in "{[":
         try:
-            payload = json.loads(raw) if raw.strip() else {}
-        except json.JSONDecodeError:
+            payload = load_json_prefer(path)
+        except ValueError:
+            raise
+        except Exception:
             return None
-        return parse_idp_inventory(payload, now=now, text=raw)
+        return parse_idp_inventory(payload, now=now, text="")
+    raw = read_text(path).lstrip("\ufeff")
     return parse_idp_inventory({}, now=now, text=raw)
