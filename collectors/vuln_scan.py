@@ -491,6 +491,8 @@ def parse_file(path: Path) -> list[dict]:
                 f"{path.name}: not valid JSON ({exc.msg}); refusing silent parse continuum"
             ) from exc
         peek = None
+    except ValueError:
+        raise
     except Exception:
         peek = None
     if peek is not None and is_testssl(peek):
