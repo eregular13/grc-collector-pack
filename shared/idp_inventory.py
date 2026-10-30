@@ -7,6 +7,7 @@ Empty / pass-only / missing MFA fields invent nothing.
 from __future__ import annotations
 
 import csv
+from shared.io_util import read_csv_dicts, read_text
 import json
 from datetime import datetime, timezone
 from io import StringIO
@@ -297,18 +298,8 @@ def is_idp_inventory(payload: Any, *, name: str = "", text: str = "") -> bool:
 
 
 def _csv_users(text: str) -> list[dict[str, Any]]:
-    sample = text[:4000]
-    dialect = csv.excel
-    if "," in sample or ";" in sample or "\t" in sample:
-        try:
-            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
-        except csv.Error:
-            dialect = csv.excel
-    reader = csv.DictReader(StringIO(text), dialect=dialect)
     rows: list[dict[str, Any]] = []
-    for row in reader:
-        if not row:
-            continue
+    for row in read_csv_dicts(text):
         folded: dict[str, Any] = {}
         for key, value in row.items():
             if key is None:
@@ -399,7 +390,7 @@ def parse_idp_inventory(payload: Any, *, now: datetime | None = None, text: str 
 
 
 def parse_idp_file(path: Path, *, now: datetime | None = None) -> dict[str, Any] | None:
-    raw = path.read_text(encoding="utf-8", errors="replace").lstrip("\ufeff")
+    raw = read_text(path).lstrip("\ufeff")
     if path.suffix.lower() == ".csv":
         return parse_idp_inventory({}, now=now, text=raw)
     stripped = raw.lstrip()

@@ -9,7 +9,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Iterator
 
-from shared.io_util import read_text
+from shared.io_util import read_csv_dicts, read_text
 from shared.schema import canon_severity
 
 _THREAT_SEV = {
@@ -223,11 +223,7 @@ def iter_greenbone_xml(text: str) -> Iterator[dict[str, Any]]:
 
 
 def iter_greenbone_csv(text: str) -> Iterator[dict[str, Any]]:
-    raw = text.lstrip("\ufeff")
-    reader = csv.DictReader(StringIO(raw))
-    for row in reader:
-        if not row:
-            continue
+    for row in read_csv_dicts(text):
         lower = {str(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
         host = lower.get("ip") or lower.get("hostname") or lower.get("host") or "unknown"
         if not host:

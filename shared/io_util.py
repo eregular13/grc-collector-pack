@@ -337,6 +337,61 @@ def load_inputs(source: str, suffixes: Iterable[str] | None = None) -> tuple[lis
     return demo, True
 
 
+
+def read_csv_dicts(text: str, *, delimiters: str = ",;\t") -> list[dict[str, str]]:
+    """Parse CSV text into row dicts.
+
+    Sniffs the delimiter, refuses duplicate header names, and keeps quoted
+    newlines (no pre-split). Trailing NULs are stripped by callers via read_text.
+    """
+    import csv as _csv
+    from io import StringIO as _StringIO
+
+    raw = (text or "").lstrip("\ufeff")
+    if not raw.strip():
+        return []
+    sample = raw[:8000]
+    dialect = _csv.excel
+    if any(d in sample for d in delimiters):
+        try:
+            dialect = _csv.Sniffer().sniff(sample, delimiters=delimiters)
+        except _csv.Error:
+            dialect = _csv.excel
+    probe = _csv.reader(_StringIO(raw), dialect=dialect)
+    try:
+        headers = next(probe)
+    except StopIteration:
+        return []
+    headers = [str(h or "").strip() for h in headers]
+    seen: set[str] = set()
+    dups: list[str] = []
+    for h in headers:
+        if not h:
+            continue
+        if h in seen and h not in dups:
+            dups.append(h)
+        seen.add(h)
+    if dups:
+        raise ValueError(
+            "CSV duplicate header name(s): "
+            + ", ".join(dups[:8])
+            + "; refusing a silent parse"
+        )
+    reader = _csv.DictReader(_StringIO(raw), dialect=dialect)
+    out: list[dict[str, str]] = []
+    for row in reader:
+        if not row:
+            continue
+        out.append(
+            {
+                str(k).strip(): ("" if v is None else str(v))
+                for k, v in row.items()
+                if k is not None
+            }
+        )
+    return out
+
+
 _UTF16_BOMS = ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"))
 
 
@@ -369,7 +424,8 @@ def decode_text(data: bytes) -> str:
 
 
 def read_text(path: Path) -> str:
-    return decode_text(path.read_bytes())
+    # Trailing NUL bytes invent ghost CSV rows under DictReader.
+    return decode_text(path.read_bytes()).rstrip("\x00")
 
 
 def read_json(path: Path) -> Any:
