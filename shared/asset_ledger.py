@@ -152,6 +152,9 @@ class AssetLedger:
         self._uuid_sets: dict[str, set[tuple[str, frozenset[str]]]] = {}
         self._run_sources: set[str] = set()
         self.lost_ledger = False
+        # (id_type, lower_value) -> active asset_uids. Keeps _find_match off the
+        # linear scan of every asset for each observation.
+        self._id_index: dict[tuple[str, str], set[str]] = {}
 
     # ----- persistence -------------------------------------------------
     @classmethod
@@ -182,6 +185,7 @@ class AssetLedger:
         ledger.warnings.extend(str(w) for w in (payload.get("warnings") or []) if w)
         ledger.collisions = [c for c in (payload.get("collisions") or []) if isinstance(c, dict)]
         ledger.fp_migrations = [m for m in (payload.get("fp_migrations") or []) if isinstance(m, dict)]
+        ledger._rebuild_id_index()
         return ledger
 
     def to_dict(self) -> dict[str, Any]:
@@ -276,6 +280,62 @@ class AssetLedger:
             out[key] = alias
         return out
 
+    def _index_put(self, uid: str, typ: str, value: str) -> None:
+        t = str(typ or "")
+        v = str(value or "").strip().lower()
+        if not uid or not t or not v:
+            return
+        self._id_index.setdefault((t, v), set()).add(uid)
+
+    def _index_del(self, uid: str, typ: str, value: str) -> None:
+        t = str(typ or "")
+        v = str(value or "").strip().lower()
+        bucket = self._id_index.get((t, v))
+        if not bucket:
+            return
+        bucket.discard(uid)
+        if not bucket:
+            del self._id_index[(t, v)]
+
+    def _index_asset(self, asset: dict[str, Any]) -> None:
+        uid = str(asset.get("asset_uid") or "")
+        if not uid or asset.get("status") != "active":
+            return
+        for alias in asset.get("aliases") or []:
+            if isinstance(alias, dict) and not alias.get("valid_to"):
+                self._index_put(uid, str(alias.get("type") or ""), str(alias.get("value") or ""))
+
+    def _unindex_asset(self, asset: dict[str, Any]) -> None:
+        uid = str(asset.get("asset_uid") or "")
+        if not uid:
+            return
+        for alias in asset.get("aliases") or []:
+            if isinstance(alias, dict):
+                self._index_del(uid, str(alias.get("type") or ""), str(alias.get("value") or ""))
+
+    def _rebuild_id_index(self) -> None:
+        self._id_index = {}
+        for asset in self.assets.values():
+            self._index_asset(asset)
+
+    def _indexed_candidates(self, key: str, values: list[str]) -> list[dict[str, Any]]:
+        """Active assets that carry any of ``values`` under alias type ``key``."""
+        seen: set[str] = set()
+        out: list[dict[str, Any]] = []
+        for raw in values:
+            val = str(raw or "").strip().lower()
+            if not val:
+                continue
+            for uid in self._id_index.get((key, val), ()):
+                if uid in seen:
+                    continue
+                asset = self.assets.get(uid)
+                if asset is None or asset.get("status") != "active":
+                    continue
+                seen.add(uid)
+                out.append(asset)
+        return out
+
     def _add_aliases(
         self,
         asset: dict[str, Any],
@@ -322,6 +382,7 @@ class AssetLedger:
                         "sources": [source] if source else [],
                     }
                 )
+                self._index_put(str(asset.get("asset_uid") or ""), typ, value)
 
     def _active_assets(self) -> list[dict[str, Any]]:
         return [a for a in self.assets.values() if a.get("status") == "active"]
@@ -415,6 +476,7 @@ class AssetLedger:
                 and not alias.get("valid_to")
             ):
                 alias["valid_to"] = now
+                self._index_del(str(asset.get("asset_uid") or ""), typ, value)
 
     def _stronger_conflict(self, obs: dict[str, Any], cand: dict[str, Any], match_key: str) -> bool:
         rank = STRENGTH.get(match_key, 0)
@@ -564,20 +626,23 @@ class AssetLedger:
             # Class first (image_ref), then content keys per §6.3.
             order = ("image_ref",) + CONTAINER_ORDER
             for key in order:
-                if not id_values(ids, key):
+                left = id_values(ids, key)
+                if not left:
                     continue
-                for asset in self._active_assets():
+                for asset in self._indexed_candidates(key, left):
                     if self._match_key(ids, asset, key, now, source=source, tool=tool):
                         return asset
             return None
-        if id_values(ids, "arn"):
-            for asset in self._active_assets():
+        arn_vals = id_values(ids, "arn")
+        if arn_vals:
+            for asset in self._indexed_candidates("arn", arn_vals):
                 if self._match_key(ids, asset, "arn", now, source=source, tool=tool):
                     return asset
         for key in MATCH_ORDER:
-            if not id_values(ids, key):
+            left = id_values(ids, key)
+            if not left:
                 continue
-            for asset in self._active_assets():
+            for asset in self._indexed_candidates(key, left):
                 if self._match_key(ids, asset, key, now, source=source, tool=tool):
                     return asset
         hostnames = [x.lower() for x in id_values(ids, "hostname")]
@@ -773,13 +838,10 @@ class AssetLedger:
 
     def _maybe_reassign_ip(self, asset: dict[str, Any], ids: dict[str, Any], now: str) -> None:
         for ip in id_values(ids, "ip"):
-            for other in self._active_assets():
+            for other in self._indexed_candidates("ip", [ip]):
                 if other.get("asset_uid") == asset.get("asset_uid"):
                     continue
                 other_ids = self._ids_of(other)
-                other_ips = {x.lower() for x in id_values(other_ids, "ip")}
-                if ip.lower() not in other_ips:
-                    continue
                 # Reassign only when the other host has a conflicting stronger id
                 # (DHCP reuse). An IP-only predecessor is a late-merge candidate.
                 if not self._stronger_conflict(ids, other_ids, "ip"):
@@ -832,8 +894,9 @@ class AssetLedger:
             return str(match["asset_uid"]) if match else ""
 
         # Split an IP-only predecessor before matching the new identity.
-        for asset in list(self._active_assets()):
-            self._maybe_split(asset, blob, stamp)
+        for ip in id_values(blob, "ip"):
+            for asset in self._indexed_candidates("ip", [ip]):
+                self._maybe_split(asset, blob, stamp)
 
         match = self._find_match(blob, stamp, src, tool)
         if match is None:
@@ -881,9 +944,16 @@ class AssetLedger:
         keep, drop = (a, b) if str(a.get("created") or "") <= str(b.get("created") or "") else (b, a)
         keep_uid = str(keep["asset_uid"])
         drop_uid = str(drop["asset_uid"])
+        self._unindex_asset(drop)
         for alias in drop.get("aliases") or []:
             if isinstance(alias, dict):
                 keep.setdefault("aliases", []).append(dict(alias))
+                if not alias.get("valid_to"):
+                    self._index_put(
+                        keep_uid,
+                        str(alias.get("type") or ""),
+                        str(alias.get("value") or ""),
+                    )
         for src in drop.get("sources") or []:
             if src not in keep.setdefault("sources", []):
                 keep["sources"].append(src)
@@ -914,6 +984,7 @@ class AssetLedger:
             return
         new["replaces"] = old_uid
         if old:
+            self._unindex_asset(old)
             old["status"] = "retired"
             self._log("retired", old_uid, now, reason="replaced", replacement=new_uid)
         self._log("replaces", new_uid, now, predecessor=old_uid)
@@ -937,6 +1008,7 @@ class AssetLedger:
                 continue
             asset["absent_covered_runs"] = int(asset.get("absent_covered_runs") or 0) + 1
             if asset["absent_covered_runs"] >= 2:
+                self._unindex_asset(asset)
                 asset["status"] = "retired"
                 asset["poam_status"] = "pending_verification"
                 self._log("retired", uid, stamp, reason="cm8_removal", poam="pending_verification")
@@ -949,31 +1021,79 @@ class AssetLedger:
         changed = True
         while changed:
             changed = False
+            # Strong-key merges via the id index (avoids O(n^2) pairwise scans).
+            for left in list(self._active_assets()):
+                if left.get("status") != "active":
+                    continue
+                lids = self._ids_of(left)
+                left_uid = str(left["asset_uid"])
+                for key in strong:
+                    vals = id_values(lids, key)
+                    if not vals:
+                        continue
+                    if key in {"uuid", "bios_uuid"} and self._uuid_collided(str(lids.get(key) or "")):
+                        continue
+                    for right in self._indexed_candidates(key, vals):
+                        right_uid = str(right.get("asset_uid") or "")
+                        if right_uid == left_uid or right.get("status") != "active":
+                            continue
+                        rids = self._ids_of(right)
+                        if key in {"uuid", "bios_uuid"} and self._uuid_collided(str(rids.get(key) or "")):
+                            continue
+                        self.merge(left_uid, right_uid, now=now, reason=key)
+                        changed = True
+                        break
+                    if changed:
+                        break
+                if changed:
+                    break
+            if changed:
+                continue
+            # IP merges via the id index.
+            for left in list(self._active_assets()):
+                if left.get("status") != "active":
+                    continue
+                lids = self._ids_of(left)
+                if lids.get("principal"):
+                    continue
+                left_uid = str(left["asset_uid"])
+                ips = id_values(lids, "ip")
+                if not ips:
+                    continue
+                for right in self._indexed_candidates("ip", ips):
+                    right_uid = str(right.get("asset_uid") or "")
+                    if right_uid == left_uid or right.get("status") != "active":
+                        continue
+                    rids = self._ids_of(right)
+                    if rids.get("principal"):
+                        continue
+                    if not self._stronger_conflict(lids, rids, "ip"):
+                        self.merge(left_uid, right_uid, now=now, reason="ip")
+                        changed = True
+                        break
+                if changed:
+                    break
+            if changed:
+                continue
+            # Principal / bare-hostname folds are rare; only pairwise those
+            # candidates so a pure host inventory stays near-linear.
             actives = self._active_assets()
+            needs_fold = False
+            for asset in actives:
+                ids = self._ids_of(asset)
+                hostnames = id_values(ids, "hostname")
+                fqdns = id_values(ids, "fqdn")
+                bare = bool(hostnames) and not fqdns
+                if ids.get("principal") or bare:
+                    needs_fold = True
+                    break
+            if not needs_fold:
+                break
             for i, left in enumerate(actives):
                 lids = self._ids_of(left)
                 for right in actives[i + 1 :]:
                     rids = self._ids_of(right)
                     merged = False
-                    for key in strong:
-                        if key in {"uuid", "bios_uuid"} and (
-                            self._uuid_collided(str(lids.get(key) or ""))
-                            or self._uuid_collided(str(rids.get(key) or ""))
-                        ):
-                            continue
-                        if values_overlap(id_values(lids, key), id_values(rids, key)):
-                            self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason=key)
-                            merged = True
-                            break
-                    if (
-                        not merged
-                        and not lids.get("principal")
-                        and not rids.get("principal")
-                        and values_overlap(id_values(lids, "ip"), id_values(rids, "ip"))
-                    ):
-                        if not self._stronger_conflict(lids, rids, "ip"):
-                            self.merge(str(left["asset_uid"]), str(right["asset_uid"]), now=now, reason="ip")
-                            merged = True
                     if (
                         not merged
                         and (lids.get("principal") or rids.get("principal"))
