@@ -12,6 +12,8 @@ of the same query/host collapse to one row.
 
 from __future__ import annotations
 
+import unicodedata
+
 import json
 import re
 from typing import Any
@@ -461,6 +463,13 @@ def classify_osquery_rows(payload: Any) -> list[dict[str, str]]:
     for row in rows:
         cols = _cols(row)
         name = str(row.get("name") or row.get("query") or cols.get("name") or "osquery")
+        # A bit-flip that injects a control char into system_info used to leave
+        # inventory and emit an extra unmapped row instead.
+        if any(unicodedata.category(c) == "Cc" for c in name):
+            raise ValueError(
+                f"osquery query name contains control characters: {name!r}; "
+                "refusing silent remapping"
+            )
         key = _query_key(name)
         host = _host_from(row, host_default)
         display = _query_key(name)
