@@ -227,9 +227,20 @@ def _domain_rows(payload: Any) -> list[dict[str, Any]]:
         return []
     if payload.get("schema") in {"dns_email.v1", "dns-email.v1", "evergreen.dns_email.v1"}:
         raw = payload.get("domains") or payload.get("results") or []
-        return [r for r in raw if isinstance(r, dict)] if isinstance(raw, list) else []
+        if not isinstance(raw, list):
+            return []
+        rows = [r for r in raw if isinstance(r, dict)]
+        # Refuse domains entries that lack domain/name/host (silent row-drop under key corruption).
+        for r in rows:
+            if not _norm_domain(r.get("domain") or r.get("name") or r.get("host")):
+                raise ValueError("dns_email domains entry missing domain/name/host key")
+        return rows
     if isinstance(payload.get("domains"), list):
-        return [r for r in payload["domains"] if isinstance(r, dict)]
+        rows = [r for r in payload["domains"] if isinstance(r, dict)]
+        for r in rows:
+            if not _norm_domain(r.get("domain") or r.get("name") or r.get("host")):
+                raise ValueError("dns_email domains entry missing domain/name/host key")
+        return rows
     domain = _norm_domain(payload.get("domain") or payload.get("base_domain") or payload.get("name"))
     if domain and (
         payload.get("spf") is not None
