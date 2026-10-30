@@ -352,6 +352,12 @@ def _sca_severity(row: dict[str, Any]) -> tuple[str, str]:
     return "medium", "default"
 
 
+def _looks_like_agent_row(row: Any) -> bool:
+    if not isinstance(row, dict):
+        return False
+    return bool(row.get("id") or row.get("name") or row.get("status") or row.get("ip"))
+
+
 def _agents(payload: Any) -> list[dict[str, Any]]:
     if _is_sca_payload(payload):
         return []
@@ -365,6 +371,17 @@ def _agents(payload: Any) -> list[dict[str, Any]]:
             a for a in data["affected_items"]
             if isinstance(a, dict) and not _is_sca_item(a) and not is_vuln_doc(a)
         ]
+    # Corrupted key under data (e.g. affected_items -> affected_items|) must not
+    # silently drop the agent inventory while alerts still report OK. Legitimate
+    # alternate lists (Fleet data.hosts) are left alone.
+    if isinstance(data, dict) and "affected_items" not in data:
+        for key, val in data.items():
+            norm = "".join(c for c in str(key).lower() if c.isalnum())
+            if norm == "affecteditems" and isinstance(val, list):
+                raise ValueError(
+                    f"wazuh agents payload: unexpected list key {key!r} "
+                    "(expected affected_items); refusing silent inventory drop"
+                )
     if isinstance(payload.get("agents"), list):
         return [a for a in payload["agents"] if isinstance(a, dict)]
     osq = payload.get("osquery")
