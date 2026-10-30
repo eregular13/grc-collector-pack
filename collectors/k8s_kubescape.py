@@ -8,6 +8,7 @@ from typing import Any
 
 from shared.io_util import iso_now, load_json_prefer, run_collector
 from shared.schema import make_record, make_ref
+from shared.schema_keys import is_one_edit
 
 SOURCE = "k8s-kubescape"
 LABELS = ["k8s", "kubescape"]
@@ -293,7 +294,18 @@ def parse_file(path: Path) -> list[dict]:
             for cid, ctrl in controls.items():
                 if not isinstance(ctrl, dict):
                     continue
-                if not _failed_status(ctrl.get("status")):
+                if "status" not in ctrl and "Status" not in ctrl:
+                    # Bit-flip renaming status (e.g. to 3tatus) used to skip a
+                    # failed control with no error.
+                    for key in ctrl:
+                        low = str(key).lower()
+                        norm = "".join(c for c in low if c.isalnum())
+                        if norm == "status" or is_one_edit(low, "status"):
+                            raise ValueError(
+                                f"kubescape control {cid}: unexpected status key "
+                                f"{key!r}; refusing silent skip"
+                            )
+                if not _failed_status(ctrl.get("status") or ctrl.get("Status")):
                     continue
                 name = str(ctrl.get("name") or cid)
                 add_finding(
