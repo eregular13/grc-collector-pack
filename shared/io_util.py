@@ -339,9 +339,11 @@ _UTF16_BOMS = ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be"))
 
 
 def decode_text(data: bytes) -> str:
-    """Decode scanner output: UTF-16 with a BOM is decoded as UTF-16, else UTF-8.
+    """Decode scanner output.
 
-    A UTF-8 BOM is kept (callers strip ``\ufeff``) so existing behaviour holds.
+    UTF-16 (and UTF-32) with a byte-order mark is decoded as that encoding
+    (PowerShell ``Out-File`` default). Otherwise decode as UTF-8; a UTF-8 BOM
+    is kept so callers that strip ``\ufeff`` keep existing behaviour.
     """
     if data[:4] in (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff"):
         return data.decode("utf-32", errors="replace")
@@ -364,7 +366,8 @@ def read_json(path: Path) -> Any:
 
 def read_jsonl(path: Path) -> list[Any]:
     rows: list[Any] = []
-    for line in read_text(path).splitlines():
+    # Strip a leading UTF-8 BOM so line 1 still parses as JSON.
+    for line in read_text(path).lstrip("\ufeff").splitlines():
         line = line.strip()
         if not line:
             continue
