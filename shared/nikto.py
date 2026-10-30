@@ -362,8 +362,9 @@ def iter_nikto_text_rows(text: str) -> Iterator[dict[str, Any]]:
 def iter_nikto_xml_rows(text: str) -> Iterator[dict[str, Any]]:
     try:
         root = ET.fromstring(text)
-    except ET.ParseError:
-        return
+    except ET.ParseError as exc:
+        # Malformed nikto XML is a per-file parse error, not 0 rows.
+        raise ValueError(f"nikto XML parse error: {exc}") from exc
     for details in root.iter():
         if _tag(details) != "scandetails":
             continue
