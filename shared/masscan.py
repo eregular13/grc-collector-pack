@@ -90,8 +90,9 @@ def _hosts_from_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _from_xml(text: str) -> list[dict[str, Any]]:
     try:
         root = ET.fromstring(text)
-    except ET.ParseError:
-        return []
+    except ET.ParseError as exc:
+        # Malformed masscan XML is a per-file parse error, not 0 rows.
+        raise ValueError(f"masscan XML parse error: {exc}") from exc
     out: list[dict[str, Any]] = []
     run_start = str(root.attrib.get("start") or "").strip()
     for host in root.iter():

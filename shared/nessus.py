@@ -136,8 +136,9 @@ def _host_scan_time(host_el: ET.Element) -> str:
 def iter_nessus_items(text: str) -> list[dict[str, Any]]:
     try:
         root = ET.fromstring(text)
-    except ET.ParseError:
-        return []
+    except ET.ParseError as exc:
+        # Malformed Nessus XML is a per-file parse error, not 0 rows.
+        raise ValueError(f"nessus XML parse error: {exc}") from exc
     rows: list[dict[str, Any]] = []
     for host_el in root.iter():
         if _tag(host_el) != "ReportHost":
