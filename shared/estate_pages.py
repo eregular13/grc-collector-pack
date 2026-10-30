@@ -654,36 +654,53 @@ _CSV_DELIMS = (",", ";", "\t", "|")
 
 
 def _strip_wrapping_csv_quotes(text: str) -> str:
-    """Undo a QUOTE_ALL re-save that wrapped each whole line in quotes."""
-    out: list[str] = []
-    for ln in text.split("\n"):
+    """Undo a QUOTE_ALL re-save that wrapped each whole line in quotes.
+
+    Streams line-by-line into one join so we do not keep a second full copy
+    of every line alongside the source text for longer than the join.
+    """
+    parts: list[str] = []
+    for ln in text.splitlines(keepends=False):
         s = ln.strip()
         if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
-            out.append(s[1:-1].replace('""', '"'))
+            parts.append(s[1:-1].replace('""', '"'))
         else:
-            out.append(ln)
-    return "\n".join(out)
+            parts.append(ln)
+    return "\n".join(parts)
 
 
 def _csv_rows(text: str, delim: str) -> list[list[str]] | None:
     try:
-        rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+        # Normalize cells while reading so we do not hold both raw reader
+        # rows and a second whitespace-collapsed copy.
+        rows: list[list[str]] = []
+        wide = False
+        for raw in csv.reader(io.StringIO(text), delimiter=delim):
+            row = [" ".join(c.split()) for c in raw]
+            if len(row) > 1:
+                wide = True
+            rows.append(row)
     except csv.Error:
         return None
-    if not rows or all(len(r) <= 1 for r in rows):
+    if not rows or not wide:
         return None
     return rows
 
 
 def _rows_to_csv_canon(rows: list[list[str]]) -> bytes:
-    header = [" ".join(c.split()) for c in rows[0]]
-    body = sorted(tuple(" ".join(c.split()) for c in r) for r in rows[1:])
-    buf = io.StringIO()
-    writer = csv.writer(buf, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
+    header = rows[0]
+    body = sorted(tuple(r) for r in rows[1:])
+    # Write UTF-8 directly; avoid a Unicode StringIO buffer plus encode().
+    buf = io.BytesIO()
+    wrapper = io.TextIOWrapper(buf, encoding="utf-8", newline="", write_through=True)
+    writer = csv.writer(wrapper, lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
     writer.writerow(header)
     for row in body:
         writer.writerow(row)
-    return buf.getvalue().encode("utf-8")
+    wrapper.flush()
+    wrapper.detach()
+    return buf.getvalue()
+
 
 
 def _canonical_csv_forms(text: str) -> list[bytes]:
