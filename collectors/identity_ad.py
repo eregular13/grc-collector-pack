@@ -22,6 +22,7 @@ from shared.hardeningkitty_csv import hk_row_failed, resolve_hk_host
 from shared.io_util import iso_now, load_json_prefer, read_csv_dicts, read_json, read_text, run_collector
 from shared.lab_stamp import SKIP_INPUT_NAMES, path_is_lab, stamp_lab_labels
 from shared.schema import canon_severity, make_record, make_ref, slug
+from shared.schema_keys import refuse_near_list_key
 
 SOURCE = "identity-ad"
 LABELS = ["identity", "ad"]
@@ -106,12 +107,18 @@ def _nodes(payload: Any) -> list[dict[str, Any]]:
         data = payload.get("data")
         if isinstance(data, dict) and isinstance(data.get("nodes"), list):
             raw = [n for n in data["nodes"] if isinstance(n, dict)]
+        elif isinstance(data, dict):
+            # One-byte insert/flip renaming data.nodes (e.g. to Fnodes) used to
+            # return OK with zero findings. Refuse the near-miss key.
+            refuse_near_list_key(data, "nodes", label="bloodhound payload")
         elif isinstance(data, list):
             raw = [n for n in data if isinstance(n, dict)]
         elif isinstance(payload.get("nodes"), list):
             raw = [n for n in payload["nodes"] if isinstance(n, dict)]
         elif isinstance(payload.get("PrivilegedAccounts"), list):
             raw = [n for n in payload["PrivilegedAccounts"] if isinstance(n, dict)]
+        else:
+            refuse_near_list_key(payload, "nodes", label="bloodhound payload")
     return [n for n in raw if not _looks_like_edge(n)]
 
 
