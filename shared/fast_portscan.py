@@ -26,22 +26,33 @@ def _port_token(raw: Any) -> str:
     return str(raw).strip()
 
 
-def _load_payload(text: str) -> Any:
+def _load_payload(text: str, *, path_name: str = "") -> Any:
     stripped = text.lstrip("\ufeff").lstrip()
     if not stripped:
         return []
+    named = _named(path_name) if path_name else False
     try:
         return json.loads(stripped)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as whole_exc:
         rows: list[Any] = []
-        for line in stripped.splitlines():
+        skipped: list[int] = []
+        for lineno, line in enumerate(stripped.splitlines(), 1):
             line = line.strip().rstrip(",")
             if not line or line in {"[", "]"}:
                 continue
             try:
                 rows.append(json.loads(line))
             except json.JSONDecodeError:
-                continue
+                skipped.append(lineno)
+        if named and skipped:
+            raise ValueError(
+                f"{path_name}: corrupt JSONL line(s) {', '.join(map(str, skipped))}; "
+                "refusing silent drop"
+            ) from whole_exc
+        if named and not rows:
+            raise ValueError(
+                f"{path_name}: not valid JSON ({whole_exc.msg}); refusing silent empty"
+            ) from whole_exc
         return rows
 
 
@@ -235,10 +246,17 @@ def parse_fast_portscan(path: Path, raw: str | None = None) -> list[dict[str, An
     stripped = text.lstrip("\ufeff").lstrip()
     if stripped.startswith("<"):
         return None
-    payload = _load_payload(text)
+    if _named(path.name) and not stripped:
+        raise ValueError(
+            f"{path.name}: empty fast-portscan file (0 bytes); refusing silent zero"
+        )
+    payload = _load_payload(text, path_name=path.name)
     if not _is_fast_portscan(payload, path.name):
         if _named(path.name):
-            return []
+            raise ValueError(
+                f"{path.name}: named naabu/rustscan export produced no hosts; "
+                "refusing silent zero"
+            )
         return None
     grouped: dict[str, dict[str, Any]] = {}
     _walk(payload, grouped)

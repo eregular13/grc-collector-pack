@@ -15,7 +15,7 @@ from typing import Any
 from shared.asset_ids import stamp_ids
 from shared.greenbone import cvss_band, parse_greenbone
 from shared.grype import grype_host_target, grype_ids, grype_scan_time, grype_target, is_grype, iter_grype_matches
-from shared.io_util import iso_now, read_json, read_jsonl, read_text, run_collector, fail_closed
+from shared.io_util import JSONL_SKIPS, iso_now, read_json, read_jsonl, read_text, run_collector, fail_closed
 from shared.nessus import parse_nessus
 from shared.nikto import is_interesting as nikto_interesting
 from shared.nikto import nikto_severity
@@ -58,13 +58,27 @@ def _nuclei_from_payload(payload: Any) -> list[dict[str, Any]]:
 
 
 def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
+    raw = path.read_bytes()
+    if not raw.strip():
+        raise ValueError(
+            f"{path.name}: empty nuclei file (0 bytes); refusing silent zero"
+        )
     text = read_text(path).lstrip("\ufeff").strip()
     if not text:
-        return []
+        raise ValueError(
+            f"{path.name}: empty nuclei file (0 bytes); refusing silent zero"
+        )
+    named = "nuclei" in path.name.lower() or path.suffix.lower() == ".jsonl"
     if path.suffix.lower() == ".jsonl" or "nuclei" in path.name.lower() or (
         text[0] == "{" and "\n{" in text
     ):
         rows = [r for r in read_jsonl(path) if _is_nuclei_row(r)]
+        skipped = JSONL_SKIPS.get(str(path))
+        if skipped and named:
+            raise ValueError(
+                f"{path.name}: corrupt JSONL line(s) {', '.join(map(str, skipped))}; "
+                "refusing silent drop"
+            )
         if rows:
             return rows
     try:
@@ -74,9 +88,25 @@ def _nuclei_rows(path: Path) -> list[dict[str, Any]]:
             raise ValueError(
                 f"{path.name}: not valid JSON ({exc.msg}); refusing silent JSONL fallback"
             ) from exc
-        return [r for r in read_jsonl(path) if _is_nuclei_row(r)]
+        rows = [r for r in read_jsonl(path) if _is_nuclei_row(r)]
+        skipped = JSONL_SKIPS.get(str(path))
+        if skipped and named:
+            raise ValueError(
+                f"{path.name}: corrupt JSONL line(s) {', '.join(map(str, skipped))}; "
+                "refusing silent drop"
+            )
+        return rows
+    except ValueError:
+        raise
     except Exception:
-        return [r for r in read_jsonl(path) if _is_nuclei_row(r)]
+        rows = [r for r in read_jsonl(path) if _is_nuclei_row(r)]
+        skipped = JSONL_SKIPS.get(str(path))
+        if skipped and named:
+            raise ValueError(
+                f"{path.name}: corrupt JSONL line(s) {', '.join(map(str, skipped))}; "
+                "refusing silent drop"
+            )
+        return rows
     return _nuclei_from_payload(payload)
 
 

@@ -89,13 +89,23 @@ def looks_like_enum4linux(text: str, name: str = "", payload: Any = None) -> boo
     return False
 
 
-def _load_json(text: str) -> Any:
+def _load_json(text: str, *, path_name: str = "") -> Any:
     stripped = text.lstrip("\ufeff").lstrip()
     if not stripped or stripped.startswith("<"):
         return None
     try:
         return json.loads(stripped)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        # JSON-shaped body, or a named *.json/*.jsonl, must not fall through
+        # to a silent empty text parse. Named *.txt stays on the text path.
+        looks_json = stripped[:1] in {"{", "["}
+        suffix = Path(path_name).suffix.lower() if path_name else ""
+        named_json = bool(path_name) and _named(path_name) and suffix in {".json", ".jsonl"}
+        if looks_json or named_json:
+            label = path_name or "enum4linux"
+            raise ValueError(
+                f"{label}: not valid JSON ({exc.msg}); refusing silent empty"
+            ) from exc
         return None
 
 
@@ -303,7 +313,7 @@ def parse_enum4linux(path: Path, raw: str | None = None) -> list[dict[str, Any]]
         return None
     if _looks_hk(text, path.name):
         return None
-    payload = _load_json(text)
+    payload = _load_json(text, path_name=path.name)
     if _looks_bloodhound(payload, text):
         return None
     named = _named(path.name)
@@ -319,5 +329,9 @@ def parse_enum4linux(path: Path, raw: str | None = None) -> list[dict[str, Any]]
             if host is not None:
                 out.append(host)
         return out
+    if named and path.suffix.lower() in {".json", ".jsonl"}:
+        raise ValueError(
+            f"{path.name}: enum4linux JSON produced no hosts; refusing silent zero"
+        )
     host = _from_text(text)
     return [host] if host is not None else []

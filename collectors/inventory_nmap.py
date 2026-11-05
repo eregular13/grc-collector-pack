@@ -372,16 +372,32 @@ def _gnmap_scan_time(raw: str) -> str:
     return ""
 
 
-def parse_gnmap(raw: str, now: str) -> list[dict]:
+def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[dict]:
     records: list[dict] = []
     stamp = _gnmap_scan_time(raw)
     extra = {"scan_time": stamp} if stamp else None
-    for line in raw.splitlines():
-        if not line.startswith("Host:"):
+    bad_lines: list[int] = []
+    for lineno, line in enumerate(raw.splitlines(), 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
             continue
-        if "Ports:" not in line:
+        # Near-miss Host token or mangled Host/Ports line — do not silent-skip.
+        if "Ports:" in stripped and not stripped.startswith("Host:"):
+            bad_lines.append(lineno)
             continue
-        host_part = line.split("Ports:")[0]
+        if stripped.lower().startswith("host") and not stripped.startswith("Host:"):
+            bad_lines.append(lineno)
+            continue
+        if not stripped.startswith("Host:"):
+            continue
+        # Status-only Host lines are valid greppable nmap output; skip them.
+        if "Ports:" not in stripped:
+            if "Status:" in stripped:
+                continue
+            # Host line with neither Ports nor Status (mangled PortX: / truncated).
+            bad_lines.append(lineno)
+            continue
+        host_part = stripped.split("Ports:")[0]
         addr = ""
         hostname = ""
         rest = host_part[len("Host:") :].strip()
@@ -392,13 +408,30 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
             addr = rest.split()[0] if rest.split() else ""
         name = hostname or addr or "unknown-host"
         ports: list[tuple[str, str]] = []
-        if "Ports:" in line:
-            for chunk in line.split("Ports:", 1)[1].split(","):
-                parts = chunk.strip().split("/")
-                if len(parts) >= 5 and parts[1] == "open":
-                    ports.append((parts[0], parts[4]))
-        if "Ports:" in line or name:
-            _emit_host(records, now, name, addr, hostname, ports, extra=extra)
+        port_blob = stripped.split("Ports:", 1)[1]
+        chunks = [c.strip() for c in port_blob.split(",") if c.strip()]
+        unparsed = 0
+        for chunk in chunks:
+            parts = chunk.split("/")
+            if len(parts) >= 5 and parts[1] == "open":
+                ports.append((parts[0], parts[4]))
+            elif len(parts) >= 2 and parts[1] in {"closed", "filtered", "open|filtered"}:
+                continue  # known non-open states
+            else:
+                unparsed += 1
+        if unparsed and not ports:
+            # Every chunk failed the portspec — treat as damaged Host/Ports line.
+            bad_lines.append(lineno)
+            continue
+        if unparsed:
+            bad_lines.append(lineno)
+            continue
+        _emit_host(records, now, name, addr, hostname, ports, extra=extra)
+    if bad_lines:
+        raise ValueError(
+            f"{path_name}: unparseable gnmap Host line(s) "
+            f"{', '.join(map(str, bad_lines))}; refusing silent drop"
+        )
     return records
 
 
@@ -673,13 +706,13 @@ def parse_file(path: Path) -> list[dict]:
         try:
             payload = json.loads(stripped)
         except json.JSONDecodeError:
-            records = parse_gnmap(raw, now)
+            records = parse_gnmap(raw, now, path_name=path.name)
         else:
             records = parse_nmap_json(payload, now)
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
     if not stripped.startswith("<"):
-        records = parse_gnmap(raw, now)
+        records = parse_gnmap(raw, now, path_name=path.name)
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
     try:

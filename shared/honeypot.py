@@ -452,10 +452,13 @@ def _iter_rows(raw: str, path: Path | None = None) -> list[dict[str, Any]]:
     if not text:
         return []
     rows: list[dict[str, Any]] = []
+    name = path.name.lower() if path is not None else ""
+    named_jsonl = name in {"events.jsonl", "sessions.jsonl"} or name.endswith(".jsonl")
     if text.startswith("{") or text.startswith("["):
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
+            # .json must not fall through; JSONL "Extra data" falls to line loop.
             if path is not None and path.suffix.lower() == ".json":
                 raise ValueError(
                     f"{path.name}: not valid JSON ({exc.msg}); refusing silent empty"
@@ -472,27 +475,44 @@ def _iter_rows(raw: str, path: Path | None = None) -> list[dict[str, Any]]:
             if not rows:
                 rows.append(payload)
             return rows
-    for line in text.splitlines():
+    skipped: list[int] = []
+    for lineno, line in enumerate(text.splitlines(), 1):
         line = line.strip()
         if not line:
             continue
         try:
             obj = json.loads(line)
         except json.JSONDecodeError:
+            skipped.append(lineno)
             continue
         if isinstance(obj, dict):
             rows.append(obj)
+    if skipped and named_jsonl:
+        raise ValueError(
+            f"{path.name if path else 'honeypot'}: corrupt JSONL line(s) "
+            f"{', '.join(map(str, skipped))}; refusing silent drop"
+        )
     return rows
 
 
 def parse_honeypot(path: Path, raw: str, now: str) -> list[dict[str, Any]] | None:
     """Return canonical records, [] if recognized-but-empty, or None if not this format."""
+    name = path.name.lower()
+    named = name in {"events.jsonl", "sessions.jsonl", "meta.json"}
+    if named and not (raw or "").lstrip("\ufeff").strip():
+        raise ValueError(
+            f"{path.name}: empty honeypot file (0 bytes); refusing silent zero"
+        )
     if not looks_like_honeypot_file(path, raw) and not any(
         looks_like_honeypot_row(r) for r in _iter_rows(raw, path)[:3]
     ):
         return None
     rows = _iter_rows(raw, path)
     if not rows:
+        if named:
+            raise ValueError(
+                f"{path.name}: empty honeypot file (0 bytes); refusing silent zero"
+            )
         return []
     name = path.name.lower()
     records: list[dict[str, Any]] = []

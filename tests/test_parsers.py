@@ -409,7 +409,9 @@ def test_rustscan_json_and_empty(tmp_path) -> None:
     assert inventory_nmap.parse_file(dest) == []
     dest = tmp_path / "naabu-empty.jsonl"
     dest.write_text("", encoding="utf-8")
-    assert inventory_nmap.parse_file(dest) == []
+    # Named empty naabu/rustscan exports are loud (0-byte != clean OK).
+    with pytest.raises(ValueError, match="empty fast-portscan|0 bytes"):
+        inventory_nmap.parse_file(dest)
     dest.write_text('{"ip":"10.0.0.50","ports":[]}\n', encoding="utf-8")
     assert inventory_nmap.parse_file(dest) == []
     dest.write_text('{"ip":"10.0.0.50","port":22,"status":"closed"}\n', encoding="utf-8")
