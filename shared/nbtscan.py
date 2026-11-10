@@ -65,6 +65,17 @@ def _looks_fping(text: str) -> bool:
     return " is alive" in low or " is unreachable" in low
 
 
+def _looks_gnmap(text: str) -> bool:
+    """Nmap greppable output (header or Host: records) is never nbtscan."""
+    for line in text.split("\n")[:2000]:
+        stripped = line.strip()
+        if stripped.startswith("# Nmap "):
+            return True
+        if stripped.startswith("Host:") and ("Ports:" in stripped or "Status:" in stripped):
+            return True
+    return False
+
+
 def _looks_arp_banner(text: str) -> bool:
     low = text[:12000].lower()
     return "starting arp-scan" in low or "ending arp-scan" in low
@@ -74,6 +85,8 @@ def looks_like_nbtscan(text: str, name: str = "") -> bool:
     if _named(name):
         return True
     if looks_like_netdiscover(text, name) or _looks_arp_banner(text) or _looks_fping(text):
+        return False
+    if _looks_gnmap(text):
         return False
     if _banner(text):
         return True
@@ -323,6 +336,8 @@ def parse_nbtscan(path: Path, raw: str | None = None) -> list[dict[str, Any]] | 
     named = _named(path.name)
     if not named:
         if looks_like_netdiscover(text, path.name) or _looks_arp_banner(text) or _looks_fping(text):
+            return None
+        if _looks_gnmap(text):
             return None
         if not looks_like_nbtscan(text, path.name):
             return None

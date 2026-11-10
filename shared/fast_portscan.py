@@ -105,7 +105,10 @@ def _is_fast_portscan(payload: Any, name: str) -> bool:
     if isinstance(payload, list):
         if not payload:
             return False
-        if all(isinstance(x, dict) and _looks_naabu(x) for x in payload[:3] if isinstance(x, dict)):
+        # all() over an empty generator is True; a list of bare JSON scalars
+        # (e.g. a damaged text line that reads as a number) is not naabu.
+        heads = [x for x in payload[:3] if isinstance(x, dict)]
+        if heads and all(_looks_naabu(x) for x in heads):
             return True
         return _looks_rustscan(payload)
     return False

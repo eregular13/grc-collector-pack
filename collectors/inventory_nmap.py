@@ -372,12 +372,30 @@ def _gnmap_scan_time(raw: str) -> str:
     return ""
 
 
+def _gnmap_lines(raw: str) -> list[str]:
+    """Split on newline only so line numbers match the file on disk.
+
+    ``str.splitlines`` also breaks on control bytes such as 0x1c/0x1e, which
+    turns one damaged line into two plausible-looking ones.
+    """
+    return [line.rstrip("\r") for line in raw.split("\n")]
+
+
+def _gnmap_host_key(stripped: str) -> str:
+    """``Host: <addr> (<name>)`` field, up to the first tab-separated field."""
+    return stripped[len("Host:") :].split("\t", 1)[0].strip()
+
+
 def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[dict]:
     records: list[dict] = []
     stamp = _gnmap_scan_time(raw)
     extra = {"scan_time": stamp} if stamp else None
     bad_lines: list[int] = []
-    for lineno, line in enumerate(raw.splitlines(), 1):
+    lines = _gnmap_lines(raw)
+    up_hosts: dict[str, int] = {}
+    port_hosts: set[str] = set()
+    timed_out: set[str] = set()
+    for lineno, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
@@ -390,13 +408,20 @@ def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[di
             continue
         if not stripped.startswith("Host:"):
             continue
-        # Status-only Host lines are valid greppable nmap output; skip them.
+        key = _gnmap_host_key(stripped)
+        # Status-only Host lines are valid greppable nmap output.
         if "Ports:" not in stripped:
             if "Status:" in stripped:
+                state = stripped.split("Status:", 1)[1].strip()
+                if state.startswith("Up"):
+                    up_hosts.setdefault(key, lineno)
+                elif state.startswith("Timeout"):
+                    timed_out.add(key)
                 continue
             # Host line with neither Ports nor Status (mangled PortX: / truncated).
             bad_lines.append(lineno)
             continue
+        port_hosts.add(key)
         host_part = stripped.split("Ports:")[0]
         addr = ""
         hostname = ""
@@ -408,7 +433,8 @@ def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[di
             addr = rest.split()[0] if rest.split() else ""
         name = hostname or addr or "unknown-host"
         ports: list[tuple[str, str]] = []
-        port_blob = stripped.split("Ports:", 1)[1]
+        # Fields are tab-separated; "Ignored State:", "OS:" etc. follow Ports.
+        port_blob = stripped.split("Ports:", 1)[1].split("\t", 1)[0]
         chunks = [c.strip() for c in port_blob.split(",") if c.strip()]
         unparsed = 0
         for chunk in chunks:
@@ -419,18 +445,22 @@ def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[di
                 continue  # known non-open states
             else:
                 unparsed += 1
-        if unparsed and not ports:
-            # Every chunk failed the portspec — treat as damaged Host/Ports line.
-            bad_lines.append(lineno)
-            continue
         if unparsed:
             bad_lines.append(lineno)
             continue
         _emit_host(records, now, name, addr, hostname, ports, extra=extra)
+    if port_hosts:
+        # In a port scan nmap writes a Ports record for every host it reports
+        # Up (even when every port is in an ignored state), except hosts it
+        # marks "Status: Timeout". An Up host with no matching Ports record
+        # means that record was lost or altered.
+        for key, lineno in up_hosts.items():
+            if key not in port_hosts and key not in timed_out:
+                bad_lines.append(lineno)
     if bad_lines:
         raise ValueError(
             f"{path_name}: unparseable gnmap Host line(s) "
-            f"{', '.join(map(str, bad_lines))}; refusing silent drop"
+            f"{', '.join(map(str, sorted(set(bad_lines))))}; refusing silent drop"
         )
     return records
 
