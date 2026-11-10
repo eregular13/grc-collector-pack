@@ -372,16 +372,74 @@ def _gnmap_scan_time(raw: str) -> str:
     return ""
 
 
-def parse_gnmap(raw: str, now: str) -> list[dict]:
+def _gnmap_lines(raw: str) -> list[str]:
+    """Split on newline only so line numbers match the file on disk.
+
+    ``str.splitlines`` also breaks on control bytes such as 0x1c/0x1e, which
+    turns one damaged line into two plausible-looking ones.
+    """
+    return [line.rstrip("\r") for line in raw.split("\n")]
+
+
+def _gnmap_host_key(stripped: str) -> str:
+    """``Host: <addr> (<name>)`` field, up to the first tab-separated field."""
+    return stripped[len("Host:") :].split("\t", 1)[0].strip()
+
+
+def _gnmap_port_token_ok(chunk: str) -> bool:
+    """True when a Ports token is port/state/protocol/... with a real port.
+
+    Each token must have a numeric port from 1 to 65535. A bit flip that
+    turns a port such as 445 into a non-numeric token is unparseable; it
+    must not be kept as an open port.
+    """
+    parts = chunk.split("/")
+    if len(parts) < 3:
+        return False
+    port = parts[0]
+    if not port.isdigit():
+        return False
+    number = int(port)
+    return 1 <= number <= 65535
+
+
+def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[dict]:
     records: list[dict] = []
     stamp = _gnmap_scan_time(raw)
     extra = {"scan_time": stamp} if stamp else None
-    for line in raw.splitlines():
-        if not line.startswith("Host:"):
+    bad_lines: list[int] = []
+    lines = _gnmap_lines(raw)
+    up_hosts: dict[str, int] = {}
+    port_hosts: set[str] = set()
+    timed_out: set[str] = set()
+    for lineno, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
             continue
-        if "Ports:" not in line:
+        # Near-miss Host token or mangled Host/Ports line — do not silent-skip.
+        if "Ports:" in stripped and not stripped.startswith("Host:"):
+            bad_lines.append(lineno)
             continue
-        host_part = line.split("Ports:")[0]
+        if stripped.lower().startswith("host") and not stripped.startswith("Host:"):
+            bad_lines.append(lineno)
+            continue
+        if not stripped.startswith("Host:"):
+            continue
+        key = _gnmap_host_key(stripped)
+        # Status-only Host lines are valid greppable nmap output.
+        if "Ports:" not in stripped:
+            if "Status:" in stripped:
+                state = stripped.split("Status:", 1)[1].strip()
+                if state.startswith("Up"):
+                    up_hosts.setdefault(key, lineno)
+                elif state.startswith("Timeout"):
+                    timed_out.add(key)
+                continue
+            # Host line with neither Ports nor Status (mangled PortX: / truncated).
+            bad_lines.append(lineno)
+            continue
+        port_hosts.add(key)
+        host_part = stripped.split("Ports:")[0]
         addr = ""
         hostname = ""
         rest = host_part[len("Host:") :].strip()
@@ -392,13 +450,38 @@ def parse_gnmap(raw: str, now: str) -> list[dict]:
             addr = rest.split()[0] if rest.split() else ""
         name = hostname or addr or "unknown-host"
         ports: list[tuple[str, str]] = []
-        if "Ports:" in line:
-            for chunk in line.split("Ports:", 1)[1].split(","):
-                parts = chunk.strip().split("/")
-                if len(parts) >= 5 and parts[1] == "open":
-                    ports.append((parts[0], parts[4]))
-        if "Ports:" in line or name:
-            _emit_host(records, now, name, addr, hostname, ports, extra=extra)
+        # Fields are tab-separated; "Ignored State:", "OS:" etc. follow Ports.
+        port_blob = stripped.split("Ports:", 1)[1].split("\t", 1)[0]
+        chunks = [c.strip() for c in port_blob.split(",") if c.strip()]
+        unparsed = 0
+        for chunk in chunks:
+            parts = chunk.split("/")
+            if not _gnmap_port_token_ok(chunk):
+                unparsed += 1
+                continue
+            if len(parts) >= 5 and parts[1] == "open":
+                ports.append((parts[0], parts[4]))
+            elif len(parts) >= 2 and parts[1] in {"closed", "filtered", "open|filtered"}:
+                continue  # known non-open states
+            else:
+                unparsed += 1
+        if unparsed:
+            bad_lines.append(lineno)
+            continue
+        _emit_host(records, now, name, addr, hostname, ports, extra=extra)
+    if port_hosts:
+        # In a port scan nmap writes a Ports record for every host it reports
+        # Up (even when every port is in an ignored state), except hosts it
+        # marks "Status: Timeout". An Up host with no matching Ports record
+        # means that record was lost or altered.
+        for key, lineno in up_hosts.items():
+            if key not in port_hosts and key not in timed_out:
+                bad_lines.append(lineno)
+    if bad_lines:
+        raise ValueError(
+            f"{path_name}: unparseable gnmap Host line(s) "
+            f"{', '.join(map(str, sorted(set(bad_lines))))}; refusing silent drop"
+        )
     return records
 
 
@@ -673,13 +756,13 @@ def parse_file(path: Path) -> list[dict]:
         try:
             payload = json.loads(stripped)
         except json.JSONDecodeError:
-            records = parse_gnmap(raw, now)
+            records = parse_gnmap(raw, now, path_name=path.name)
         else:
             records = parse_nmap_json(payload, now)
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
     if not stripped.startswith("<"):
-        records = parse_gnmap(raw, now)
+        records = parse_gnmap(raw, now, path_name=path.name)
         _stamp_demo(records, _is_dropbox_demo(path, raw))
         return records
     try:

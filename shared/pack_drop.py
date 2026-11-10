@@ -60,15 +60,18 @@ def looks_like_pack_drop(path: Path, raw: str = "") -> bool:
     return False
 
 
-def _iter_rows(raw: str) -> list[Any]:
+def _iter_rows(raw: str, *, path_name: str = "") -> list[Any]:
     text = raw.lstrip("\ufeff").strip()
     if not text:
         return []
+    label = path_name or "pack_drop"
     if text.startswith("[") or (text.startswith("{") and "\n{" not in text and "\n[" not in text):
         try:
             payload = json.loads(text)
-        except json.JSONDecodeError:
-            payload = None
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"{label}: not valid JSON ({exc.msg}); refusing silent empty"
+            ) from exc
         else:
             if isinstance(payload, list):
                 return payload
@@ -81,14 +84,27 @@ def _iter_rows(raw: str) -> list[Any]:
                         return blob
                 return [payload]
     rows: list[Any] = []
-    for line in text.splitlines():
+    skipped: list[int] = []
+    for lineno, line in enumerate(text.splitlines(), 1):
         line = line.strip()
         if not line:
             continue
         try:
             rows.append(json.loads(line))
         except json.JSONDecodeError:
-            continue
+            skipped.append(lineno)
+    if skipped:
+        named = label.lower() in PACK_DROP_NAMES or label.lower().endswith(
+            (".jsonl", ".json")
+        )
+        looks_json = text.lstrip()[:1] in {"{", "["}
+        if named or looks_json:
+            raise ValueError(
+                f"{label}: corrupt JSONL line(s) {', '.join(map(str, skipped))}; "
+                "refusing silent drop"
+            )
+        # Prose markers (SAMPLE.txt / README) under a pack_drop dir stay empty.
+        return rows
     return rows
 
 
@@ -341,7 +357,7 @@ def parse_pack_drop(
     if parent == "evidence" and name not in PACK_DROP_NAMES:
         text = raw.lstrip("\ufeff").strip()
         if text and (text[0] in "{["):
-            rows = _iter_rows(raw)
+            rows = _iter_rows(raw, path_name=path.name if path is not None else "")
             recs = [
                 _lift_record(
                     r,
@@ -358,7 +374,7 @@ def parse_pack_drop(
                 return recs
         return [_file_evidence(path, now, source=source, labels=labels)]
 
-    rows = _iter_rows(raw)
+    rows = _iter_rows(raw, path_name=path.name if path is not None else "")
     meta_stamp = sibling_meta_scan_time(path)
     if name == "meta.json":
         recs = []

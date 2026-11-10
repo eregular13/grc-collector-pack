@@ -40,10 +40,15 @@ def test_seed_parses(name: str, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("name", sorted(JSON_SEEDS))
-def test_empty_file_is_zero_rows(name: str, tmp_path: Path) -> None:
+def test_empty_file_is_zero_rows_or_refused(name: str, tmp_path: Path) -> None:
     p = tmp_path / name
     p.write_bytes(b"")
-    assert _parse(JSON_SEEDS[name][1])(p) == []
+    mod = JSON_SEEDS[name][1]
+    if mod == "collectors.vuln_scan":
+        # vuln_scan refuses 0-byte exports instead of reporting a clean zero.
+        _refused(mod, p)
+    else:
+        assert _parse(mod)(p) == []
 
 
 @pytest.mark.parametrize("name", sorted(JSON_SEEDS))

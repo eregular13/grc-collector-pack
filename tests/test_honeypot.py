@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+
+import pytest
 import shutil
 from pathlib import Path
 
@@ -78,7 +80,9 @@ def test_sessions_and_meta_evidence() -> None:
 def test_empty_honeypot_invents_nothing(tmp_path: Path) -> None:
     dest = tmp_path / "events.jsonl"
     dest.write_text("", encoding="utf-8")
-    assert honeypot.parse_file(dest) == []
+    # 0-byte named honeypot exports are loud (not a clean OK empty set).
+    with pytest.raises(ValueError, match="empty honeypot|0 bytes"):
+        honeypot.parse_file(dest)
     dest.write_text("{}\n", encoding="utf-8")
     assert honeypot.parse_file(dest) == []
     dest.write_text('{"hello":"world"}\n', encoding="utf-8")
