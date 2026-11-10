@@ -516,7 +516,8 @@ def test_fping_empty_and_unreachable(tmp_path) -> None:
     dest.write_text("10.0.0.51 is unreachable\n10.0.0.52 is down\n", encoding="utf-8")
     assert inventory_nmap.parse_file(dest) == []
     dest.write_text("", encoding="utf-8")
-    assert inventory_nmap.parse_file(dest) == []
+    with pytest.raises(ValueError, match=r"empty fping file \(0 bytes\)"):
+        inventory_nmap.parse_file(dest)
     dest.write_text("# comment only\n", encoding="utf-8")
     assert inventory_nmap.parse_file(dest) == []
 

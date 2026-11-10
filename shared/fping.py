@@ -310,6 +310,25 @@ def _from_text(text: str, named: bool, *, path_name: str = "fping") -> list[dict
             f"{path_name}: unparseable fping line(s) "
             f"{', '.join(map(str, sorted(bad)))}; refusing silent drop"
         )
+    if not grouped:
+        # Named export with no host lines. A 0-byte file is not a clean empty
+        # scan. A missing trailing newline means the file was cut mid-line —
+        # often through a comment — which would otherwise look like a quiet
+        # empty result after the host lines were lost. A genuinely empty
+        # scan whose comment lines end with a newline stays a quiet 0-row
+        # result. A cut exactly at a line boundary cannot be told apart
+        # from that empty scan without guessing, so it is not flagged.
+        if not text:
+            raise ValueError(
+                f"{path_name}: empty fping file (0 bytes); refusing silent zero"
+            )
+        if not text.endswith("\n"):
+            last_lineno = text.count("\n") + 1
+            raise ValueError(
+                f"{path_name}: truncated fping text (no host lines, "
+                f"line {last_lineno} has no trailing newline); "
+                "refusing silent drop"
+            )
     return list(grouped.values())
 
 

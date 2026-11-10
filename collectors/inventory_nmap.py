@@ -386,6 +386,23 @@ def _gnmap_host_key(stripped: str) -> str:
     return stripped[len("Host:") :].split("\t", 1)[0].strip()
 
 
+def _gnmap_port_token_ok(chunk: str) -> bool:
+    """True when a Ports token is port/state/protocol/... with a real port.
+
+    Each token must have a numeric port from 1 to 65535. A bit flip that
+    turns a port such as 445 into a non-numeric token is unparseable; it
+    must not be kept as an open port.
+    """
+    parts = chunk.split("/")
+    if len(parts) < 3:
+        return False
+    port = parts[0]
+    if not port.isdigit():
+        return False
+    number = int(port)
+    return 1 <= number <= 65535
+
+
 def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[dict]:
     records: list[dict] = []
     stamp = _gnmap_scan_time(raw)
@@ -439,6 +456,9 @@ def parse_gnmap(raw: str, now: str, *, path_name: str = "scan.gnmap") -> list[di
         unparsed = 0
         for chunk in chunks:
             parts = chunk.split("/")
+            if not _gnmap_port_token_ok(chunk):
+                unparsed += 1
+                continue
             if len(parts) >= 5 and parts[1] == "open":
                 ports.append((parts[0], parts[4]))
             elif len(parts) >= 2 and parts[1] in {"closed", "filtered", "open|filtered"}:

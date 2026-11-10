@@ -265,3 +265,52 @@ def test_gnmap_line_numbers_ignore_control_bytes(tmp_path: Path) -> None:
     path = _write(tmp_path, "scan.gnmap", _edit_line(GNMAP, 5, _insert(50, 0x1E)))
     with pytest.raises(ValueError, match=r"line\(s\) 5;"):
         parse_file(path)
+
+
+# --- comment-only truncation and malformed Ports tokens ---------------------
+
+# Header plus one host. Cutting this mid-comment (or down to a lone "#")
+# drops the host line and used to parse as a clean empty scan.
+FPING_ONE_HOST = "# fping -e (parse-only)\nhost-a.example.test is alive (0.40 ms)\n"
+
+GNMAP_TWO_HOSTS = (
+    "# Nmap 7.94 scan initiated Thu Sep 10 12:00:00 2026 as: nmap -sV -oG scan.gnmap t\n"
+    "Host: 192.0.2.10 (a.example.test)\tStatus: Up\n"
+    "Host: 192.0.2.10 (a.example.test)\tPorts: 22/open/tcp//ssh///, 80/open/tcp//http///\n"
+    "Host: 192.0.2.20 (b.example.test)\tStatus: Up\n"
+    "Host: 192.0.2.20 (b.example.test)\t"
+    "Ports: 445/open/tcp//microsoft-ds///, 139/open/tcp//netbios-ssn///\n"
+    "# Nmap done at Thu Sep 10 12:00:15 2026 -- 2 IP addresses (2 hosts up) "
+    "scanned in 15.00 seconds\n"
+)
+
+
+def test_fping_cut_to_lone_hash_comment_is_loud(tmp_path: Path) -> None:
+    # Mid-line cut that leaves only the leading "#" and drops the host line.
+    path = _write(tmp_path, "fping.txt", FPING_ONE_HOST[:1])
+    with pytest.raises(ValueError, match=r"truncated fping text.*line 1"):
+        parse_file(path)
+
+
+def test_fping_cut_mid_comment_is_loud(tmp_path: Path) -> None:
+    # Mid-line cut through the header comment; the host line is gone and
+    # there is no trailing newline.
+    cut = FPING_ONE_HOST.index("(parse") + 5
+    path = _write(tmp_path, "fping.txt", FPING_ONE_HOST[:cut])
+    with pytest.raises(ValueError, match=r"truncated fping text.*line 1"):
+        parse_file(path)
+
+
+def test_fping_comment_only_ending_with_newline_stays_empty(tmp_path: Path) -> None:
+    # A genuinely empty scan whose comments end with a newline is not truncated.
+    assert parse_file(_write(tmp_path, "fping.txt", "# fping -e\n")) == []
+
+
+def test_gnmap_non_numeric_port_token_is_loud(tmp_path: Path) -> None:
+    clean = _write(tmp_path, "clean.gnmap", GNMAP_TWO_HOSTS)
+    assert len(parse_file(clean)) == 7
+    # Bit flip of the leading '4' in 445 yields "$45" (0x34 ^ 0x10 == 0x24).
+    damaged = GNMAP_TWO_HOSTS.replace("445/open", "$45/open", 1)
+    path = _write(tmp_path, "scan.gnmap", damaged)
+    with pytest.raises(ValueError, match=r"unparseable gnmap Host line\(s\) 5;"):
+        parse_file(path)
